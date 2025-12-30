@@ -1,0 +1,178 @@
+syntax = "proto2";
+
+import "protos/bls.proto";
+import "protos/elect.proto";
+package seth.pools.protobuf;
+
+enum StepType {
+    kNormalFrom = 0;  // 用户直接转账
+    kNormalTo = 1;  // 统计后的跨分片确认交易（from方统计交易）
+    kConsensusRootElectShard = 2;  // shard consensus network election，ROOT网络选举交易
+    kConsensusRootTimeBlock = 3;  // create time block，时间块交易
+    kConsensusCreateGenesisAcount = 4;  //  床上账号交易
+    kConsensusLocalTos = 5;  // 跨分片确认交易（to方累计交易）
+    kContractCreate = 6;  // 创建合约交易
+    kContractGasPrepayment = 7;  // 为调用合约设置预付费
+    kContractExcute = 8;  // 执行合约
+    kRootCreateAddress = 9;  // root网络创建新地址
+    kStatistic = 12;  // 统计交易
+    kJoinElect = 13;  // 新节点参与选举的交易
+    kCreateLibrary = 14; // 创建合约公共库的交易
+    kCross = 15;  // 避免跨分片块缺失的交易
+    kRootCross = 16;  // root避免跨分片块缺失的交易
+    kPoolStatisticTag = 18;  // 此轮交易池统计结束标记块
+}
+
+message ToTxHeights {
+    optional uint32 sharding_id = 1;
+    repeated uint64 heights = 2;
+    optional uint64 block_height = 3;
+    optional bytes tos_hash = 4;
+    optional bytes leader_id = 5;
+    optional uint64 elelct_height = 6;
+    optional uint32 tx_count = 7;
+}
+
+message ToTxMessageItem {
+    optional uint64 amount = 1;
+    optional int32 pool_index = 2;
+    optional uint32 sharding_id = 3;
+    optional bytes des = 4;
+    optional bytes elect_join_g2_value = 6;
+    optional bytes library_bytes = 8;
+    optional bytes from = 9;
+    optional uint64 prepayment = 10;
+    optional uint32 des_sharding_id = 11;
+}
+
+message ShardToTxItem {
+    optional uint32 sharding_id = 1;
+    repeated uint64 heights = 2;
+    optional uint64 block_height = 3;
+}
+
+message PoolStatisticTxItem {
+    optional uint32 pool_index = 1;
+    optional uint64 min_height = 2;
+    optional uint64 max_height = 3;
+}
+
+message StatisticTxItem {
+    optional uint32 sharding_id = 1;
+    repeated PoolStatisticTxItem heights = 2;
+    optional uint64 block_height = 3;
+    optional uint64 tm_height = 4;
+}
+
+message InitPoolHeightItem {
+    optional uint32 sharding_id = 1;
+    repeated uint64 heights = 2;
+    optional uint64 block_height = 3;
+    optional uint64 tm_height = 4;
+}
+
+message PoolStatisticTxInfo {
+    optional uint64 height = 1;
+    repeated PoolStatisticTxItem pool_statisitcs = 2;
+}
+
+message CrossShardStatisticItem {
+    optional uint32 src_shard = 1;
+    optional uint32 src_pool = 2;
+    optional uint64 height = 3;
+    optional uint32 des_shard = 4;
+}
+
+message CrossShardStatistic {
+    repeated CrossShardStatisticItem crosses = 1;
+    optional uint64 elect_height = 2;
+    optional bytes tx_hash = 3;
+}
+
+message ToTxMessage {
+    optional bytes heights_hash = 1;
+    repeated ToTxMessageItem tos = 2;
+    optional uint64 elect_height = 4;
+    repeated CrossShardStatisticItem crosses = 5;
+    optional uint32 des_shard = 6;
+}
+
+message AllToTxMessage {
+    repeated ToTxMessage to_tx_arr = 1;
+    optional ShardToTxItem to_heights = 2;
+}
+
+message PoolLatestInfo {
+    optional uint64 height = 1 [default=0];
+    optional bytes hash = 2;
+    optional uint64 synced_height = 3 [default=0];
+    optional uint64 timestamp = 4 [default=0];
+    optional uint64 view = 5 [default=0];
+}
+
+message AreaInfo {
+    optional int32 x = 1;
+    optional int32 y = 2;
+}
+
+message PoolStatisticItem {
+    repeated uint32 tx_count = 1;
+    repeated uint64 stokes = 2;
+    optional uint64 elect_height = 3;
+    repeated AreaInfo area_point = 4;
+    repeated uint64 gas_sum =5;
+    repeated uint64 credit =6;
+    repeated uint64 consensus_gap = 7;
+}
+
+message JoinElectNode {
+    optional bytes pubkey = 1;
+    optional uint64 stoke = 2;
+    optional uint32 shard = 3;
+    optional int32 elect_pos = 4;
+    optional AreaInfo area_point = 5;
+    optional uint64 credit =6;
+    optional uint64 consensus_gap = 7;
+    optional elect.protobuf.BlsPublicKey agg_bls_pk = 8;
+    optional elect.protobuf.BlsPopProof agg_bls_pk_proof = 9;
+}
+
+message ElectStatistic {
+    repeated PoolStatisticItem statistics = 1;
+    optional StatisticTxItem height_info = 2;
+    repeated JoinElectNode join_elect_nodes = 3;
+    optional uint32 sharding_id = 4;
+    optional uint64 gas_amount = 5;
+    repeated uint32 lof_leaders = 6;
+    optional uint64 statistic_height = 7;
+}
+
+message SyncPoolsMaxHeight {
+    optional bool req = 1 [default=false];
+    repeated uint64 heights = 2;
+    repeated uint64 cross_heights = 3;
+}
+
+message TxDelayTestInfo {
+    optional uint64 tx_debug_tm_ms = 1;
+    optional bytes tx_debug_info = 2;
+}
+
+message TxMessage {
+    optional uint32 version = 1;
+    optional uint64 nonce = 2;
+    optional bytes pubkey = 3;
+    optional uint64 gas_limit = 4;
+    optional uint64 gas_price = 5;
+    optional bytes key = 6;
+    optional bytes value = 7;
+    optional bytes to = 8;
+    optional uint64 amount = 9;
+    optional StepType step = 10 [default=kNormalFrom];
+    optional uint64 contract_prepayment = 11;
+    optional bytes contract_code = 12;
+    optional bytes contract_input = 13;
+    optional bytes sign = 14;
+    repeated TxDelayTestInfo tx_debug = 15;
+    optional uint64 tx_debug_timeout_seconds = 16;
+}

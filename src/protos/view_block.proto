@@ -1,0 +1,90 @@
+syntax = "proto2";
+
+import "protos/block.proto";
+package seth.view_block.protobuf;
+
+message QcItem {
+    optional bytes sign_x = 1; // for thres sig
+    optional bytes sign_y = 2; // for thres sig
+    optional bytes sign_z = 3; // for thres sig
+    optional uint64 view = 4;
+    optional bytes view_block_hash = 5;
+    optional uint64 elect_height = 6;
+    optional uint32 leader_idx = 7;
+    optional uint32 network_id = 8;
+    optional uint32 pool_index = 9;
+    optional AggregateSig agg_sig = 10; // for agg sig
+}
+
+message ViewBlockItem {
+    optional bytes parent_hash = 1;
+    optional block.protobuf.Block block_info = 2;
+    optional QcItem qc = 3;
+    optional MemberConsensusStat leader_consen_stat = 4;
+    optional bytes debug = 5;
+}
+
+message MemberConsensusStat {
+    optional uint32 succ_num = 1;
+    optional uint32 fail_num = 2;
+}
+
+// TODO only for serialization temperarly
+message AggregateSig {
+    optional bytes sign_x = 1;
+    optional bytes sign_y = 2;
+    optional bytes sign_z = 3;
+    repeated uint32 participants = 4;
+}
+
+message ViewBlockSyncRequest {
+    optional uint32 network_id = 1;
+    optional uint32 pool_idx = 2;
+    repeated bytes view_block_hashes = 3;
+    optional uint64 high_qc_view = 4;
+    optional uint64 high_tc_view = 5;
+    optional uint64 max_view = 6;
+    optional bytes latest_committed_block_hash = 7;
+    repeated ViewBlockItem view_blocks = 8;
+}
+
+message ViewBlockSyncResponse {
+    optional uint32 network_id = 1;
+    optional uint32 pool_idx = 2;
+    repeated ViewBlockItem view_block_items = 3;
+    optional ViewBlockItem high_view_block = 4;
+    optional QcItem high_tc = 5;
+    optional bytes query_hash = 6; // single request 中的 query hash
+    optional ViewBlockItem latest_committed_block = 7; // 保证 leader 一致性
+}
+
+message SingleViewBlockSyncRequest {
+    optional uint32 network_id = 1;
+    optional uint32 pool_idx = 2;
+    optional bytes query_hash = 3;
+}
+
+message ViewBlockSyncMessage {
+    optional ViewBlockSyncRequest view_block_req = 1;
+    optional ViewBlockSyncResponse view_block_res = 2;
+    optional SingleViewBlockSyncRequest single_req = 3;
+    optional uint32 create_time_us = 4;
+    optional bytes src_ip = 5;
+    optional uint32 src_port = 6;
+}
+
+message TimeoutMessage {
+    optional uint32 member_id = 1;
+    optional uint64 view = 2;
+    // view sig, only for classic hotstuff
+    optional bytes sign_x = 3;
+    optional bytes sign_y = 4;
+    optional bytes view_hash = 5;
+    optional uint64 elect_height = 6;
+    optional uint32 pool_idx = 7;
+    optional uint32 leader_idx = 8;
+    // for agg sig
+    optional AggregateSig view_sig = 9;
+    optional QcItem high_qc = 10;
+    optional AggregateSig high_qc_sig = 11;
+}
