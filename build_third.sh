@@ -114,4 +114,5 @@ cd $SRC_PATH
 cd third_party/httplib && cp ./httplib.h $SRC_PATH/third_party/include/
 
 
-
+cd $SRC_PATH
+rm -rf third_party/lib/lib*.so* third_party/lib64/lib*.so*
