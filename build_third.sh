@@ -1,7 +1,7 @@
 git submodule init
 git submodule update
 
-export nproc=32
+export nproc=8
 #centos
 dnf install -y gnutls-devel
 dnf install -y perl

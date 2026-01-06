@@ -2,7 +2,6 @@ extract_sks.py
 gen_genesis_script.py
 gen_new_node_config.py
 gen_nodes_conf.py
-shards3
 wondershaper
 xl_build_genesis.sh
 xl_deploy_genesis.sh
