@@ -1,2 +1,2 @@
 # protobuf version: 3.6.1
-protoc --proto_path=/root/seth/src protos/*.proto --cpp_out=./
+../third_party/bin/protoc --proto_path=/root/seth/src protos/*.proto --cpp_out=./

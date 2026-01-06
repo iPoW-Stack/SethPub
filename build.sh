@@ -31,7 +31,7 @@ then
     ./transport_test/transport_test
     exit 0
 fi
-nproc=16
+nproc=8
 make -j${nproc} seth
 echo $1
 if [[ $1 == "test" ]];
