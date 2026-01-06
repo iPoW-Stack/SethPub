@@ -11,7 +11,6 @@
 #include <consensus/hotstuff/crypto.h>
 #include <consensus/hotstuff/elect_info.h>
 #include <consensus/hotstuff/pacemaker.h>
-#include <consensus/hotstuff/hotstuff_syncer.h>
 #include "contract/contract_manager.h"
 #include "db/db.h"
 #include "elect/elect_manager.h"
@@ -83,6 +82,8 @@ private:
     void SendJoinElectTransaction();
     void CreateContribution(bls::protobuf::VerifyVecBrdReq* bls_verify_req);
     void HandleNewBlock();
+    void SaveLatestBlock(std::shared_ptr<db::Db> db, uint32_t sharding_id);
+    void SaveCrossBlockToEachShard();
         
     static const uint32_t kInvalidPoolFactor = 50u;  // 50%
     static const uint32_t kMinValodPoolCount = 4u;  // 64 must finish all
@@ -102,7 +103,6 @@ private:
     std::shared_ptr<block::BlockManager> block_mgr_ = nullptr;
     std::shared_ptr<db::Db> db_ = nullptr;
     std::shared_ptr<consensus::HotstuffManager> hotstuff_mgr_ = nullptr;
-    std::shared_ptr<hotstuff::HotstuffSyncer> hotstuff_syncer_ = nullptr;
     std::shared_ptr<timeblock::TimeBlockManager> tm_block_mgr_ = nullptr;
     std::shared_ptr<sync::KeyValueSync> kv_sync_ = nullptr;
     std::shared_ptr<vss::VssManager> vss_mgr_ = nullptr;
@@ -113,7 +113,7 @@ private:
     std::shared_ptr<protos::PrefixDb> prefix_db_ = nullptr;
     uint32_t des_sharding_id_ = common::kInvalidUint32;
     uint32_t invalid_pools_[common::kInvalidPoolIndex] = { 0 };
-    uint64_t latest_elect_height_ = 0;
+    uint64_t latest_valid_elect_height_ = 1llu;
     std::shared_ptr<LeaderRotationInfo> rotation_leaders_ = nullptr;
     // 是否还需要发送一次 JoinElect
     bool another_join_elect_msg_needed_ = false;

@@ -100,6 +100,11 @@ public:
 
     void Put(const std::string& key, const std::string& value) {
 #ifndef NDEBUG
+        if (thread_id_ == std::thread::id()) {
+            thread_id_ = std::this_thread::get_id();
+        } else if (thread_id_ != std::this_thread::get_id()) {
+            assert(false);
+        }
         if (data_map_.find(key) == data_map_.end()) {
             data_map_[key] = value;
             CHECK_MEMORY_SIZE(data_map_);
@@ -112,6 +117,12 @@ public:
 
     void Delete(const std::string& key) {
 #ifndef NDEBUG
+        if (thread_id_ == std::thread::id()) {
+            thread_id_ = std::this_thread::get_id();
+        } else if (thread_id_ != std::this_thread::get_id()) {
+            assert(false);
+        }
+
         auto iter = data_map_.find(key);
         if (iter != data_map_.end()) {
             data_map_.erase(iter);
@@ -130,6 +141,13 @@ public:
     }
 
     void Append(DbWriteBatch& other) {
+#ifndef NDEBUG
+        if (thread_id_ == std::thread::id()) {
+            thread_id_ = std::this_thread::get_id();
+        } else if (thread_id_ != std::this_thread::get_id()) {
+            assert(false);
+        }
+#endif
 #ifdef LEVELDB
         db_batch_.Append(other.db_batch_);
 #else
@@ -147,6 +165,7 @@ public:
     uint32_t count_ = 0;
 #ifndef NDEBUG
     std::unordered_map<std::string, std::string> data_map_;
+    std::thread::id thread_id_;
 #endif
 };
 
@@ -186,18 +205,29 @@ public:
         // write_opt.disableWAL = true;
 #endif
         auto st = db_->Write(write_opt, &db_batch.db_batch_);
+        if (!st.ok()) {
+            SETH_ERROR("write to db failed: %s", st.ToString().c_str());
+        }
         db_batch.Clear();
         return st;
     }
 
     DbStatus Put(const std::string& key, const std::string& value) {
         DbWriteOptions write_opt;
-        return db_->Put(write_opt, DbSlice(key), DbSlice(value));
+        auto st = db_->Put(write_opt, DbSlice(key), DbSlice(value));
+        if (!st.ok()) {
+            SETH_ERROR("write to db failed: %s", st.ToString().c_str());
+        }
+        return st;
     }
 
     DbStatus Put(const std::string& key, const char* value, size_t len) {
         DbWriteOptions write_opt;
-        return db_->Put(write_opt, DbSlice(key), DbSlice(value, len));
+        auto st = db_->Put(write_opt, DbSlice(key), DbSlice(value, len));
+        if (!st.ok()) {
+            SETH_ERROR("write to db failed: %s", st.ToString().c_str());
+        }
+        return st;
     }
 
     DbStatus Get(const std::string& key, std::string* value) {
@@ -213,7 +243,11 @@ public:
 
     DbStatus Delete(const std::string& key) {
         DbWriteOptions write_opt;
-        return db_->Delete(write_opt, DbSlice(key));
+        auto st = db_->Delete(write_opt, DbSlice(key));
+        if (!st.ok()) {
+            SETH_ERROR("write to db failed: %s", st.ToString().c_str());
+        }
+        return st;
     }
 
     // void CompactRange(const std::string& start_key, const std::string& end_key) {
@@ -265,7 +299,7 @@ private:
     Db(const Db&);
     Db(const Db&&);
     Db& operator=(const Db&);
-    bool inited_{ false };
+    std::atomic<bool> inited_{ false };
     std::mutex mutex;
 };
 

@@ -10,7 +10,6 @@
 #include <consensus/hotstuff/pacemaker.h>
 #include <consensus/hotstuff/types.h>
 #include <consensus/hotstuff/view_block_chain.h>
-#include <consensus/hotstuff/hotstuff_syncer.h>
 #include <consensus/consensus_utils.h>
 #include <functional>
 #include <libff/algebra/curves/alt_bn128/alt_bn128_init.hpp>
@@ -126,7 +125,7 @@ int NetworkInit::Init(int argc, char** argv) {
     //     }
     // }
 
-    // 随机数
+    // random number
     vss_mgr_ = std::make_shared<vss::VssManager>();
     kv_sync_ = std::make_shared<sync::KeyValueSync>();
     SETH_INFO("init 0 4");
@@ -153,7 +152,6 @@ int NetworkInit::Init(int argc, char** argv) {
     }
 
     SETH_DEBUG("init 0 6");
-    net_handler_.Start();
     SETH_DEBUG("init 0 7");
     int transport_res = transport::TcpTransport::Instance()->Init(
         common::GlobalInfo::Instance()->config_local_ip() + ":" +
@@ -269,15 +267,11 @@ int NetworkInit::Init(int argc, char** argv) {
 
     SETH_WARN("init shard_statistic_ success.");
     block_mgr_->LoadLatestBlocks();
-    // 启动共识和同步
-    hotstuff_syncer_ = std::make_shared<hotstuff::HotstuffSyncer>(
-        hotstuff_mgr_, db_, kv_sync_, account_mgr_);
     RegisterFirewallCheck();
-    hotstuff_syncer_->Start();
-    hotstuff_mgr_->Start();
-    // 以上应该放入 hotstuff 实例初始化中，并接收创世块
+    hotstuff_mgr_->Start(); // The above should be placed in the hotstuff instance initialization and receive the genesis block
     SETH_WARN("init hotstuff_mgr_ start success.");
     AddCmds();
+    net_handler_.Start();
     transport::TcpTransport::Instance()->Start(false);
     SETH_DEBUG("init 6");
     if (InitHttpServer() != kInitSuccess) {
@@ -391,9 +385,6 @@ void NetworkInit::RegisterFirewallCheck() {
         common::kHotstuffMessage,
         std::bind(&consensus::HotstuffManager::FirewallCheckMessage, hotstuff_mgr_.get(), std::placeholders::_1));
     net_handler_.AddFirewallCheckCallback(
-        common::kHotstuffSyncMessage,
-        std::bind(&hotstuff::HotstuffSyncer::FirewallCheckMessage, hotstuff_syncer_.get(), std::placeholders::_1));
-    net_handler_.AddFirewallCheckCallback(
         common::kBlockMessage,
         std::bind(&block::BlockManager::FirewallCheckMessage, block_mgr_.get(), std::placeholders::_1));
     net_handler_.AddFirewallCheckCallback(
@@ -412,7 +403,7 @@ int NetworkInit::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
 }
 
 void NetworkInit::HandleMessage(const transport::MessagePtr& msg_ptr) {
-    SETH_DEBUG("common::kPoolTimerMessage coming.");
+    // SETH_DEBUG("common::kPoolTimerMessage coming.");
     if (msg_ptr->header.type() == common::kPoolTimerMessage) {
         HandleNewBlock();
         bls_mgr_->PoolTimerMessage();
@@ -448,8 +439,7 @@ void NetworkInit::InitLocalNetworkId() {
             auto id = security_->GetAddress(in[member_idx].pubkey());
             SETH_INFO("network: %d get member id: %s, local id: %s",
                 sharding_id, common::Encode::HexEncode(id).c_str(),
-                common::Encode::HexEncode(security_->GetAddress()).c_str());
-            // 如果本 node pubkey 与 elect block 当中记录的相同，则分配到对应的 sharding
+                common::Encode::HexEncode(security_->GetAddress()).c_str()); // If the pubkey of this node is the same as the one recorded in the elect block, it will be assigned to the corresponding sharding
             if (id == security_->GetAddress()) {
                 SETH_INFO("should join network: %u", sharding_id);
                 des_sharding_id_ = sharding_id;
@@ -736,6 +726,7 @@ int NetworkInit::ParseParams(int argc, char** argv, common::ParserArgs& parser_a
     parser_arg.AddArgType('U', "gen_root", common::kNoValue);
     parser_arg.AddArgType('S', "gen_shard", common::kMaybeValue);
     parser_arg.AddArgType('N', "node_count", common::kMaybeValue);
+    parser_arg.AddArgType('C', "cross_latest", common::kNoValue);
     // parser_arg.AddArgType('1', "root_nodes", common::kMaybeValue);    
 
     for (uint32_t arg_i = network::kConsensusShardBeginNetworkId-1; arg_i < network::kConsensusShardEndNetworkId; arg_i++) {
@@ -790,10 +781,6 @@ void NetworkInit::CreateInitAddress(uint32_t net_id) {
 }
 
 int NetworkInit::GenesisCmd(common::ParserArgs& parser_arg, std::string& net_name) {
-    if (!parser_arg.Has("U") && !parser_arg.Has("S")) {
-        return -1;
-    }
-
     int consensus_shard_node_count = 4;
     if (parser_arg.Has("N")) {
         if (parser_arg.Get("N", consensus_shard_node_count) != common::kParseSuccess) {
@@ -801,15 +788,15 @@ int NetworkInit::GenesisCmd(common::ParserArgs& parser_arg, std::string& net_nam
         }
     }
     
-    SETH_DEBUG("now consensus_shard_node_count: %u", consensus_shard_node_count);
     std::set<uint32_t> valid_net_ids_set;
-    std::string valid_arg_i_value;
-    for (uint32_t net_id = network::kConsensusShardBeginNetworkId; 
-            net_id < network::kConsensusShardEndNetworkId; ++net_id) {
-        CreateInitAddress(net_id);
-    }
-
+    SETH_DEBUG("now consensus_shard_node_count: %u", consensus_shard_node_count);
     if (parser_arg.Has("U")) {
+        std::string valid_arg_i_value;
+        for (uint32_t net_id = network::kConsensusShardBeginNetworkId; 
+                net_id < network::kConsensusShardEndNetworkId; ++net_id) {
+            CreateInitAddress(net_id);
+        }
+        
         net_name = "root2";
         valid_net_ids_set.clear();
         valid_net_ids_set.insert(network::kRootCongressNetworkId);
@@ -888,10 +875,97 @@ int NetworkInit::GenesisCmd(common::ParserArgs& parser_arg, std::string& net_nam
             return kInitError;
         }
 
+        SaveLatestBlock(db, net_id);
         return kInitSuccess;
     }
 
+    if (parser_arg.Has("C")) {
+        SaveCrossBlockToEachShard();
+        return kInitSuccess;
+    }
     return -1;
+}
+
+void NetworkInit::SaveLatestBlock(std::shared_ptr<db::Db> db, uint32_t sharding_id) {
+    FILE* fd = fopen("./latest_blocks", "a+");
+    if (fd == nullptr) {
+        SETH_FATAL("open latest_blocks failed!");
+        return;
+    }
+
+    defer(fclose(fd));
+    auto prefix_db = std::make_shared<protos::PrefixDb>(db);
+    for (uint64_t i = 0; i < 128llu; i++) {
+        SETH_DEBUG("save block height: %u_%u_%llu", sharding_id, common::kGlobalPoolIndex, i);
+        view_block::protobuf::ViewBlockItem view_block_item;
+        if (!prefix_db->GetBlockWithHeight(sharding_id, common::kGlobalPoolIndex, i, &view_block_item)) {
+            return;
+        }
+
+        auto data = common::Encode::HexEncode(view_block_item.SerializeAsString());
+        fwrite(data.c_str(), 1, data.size(), fd);
+        fwrite("\n", 1, 1, fd);
+        SETH_DEBUG("success save block height: %u_%u_%lu", 
+            sharding_id, common::kGlobalPoolIndex, i);
+    }
+
+    fflush(fd);
+}
+    
+void NetworkInit::SaveCrossBlockToEachShard() {
+    FILE* fd = fopen("./latest_blocks", "r");
+    if (fd == nullptr) {
+        SETH_FATAL("open latest_blocks failed!");
+        return;
+    }
+
+    defer(fclose(fd));
+    std::vector<view_block::protobuf::ViewBlockItem> blocks;
+    char line_buf[1024 * 1024];
+    while (fgets(line_buf, sizeof(line_buf), fd) != nullptr) {
+        std::string line(line_buf);
+        common::StringUtil::Trim(line);
+        view_block::protobuf::ViewBlockItem block_item;
+        block_item.ParseFromString(common::Encode::HexDecode(line));
+        blocks.push_back(block_item);
+    }
+
+    for (uint32_t net_i = network::kRootCongressNetworkId;
+            net_i < network::kConsensusShardEndNetworkId; net_i++) {
+        auto db = std::make_shared<db::Db>();
+        if (net_i == network::kRootCongressNetworkId) {
+            if (!db->Init(std::string("./root_db"))) {
+                if (!db->Init(std::string("./shard_db_") + std::to_string(net_i))) {
+                    INIT_WARN("init db failed!");
+                    return;
+                }
+            }
+        } else {
+            if (!db->Init(std::string("./shard_db_") + std::to_string(net_i))) {
+                INIT_WARN("init db failed!");
+                return;
+            }
+        }
+
+        auto prefix_db = std::make_shared<protos::PrefixDb>(db);
+        db::DbWriteBatch batch;
+        for (auto iter = blocks.begin(); iter != blocks.end(); ++iter) {
+            prefix_db->SaveBlock(*iter, batch);
+            auto& view_block = *iter;
+            pools::protobuf::PoolLatestInfo pool_info;
+            pool_info.set_height(view_block.block_info().height());
+            pool_info.set_hash(view_block.qc().view_block_hash());
+            pool_info.set_timestamp(view_block.block_info().timestamp());
+            pool_info.set_view(view_block.qc().view());
+            prefix_db->SaveLatestPoolInfo(
+                view_block.qc().network_id(), view_block.qc().pool_index(), pool_info, batch);
+        }
+
+        auto st = db->Put(batch);
+        if (!st.ok()) {
+            SETH_FATAL("write db failed!");
+        }
+    }
 }
 
 void NetworkInit::GetNetworkNodesFromConf(
@@ -915,7 +989,7 @@ void NetworkInit::GetNetworkNodesFromConf(
                 SETH_DEBUG("reuse private key: %s", items[0]);
             }
         } else {
-            for (uint32_t i = 0; i < count; i++) {
+            for (int32_t i = 0; i < count; i++) {
                 sks.push_back(common::Random::RandomString(32));
                 std::shared_ptr<security::Security> secptr = std::make_shared<security::Ecdsa>();
                 secptr->SetPrivateKey(sks[i]);
@@ -1135,6 +1209,12 @@ void NetworkInit::HandleElectionBlock(
     auto prev_elect_block = std::make_shared<elect::protobuf::ElectBlock>();
     if (block->has_elect_block()) {
         *elect_block = block->elect_block();
+        if (network::IsSameToLocalShard(elect_block->shard_network_id())) {
+            if (elect_block->has_prev_members() &&
+                    elect_block->prev_members().prev_elect_height() > latest_valid_elect_height_) {
+                latest_valid_elect_height_ = elect_block->prev_members().prev_elect_height();
+            }
+        }
     }
 
     if (block->has_prev_elect_block()) {
@@ -1177,7 +1257,11 @@ void NetworkInit::HandleElectionBlock(
         members,
         elect_block);
     hotstuff_mgr_->OnNewElectBlock(sharding_id, elect_height, members, common_pk, sec_key);
-    bls_mgr_->OnNewElectBlock(sharding_id, block->height(), elect_block);
+    bls_mgr_->OnNewElectBlock(
+        sharding_id, 
+        block->height(), 
+        latest_valid_elect_height_,
+        elect_block);
     pools_mgr_->OnNewElectBlock(sharding_id, elect_height, members);
     kv_sync_->OnNewElectBlock(sharding_id, block->height());
     network::UniversalManager::Instance()->OnNewElectBlock(
@@ -1186,9 +1270,10 @@ void NetworkInit::HandleElectionBlock(
         members,
         elect_block);
     SETH_DEBUG("1 success called election block. height: %lu, "
-        "elect height: %lu, used elect height: %lu, net: %u, "
+        "elect height: %lu, latest_valid_elect_height_: %lu, used elect height: %lu, net: %u, "
         "local net id: %u, prev elect height: %lu",
         block->height(), elect_height,
+        latest_valid_elect_height_,
         view_block->qc().elect_height(),
         elect_block->shard_network_id(),
         common::GlobalInfo::Instance()->network_id(),
@@ -1270,7 +1355,7 @@ void NetworkInit::SendJoinElectTransaction() {
     }
 
     new_tx->set_sign(sign);
-    // msg_ptr->msg_hash = tx_hash; // TxPoolmanager::HandleElectTx 接收端计算了，这里不必传输
+    // msg_ptr->msg_hash = tx_hash; // TxPoolmanager::HandleElectTx The receiving end has calculated it, so there is no need to transmit it here
     network::Route::Instance()->Send(msg_ptr);
     SETH_DEBUG("success send join elect request transaction: %u, join: %u, addr: %s, nonce: %lu, "
         "hash64: %lu, tx hash: %s, pk: %s sign: %s",

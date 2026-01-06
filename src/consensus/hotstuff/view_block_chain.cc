@@ -16,6 +16,7 @@ namespace hotstuff {
 ViewBlockChain::ViewBlockChain() {}
 
 void ViewBlockChain::Init(
+        ChainType chain_type,
         uint32_t pool_index, 
         std::shared_ptr<db::Db>& db, 
         std::shared_ptr<block::BlockManager>& block_mgr,
@@ -24,6 +25,7 @@ void ViewBlockChain::Init(
         std::shared_ptr<IBlockAcceptor> block_acceptor,
         std::shared_ptr<pools::TxPoolManager> pools_mgr,
         consensus::BlockCacheCallback new_block_cache_callback) {
+    chain_type_ = chain_type;
     db_ = db;
     pool_index_ = pool_index;
     block_mgr_ = block_mgr;
@@ -43,7 +45,7 @@ Status ViewBlockChain::Store(
         BalanceAndNonceMapPtr balane_map_ptr,
         std::shared_ptr<zjcvm::ZjchainHost> zjc_host_ptr,
         bool init) {
-    if (!network::IsSameToLocalShard(view_block->qc().network_id())) {
+    if (chain_type_ == kLocalChain && !network::IsSameToLocalShard(view_block->qc().network_id())) {
         return Status::kSuccess;
     }
 
@@ -68,9 +70,9 @@ Status ViewBlockChain::Store(
         zjc_host_ptr = std::make_shared<zjcvm::ZjchainHost>();
     }
 
-    if (!network::IsSameToLocalShard(network::kRootCongressNetworkId) && balane_map_ptr == nullptr) {
+    if (chain_type_ == kLocalChain && balane_map_ptr == nullptr) {
         balane_map_ptr = std::make_shared<BalanceAndNonceMap>();
-        for (uint32_t i = 0; i < view_block->block_info().address_array_size(); ++i) {
+        for (int32_t i = 0; i < view_block->block_info().address_array_size(); ++i) {
             auto new_addr_info = std::make_shared<address::protobuf::AddressInfo>(
                 view_block->block_info().address_array(i));
             prefix_db_->AddAddressInfo(new_addr_info->addr(), *new_addr_info, zjc_host_ptr->db_batch_);
@@ -81,7 +83,8 @@ Status ViewBlockChain::Store(
                 ProtobufToJson(*new_addr_info).c_str());
         }
 
-        for (uint32_t i = 0; i < view_block->block_info().key_value_array_size(); ++i) {
+
+        for (int32_t i = 0; i < view_block->block_info().key_value_array_size(); ++i) {
             auto key = view_block->block_info().key_value_array(i).addr() + 
                 view_block->block_info().key_value_array(i).key();
             prefix_db_->SaveTemporaryKv(
@@ -107,16 +110,16 @@ Status ViewBlockChain::Store(
         return Status::kSuccess;
     }
 
-    // 当 view_block 是 start_block_ 的父块，允许添加
+    // When view_block is the parent block of start_block_, it is allowed to be added
     if (start_block_->parent_hash() == view_block->qc().view_block_hash()) {
         SetViewBlockToMap(block_info_ptr);
-        // 更新 start_block_
+        // update start_block_
         start_block_ = view_block;
         return Status::kSuccess;
     }
     
     if (!directly_store) {
-        // 父块必须存在
+        // The parent block must exist
         auto it = view_blocks_info_.find(view_block->parent_hash());
         if (it == view_blocks_info_.end() || it->second->view_block == nullptr) {
             if (latest_committed_block_ == nullptr ||
@@ -131,7 +134,7 @@ Status ViewBlockChain::Store(
         }
     }
 
-    // 如果有 qc，则 qc 指向的块必须存在
+    // If there is a qc, the block pointed to by qc must exist
     // if (view_block->has_qc() && !view_block->qc().view_block_hash().empty() && !QCRef(*view_block)) {
     //     SETH_ERROR("view block qc error, hash: %s, view: %lu",
     //         common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(), view_block->qc().view());        
@@ -148,67 +151,82 @@ Status ViewBlockChain::Store(
     return Status::kSuccess;
 }
 
-std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHeight(uint32_t network_id, uint64_t height) {
-    std::shared_ptr<ViewBlockInfo> view_block_info_ptr;
-    while (commited_block_queue_.pop(&view_block_info_ptr)) {
-        commited_block_map_[view_block_info_ptr->view_block->block_info().height()] = view_block_info_ptr;
-        commited_pri_queue_.push(view_block_info_ptr->view_block->block_info().height());
-        CHECK_MEMORY_SIZE(commited_block_map_);
-    }
-
-    std::shared_ptr<ViewBlock> view_block_ptr;
-    auto iter = commited_block_map_.find(height);
-    if (iter != commited_block_map_.end()) {
-        view_block_ptr = iter->second->view_block;
-    }
-
-    if (commited_pri_queue_.size() >= kCachedViewBlockCount) {
-        auto temp_height = commited_pri_queue_.top();
-        auto temp_iter = commited_block_map_.find(temp_height);
-        if (temp_iter != commited_block_map_.end()) {
-            commited_block_map_.erase(temp_iter);
+std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHeight(
+        uint32_t network_id, 
+        uint64_t height) {
+    auto iter = cached_view_with_blocks_.find(height);
+    if (iter != cached_view_with_blocks_.end()) {
+        if (iter->second.size() == 1 && !iter->second[0]->view_block->qc().sign_x().empty()) {
+            return iter->second[0]->view_block;
         }
 
-        commited_pri_queue_.pop();
+        std::shared_ptr<ViewBlock> signed_block = nullptr;
+        for (auto it = iter->second.begin(); it != iter->second.end(); ++it) {
+            if (iter->second[0]->view_block->qc().sign_x().empty()) {
+                continue;
+            }
+
+            signed_block = (*it)->view_block;
+            if ((*it)->valid) {
+                return (*it)->view_block;
+            }
+
+            auto p_block = GetViewBlockWithHash((*it)->view_block->parent_hash());
+            if (!p_block) {
+                continue;
+            }
+
+            if (p_block->valid) {
+                return (*it)->view_block;
+            }
+        
+            auto gp_block = GetViewBlockWithHash(p_block->view_block->parent_hash());
+            if (!gp_block) {
+                continue;
+            }
+
+            if (gp_block->valid) {
+                return (*it)->view_block;
+            }
+        }
+
+        if (signed_block) {
+            return signed_block;
+        }
     }
 
-    if (network_id == 0) {
-        return nullptr;
-    }
-
-    if (view_block_ptr) {
-        return view_block_ptr;
-    }
-
-    SETH_DEBUG("now get block with height from db.");
-    view_block_ptr = std::make_shared<ViewBlock>();
+    auto view_block_ptr = std::make_shared<ViewBlock>();
     auto& view_block = *view_block_ptr;
     if (prefix_db_->GetBlockWithHeight(network_id, pool_index_, height, &view_block)) {
         return view_block_ptr;
     }
 
-    return nullptr;
+    return nullptr;   
 }
 
-std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHash(const HashStr& hash) {
+std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashStr& hash) {
     std::shared_ptr<ViewBlockInfo> view_block_info_ptr;
     while (cached_block_queue_.pop(&view_block_info_ptr)) {
         cached_block_map_[view_block_info_ptr->view_block->qc().view_block_hash()] = view_block_info_ptr;
         cached_pri_queue_.push(view_block_info_ptr);
         CHECK_MEMORY_SIZE(cached_block_map_);
+        cached_view_with_blocks_[view_block_info_ptr->view_block->qc().view()].push_back(view_block_info_ptr);
     }
 
-    std::shared_ptr<ViewBlock> view_block_ptr;
-    auto iter = cached_block_map_.find(hash);
-    if (iter != cached_block_map_.end()) {
-        view_block_ptr = iter->second->view_block;
-    }
-
-    if (cached_pri_queue_.size() >= kCachedViewBlockCount) {
+    while (cached_pri_queue_.size() >= kCachedViewBlockCount) {
         auto temp_ptr = cached_pri_queue_.top();
         auto temp_iter = cached_block_map_.find(temp_ptr->view_block->qc().view_block_hash());
         if (temp_iter != cached_block_map_.end()) {
             cached_block_map_.erase(temp_iter);
+        }
+
+        auto iter= cached_view_with_blocks_.begin();
+        while (iter != cached_view_with_blocks_.end()) {
+            if (iter->first <= temp_ptr->view_block->qc().view()) {
+                iter = cached_view_with_blocks_.erase(iter);
+            } else {
+                ++iter;
+            }
         }
 
         cached_pri_queue_.pop();
@@ -218,14 +236,22 @@ std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHash(const HashStr& h
         return nullptr;
     }
 
+    std::shared_ptr<ViewBlockInfo> view_block_ptr;
+    auto iter = cached_block_map_.find(hash);
+    if (iter != cached_block_map_.end()) {
+        view_block_ptr = iter->second;
+    }
+
     if (view_block_ptr) {
         return view_block_ptr;
     }
 
     SETH_DEBUG("now get block with hash from db.");
-    view_block_ptr = std::make_shared<ViewBlock>();
-    auto& view_block = *view_block_ptr;
+    view_block_ptr = std::make_shared<ViewBlockInfo>();
+    view_block_ptr->view_block = std::make_shared<ViewBlock>();
+    auto& view_block = *view_block_ptr->view_block;
     if (prefix_db_->GetBlock(hash, &view_block)) {
+        view_block_ptr->valid = true;
         return view_block_ptr;
     }
 
@@ -357,10 +383,11 @@ void ViewBlockChain::CommitSynced(std::shared_ptr<view_block::protobuf::ViewBloc
 
 void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) {
     std::list<std::shared_ptr<ViewBlockInfo>> to_commit_blocks;
-    ADD_DEBUG_PROCESS_TIMESTAMP();
     std::shared_ptr<ViewBlockInfo> tmp_block_info = v_block_info;
     while (tmp_block_info != nullptr) {
-        SETH_DEBUG("pool: %d, prepare commit view block %u_%u_%lu, hash: %s, parent hash: %s, step: %d, statistic_height: %lu", 
+        auto tmp_block = tmp_block_info->view_block;
+        SETH_DEBUG("pool: %d, prepare commit view block %u_%u_%lu, hash: %s, "
+            "parent hash: %s, step: %d, statistic_height: %lu, commited: %d, sign empty: %d", 
             pool_index_,
             tmp_block_info->view_block->qc().network_id(), 
             tmp_block_info->view_block->qc().pool_index(), 
@@ -368,8 +395,11 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
             common::Encode::HexEncode(tmp_block_info->view_block->qc().view_block_hash()).c_str(),
             common::Encode::HexEncode(tmp_block_info->view_block->parent_hash()).c_str(),
             tmp_block_info->view_block->block_info().tx_list_size() > 0 ? tmp_block_info->view_block->block_info().tx_list(0).step(): -1,
-            0);
-        auto tmp_block = tmp_block_info->view_block;
+            0,
+            view_commited(
+                tmp_block->qc().network_id(), 
+                tmp_block->qc().view()),
+            tmp_block->qc().sign_x().empty());
         if (!view_commited(
                 tmp_block->qc().network_id(), 
                 tmp_block->qc().view()) &&
@@ -432,42 +462,25 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
     std::shared_ptr<ViewBlockInfo> latest_commited_block = nullptr; 
     for (auto iter = to_commit_blocks.begin(); iter != to_commit_blocks.end(); ++iter) {
         auto tmp_block = (*iter)->view_block;
-        if (tmp_block->block_info().tx_list_size() > 0 && tmp_block->block_info().tx_list(0).step() == 18) {
-            SETH_INFO("now commit view block %u_%u_%lu, hash: %s, parent hash: %s, step: %d, statistic_height: %lu", 
-                tmp_block->qc().network_id(), 
-                tmp_block->qc().pool_index(), 
-                tmp_block->qc().view(),
-                common::Encode::HexEncode(tmp_block->qc().view_block_hash()).c_str(),
-                common::Encode::HexEncode(tmp_block->parent_hash()).c_str(),
-                tmp_block->block_info().tx_list_size() > 0 ? tmp_block->block_info().tx_list(0).step(): -1,
-                0);
-        } else {
-            SETH_INFO("now commit view block %u_%u_%lu, hash: %s, "
-                "parent hash: %s, step: %d, statistic_height: %lu, tx size: %u", 
-                tmp_block->qc().network_id(), 
-                tmp_block->qc().pool_index(), 
-                tmp_block->qc().view(),
-                common::Encode::HexEncode(tmp_block->qc().view_block_hash()).c_str(),
-                common::Encode::HexEncode(tmp_block->parent_hash()).c_str(),
-                tmp_block->block_info().tx_list_size() > 0 ? tmp_block->block_info().tx_list(0).step(): -1,
-                0,
-                tmp_block->block_info().tx_list_size());
-        }
-        
-        ADD_DEBUG_PROCESS_TIMESTAMP();
+        SETH_DEBUG("now commit view block %u_%u_%lu, hash: %s, "
+            "parent hash: %s, step: %d, statistic_height: %lu, tx size: %u", 
+            tmp_block->qc().network_id(), 
+            tmp_block->qc().pool_index(), 
+            tmp_block->qc().view(),
+            common::Encode::HexEncode(tmp_block->qc().view_block_hash()).c_str(),
+            common::Encode::HexEncode(tmp_block->parent_hash()).c_str(),
+            tmp_block->block_info().tx_list_size() > 0 ? tmp_block->block_info().tx_list(0).step(): -1,
+            0,
+            tmp_block->block_info().tx_list_size());
         assert((*iter)->zjc_host_ptr);
         auto& db_batch = (*iter)->zjc_host_ptr->db_batch_;
         new_block_cache_callback_(tmp_block, db_batch);
-        ADD_DEBUG_PROCESS_TIMESTAMP();
-        // SaveBlockCheckedParentHash(
-        //     tmp_block->parent_hash(), 
-        //     tmp_block->qc().view());
-        ADD_DEBUG_PROCESS_TIMESTAMP();
         if (tmp_block->qc().view() > commited_max_view_) {
             commited_max_view_ = tmp_block->qc().view();
         }
 
         AddNewBlock(tmp_block, db_batch);
+        (*iter)->valid = true;
         if ((*iter)->acc_balance_map_ptr) {
             for (auto acc_iter = (*iter)->acc_balance_map_ptr->begin(); 
                     acc_iter != (*iter)->acc_balance_map_ptr->end(); ++acc_iter) {
@@ -480,18 +493,18 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
         }
 
         view_blocks_info_.erase(tmp_block->parent_hash());
-#ifdef TEST_FORKING_ATTACK
-        auto test_iter = view_with_blocks_.begin();
-        while (test_iter != view_with_blocks_.end()) {
-            if (test_iter->first > tmp_block->qc().view()) {
-                break;
-            }
+        // auto test_iter = view_with_blocks_.begin();
+        // while (test_iter != view_with_blocks_.end()) {
+        //     if (test_iter->first > tmp_block->qc().view()) {
+        //         break;
+        //     }
 
-            test_iter = view_with_blocks_.erase(test_iter);
+        //     test_iter = view_with_blocks_.erase(test_iter);
+        // }
+        if (block_acceptor_) {
+            block_acceptor_->CalculateTps(tmp_block->block_info().tx_list_size());
         }
-#endif
-        ADD_DEBUG_PROCESS_TIMESTAMP();
-        block_acceptor_->CalculateTps(tmp_block->block_info().tx_list_size());
+
         commited_view_.insert(tmp_block->qc().view());
         if (commited_view_.size() >= 102400u) {
             commited_view_.erase(commited_view_.begin());
@@ -519,33 +532,21 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
             SETH_FATAL("write to db failed!");
         }
 
-        pools_mgr_->TxOver(pool_index_, *tmp_block);
+        if (pools_mgr_) {
+            pools_mgr_->TxOver(pool_index_, *tmp_block);
+        }
+
         block_mgr_->ConsensusAddBlock(*iter);
         stored_to_db_view_ = tmp_block->qc().view();
         latest_commited_block = *iter;
     }
     
-    ADD_DEBUG_PROCESS_TIMESTAMP();
     if (latest_commited_block) {
         SetLatestCommittedBlock(latest_commited_block);
     }
 
-    auto now_tm_ms = common::TimeUtils::TimestampMs();
-    if (prev_check_timeout_blocks_ms_ + 30000u < now_tm_ms) {
-        for (auto iter = view_blocks_info_.begin(); iter != view_blocks_info_.end();) {
-            if (view_commited(
-                    common::GlobalInfo::Instance()->network_id(), 
-                    iter->second->view_block->qc().view() + 1)) {
-                iter = view_blocks_info_.erase(iter);
-            } else {
-                ++iter;
-            }
-        }
+    
 
-        prev_check_timeout_blocks_ms_ = now_tm_ms;
-    }
-
-    ADD_DEBUG_PROCESS_TIMESTAMP();
     // std::vector<std::shared_ptr<ViewBlock>> forked_blockes;
     // auto v_block = v_block_info->view_block;
 // #ifndef NDEBUG
@@ -562,12 +563,173 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
 // #endif
 }
 
+void ViewBlockChain::HandleTimerMessage() {
+    auto now_tm_ms = common::TimeUtils::TimestampMs();
+    if (prev_check_timeout_blocks_ms_ + 3000u < now_tm_ms) {  
+        // SETH_DEBUG("now check view_with_blocks_ size: %d", view_with_blocks_.size());      
+        if (view_with_blocks_.size() > 2) {
+            for (auto iter = view_with_blocks_.rbegin(); iter != view_with_blocks_.rend();) {
+                if (view_commited(
+                        common::GlobalInfo::Instance()->network_id(), 
+                        iter->first)) {
+                    auto it_to_erase = std::next(iter).base();
+                    auto next_valid_forward = view_with_blocks_.erase(it_to_erase);
+                    iter = std::make_reverse_iterator(next_valid_forward);
+                    continue;
+                }
+                
+                bool commited = false;
+                for (auto block_iter = iter->second.begin(); block_iter != iter->second.end(); ++block_iter) {
+                    auto view_block = (*block_iter)->view_block;
+                    if (!view_block) {
+                        assert(false);
+                        continue;
+                    }
+
+                    auto view_block_ptr = CheckCommit((*block_iter)->view_block->qc());
+                    if (view_block_ptr) {
+                        Commit(view_block_ptr);
+                        auto it_to_erase = std::next(iter).base();
+                        auto next_valid_forward = view_with_blocks_.erase(it_to_erase);
+                        iter = std::make_reverse_iterator(next_valid_forward);
+                        commited = true;
+                        break;
+                    }
+                }
+
+                if (!commited) {
+                    ++iter;
+                }
+            }
+        }
+
+        prev_check_timeout_blocks_ms_ = now_tm_ms;
+    }
+}
+
+std::shared_ptr<ViewBlockInfo> ViewBlockChain::CheckCommit(const QC& qc) {
+    // fast hotstuff
+    if (qc.sign_x().empty()) {
+        return nullptr;
+    }
+
+    assert(!qc.view_block_hash().empty());
+    auto v_block1_info = Get(qc.view_block_hash());
+    if (!v_block1_info) {
+        SETH_DEBUG("pool: %d, Failed get v block 1: %s, %u_%u_%lu",
+            pool_index_,
+            common::Encode::HexEncode(qc.view_block_hash()).c_str(),
+            qc.network_id(), qc.pool_index(), qc.view());
+        if (!view_commited(qc.network_id(), qc.view())) {
+            kv_sync_->AddSyncViewHash(qc.network_id(), qc.pool_index(), qc.view_block_hash(), 0);
+        }
+        // assert(false);
+        return nullptr;
+    }
+
+    if (ViewBlockIsCheckedParentHash(qc.view_block_hash())) {
+        return v_block1_info;
+    }
+
+    auto v_block1 = v_block1_info->view_block;
+#ifndef NDEBUG
+    transport::protobuf::ConsensusDebug cons_debug;
+    cons_debug.ParseFromString(v_block1->debug());
+    SETH_DEBUG("pool: %d, success get v block 1: %s, %u_%u_%lu, propose_debug: %s",
+        pool_index_,
+        common::Encode::HexEncode(qc.view_block_hash()).c_str(),
+        qc.network_id(), qc.pool_index(), qc.view(), ProtobufToJson(cons_debug).c_str());
+#endif
+    assert(v_block1->parent_hash() != qc.view_block_hash());
+    auto v_block2_info = Get(v_block1->parent_hash());
+    if (!v_block2_info) {
+        SETH_DEBUG("pool: %d, Failed get v block 2 block hash: %s, %u_%u_%lu, now chain: %s", 
+            pool_index_,
+            common::Encode::HexEncode(v_block1->parent_hash()).c_str(), 
+            qc.network_id(), 
+            qc.pool_index(), 
+            v_block1->qc().view() - 1,
+            String().c_str());
+        if (v_block1->qc().view() > 0 && !view_commited(
+                v_block1->qc().network_id(), v_block1->qc().view() - 1)) {
+            kv_sync_->AddSyncViewHash(qc.network_id(), qc.pool_index(), v_block1->parent_hash(), 0);
+        }
+        return nullptr;
+    }
+
+    auto v_block2 = v_block2_info->view_block;
+    if (v_block2->qc().view() + 1 != v_block1->qc().view()) {
+        SETH_DEBUG("pool: %d, Failed get v block 2 ref: %s, "
+            "v_block2->qc().view() + 1 != v_block1->qc().view(): %lu, %lu",
+            pool_index_,
+            common::Encode::HexEncode(v_block1->parent_hash()).c_str(),
+            v_block2->qc().view(), 
+            v_block1->qc().view());
+        return nullptr;
+    }
+
+#ifndef NDEBUG
+    transport::protobuf::ConsensusDebug cons_debug2;
+    cons_debug2.ParseFromString(v_block2->debug());
+    SETH_DEBUG("pool: %d, success get v block 2: %s, %u_%u_%lu, propose_debug: %s",
+        pool_index_,
+        common::Encode::HexEncode(v_block2->qc().view_block_hash()).c_str(),
+        v_block2->qc().network_id(), v_block2->qc().pool_index(), 
+        v_block2->qc().view(), ProtobufToJson(cons_debug2).c_str());
+#endif
+
+    auto v_block3_info = Get(v_block2->parent_hash());
+    if (!v_block3_info) {
+        SETH_DEBUG("pool: %d, Failed get v block 3 block hash: %s, %u_%u_%lu, now chain: %s", 
+            pool_index_,
+            common::Encode::HexEncode(v_block2->parent_hash()).c_str(), 
+            qc.network_id(), 
+            qc.pool_index(), 
+            v_block2->qc().view() - 1,
+            String().c_str());
+        if (v_block2->qc().view() > 0 && !view_commited(
+                v_block2->qc().network_id(), v_block2->qc().view() - 1)) {
+            kv_sync_->AddSyncViewHash(qc.network_id(), qc.pool_index(), v_block2->parent_hash(), 0);
+        }
+        return nullptr;
+    }
+    
+    auto v_block3 = v_block3_info->view_block;
+#ifndef NDEBUG
+    transport::protobuf::ConsensusDebug cons_debug3;
+    cons_debug3.ParseFromString(v_block2->debug());
+    SETH_DEBUG("pool: %d, success get v block views: %lu, %lu, %lu, hash: %s, %s, %s, %s, %s, now: %s, propose_debug: %s",
+        pool_index_,
+        v_block1->qc().view(),
+        v_block2->qc().view(),
+        v_block3->qc().view(),
+        common::Encode::HexEncode(v_block1->qc().view_block_hash()).c_str(),
+        common::Encode::HexEncode(v_block1->parent_hash()).c_str(),
+        common::Encode::HexEncode(v_block2->qc().view_block_hash()).c_str(),
+        common::Encode::HexEncode(v_block2->parent_hash()).c_str(),
+        common::Encode::HexEncode(v_block3->qc().view_block_hash()).c_str(),
+        common::Encode::HexEncode(qc.view_block_hash()).c_str(),
+        ProtobufToJson(cons_debug3).c_str());
+#endif
+    // fast hotstuff
+    if (v_block3->qc().view() + 1 != v_block2->qc().view()) {
+        SETH_DEBUG("pool: %d, Failed get v block 2 ref: %s, "
+            "v_block3->qc().view() + 1 != v_block2->qc().view(): %lu, %lu",
+            pool_index_,
+            common::Encode::HexEncode(v_block1->parent_hash()).c_str(),
+            v_block3->qc().view(),
+            v_block2->qc().view());
+        return nullptr;
+    }
+
+    return v_block3_info;
+}
+
 void ViewBlockChain::AddNewBlock(
         const std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block_item,
         db::DbWriteBatch& db_batch) {
     assert(!view_block_item->qc().sign_x().empty());
     auto* block_item = &view_block_item->block_info();
-    // TODO: check all block saved success
     auto btime = common::TimeUtils::TimestampMs();
     SETH_DEBUG("new block coming sharding id: %u_%d_%lu, view: %u_%u_%lu,"
         "tx size: %u, hash: %s, prehash: %s, elect height: %lu, tm height: %lu, step: %d, status: %d",
@@ -585,7 +747,6 @@ void ViewBlockChain::AddNewBlock(
         (view_block_item->block_info().tx_list_size() > 0 ? view_block_item->block_info().tx_list(0).step() : -1),
         (view_block_item->block_info().tx_list_size() > 0 ? view_block_item->block_info().tx_list(0).status() : -1));
     assert(view_block_item->qc().elect_height() >= 1);
-    // block 两条信息持久化
     if (!prefix_db_->SaveBlock(*view_block_item, db_batch)) {
         SETH_DEBUG("block saved: %lu", block_item->height());
         return;
@@ -612,7 +773,6 @@ bool ViewBlockChain::IsValid() {
         return false;
     }
 
-    // 有且只有一个节点不存在父节点
     uint32_t num = 0;
     for (auto it = view_blocks_info_.begin(); it != view_blocks_info_.end(); it++) {
         auto& vb = it->second->view_block;
@@ -670,13 +830,13 @@ std::string ViewBlockChain::String() const {
     return ret;
 }
 
-// 获取 db 中最新块的信息和它的 QC
+// Get the information of the latest block in db and its QC
 Status GetLatestViewBlockFromDb(
+        uint32_t sharding_id,
         const std::shared_ptr<db::Db>& db,
         const uint32_t& pool_index,
         std::shared_ptr<ViewBlock>& view_block) {
     auto prefix_db = std::make_shared<protos::PrefixDb>(db);
-    uint32_t sharding_id = common::GlobalInfo::Instance()->network_id();
     pools::protobuf::PoolLatestInfo pool_info;
     if (!prefix_db->GetLatestPoolInfo(
             sharding_id,
@@ -686,7 +846,7 @@ Status GetLatestViewBlockFromDb(
         return Status::kError;
     }
 
-    // 获取 block 对应的 view_block 所打包的 qc 信息，如果没有，说明是创世块
+    // Get the qc information packaged by the view_block corresponding to the block. If not, it is the genesis block.
     View view = pool_info.view();
     uint32_t leader_idx = 0;
     HashStr parent_hash = "";
@@ -703,8 +863,9 @@ Status GetLatestViewBlockFromDb(
         return Status::kError;
     }
 
-    SETH_DEBUG("pool: %d, latest vb from db2, hash: %s, view: %lu, "
+    SETH_DEBUG("%u_%u_%lu, pool: %d, latest vb from db2, hash: %s, view: %lu, "
         "leader: %d, parent_hash: %s, sign x: %s, sign y: %s",
+        sharding_id, pool_index, pb_view_block.qc().view(),
         pool_index,
         common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(),
         pb_view_block.qc().view(), pb_view_block.qc().leader_idx(),
@@ -720,7 +881,6 @@ bool ViewBlockChain::GetPrevStorageKeyValue(
         const std::string& key, 
         std::string* val) {
     std::string phash = parent_hash;
-    // TODO: check valid
     while (true) {
         if (phash.empty()) {
             break;
@@ -763,7 +923,6 @@ evmc::bytes32 ViewBlockChain::GetPrevStorageBytes32KeyValue(
         const evmc::address& addr,
         const evmc::bytes32& key) {
     std::string phash = parent_hash;
-    // TODO: check valid
     while (true) {
         if (phash.empty()) {
             break;
@@ -801,7 +960,6 @@ void ViewBlockChain::MergeAllPrevBalanceMap(
         const std::string& parent_hash, 
         BalanceAndNonceMap& acc_balance_map) {
     std::string phash = parent_hash;
-    // TODO: check valid
     uint32_t count = 0;
     while (true) {
         if (phash.empty()) {
@@ -930,7 +1088,7 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
     }
 
     auto view_block_ptr = view_block_ptr_info->view_block;
-    if (!IsQcTcValid(view_block_ptr->qc())) {
+    if (chain_type_ == kLocalChain && !IsQcTcValid(view_block_ptr->qc())) {
         view_block_ptr->mutable_qc()->set_sign_x(qc_item.sign_x());
         view_block_ptr->mutable_qc()->set_sign_y(qc_item.sign_y());
         cached_block_queue_.push(view_block_ptr_info);
@@ -965,6 +1123,7 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
             high_view_block_->block_info().height(),
             common::Encode::HexEncode(high_view_block_->parent_hash()).c_str(),
             high_view_block_->block_info().tx_list_size());
+        high_view_block_view_.store(high_view_block_->qc().view());
     }
 }
 
@@ -1048,4 +1207,3 @@ void ViewBlockChain::OnTimeBlock(
 } // namespace hotstuff
 
 } // namespace seth
-

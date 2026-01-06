@@ -48,20 +48,21 @@ Status Crypto::PartialSign(
         return Status::kError;
     }
 
-#ifndef NDEBUG
-    auto member_bls_pk = libBLS::ThresholdUtils::fieldElementToString(
-            elect_item->LocalMember()->bls_publick_key.X.c0);
-    SETH_DEBUG("bls parial sign t: %u, n: %u, member index: %u, "
-        "bls pk: %s, sign x: %s, y: %s, hash: %s, elect height: %lu",
-        elect_item->t(),
-        elect_item->n(),
-        elect_item->LocalMember()->index,
-        member_bls_pk.c_str(),
-        sign_x->c_str(),
-        sign_y->c_str(),
-        common::Encode::HexEncode(msg_hash).c_str(),
-        elect_height);
-#endif
+// #ifndef NDEBUG
+//     auto member_bls_pk = libBLS::ThresholdUtils::fieldElementToString(
+//             elect_item->LocalMember()->bls_publick_key.X.c0);
+//     SETH_DEBUG("bls parial sign t: %u, n: %u, member index: %u, "
+//         "local seckey: %s, bls pk: %s, sign x: %s, y: %s, hash: %s, elect height: %lu",
+//         elect_item->t(),
+//         elect_item->n(),
+//         elect_item->LocalMember()->index,
+//         libBLS::ThresholdUtils::fieldElementToString(elect_item->local_sk()).c_str(),
+//         member_bls_pk.c_str(),
+//         sign_x->c_str(),
+//         sign_y->c_str(),
+//         common::Encode::HexEncode(msg_hash).c_str(),
+//         elect_height);
+// #endif
     return Status::kSuccess;
 }
 
@@ -122,7 +123,6 @@ Status Crypto::ReconstructAndVerifyThresSign(
     }
 
     // Reconstruct sign
-    // TODO(HT): 先判断是否已经处理过的index
     map_iter->second[index] = partial_sign;
     SETH_DEBUG("msg hash: %s, ok count: %u, t: %u, index: %u, elect_height: %lu, pool: %u",
         common::Encode::HexEncode(msg_hash).c_str(), 
@@ -165,7 +165,7 @@ Status Crypto::ReconstructAndVerifyThresSign(
     if (s != Status::kSuccess) {
         // TODO: check each partial sign
         SETH_ERROR("verify thresh sign failed!");
-        // assert(false);
+        assert(false);
         return s;
     }
 
@@ -337,6 +337,11 @@ Status Crypto::SignMessage(transport::MessagePtr& msg_ptr) {
     }
     
     msg_ptr->header.set_sign(sign);
+    SETH_DEBUG("leader sign message success hash: %s, sign: %s, hash64: %lu, pk: %s",
+        common::Encode::HexEncode(msg_hash).c_str(),
+        common::Encode::HexEncode(sign).c_str(),
+        msg_ptr->header.hash64(),
+        common::Encode::HexEncode(security()->GetPublicKey()).c_str());
     return Status::kSuccess;
 }
 
@@ -355,8 +360,17 @@ Status Crypto::VerifyMessage(const transport::MessagePtr& msg_ptr) {
         return Status::kInvalidArgument;
     }
 
-    auto mem_ptr = elect_item->GetMemberByIdx(
-        msg_ptr->header.hotstuff().pro_msg().view_item().qc().leader_idx());
+    uint32_t leader_idx = 0;
+    if (msg_ptr->header.hotstuff().pro_msg().has_view_item() &&
+            msg_ptr->header.hotstuff().pro_msg().view_item().has_qc()) {
+        leader_idx = msg_ptr->header.hotstuff().pro_msg().view_item().qc().leader_idx();
+    } else if (msg_ptr->header.hotstuff().pro_msg().has_tc()) {
+        leader_idx = msg_ptr->header.hotstuff().pro_msg().tc().leader_idx();
+    } else {
+        return Status::kInvalidArgument;
+    }
+            
+    auto mem_ptr = elect_item->GetMemberByIdx(leader_idx);
     if (mem_ptr->bls_publick_key == libff::alt_bn128_G2::zero()) {
         SETH_DEBUG("verify sign failed, backup invalid bls pk: %s",
             common::Encode::HexEncode(mem_ptr->id).c_str());
@@ -378,4 +392,3 @@ Status Crypto::VerifyMessage(const transport::MessagePtr& msg_ptr) {
 } // namespace hotstuff
 
 } // namespace seth
-

@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='seth.contract.protobuf',
   syntax='proto2',
   serialized_options=None,
-  serialized_pb=_b('\n\x15protos/contract.proto\x12\x1ashardora.contract.protobuf\"6\n\x0fGetAttrByKeyReq\x12\x11\n\tcall_addr\x18\x01 \x01(\x0c\x12\x10\n\x08\x61ttr_key\x18\x02 \x01(\x0c\"J\n\x0fGetAttrByKeyRes\x12\x11\n\tcall_addr\x18\x01 \x01(\x0c\x12\x10\n\x08\x61ttr_key\x18\x02 \x01(\x0c\x12\x12\n\nattr_value\x18\x03 \x01(\x0c\"\x97\x01\n\x0f\x43ontractMessage\x12\x41\n\x0cget_attr_req\x18\x01 \x01(\x0b\x32+.seth.contract.protobuf.GetAttrByKeyReq\x12\x41\n\x0cget_attr_res\x18\x02 \x01(\x0b\x32+.seth.contract.protobuf.GetAttrByKeyRes')
+  serialized_pb=_b('\n\x15protos/contract.proto\x12\x1aseth.contract.protobuf\"6\n\x0fGetAttrByKeyReq\x12\x11\n\tcall_addr\x18\x01 \x01(\x0c\x12\x10\n\x08\x61ttr_key\x18\x02 \x01(\x0c\"J\n\x0fGetAttrByKeyRes\x12\x11\n\tcall_addr\x18\x01 \x01(\x0c\x12\x10\n\x08\x61ttr_key\x18\x02 \x01(\x0c\x12\x12\n\nattr_value\x18\x03 \x01(\x0c\"\x97\x01\n\x0f\x43ontractMessage\x12\x41\n\x0cget_attr_req\x18\x01 \x01(\x0b\x32+.seth.contract.protobuf.GetAttrByKeyReq\x12\x41\n\x0cget_attr_res\x18\x02 \x01(\x0b\x32+.seth.contract.protobuf.GetAttrByKeyRes')
 )
 
 

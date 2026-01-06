@@ -70,7 +70,7 @@ void ToTxsPools::ThreadToStatistic(
 
     {
         TxMap tx_map;
-        for (uint32_t i = 0; i < block.cross_shard_to_array_size(); ++i) {
+        for (uint32_t i = 0; i < (uint32_t)block.cross_shard_to_array_size(); ++i) {
             auto& to = block.cross_shard_to_array(i);
             tx_map[to.des()] = to;
             SETH_DEBUG("success add to item: %s, %lu",
@@ -259,7 +259,7 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
         return kPoolsError;
     }
 
-    for (uint32_t i = 0; i < to_heights.heights_size(); ++i) {
+    for (uint32_t i = 0; i < (uint32_t)to_heights.heights_size(); ++i) {
         if (prev_to_heights->heights(i) > to_heights.heights(i)) {
             SETH_DEBUG("prev heights invalid, pool: %u, prev height: %lu, now: %lu",
                 i, prev_to_heights->heights(i), to_heights.heights(i));
@@ -267,7 +267,7 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
         }
     }
 
-    for (uint32_t i = 0; i < to_heights.heights_size(); ++i) {
+    for (uint32_t i = 0; i < (uint32_t)to_heights.heights_size(); ++i) {
         if (prev_to_heights->heights(i) < to_heights.heights(i)) {
             SETH_DEBUG("prev heights valid, pool: %u, prev height: %lu, now: %lu",
                 i, prev_to_heights->heights(i), to_heights.heights(i));
@@ -300,7 +300,7 @@ int ToTxsPools::CreateToTxWithHeights(
         *prev_to_heights = *prev_to_heights_;
     }
 
-    for (uint32_t i = 0; i < leader_to_heights.heights_size(); ++i) {
+    for (int32_t i = 0; i < leader_to_heights.heights_size(); ++i) {
         if (prev_to_heights->heights(i) > leader_to_heights.heights(i)) {
             SETH_DEBUG("prev heights invalid, pool: %u, prev height: %lu, now: %lu",
                 i, prev_to_heights->heights(i), leader_to_heights.heights(i));
@@ -309,7 +309,7 @@ int ToTxsPools::CreateToTxWithHeights(
     }
 
     bool heights_valid = false;
-    for (uint32_t i = 0; i < leader_to_heights.heights_size(); ++i) {
+    for (int32_t i = 0; i < leader_to_heights.heights_size(); ++i) {
         if (prev_to_heights->heights(i) < leader_to_heights.heights(i)) {
             SETH_DEBUG("prev heights valid, pool: %u, prev height: %lu, now: %lu",
                 i, prev_to_heights->heights(i), leader_to_heights.heights(i));
@@ -327,7 +327,7 @@ int ToTxsPools::CreateToTxWithHeights(
         return kPoolsError;
     }
 
-    for (int32_t pool_idx = 0; pool_idx < leader_to_heights.heights_size(); ++pool_idx) {
+    for (uint32_t pool_idx = 0; pool_idx < (uint32_t)leader_to_heights.heights_size(); ++pool_idx) {
         uint64_t min_height = 1llu;
         if (prev_to_heights != nullptr) {
             min_height = prev_to_heights->heights(pool_idx) + 1;

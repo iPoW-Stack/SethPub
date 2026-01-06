@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='seth.timeblock.protobuf',
   syntax='proto2',
   serialized_options=None,
-  serialized_pb=_b('\n\x16protos/timeblock.proto\x12\x1bshardora.timeblock.protobuf\"B\n\tTimeBlock\x12\x0e\n\x06height\x18\x01 \x01(\x04\x12\x11\n\ttimestamp\x18\x02 \x01(\x04\x12\x12\n\nvss_random\x18\x03 \x01(\x04')
+  serialized_pb=_b('\n\x16protos/timeblock.proto\x12\x1bseth.timeblock.protobuf\"B\n\tTimeBlock\x12\x0e\n\x06height\x18\x01 \x01(\x04\x12\x11\n\ttimestamp\x18\x02 \x01(\x04\x12\x12\n\nvss_random\x18\x03 \x01(\x04')
 )
 
 

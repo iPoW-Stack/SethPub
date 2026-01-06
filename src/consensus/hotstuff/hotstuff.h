@@ -4,6 +4,7 @@
 #else
 #include <consensus/hotstuff/crypto.h>
 #endif
+#include "consensus/consensus_utils.h"
 #include <consensus/hotstuff/block_acceptor.h>
 #include <consensus/hotstuff/block_wrapper.h>
 #include <consensus/hotstuff/elect_info.h>
@@ -56,6 +57,7 @@ class Hotstuff {
 public:
     Hotstuff() = default;
     Hotstuff(
+            std::shared_ptr<block::BlockManager>& block_mgr,
             consensus::HotstuffManager& hotstuff_mgr,
             std::shared_ptr<sync::KeyValueSync>& kv_sync,
             const uint32_t& pool_idx,
@@ -71,7 +73,9 @@ public:
 #endif
             const std::shared_ptr<ElectInfo>& elect_info,
             std::shared_ptr<db::Db>& db,
-            std::shared_ptr<timeblock::TimeBlockManager> tm_block_mgr) :
+            std::shared_ptr<timeblock::TimeBlockManager> tm_block_mgr,
+            consensus::BlockCacheCallback new_block_cache_callback) :
+        block_mgr_(block_mgr),
         hotstuff_mgr_(hotstuff_mgr),
         kv_sync_(kv_sync),
         pool_idx_(pool_idx),
@@ -83,7 +87,8 @@ public:
         leader_rotation_(lr),
         elect_info_(elect_info),
         db_(db),
-        tm_block_mgr_(tm_block_mgr) {
+        tm_block_mgr_(tm_block_mgr),
+        new_block_cache_callback_(new_block_cache_callback) {
         prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
         pacemaker_->SetNewProposalFn(std::bind(&Hotstuff::Propose, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         pacemaker_->SetStopVotingFn(std::bind(&Hotstuff::StopVoting, this, std::placeholders::_1));        
@@ -109,7 +114,10 @@ public:
         std::shared_ptr<TC> tc,
         std::shared_ptr<AggregateQC> agg_qc,
         const transport::MessagePtr& msg_ptr);
-    Status TryCommit(const transport::MessagePtr& msg_ptr, const QC& commit_qc, uint64_t t_idx = 9999999lu);
+    Status TryCommit(
+        const std::shared_ptr<ViewBlockChain>& view_block_chain,
+        const transport::MessagePtr& msg_ptr, 
+        const QC& commit_qc);
     Status HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> propose_msg_wrap);
 
     void StopVoting(const View& view) {
@@ -188,7 +196,9 @@ public:
         bool has_system_tx);
 
 private:
-    void InitAddNewViewBlock(std::shared_ptr<ViewBlock>& view_block);
+    void InitAddNewViewBlock(
+        std::shared_ptr<ViewBlockChain> view_block_chain, 
+        std::shared_ptr<ViewBlock>& view_block);
     Status HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
     Status HandleProposeMsgStep_VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
     Status HandleProposeMsgStep_VerifyQC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
@@ -207,11 +217,13 @@ private:
 
     Status HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
     Status Commit(
+        const std::shared_ptr<ViewBlockChain>& view_block_chain,
         const transport::MessagePtr& msg_ptr,
         const std::shared_ptr<ViewBlockInfo>& v_block,
-        const QC& commit_qc,
-        uint64_t test_index);
-    std::shared_ptr<ViewBlockInfo> CheckCommit(const QC& qc);
+        const QC& commit_qc);
+    std::shared_ptr<ViewBlockInfo> CheckCommit(
+        const std::shared_ptr<ViewBlockChain>& view_block_chain, 
+        const QC& qc);
     Status VerifyVoteMsg(
             const hotstuff::protobuf::VoteMsg& vote_msg);
     Status VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
@@ -242,14 +254,25 @@ private:
         common::BftMemberPtr leader, 
         std::shared_ptr<transport::TransportMessage>& hotstuff_msg, 
         const MsgType msg_type);
+    void InitLoadLatestBlock(
+        std::shared_ptr<ViewBlockChain> view_block_chain, 
+        uint32_t network_id, 
+        uint32_t pool_index);
     // 是否允许空交易
     bool IsEmptyBlockAllowed(const ViewBlock& v_block);
-    Status StoreVerifiedViewBlock(const std::shared_ptr<ViewBlock>& v_block, const std::shared_ptr<QC>& qc);
     // 获取该 Leader 要增加的 consensus stat succ num
     uint32_t GetPendingSuccNumOfLeader(const std::shared_ptr<ViewBlock>& v_block);
+    void BroadcastGlobalPoolBlock(const std::shared_ptr<ViewBlock>& v_block);
+    void HandleTimerMessage();
+    void SyncLaterBlocks(
+        std::shared_ptr<ViewBlockChain> view_block_chain, 
+        uint32_t network_id, 
+        uint32_t pool_index, 
+        View view);
 
-    static const uint64_t kLatestPoposeSendTxToLeaderPeriodMs = 300lu;
+    static const uint64_t kLatestPoposeSendTxToLeaderPeriodMs = 1000lu;
 
+    std::shared_ptr<block::BlockManager> block_mgr_;
     uint32_t pool_idx_;
 #ifdef USE_AGG_BLS
     std::shared_ptr<AggCrypto> crypto_;
@@ -260,6 +283,8 @@ private:
     std::shared_ptr<IBlockAcceptor> block_acceptor_;
     std::shared_ptr<IBlockWrapper> block_wrapper_;
     std::shared_ptr<ViewBlockChain> view_block_chain_;
+    std::shared_ptr<ViewBlockChain> root_view_block_chain_;
+    std::unordered_map<uint32_t, std::shared_ptr<ViewBlockChain>> cross_shard_view_block_chain_;
     std::shared_ptr<LeaderRotation> leader_rotation_;
     std::shared_ptr<ElectInfo> elect_info_;
     std::shared_ptr<db::Db> db_ = nullptr;
@@ -279,6 +304,8 @@ private:
     std::atomic<View> db_stored_view_ = 0llu;
     uint64_t prev_sync_latest_view_tm_ms_ = 0;
     std::shared_ptr<timeblock::TimeBlockManager> tm_block_mgr_ = nullptr;
+    consensus::BlockCacheCallback new_block_cache_callback_ = nullptr;
+    common::Tick layter_sync_tick_;
     
 // #ifndef NDEBUG
     static std::atomic<uint32_t> sendout_bft_message_count_;

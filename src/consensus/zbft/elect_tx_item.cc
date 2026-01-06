@@ -47,6 +47,7 @@ int ElectTxItem::HandleTx(
         zjcvm::ZjchainHost& zjc_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
+    elect_block_ = elect::protobuf::ElectBlock();
     view_block_chain_ = zjc_host.view_block_chain_;
     g2_ = std::make_shared<std::mt19937_64>(vss_mgr_->EpochRandom());
     InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
@@ -118,7 +119,6 @@ int ElectTxItem::processElect(
     uint32_t min_area_weight = common::kInvalidUint32;
     uint32_t min_tx_count = common::kInvalidUint32;
     std::vector<NodeDetailPtr> elect_nodes(members->size(), nullptr);
-    // TODO: add weedout
     int res = CheckWeedout(members, *statistic, &min_area_weight, &min_tx_count, elect_nodes);
     if (res != kConsensusSuccess) {
         assert(false);
@@ -306,7 +306,6 @@ int ElectTxItem::getMaxElectHeightInfo(
         max_elect_height = now_elect_height;
     }
 
-    // TODO: check if elect height valid
     if (max_elect_height != now_elect_height) {
         SETH_DEBUG("old elect coming max_elect_height: %lu, now_elect_height: %lu",
             max_elect_height, now_elect_height);
@@ -618,6 +617,7 @@ int ElectTxItem::CreateNewElect(
         uint64_t gas_for_root,
         block::protobuf::BlockTx &block_tx) {
     auto& elect_block = elect_block_;
+    assert(elect_block.prev_members().bls_pubkey_size() == 0);
     for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
         if (elect_nodes[i] == nullptr) {
             if (i >= elect_members_->size()) {
@@ -660,6 +660,7 @@ int ElectTxItem::CreateNewElect(
     elect_block.set_shard_network_id(elect_statistic_.sharding_id());
     elect_block.set_elect_height(block.height());
     elect_block.set_all_gas_amount(elect_statistic_.gas_amount());
+    assert(elect_block.prev_members().bls_pubkey_size() == 0);
     if (bls_mgr_->AddBlsConsensusInfo(elect_block) != bls::kBlsSuccess) {
         SETH_WARN("add prev elect bls consensus info failed sharding id: %u",
                  elect_statistic_.sharding_id());
@@ -781,9 +782,6 @@ int ElectTxItem::CheckWeedout(
     }
 
     std::set<uint32_t> weedout_nodes;
-
-    // 第二次淘汰
-    // TODO: add weedout nodes
     FtsGetNodes(elect_nodes_to_choose, true, weed_out_count - invalid_nodes.size(), weedout_nodes);
     for (auto iter = elect_nodes_to_choose.begin(); iter != elect_nodes_to_choose.end(); ++iter) {
         if (weedout_nodes.find((*iter)->index) != weedout_nodes.end()) {

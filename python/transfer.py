@@ -5,7 +5,7 @@
 
 import configparser
 import json
-import shardora_api
+import seth_api
 import sys
 import time
 import argparse
@@ -21,11 +21,11 @@ if __name__ == "__main__":
     parser.add_argument('--address_start', '-s', type=int, help='转账目标地址起始索引')
     args = parser.parse_args()
     from_private_key = args.private_key
-    from_address = shardora_api.get_keypair(bytes.fromhex(from_private_key)).account_id
+    from_address = seth_api.get_keypair(bytes.fromhex(from_private_key)).account_id
     amount = args.amount
     prikey_base = "19997691aee3e5e4f7842935d26f3ad790d81cf015e79b78958e848000000000"
     ids = dict()
-    addr_info = shardora_api.get_account_info(from_address)
+    addr_info = seth_api.get_account_info(from_address)
     if addr_info is None:
         print(f"invalid private key {from_private_key} and get addr info failed: {from_address} ")
         sys.exit(1)
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     nonce = int(addr_info["nonce"]) + 1
     print(f"get from address: {from_address}, new nonce: {nonce}")
     if args.chain_ip:
-        shardora_api.http_ip = args.chain_ip
+        seth_api.http_ip = args.chain_ip
 
     nonce = int(addr_info["nonce"]) + 1
     check_accounts_str = ""
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     if args.to:
         to = args.to
         check_accounts_str += to + "_"
-        res = shardora_api.transfer(
+        res = seth_api.transfer(
             from_private_key,
             to,
             amount,
@@ -73,9 +73,9 @@ if __name__ == "__main__":
     for i in range(address_index_start, address_index_start + base_account_count):
         tmp_key = str(i)
         private_key = prikey_base[0:(len(prikey_base) - len(tmp_key))] + tmp_key
-        to = shardora_api.get_keypair(bytes.fromhex(private_key)).account_id
+        to = seth_api.get_keypair(bytes.fromhex(private_key)).account_id
         check_accounts_str += to + "_"
-        res = shardora_api.transfer(
+        res = seth_api.transfer(
             from_private_key,
             to,
             amount,
@@ -98,7 +98,7 @@ if __name__ == "__main__":
 
     time.sleep(20)
     for i in range(0, 30):
-        res = shardora_api.check_accounts_valid({"addrs": check_accounts_str, "balance": amount})
+        res = seth_api.check_accounts_valid({"addrs": check_accounts_str, "balance": amount})
         # print(f"res status: {res.status_code}, text: {res.text}")
         if res.status_code != 200:
             print(f"post check gids failed status: {res.status_code}, error: {res.text}")

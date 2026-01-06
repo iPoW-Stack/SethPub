@@ -19,10 +19,12 @@ namespace transport {
 ThreadHandler::ThreadHandler(
         MultiThreadHandler* msg_handler,
         std::condition_variable& wait_con,
-        std::mutex& wait_mutex)
+        std::mutex& wait_mutex,
+        bool is_hotstuff_thread)
         : msg_handler_(msg_handler),
         wait_con_(wait_con),
-        wait_mutex_(wait_mutex) {
+        wait_mutex_(wait_mutex),
+        is_hotstuff_thread_(is_hotstuff_thread) {
     thread_ = std::make_shared<std::thread>(&ThreadHandler::HandleMessage, this);
     thread_->detach();
 }
@@ -40,7 +42,7 @@ void ThreadHandler::HandleMessage() {
     static const uint32_t kMaxHandleMessageCount = 1024u;
     thread_idx_ = common::GlobalInfo::Instance()->get_thread_index();
     uint8_t thread_idx = thread_idx_;
-    uint8_t maping_thread_idx = common::GlobalInfo::Instance()->SetConsensusRealThreadIdx(thread_idx);
+    uint8_t maping_thread_idx = -1;
     SETH_DEBUG("thread handler thread index coming thread_idx: %d, "
         "maping_thread_idx: %d, message_handler_thread_count: %d", 
         thread_idx, maping_thread_idx, 
@@ -58,7 +60,7 @@ void ThreadHandler::HandleMessage() {
             auto btime = common::TimeUtils::TimestampUs();
             auto msg_ptr = msg_handler_->GetMessageFromQueue(
                 thread_idx, 
-                (maping_thread_idx == (common::GlobalInfo::Instance()->message_handler_thread_count() - 1)));
+                !is_hotstuff_thread_);
             if (!msg_ptr) {
                 break;
             }
@@ -82,50 +84,50 @@ void ThreadHandler::HandleMessage() {
             ADD_DEBUG_PROCESS_TIMESTAMP();
             auto etime = common::TimeUtils::TimestampUs();
             if (etime - btime > 200000lu) {
-            //     // for (uint32_t i = 1; i < msg_ptr->times_idx; ++i) {
-            //     //     auto diff_time = msg_ptr->times[i] - msg_ptr->times[i - 1];
-            //     //     // if (diff_time > 1000000lu) {
-            //     //         SETH_DEBUG("over handle message debug %lu timestamp: %lu, debug: %s, "
-            //     //             "thread_idx: %d, maping_thread_idx: %d, all time: %lu",
-            //     //             msg_ptr->header.hash64(), msg_ptr->times[i], 
-            //     //             msg_ptr->debug_str[i].c_str(), thread_idx, maping_thread_idx, (etime - btime));
-            //     //     // }
-            //     // }
-            //     SETH_DEBUG("end message handled msg hash: %lu, thread idx: %d, type: %d, use time: %lu", 
-            //         msg_ptr->header.hash64(), thread_idx, msg_ptr->header.type(), (etime - btime));
-                if (thread_idx == 6)
-                    SETH_DEBUG("end message handled msg hash: %lu, thread idx: %d, type: %d, use time: %lu, protobuf: %s", 
-                        msg_ptr->header.hash64(), thread_idx, msg_ptr->header.type(), (etime - btime),
-                        "ProtobufToJson(msg_ptr->header).c_str()");
+                for (uint32_t i = 1; i < msg_ptr->times_idx; ++i) {
+                    auto diff_time = msg_ptr->times[i] - msg_ptr->times[i - 1];
+                    if (diff_time > 200000lu) {
+                        SETH_INFO("over handle message debug %lu timestamp: %lu, debug: %s, "
+                            "thread_idx: %d, maping_thread_idx: %d, all time: %lu",
+                            msg_ptr->header.hash64(), msg_ptr->times[i], 
+                            msg_ptr->debug_str[i].c_str(), thread_idx, maping_thread_idx, (etime - btime));
+                    }
+                }
+                // SETH_DEBUG("end message handled msg hash: %lu, thread idx: %d, type: %d, use time: %lu", 
+                //     msg_ptr->header.hash64(), thread_idx, msg_ptr->header.type(), (etime - btime));
+                SETH_INFO("end message handled msg hash: %lu, thread idx: %d, type: %d, use time: %lu, protobuf: %s", 
+                    msg_ptr->header.hash64(), thread_idx, msg_ptr->header.type(), (etime - btime),
+                    "ProtobufToJson(msg_ptr->header).c_str()");
             }
 
             SETH_DEBUG("end message handled msg hash: %lu, thread idx: %d", msg_ptr->header.hash64(), thread_idx);
         }
 
-        auto btime = common::TimeUtils::TimestampUs();
-        if (maping_thread_idx <= (common::GlobalInfo::Instance()->message_handler_thread_count() - 2)) {
-            auto btime = common::TimeUtils::TimestampUs();
+        // auto btime = common::TimeUtils::TimestampUs();
+        if (is_hotstuff_thread_) {
+            // auto btime = common::TimeUtils::TimestampUs();
             auto msg_ptr = std::make_shared<transport::TransportMessage>();
             msg_ptr->header.set_type(common::kHotstuffSyncTimerMessage);
             ADD_DEBUG_PROCESS_TIMESTAMP();
             Processor::Instance()->HandleMessage(msg_ptr);
             // PacemakerTimerMessage
-            btime = common::TimeUtils::TimestampUs();
+            // btime = common::TimeUtils::TimestampUs();
             msg_ptr = std::make_shared<transport::TransportMessage>();
             msg_ptr->header.set_type(common::kPacemakerTimerMessage);
             ADD_DEBUG_PROCESS_TIMESTAMP();
             Processor::Instance()->HandleMessage(msg_ptr);
             ADD_DEBUG_PROCESS_TIMESTAMP();
-        }
-
-        if (maping_thread_idx == (common::GlobalInfo::Instance()->message_handler_thread_count() - 1)) {
+        } else {
+#ifndef NDEBUG
             auto btime = common::TimeUtils::TimestampUs();
+#endif
             auto msg_ptr = std::make_shared<transport::TransportMessage>();
             msg_ptr->header.set_type(common::kPoolTimerMessage);
-            SETH_DEBUG("start kPoolTimerMessage message handled msg hash: %lu, thread idx: %d, maping: %d", 
-                msg_ptr->header.hash64(), thread_idx, maping_thread_idx);
-            msg_ptr->times[msg_ptr->times_idx++] = btime;
+            // SETH_DEBUG("start kPoolTimerMessage message handled msg hash: %lu, thread idx: %d, maping: %d", 
+            //     msg_ptr->header.hash64(), thread_idx, maping_thread_idx);
+            // msg_ptr->times[msg_ptr->times_idx++] = btime;
             Processor::Instance()->HandleMessage(msg_ptr);
+#ifndef NDEBUG
             auto etime = common::TimeUtils::TimestampUs();
             if (etime - btime > 200000) {
                 std::string t;
@@ -136,8 +138,9 @@ void ThreadHandler::HandleMessage() {
                 SETH_INFO("kPoolTimerMessage over handle message: %d, thread: %d use: %lu us, all: %s", 
                     msg_ptr->header.type(), thread_idx, (etime - btime), t.c_str());
             }
-            SETH_DEBUG("end kPoolTimerMessage message handled msg hash: %lu, thread idx: %d, maping: %d", 
-                msg_ptr->header.hash64(), thread_idx, maping_thread_idx);
+#endif
+            // SETH_DEBUG("end kPoolTimerMessage message handled msg hash: %lu, thread idx: %d, maping: %d", 
+            //     msg_ptr->header.hash64(), thread_idx, maping_thread_idx);
         }
 
         if (count >= kMaxHandleMessageCount) {
@@ -159,7 +162,7 @@ int MultiThreadHandler::Init(std::shared_ptr<db::Db>& db, std::shared_ptr<securi
     db_ = db;
     prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
     security_ = security;
-    all_thread_count_ = common::GlobalInfo::Instance()->message_handler_thread_count();
+    all_thread_count_ = common::GlobalInfo::Instance()->message_handler_thread_count() - 1;
     consensus_thread_count_ = common::GlobalInfo::Instance()->message_handler_thread_count() - 2;
     TRANSPORT_INFO("MultiThreadHandler::Init() ...");
     if (inited_) {
@@ -182,11 +185,15 @@ int MultiThreadHandler::Init(std::shared_ptr<db::Db>& db, std::shared_ptr<securi
 void MultiThreadHandler::Start() {
     for (uint32_t i = 0; i < all_thread_count_; ++i) {
         thread_init_success_ = false;
-        auto thread_handler = std::make_shared<ThreadHandler>(this, wait_con_[i], wait_mutex_[i]);
+        auto thread_handler = std::make_shared<ThreadHandler>(
+            this, 
+            wait_con_[i], 
+            wait_mutex_[i], 
+            i < consensus_thread_count_);
         thread_vec_.push_back(thread_handler);
         std::unique_lock<std::mutex> lock(thread_wait_mutex_);
          thread_wait_con_.wait_for(lock, std::chrono::milliseconds(10000lu), [&] {
-            return thread_init_success_.load(); ;
+            return thread_init_success_.load();
         });
 
         if (!thread_init_success_) {
@@ -347,43 +354,38 @@ uint8_t MultiThreadHandler::GetThreadIndex(MessagePtr& msg_ptr) {
     case common::kBlsMessage:
     case common::kInitMessage:
     case common::kPoolsMessage:
-        return common::GlobalInfo::Instance()->get_consensus_thread_idx(consensus_thread_count_);
-    // case common::kPoolsMessage:
-    //     return common::GlobalInfo::Instance()->get_consensus_thread_idx(consensus_thread_count_ + 1);
+        return thread_vec_[all_thread_count_ - 1]->thread_idx();
     case common::kConsensusMessage:
-        if (msg_ptr->header.zbft().pool_index() < common::kInvalidPoolIndex) {
-            return common::GlobalInfo::Instance()->pools_with_thread()[msg_ptr->header.zbft().pool_index()];
-        }
-
-        SETH_FATAL("invalid message thread: %d", msg_ptr->header.zbft().pool_index());
-        return common::kMaxThreadCount;
-    case common::kHotstuffSyncMessage:
+        assert(false);
+        return thread_vec_[all_thread_count_ - 1]->thread_idx();
+    case common::kHotstuffSyncMessage: {
+        uint32_t pool_idx = 0;
         if (msg_ptr->header.view_block_proto().has_view_block_req()) {
-            return common::GlobalInfo::Instance()->pools_with_thread()[
-                    msg_ptr->header.view_block_proto().view_block_req().pool_idx()];
+            pool_idx = msg_ptr->header.view_block_proto().view_block_req().pool_idx();
         }
         if (msg_ptr->header.view_block_proto().has_single_req()) {
-            return common::GlobalInfo::Instance()->pools_with_thread()[
-                    msg_ptr->header.view_block_proto().single_req().pool_idx()];
+            pool_idx = msg_ptr->header.view_block_proto().single_req().pool_idx();
         }        
         if (msg_ptr->header.view_block_proto().has_view_block_res()) {
-            return common::GlobalInfo::Instance()->pools_with_thread()[
-                    msg_ptr->header.view_block_proto().view_block_res().pool_idx()];
+            pool_idx = msg_ptr->header.view_block_proto().view_block_res().pool_idx();
         }
-        return common::kMaxThreadCount;
-    case common::kHotstuffMessage:
-        if (msg_ptr->header.hotstuff().pool_index() < common::kInvalidPoolIndex) {
-            return common::GlobalInfo::Instance()->pools_with_thread()[msg_ptr->header.hotstuff().pool_index()];
-        }
-        assert(false);
-        return common::kMaxThreadCount;
-    case common::kHotstuffTimeoutMessage:
-        if (msg_ptr->header.hotstuff_timeout_proto().pool_idx() < common::kInvalidPoolIndex) {
-            return common::GlobalInfo::Instance()->pools_with_thread()[msg_ptr->header.hotstuff_timeout_proto().pool_idx()];
-        }
-        return common::kMaxThreadCount;
+
+        auto thread_idx = pool_idx % 
+            common::GlobalInfo::Instance()->hotstuff_thread_count();
+        return thread_vec_[thread_idx]->thread_idx();
+    }
+    case common::kHotstuffMessage: {
+        auto thread_idx = msg_ptr->header.hotstuff().pool_index() %
+            common::GlobalInfo::Instance()->hotstuff_thread_count();
+        return thread_vec_[thread_idx]->thread_idx();
+    }
+    case common::kHotstuffTimeoutMessage: {
+        auto thread_idx = msg_ptr->header.hotstuff_timeout_proto().pool_idx() %
+            common::GlobalInfo::Instance()->hotstuff_thread_count();
+        return thread_vec_[thread_idx]->thread_idx();
+    }
     default:
-        return common::GlobalInfo::Instance()->get_consensus_thread_idx(consensus_thread_count_);
+        return thread_vec_[all_thread_count_ - 1]->thread_idx();
     }
 }
 
@@ -544,7 +546,7 @@ MessagePtr MultiThreadHandler::GetMessageFromQueue(uint32_t thread_idx, bool htt
                 security_->GetAddress(msg_obj->header.tx_proto().pubkey())).c_str(),
                 common::Encode::HexEncode(msg_obj->header.tx_proto().to()).c_str(),
                 msg_obj->header.hash64(),
-                msg_obj->header.tx_proto().step(),
+                (int32_t)msg_obj->header.tx_proto().step(),
                 msg_obj->header.tx_proto().nonce(),
                 msg_obj->header.type());
         }

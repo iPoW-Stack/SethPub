@@ -64,7 +64,7 @@ void BlockAcceptor::Init(
     prefix_db_ = std::make_shared<protos::PrefixDb>(db_);    
 }
 
-// Accept 验证 Leader 新提案信息，并执行 txs，修改 block
+// Accept verifies the new proposal information of the Leader, executes txs, and modifies the block
 Status BlockAcceptor::Accept(
         std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap, 
         bool no_tx_allowed,
@@ -157,7 +157,7 @@ Status BlockAcceptor::Accept(
     }
 #endif
 
-    // 3. Do txs and create block_tx
+    // 3. Do txs and create block_tx.
     ADD_DEBUG_PROCESS_TIMESTAMP();
     zjc_host.parent_hash_ = view_block.parent_hash();
     zjc_host.view_block_chain_ = view_block_chain_;
@@ -176,7 +176,7 @@ Status BlockAcceptor::Accept(
         }
 
         auto* addr_info = view_block.mutable_block_info()->add_address_array();
-        SETH_INFO("%u_%u_%lu, success addr info: %s, balance: %lu, nonce: %lu", 
+        SETH_DEBUG("%u_%u_%lu, success addr info: %s, balance: %lu, nonce: %lu", 
             view_block.qc().network_id(),
             view_block.qc().pool_index(),
             view_block.qc().view(),
@@ -254,9 +254,9 @@ Status BlockAcceptor::Accept(
         UpdateDesShardingId(cross_to_item, zjc_host);
         assert(cross_to_item->des_sharding_id() >= network::kRootCongressNetworkId && 
             cross_to_item->des_sharding_id() < network::kConsensusShardEndNetworkId);
-        SETH_DEBUG("success add cross to item: %s, amount: %lu", 
+        SETH_DEBUG("success add cross to item: %s, amount: %lu, prepayment: %lu",
             common::Encode::HexEncode(cross_to_item->des()).c_str(),
-            cross_to_item->amount());
+            cross_to_item->amount(), cross_to_item->prepayment());
     }
 
     if (view_block.block_info().cross_shard_to_array_size() > 0) {
@@ -267,7 +267,7 @@ Status BlockAcceptor::Accept(
             ProtobufToJson(view_block).c_str());
     }
 
-    SETH_INFO("success do transaction tx size: %u, add: %u, %u_%u_%lu, height: %lu, "
+    SETH_DEBUG("success do transaction tx size: %u, add: %u, %u_%u_%lu, height: %lu, "
         "timeblock height: %lu, local latest timeblock height: %lu", 
         txs_ptr->txs.size(), 
         view_block.block_info().tx_list_size(), 
@@ -311,7 +311,7 @@ void BlockAcceptor::UpdateDesShardingId(
     }
 }
 
-// AcceptSync 验证同步来的 block 信息，并更新交易池
+// AcceptSync verifies the synchronized block information and updates the transaction pool
 Status BlockAcceptor::AcceptSync(const view_block::protobuf::ViewBlockItem& view_block) {
     if (view_block.qc().pool_index() != pool_idx()) {
         return Status::kError;
@@ -344,26 +344,7 @@ Status BlockAcceptor::addTxsToPool(
     auto tx_valid_func = [&](
             const address::protobuf::AddressInfo& addr_info, 
             pools::protobuf::TxMessage& tx_info) -> int {
-        if (pools::IsUserTransaction(tx_info.step())) {
-            return view_block_chain_->CheckTxNonceValid(
-                addr_info.addr(), 
-                tx_info.nonce(), 
-                parent_hash);
-        }
-        
-        std::string val;
-        if (zjc_host.GetKeyValue(tx_info.to(), tx_info.key(), &val) == zjcvm::kZjcvmSuccess) {
-            SETH_DEBUG("not user tx unique hash exists: to: %s, unique hash: %s, step: %d",
-                common::Encode::HexEncode(tx_info.to()).c_str(),
-                common::Encode::HexEncode(tx_info.key()).c_str(),
-                tx_info.step());
-            return 1;
-        }
-
-        SETH_DEBUG("not user tx unique hash success to: %s, unique hash: %s",
-            common::Encode::HexEncode(tx_info.to()).c_str(),
-            common::Encode::HexEncode(tx_info.key()).c_str());
-        return 0;
+        return CheckTransactionValid(parent_hash, view_block_chain_, addr_info, tx_info);
     };
 
     for (uint32_t i = 0; i < uint32_t(txs.size()); i++) {
@@ -505,7 +486,6 @@ Status BlockAcceptor::addTxsToPool(
             break;
         }
         case pools::protobuf::kNormalTo: {
-            // TODO 这些 Single Tx 还是从本地交易池直接拿
             pools::protobuf::AllToTxMessage all_to_txs;
             if (!all_to_txs.ParseFromString(tx->value()) || all_to_txs.to_tx_arr_size() == 0) {
                 assert(false);
@@ -535,7 +515,6 @@ Status BlockAcceptor::addTxsToPool(
         }
         case pools::protobuf::kStatistic:
         {
-            // TODO 这些 Single Tx 还是从本地交易池直接拿
             SETH_WARN("add tx now get statistic tx: %u", pool_idx());
             if (directly_user_leader_txs) {
                 tx_ptr = std::make_shared<consensus::StatisticTxItem>(
@@ -585,7 +564,6 @@ Status BlockAcceptor::addTxsToPool(
         }
         case pools::protobuf::kConsensusRootTimeBlock:
         {
-            // TODO 这些 Single Tx 还是从本地交易池直接拿
             if (directly_user_leader_txs) {
                 tx_ptr = std::make_shared<consensus::TimeBlockTx>(
                     msg_ptr, i, account_mgr_, security_ptr_, address_info);
@@ -642,9 +620,7 @@ Status BlockAcceptor::addTxsToPool(
             break;
         }
         default:
-            // TODO 没完！还需要支持其他交易的写入
-            // break;
-            SETH_FATAL("invalid tx step: %d", tx->step());
+            SETH_FATAL("invalid tx step: %d", (int32_t)tx->step());
             return Status::kError;
         }
 
@@ -667,8 +643,7 @@ Status BlockAcceptor::addTxsToPool(
         
         if (tx_ptr != nullptr) {
             auto tx_hash = pools::GetTxMessageHash(*tx);
-            txs_map.push_back(tx_ptr);
-            if (pools::IsUserTransaction(tx_ptr->tx_info->step())) {
+            if (checked_tx_hash_.Push(tx_hash) && pools::IsUserTransaction(tx_ptr->tx_info->step())) {
                 if (!msg_ptr->is_leader) {
                     if (tx->pubkey().size() == 64u) {
                         security::GmSsl gmssl;
@@ -699,6 +674,8 @@ Status BlockAcceptor::addTxsToPool(
                     }
                 }
             }
+
+            txs_map.push_back(tx_ptr);
         }
     }
 
@@ -723,7 +700,7 @@ Status BlockAcceptor::GetAndAddTxsLocally(
         balance_map,
         zjc_host);
     if (add_txs_status != Status::kSuccess) {
-        SETH_ERROR("invalid consensus, add_txs_status failed: %d.", add_txs_status);
+        SETH_ERROR("invalid consensus, add_txs_status failed: %d.", (int32_t)add_txs_status);
         return add_txs_status;
     }
 
@@ -750,7 +727,7 @@ Status BlockAcceptor::GetAndAddTxsLocally(
 }
 
 bool BlockAcceptor::IsBlockValid(const view_block::protobuf::ViewBlockItem& view_block) {
-    // 校验 block prehash，latest height 等
+    // Verify block prehash, latest height, etc.
     auto* zjc_block = &view_block.block_info();
     uint64_t pool_height = pools_mgr_->latest_height(pool_idx());
     if (zjc_block->height() <= pool_height || pool_height == common::kInvalidUint64) {
@@ -759,7 +736,7 @@ bool BlockAcceptor::IsBlockValid(const view_block::protobuf::ViewBlockItem& view
     }
 
     auto cur_time = common::TimeUtils::TimestampMs();
-    // 新块的时间戳必须大于上一个块的时间戳
+    // The timestamp of the new block must be greater than the timestamp of the previous block.
     uint64_t preblock_time = pools_mgr_->latest_timestamp(pool_idx());
     if (zjc_block->timestamp() <= preblock_time && zjc_block->timestamp() + 10000lu >= cur_time) {
         SETH_WARN("Accept timestamp error: %lu, %lu, cur: %lu", zjc_block->timestamp(), preblock_time, cur_time);

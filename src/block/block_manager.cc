@@ -111,7 +111,7 @@ void BlockManager::HandleAllConsensusBlocks() {
         while (no_sleep) {
             no_sleep = false;
             for (int32_t i = 0; i < common::kMaxThreadCount; ++i) {
-                int32_t count = 0;
+                uint32_t count = 0;
                 while (count++ < kEachTimeHandleBlocksCount) {
                     std::shared_ptr<hotstuff::ViewBlockInfo> view_block_info_ptr = nullptr;
                     consensus_block_queues_[i].pop(&view_block_info_ptr);
@@ -269,7 +269,7 @@ void BlockManager::HandleNormalToTx(const std::shared_ptr<view_block::protobuf::
     }
 
     auto& to_txs = view_block.block_info().normal_to();
-    for (uint32_t i = 0; i < to_txs.to_tx_arr_size(); ++i) {
+    for (int32_t i = 0; i < to_txs.to_tx_arr_size(); ++i) {
         if (to_txs.to_tx_arr(i).des_shard() != common::GlobalInfo::Instance()->network_id()) {
             SETH_WARN("sharding invalid: %u, %u",
                 to_txs.to_heights().sharding_id(),
@@ -332,7 +332,6 @@ void BlockManager::RootHandleNormalToTx(
     }
 }
 
-// TODO refactor needed!
 void BlockManager::HandleNormalToTx(
         const view_block::protobuf::ViewBlockItem& view_block,
         const pools::protobuf::ToTxMessage& to_txs) {
@@ -357,7 +356,6 @@ void BlockManager::AddNewBlock(
     auto view_block_item = view_block_info->view_block;
     assert(!view_block_item->qc().sign_x().empty());
     auto* block_item = &view_block_item->block_info();
-    // TODO: check all block saved success
     auto btime = common::TimeUtils::TimestampMs();
     SETH_DEBUG("new block coming sharding id: %u_%d_%lu, view: %u_%u_%lu,"
         "tx size: %u, hash: %s, prehash: %s, elect height: %lu, tm height: %lu, %s, ck_client_: %d",
@@ -596,10 +594,12 @@ void BlockManager::LoadLatestBlocks() {
                 common::kImmutablePoolSize,
                 tmblock.height(),
                 block) == kBlockSuccess) {
-            SETH_DEBUG("load latest elect block called!");
+            SETH_DEBUG("load latest time block called!");
             if (new_block_callback_ != nullptr) {
                 new_block_callback_(tmblock_ptr);
             }
+
+            CallTimeBlock(tmblock.timestamp(), tmblock.height(), tmblock.vss_random());
         } else {
             SETH_FATAL("load latest timeblock failed!");
         }
@@ -712,8 +712,6 @@ void BlockManager::CreateStatisticTx() {
 
     // 对应 timeblock_height 的 elect_statistic 已经收集，不会进行重复收集
     MarkDoneTimeblockHeightStatistic(timeblock_height);
-
-    // TODO: fix invalid hash
     auto unique_hash = common::Hash::keccak256(
         std::string("create_statistic_tx_") + 
         std::to_string(elect_statistic.sharding_id()) + "_" +
@@ -747,7 +745,7 @@ void BlockManager::CreateStatisticTx() {
                 common::Encode::HexEncode(unique_hash).c_str(),
                 0,
                 "", tx_ptr->timeout,
-                kStatisticTimeoutMs, common::TimeUtils::TimestampMs(),
+                0, common::TimeUtils::TimestampMs(),
                 tx->nonce(),
                 timeblock_height);
             shard_statistics_map_[timeblock_height] = tx_ptr;
@@ -911,7 +909,7 @@ pools::TxItemPtr BlockManager::HandleToTxsMessage(
     new_msg_ptr->address_info = account_mgr_->pools_address_info(common::kImmutablePoolSize);
     auto* tx = new_msg_ptr->header.mutable_tx_proto();
     std::string unique_str;
-    for (uint32_t i = 0; i < prev_heights.heights_size(); ++i) {
+    for (int32_t i = 0; i < prev_heights.heights_size(); ++i) {
         unique_str += std::to_string(prev_heights.heights(i)) + "_";
     }
 
@@ -1106,9 +1104,6 @@ pools::TxItemPtr BlockManager::GetStatisticTx(
         SETH_DEBUG("shard_statistic_tx == nullptr, unqiue_hash: %s, is leader: %d",
             common::Encode::HexEncode(unqiue_hash).c_str(),
             leader);
-        if (pool_index == common::kImmutablePoolSize) {
-            // assert(false); // 长时间压测下，有的节点 pool: 16 找不到 statistic tx 导致共识卡死
-        }
         return nullptr;
     }
 
@@ -1156,7 +1151,7 @@ pools::TxItemPtr BlockManager::GetStatisticTx(
             account_mgr_->pools_address_info(pool_index);
         auto& tx = shard_statistic_tx->tx_ptr->tx_info;
         tx->set_to(shard_statistic_tx->tx_ptr->address_info->addr());
-        SETH_DEBUG("success get statistic tx hash: %s, prev_timeblock_tm_sec_: %lu, "
+        SETH_INFO("success get statistic tx hash: %s, prev_timeblock_tm_sec_: %lu, "
             "height: %lu, latest time block height: %lu, is leader: %d",
             common::Encode::HexEncode(shard_statistic_tx->tx_hash).c_str(),
             prev_timeblock_tm_sec_, iter->first, latest_timeblock_height_,

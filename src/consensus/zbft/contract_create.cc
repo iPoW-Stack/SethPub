@@ -86,7 +86,7 @@ int ContractUserCreateCall::HandleTx(
                 "evmc res: %d, gas_used: %lu, gas price: %lu, from_balance: %lu",
                 common::Encode::HexEncode(block_tx.to()).c_str(),
                 call_res,
-                res.status_code,
+                (int32_t)res.status_code,
                 gas_used,
                 block_tx.gas_price(),
                 from_balance);
@@ -99,7 +99,6 @@ int ContractUserCreateCall::HandleTx(
         if (from_balance > gas_used * block_tx.gas_price()) {
             from_balance -= gas_used * block_tx.gas_price();
             gas_used = 0;
-            // TODO(): check key exists and reserve gas
             gas_used += (tx_info->key().size() + tx_info->value().size()) *
                 consensus::kKeyValueStorageEachBytes;
             SETH_DEBUG("create contract key: %s, value: %s", 

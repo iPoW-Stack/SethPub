@@ -1,6 +1,7 @@
 #pragma once
 
-#include <common/utils.h>
+#include "common/lru_set.h"
+#include "common/utils.h"
 #include <consensus/consensus_utils.h>
 #include <consensus/hotstuff/elect_info.h>
 #include <consensus/hotstuff/types.h>
@@ -61,6 +62,7 @@ public:
     // Handle Synced Block From KeyValueSyncer
     virtual double Tps() = 0;
     virtual void CalculateTps(uint64_t tx_list_size) = 0;
+    virtual bool TxHashVerified(const std::string& tx_hash) = 0;
 };
 
 class BlockAcceptor : public IBlockAcceptor {
@@ -81,6 +83,10 @@ public:
         std::shared_ptr<timeblock::TimeBlockManager>& tm_block_mgr,
         std::shared_ptr<elect::ElectManager> elect_mgr,
         std::shared_ptr<ViewBlockChain> view_block_chain);
+
+    bool TxHashVerified(const std::string& tx_hash) {
+        return checked_tx_hash_.Push(tx_hash);
+    }
 
     BlockAcceptor(const BlockAcceptor&) = delete;
     BlockAcceptor& operator=(const BlockAcceptor&) = delete;
@@ -132,7 +138,6 @@ public:
         }
 
         {
-            common::AutoSpinLock auto_lock(prev_count_mutex_);
             prev_count_ += tx_list_size;
             if (now_tm_us > prev_tps_tm_us_ + 2000000lu) {
                 cur_tps_ = (double(prev_count_) / (double(now_tm_us - prev_tps_tm_us_) / 1000000.0)); 
@@ -162,11 +167,11 @@ public:
     std::shared_ptr<block::BlockManager> block_mgr_ = nullptr;
     std::shared_ptr<timeblock::TimeBlockManager> tm_block_mgr_ = nullptr;
     std::shared_ptr<protos::PrefixDb> prefix_db_ = nullptr;
-    uint64_t prev_tps_tm_us_ = 0;
-    uint32_t prev_count_ = 0;
+    std::atomic<uint64_t> prev_tps_tm_us_ = 0;
+    std::atomic<uint32_t> prev_count_ = 0;
     double cur_tps_ = 0;
-    common::SpinMutex prev_count_mutex_;
     std::shared_ptr<ViewBlockChain> view_block_chain_;
+    common::LRUSet<std::string> checked_tx_hash_{10 * common::kMaxTxCount};
 
 };
 

@@ -157,6 +157,14 @@ bool TcpAcceptor::OnRead() {
             break;
         }
 
+        std::string from_ip;
+        uint16_t from_port;
+        if (socket->GetIpPort(&from_ip, &from_port) != 0) {
+            SETH_ERROR("accept failed %s:%d", from_ip.c_str(), from_port);
+            socket->Free();
+            continue;
+        }
+
         if (!socket->SetNonBlocking(true)) {
             SETH_ERROR("set nonblocking failed, close socket");
             socket->Free();
@@ -191,23 +199,16 @@ bool TcpAcceptor::OnRead() {
         conn->SetPacketEncoder(packet_factory_->CreateEncoder());
         conn->SetPacketDecoder(packet_factory_->CreateDecoder());
         event_loop.PostTask(std::bind(
-                &NewConnectionHandler,
-                std::ref(*conn),
-                std::ref(conn_handler_)));
+            &NewConnectionHandler,
+            std::ref(*conn),
+            std::ref(conn_handler_)));
         event_loop.Wakeup();
-        std::string from_ip;
-        uint16_t from_port;
-        if (socket->GetIpPort(&from_ip, &from_port) != 0) {
-            SETH_ERROR("accept failed %s:%d", from_ip.c_str(), from_port);
-            socket->Free();
-            continue;
-        }
-
         SETH_INFO("accept success %s:%d", from_ip.c_str(), from_port);
         conn_map_[from_ip + std::to_string(from_port)] = conn;
         CHECK_MEMORY_SIZE(conn_map_);
         in_check_queue_->push(conn);
-        while (!destroy_) {
+        int cleanup_limit = 32;
+        while (!destroy_ && cleanup_limit-- > 0) {
             std::shared_ptr<TcpConnection> out_conn = nullptr;
             if (!out_check_queue_->pop(&out_conn) || out_conn == nullptr) {
                 break;
@@ -245,7 +246,7 @@ void TcpAcceptor::CheckConnectionValid() {
         conn->ShouldReconnect();
         SETH_DEBUG("ShouldReconnect called now checked stopted conn waiting_check_queue_ size: %u", waiting_check_queue_.size());
         if (conn->CheckStoped()) {
-            SETH_DEBUG("checked stopted conn.");
+            SETH_INFO("checked stopted conn.");
             out_check_queue_->push(conn);
         } else {
             waiting_check_queue_.push_back(conn);

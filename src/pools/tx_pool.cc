@@ -138,13 +138,13 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
     }
 
     if (tx_ptr->tx_key.empty()) {
-        SETH_DEBUG("add failed unique hash empty: %d", tx_ptr->tx_info->step());
+        SETH_DEBUG("add failed unique hash empty: %d", (int32_t)tx_ptr->tx_info->step());
         tx_ptr->tx_key = pools::GetTxMessageHash(*tx_ptr->tx_info);
     }
 
     if (!IsUserTransaction(tx_ptr->tx_info->step()) && !tx_ptr->tx_info->key().empty()) {
         SETH_DEBUG("success add system tx step: %d, nonce: %lu, unique hash: %s", 
-            tx_ptr->tx_info->step(), 
+            (int32_t)tx_ptr->tx_info->step(), 
             tx_ptr->tx_info->nonce(), 
             common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
         if (over_unique_hash_set_.find(tx_ptr->tx_info->key()) != over_unique_hash_set_.end()) {
@@ -154,7 +154,7 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
                 common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
                 common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(), 
                 tx_ptr->tx_info->nonce(),
-                tx_ptr->tx_info->step(),
+                (int32_t)tx_ptr->tx_info->step(),
                 common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
             return kPoolsError;
         }
@@ -166,7 +166,7 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
         common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
         common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(), 
         tx_ptr->tx_info->nonce(),
-        tx_ptr->tx_info->step());
+        (int32_t)tx_ptr->tx_info->step());
     if (tx_ptr->tx_info->step() == pools::protobuf::kContractExcute) {
         assert(tx_ptr->address_info->addr().size() == common::kPreypamentAddressLength);
     }
@@ -177,7 +177,7 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
 void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
     auto now_tm_us = common::TimeUtils::TimestampUs();
     SETH_DEBUG("0 now tx size: %u", all_tx_size());
-    for (uint32_t i = 0; i < view_block.block_info().tx_list_size(); ++i) {
+    for (uint32_t i = 0; i < (uint32_t)view_block.block_info().tx_list_size(); ++i) {
         auto addr = IsTxUseFromAddress(view_block.block_info().tx_list(i).step()) ? 
             view_block.block_info().tx_list(i).from() : 
             view_block.block_info().tx_list(i).to();
@@ -204,7 +204,7 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
                         "step: %lu, nonce: %lu, consensus nonce: %lu, key: %s", 
                         common::Encode::HexEncode(addr).c_str(),
                         common::Encode::HexEncode(view_block.block_info().tx_list(i).unique_hash()).c_str(),
-                        view_block.block_info().tx_list(i).step(),
+                        (int32_t)view_block.block_info().tx_list(i).step(),
                         view_block.block_info().tx_list(i).nonce(),
                         nonce_iter->second->tx_info->nonce(),
                         common::Encode::HexEncode(nonce_iter->second->tx_info->key()).c_str());
@@ -225,7 +225,7 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
                             common::Encode::HexEncode(view_block.block_info().tx_list(i).to()).c_str(), 
                             common::Encode::HexEncode(view_block.block_info().tx_list(i).unique_hash()).c_str(), 
                             view_block.block_info().tx_list(i).nonce(),
-                            view_block.block_info().tx_list(i).step(),
+                            (int32_t)view_block.block_info().tx_list(i).step(),
                             common::Encode::HexEncode(addr).c_str());
                     } else {
                         if (nonce_iter->first > view_block.block_info().tx_list(i).nonce()) {
@@ -265,7 +265,7 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
         remove_tx_func(consensus_tx_map_);
         SETH_DEBUG("trace tx pool: %d, step: %d, to: %s, unique hash: %s, over tx addr: %s, nonce: %lu", 
             pool_index_,
-            view_block.block_info().tx_list(i).step(),
+            (int32_t)view_block.block_info().tx_list(i).step(),
             common::Encode::HexEncode(view_block.block_info().tx_list(i).to()).c_str(), 
             common::Encode::HexEncode(view_block.block_info().tx_list(i).unique_hash()).c_str(), 
             common::Encode::HexEncode(addr).c_str(), 
@@ -366,7 +366,7 @@ void TxPool::GetTxSyncToLeader(
             if (!IsUserTransaction(tx_ptr->tx_info->step())) {
                 SETH_DEBUG("nonce invalid: %lu, step is not user tx: %d", 
                     tx_ptr->tx_info->nonce(), 
-                    tx_ptr->tx_info->step());
+                    (int32_t)tx_ptr->tx_info->step());
             } else {
                 SETH_DEBUG("trace tx pool: %d, to leader tx addr: %s, nonce: %lu", 
                     pool_index_,
@@ -374,13 +374,13 @@ void TxPool::GetTxSyncToLeader(
                     tx_ptr->tx_info->nonce());
                 auto* tx = txs->Add();
                 *tx = *tx_ptr->tx_info;
-                if (txs->size() >= count) {
+                if ((uint32_t)txs->size() >= count) {
                     break;
                 }
             }
         }
 
-        if (txs->size() >= count) {
+        if ((uint32_t)txs->size() >= count) {
             break;
         }
     }
@@ -546,7 +546,7 @@ void TxPool::InitLatestInfo() {
             network_id,
             pool_index_,
             &pool_info)) {
-        // 根据数据库更新内存中的 tx_pool 状态
+        // Update the status of tx_pool in memory according to the database
         if (latest_height_ == common::kInvalidUint64 || latest_height_ < pool_info.height()) {
             latest_height_ = pool_info.height();
             latest_hash_ = pool_info.hash();
@@ -682,7 +682,7 @@ void TxPool::ConsensusAddTxs(const pools::TxItemPtr& tx_ptr) {
     }
 
     if (tx_ptr->tx_key.empty()) {
-        SETH_WARN("add failed unique hash empty: %d", tx_ptr->tx_info->step());
+        SETH_WARN("add failed unique hash empty: %d", (int32_t)tx_ptr->tx_info->step());
         tx_ptr->tx_key = pools::GetTxMessageHash(*tx_ptr->tx_info);
     }
 

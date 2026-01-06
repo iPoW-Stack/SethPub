@@ -98,7 +98,7 @@ int ContractCall::HandleTx(
             if (call_res != kConsensusSuccess || res.status_code != EVMC_SUCCESS) {
                 block_tx.set_status(EvmcStatusToZbftStatus(res.status_code));
                 SETH_DEBUG("call contract failed, call_res: %d, evmc res: %d, gas_limit: %lu, bytes: %s, input: %s!",
-                    call_res, res.status_code, gas_limit, "common::Encode::HexEncode(address_info->bytes_code()).c_str()",
+                    call_res, (int32_t)res.status_code, gas_limit, "common::Encode::HexEncode(address_info->bytes_code()).c_str()",
                     common::Encode::HexEncode(block_tx.contract_input()).c_str());
             }
 
@@ -296,7 +296,7 @@ int ContractCall::HandleTx(
         gas_used,
         block_tx.gas_price(),
         block_tx.status(),
-        block_tx.step(),
+        (int32_t)block_tx.step(),
         block_tx.amount(),
         src_to_balance,
         contract_balance_add,

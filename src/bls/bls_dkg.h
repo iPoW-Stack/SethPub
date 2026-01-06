@@ -29,8 +29,11 @@
 #include "protos/transport.pb.h"
 #include "security/security.h"
 #include "transport/transport_utils.h"
+#include "bls/dkg_cache.h"
 
 namespace seth {
+
+class DkgCache;
 
 namespace bls {
 
@@ -48,9 +51,11 @@ public:
         const libff::alt_bn128_G2 local_publick_key,
         const libff::alt_bn128_G2 common_public_key,
         std::shared_ptr<db::Db>& db,
+        std::shared_ptr<DkgCache>& dkg_cache,
         std::shared_ptr<ck::ClickHouseClient> ck_client);
     void OnNewElectionBlock(
         uint64_t elect_height,
+        uint64_t prev_elect_height,
         common::MembersPtr& members,
         std::shared_ptr<TimeBlockItem>& latest_timeblock_info);
     void HandleMessage(const transport::MessagePtr& header);
@@ -114,10 +119,17 @@ private:
         return true;
 #endif
         auto now_tm_us = common::TimeUtils::TimestampUs();
+        SETH_DEBUG("IsVerifyBrdPeriod begin_time_us_: %lu, now_tm_us: %lu, "
+            "kDkgPeriodUs: %lu, now_tm_us < (begin_time_us_ + kDkgPeriodUs * 4): %d",
+            begin_time_us_,
+            now_tm_us,
+            kDkgPeriodUs,
+            (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 4)));
         if (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 4)) {
             return true;
         }
 
+        return true;
         return false;
     }
 
@@ -126,11 +138,19 @@ private:
         return true;
 #endif
         auto now_tm_us = common::TimeUtils::TimestampUs();
+       SETH_DEBUG("IsSwapKeyPeriod begin_time_us_: %lu, now_tm_us: %lu, "
+            "kDkgPeriodUs: %lu, now_tm_us > (begin_time_us_ + kDkgPeriodUs * 4): %d, now_tm_us < (begin_time_us_ + kDkgPeriodUs * 7): %d",
+            begin_time_us_,
+            now_tm_us,
+            kDkgPeriodUs,
+            (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 4)),
+            (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 7)));
         if (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 7) &&
                 now_tm_us >= (begin_time_us_ + kDkgPeriodUs * 4)) {
             return true;
         }
 
+        return true;
         return false;
     }
 
@@ -139,11 +159,19 @@ private:
         return true;
 #endif
         auto now_tm_us = common::TimeUtils::TimestampUs();
+        SETH_DEBUG("IsFinishPeriod begin_time_us_: %lu, now_tm_us: %lu, "
+            "kDkgPeriodUs: %lu, now_tm_us > (begin_time_us_ + kDkgPeriodUs * 4): %d, now_tm_us < (begin_time_us_ + kDkgPeriodUs * 7): %d",
+            begin_time_us_,
+            now_tm_us,
+            kDkgPeriodUs,
+            (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 7)),
+            (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 10)));
         if (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 10) &&
             now_tm_us >= (begin_time_us_ + kDkgPeriodUs * 7)) {
             return true;
         }
 
+        return true;
         return false;
     }
 
@@ -182,9 +210,12 @@ private:
     bool has_broadcast_swapkey_ = false;
     bool has_finished_ = false;
     std::vector<libff::alt_bn128_G2> for_common_pk_g2s_;
+    std::shared_ptr<DkgCache> dkg_cache_{ nullptr };
     common::ThreadSafeQueue<std::shared_ptr<transport::TransportMessage>> bls_msg_queue_;
     std::shared_ptr<ck::ClickHouseClient> ck_client_ = nullptr;
     std::string valid_seck_keys_str_;
+    bool should_change_verfication_g2_ = false;
+    uint64_t prev_elect_height_ = 0;
 
 #ifdef SETH_UNITTEST
     transport::MessagePtr ver_brd_msg_;

@@ -89,15 +89,14 @@ public:
         timeout = common::TimeUtils::TimestampUs() + kConsensusMessageTimeoutUs;
         handle_timeout = common::kInvalidUint64;
         prev_timestamp = common::TimeUtils::TimestampUs() + kMessagePeriodUs;
-#ifndef NDEBUG
+// #ifndef NDEBUG
         memset(times, 0, sizeof(times));
-#endif
+// #endif
         times_idx = 0;
         thread_index = -1;
         // auto now_count = testTransportMessageCount.fetch_add(1);
         // SETH_DEBUG("memory check create new transport message: %d", now_count);
-         common::GlobalInfo::Instance()->AddSharedObj(11);
-
+        common::GlobalInfo::Instance()->AddSharedObj(11);
     }
 
     ~TransportMessage() {
@@ -112,10 +111,10 @@ public:
     std::shared_ptr<address::protobuf::AddressInfo> address_info = nullptr;
     std::string msg_hash;
     bool retry;
-#ifndef NDEBUG
+// #ifndef NDEBUG
     uint64_t times[64];
     std::string debug_str[64];
-#endif
+// #endif
     uint32_t times_idx;
     uint64_t handle_timeout;
     uint64_t timeout;

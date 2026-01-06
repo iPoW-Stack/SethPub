@@ -343,7 +343,7 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
     evmc_result* raw_result = (evmc_result*)&evmc_res;
     raw_result->gas_left = msg.gas;
     SETH_DEBUG("host called kind: %u, from: %s, to: %s, amount: %lu",
-        msg.kind, common::Encode::HexEncode(params.from).c_str(), 
+        (int32_t)msg.kind, common::Encode::HexEncode(params.from).c_str(), 
         common::Encode::HexEncode(params.to).c_str(), params.value);
     if (contract_mgr_->call(
             params,
@@ -388,7 +388,7 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
         }
     }
 
-	// 交易转账缓存
+	// Transaction transfer cache
     if (params.value > 0) {
         uint64_t from_balance = EvmcBytes32ToUint64(get_balance(msg.sender));
         if (from_balance < params.value) {
@@ -495,7 +495,7 @@ int ZjchainHost::SaveKeyValue(
         const std::string& key,
         const std::string& val) {
     SETH_DEBUG("called 13");
-    SETH_INFO("view: %lu, zjcvm set storage called, id: %s, key: %s, value: %s",
+    SETH_DEBUG("view: %lu, zjcvm set storage called, id: %s, key: %s, value: %s",
         view_,
         common::Encode::HexEncode(std::string((char*)addr.bytes, sizeof(addr.bytes))).c_str(),
         common::Encode::HexEncode(key).c_str(),
@@ -527,7 +527,7 @@ int ZjchainHost::GetCachedKeyValue(
         const std::string& key_str, 
         std::string* val) {
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
-    SETH_INFO("view: %lu, zjcvm get storage called, id: %s, key: %s, value: %s, thread_idx: %d",
+    SETH_DEBUG("view: %lu, zjcvm get storage called, id: %s, key: %s, value: %s, thread_idx: %d",
         view_,
         common::Encode::HexEncode(id).c_str(),
         common::Encode::HexEncode(key_str).c_str(),
@@ -569,7 +569,7 @@ int ZjchainHost::GetKeyValue(const std::string& id, const std::string& key_str, 
         auto siter = it->second.str_storage.find(key_str);
         if (siter != it->second.str_storage.end()) {
             *val = siter->second.str_val;
-            SETH_INFO("view: %lu, success zjcvm get storage called, id: %s, key: %s, value: %s",
+            SETH_DEBUG("view: %lu, success zjcvm get storage called, id: %s, key: %s, value: %s",
                 view_,
                 common::Encode::HexEncode(id).c_str(),
                 common::Encode::HexEncode(key_str).c_str(),
@@ -580,7 +580,7 @@ int ZjchainHost::GetKeyValue(const std::string& id, const std::string& key_str, 
 
     auto str_key = id + key_str;
     if (view_block_chain_->GetPrevStorageKeyValue(parent_hash_, id, key_str, val)) {
-        SETH_INFO("view: %lu, success zjcvm get storage called, id: %s, key: %s, value: %s",
+        SETH_DEBUG("view: %lu, success zjcvm get storage called, id: %s, key: %s, value: %s",
             view_,
             common::Encode::HexEncode(id).c_str(),
             common::Encode::HexEncode(key_str).c_str(),
@@ -595,16 +595,15 @@ int ZjchainHost::GetKeyValue(const std::string& id, const std::string& key_str, 
 
     SETH_DEBUG("called 14");
     if (!Execution::Instance()->GetStorage(addr, key_str, val)) {
-        SETH_INFO("view: %lu, failed zjcvm get storage called, id: %s, key: %s, value: %s",
+        SETH_DEBUG("view: %lu, failed zjcvm get storage called, id: %s, key: %s, value: %s",
             view_,
             common::Encode::HexEncode(id).c_str(),
             common::Encode::HexEncode(key_str).c_str(),
             common::Encode::HexEncode(*val).c_str());
-
         return kZjcvmError;
     }
 
-    SETH_INFO("view: %lu, success zjcvm get storage called, id: %s, key: %s, value: %s",
+    SETH_DEBUG("view: %lu, success zjcvm get storage called, id: %s, key: %s, value: %s",
         view_,
         common::Encode::HexEncode(id).c_str(),
         common::Encode::HexEncode(key_str).c_str(),

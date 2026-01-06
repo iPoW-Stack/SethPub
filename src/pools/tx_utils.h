@@ -2,6 +2,8 @@
 
 #include <deque>
 #include <protos/elect.pb.h>
+#include <google/protobuf/io/coded_stream.h>
+#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
 #include "common/bitmap.h"
 #include "common/encode.h"
@@ -23,11 +25,11 @@ namespace seth {
 
 namespace pools {
 
-static const uint64_t kBftStartDeltaTime = 10000000lu; // 预留交易生效时间，避免部分节点找不到交易（但会增大交易 latency）
+static const uint64_t kBftStartDeltaTime = 10000000lu; // Reserved transaction effective time to avoid some nodes not finding the transaction (but it will increase transaction latency)
 static const uint32_t kTxPoolTimeoutUs = 10u * 1000u * 1000u;
 static const uint32_t kTxStorageKeyMaxSize = 12u;
 static const uint32_t kMaxToTxsCount = 10000u;
-static const uint32_t kLeafMaxHeightCount = 1024u * 1024u;// 1024u * 1024u;  // each merkle block 1M
+static const uint32_t kLeafMaxHeightCount = 1024u * 1024u;// 1024u * 1024u;  // each merkle block 1M.
 static const uint32_t kEachHeightTreeMaxByteSize = kLeafMaxHeightCount * 2u;  // each merkle block 1M
 static const uint32_t kBranchMaxCount = kLeafMaxHeightCount / 64u;
 static const uint32_t kHeightLevelItemMaxCount = 2 * kBranchMaxCount - 1;
@@ -67,7 +69,7 @@ struct StatisticElectItem {
 
     uint64_t elect_height{ 0 };
     uint32_t succ_tx_count[common::kEachShardMaxNodeCount];
-    std::unordered_map<int32_t, std::shared_ptr<common::Point>> leader_lof_map;
+    std::map<int32_t, std::shared_ptr<common::Point>> leader_lof_map;
     std::mutex leader_lof_map_mutex;
 };
 
@@ -221,17 +223,28 @@ struct StatisticInfoItem {
 
     uint64_t all_gas_amount;
     uint64_t root_all_gas_amount;
-    std::map<uint64_t, std::unordered_map<std::string, uint64_t>> join_elect_stoke_map;
-    std::map<uint64_t, std::unordered_map<std::string, uint32_t>> join_elect_shard_map;
-    std::map<uint64_t, std::unordered_map<std::string, StatisticMemberInfoItem>> height_node_collect_info_map;
-    std::unordered_map<std::string, std::string> id_pk_map;
-    std::unordered_map<std::string, std::shared_ptr<elect::protobuf::BlsPublicKey>> id_agg_bls_pk_map;
-    std::unordered_map<std::string, std::shared_ptr<elect::protobuf::BlsPopProof>> id_agg_bls_pk_proof_map;
+    std::map<uint64_t, std::map<std::string, uint64_t>> join_elect_stoke_map;
+    std::map<uint64_t, std::map<std::string, uint32_t>> join_elect_shard_map;
+    std::map<uint64_t, std::map<std::string, StatisticMemberInfoItem>> height_node_collect_info_map;
+    std::map<std::string, std::string> id_pk_map;
+    std::map<std::string, std::shared_ptr<elect::protobuf::BlsPublicKey>> id_agg_bls_pk_map;
+    std::map<std::string, std::shared_ptr<elect::protobuf::BlsPopProof>> id_agg_bls_pk_proof_map;
     uint64_t statistic_min_height;
     uint64_t statistic_max_height;
 };
 
 static inline std::string GetTxMessageHash(const pools::protobuf::TxMessage& tx_info) {
+    // std::string serialized;
+    // google::protobuf::io::StringOutputStream string_stream(&serialized);
+    // google::protobuf::io::CodedOutputStream coded_output(&string_stream);
+    // coded_output.SetSerializationDeterministic(true); 
+
+    // if (!tx_info.SerializePartialToCodedStream(&coded_output)) {
+    //     return "";
+    // }
+
+    // coded_output.Trim();
+
     std::string message;
     message.reserve(tx_info.ByteSizeLong());
     uint64_t nonce = tx_info.nonce();
@@ -343,7 +356,8 @@ public:
             address_info(addr_info),
             is_consensus_add_tx(false),
             tx_info_index(tx_info_idx),
-            synced_leaders_(common::kEachShardMaxNodeCount) {
+            synced_leaders_(common::kEachShardMaxNodeCount),
+            sign_verified(false) {
         msg_ptr = msgp;
         tx_info = nullptr;
         if (tx_info_index < 0) {
@@ -402,6 +416,7 @@ public:
     bool is_consensus_add_tx;
     int32_t tx_info_index;
     common::Bitmap synced_leaders_;
+    bool sign_verified;
 };
 
 typedef std::shared_ptr<TxItem> TxItemPtr;

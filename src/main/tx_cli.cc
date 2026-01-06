@@ -12,7 +12,7 @@
 #include "common/string_utils.h"
 #include "db/db.h"
 #include "dht/dht_key.h"
-#include "http/http_client.h"
+// #include "http/http_client.h"
 #include "pools/tx_utils.h"
 #include "protos/address.pb.h"
 #include "security/ecdsa/ecdsa.h"
@@ -23,7 +23,7 @@
 
 using namespace seth;
 static bool global_stop = false;
-static const std::string kBroadcastIp = "192.168.0.21";
+static const std::string kBroadcastIp = "127.0.0.1";
 static const uint16_t kBroadcastPort = 13001;
 static int shardnum = 3;
 static const int delayus = 0;
@@ -38,7 +38,7 @@ static std::unordered_map<uint32_t, std::unordered_map<uint32_t, std::string>> n
          {12, "c2e8fb3673f82cadd860d7523c12e71a7279faec0814803e547286bb0363d0e8"}}}
 };
 
-http::HttpClient cli;
+// http::HttpClient cli;
 std::mutex cli_mutex;
 std::condition_variable cli_con;
 std::string global_chain_node_ip = "127.0.0.1";
@@ -80,25 +80,25 @@ void SignalRegister() {
 }
 
 static void WriteDefaultLogConf() {
-    FILE* file = NULL;
-    file = fopen("./log4cpp.properties", "w");
-    if (file == NULL) {
-        return;
+    spdlog::init_thread_pool(8192, 1);
+
+    auto logger = spdlog::create_async<spdlog::sinks::basic_file_sink_mt>(
+        "async_file", "log/seth.log", true);
+    // auto logger = spdlog::basic_logger_mt("sync_file", "log/seth.log", false);
+    spdlog::set_default_logger(logger);
+
+    // 关键：强制设置全局 pattern
+    spdlog::set_pattern("%Y-%m-%d %H:%M:%S.%e [thread %t] %-5l [%n] %v%$");
+
+    // 额外保险：遍历所有 sink 重新设置（防止被覆盖）
+    for (auto& sink : logger->sinks()) {
+        sink->set_pattern("%Y-%m-%d %H:%M:%S.%e [thread %t] %-5l [%n] %v%$");
     }
-    std::string log_str = ("# log4cpp.properties\n"
-        "log4cpp.rootCategory = DEBUG\n"
-        "log4cpp.category.sub1 = DEBUG, programLog\n"
-        "log4cpp.appender.rootAppender = ConsoleAppender\n"
-        "log4cpp.appender.rootAppender.layout = PatternLayout\n"
-        "log4cpp.appender.rootAppender.layout.ConversionPattern = %d [%p] %m%n\n"
-        "log4cpp.appender.programLog = RollingFileAppender\n"
-        "log4cpp.appender.programLog.fileName = ./txcli.log\n") +
-        std::string("log4cpp.appender.programLog.maxFileSize = 1073741824\n"
-            "log4cpp.appender.programLog.maxBackupIndex = 1\n"
-            "log4cpp.appender.programLog.layout = PatternLayout\n"
-            "log4cpp.appender.programLog.layout.ConversionPattern = %d [%p] %m%n\n");
-    fwrite(log_str.c_str(), log_str.size(), 1, file);
-    fclose(file);
+
+    spdlog::set_level(spdlog::level::debug);
+    spdlog::flush_on(spdlog::level::err);
+
+    spdlog::debug("init spdlog success: %d", 1);
 }
 
 static transport::MessagePtr CreateTransactionWithAttr(
@@ -393,38 +393,38 @@ static void GetOqsKeys() {
     delete[]read_buf;
 }
 
-static evhtp_res GetAccountInfoCallback(evhtp_request_t* req, evbuf_t* buf, void* arg) {
-    if (req->status != 200) {
-        fprintf(stderr, "请求失败，状态码: %d\n", req->status);
-        cli_con.notify_one();
-        return EVHTP_RES_ERROR;
-    }
+// static evhtp_res GetAccountInfoCallback(evhtp_request_t* req, evbuf_t* buf, void* arg) {
+//     if (req->status != 200) {
+//         fprintf(stderr, "请求失败，状态码: %d\n", req->status);
+//         cli_con.notify_one();
+//         return EVHTP_RES_ERROR;
+//     }
     
-    struct evbuffer* input = buf;//req->buffer_in;
-    size_t len = evbuffer_get_length(input);
-    char* response_data = (char*)malloc(len + 1);
-    evbuffer_copyout(input, response_data, len);
-    response_data[len] = '\0';
-    auto json_ptr = std::make_shared<nlohmann::json>(nlohmann::json::parse(response_data));
-    auto addr = common::Encode::Base64Decode((*json_ptr)["addr"]);
-    // printf("success get address %s info: %s\n", 
-    //     common::Encode::HexEncode(addr).c_str(), 
-    //     response_data);
-    account_info_jsons[addr] = json_ptr;
-    free(response_data);
-    std::unique_lock<std::mutex> l(cli_mutex);
-    cli_con.notify_one();
-    return EVHTP_RES_OK;
-}
+//     struct evbuffer* input = buf;//req->buffer_in;
+//     size_t len = evbuffer_get_length(input);
+//     char* response_data = (char*)malloc(len + 1);
+//     evbuffer_copyout(input, response_data, len);
+//     response_data[len] = '\0';
+//     auto json_ptr = std::make_shared<nlohmann::json>(nlohmann::json::parse(response_data));
+//     auto addr = common::Encode::Base64Decode((*json_ptr)["addr"]);
+//     // printf("success get address %s info: %s\n", 
+//     //     common::Encode::HexEncode(addr).c_str(), 
+//     //     response_data);
+//     account_info_jsons[addr] = json_ptr;
+//     free(response_data);
+//     std::unique_lock<std::mutex> l(cli_mutex);
+//     cli_con.notify_one();
+//     return EVHTP_RES_OK;
+// }
 
-std::shared_ptr<nlohmann::json> GetAddressInfo(http::HttpClient& http_cli, const std::string& peer_ip, const std::string& addr) {
-    account_info_jsons[addr] = nullptr;
-    std::string data = common::StringUtil::Format("/query_account?address=%s", common::Encode::HexEncode(addr).c_str());
-    http_cli.Post(peer_ip.c_str(), 23001, data, "", GetAccountInfoCallback);
-    std::unique_lock<std::mutex> l(cli_mutex);
-    cli_con.wait_for(l, std::chrono::milliseconds(1000));
-    return account_info_jsons[addr];
-}
+// std::shared_ptr<nlohmann::json> GetAddressInfo(http::HttpClient& http_cli, const std::string& peer_ip, const std::string& addr) {
+//     account_info_jsons[addr] = nullptr;
+//     std::string data = common::StringUtil::Format("/query_account?address=%s", common::Encode::HexEncode(addr).c_str());
+//     http_cli.Post(peer_ip.c_str(), 23001, data, "", GetAccountInfoCallback);
+//     std::unique_lock<std::mutex> l(cli_mutex);
+//     cli_con.wait_for(l, std::chrono::milliseconds(1000));
+//     return account_info_jsons[addr];
+// }
 
 int tx_main(int argc, char** argv) {
     // ./txcli 0 $net_id $pool_id $ip $port $delay_us $multi_pool
@@ -457,7 +457,6 @@ int tx_main(int argc, char** argv) {
     LoadAllAccounts(shardnum);
     SignalRegister();
     WriteDefaultLogConf();
-    log4cpp::PropertyConfigurator::configure("./log4cpp.properties");
     transport::MultiThreadHandler net_handler;
     std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
     auto db_ptr = std::make_shared<db::Db>();
@@ -511,7 +510,7 @@ int tx_main(int argc, char** argv) {
         std::shared_ptr<security::Security> thread_security = std::make_shared<security::Ecdsa>();
         thread_security->SetPrivateKey(from_prikey);
         uint32_t count = 0;
-        uint32_t batch_count = 1000;
+        uint32_t batch_count = 1;
         while (!global_stop) {
             if (count % batch_count == 0) {
                 if (pool_id == -1) {
@@ -614,7 +613,6 @@ int base_tx_main(int argc, char** argv) {
     auto base_private_key = "19997691aee3e5e4f7842935d26f3ad790d81cf015e79b78958e848000000000";
     SignalRegister();
     WriteDefaultLogConf();
-    log4cpp::PropertyConfigurator::configure("./log4cpp.properties");
     transport::MultiThreadHandler net_handler;
     std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
     auto db_ptr = std::make_shared<db::Db>();
@@ -704,7 +702,6 @@ int one_tx_main(int argc, char** argv) {
     LoadAllAccounts();
     SignalRegister();
     WriteDefaultLogConf();
-    log4cpp::PropertyConfigurator::configure("./log4cpp.properties");
     transport::MultiThreadHandler net_handler;
     std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
     std::cout << 0 << std::endl;
@@ -771,7 +768,6 @@ int create_library(int argc, char** argv) {
     LoadAllAccounts();
     SignalRegister();
     WriteDefaultLogConf();
-    log4cpp::PropertyConfigurator::configure("./log4cpp.properties");
     transport::MultiThreadHandler net_handler;
     std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
     auto db_ptr = std::make_shared<db::Db>();
@@ -845,7 +841,6 @@ int contract_main(int argc, char** argv) {
     LoadAllAccounts();
     SignalRegister();
     WriteDefaultLogConf();
-    log4cpp::PropertyConfigurator::configure("./log4cpp.properties");
     transport::MultiThreadHandler net_handler;
     std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
     auto db_ptr = std::make_shared<db::Db>();
@@ -927,7 +922,6 @@ int contract_set_prepayment(int argc, char** argv) {
     LoadAllAccounts();
     SignalRegister();
     WriteDefaultLogConf();
-    log4cpp::PropertyConfigurator::configure("./log4cpp.properties");
     transport::MultiThreadHandler net_handler;
     std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
     auto db_ptr = std::make_shared<db::Db>();
@@ -1000,7 +994,6 @@ int contract_call(int argc, char** argv, bool more=false) {
     LoadAllAccounts();
     SignalRegister();
     WriteDefaultLogConf();
-    log4cpp::PropertyConfigurator::configure("./log4cpp.properties");
     transport::MultiThreadHandler net_handler;
     std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
     auto db_ptr = std::make_shared<db::Db>();
@@ -1089,7 +1082,6 @@ int gmssl_tx(const std::string& private_key, const std::string& to, uint64_t amo
     LoadAllAccounts(shardnum);
     SignalRegister();
     WriteDefaultLogConf();
-    log4cpp::PropertyConfigurator::configure("./log4cpp.properties");
     transport::MultiThreadHandler net_handler;
     std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
     auto db_ptr = std::make_shared<db::Db>();
@@ -1156,13 +1148,13 @@ int gmssl_tx(const std::string& private_key, const std::string& to, uint64_t amo
     }
 
     std::cout << "send success." << std::endl;
+    return 0;
 }
 
 int oqs_tx(const std::string& to, uint64_t amount) {
     GetOqsKeys();
     SignalRegister();
     WriteDefaultLogConf();
-    log4cpp::PropertyConfigurator::configure("./log4cpp.properties");
     transport::MultiThreadHandler net_handler;
     std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
     auto db_ptr = std::make_shared<db::Db>();
@@ -1234,27 +1226,27 @@ int oqs_tx(const std::string& to, uint64_t amount) {
 }
 
 void UpdateAddressNonce() {
-    for (auto iter = g_prikeys.begin(); iter != g_prikeys.end(); ++iter) {
-        // if (!prikey_with_nonce.empty()) {
-        //     if (src_prikey_with_nonce[*iter] + (batch_nonce_check_count / 2) >= prikey_with_nonce[*iter]) {
-        //         continue;
-        //     }
-        // }
+    // for (auto iter = g_prikeys.begin(); iter != g_prikeys.end(); ++iter) {
+    //     // if (!prikey_with_nonce.empty()) {
+    //     //     if (src_prikey_with_nonce[*iter] + (batch_nonce_check_count / 2) >= prikey_with_nonce[*iter]) {
+    //     //         continue;
+    //     //     }
+    //     // }
 
-        std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
-        security->SetPrivateKey(*iter);
-        auto addr_json = GetAddressInfo(cli, global_chain_node_ip, security->GetAddress());
-        if (addr_json) {
-            // printf("success get address info: %s\n", addr_json->dump().c_str());
-        } else {
-            printf("failed get address info: %s\n", common::Encode::HexEncode(security->GetAddress()).c_str());
-            continue;
-        }
+    //     std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
+    //     security->SetPrivateKey(*iter);
+    //     auto addr_json = GetAddressInfo(cli, global_chain_node_ip, security->GetAddress());
+    //     if (addr_json) {
+    //         // printf("success get address info: %s\n", addr_json->dump().c_str());
+    //     } else {
+    //         printf("failed get address info: %s\n", common::Encode::HexEncode(security->GetAddress()).c_str());
+    //         continue;
+    //     }
 
-        uint64_t nonce = 0;
-        common::StringUtil::ToUint64((*addr_json)["nonce"], &nonce);
-        src_prikey_with_nonce[*iter] = nonce;
-    }
+    //     uint64_t nonce = 0;
+    //     common::StringUtil::ToUint64((*addr_json)["nonce"], &nonce);
+    //     src_prikey_with_nonce[*iter] = nonce;
+    // }
 }
 
 int main(int argc, char** argv) {
@@ -1304,7 +1296,7 @@ int main(int argc, char** argv) {
     }
 
     usleep(1000000);
-    cli.Destroy();
+    // cli.Destroy();
     transport::TcpTransport::Instance()->Stop();
     return 0;
 }

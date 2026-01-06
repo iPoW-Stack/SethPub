@@ -28,6 +28,7 @@ public:
     ViewBlockChain();
     ~ViewBlockChain();
     void Init(
+        ChainType chain_type,
         uint32_t pool_index, 
         std::shared_ptr<db::Db>& db, 
         std::shared_ptr<block::BlockManager>& block_mgr,
@@ -47,7 +48,7 @@ public:
         bool init);
     // Get Block by hash value, fetch from neighbor nodes if necessary
     std::shared_ptr<ViewBlockInfo> Get(const HashStr& hash);
-    std::shared_ptr<ViewBlock> GetViewBlockWithHash(const HashStr& hash);
+    std::shared_ptr<ViewBlockInfo> GetViewBlockWithHash(const HashStr& hash);
     std::shared_ptr<ViewBlock> GetViewBlockWithHeight(uint32_t network_id, uint64_t height);
     // std::shared_ptr<ViewBlock> Get(uint64_t view);
     // If has block
@@ -89,11 +90,11 @@ public:
         uint64_t lastest_time_block_tm,
         uint64_t latest_time_block_height,
         uint64_t vss_random);
+    void HandleTimerMessage();
+    std::shared_ptr<ViewBlockInfo> CheckCommit(const QC& qc);
     bool view_commited(uint32_t network_id, View view) const {
-        if (network_id == common::GlobalInfo::Instance()->network_id()) {
-            if (commited_view_.find(view) != commited_view_.end()) {
-                return true;
-            }
+        if (commited_view_.find(view) != commited_view_.end()) {
+            return true;
         }
 
         if (prefix_db_->ViewBlockIsValidView(network_id, pool_index_, view)) {
@@ -141,6 +142,10 @@ public:
         return high_view_block_->qc();
     }
 
+    inline View HighView() const {
+        return high_view_block_view_;
+    }
+
     void ResetViewBlock(const HashStr& hash) {
         auto it = view_blocks_info_.find(hash);
         if (it != view_blocks_info_.end() && 
@@ -154,7 +159,7 @@ public:
     inline std::shared_ptr<ViewBlock> LatestCommittedBlock() const {
         return latest_committed_block_;
     }
-
+    // Set the latest committed block
     inline void SetLatestCommittedBlock(const std::shared_ptr<ViewBlockInfo>& view_block_info) {
         auto view_block = view_block_info->view_block;
         if (latest_committed_block_ &&
@@ -165,7 +170,7 @@ public:
             return;
         }
 
-        // 允许设置旧的 view block
+        // Allow setting old view blocks
         SETH_DEBUG("changed latest commited block %u_%u_%lu, new view: %lu, sign x: %s",
             view_block->qc().network_id(), 
             view_block->qc().pool_index(), 
@@ -174,7 +179,6 @@ public:
             common::Encode::HexEncode(view_block->qc().sign_x()).c_str());
         assert(!view_block->qc().sign_x().empty());
         latest_committed_block_ = view_block;
-        commited_block_queue_.push(view_block_info);
     }
 
     inline ViewBlockStatus GetViewBlockStatus(const std::shared_ptr<ViewBlock>& view_block) const {
@@ -235,9 +239,7 @@ private:
         }
         
         view_blocks_info_[view_block_info->view_block->qc().view_block_hash()] = view_block_info;
-#ifdef TEST_FORKING_ATTACK
         view_with_blocks_[view_block_info->view_block->qc().view()].push_back(view_block_info);
-#endif
     }
 
     std::shared_ptr<ViewBlockInfo> GetViewBlockInfo(
@@ -258,25 +260,23 @@ private:
     static const uint32_t kCachedViewBlockCount = 16u;
 
     std::shared_ptr<ViewBlock> high_view_block_ = nullptr;
+    std::atomic<View> high_view_block_view_ = 0llu;
     std::shared_ptr<ViewBlock> start_block_;
     std::unordered_map<HashStr, std::shared_ptr<ViewBlockInfo>> view_blocks_info_;
-    std::shared_ptr<ViewBlock> latest_committed_block_; // 最新 committed block
+    std::shared_ptr<ViewBlock> latest_committed_block_; // latest committed block
     std::shared_ptr<db::Db> db_ = nullptr;
     std::shared_ptr<protos::PrefixDb> prefix_db_ = nullptr;
     uint32_t pool_index_ = common::kInvalidPoolIndex;
     std::shared_ptr<block::AccountManager> account_mgr_ = nullptr;
     std::atomic<View> stored_to_db_view_ = 0llu;
     std::atomic<View> commited_max_view_ = 0llu;
-    common::ThreadSafeQueue<View> stored_view_queue_;
     common::ThreadSafeQueue<std::shared_ptr<ViewBlockInfo>> cached_block_queue_;
     std::unordered_map<HashStr, std::shared_ptr<ViewBlockInfo>> cached_block_map_;
+    std::map<uint64_t, std::vector<std::shared_ptr<ViewBlockInfo>>> cached_view_with_blocks_;
     std::priority_queue<
         std::shared_ptr<ViewBlockInfo>, 
         std::vector<std::shared_ptr<ViewBlockInfo>>,
         ViewBlockInfoCmp> cached_pri_queue_;
-    common::ThreadSafeQueue<std::shared_ptr<ViewBlockInfo>> commited_block_queue_;
-    std::unordered_map<uint64_t, std::shared_ptr<ViewBlockInfo>> commited_block_map_;
-    std::priority_queue<uint64_t, std::vector<uint64_t>, std::greater<uint64_t>> commited_pri_queue_;
     block::AccountLruMap<102400> account_lru_map_;
     std::shared_ptr<sync::KeyValueSync> kv_sync_;
     std::shared_ptr<IBlockAcceptor> block_acceptor_;
@@ -287,20 +287,18 @@ private:
     std::shared_ptr<pools::TxPoolManager> pools_mgr_ = nullptr;
     std::set<uint64_t> commited_view_;
     uint64_t prev_check_timeout_blocks_ms_ = 0;
-#ifdef TEST_FORKING_ATTACK
+    ChainType chain_type_ = kInvalidChain;
     std::map<uint64_t, std::vector<std::shared_ptr<ViewBlockInfo>>> view_with_blocks_;
-#endif
 
 };
 
 // from db
 Status GetLatestViewBlockFromDb(
-        const std::shared_ptr<db::Db>& db,
-        const uint32_t& pool_index,
-        std::shared_ptr<ViewBlock>& view_block);
+    uint32_t network_id,
+    const std::shared_ptr<db::Db>& db,
+    const uint32_t& pool_index,
+    std::shared_ptr<ViewBlock>& view_block);
         
 } // namespace consensus
     
 } // namespace seth
-
-

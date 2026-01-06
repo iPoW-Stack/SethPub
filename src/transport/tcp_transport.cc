@@ -124,6 +124,10 @@ void TcpTransport::Stop() {
     }
 }
 
+uint8_t TcpTransport::GetThreadIndexWithPool(uint32_t pool_index) {
+    return msg_handler_->GetThreadIndexWithPool(pool_index);
+}
+
 bool TcpTransport::OnClientPacket(std::shared_ptr<tnet::TcpConnection> conn, tnet::Packet& packet) {    
     // SETH_DEBUG("message coming");
     if (conn->GetSocket() == nullptr) {
@@ -312,6 +316,9 @@ int TcpTransport::Send(
 }
 
 void TcpTransport::Output() {
+    std::string last_ip;
+    uint16_t last_port = 0;
+    std::shared_ptr<tnet::TcpConnection> last_conn = nullptr;
     while (!destroy_) {
         while (true) {
             std::shared_ptr<tnet::TcpConnection> conn = nullptr;
@@ -335,10 +342,20 @@ void TcpTransport::Output() {
 
                 int32_t try_times = 0;
                 while (try_times++ < 3) {
-                    auto tcp_conn = GetConnection(item_ptr->des_ip, item_ptr->port);
+                    std::shared_ptr<tnet::TcpConnection> tcp_conn = nullptr;
+                    if (last_conn != nullptr && last_ip == item_ptr->des_ip && last_port == item_ptr->port) {
+                        tcp_conn = last_conn;
+                    } else {
+                        tcp_conn = GetConnection(item_ptr->des_ip, item_ptr->port);
+                        last_conn = tcp_conn;
+                        last_ip = item_ptr->des_ip;
+                        last_port = item_ptr->port;
+                    }
+
                     if (tcp_conn == nullptr) {
                         TRANSPORT_ERROR("get tcp connection failed[%s][%d][hash64: %llu]",
                             item_ptr->des_ip.c_str(), item_ptr->port, 0);
+                        last_conn = nullptr;
                         continue;
                     }
 
@@ -348,15 +365,18 @@ void TcpTransport::Output() {
                             item_ptr->des_ip.c_str(), item_ptr->port, 0, res);
                         if (res <= 0) {
                             tcp_conn->Destroy(true);
+                            last_conn = nullptr; // Clear cache on destroy
                         }
                         
+                        // Avoid busy loop on immediate retry
+                        std::this_thread::yield();
                         continue;
                     }
 
                     SETH_DEBUG("send to tcp connection success[%s][%d][hash64: %llu] "
-                        "res: %d, tcp_conn: %lu, size: %u",
+                        "res: %d, size: %u",
                         item_ptr->des_ip.c_str(), item_ptr->port, 
-                        item_ptr->hash64, res, tcp_conn.get(), item_ptr->msg.size());
+                        item_ptr->hash64, res, item_ptr->msg.size());
                     break;
                 }
 
@@ -384,38 +404,42 @@ std::shared_ptr<tnet::TcpConnection> TcpTransport::GetConnection(
     }
 
     std::string peer_spec = ip + ":" + std::to_string(port);
-    auto from_iter = from_conn_map_.find(peer_spec);
-    if (from_iter != from_conn_map_.end()) {
-        if (!from_iter->second->ShouldReconnect()) {
-            SETH_DEBUG("use exists client connect send message %s:%d", ip.c_str(), port);
-            return from_iter->second;
-        }
 
-        if (from_iter->second->CheckStoped()) {
-            from_conn_map_.erase(from_iter);
-            CHECK_MEMORY_SIZE(from_conn_map_);
-        }
-    }
-
-    auto iter = conn_map_.find(peer_spec);
-    if (iter != conn_map_.end()) {
-        if (!iter->second->ShouldReconnect()) {
-            SETH_DEBUG("use exists client connect send message %s:%d", ip.c_str(), port);
-            return iter->second;
-        }
-
-        if (iter->second->CheckStoped()) {
-            conn_map_.erase(iter);
-            CHECK_MEMORY_SIZE(conn_map_);
+    {
+        auto from_iter = from_conn_map_.find(peer_spec);
+        if (from_iter != from_conn_map_.end()) {
+            if (!from_iter->second->ShouldReconnect()) {
+                SETH_DEBUG("use exists client connect (from_map) %s:%d", ip.c_str(), port);
+                return from_iter->second;
+            }
+            
+            if (from_iter->second->CheckStoped()) {
+                from_conn_map_.erase(from_iter);
+                CHECK_MEMORY_SIZE(from_conn_map_);
+            }
         }
     }
 
-//     std::string local_spec = common::GlobalInfo::Instance()->config_local_ip() + ":" +
-//         std::to_string(common::GlobalInfo::Instance()->config_local_port());
+    {
+        auto iter = conn_map_.find(peer_spec);
+        if (iter != conn_map_.end()) {
+            if (!iter->second->ShouldReconnect()) {
+                SETH_DEBUG("use exists client connect (conn_map) %s:%d", ip.c_str(), port);
+                return iter->second;
+            }
+
+            if (iter->second->CheckStoped()) {
+                conn_map_.erase(iter);
+                CHECK_MEMORY_SIZE(conn_map_);
+            }
+        }
+    }
+
     auto tcp_conn = transport_->CreateConnection(
         peer_spec,
         "",
         3u * 1000u * 1000u);
+
     if (tcp_conn == nullptr) {
         return nullptr;
     }
@@ -424,9 +448,10 @@ std::shared_ptr<tnet::TcpConnection> TcpTransport::GetConnection(
     conn_map_[peer_spec] = tcp_conn;
     CHECK_MEMORY_SIZE(conn_map_);
     in_check_queue_.push(tcp_conn);
-    SETH_DEBUG("success connect send message %s:%d, conn map size: %d, in_check_queue_ size: %d", 
-        ip.c_str(), port, conn_map_.size(), in_check_queue_.size());
-    while (!destroy_) {
+    SETH_INFO("success connect new socket %s:%d, conn map size: %d", 
+        ip.c_str(), port, conn_map_.size());
+    int process_limit = 32;
+    while (process_limit-- > 0 && !destroy_) {
         std::shared_ptr<TcpConnection> out_conn = nullptr;
         if (!out_check_queue_.pop(&out_conn)) {
             break;
@@ -437,7 +462,7 @@ std::shared_ptr<tnet::TcpConnection> TcpTransport::GetConnection(
         if (iter != conn_map_.end()) {
             conn_map_.erase(iter);
             CHECK_MEMORY_SIZE(conn_map_);
-            SETH_DEBUG("remove accept connection: %s", key.c_str());
+            SETH_INFO("remove accept connection: %s", key.c_str());
         }
     }
 
@@ -463,6 +488,7 @@ void TcpTransport::CheckConnectionValid() {
         waiting_check_queue_.pop_front();
         conn->ShouldReconnect();
         if (conn->CheckStoped()) {
+            SETH_INFO("1 checked stopted conn.");
             out_check_queue_.push(conn);
         } else {
             waiting_check_queue_.push_back(conn);
@@ -471,11 +497,11 @@ void TcpTransport::CheckConnectionValid() {
 
     for (uint32_t i = 0; i < common::kMaxMessageTypeCount; ++i) {
         if (in_message_type_count_[i] > 0) {
-            SETH_INFO("in message type: %d, count: %u", i, in_message_type_count_[i]);
+            SETH_DEBUG("in message type: %d, count: %u", i, in_message_type_count_[i]);
         }
 
         if (out_message_type_count_[i] > 0) {
-            SETH_INFO("out message type: %d, count: %u", i, out_message_type_count_[i].fetch_add(0));
+            SETH_DEBUG("out message type: %d, count: %u", i, out_message_type_count_[i].fetch_add(0));
         }
     }
 

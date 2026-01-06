@@ -5,7 +5,7 @@ import sys
 from google.protobuf import json_format
 sys.path.append('/root/seth/src/')
 from protos.view_block_pb2 import ViewBlockItem
-import shardora_api
+import seth_api
 
 path = str("/root/zjnodes/s3_1/db/")
 
@@ -77,7 +77,7 @@ def get_block_with_height(
 
 if __name__ == "__main__":
     # 发送一笔交易
-    shardora_api.transfer(
+    seth_api.transfer(
         "cefc2c33064ea7691aee3e5e4f7842935d26f3ad790d81cf015e79b78958e848",
         "eee91139bd36e63a8e057b6f0b6bd5184e25943c",
         1024,

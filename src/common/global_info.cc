@@ -23,9 +23,6 @@ GlobalInfo::GlobalInfo() {
 }
 
 GlobalInfo::~GlobalInfo() {
-    if (thread_with_pools_ != nullptr) {
-        delete[] thread_with_pools_;
-    }
 }
 
 void GlobalInfo::Timer() {
@@ -51,11 +48,9 @@ int GlobalInfo::Init(const common::Config& config) {
     tick_ptr_ = std::make_shared<common::Tick>();
     tick_ptr_->CutOff(2000000lu, std::bind(&GlobalInfo::Timer, this));
 #endif
-    memset(consensus_thread_index_map_, common::kInvalidUint8, sizeof(consensus_thread_index_map_));
     begin_run_timestamp_ms_ = common::TimeUtils::TimestampMs() + 10000lu;
-    message_handler_thread_count_ = 8;
-    config.Get("seth", "consensus_thread_count", message_handler_thread_count_);
-    message_handler_thread_count_ += 2;
+    config.Get("seth", "consensus_thread_count", hotstuff_thread_count_);
+    message_handler_thread_count_ = hotstuff_thread_count_ + 2;
 
     if (!config.Get("seth", "local_ip", config_local_ip_)) {
         SETH_ERROR("get seth local_ip from config failed.");
@@ -98,22 +93,12 @@ int GlobalInfo::Init(const common::Config& config) {
     if (each_tx_pool_max_txs_ < 10240) {
         each_tx_pool_max_txs_ = 10240;
     }
-    
-    auto bft_thread = message_handler_thread_count_ - 1;
-    thread_with_pools_ = new std::set<uint32_t>[common::kMaxThreadCount];
-    auto each_thread_pools_count = common::kInvalidPoolIndex / bft_thread;
-    for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
-        auto thread_idx = (i / each_thread_pools_count) % bft_thread;
-        pools_with_thread_[i] = thread_idx;
-    }
-
+  
     return kCommonSuccess;
 }
 
-uint8_t GlobalInfo::get_thread_index(std::shared_ptr<transport::TransportMessage> msg_ptr) {
-    ADD_DEBUG_PROCESS_TIMESTAMP();
+uint8_t GlobalInfo::get_thread_index() {
     auto now_thread_id_tmp = std::this_thread::get_id();
-    ADD_DEBUG_PROCESS_TIMESTAMP();
     uint32_t now_thread_id = *(uint32_t*)&now_thread_id_tmp;
     uint8_t thread_idx = 0;
     if (should_check_thread_all_valid_) {
@@ -140,7 +125,6 @@ uint8_t GlobalInfo::get_thread_index(std::shared_ptr<transport::TransportMessage
         thread_idx = iter->second;
     }
 
-    ADD_DEBUG_PROCESS_TIMESTAMP();
     return thread_idx;
 }
 

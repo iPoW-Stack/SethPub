@@ -1,6 +1,7 @@
 #include "sync/key_value_sync.h"
 
 #include "block/block_manager.h"
+#include "broadcast/broadcast_utils.h"
 #include "common/defer.h"
 #include "common/global_info.h"
 #include "common/log.h"
@@ -64,8 +65,8 @@ void KeyValueSync::AddSyncHeight(
     auto item = std::make_shared<SyncItem>(network_id, pool_idx, height, priority);
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     item_queues_[thread_idx].push(item);
-    SETH_DEBUG("block height add new sync item key: %s, priority: %u",
-        item->key.c_str(), item->priority);
+    SETH_DEBUG("block height add new sync item key: %s, priority: %u, %u_%u_%lu",
+        item->key.c_str(), item->priority, network_id, pool_idx, height);
 }
 
 void KeyValueSync::HotstuffConsensusTimerMessage(const transport::MessagePtr& msg_ptr) {
@@ -73,10 +74,71 @@ void KeyValueSync::HotstuffConsensusTimerMessage(const transport::MessagePtr& ms
     std::shared_ptr<view_block::protobuf::ViewBlockItem> pb_vblock = nullptr;
     while (vblock_queues_[thread_idx].pop(&pb_vblock)) {
         if (pb_vblock) {
-            hotstuff_mgr_->hotstuff(pb_vblock->qc().pool_index())->HandleSyncedViewBlock(
+            if (!network::IsSameShardOrSameWaitingPool(
+                    network::kRootCongressNetworkId, 
+                    pb_vblock->qc().network_id()) && 
+                    !network::IsSameToLocalShard(pb_vblock->qc().network_id())) {
+                hotstuff_mgr_->hotstuff(pb_vblock->qc().network_id())->HandleSyncedViewBlock(
                     pb_vblock);
+            } else {
+                hotstuff_mgr_->hotstuff(pb_vblock->qc().pool_index())->HandleSyncedViewBlock(
+                    pb_vblock);
+            }
         }
-    }    
+    }
+
+    BroadcastGlobalBlock();
+}
+
+void KeyValueSync::BroadcastGlobalBlock() {
+    auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
+    std::shared_ptr<view_block::protobuf::ViewBlockItem> view_block_ptr = nullptr;
+    auto msg_ptr = std::make_shared<transport::TransportMessage>();
+    transport::protobuf::Header& msg = msg_ptr->header;
+    protobuf::SyncMessage& res_sync_msg = *msg.mutable_sync_proto();
+    auto sync_res = res_sync_msg.mutable_sync_value_res();
+    uint32_t add_size = 0;
+    while (broadcast_global_blocks_queues_[thread_idx].pop(&view_block_ptr)) {
+        if (view_block_ptr) {
+            auto res = sync_res->add_res();
+            res->set_network_id(view_block_ptr->qc().network_id());
+            res->set_pool_idx(view_block_ptr->qc().pool_index());
+            res->set_height(view_block_ptr->qc().view());
+            res->set_value(view_block_ptr->SerializeAsString());
+            res->set_key("");
+            res->set_tag(kBlockHeight);
+            add_size += 16 + res->value().size();
+            SETH_DEBUG("handle sync value view add add_size: %u  "
+                "net: %u, pool: %u, height: %lu",
+                add_size,
+                res->network_id(),
+                res->pool_idx(),
+                res->height());
+            if (add_size >= kSyncPacketMaxSize) {
+                SETH_DEBUG("handle sync value view add_size failed "
+                    "net: %u, pool: %u, height: %lu",
+                    res->network_id(),
+                    res->pool_idx(),
+                    res->height());
+                break;
+            }
+        }
+    }
+
+    if (add_size == 0) {
+        return;
+    }
+
+    msg.set_src_sharding_id(common::GlobalInfo::Instance()->network_id());
+    dht::DhtKeyManager dht_key(network::kNodeNetworkId);
+    msg.set_des_dht_key(dht_key.StrKey());
+    msg.set_type(common::kSyncMessage);
+    auto* broadcast = msg.mutable_broadcast();
+    broadcast::SetDefaultBroadcastParam(broadcast);
+    transport::TcpTransport::Instance()->SetMessageHash(msg);
+    network::Route::Instance()->Send(msg_ptr);
+    SETH_DEBUG("sync global block ok des: %u, des hash64: %lu",
+        network::kNodeNetworkId, msg.hash64());
 }
 
 void KeyValueSync::AddSyncViewHash(
@@ -110,19 +172,18 @@ void KeyValueSync::ConsensusTimerMessage() {
     auto now_tm_ms2 = common::TimeUtils::TimestampMs();
     for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
         hotstuff_mgr_->chain(i)->GetViewBlockWithHash("");
-        hotstuff_mgr_->chain(i)->GetViewBlockWithHeight(0, 0);
     }
 
     auto now_tm_ms3 = common::TimeUtils::TimestampMs();
     auto etime = common::TimeUtils::TimestampMs();
     if (etime - now_tm_ms >= 1000000lu) {
-        SETH_DEBUG("KeyValueSync handle message use time: %lu, "
+        SETH_ERROR("KeyValueSync handle message use time: %lu, "
             "PopKvMessage: %lu, PopItems: %lu, CheckSyncItem: %lu", 
             (etime - now_tm_ms), 
             (now_tm_ms1 - now_tm_ms),
             (now_tm_ms2 - now_tm_ms1),
             (now_tm_ms3 - now_tm_ms2));
-        assert(false);
+        // assert(false);
     }
 
     kv_tick_.CutOff(
@@ -158,7 +219,7 @@ void KeyValueSync::PopItems() {
             }
 
             if (responsed_keys_.exists(item->key)) {
-                SETH_DEBUG("responsed_keys_.exists(item->key): %s", item->key.c_str());
+                // SETH_DEBUG("responsed_keys_.exists(item->key): %s", item->key.c_str());
                 continue;
             }
 
@@ -369,8 +430,13 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
         }
 
         uint16_t* pool_index_arr = (uint16_t*)key.c_str();
-        auto view_block_ptr = hotstuff_mgr_->chain(pool_index_arr[0])->GetViewBlockWithHash(
+        auto view_block_ptr_info = hotstuff_mgr_->chain(pool_index_arr[0])->GetViewBlockWithHash(
             std::string(key.c_str() + 2, 32));
+        if (!view_block_ptr_info) {
+            continue;
+        }
+        
+        auto view_block_ptr= view_block_ptr_info->view_block;
         if (view_block_ptr != nullptr && !view_block_ptr->qc().sign_x().empty()) {
             SETH_DEBUG("success get view block request coming: %u_%u view block hash: %s, hash: %lu",
                 common::GlobalInfo::Instance()->network_id(),
@@ -485,6 +551,7 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
     auto& res_arr = sync_msg.sync_value_res().res();
     auto now_tm_us = common::TimeUtils::TimestampUs();
     SETH_DEBUG("now handle kv response hash64: %lu", msg_ptr->header.hash64());
+    std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>> res_map;
     for (auto iter = res_arr.begin(); iter != res_arr.end(); ++iter) {
         std::string key = iter->key();
         if (iter->tag() == kBlockHeight) {
@@ -510,42 +577,45 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                 assert(false);
                 break;
             }
-    
-            // if (!view_block_synced_callback_) {
-            //     SETH_ERROR("no view block synced callback inited");
-            //     assert(false);
-            //     break;
-            // }
-    
-            // int res = view_block_synced_callback_(*pb_vblock);
-            // SETH_DEBUG("now handle kv response hash64: %lu, key: %s, tag: %d, sign x: %s, res: %d",
-            //     msg_ptr->header.hash64(), 
-            //     (iter->tag() == kBlockHeight ? key.c_str() : common::Encode::HexEncode(key).c_str()), 
-            //     iter->tag(),
-            //     pb_vblock->qc().sign_x().c_str(),
-            //     res);
+         
             assert(!pb_vblock->qc().sign_x().empty());
-            // if (res == 1) {
-            //     assert(false);
-            //     break;
-            // }
-                
-            // if (res == 0) {
-                SETH_DEBUG("0 success handle network new view block: %u_%u_%lu, height: %lu key: %s", 
-                    pb_vblock->qc().network_id(),
-                    pb_vblock->qc().pool_index(),
-                    pb_vblock->qc().view(),
-                    pb_vblock->block_info().height(),
-                    (iter->tag() == kBlockHeight ? key.c_str() : common::Encode::HexEncode(key).c_str()));
-                auto thread_idx = common::GlobalInfo::Instance()->pools_with_thread()[pb_vblock->qc().pool_index()];
-                vblock_queues_[thread_idx].push(pb_vblock);
-            // }  
+            SETH_DEBUG("0 success handle network new view block: %u_%u_%lu, height: %lu key: %s, is broadcast: %d", 
+                pb_vblock->qc().network_id(),
+                pb_vblock->qc().pool_index(),
+                pb_vblock->qc().view(),
+                pb_vblock->block_info().height(),
+                (iter->tag() == kBlockHeight ? key.c_str() : common::Encode::HexEncode(key).c_str()),
+                iter->key().empty());
+            res_map[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->qc().view()] = pb_vblock;
         } while (0);
 
         responsed_keys_.add(key);
         synced_map_.erase(key);
         SETH_DEBUG("block response coming: %s, sync map size: %u, hash64: %lu",
             key.c_str(), synced_map_.size(), msg_ptr->header.hash64());
+    }
+
+    for (auto iter = res_map.begin(); iter != res_map.end(); ++iter) {
+        auto network_id = iter->first;
+        for (auto pool_iter = iter->second.begin(); pool_iter != iter->second.end(); ++pool_iter) {
+            for (auto iter2 = pool_iter->second.begin(); iter2 != pool_iter->second.end(); ++iter2) {
+                auto pb_vblock = iter2->second;
+                auto thread_idx = transport::TcpTransport::Instance()->GetThreadIndexWithPool(
+                    pb_vblock->qc().pool_index());
+                if (!network::IsSameShardOrSameWaitingPool(
+                        network::kRootCongressNetworkId, 
+                        network_id) && !network::IsSameToLocalShard(network_id)) {
+                    thread_idx = transport::TcpTransport::Instance()->GetThreadIndexWithPool(network_id);
+                }
+                
+                vblock_queues_[thread_idx].push(pb_vblock);
+                SETH_DEBUG("1 success handle network new view block: %u_%u_%lu, height: %lu ", 
+                    pb_vblock->qc().network_id(),
+                    pb_vblock->qc().pool_index(),
+                    pb_vblock->qc().view(),
+                    pb_vblock->block_info().height());
+            }
+        }
     }
 }
 

@@ -54,20 +54,20 @@ struct Construct {
 #endif
 
 #ifndef NDEBUG
-#define ADD_DEBUG_PROCESS_TIMESTAMP()
+// #define ADD_DEBUG_PROCESS_TIMESTAMP()
 #define TMP_ADD_DEBUG_PROCESS_TIMESTAMP()
 
-// #define ADD_DEBUG_PROCESS_TIMESTAMP() { \
-//     if (msg_ptr) { \
-//         assert(msg_ptr->times_idx < (sizeof(msg_ptr->times) / sizeof(msg_ptr->times[0]))); \
-//         auto btime = common::TimeUtils::TimestampUs(); \
-//         uint64_t diff_time = 0; \
-//         if (msg_ptr->times_idx > 0) { diff_time = btime - msg_ptr->times[msg_ptr->times_idx - 1]; if (diff_time > 200000lu)SETH_INFO("over handle message debug use time: %lu, type: %d", diff_time, msg_ptr->header.type());} \
-//         msg_ptr->debug_str[msg_ptr->times_idx] = std::string(SETH_LOG_FILE_NAME) + ":" + std::to_string(__LINE__); \
-//         msg_ptr->times[msg_ptr->times_idx] = btime; \
-//         msg_ptr->times_idx++; \
-//     } \
-// }
+#define ADD_DEBUG_PROCESS_TIMESTAMP() { \
+    if (msg_ptr) { \
+        assert(msg_ptr->times_idx < (sizeof(msg_ptr->times) / sizeof(msg_ptr->times[0]))); \
+        auto btime = common::TimeUtils::TimestampUs(); \
+        uint64_t diff_time = 0; \
+        if (msg_ptr->times_idx > 0) { diff_time = btime - msg_ptr->times[msg_ptr->times_idx - 1]; if (diff_time > 200000lu)SETH_INFO("over handle message debug use time: %lu, type: %d", diff_time, msg_ptr->header.type());} \
+        msg_ptr->debug_str[msg_ptr->times_idx] = std::string(SETH_LOG_FILE_NAME) + ":" + std::to_string(__LINE__); \
+        msg_ptr->times[msg_ptr->times_idx] = btime; \
+        msg_ptr->times_idx++; \
+    } \
+}
 
 // #define TMP_ADD_DEBUG_PROCESS_TIMESTAMP() { \
 //     if (msg_ptr) { \
@@ -81,19 +81,30 @@ struct Construct {
 //     } \
 // }
 #else
-#define ADD_DEBUG_PROCESS_TIMESTAMP()
+#define ADD_DEBUG_PROCESS_TIMESTAMP() { \
+    if (msg_ptr) { \
+        assert(msg_ptr->times_idx < (sizeof(msg_ptr->times) / sizeof(msg_ptr->times[0]))); \
+        auto btime = common::TimeUtils::TimestampUs(); \
+        uint64_t diff_time = 0; \
+        if (msg_ptr->times_idx > 0) { diff_time = btime - msg_ptr->times[msg_ptr->times_idx - 1]; if (diff_time > 200000lu)SETH_INFO("over handle message debug use time: %lu, type: %d", diff_time, msg_ptr->header.type());} \
+        msg_ptr->debug_str[msg_ptr->times_idx] = std::string(SETH_LOG_FILE_NAME) + ":" + std::to_string(__LINE__); \
+        msg_ptr->times[msg_ptr->times_idx] = btime; \
+        msg_ptr->times_idx++; \
+    } \
+}
+// #define ADD_DEBUG_PROCESS_TIMESTAMP()
 #define TMP_ADD_DEBUG_PROCESS_TIMESTAMP()
 #endif
 
 #ifndef NDEBUG
 #define CHECK_MEMORY_SIZE(data_map) { \
-    if (data_map.size() >= 102400) { \
+    if (data_map.size() >= 10240) { \
         SETH_INFO("data size: %u", data_map.size()); \
     } \
 }
 
 #define CHECK_MEMORY_SIZE_WITH_MESSAGE(data_map, msg) { \
-    if (data_map.size() >= 102400) { \
+    if (data_map.size() >= 10240) { \
         SETH_INFO("%s data size: %u, msg: %s", #data_map, data_map.size(), msg); \
     } \
 }
@@ -199,13 +210,14 @@ enum VipLevel {
 static const uint32_t kUnicastAddressLength = 20u;
 static const uint32_t kPreypamentAddressLength = 40u;
 static const uint32_t kImmutablePoolSize = 32u;
+static const uint32_t kGlobalPoolIndex = kImmutablePoolSize;
 static const uint32_t kMaxTxCount = 14480u;
 static const uint32_t kInvalidPoolIndex = kImmutablePoolSize + 1;
 static const uint32_t kTestForNetworkId = 4u;
 static const uint16_t kDefaultVpnPort = 9033u;
 static const uint16_t kDefaultRoutePort = 9034u;
 // static const int64_t kRotationPeriod = 600ll * 1000ll * 1000ll; // epoch time
-static const int64_t kRotationPeriod = 120ll * 1000ll * 1000ll; // for quicker debugging
+static const int64_t kRotationPeriod = 600ll * 1000ll * 1000ll; // for quicker debugging
 static const int64_t kMessageTimeoutMs = 10000ll;
 static const uint32_t kMaxRotationCount = 4u;
 static const uint16_t kNodePortRangeMin = 1000u;

@@ -11,7 +11,9 @@
 #include "common/string_utils.h"
 #include "common/tick.h"
 #include "common/time_utils.h"
+#include "consensus/hotstuff/types.h"
 #include "db/db.h"
+#include "network/network_utils.h"
 #include "protos/address.pb.h"
 #include "protos/block.pb.h"
 #include "protos/bls.pb.h"
@@ -25,8 +27,7 @@
 #include "protos/ws.pb.h"
 #include "protos/view_block.pb.h"
 #include "security/security.h"
-#include <zjcvm/zjcvm_utils.h>
-#include "consensus/hotstuff/types.h"
+#include "zjcvm/zjcvm_utils.h"
 
 namespace seth {
 
@@ -138,18 +139,20 @@ public:
     }
 
     void SaveSwapKey(
+            uint32_t sharding_id,
             uint32_t local_member_idx,
-            uint64_t height,
-            uint32_t local_idx,
+            const std::string& id,
             uint32_t peer_idx,
             const std::string& seckey) {
         std::string key;
         key.reserve(32);
         key.append(kBlsSwapKeyPrefex);
+        key.append((char*)&sharding_id, sizeof(sharding_id));
         key.append((char*)&local_member_idx, sizeof(local_member_idx));
-        key.append((char*)&height, sizeof(height));
-        key.append((char*)&local_idx, sizeof(local_idx));
+        key.append(id);
         key.append((char*)&peer_idx, sizeof(peer_idx));
+        SETH_DEBUG("save ttttt swap key: %u, id: %s, %u",
+            local_member_idx, common::Encode::HexEncode(id).c_str(), peer_idx);
         auto st = db_->Put(key, seckey);
         if (!st.ok()) {
             SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString());
@@ -157,18 +160,20 @@ public:
     }
 
     bool GetSwapKey(
+            uint32_t sharding_id,
             uint32_t local_member_idx,
-            uint64_t height,
-            uint32_t local_idx,
+            const std::string& id,
             uint32_t peer_idx,
             std::string* seckey) {
         std::string key;
         key.reserve(32);
         key.append(kBlsSwapKeyPrefex);
+        key.append((char*)&sharding_id, sizeof(sharding_id));
         key.append((char*)&local_member_idx, sizeof(local_member_idx));
-        key.append((char*)&height, sizeof(height));
-        key.append((char*)&local_idx, sizeof(local_idx));
+        key.append(id);
         key.append((char*)&peer_idx, sizeof(peer_idx));
+        SETH_DEBUG("get ttttt swap key: %u, %s, %u",
+            local_member_idx, common::Encode::HexEncode(id).c_str(), peer_idx);
         auto st = db_->Get(key, seckey);
         if (!st.ok()) {
             return false;
@@ -322,6 +327,8 @@ public:
             uint32_t pool_index,
             uint64_t height,
             std::string* block_hash) {
+        assert(sharding_id >= network::kRootCongressNetworkId &&
+            sharding_id <= network::kConsensusShardEndNetworkId);
         std::string key;
         key.reserve(32);
         key.append(kBlockHeightPrefix);
@@ -330,8 +337,8 @@ public:
         key.append((char*)&height, sizeof(height));
         auto st = db_->Get(key, block_hash);
         if (!st.ok()) {
-            SETH_DEBUG("failed get sync key value %u_%u_%lu, success get block with height: %u, %u, %lu",
-                sharding_id, pool_index, height, sharding_id, pool_index, height);
+            SETH_DEBUG("failed get sync key value %u_%u_%lu",
+                sharding_id, pool_index, height);
             return false;
         }
 

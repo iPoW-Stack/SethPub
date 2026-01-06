@@ -4,7 +4,7 @@
 ###############################################################################
 
 import json
-import shardora_api
+import seth_api
 import sys
 import binascii
 import time
@@ -250,7 +250,7 @@ if __name__ == "__main__":
 
     if args.private_key:
         private_key = args.private_key
-        from_address = shardora_api.get_keypair(bytes.fromhex(private_key)).account_id
+        from_address = seth_api.get_keypair(bytes.fromhex(private_key)).account_id
 
     if args.to:
         to = args.to
@@ -348,7 +348,7 @@ if __name__ == "__main__":
     print(f"tmp_function_args: {tmp_function_args}, function_types: {function_types}")
 
     if query_func is not None:
-        res = shardora_api.query_contract_function(
+        res = seth_api.query_contract_function(
             private_key=private_key, 
             contract_address=to, 
             function=query_func,
@@ -371,7 +371,7 @@ if __name__ == "__main__":
 
     if sol_file is None and function == "":
         if to is not None and prepayment > 0:
-            res = shardora_api.transfer(
+            res = seth_api.transfer(
                 private_key,
                 to,
                 amount,
@@ -394,10 +394,10 @@ if __name__ == "__main__":
         sys.exit(1)
 
     function_types_str = ','.join(function_types)
-    func_param = shardora_api.keccak256_str(
+    func_param = seth_api.keccak256_str(
         f"{function}({function_types_str})")[:8] + encode_hex(encode(function_types, tmp_function_args))[2:]
     if function == "":
-        contract_address = shardora_api.deploy_contract(
+        contract_address = seth_api.deploy_contract(
             private_key,
             amount,
             sol_file,
@@ -415,7 +415,7 @@ if __name__ == "__main__":
         else:
             print(f"create contract success {contract_address}")
     else:
-        res = shardora_api.transfer(
+        res = seth_api.transfer(
             private_key,
             to,
             amount,

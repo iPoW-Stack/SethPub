@@ -10,7 +10,7 @@ Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
         view_block::protobuf::ViewBlockItem* view_block,
         BalanceAndNonceMap& acc_balance_map,
         zjcvm::ZjchainHost& zjc_host) {
-    // 执行交易
+    // Execute transaction
     auto& block = *view_block->mutable_block_info();
     auto tx_list = block.mutable_tx_list();
     auto& tx_map = txs_ptr->txs;
@@ -34,7 +34,7 @@ Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
                 view_block->qc().network_id(), 
                 view_block->qc().pool_index(), 
                 view_block->qc().view(), 
-                block_tx.step(), 
+                (int32_t)block_tx.step(), 
                 block_tx.nonce(),
                 res);
             continue;
@@ -59,7 +59,7 @@ Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
                 view_block->qc().network_id(), 
                 view_block->qc().pool_index(), 
                 view_block->qc().view(), 
-                block_tx.step(), 
+                (int32_t)block_tx.step(), 
                 block_tx.nonce(),
                 do_tx_res);
             continue;

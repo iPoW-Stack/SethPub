@@ -61,7 +61,7 @@ init() {
         node_ips='127.0.0.1'
     fi  
 
-    sh cmd.sh $node_ips "tc qdisc del dev eth0 root"  > /dev/null 2>&1 &
+    bash cmd.sh $node_ips "tc qdisc del dev eth0 root"  > /dev/null 2>&1 &
     if [ "$end_shard" == "" ]; then
         end_shard=3
     fi  
@@ -71,26 +71,23 @@ init() {
     fi
 
     if [ "$TARGET" == "" ]; then
-        TARGET=Release
+        TARGET=Debug
     fi
 
     killall -9 seth
     killall -9 txcli
 
-    sh build.sh a $TARGET
-    sudo rm -rf /root/zjnodes
-    sudo cp -rf ./zjnodes_local /root/zjnodes
-    rm -rf /root/zjnodes/*/seth /root/zjnodes/*/core* /root/zjnodes/*/log/* /root/zjnodes/*/*db*
+    bash build.sh a $TARGET
+    sudo rm -rf /root/nodes
+    sudo cp -rf ./nodes_local /root/nodes
+    rm -rf /root/nodes/*/seth /root/nodes/*/core* /root/nodes/*/log/* /root/nodes/*/*db*
 
-    cp -rf ./zjnodes_local/seth/GeoLite2-City.mmdb /root/zjnodes/seth
-    cp -rf ./zjnodes_local/seth/conf/log4cpp.properties /root/zjnodes/seth/conf
-    mkdir -p /root/zjnodes/seth/log
+    cp -rf ./nodes_local/seth/conf/GeoLite2-City.mmdb /root/nodes/seth
+    cp -rf ./nodes_local/seth/conf/log4cpp.properties /root/nodes/seth/conf
+    mkdir -p /root/nodes/seth/log
 
 
-    sudo cp -rf ./cbuild_$TARGET/seth /root/zjnodes/seth
-    sudo cp -f ./conf/genesis.yml /root/zjnodes/seth/genesis.yml
-
-    sudo cp -rf ./cbuild_$TARGET/seth /root/zjnodes/seth
+    sudo cp -rf ./cbuild_$TARGET/seth /root/nodes/seth
     if [[ "$each_nodes_count" -eq "" ]]; then
         each_nodes_count=4 
     fi
@@ -109,32 +106,29 @@ init() {
     fi  
 
     echo "node count: " $nodes_count
-    cd /root/zjnodes/seth && ./seth -U -N $nodes_count
-    cd /root/zjnodes/seth && ./seth -S 3 -N $nodes_count
+    rm -rf /root/nodes/seth/latest_blocks
+    cd /root/nodes/seth && ./seth -U -N $nodes_count
+    cd /root/nodes/seth && ./seth -S 3 -N $nodes_count
+    cd /root/nodes/seth && ./seth -C
 
-    rm -rf /root/zjnodes/r*
-    rm -rf /root/zjnodes/s*
-    rm -rf /root/zjnodes/new*
-    rm -rf /root/zjnodes/node
-    rm -rf /root/zjnodes/param
 }
 
 make_package() {
-    rm -rf /root/zjnodes/seth/pkg
-    mkdir /root/zjnodes/seth/pkg
-    cp /root/zjnodes/seth/seth /root/zjnodes/seth/pkg
-    cp /root/zjnodes/seth/conf/GeoLite2-City.mmdb /root/zjnodes/seth/pkg
-    cp /root/zjnodes/seth/conf/log4cpp.properties /root/zjnodes/seth/pkg
-    cp /root/seth/shards3 /root/zjnodes/seth/pkg
-    cp /root/seth/root_nodes /root/zjnodes/seth/pkg/shards2
-    cp /root/seth/temp_cmd.sh /root/zjnodes/seth/pkg
-    cp /root/seth/start_cmd.sh /root/zjnodes/seth/pkg
-    cp /root/seth/wondershaper /root/zjnodes/seth/pkg
-    cp -rf /root/zjnodes/seth/root_db /root/zjnodes/seth/pkg/shard_db_2
-    cp -rf /root/zjnodes/seth/shard_db_3 /root/zjnodes/seth/pkg
-    cp -rf /root/zjnodes/temp /root/zjnodes/seth/pkg
-    cp -rf /root/seth/gdb/* /root/zjnodes/seth/pkg
-    cd /root/zjnodes/seth/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
+    rm -rf /root/nodes/seth/pkg
+    mkdir /root/nodes/seth/pkg
+    cp /root/nodes/seth/seth /root/nodes/seth/pkg
+    cp /root/nodes/seth/conf/GeoLite2-City.mmdb /root/nodes/seth/pkg
+    cp /root/nodes/seth/conf/log4cpp.properties /root/nodes/seth/pkg
+    cp /root/seth/shards3 /root/nodes/seth/pkg
+    cp /root/seth/root_nodes /root/nodes/seth/pkg/shards2
+    cp /root/seth/temp_cmd.sh /root/nodes/seth/pkg
+    cp /root/seth/start_cmd.sh /root/nodes/seth/pkg
+    cp /root/seth/wondershaper /root/nodes/seth/pkg
+    cp -rf /root/nodes/seth/root_db /root/nodes/seth/pkg/shard_db_2
+    cp -rf /root/nodes/seth/shard_db_3 /root/nodes/seth/pkg
+    cp -rf /root/nodes/temp /root/nodes/seth/pkg
+    cp -rf /root/seth/gdb/* /root/nodes/seth/pkg
+    cd /root/nodes/seth/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
 }
 
 get_bootstrap() {
@@ -201,7 +195,7 @@ scp_package() {
     node_ips_array=(${node_ips//,/ })
     run_cmd_count=0
     for ip in "${node_ips_array[@]}"; do 
-        sshpass -p $PASSWORD scp -o ConnectTimeout=10  -o StrictHostKeyChecking=no /root/zjnodes/seth/pkg.tar.gz root@$ip:/root &
+        sshpass -p $PASSWORD scp -o ConnectTimeout=10  -o StrictHostKeyChecking=no /root/nodes/seth/pkg.tar.gz root@$ip:/root &
         run_cmd_count=$((run_cmd_count + 1))
         if (($run_cmd_count >= 100)); then
             check_cmd_finished
@@ -225,7 +219,7 @@ run_command() {
             start_nodes_count=$FIRST_NODE_COUNT
         fi
 
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && sh temp_cmd.sh $ip $start_pos $start_nodes_count $bootstrap 2 $end_shard"  > /dev/null 2>&1 &
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count $bootstrap 2 $end_shard"  > /dev/null 2>&1 &
         if ((start_pos==1)); then
             sleep 3
         fi
@@ -253,7 +247,7 @@ start_all_nodes() {
             start_nodes_count=$FIRST_NODE_COUNT
         fi
 
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "cd /root/pkg && sh start_cmd.sh $ip $start_pos $start_nodes_count $bootstrap 2 $end_shard "  &
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "cd /root/pkg && bash start_cmd.sh $ip $start_pos $start_nodes_count $bootstrap 2 $end_shard "  &
         if ((start_pos==1)); then
             sleep 3
         fi

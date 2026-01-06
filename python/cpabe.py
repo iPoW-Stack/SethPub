@@ -5,7 +5,7 @@
 
 import sha3
 import configparser
-import shardora_api
+import seth_api
 import no_block_sys_cmd
 import sys
 import time
@@ -48,18 +48,18 @@ if __name__ == "__main__":
         # print(pk)
         tmp_key = str(i)
         private_key = prikey_base[0:len(prikey_base) - len(tmp_key)] + tmp_key
-        id = shardora_api.keccak256_str('cefc2c33064ea7691aee3e5e4f7842935d26f3ad790d81cf015e79b78958e848' + contract_address + id_info + private_key)
+        id = seth_api.keccak256_str('cefc2c33064ea7691aee3e5e4f7842935d26f3ad790d81cf015e79b78958e848' + contract_address + id_info + private_key)
         # print(id)
-        func_param = shardora_api.keccak256_str(
+        func_param = seth_api.keccak256_str(
             "AddUserPublicKey(bytes32,bytes)")[:8] + encode_hex(
                 encode(['bytes32', 'bytes'], 
                 [decode_hex(id), decode_hex(pk)]))[2:]
-        gid = shardora_api.gen_gid()
+        gid = seth_api.gen_gid()
         gids.append(gid)
         private_keys[gid] = private_key
         gid_dict[gid] = False
         check_gids += "'" + gid + "',"
-        res = shardora_api.transfer(
+        res = seth_api.transfer(
             private_key,
             contract_address,
             0,

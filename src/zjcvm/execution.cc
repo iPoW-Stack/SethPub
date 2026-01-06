@@ -158,7 +158,7 @@ int Execution::execute(
             common::Encode::HexEncode(from_address).c_str(),
             common::Encode::HexEncode(to_address).c_str(),
             common::Encode::HexEncode(origin_address).c_str());
-        assert(false);
+        // assert(false);
         return kZjcvmError;
     }
 
@@ -200,7 +200,7 @@ int Execution::execute(
             const auto gas_used = msg.gas - out_res->gas_left;
             SETH_ERROR("out_res->status_code != EVMC_SUCCESS.nResult: %d, EVMC_SUCCESS: %d, "
                 "gas_used: %lu, gas limit: %lu, codes: %s, from: %s, to: %s",
-                out_res->status_code, EVMC_SUCCESS, gas_used, create_gas,
+                (int32_t)out_res->status_code, (int32_t)EVMC_SUCCESS, gas_used, create_gas,
                 "common::Encode::HexEncode(bytes_code).c_str()",
                 common::Encode::HexEncode(from_address).c_str(),
                 common::Encode::HexEncode(to_address).c_str());
@@ -208,7 +208,7 @@ int Execution::execute(
         } else {
             const auto gas_used = msg.gas - out_res->gas_left;
             SETH_DEBUG("out_res->status_code == EVMC_SUCCESS.nResult: %d, gas_used: %lu, gas limit: %lu, codes: %s",
-                out_res->status_code, gas_used, create_gas, "common::Encode::HexEncode(bytes_code).c_str()");
+                (int32_t)out_res->status_code, gas_used, create_gas, "common::Encode::HexEncode(bytes_code).c_str()");
         }
 
         host.create_bytes_code_ = std::string((char*)out_res->output_data, out_res->output_size);
@@ -231,7 +231,7 @@ int Execution::execute(
     auto etime = common::TimeUtils::TimestampMs();
     SETH_DEBUG("execute res: %d, from: %s, to: %s, gas_limit: %lu, "
         "src_gas_left: %lu, gas_left: %lu, gas_refund: %lu, use time: %lu, output: %s",
-        out_res->status_code, 
+        (int32_t)out_res->status_code, 
         common::Encode::HexEncode(from_address).c_str(),
         common::Encode::HexEncode(to_address).c_str(),
         gas, 

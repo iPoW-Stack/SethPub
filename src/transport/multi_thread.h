@@ -36,7 +36,8 @@ public:
     ThreadHandler(
         MultiThreadHandler* msg_handler,
         std::condition_variable& wait_con,
-        std::mutex& wait_mutex);
+        std::mutex& wait_mutex,
+        bool is_hotstuff_thread);
     ~ThreadHandler();
     void Join();
     uint8_t thread_idx() const {
@@ -47,11 +48,12 @@ private:
     void HandleMessage();
 
     std::shared_ptr<std::thread> thread_{ nullptr };
-    bool destroy_{ false };
+    std::atomic<bool> destroy_{ false };
     MultiThreadHandler* msg_handler_ = nullptr;
     std::condition_variable& wait_con_;
     std::mutex& wait_mutex_;
     std::atomic<uint8_t> thread_idx_ = common::kInvalidUint8;
+    bool is_hotstuff_thread_ = false;
 
     DISALLOW_COPY_AND_ASSIGN(ThreadHandler);
 };
@@ -81,6 +83,11 @@ public:
         thread_init_success_ = true;
         std::unique_lock<std::mutex> lock(thread_wait_mutex_);
         thread_wait_con_.notify_one();
+    }
+
+    uint8_t GetThreadIndexWithPool(uint32_t pool_index) {
+        auto thread_idx = pool_index % common::GlobalInfo::Instance()->hotstuff_thread_count();
+        return thread_vec_[thread_idx]->thread_idx();
     }
 
     // void AddLocalBroadcastedMessages(uint64_t msg_hash) {

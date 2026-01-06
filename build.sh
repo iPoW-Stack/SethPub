@@ -1,12 +1,12 @@
 # configure
 TARGET=Debug
 
-if test "$2" = "D"
+if test "$2" = "Debug"
 then
 	TARGET=Debug
 fi
 
-if test "$2" = "R"
+if test "$2" = "Release"
 then
         TARGET=Release
 fi
@@ -31,7 +31,7 @@ then
     ./transport_test/transport_test
     exit 0
 fi
-nproc=8
+nproc=16
 make -j${nproc} seth
 echo $1
 if [[ $1 == "test" ]];
