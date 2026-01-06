@@ -4,7 +4,7 @@ killall -9 txcli
 TEST_TX_TPS=30000
 TEST_TX_MAX_POOL_INDEX=0
 FOR_CK=0
-TARGET=Debug
+TARGET=Release
 #VALGRIND='valgrind --log-file=./valgrind_report.log --leak-check=full --show-leak-kinds=all --show-reachable=no --track-origins=yes'
 VALGRIND=''
 bash build.sh a $TARGET
