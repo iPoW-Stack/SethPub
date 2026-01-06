@@ -10,6 +10,7 @@
 
 ## Run local seth network
       git clone git@github.com:iPoW-Stack/SethPub.git /root/seth && cd /root/seth
+	  bash build_third.sh
       bash simple_dep.sh $node_count  
       # node_count like 4, mean create 4 nodes seth network on local machine
 	  
@@ -25,6 +26,7 @@
       cd ./cbuild_Release && make txcli
       ./txcli
 ```
+
 
 
 
