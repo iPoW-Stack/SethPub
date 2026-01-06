@@ -5,18 +5,16 @@
 
 # Quick Start
 ## Requirements
-      centos7
       g++8.3.0
-      python3.10+
       cmake3.25.1+
 
 ## Run local seth network
       git clone git@github.com:tenondvpn/SethPub.git -o /root/seth && cd /root/seth
-      sh simple_dep.sh $node_count  
+      bash simple_dep.sh $node_count  
       # node_count like 4, mean create 4 nodes seth network on local machine
 	  
 ## Run customized network
-      sh simple_remote.sh $each_machine_node_count $ip_list  
+      bash simple_remote.sh $each_machine_node_count $ip_list  
       # each_machine_node_count like 4, mean each machine create 4 nodes. 
       # ip_list like 192.168.0.1,192.168.0.2, mean 2 machine create 2 * 4 nodes seth network
       # machine user must root
@@ -27,4 +25,5 @@
       cd ./cbuild_Release && make txcli
       ./txcli
 ```
+
 
