@@ -11,7 +11,7 @@
       cmake3.25.1+
 
 ## Run local seth network
-      git clone git@github.com:tenondvpn/seth.git
+      git clone git@github.com:tenondvpn/SethPub.git -o /root/seth && cd /root/seth
       sh simple_dep.sh $node_count  
       # node_count like 4, mean create 4 nodes seth network on local machine
 	  
@@ -27,3 +27,4 @@
       cd ./cbuild_Release && make txcli
       ./txcli
 ```
+
