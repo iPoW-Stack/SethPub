@@ -51,19 +51,19 @@ init() {
     killall -9 txcli
 
     # sh build.sh a $TARGET
-    # sudo rm -rf /root/zjnodes
-    # sudo cp -rf ./zjnodes_local /root/zjnodes
-    # rm -rf /root/zjnodes/*/seth /root/zjnodes/*/core* /root/zjnodes/*/log/* /root/zjnodes/*/*db*
+    # sudo rm -rf /root/seths
+    # sudo cp -rf ./seths_local /root/seths
+    # rm -rf /root/seths/*/seth /root/seths/*/core* /root/seths/*/log/* /root/seths/*/*db*
 
-    # cp -rf ./zjnodes_local/seth/GeoLite2-City.mmdb /root/zjnodes/seth
-    # cp -rf ./zjnodes_local/seth/conf/log4cpp.properties /root/zjnodes/seth/conf
-    # mkdir -p /root/zjnodes/seth/log
+    # cp -rf ./seths_local/seth/GeoLite2-City.mmdb /root/seths/seth
+    # cp -rf ./seths_local/seth/conf/log4cpp.properties /root/seths/seth/conf
+    # mkdir -p /root/seths/seth/log
 
 
-    # sudo cp -rf ./cbuild_$TARGET/seth /root/zjnodes/seth
-    # sudo cp -f ./conf/genesis.yml /root/zjnodes/seth/genesis.yml
+    # sudo cp -rf ./cbuild_$TARGET/seth /root/seths/seth
+    # sudo cp -f ./conf/genesis.yml /root/seths/seth/genesis.yml
 
-    # sudo cp -rf ./cbuild_$TARGET/seth /root/zjnodes/seth
+    # sudo cp -rf ./cbuild_$TARGET/seth /root/seths/seth
     if [[ "$each_nodes_count" -eq "" ]]; then
         each_nodes_count=4 
     fi
@@ -82,32 +82,32 @@ init() {
     # fi  
 
     # echo "node count: " $nodes_count
-    # cd /root/zjnodes/seth && ./seth -U -N $nodes_count
-    # cd /root/zjnodes/seth && ./seth -S 3 -N $nodes_count
+    # cd /root/seths/seth && ./seth -U -N $nodes_count
+    # cd /root/seths/seth && ./seth -S 3 -N $nodes_count
 
-    # rm -rf /root/zjnodes/r*
-    # rm -rf /root/zjnodes/s*
-    # rm -rf /root/zjnodes/new*
-    # rm -rf /root/zjnodes/node
-    # rm -rf /root/zjnodes/param
+    # rm -rf /root/seths/r*
+    # rm -rf /root/seths/s*
+    # rm -rf /root/seths/new*
+    # rm -rf /root/seths/node
+    # rm -rf /root/seths/param
 }
 
 make_package() {
-    rm -rf /root/zjnodes/seth/pkg
-    mkdir /root/zjnodes/seth/pkg
-    cp /root/zjnodes/seth/seth /root/zjnodes/seth/pkg
-    cp /root/zjnodes/seth/conf/GeoLite2-City.mmdb /root/zjnodes/seth/pkg
-    cp /root/zjnodes/seth/conf/log4cpp.properties /root/zjnodes/seth/pkg
-    cp /root/seth/shards3 /root/zjnodes/seth/pkg
-    cp /root/seth/root_nodes /root/zjnodes/seth/pkg/shards2
-    cp /root/seth/temp_cmd.sh /root/zjnodes/seth/pkg
-    cp /root/seth/start_cmd.sh /root/zjnodes/seth/pkg
-    cp /root/seth/wondershaper /root/zjnodes/seth/pkg
-    cp -rf /root/zjnodes/seth/root_db /root/zjnodes/seth/pkg/shard_db_2
-    cp -rf /root/zjnodes/seth/shard_db_3 /root/zjnodes/seth/pkg
-    cp -rf /root/zjnodes/temp /root/zjnodes/seth/pkg
-    cp -rf /root/seth/gdb/* /root/zjnodes/seth/pkg
-    cd /root/zjnodes/seth/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
+    rm -rf /root/seths/seth/pkg
+    mkdir /root/seths/seth/pkg
+    cp /root/seths/seth/seth /root/seths/seth/pkg
+    cp /root/seths/seth/conf/GeoLite2-City.mmdb /root/seths/seth/pkg
+    cp /root/seths/seth/conf/log4cpp.properties /root/seths/seth/pkg
+    cp /root/seth/shards3 /root/seths/seth/pkg
+    cp /root/seth/root_nodes /root/seths/seth/pkg/shards2
+    cp /root/seth/temp_cmd.sh /root/seths/seth/pkg
+    cp /root/seth/start_cmd.sh /root/seths/seth/pkg
+    cp /root/seth/wondershaper /root/seths/seth/pkg
+    cp -rf /root/seths/seth/root_db /root/seths/seth/pkg/shard_db_2
+    cp -rf /root/seths/seth/shard_db_3 /root/seths/seth/pkg
+    cp -rf /root/seths/temp /root/seths/seth/pkg
+    cp -rf /root/seth/gdb/* /root/seths/seth/pkg
+    cd /root/seths/seth/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
 }
 
 get_bootstrap() {
@@ -174,7 +174,7 @@ scp_package() {
     node_ips_array=(${node_ips//,/ })
     run_cmd_count=0
     for ip in "${node_ips_array[@]}"; do 
-        sshpass -p $PASSWORD scp -o ConnectTimeout=10  -o StrictHostKeyChecking=no /root/zjnodes/seth/pkg.tar.gz root@$ip:/root &
+        sshpass -p $PASSWORD scp -o ConnectTimeout=10  -o StrictHostKeyChecking=no /root/seths/seth/pkg.tar.gz root@$ip:/root &
         run_cmd_count=$((run_cmd_count + 1))
         if (($run_cmd_count >= 10)); then
             check_cmd_finished

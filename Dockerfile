@@ -14,11 +14,11 @@ RUN yum install -y psmisc
 
 RUN mkdir -p /root/seth/cbuild_Debug
 RUN mkdir -p /root/seth/cbuild_Release
-RUN mkdir -p /root/seth/zjnodes_local
+RUN mkdir -p /root/seth/seths_local
 # 设置工作目录
 COPY ./cbuild_Release/seth /root/seth/cbuild_Release/seth
 COPY ./cbuild_Debug/seth /root/seth/cbuild_Debug/seth
-COPY ./zjnodes_local /root/seth/zjnodes_local
+COPY ./seths_local /root/seth/seths_local
 COPY ./docker_simple_dep.sh /root/seth/
 COPY ./init_accounts3 /root/seth/
 COPY ./shards3 /root/seth/

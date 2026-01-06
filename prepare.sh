@@ -20,7 +20,7 @@ mkdir seth
 cp -rf ./*.sh ./seth/
 mkdir -p ./seth/cbuild_$TARGET
 cp -rf cbuild_$TARGET/seth ./seth/cbuild_$TARGET
-cp -rf zjnodes_* ./seth/
+cp -rf seths_* ./seth/
 cp -rf ./shards* ./seth/
 cp -rf ./root_nodes ./seth/
 cp -rf ./gdb ./seth/

@@ -65,21 +65,21 @@ init() {
 }
 
 make_package() {
-    rm -rf /root/zjnodes/seth/pkg
-    mkdir /root/zjnodes/seth/pkg
-    cp /root/zjnodes/seth/seth /root/zjnodes/seth/pkg
-    cp /root/zjnodes/seth/conf/GeoLite2-City.mmdb /root/zjnodes/seth/pkg
-    cp /root/zjnodes/seth/conf/log4cpp.properties /root/zjnodes/seth/pkg
-    cp /root/seth/shards3 /root/zjnodes/seth/pkg
-    cp /root/seth/root_nodes /root/zjnodes/seth/pkg/shards2
-    cp /root/seth/temp_cmd.sh /root/zjnodes/seth/pkg
-    cp /root/seth/start_cmd.sh /root/zjnodes/seth/pkg
-    cp /root/seth/wondershaper /root/zjnodes/seth/pkg
-    cp -rf /root/zjnodes/seth/root_db /root/zjnodes/seth/pkg/shard_db_2
-    cp -rf /root/zjnodes/seth/shard_db_3 /root/zjnodes/seth/pkg
-    cp -rf /root/zjnodes/temp /root/zjnodes/seth/pkg
-    cp -rf /root/seth/gdb/* /root/zjnodes/seth/pkg
-    cd /root/zjnodes/seth/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
+    rm -rf /root/seths/seth/pkg
+    mkdir /root/seths/seth/pkg
+    cp /root/seths/seth/seth /root/seths/seth/pkg
+    cp /root/seths/seth/conf/GeoLite2-City.mmdb /root/seths/seth/pkg
+    cp /root/seths/seth/conf/log4cpp.properties /root/seths/seth/pkg
+    cp /root/seth/shards3 /root/seths/seth/pkg
+    cp /root/seth/root_nodes /root/seths/seth/pkg/shards2
+    cp /root/seth/temp_cmd.sh /root/seths/seth/pkg
+    cp /root/seth/start_cmd.sh /root/seths/seth/pkg
+    cp /root/seth/wondershaper /root/seths/seth/pkg
+    cp -rf /root/seths/seth/root_db /root/seths/seth/pkg/shard_db_2
+    cp -rf /root/seths/seth/shard_db_3 /root/seths/seth/pkg
+    cp -rf /root/seths/temp /root/seths/seth/pkg
+    cp -rf /root/seth/gdb/* /root/seths/seth/pkg
+    cd /root/seths/seth/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
 }
 
 get_bootstrap() {
@@ -151,7 +151,7 @@ scp_package() {
     node_ips_array=(${node_ips//,/ })
     run_cmd_count=0
     for ip in "${node_ips_array[@]}"; do 
-        sshpass -p $PASSWORD scp -o ConnectTimeout=10  -o StrictHostKeyChecking=no /root/zjnodes/seth/pkg.tar.gz root@$ip:/root &
+        sshpass -p $PASSWORD scp -o ConnectTimeout=10  -o StrictHostKeyChecking=no /root/seths/seth/pkg.tar.gz root@$ip:/root &
         run_cmd_count=$((run_cmd_count + 1))
         if (($run_cmd_count >= 100)); then
             check_cmd_finished

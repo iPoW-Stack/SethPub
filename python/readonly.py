@@ -7,7 +7,7 @@ sys.path.append('/root/seth/src/')
 from protos.view_block_pb2 import ViewBlockItem
 import seth_api
 
-path = str("/root/zjnodes/s3_1/db/")
+path = str("/root/seths/s3_1/db/")
 
 opt = Options(raw_mode=True)
 opt.set_max_background_jobs(4)

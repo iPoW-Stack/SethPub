@@ -3,8 +3,8 @@
 # 修改配置文件
 # 确保服务器安装了 sshpass
 echo "==== STEP1: START DEPLOY ===="
-rm -rf zjnodes
-cp -rf zjnodes_local zjnodes
+rm -rf seths
+cp -rf seths_local seths
 rm -rf nodes_conf
 cp -rf nodes_conf_local nodes_conf
 server0=127.0.0.1
@@ -23,20 +23,20 @@ wait
 (
 echo "[$server0]"
 for n in r1 r2 r3 s3_1 s3_2 s3_3 s3_4; do
-    ln -s /root/zjnodes/seth/GeoLite2-City.mmdb /root/zjnodes/${n}/conf
-    ln -s /root/zjnodes/seth/conf/log4cpp.properties /root/zjnodes/${n}/conf
-    ln -s /root/zjnodes/seth/seth /root/zjnodes/${n}
+    ln -s /root/seths/seth/GeoLite2-City.mmdb /root/seths/${n}/conf
+    ln -s /root/seths/seth/conf/log4cpp.properties /root/seths/${n}/conf
+    ln -s /root/seths/seth/seth /root/seths/${n}
 done
 ) &
 
 (
 
 for n in r1 r2 r3; do
-    cp -rf /root/zjnodes/seth/root_db /root/zjnodes/${n}/db
+    cp -rf /root/seths/seth/root_db /root/seths/${n}/db
 done
 
 for n in s3_1 s3_2 s3_3 s3_4; do
-    cp -rf /root/zjnodes/seth/shard_db_3 /root/zjnodes/${n}/db
+    cp -rf /root/seths/seth/shard_db_3 /root/seths/${n}/db
 done
 ) &
 wait
@@ -52,14 +52,14 @@ echo "==== STEP2: DONE ===="
 echo "==== STEP3: EXECUTE ===="
 
 echo "[$server0]"
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/gcc-8.3.0/lib64/ && cd /root/zjnodes/r1/ && nohup ./seth -f 1 -g 0 r1 root> /dev/null 2>&1 &
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/gcc-8.3.0/lib64/ && cd /root/seths/r1/ && nohup ./seth -f 1 -g 0 r1 root> /dev/null 2>&1 &
 
 sleep 3
 
 echo "[$server0]"
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/gcc-8.3.0/lib64
 for node in r2 r3 s3_1 s3_2 s3_3 s3_4; do
-cd /root/zjnodes/$node/ && nohup ./seth -f 0 -g 0 $node root> /dev/null 2>&1 &
+cd /root/seths/$node/ && nohup ./seth -f 0 -g 0 $node root> /dev/null 2>&1 &
 done
 
 

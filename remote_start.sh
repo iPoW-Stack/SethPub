@@ -9,18 +9,18 @@ FIRST_NODE_COUNT=10
 init() {
     killall -9 seth
     killall -9 txcli
-    rm -rf /root/zjnodes/r*
-    rm -rf /root/zjnodes/s*
-    rm -rf /root/zjnodes/new*
-    rm -rf /root/zjnodes/node
-    rm -rf /root/zjnodes/param
+    rm -rf /root/seths/r*
+    rm -rf /root/seths/s*
+    rm -rf /root/seths/new*
+    rm -rf /root/seths/node
+    rm -rf /root/seths/param
     if [ "$TARGET" == "" ]; then
         TARGET=Release
     fi
 }
 
 make_package() {
-    rm -rf /root/zjnodes/seth/pkg*
+    rm -rf /root/seths/seth/pkg*
     cp -rf /root/seth/sshpass /usr/bin/
     cd /root/seth && tar -zxvf pkg.tar.gz
     cp -rf /root/seth/cbuild_$TARGET/seth /root/seth/pkg/
@@ -69,7 +69,7 @@ clear_command() {
     run_cmd_count=0
     start_pos=1
     for ip in "${node_ips_array[@]}"; do 
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "rm -rf /root/pkg*; killall -9 seth; rm -rf /root/zjnodes/*" &
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "rm -rf /root/pkg*; killall -9 seth; rm -rf /root/seths/*" &
         run_cmd_count=$((run_cmd_count + 1))
         if ((start_pos==1)); then
             sleep 3

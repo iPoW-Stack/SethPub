@@ -3,8 +3,8 @@
 # 修改配置文件
 # 确保服务器安装了 sshpass
 echo "==== STEP1: START DEPLOY ===="
-rm -rf zjnodes
-cp -rf zjnodes_remote zjnodes
+rm -rf seths
+cp -rf seths_remote seths
 rm -rf nodes_conf
 cp -rf nodes_conf_remote nodes_conf
 
@@ -42,7 +42,7 @@ echo "==== 同步中继服务器 ===="
 echo "[$server1]"
 sshpass -p 'Xf4aGbTaf!' ssh -o StrictHostKeyChecking=no root@$server1 <<EOF
 mkdir -p /root;
-rm -rf /root/zjnodes;
+rm -rf /root/seths;
 sshpass -p 'Xf4aGbTaf!' scp -o StrictHostKeyChecking=no root@"${server0}":/root/fetch.sh /root/
 cd /root && sh -x fetch.sh ${server0} ${server1} 'Xf4aGbTaf!' '/root' s3_1 s4_1;
 
@@ -54,7 +54,7 @@ EOF
 echo "[$server2]"
 sshpass -p 'Xf4aGbTaf!' ssh -o StrictHostKeyChecking=no root@$server2 <<EOF
 mkdir -p /root;
-rm -rf /root/zjnodes;
+rm -rf /root/seths;
 sshpass -p 'Xf4aGbTaf!' scp -o StrictHostKeyChecking=no root@"${server0}":/root/fetch.sh /root/
 cd /root && sh -x fetch.sh ${server0} ${server2} 'Xf4aGbTaf!' '/root' r2 s3_3 s4_3;
 
@@ -66,7 +66,7 @@ EOF
 echo "[$server3]"
 sshpass -p 'Xf4aGbTaf!' ssh -o StrictHostKeyChecking=no root@$server3 <<EOF
 mkdir -p /root;
-rm -rf /root/zjnodes;
+rm -rf /root/seths;
 sshpass -p 'Xf4aGbTaf!' scp -o StrictHostKeyChecking=no root@"${server0}":/root/fetch.sh /root/
 cd /root && sh -x fetch.sh ${server0} ${server3} 'Xf4aGbTaf!' '/root' r3 s3_4 s4_4;
 
@@ -78,9 +78,9 @@ wait
 (
 echo "[$server0]"
 for n in r1 s3_2 s4_2; do
-    ln -s /root/zjnodes/seth/GeoLite2-City.mmdb /root/zjnodes/${n}/conf
-    ln -s /root/zjnodes/seth/conf/log4cpp.properties /root/zjnodes/${n}/conf
-    ln -s /root/zjnodes/seth/seth /root/zjnodes/${n}
+    ln -s /root/seths/seth/GeoLite2-City.mmdb /root/seths/${n}/conf
+    ln -s /root/seths/seth/conf/log4cpp.properties /root/seths/${n}/conf
+    ln -s /root/seths/seth/seth /root/seths/${n}
 done
 ) &
 
@@ -89,17 +89,17 @@ done
 echo "[$server1]"
 sshpass -p 'Xf4aGbTaf!' ssh -o StrictHostKeyChecking=no root@$server1 <<EOF
 for n in s3_1 s4_1; do
-    ln -s /root/zjnodes/seth/GeoLite2-City.mmdb /root/zjnodes/\${n}/conf
-    ln -s /root/zjnodes/seth/conf/log4cpp.properties /root/zjnodes/\${n}/conf
-    ln -s /root/zjnodes/seth/seth /root/zjnodes/\${n}
+    ln -s /root/seths/seth/GeoLite2-City.mmdb /root/seths/\${n}/conf
+    ln -s /root/seths/seth/conf/log4cpp.properties /root/seths/\${n}/conf
+    ln -s /root/seths/seth/seth /root/seths/\${n}
 done
 
 for n in s3_1; do
-    cp -rf /root/zjnodes/seth/shard_db_3 /root/zjnodes/\${n}/db
+    cp -rf /root/seths/seth/shard_db_3 /root/seths/\${n}/db
 done
 
 for n in s4_1; do
-    cp -rf /root/zjnodes/seth/shard_db_4 /root/zjnodes/\${n}/db
+    cp -rf /root/seths/seth/shard_db_4 /root/seths/\${n}/db
 done
 
 EOF
@@ -110,21 +110,21 @@ EOF
 echo "[$server2]"
 sshpass -p 'Xf4aGbTaf!' ssh -o StrictHostKeyChecking=no root@$server2 <<EOF
 for n in r2 s3_3 s4_3; do
-    ln -s /root/zjnodes/seth/GeoLite2-City.mmdb /root/zjnodes/\${n}/conf
-    ln -s /root/zjnodes/seth/conf/log4cpp.properties /root/zjnodes/\${n}/conf
-    ln -s /root/zjnodes/seth/seth /root/zjnodes/\${n}
+    ln -s /root/seths/seth/GeoLite2-City.mmdb /root/seths/\${n}/conf
+    ln -s /root/seths/seth/conf/log4cpp.properties /root/seths/\${n}/conf
+    ln -s /root/seths/seth/seth /root/seths/\${n}
 done
 
 for n in r2; do
-    cp -rf /root/zjnodes/seth/root_db /root/zjnodes/\${n}/db
+    cp -rf /root/seths/seth/root_db /root/seths/\${n}/db
 done
 
 for n in s3_3; do
-    cp -rf /root/zjnodes/seth/shard_db_3 /root/zjnodes/\${n}/db
+    cp -rf /root/seths/seth/shard_db_3 /root/seths/\${n}/db
 done
 
 for n in s4_3; do
-    cp -rf /root/zjnodes/seth/shard_db_4 /root/zjnodes/\${n}/db
+    cp -rf /root/seths/seth/shard_db_4 /root/seths/\${n}/db
 done
 
 EOF
@@ -135,21 +135,21 @@ EOF
 echo "[$server3]"
 sshpass -p 'Xf4aGbTaf!' ssh -o StrictHostKeyChecking=no root@$server3 <<EOF
 for n in r3 s3_4 s4_4; do
-    ln -s /root/zjnodes/seth/GeoLite2-City.mmdb /root/zjnodes/\${n}/conf
-    ln -s /root/zjnodes/seth/conf/log4cpp.properties /root/zjnodes/\${n}/conf
-    ln -s /root/zjnodes/seth/seth /root/zjnodes/\${n}
+    ln -s /root/seths/seth/GeoLite2-City.mmdb /root/seths/\${n}/conf
+    ln -s /root/seths/seth/conf/log4cpp.properties /root/seths/\${n}/conf
+    ln -s /root/seths/seth/seth /root/seths/\${n}
 done
 
 for n in r3; do
-    cp -rf /root/zjnodes/seth/root_db /root/zjnodes/\${n}/db
+    cp -rf /root/seths/seth/root_db /root/seths/\${n}/db
 done
 
 for n in s3_4; do
-    cp -rf /root/zjnodes/seth/shard_db_3 /root/zjnodes/\${n}/db
+    cp -rf /root/seths/seth/shard_db_3 /root/seths/\${n}/db
 done
 
 for n in s4_4; do
-    cp -rf /root/zjnodes/seth/shard_db_4 /root/zjnodes/\${n}/db
+    cp -rf /root/seths/seth/shard_db_4 /root/seths/\${n}/db
 done
 
 EOF
@@ -158,15 +158,15 @@ EOF
 (
 
 for n in r1; do
-    cp -rf /root/zjnodes/seth/root_db /root/zjnodes/${n}/db
+    cp -rf /root/seths/seth/root_db /root/seths/${n}/db
 done
 
 for n in s3_2; do
-    cp -rf /root/zjnodes/seth/shard_db_3 /root/zjnodes/${n}/db
+    cp -rf /root/seths/seth/shard_db_3 /root/seths/${n}/db
 done
 
 for n in s4_2; do
-    cp -rf /root/zjnodes/seth/shard_db_4 /root/zjnodes/${n}/db
+    cp -rf /root/seths/seth/shard_db_4 /root/seths/${n}/db
 done
 ) &
 wait
@@ -197,7 +197,7 @@ echo "==== STEP2: DONE ===="
 echo "==== STEP3: EXECUTE ===="
 
 echo "[$server0]"
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/gcc-8.3.0/lib64/ && cd /root/zjnodes/r1/ && nohup ./seth -f 1 -g 0 r1 root> /dev/null 2>&1 &
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/gcc-8.3.0/lib64/ && cd /root/seths/r1/ && nohup ./seth -f 1 -g 0 r1 root> /dev/null 2>&1 &
 
 sleep 3
 
@@ -205,7 +205,7 @@ echo "[$server1]"
 sshpass -p 'Xf4aGbTaf!' ssh -f -o StrictHostKeyChecking=no root@$server1 bash -c "'\
 export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/usr/local/gcc-8.3.0/lib64; \
 for node in s3_1 s4_1; do \
-    cd /root/zjnodes/\$node/ && nohup ./seth -f 0 -g 0 \$node root> /dev/null 2>&1 &\
+    cd /root/seths/\$node/ && nohup ./seth -f 0 -g 0 \$node root> /dev/null 2>&1 &\
 done \
 '"
 
@@ -213,7 +213,7 @@ echo "[$server2]"
 sshpass -p 'Xf4aGbTaf!' ssh -f -o StrictHostKeyChecking=no root@$server2 bash -c "'\
 export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/usr/local/gcc-8.3.0/lib64; \
 for node in r2 s3_3 s4_3; do \
-    cd /root/zjnodes/\$node/ && nohup ./seth -f 0 -g 0 \$node root> /dev/null 2>&1 &\
+    cd /root/seths/\$node/ && nohup ./seth -f 0 -g 0 \$node root> /dev/null 2>&1 &\
 done \
 '"
 
@@ -221,14 +221,14 @@ echo "[$server3]"
 sshpass -p 'Xf4aGbTaf!' ssh -f -o StrictHostKeyChecking=no root@$server3 bash -c "'\
 export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/usr/local/gcc-8.3.0/lib64; \
 for node in r3 s3_4 s4_4; do \
-    cd /root/zjnodes/\$node/ && nohup ./seth -f 0 -g 0 \$node root> /dev/null 2>&1 &\
+    cd /root/seths/\$node/ && nohup ./seth -f 0 -g 0 \$node root> /dev/null 2>&1 &\
 done \
 '"
 
 echo "[$server0]"
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/gcc-8.3.0/lib64
 for node in s3_2 s4_2; do
-cd /root/zjnodes/$node/ && nohup ./seth -f 0 -g 0 $node root> /dev/null 2>&1 &
+cd /root/seths/$node/ && nohup ./seth -f 0 -g 0 $node root> /dev/null 2>&1 &
 done
 
 
