@@ -15,7 +15,7 @@
 #include "security/ecdsa/ecdsa.h"
 #include "zjcvm/zjcvm_utils.h"
 
-namespace shardora {
+namespace seth {
 
 namespace contract {
 
@@ -715,4 +715,4 @@ TEST_F(TestContractManager, blake2compressionFail) {
 
 }  // namespace bignum
 
-}  // namespace shardora
+}  // namespace seth

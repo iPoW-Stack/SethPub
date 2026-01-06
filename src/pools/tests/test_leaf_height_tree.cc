@@ -10,7 +10,7 @@
 #include "pools/leaf_height_tree.h"
 #include "db/db.h"
 
-namespace shardora {
+namespace seth {
 
 namespace pools {
 
@@ -104,4 +104,4 @@ TEST_F(TestLeafHeightTree, TestSetBranch) {
 
 }  // namespace pools
 
-}  // namespace shardora
+}  // namespace seth

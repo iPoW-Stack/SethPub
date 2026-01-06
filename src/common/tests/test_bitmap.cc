@@ -7,7 +7,7 @@
 #include "common/bitmap.h"
 #include "common/random.h"
 
-namespace shardora {
+namespace seth {
 
 namespace common {
 
@@ -70,4 +70,4 @@ TEST_F(TestBitmap, AddAndContainClear) {
 
 }  // namespace common
 
-}  // namespace shardora
+}  // namespace seth

@@ -7,7 +7,7 @@
 
 #include "common/utils.h"
 
-namespace shardora {
+namespace seth {
 
 namespace common {
 
@@ -48,4 +48,4 @@ TEST_F(TestUtils, All) {
 
 }  // namespace common
 
-}  // namespace shardora
+}  // namespace seth

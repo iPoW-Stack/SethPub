@@ -21,7 +21,7 @@
 #include "election/elect_dht.h"
 #include "db/db.h"
 
-namespace shardora {
+namespace seth {
 
 namespace sync {
 
@@ -118,4 +118,4 @@ TEST_F(TestKeyValueSync, TestSyncHeight) {
 
 }  // namespace sync
 
-}  // namespace shardora
+}  // namespace seth

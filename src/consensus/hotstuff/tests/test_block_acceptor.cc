@@ -8,7 +8,7 @@
 #include <security/ecdsa/ecdsa.h>
 #include <vss/vss_manager.h>
 
-namespace shardora {
+namespace seth {
 
 namespace contract {
 class ContractManager;
@@ -217,5 +217,5 @@ TEST_F(TestBlockAcceptor, Accept_InvalidTxs_NormalFromTx) {
 
 } // namespace hotstuff
 
-} // namespace shardora
+} // namespace seth
 

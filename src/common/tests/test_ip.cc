@@ -6,7 +6,7 @@
 #define private public
 #include "common/ip.h"
 
-namespace shardora {
+namespace seth {
 
 namespace common {
 
@@ -45,4 +45,4 @@ TEST_F(TestIp, AddAndContainClear) {
 
 }  // namespace common
 
-}  // namespace shardora
+}  // namespace seth

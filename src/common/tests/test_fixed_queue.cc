@@ -6,7 +6,7 @@
 #define private public
 #include "common/fixed_queue.h"
 
-namespace shardora {
+namespace seth {
 
 namespace common {
 
@@ -66,4 +66,4 @@ TEST_F(TestFixedQueue, all) {
 
 }  // namespace common
 
-}  // namespace shardora
+}  // namespace seth

@@ -9,7 +9,7 @@
 #include "common/random.h"
 #include "common/encode.h"
 
-namespace shardora {
+namespace seth {
 
 namespace common {
 
@@ -62,4 +62,4 @@ TEST_F(TestFtsTree, all) {
 
 }  // namespace common
 
-}  // namespace shardora
+}  // namespace seth

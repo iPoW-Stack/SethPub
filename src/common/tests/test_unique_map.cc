@@ -6,7 +6,7 @@
 #define private public
 #include "common/unique_map.h"
 
-namespace shardora {
+namespace seth {
 
 namespace common {
 
@@ -47,4 +47,4 @@ TEST_F(TestUniqueMap, All) {
 
 }  // namespace common
 
-}  // namespace shardora
+}  // namespace seth

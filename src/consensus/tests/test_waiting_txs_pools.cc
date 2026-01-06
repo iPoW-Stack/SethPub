@@ -17,7 +17,7 @@
 #include "protos/pools.pb.h"
 #include "security/ecdsa/ecdsa.h"
 
-namespace shardora {
+namespace seth {
 
 namespace consensus {
 
@@ -153,4 +153,4 @@ TEST_F(TestWaitingTxsPools, GetValidTxs) {
 
 }  // namespace consensus
 
-}  // namespace shardora
+}  // namespace seth

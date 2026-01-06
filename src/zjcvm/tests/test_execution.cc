@@ -9,7 +9,7 @@
 #include "zjcvm/zjc_host.h"
 #include "zjcvm/zjcvm_utils.h"
 
-namespace shardora {
+namespace seth {
 
 namespace zjcvm {
 
@@ -65,4 +65,4 @@ TEST_F(TestExecution, All) {
 
 }  // namespace zjcvm
 
-}  // namespace shardora
+}  // namespace seth

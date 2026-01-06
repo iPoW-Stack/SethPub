@@ -6,7 +6,7 @@
 #define private public
 #include "common/unique_set.h"
 
-namespace shardora {
+namespace seth {
 
 namespace common {
 
@@ -74,4 +74,4 @@ TEST_F(TestUniqueSet, StringPoinerSet) {
 
 }  // namespace common
 
-}  // namespace shardora
+}  // namespace seth

@@ -17,7 +17,7 @@
 #include "dht/dht_utils.h"
 #include "protos/block.pb.h"
 
-namespace shardora {
+namespace seth {
 
 namespace ck {
 
@@ -197,4 +197,4 @@ TEST_F(TestCk, All) {
 
 }  // namespace ck
 
-}  // namespace shardora
+}  // namespace seth

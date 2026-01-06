@@ -7,7 +7,7 @@
 
 #include "common/string_utils.h"
 
-namespace shardora {
+namespace seth {
 
 namespace common {
 
@@ -315,4 +315,4 @@ TEST_F(TestStringUtils, InvalidStringToNum3) {
 
 }  // namespace common
 
-}  // namespace shardora
+}  // namespace seth

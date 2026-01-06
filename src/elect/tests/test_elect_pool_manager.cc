@@ -20,7 +20,7 @@
 // #include "security/crypto_utils.h"
 // #include "security/security.h"
 // 
-// namespace shardora {
+// namespace seth {
 // 
 // namespace elect {
 // 
@@ -425,4 +425,4 @@
 // 
 // }  // namespace elect
 // 
-// }  // namespace shardora
+// }  // namespace seth

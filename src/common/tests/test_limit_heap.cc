@@ -7,7 +7,7 @@
 #include "common/limit_heap.h"
 #include "common/random.h"
 
-namespace shardora {
+namespace seth {
 
 namespace common {
 
@@ -70,4 +70,4 @@ TEST_F(TestLimitHeap, TestMin) {
 
 }  // namespace common
 
-}  // namespace shardora
+}  // namespace seth

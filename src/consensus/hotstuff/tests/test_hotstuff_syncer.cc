@@ -7,7 +7,7 @@
 #include <transport/transport_utils.h>
 #include <vss/vss_manager.h>
 
-namespace shardora {
+namespace seth {
 
 namespace hotstuff {
 
@@ -190,5 +190,5 @@ TEST_F(TestViewBlockChainSyncer, TestProcessResponse) {
 
 } // namespace consensus
 
-} // namespace shardora
+} // namespace seth
 

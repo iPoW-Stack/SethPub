@@ -5,7 +5,7 @@
 #define private public
 #include "common/split.h"
 
-namespace shardora {
+namespace seth {
 
 namespace common {
 
@@ -99,4 +99,4 @@ TEST_F(TestSplit, SplitWithBadChar) {
 
 }  // namespace common
 
-}  // namespace shardora
+}  // namespace seth
