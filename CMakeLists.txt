@@ -122,7 +122,7 @@ add_definitions(
     #-DFOR_CONSOLE_DEBUG
 #    -DTEST_TRANSPORT_PERFOMANCE
 #    -DSETH_TRACE_MESSAGE
-    -DLEVELDB
+#  -DLEVELDB
 #    -DCLIENT_USE_UV
 #    -DMAKE_CLIENT_LIB
     #-DARMEABI_V7A
@@ -145,31 +145,31 @@ if(MSVC)
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
     add_compile_options(/Zc:__cplusplus)
     add_compile_options(/utf-8)
-    
+
     # MSVC Release Optimizations
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
         add_compile_options(/Ox /Ob2 /Oi /Ot /GL)
         add_link_options(/LTCG)
     endif()
-    
+
     set(LINK_DL )
 else()
     # General Options
     add_compile_options(-Wall -pthread -fPIC)
     add_compile_options(-Wno-deprecated-declarations)
     add_compile_options(-Wno-unused-variable)
-    
+
     # Extreme Performance Optimization for Release Build
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
         # -O3: Highest optimization level
-        # -march=native: Use all instruction sets available on the host CPU (AVX2/AVX512 etc). 
+        # -march=native: Use all instruction sets available on the host CPU (AVX2/AVX512 etc).
         #                Huge performance boost for BLS/Crypto.
         # -funroll-loops: Aggressive loop unrolling
         add_compile_options(-O3 -funroll-loops)
-        
+
         # Enable Dead Code Elimination (works with Linker options below)
         add_compile_options(-ffunction-sections -fdata-sections)
-        
+
         # Linker Optimizations
         if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
             # --gc-sections: Remove unused code sections
@@ -177,7 +177,7 @@ else()
             set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gc-sections -s")
         endif()
     endif()
-    
+
     set(LINK_DL dl)
 endif()
 
