@@ -426,6 +426,12 @@ Status Hotstuff::Propose(
     SETH_DEBUG("propose use time: %lu", (common::TimeUtils::TimestampMs() - btime));
 
 #endif
+
+    SETH_INFO("pool: %d propose message success, view: %lu, hash64: %lu, tx size: %u",
+        pool_idx_,
+        hotstuff_msg->pro_msg().view_item().qc().view(),
+        header.hash64(),
+        pb_pro_msg->tx_propose().txs_size());
     return Status::kSuccess;
 }
 
