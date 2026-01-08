@@ -59,7 +59,7 @@ void Hotstuff::Init() {
             continue;
         }
 
-        SETH_DEBUG("now init cross consensus shard: %u begin.", network_id);
+        SETH_INFO("now init cross consensus shard: %u begin.", network_id);
         auto chain = std::make_shared<ViewBlockChain>();
         chain->Init(
             kCrossShardingChain,
@@ -76,7 +76,7 @@ void Hotstuff::Init() {
             chain,
             network_id, 
             common::kImmutablePoolSize);
-        SETH_DEBUG("now init cross consensus shard: %u end.", network_id);
+        SETH_INFO("now init cross consensus shard: %u end.", network_id);
     }
 }
 
@@ -101,7 +101,7 @@ void Hotstuff::InitLoadLatestBlock(
                 break;
             }
 
-            SETH_DEBUG("success get parent hash: %s", common::Encode::HexEncode(parent_hash).c_str());
+            SETH_INFO("success get parent hash: %s", common::Encode::HexEncode(parent_hash).c_str());
             if (view_block.qc().view() <= 0 || latest_view_block->qc().view() >= view_block.qc().view() + 2) {
                 break;
             }
@@ -109,7 +109,7 @@ void Hotstuff::InitLoadLatestBlock(
             parent_hash = view_block.parent_hash();
         }
     } else {
-        SETH_DEBUG("no genesis, waiting for syncing, network: %lu, pool_idx: %d", network_id, pool_index);
+        SETH_INFO("no genesis, waiting for syncing, network: %lu, pool_idx: %d", network_id, pool_index);
         assert(false);
     }
 }
@@ -117,7 +117,7 @@ void Hotstuff::InitLoadLatestBlock(
 void Hotstuff::InitAddNewViewBlock(
         std::shared_ptr<ViewBlockChain> view_block_chain, 
         std::shared_ptr<ViewBlock>& latest_view_block) {
-    SETH_DEBUG("%u_%u_%llu, now pool: %u latest vb from db, vb view: %lu",
+    SETH_INFO("%u_%u_%llu, now pool: %u latest vb from db, vb view: %lu",
         latest_view_block->qc().network_id(),
         latest_view_block->qc().pool_index(),
         latest_view_block->qc().view(),
@@ -126,7 +126,7 @@ void Hotstuff::InitAddNewViewBlock(
     auto balane_map_ptr = std::make_shared<BalanceAndNonceMap>();
     view_block_chain->Store(latest_view_block, true, balane_map_ptr, nullptr, true);
     view_block_chain->UpdateHighViewBlock(latest_view_block->qc());
-    SETH_DEBUG("success new set qc view: %lu, %u_%u_%lu, hash: %s",
+    SETH_INFO("success new set qc view: %lu, %u_%u_%lu, hash: %s",
         latest_view_block->qc().view(),
         latest_view_block->qc().network_id(),
         latest_view_block->qc().pool_index(),
@@ -151,7 +151,7 @@ Status Hotstuff::Start() {
     if (!leader) { // Check if it is empty
         SETH_ERROR("Get Leader is error.");
     } else if (leader->index == local_member->index) {
-        SETH_DEBUG("ViewBlock start propose");
+        SETH_INFO("ViewBlock start propose");
         Propose(nullptr, nullptr, nullptr);
     }
     return Status::kSuccess;
@@ -162,13 +162,13 @@ Status Hotstuff::Propose(
         std::shared_ptr<AggregateQC> agg_qc,
         const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    SETH_DEBUG("pool: %d, called propose!", pool_idx_);
+    SETH_INFO("pool: %d, called propose!", pool_idx_);
 #ifndef NDEBUG
     auto btime = common::TimeUtils::TimestampMs();
 #endif
     auto pre_v_block = view_block_chain()->HighViewBlock();
     if (!pre_v_block) {
-        SETH_DEBUG("pool %u not has prev view block.", pool_idx_);
+        SETH_INFO("pool %u not has prev view block.", pool_idx_);
         return Status::kError;
     }
 
@@ -186,7 +186,7 @@ Status Hotstuff::Propose(
         return Status::kError;
     }
 
-    // SETH_DEBUG("net: %d, pool %u has dht ptr size: %d.", 
+    // SETH_INFO("net: %d, pool %u has dht ptr size: %d.", 
     //     common::GlobalInfo::Instance()->network_id(), 
     //     pool_idx_, 
     //     readobly_dht->size());
@@ -234,13 +234,13 @@ Status Hotstuff::Propose(
 //         }
 
 //         transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
-//         SETH_DEBUG("0 success add local message: %lu", tmp_msg_ptr->header.hash64());
+//         SETH_INFO("0 success add local message: %lu", tmp_msg_ptr->header.hash64());
 //         network::Route::Instance()->Send(tmp_msg_ptr);
 // #ifndef NDEBUG
 //         ++sendout_bft_message_count_;
 //         transport::protobuf::ConsensusDebug cons_debug;
 //         cons_debug.ParseFromString(header.debug());
-//         SETH_DEBUG("pool: %d, header pool: %d, propose, txs size: %lu, view: %lu, "
+//         SETH_INFO("pool: %d, header pool: %d, propose, txs size: %lu, view: %lu, "
 //             "hash: %s, qc_view: %lu, hash64: %lu, propose_debug: %s, "
 //             "msg view: %lu, cur view: %lu, propose msg: %s, sendout_bft_message_count_: %u",
 //             pool_idx_,
@@ -261,7 +261,7 @@ Status Hotstuff::Propose(
 //     }
 
 //     if (max_view() != 0 && max_view() <= last_leader_propose_view_) {
-//         SETH_DEBUG("pool: %d construct propose msg failed, %d, "
+//         SETH_INFO("pool: %d construct propose msg failed, %d, "
 //             "max_view(): %lu last_leader_propose_view_: %lu",
 //             pool_idx_, Status::kError,
 //             max_view(), last_leader_propose_view_);
@@ -271,7 +271,7 @@ Status Hotstuff::Propose(
 #ifndef NDEBUG
     auto t2 = common::TimeUtils::TimestampMs();
 #endif
-    // SETH_DEBUG("1 now ontime called propose: %d", pool_idx_);
+    // SETH_INFO("1 now ontime called propose: %d", pool_idx_);
     // auto tmp_msg_ptr = latest_leader_propose_message_;
     // if (!tmp_msg_ptr ||
     //         tmp_msg_ptr->header.hotstuff().pro_msg().view_item().qc().view() < 
@@ -290,7 +290,7 @@ Status Hotstuff::Propose(
     Status s = ConstructProposeMsg(msg_ptr, pb_pro_msg);
     if (s != Status::kSuccess) {
         if (!tc) {
-            SETH_DEBUG("pool: %d construct propose msg failed, %d",
+            SETH_INFO("pool: %d construct propose msg failed, %d",
                 pool_idx_, (int32_t)s);
             return s;
         }
@@ -350,7 +350,7 @@ Status Hotstuff::Propose(
     consensus_debug.add_messages(propose_debug_str);
     consensus_debug.set_begin_timestamp(common::TimeUtils::TimestampMs());
     header.set_debug(consensus_debug.SerializeAsString());
-    SETH_DEBUG("leader begin propose_debug: %s", ProtobufToJson(consensus_debug).c_str());
+    SETH_INFO("leader begin propose_debug: %s", ProtobufToJson(consensus_debug).c_str());
     auto t5 = common::TimeUtils::TimestampMs();
 #endif
     s = crypto()->SignMessage(tmp_msg_ptr);
@@ -368,7 +368,7 @@ Status Hotstuff::Propose(
     auto t6 = common::TimeUtils::TimestampMs();
 #endif
     transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
-    SETH_DEBUG("1 success add local message: %lu", tmp_msg_ptr->header.hash64());
+    SETH_INFO("1 success add local message: %lu", tmp_msg_ptr->header.hash64());
     network::Route::Instance()->Send(tmp_msg_ptr);
 #ifndef NDEBUG
     auto t7 = common::TimeUtils::TimestampMs();
@@ -378,13 +378,13 @@ Status Hotstuff::Propose(
         hotstuff_msg->pro_msg().view_item().qc().view(), 
         hotstuff_msg->pro_msg().tc().view());
 
-    SETH_DEBUG("new propose message hash: %lu", tmp_msg_ptr->header.hash64());
+    SETH_INFO("new propose message hash: %lu", tmp_msg_ptr->header.hash64());
     ADD_DEBUG_PROCESS_TIMESTAMP();
 
 #ifndef NDEBUG
     auto t8 = common::TimeUtils::TimestampMs();
     ++sendout_bft_message_count_;
-    SETH_DEBUG("pool: %d, header pool: %d, propose, txs size: %lu, view: %lu, "
+    SETH_INFO("pool: %d, header pool: %d, propose, txs size: %lu, view: %lu, "
         "old_last_leader_propose_view_: %lu, "
         "last_leader_propose_view_: %lu, tc view: %lu, hash: %s, "
         "qc_view: %lu, hash64: %lu, propose_debug: %s, t1: %lu, t2: %lu, "
@@ -410,7 +410,7 @@ Status Hotstuff::Propose(
         (t8 - btime),
         sendout_bft_message_count_.fetch_add(0));
     if (tc != nullptr && IsQcTcValid(*tc)) {
-        SETH_DEBUG("new prev qc coming: %s, %u_%u_%lu, parent hash: %s, tx size: %u, "
+        SETH_INFO("new prev qc coming: %s, %u_%u_%lu, parent hash: %s, tx size: %u, "
             "view: %lu, max_view(): %lu, last_leader_propose_view_: %lu",
             common::Encode::HexEncode(tc->view_block_hash()).c_str(), 
             tc->network_id(), 
@@ -425,7 +425,7 @@ Status Hotstuff::Propose(
 
 #endif
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    SETH_DEBUG("propose use time: %lu", (common::TimeUtils::TimestampMs() - btime));
+    SETH_INFO("propose use time: %lu", (common::TimeUtils::TimestampMs() - btime));
     return Status::kSuccess;
 }
 
@@ -440,7 +440,7 @@ void Hotstuff::BroadcastGlobalPoolBlock(const std::shared_ptr<ViewBlock>& v_bloc
 
 void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    SETH_DEBUG("handle propose called hash: %lu, propose_debug: %s", 
+    SETH_INFO("handle propose called hash: %lu, propose_debug: %s", 
         msg_ptr->header.hash64(), 
         ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
     auto pro_msg_wrap = std::make_shared<ProposeMsgWrapper>(msg_ptr);
@@ -450,14 +450,14 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
 
     if (msg_ptr->header.hotstuff().pro_msg().view_item().block_info().timeblock_height() != 
             tm_block_mgr_->LatestTimestampHeight()) {
-        SETH_DEBUG("invalid time block height: %lu, %lu", 
+        SETH_INFO("invalid time block height: %lu, %lu", 
             msg_ptr->header.hotstuff().pro_msg().view_item().block_info().timeblock_height(),
             tm_block_mgr_->LatestTimestampHeight());
         return;
     }
 
     if (!msg_ptr->header.hotstuff().pro_msg().has_view_item()) {
-        SETH_DEBUG("handle propose called hash: %lu, %u_%u_%lu, "
+        SETH_INFO("handle propose called hash: %lu, %u_%u_%lu, "
             "view block hash: %s, sign x: %s, propose_debug: %s", 
             msg_ptr->header.hash64(), 
             msg_ptr->header.hotstuff().pro_msg().tc().network_id(), 
@@ -476,7 +476,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     transport::protobuf::ConsensusDebug cons_debug;
     latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
     cons_debug.ParseFromString(msg_ptr->header.debug());
-    SETH_DEBUG("handle propose called hash: %lu, %u_%u_%lu, "
+    SETH_INFO("handle propose called hash: %lu, %u_%u_%lu, "
         "view block hash: %s, sign x: %s, propose_debug: %s", 
         msg_ptr->header.hash64(), 
         msg_ptr->header.hotstuff().pro_msg().view_item().qc().network_id(), 
@@ -495,14 +495,14 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     auto b = common::TimeUtils::TimestampMs();
     defer({
         auto e = common::TimeUtils::TimestampMs();
-        SETH_DEBUG("pool: %d handle propose duration: %lu ms", pool_idx_, e-b);
+        SETH_INFO("pool: %d handle propose duration: %lu ms", pool_idx_, e-b);
     });
 
     pro_msg_wrap->view_block_ptr = std::make_shared<ViewBlock>(
         msg_ptr->header.hotstuff().pro_msg().view_item());
 #ifndef NDEBUG
     pro_msg_wrap->view_block_ptr->set_debug(cons_debug.SerializeAsString());
-    SETH_DEBUG("handle new propose message parent hash: %s, %u_%u_%lu, view hash: %s, "
+    SETH_INFO("handle new propose message parent hash: %s, %u_%u_%lu, view hash: %s, "
         "hash64: %lu, block timestamp: %lu, propose_debug: %s",
         common::Encode::HexEncode(pro_msg_wrap->view_block_ptr->parent_hash()).c_str(), 
         pro_msg_wrap->view_block_ptr->qc().network_id(),
@@ -517,7 +517,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto& view_item = *pro_msg_wrap->view_block_ptr;
 #ifndef NDEBUG
-    SETH_DEBUG("HandleProposeMessageByStep called hash: %lu, "
+    SETH_INFO("HandleProposeMessageByStep called hash: %lu, "
         "last_vote_view_: %lu, view_item.qc().view(): %lu, propose_debug: %s",
         pro_msg_wrap->msg_ptr->header.hash64(), last_vote_view_, view_item.qc().view(),
         ProtobufToJson(cons_debug).c_str());
@@ -633,13 +633,13 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
-    SETH_DEBUG("HandleProposeMsgStep_HasVote called hash: %lu, "
+    SETH_INFO("HandleProposeMsgStep_HasVote called hash: %lu, "
         "last_vote_view_: %lu, view_item.qc().view(): %lu, propose_debug: %s",
         pro_msg_wrap->msg_ptr->header.hash64(), last_vote_view_, view_item.qc().view(),
         ProtobufToJson(cons_debug).c_str());
 #endif
     if (last_vote_view_ >= view_item.qc().view()) {
-        SETH_DEBUG("pool: %d has voted view: %lu, last_vote_view_: %u, "
+        SETH_INFO("pool: %d has voted view: %lu, last_vote_view_: %u, "
             "hash64: %lu, pacemaker()->CurView(): %lu",
             pool_idx_, view_item.qc().view(),
             last_vote_view_, pro_msg_wrap->msg_ptr->header.hash64(),
@@ -648,7 +648,7 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
             // return Status::kSuccess;
             auto iter = voted_msgs_.find(view_item.qc().view());
             if (iter != voted_msgs_.end()) {
-                SETH_DEBUG("pool: %d has voted: %lu, last_vote_view_: %u, "
+                SETH_INFO("pool: %d has voted: %lu, last_vote_view_: %u, "
                     "hash64: %lu and resend vote: hash: %s",
                     pool_idx_, view_item.qc().view(),
                     last_vote_view_, pro_msg_wrap->msg_ptr->header.hash64(),
@@ -673,7 +673,7 @@ Status Hotstuff::HandleProposeMsgStep_VerifyLeader(std::shared_ptr<ProposeMsgWra
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
-    SETH_DEBUG("HandleProposeMsgStep_VerifyLeader called hash: %lu, propose_debug: %s", 
+    SETH_INFO("HandleProposeMsgStep_VerifyLeader called hash: %lu, propose_debug: %s", 
         pro_msg_wrap->msg_ptr->header.hash64(), ProtobufToJson(cons_debug).c_str());
 #endif
     auto& view_item = *pro_msg_wrap->view_block_ptr;
@@ -702,7 +702,7 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
 
-    SETH_DEBUG("HandleTC called hash: %lu, propose_debug: %s, pro_msg.tc().has_view_block_hash(): %d", 
+    SETH_INFO("HandleTC called hash: %lu, propose_debug: %s, pro_msg.tc().has_view_block_hash(): %d", 
         pro_msg_wrap->msg_ptr->header.hash64(), 
         ProtobufToJson(pro_msg).c_str(),
         pro_msg.tc().has_view_block_hash());
@@ -727,7 +727,7 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
             assert(IsQcTcValid(*tc_ptr));
             latest_qc_item_ptr_ = tc_ptr;
         }
-        SETH_DEBUG("commit use time: %lu", (common::TimeUtils::TimestampMs() - btime));
+        SETH_INFO("commit use time: %lu", (common::TimeUtils::TimestampMs() - btime));
 
 // #ifndef NDEBUG
 //         auto msg_hash = GetTCMsgHash(pro_msg.tc());
@@ -750,7 +750,7 @@ Status Hotstuff::HandleProposeMsgStep_VerifyQC(std::shared_ptr<ProposeMsgWrapper
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
 
-    SETH_DEBUG("HandleProposeMsgStep_VerifyQC called hash: %lu, "
+    SETH_INFO("HandleProposeMsgStep_VerifyQC called hash: %lu, "
         "view_block_hash: %s, propose_debug: %s, sign x: %s",
         msg_ptr->header.hash64(), 
         common::Encode::HexEncode(pro_msg.tc().view_block_hash()).c_str(),
@@ -760,12 +760,12 @@ Status Hotstuff::HandleProposeMsgStep_VerifyQC(std::shared_ptr<ProposeMsgWrapper
     if (pro_msg.has_tc() && pro_msg.tc().has_view_block_hash() && IsQcTcValid(pro_msg.tc())) {
         ADD_DEBUG_PROCESS_TIMESTAMP();
         if (VerifyQC(pro_msg.tc()) != Status::kSuccess) {
-            SETH_DEBUG("pool: %d verify qc failed: %lu", pool_idx_, pro_msg.tc().view());
+            SETH_INFO("pool: %d verify qc failed: %lu", pool_idx_, pro_msg.tc().view());
             return Status::kError;
         }
 
         ADD_DEBUG_PROCESS_TIMESTAMP();
-        SETH_DEBUG("success new set qc view: %lu, %u_%u_%lu",
+        SETH_INFO("success new set qc view: %lu, %u_%u_%lu",
             pro_msg.tc().view(),
             pro_msg.tc().network_id(),
             pro_msg.tc().pool_index(),
@@ -805,7 +805,7 @@ Status Hotstuff::HandleProposeMsgStep_VerifyViewBlock(std::shared_ptr<ProposeMsg
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
-    SETH_DEBUG("HandleProposeMsgStep_VerifyViewBlock called hash: %lu, propose_debug: %s",
+    SETH_INFO("HandleProposeMsgStep_VerifyViewBlock called hash: %lu, propose_debug: %s",
         pro_msg_wrap->msg_ptr->header.hash64(), ProtobufToJson(cons_debug).c_str());
 #endif
     auto* tc = &pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().tc();
@@ -814,7 +814,7 @@ Status Hotstuff::HandleProposeMsgStep_VerifyViewBlock(std::shared_ptr<ProposeMsg
             view_block_chain(),
             tc,
             pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().elect_height()) != Status::kSuccess) {
-        SETH_DEBUG("pool: %d, Verify ViewBlock is error. hash: %s, hash64: %lu, pool now: %s", pool_idx_,
+        SETH_INFO("pool: %d, Verify ViewBlock is error. hash: %s, hash64: %lu, pool now: %s", pool_idx_,
             common::Encode::HexEncode(pro_msg_wrap->view_block_ptr->qc().view_block_hash()).c_str(),
             pro_msg_wrap->msg_ptr->header.hash64(),
             view_block_chain_->String().c_str());
@@ -822,7 +822,7 @@ Status Hotstuff::HandleProposeMsgStep_VerifyViewBlock(std::shared_ptr<ProposeMsg
     }
     
 #ifndef NDEBUG
-    SETH_DEBUG("====1.1 pool: %d, verify view block success, view: %lu, "
+    SETH_INFO("====1.1 pool: %d, verify view block success, view: %lu, "
         "hash: %s, qc_view: %lu, hash64: %lu, propose_debug: %s",
         pool_idx_,
         pro_msg_wrap->view_block_ptr->qc().view(),
@@ -839,7 +839,7 @@ Status Hotstuff::HandleProposeMsgStep_Directly(
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
-    SETH_DEBUG("HandleProposeMsgStep_Directly called hash: %lu, propose_debug: %s",
+    SETH_INFO("HandleProposeMsgStep_Directly called hash: %lu, propose_debug: %s",
         pro_msg_wrap->msg_ptr->header.hash64(), 
         ProtobufToJson(cons_debug).c_str());
 #endif
@@ -858,7 +858,7 @@ Status Hotstuff::HandleProposeMsgStep_Directly(
             true, 
             balance_map,
             zjc_host) != Status::kSuccess) {
-        SETH_DEBUG("====1.1.2 Accept pool: %d, verify view block failed, "
+        SETH_INFO("====1.1.2 Accept pool: %d, verify view block failed, "
             "view: %lu, hash: %s, qc_view: %lu, hash64: %lu",
             pool_idx_,
             proto_msg.view_item().qc().view(),
@@ -869,7 +869,7 @@ Status Hotstuff::HandleProposeMsgStep_Directly(
     }
 
     auto etime = common::TimeUtils::TimestampMs();
-    SETH_DEBUG("====1.1.2 success Accept pool: %d, verify view block, "
+    SETH_INFO("====1.1.2 success Accept pool: %d, verify view block, "
             "view: %lu, hash: %s, qc_view: %lu, hash64: %lu, use time: %lu",
             pool_idx_,
             proto_msg.view_item().qc().view(),
@@ -877,7 +877,7 @@ Status Hotstuff::HandleProposeMsgStep_Directly(
             view_block_chain()->HighViewBlock()->qc().view(),
             pro_msg_wrap->msg_ptr->header.hash64(),
             (etime - btime));
-    SETH_DEBUG("HandleProposeMsgStep_ChainStore called hash: %lu, sign empty: %d", 
+    SETH_INFO("HandleProposeMsgStep_ChainStore called hash: %lu, sign empty: %d", 
         pro_msg_wrap->msg_ptr->header.hash64(), 
         (pro_msg_wrap->view_block_ptr->qc().sign_x().empty() || 
         pro_msg_wrap->view_block_ptr->qc().sign_y().empty()));
@@ -888,7 +888,7 @@ Status Hotstuff::HandleProposeMsgStep_Directly(
     
     // 6 add view block
 #ifndef NDEBUG
-    SETH_DEBUG("store v block pool: %u, hash: %s, prehash: %s, %u_%u_%lu, propose_debug: %s",
+    SETH_INFO("store v block pool: %u, hash: %s, prehash: %s, %u_%u_%lu, propose_debug: %s",
         pool_idx_,
         common::Encode::HexEncode(pro_msg_wrap->view_block_ptr->qc().view_block_hash()).c_str(),
         common::Encode::HexEncode(pro_msg_wrap->view_block_ptr->parent_hash()).c_str(),
@@ -897,14 +897,14 @@ Status Hotstuff::HandleProposeMsgStep_Directly(
         pro_msg_wrap->view_block_ptr->qc().view(), ProtobufToJson(cons_debug).c_str());
 #endif
     if (expect_view_block_hash != pro_msg_wrap->view_block_ptr->qc().view_block_hash()) {
-        SETH_DEBUG("invalid parent hash: %s, %s",
+        SETH_INFO("invalid parent hash: %s, %s",
             common::Encode::HexEncode(expect_view_block_hash).c_str(),
             common::Encode::HexEncode(pro_msg_wrap->view_block_ptr->qc().view_block_hash()).c_str());
         return Status::kNotExpectHash;
     }
 
     Status s = view_block_chain()->Store(pro_msg_wrap->view_block_ptr, true, balance_map_ptr, zjc_host_ptr, false);
-    SETH_DEBUG("pool: %d, add view block hash: %s, status: %d, view: %u_%u_%lu, tx size: %u",
+    SETH_INFO("pool: %d, add view block hash: %s, status: %d, view: %u_%u_%lu, tx size: %u",
         pool_idx_, 
         common::Encode::HexEncode(pro_msg_wrap->view_block_ptr->qc().view_block_hash()).c_str(),
         (int32_t)s,
@@ -935,7 +935,7 @@ Status Hotstuff::HandleProposeMsgStep_TxAccept(std::shared_ptr<ProposeMsgWrapper
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
 
-    SETH_DEBUG("HandleProposeMsgStep_TxAccept called hash: %lu, view hash: %s, "
+    SETH_INFO("HandleProposeMsgStep_TxAccept called hash: %lu, view hash: %s, "
         "propose_debug: %s", 
         pro_msg_wrap->msg_ptr->header.hash64(), 
         common::Encode::HexEncode(pro_msg_wrap->view_block_ptr->qc().view_block_hash()).c_str(),
@@ -957,7 +957,7 @@ Status Hotstuff::HandleProposeMsgStep_TxAccept(std::shared_ptr<ProposeMsgWrapper
         zjc_host);
     if (s != Status::kSuccess) {
 #ifndef NDEBUG
-        SETH_DEBUG("====1.1.2 Accept pool: %d, verify view block failed, "
+        SETH_INFO("====1.1.2 Accept pool: %d, verify view block failed, "
             "view: %lu, hash: %s, qc_view: %lu, hash64: %lu, propose_debug: %s, status: %d",
             pool_idx_,
             proto_msg.view_item().qc().view(),
@@ -972,7 +972,7 @@ Status Hotstuff::HandleProposeMsgStep_TxAccept(std::shared_ptr<ProposeMsgWrapper
 
 #ifndef NDEBUG
     auto etime = common::TimeUtils::TimestampMs();
-    SETH_DEBUG("====1.1.2 success Accept pool: %d, verify view block, "
+    SETH_INFO("====1.1.2 success Accept pool: %d, verify view block, "
         "view: %lu, hash: %s, qc_view: %lu, hash64: %lu, "
         "propose_debug: %s, size: %u, use time: %lu",
         pool_idx_,
@@ -992,7 +992,7 @@ Status Hotstuff::HandleProposeMsgStep_ChainStore(std::shared_ptr<ProposeMsgWrapp
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
 
-    SETH_DEBUG("HandleProposeMsgStep_ChainStore called hash: %lu, sign empty: %d, propose_debug: %s", 
+    SETH_INFO("HandleProposeMsgStep_ChainStore called hash: %lu, sign empty: %d, propose_debug: %s", 
         pro_msg_wrap->msg_ptr->header.hash64(), 
         (pro_msg_wrap->view_block_ptr->qc().sign_x().empty() || 
         pro_msg_wrap->view_block_ptr->qc().sign_y().empty()), 
@@ -1011,7 +1011,7 @@ Status Hotstuff::HandleProposeMsgStep_ChainStore(std::shared_ptr<ProposeMsgWrapp
         pro_msg_wrap->zjc_host_ptr,
         false);
 #ifndef NDEBUG
-    SETH_DEBUG("pool: %d, add view block hash: %s, status: %d, view: %u_%u_%lu, tx size: %u, propose_debug: %s",
+    SETH_INFO("pool: %d, add view block hash: %s, status: %d, view: %u_%u_%lu, tx size: %u, propose_debug: %s",
         pool_idx_, 
         common::Encode::HexEncode(pro_msg_wrap->view_block_ptr->qc().view_block_hash()).c_str(),
         (int32_t)s,
@@ -1048,7 +1048,7 @@ Status Hotstuff::HandleProposeMsgStep_Vote(std::shared_ptr<ProposeMsgWrapper>& p
     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
 
     // NOTICE: pipeline 重试时，protobuf 结构体被析构，因此 pro_msg_wrap->header.hash64() 是 0
-    SETH_DEBUG("pacemaker pool: %d, highQC: %lu, highTC: %lu, chainSize: %lu, "
+    SETH_INFO("pacemaker pool: %d, highQC: %lu, highTC: %lu, chainSize: %lu, "
         "curView: %lu, vblock: %lu, txs: %lu, hash64: %lu, propose_debug: %s",
         pool_idx_,
         view_block_chain()->HighViewBlock()->qc().view(),
@@ -1101,7 +1101,7 @@ Status Hotstuff::HandleProposeMsgStep_Vote(std::shared_ptr<ProposeMsgWrapper>& p
         }
         
         CHECK_MEMORY_SIZE(voted_msgs_);
-        SETH_DEBUG("pool: %d, Send vote message is success., hash64: %lu, "
+        SETH_INFO("pool: %d, Send vote message is success., hash64: %lu, "
             "last_vote_view_: %lu, send to leader tx size: %u, last_vote_view_: %lu",
             pool_idx_, pro_msg_wrap->msg_ptr->header.hash64(),
             pro_msg_wrap->view_block_ptr->qc().view(),
@@ -1129,7 +1129,7 @@ Status Hotstuff::VerifyFollower(const transport::MessagePtr& msg_ptr) {
         if (crypto_->security()->GetEcdhKey(
                 member->pubkey,
                 &member->backup_ecdh_key) != security::kSecuritySuccess) {
-            SETH_DEBUG("verify follower get ecdh key failed: %s", 
+            SETH_INFO("verify follower get ecdh key failed: %s", 
                 common::Encode::HexEncode(member->id).c_str());
             return Status::kError;
         }
@@ -1142,13 +1142,13 @@ Status Hotstuff::VerifyFollower(const transport::MessagePtr& msg_ptr) {
             msg_ptr->header.ecdh_encrypt(), 
             member->backup_ecdh_key, 
             &decrypt_msg) != security::kSecuritySuccess) {
-        SETH_DEBUG("verify follower encrypt failed: %s", 
+        SETH_INFO("verify follower encrypt failed: %s", 
             common::Encode::HexEncode(member->id).c_str());
         return Status::kError;
     }
 
     if (memcmp(decrypt_msg.c_str(), msg_hash.c_str(), msg_hash.size()) != 0) {
-        SETH_DEBUG("verify follower encrypt failed: %s", 
+        SETH_INFO("verify follower encrypt failed: %s", 
             common::Encode::HexEncode(member->id).c_str());
         return Status::kError;
     }
@@ -1167,7 +1167,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     // acceptor()->AddTxs(msg_ptr, vote_msg.txs());
     if (vote_msg.txs_size() > 0) {
         hotstuff_mgr_.ConsensusAddTxsMessage(msg_ptr);
-        SETH_DEBUG("tps vote from follower tx size: %u", vote_msg.txs_size());
+        SETH_INFO("tps vote from follower tx size: %u", vote_msg.txs_size());
     }
 
     if (prefix_db_->BlockExists(vote_msg.view_block_hash())) {
@@ -1200,7 +1200,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     cons_debug.ParseFromString(msg_ptr->header.debug());
     // cons_debug.add_timestamps(
     //     b - cons_debug.timestamps(0));
-    SETH_DEBUG("====2.0 pool: %d, onVote, hash: %s, view: %lu, "
+    SETH_INFO("====2.0 pool: %d, onVote, hash: %s, view: %lu, "
         "local high view: %lu, replica: %lu, hash64: %lu, propose_debug: %s, followers_gids: %s",
         pool_idx_,
         common::Encode::HexEncode(vote_msg.view_block_hash()).c_str(),
@@ -1212,12 +1212,12 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
         followers_gids.c_str());
 #endif
     if (VerifyVoteMsg(vote_msg) != Status::kSuccess) {
-        SETH_DEBUG("vote message is error: hash64: %lu", msg_ptr->header.hash64());
+        SETH_INFO("vote message is error: hash64: %lu", msg_ptr->header.hash64());
         return;
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    SETH_DEBUG("====2.1 pool: %d, onVote, hash: %s, view: %lu, hash64: %lu",
+    SETH_INFO("====2.1 pool: %d, onVote, hash: %s, view: %lu, hash64: %lu",
         pool_idx_,
         common::Encode::HexEncode(vote_msg.view_block_hash()).c_str(),
         vote_msg.view(),
@@ -1254,7 +1254,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
             agg_sig);
     if (ret != Status::kSuccess) {
         if (ret == Status::kBlsVerifyWaiting) {
-            SETH_DEBUG("kBlsWaiting pool: %d, view: %lu, hash64: %lu",
+            SETH_INFO("kBlsWaiting pool: %d, view: %lu, hash64: %lu",
                 pool_idx_, vote_msg.view(), msg_ptr->header.hash64());
             return;
         }
@@ -1262,7 +1262,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
         return;
     }    
 
-    SETH_DEBUG("====2.2 pool: %d, onVote, hash: %s, %d, view: %lu, qc_hash: %s, hash64: %lu, propose_debug: %s, replica: %lu, ",
+    SETH_INFO("====2.2 pool: %d, onVote, hash: %s, %d, view: %lu, qc_hash: %s, hash64: %lu, propose_debug: %s, replica: %lu, ",
         pool_idx_,
         common::Encode::HexEncode(vote_msg.view_block_hash()).c_str(),
         agg_sig.IsValid(),
@@ -1273,7 +1273,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
         vote_msg.replica_idx());
     qc_item.mutable_agg_sig()->CopyFrom(agg_sig.DumpToProto());
     // switch view
-    SETH_DEBUG("success new set qc view: %lu, %u_%u_%lu",
+    SETH_INFO("success new set qc view: %lu, %u_%u_%lu",
         qc_item.view(),
         qc_item.network_id(),
         qc_item.pool_index(),
@@ -1290,7 +1290,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     qc_item.set_elect_height(elect_height);
     qc_item.set_leader_idx(vote_msg.leader_idx());
     auto qc_hash = GetQCMsgHash(qc_item);
-    SETH_DEBUG("success set view block hash: %s, qc_hash: %s, "
+    SETH_INFO("success set view block hash: %s, qc_hash: %s, "
         "sign x: %s, replica: %d, elect_height: %lu, %u_%u_%lu",
         common::Encode::HexEncode(qc_item.view_block_hash()).c_str(),
         common::Encode::HexEncode(qc_hash).c_str(),
@@ -1314,7 +1314,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
         SETH_WARN("invalid opposed count: %u_%u_%lu", qc_item.network_id(), qc_item.pool_index(), qc_item.view());
     }
 
-    SETH_DEBUG("ReconstructAndVerifyThresSign success set view block hash: %s, qc_hash: %s, %u_%u_%lu, ret: %d",
+    SETH_INFO("ReconstructAndVerifyThresSign success set view block hash: %s, qc_hash: %s, %u_%u_%lu, ret: %d",
         common::Encode::HexEncode(qc_item.view_block_hash()).c_str(),
         common::Encode::HexEncode(qc_hash).c_str(),
         qc_item.network_id(),
@@ -1324,19 +1324,19 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     // assert(ret != Status::kInvalidOpposedCount); It may occur temporarily due to inconsistent status
     if (ret != Status::kSuccess) {
         if (ret == Status::kBlsVerifyWaiting) {
-            SETH_DEBUG("kBlsWaiting pool: %d, view: %lu, hash64: %lu",
+            SETH_INFO("kBlsWaiting pool: %d, view: %lu, hash64: %lu",
                 pool_idx_, vote_msg.view(), msg_ptr->header.hash64());
             return;
         }
 
-        SETH_DEBUG("kBlsWaiting pool: %d, view: %lu, hash64: %lu",
+        SETH_INFO("kBlsWaiting pool: %d, view: %lu, hash64: %lu",
             pool_idx_, vote_msg.view(), msg_ptr->header.hash64());
         return;
     }
 
 #ifndef NDEBUG
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    SETH_DEBUG("====2.2 pool: %d, onVote, hash: %s, %d, view: %lu, qc_hash: %s, hash64: %lu, propose_debug: %s, replica: %lu, ",
+    SETH_INFO("====2.2 pool: %d, onVote, hash: %s, %d, view: %lu, qc_hash: %s, hash64: %lu, propose_debug: %s, replica: %lu, ",
         pool_idx_,
         common::Encode::HexEncode(vote_msg.view_block_hash()).c_str(),
         reconstructed_sign == nullptr,
@@ -1349,7 +1349,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     qc_item.set_sign_x(libBLS::ThresholdUtils::fieldElementToString(reconstructed_sign->X));
     qc_item.set_sign_y(libBLS::ThresholdUtils::fieldElementToString(reconstructed_sign->Y));
     // switch view
-    SETH_DEBUG("success new set qc view: %lu, %u_%u_%lu",
+    SETH_INFO("success new set qc view: %lu, %u_%u_%lu",
         qc_item.view(),
         qc_item.network_id(),
         qc_item.pool_index(),
@@ -1381,7 +1381,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     view_block_chain()->UpdateHighViewBlock(qc_item);
     BroadcastGlobalPoolBlock(view_block_info_ptr->view_block);
     pacemaker()->NewQcView(qc_item.view());
-    SETH_DEBUG("NewView propose newview called pool: %u, qc_view: %lu, tc_view: %lu, propose_debug: %s",
+    SETH_INFO("NewView propose newview called pool: %u, qc_view: %lu, tc_view: %lu, propose_debug: %s",
         pool_idx_, view_block_chain()->HighViewBlock()->qc().view(), pacemaker()->HighTC()->view(),
         "ProtobufToJson(cons_debug).c_str()");
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -1394,7 +1394,7 @@ void Hotstuff::HandlePreResetTimerMsg(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto& pre_rst_timer_msg = msg_ptr->header.hotstuff().pre_reset_timer_msg();
     if (pre_rst_timer_msg.txs_size() == 0 && !pre_rst_timer_msg.has_single_tx()) {
-        SETH_DEBUG("pool: %d has proposed!", pool_idx_);
+        SETH_INFO("pool: %d has proposed!", pool_idx_);
         return;
     }
 
@@ -1408,19 +1408,19 @@ void Hotstuff::HandlePreResetTimerMsg(const transport::MessagePtr& msg_ptr) {
 #endif
 
     if (pre_rst_timer_msg.txs_size() > 0) {
-        SETH_DEBUG("tps reset from follower tx size: %u", pre_rst_timer_msg.txs_size());
+        SETH_INFO("tps reset from follower tx size: %u", pre_rst_timer_msg.txs_size());
         hotstuff_mgr_.ConsensusAddTxsMessage(msg_ptr);
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (latest_qc_item_ptr_ != nullptr) {
-        SETH_DEBUG("reset timer propose message called view: %lu",
+        SETH_INFO("reset timer propose message called view: %lu",
             latest_qc_item_ptr_->view());
     }
 
     auto now_tm_ms = common::TimeUtils::TimestampMs();
     if (now_tm_ms < latest_propose_msg_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs) {
-        SETH_DEBUG("reset timer failed, now_tm_ms < latest_propose_msg_tm_ms_ + "
+        SETH_INFO("reset timer failed, now_tm_ms < latest_propose_msg_tm_ms_ + "
             "kLatestPoposeSendTxToLeaderPeriodMs: %lu",
             (latest_propose_msg_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs - now_tm_ms));
         return;
@@ -1429,7 +1429,7 @@ void Hotstuff::HandlePreResetTimerMsg(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
     Propose(nullptr, nullptr, msg_ptr);
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    SETH_DEBUG("reset timer success!");
+    SETH_INFO("reset timer success!");
 }
 
 Status Hotstuff::TryCommit(
@@ -1444,7 +1444,7 @@ Status Hotstuff::TryCommit(
 // #ifndef NDEBUG
 //         transport::protobuf::ConsensusDebug cons_debug;
 //         cons_debug.ParseFromString(v_block_to_commit->debug());
-//         SETH_DEBUG("commit tx size: %u, propose_debug: %s", 
+//         SETH_INFO("commit tx size: %u, propose_debug: %s", 
 //             v_block_to_commit->block_info().tx_list_size(), 
 //             ProtobufToJson(cons_debug).c_str());
 // #endif
@@ -1479,7 +1479,7 @@ Status Hotstuff::Commit(
 void Hotstuff::HandleSyncedViewBlock(
         std::shared_ptr<view_block::protobuf::ViewBlockItem>& vblock) {
     if (prefix_db_->BlockExists(vblock->qc().view_block_hash())) {
-        SETH_DEBUG("block db exists %u_%u_%lu, height: %lu",
+        SETH_INFO("block db exists %u_%u_%lu, height: %lu",
             vblock->qc().network_id(), 
             vblock->qc().pool_index(), 
             vblock->qc().view(), 
@@ -1487,7 +1487,7 @@ void Hotstuff::HandleSyncedViewBlock(
         return;
     }
     
-    SETH_DEBUG("now handle synced view block %u_%u_%lu, height: %lu",
+    SETH_INFO("now handle synced view block %u_%u_%lu, height: %lu",
         vblock->qc().network_id(),
         vblock->qc().pool_index(),
         vblock->qc().view(),
@@ -1495,7 +1495,7 @@ void Hotstuff::HandleSyncedViewBlock(
     transport::MessagePtr msg_ptr;
     if (network::IsSameToLocalShard(vblock->qc().network_id())) {
         if (!view_block_chain()->ReplaceWithSyncedBlock(vblock)) {
-            SETH_DEBUG("block hash exists %u_%u_%lu, height: %lu",
+            SETH_INFO("block hash exists %u_%u_%lu, height: %lu",
                 vblock->qc().network_id(), 
                 vblock->qc().pool_index(), 
                 vblock->qc().view(), 
@@ -1576,13 +1576,13 @@ void Hotstuff::SyncLaterBlocks(
         View view) {
     auto call_sync_later_func = [this, view_block_chain, network_id, pool_index, view]() {
         for (View i = view + 1; i <= view + 2; ++i) {
-            SETH_DEBUG("now sync later block %u_%u_%lu",
+            SETH_INFO("now sync later block %u_%u_%lu",
                 network_id, pool_index, i);
             if (view_block_chain->HighView() >= i) {
                 continue;
             }
             
-            SETH_DEBUG("real now sync later block %u_%u_%lu",
+            SETH_INFO("real now sync later block %u_%u_%lu",
                 network_id, pool_index, i);
             kv_sync_->AddSyncHeight(
                 network_id,
@@ -1656,7 +1656,7 @@ Status Hotstuff::VerifyViewBlock(
                 0);
         } else if (!view_block_chain->view_commited(
                 v_block.qc().network_id(), v_block.qc().view() - 1)) {
-            SETH_DEBUG("now add sync height 0, %u_%u_%lu", 
+            SETH_INFO("now add sync height 0, %u_%u_%lu", 
                 v_block.qc().network_id(), 
                 v_block.qc().pool_index(), 
                 v_block.block_info().height() - 1);
@@ -1713,7 +1713,7 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
             msg_hash,
             leader->pubkey,
             pro_msg_wrap->msg_ptr->header.sign()) != security::kSecuritySuccess) {
-        SETH_DEBUG("verify leader sign failed: %s", 
+        SETH_INFO("verify leader sign failed: %s", 
             common::Encode::HexEncode(leader->id).c_str());
         return Status::kError;
     }
@@ -1735,7 +1735,7 @@ Status Hotstuff::ConstructProposeMsg(
     auto* tx_propose = pro_msg->mutable_tx_propose();
     Status s = ConstructViewBlock(msg_ptr, new_view_block, tx_propose);
     if (s != Status::kSuccess) {
-        SETH_DEBUG("pool: %d construct view block failed, view: %lu, %d, member_index: %d",
+        SETH_INFO("pool: %d construct view block failed, view: %lu, %d, member_index: %d",
             pool_idx_, view_block_chain()->HighViewBlock()->qc().view(), (int32_t)s, 
             elect_item->LocalMember()->index);        
         return s;
@@ -1761,7 +1761,7 @@ Status Hotstuff::ConstructVoteMsg(
     vote_msg->set_replica_idx(replica_idx);
     vote_msg->set_view_block_hash(v_block->qc().view_block_hash());
 
-    SETH_DEBUG("success set view block hash: %s, %u_%u_%lu",
+    SETH_INFO("success set view block hash: %s, %u_%u_%lu",
         common::Encode::HexEncode(v_block->qc().view_block_hash()).c_str(),
         common::GlobalInfo::Instance()->network_id(),
         pool_idx_,
@@ -1775,7 +1775,7 @@ Status Hotstuff::ConstructVoteMsg(
     qc_item.set_pool_index(pool_idx_);
     qc_item.set_view(v_block->qc().view());
     qc_item.set_view_block_hash(v_block->qc().view_block_hash());
-    SETH_DEBUG("success set view block hash: %s, %u_%u_%lu",
+    SETH_INFO("success set view block hash: %s, %u_%u_%lu",
         common::Encode::HexEncode(qc_item.view_block_hash()).c_str(),
         qc_item.network_id(),
         qc_item.pool_index(),
@@ -1822,7 +1822,7 @@ Status Hotstuff::ConstructVoteMsg(
             view_block_chain_->HighQC().view_block_hash(), 
             txs);
         if (txs->size() > 0)
-        SETH_DEBUG("tps now vote message get tx sync to leader: %d", txs->size());
+        SETH_INFO("tps now vote message get tx sync to leader: %d", txs->size());
         ADD_DEBUG_PROCESS_TIMESTAMP();
     }
     
@@ -1836,13 +1836,13 @@ Status Hotstuff::ConstructViewBlock(
     auto local_elect_item = elect_info_->GetElectItemWithShardingId(
         common::GlobalInfo::Instance()->network_id());
     if (local_elect_item == nullptr) {
-        SETH_DEBUG("pool index: %d, local_elect_item == nullptr", pool_idx_);
+        SETH_INFO("pool index: %d, local_elect_item == nullptr", pool_idx_);
         return Status::kError;
     }
 
     auto local_member = local_elect_item->LocalMember();
     if (local_member == nullptr) {
-        SETH_DEBUG("pool index: %d, local_member == nullptr", pool_idx_);
+        SETH_INFO("pool index: %d, local_member == nullptr", pool_idx_);
         return Status::kError;
     }
 
@@ -1871,7 +1871,7 @@ Status Hotstuff::ConstructViewBlock(
     qc->set_network_id(common::GlobalInfo::Instance()->network_id());
     qc->set_pool_index(pool_idx_);
     view_block->set_parent_hash(pre_v_block->qc().view_block_hash());
-    SETH_DEBUG("get prev block hash: %s, height: %lu", 
+    SETH_INFO("get prev block hash: %s, height: %lu", 
         common::Encode::HexEncode(view_block->parent_hash()).c_str(), 
         pre_v_block->block_info().height());
     auto s = wrapper()->Wrap(
@@ -1884,12 +1884,12 @@ Status Hotstuff::ConstructViewBlock(
         view_block_chain_);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (s != Status::kSuccess) {
-        SETH_DEBUG("pool: %d wrap failed, %d", pool_idx_, static_cast<int>(s));
+        SETH_INFO("pool: %d wrap failed, %d", pool_idx_, static_cast<int>(s));
         view_block->release_qc();
         return s;
     }
 
-    SETH_DEBUG("success check is empty block allowd: %d, %u_%u_%lu, "
+    SETH_INFO("success check is empty block allowd: %d, %u_%u_%lu, "
         "tx size: %u, cur view: %lu, pre view: %lu, last_vote_view_: %lu",
         pool_idx_, view_block->qc().network_id(), 
         view_block->qc().pool_index(), view_block->qc().view(),
@@ -1922,13 +1922,13 @@ bool Hotstuff::IsEmptyBlockAllowed(const ViewBlock& v_block) {
 
     auto* v_block1 = &v_block;
     if (!v_block1 || v_block1->block_info().tx_list_size() > 0) {
-        SETH_DEBUG("!v_block1 || v_block1->block_info().tx_list_size() > 0");
+        SETH_INFO("!v_block1 || v_block1->block_info().tx_list_size() > 0");
         return true;
     }
 
     auto v_block2_info = view_block_chain()->Get(v_block.parent_hash());
     if (!v_block2_info) {
-        SETH_DEBUG("!v_block2_info: %s, %u_%u_%lu", 
+        SETH_INFO("!v_block2_info: %s, %u_%u_%lu", 
             common::Encode::HexEncode(v_block.parent_hash()),
             v_block.qc().network_id(), v_block.qc().pool_index(), v_block.qc().view());
         return true;
@@ -1936,7 +1936,7 @@ bool Hotstuff::IsEmptyBlockAllowed(const ViewBlock& v_block) {
 
     auto v_block2 = v_block2_info->view_block;
     if (!v_block2 || v_block2->block_info().tx_list_size() > 0) {
-        SETH_DEBUG("v_block2 || v_block2->block_info().tx_list_size() > 0 %s, %u_%u_%lu", 
+        SETH_INFO("v_block2 || v_block2->block_info().tx_list_size() > 0 %s, %u_%u_%lu", 
             common::Encode::HexEncode(v_block.parent_hash()),
             v_block.qc().network_id(), v_block.qc().pool_index(), v_block.qc().view());
 
@@ -1946,7 +1946,7 @@ bool Hotstuff::IsEmptyBlockAllowed(const ViewBlock& v_block) {
     // fast hotstuff
     auto v_block3_info = view_block_chain()->Get(v_block2->parent_hash());
     if (!v_block3_info) {
-        SETH_DEBUG("v_block2 || v_block2->block_info().tx_list_size() > 0 %s, %u_%u_%lu", 
+        SETH_INFO("v_block2 || v_block2->block_info().tx_list_size() > 0 %s, %u_%u_%lu", 
             common::Encode::HexEncode(v_block2->parent_hash()),
             v_block2->qc().network_id(), v_block2->qc().pool_index(), v_block2->qc().view());
         return true;
@@ -1954,13 +1954,13 @@ bool Hotstuff::IsEmptyBlockAllowed(const ViewBlock& v_block) {
 
     auto v_block3 = v_block3_info->view_block;
     if (!v_block3 || v_block3->block_info().tx_list_size() > 0) {
-        SETH_DEBUG("!v_block3 || v_block3->block_info().tx_list_size() > 0 %s, %u_%u_%lu", 
+        SETH_INFO("!v_block3 || v_block3->block_info().tx_list_size() > 0 %s, %u_%u_%lu", 
             common::Encode::HexEncode(v_block2->parent_hash()),
             v_block2->qc().network_id(), v_block2->qc().pool_index(), v_block2->qc().view());
         return true;
     }
 
-    // SETH_DEBUG("failed check is empty block allowd block1: %u_%u_%lu, %s, block2: %u_%u_%lu, %s, block3: %u_%u_%lu, %s",
+    // SETH_INFO("failed check is empty block allowd block1: %u_%u_%lu, %s, block2: %u_%u_%lu, %s, block3: %u_%u_%lu, %s",
     //     v_block1->qc().network_id(),
     //     v_block1->qc().pool_index(),
     //     v_block1->qc().view(),
@@ -2002,7 +2002,7 @@ Status Hotstuff::SendMsgToLeader(
         if (crypto_->security()->GetEcdhKey(
                 leader->pubkey,
                 &leader->leader_ecdh_key) != security::kSecuritySuccess) {
-            SETH_DEBUG("verify leader sign failed: %s", 
+            SETH_INFO("verify leader sign failed: %s", 
                 common::Encode::HexEncode(leader->id).c_str());
             return Status::kError;
         }
@@ -2015,7 +2015,7 @@ Status Hotstuff::SendMsgToLeader(
             msg_hash, 
             leader->leader_ecdh_key, 
             &crypt_msg)!= security::kSecuritySuccess) {
-        SETH_DEBUG("send to leader encrypt failed: %s", 
+        SETH_INFO("send to leader encrypt failed: %s", 
             common::Encode::HexEncode(leader->id).c_str());
         return Status::kError;
     }
@@ -2033,7 +2033,7 @@ Status Hotstuff::SendMsgToLeader(
         // }
     } else {
         transport::TcpTransport::Instance()->AddLocalMessage(trans_msg);
-        SETH_DEBUG("2 success add local message: %lu", trans_msg->header.hash64());
+        SETH_INFO("2 success add local message: %lu", trans_msg->header.hash64());
         // if (msg_type == VOTE) {
         //     HandleVoteMsg(trans_msg);
         // } else if (msg_type == PRE_RESET_TIMER) {
@@ -2062,7 +2062,7 @@ Status Hotstuff::SendMsgToLeader(
 //     }
 // #endif
 
-    SETH_DEBUG("pool index: %u, send to leader %d message to leader net: %u, %s, "
+    SETH_INFO("pool index: %u, send to leader %d message to leader net: %u, %s, "
         "hash64: %lu, %s:%d, leader->index: %d, local_idx: %d",
         pool_idx_,
         (int32_t)msg_type,
@@ -2096,7 +2096,7 @@ void Hotstuff::TryRecoverFromStuck(
     }
 
     if (leader_rotation_->GetLocalMemberIdx() == common::kInvalidUint32) {
-        // SETH_DEBUG("leader_rotation_->GetLocalMemberIdx() == common::kInvalidUint32, pool: %u", pool_idx_);
+        // SETH_INFO("leader_rotation_->GetLocalMemberIdx() == common::kInvalidUint32, pool: %u", pool_idx_);
         return;
     }
 
@@ -2120,14 +2120,14 @@ void Hotstuff::TryRecoverFromStuck(
     // auto stuck_st = IsStuck();
     // if (stuck_st != 0) {
     //     if (stuck_st != 1) {
-    //         SETH_DEBUG("pool: %u stuck_st != 0: %d", pool_idx_, stuck_st);
+    //         SETH_INFO("pool: %u stuck_st != 0: %d", pool_idx_, stuck_st);
     //     }
     //     return;
     // }
 
     auto leader = leader_rotation()->GetLeader();
     if (!leader) {
-        // SETH_DEBUG("no leader");
+        // SETH_INFO("no leader");
         return;
     }
     
@@ -2137,7 +2137,7 @@ void Hotstuff::TryRecoverFromStuck(
         Propose(nullptr, nullptr, msg_ptr);
         ADD_DEBUG_PROCESS_TIMESTAMP();
         if (latest_qc_item_ptr_) {
-            SETH_DEBUG("leader do propose message: %d, pool index: %u, %u_%u_%lu", 
+            SETH_INFO("leader do propose message: %d, pool index: %u, %u_%u_%lu", 
                 local_idx,
                 pool_idx_,
                 latest_qc_item_ptr_->network_id(), 
@@ -2153,7 +2153,7 @@ void Hotstuff::TryRecoverFromStuck(
     }
 
     if (!has_user_tx_tag_) {
-        // SETH_DEBUG("pool: %u not has_user_tx_tag_.", pool_idx_);
+        // SETH_INFO("pool: %u not has_user_tx_tag_.", pool_idx_);
         return;
     }
 
@@ -2171,7 +2171,7 @@ void Hotstuff::TryRecoverFromStuck(
     
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (txs->empty()) {
-        // SETH_DEBUG("pool: %u txs.empty().", pool_idx_);
+        // SETH_INFO("pool: %u txs.empty().", pool_idx_);
         return;
     }
     
@@ -2215,7 +2215,7 @@ uint32_t Hotstuff::GetPendingSuccNumOfLeader(const std::shared_ptr<ViewBlock>& v
         }
     }
 
-    SETH_DEBUG("pool: %d add succ num: %lu, leader: %lu", pool_idx_, ret, v_block->qc().leader_idx());
+    SETH_INFO("pool: %d add succ num: %lu, leader: %lu", pool_idx_, ret, v_block->qc().leader_idx());
     return ret;
 }
 
