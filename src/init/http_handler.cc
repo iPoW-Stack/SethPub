@@ -147,25 +147,52 @@ static int CreateTransactionWithAttr(
         new_tx->set_contract_prepayment(pepay_val);
     }
 
-    auto tx_hash = pools::GetTxMessageHash(*new_tx);
-    SETH_DEBUG("new tx hash: %s, tx: %s", 
-        common::Encode::HexEncode(tx_hash).c_str(), ProtobufToJson(*new_tx).c_str());
-    std::string sign = sign_r + sign_s + "0";// http_handler->security_ptr()->GetSign(sign_r, sign_s, sign_v);
-    sign[64] = char(sign_v);
-    if (http_handler->security_ptr()->Verify(
-            tx_hash, from_pk, sign) != security::kSecuritySuccess) {
-        SETH_ERROR("verify signature failed tx_hash: %s, "
-            "sign_r: %s, sign_s: %s, sign_v: %d, pk: %s, hash64: %lu",
-            common::Encode::HexEncode(tx_hash).c_str(),
-            common::Encode::HexEncode(sign_r).c_str(),
-            common::Encode::HexEncode(sign_s).c_str(),
-            sign_v,
-            common::Encode::HexEncode(from_pk).c_str(),
-            msg.hash64());
+    if (sign_r.empty() || sign_s.empty()) {
+        SETH_ERROR("Missing signature components! r_len: %lu, s_len: %lu", 
+            sign_r.size(), sign_s.size());
         return kSignatureInvalid;
     }
 
-    new_tx->set_sign(sign);
+    std::string sign;
+    sign.reserve(65);
+    sign.append(sign_r);
+    sign.append(sign_s);
+    sign.push_back(static_cast<char>(sign_v));
+
+    if (sign.size() != 65) {
+        SETH_ERROR("Invalid signature length constructed: %lu. (r: %lu, s: %lu)", 
+            sign.size(), sign_r.size(), sign_s.size());
+        return kSignatureInvalid;
+    }
+
+    if (from_pk.empty()) {
+            SETH_ERROR("Public key is empty in Verify!");
+            return kSignatureInvalid;
+    }
+    
+    SETH_DEBUG("now call get tx hash: %s", ProtobufToJson(*new_tx).c_str());
+    try {
+        auto tx_hash = pools::GetTxMessageHash(*new_tx);
+        SETH_DEBUG("new tx hash: %s, tx: %s", 
+            common::Encode::HexEncode(tx_hash).c_str(), ProtobufToJson(*new_tx).c_str());
+        if (http_handler->security_ptr()->Verify(
+                tx_hash, from_pk, sign) != security::kSecuritySuccess) {
+            SETH_ERROR("verify signature failed tx_hash: %s, "
+                "sign_r: %s, sign_s: %s, sign_v: %d, pk: %s, hash64: %lu",
+                common::Encode::HexEncode(tx_hash).c_str(),
+                common::Encode::HexEncode(sign_r).c_str(),
+                common::Encode::HexEncode(sign_s).c_str(),
+                sign_v,
+                common::Encode::HexEncode(from_pk).c_str(),
+                msg.hash64());
+            return kSignatureInvalid;
+        }
+
+        new_tx->set_sign(sign);
+    } catch (const std::exception& e) {
+        SETH_ERROR("exception when create transaction: %s", e.what());
+        return kSignatureInvalid;
+    }
     return kHttpSuccess;
 }
  
@@ -183,7 +210,7 @@ static void HttpTransaction(const httplib::Request& req, httplib::Response& http
     auto shard_id = req.get_param_value("shard_id");
     uint64_t nonce = 0;
     if (!common::StringUtil::ToUint64(nonce_str, &nonce)) {
-        std::string res = std::string("amount not integer: ") + nonce_str;
+        std::string res = std::string("nonce not integer: ") + nonce_str;
         http_res.set_content(res, "text/plain");
         return;
     }

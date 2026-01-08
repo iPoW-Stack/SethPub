@@ -554,8 +554,8 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
         }
 
         if (pool_index == common::kInvalidPoolIndex) {
-            if (!msg_ptr->address_info) {
-                SETH_DEBUG("invalid tx step: %d", (int32_t)tx_msg.step());
+            if (msg_ptr->address_info == nullptr) {
+                SETH_DEBUG("invalid tx step: %d, address invalid.", (int32_t)tx_msg.step());
                 return;
             }
 
@@ -870,6 +870,14 @@ void TxPoolManager::HandleSetContractPrepayment(const transport::MessagePtr& msg
             tx_msg.contract_prepayment() < consensus::kCallContractDefaultUseGas) {
         SETH_DEBUG("call contract not has valid contract input"
             "and contract prepayment invalid.");
+        return;
+    }
+
+    auto tmp_acc_ptr = acc_mgr_.lock();
+    auto contract_info = tmp_acc_ptr->GetAccountInfo(tx_msg.to());
+    if (contract_info == nullptr) {
+        msg_ptr->address_info = nullptr;
+        SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         return;
     }
 
