@@ -422,10 +422,10 @@ Status Hotstuff::Propose(
             max_view(), 
             last_leader_propose_view_);
     }
-
-#endif
     ADD_DEBUG_PROCESS_TIMESTAMP();
     SETH_INFO("propose use time: %lu", (common::TimeUtils::TimestampMs() - btime));
+
+#endif
     return Status::kSuccess;
 }
 
