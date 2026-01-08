@@ -4,7 +4,7 @@ killall -9 txcli
 TEST_TX_TPS=30000
 TEST_TX_MAX_POOL_INDEX=0
 FOR_CK=0
-TARGET=Release
+TARGET=Debug
 #VALGRIND='valgrind --log-file=./valgrind_report.log --leak-check=full --show-leak-kinds=all --show-reachable=no --track-origins=yes'
 VALGRIND=''
 bash build.sh a $TARGET
@@ -16,14 +16,14 @@ mkdir -p /root/nodes/seth/log
 sudo cp -rf ./cbuild_$TARGET/seth /root/nodes/seth
 nodes_count=$1
 if [[ "$nodes_count" -eq "" ]]; then
-   nodes_count=4 
+   nodes_count=4
 fi
 shard3_node_count=`wc -l /root/seth/shards3 | awk -F' ' '{print $1}'`
 
 if [ "$shard3_node_count" != "$nodes_count" ]; then
     echo "new shard nodes file will create."
     rm -rf /root/seth/shards*
-fi  
+fi
 
 echo "node count: " $nodes_count
 rm -rf /root/nodes/seth/latest_blocks
@@ -92,12 +92,12 @@ for ((i=1; i<=$shard3_node_count;i++)); do
         sed -i 's/LOCAL_PORT/13'$i'/g' /root/nodes/s3_$i/conf/seth.conf
     elif ((i>=10)); then
         sed -i 's/HTTP_PORT/230'$i'/g' /root/nodes/s3_$i/conf/seth.conf
-        sed -i 's/LOCAL_PORT/130'$i'/g' /root/nodes/s3_$i/conf/seth.conf 
+        sed -i 's/LOCAL_PORT/130'$i'/g' /root/nodes/s3_$i/conf/seth.conf
     else
         sed -i 's/HTTP_PORT/2300'$i'/g' /root/nodes/s3_$i/conf/seth.conf
-        sed -i 's/LOCAL_PORT/1300'$i'/g' /root/nodes/s3_$i/conf/seth.conf 
+        sed -i 's/LOCAL_PORT/1300'$i'/g' /root/nodes/s3_$i/conf/seth.conf
     fi
-    
+
     if (($FOR_CK==1 && i==1)); then
         sed -i 's/FOR_CK_CLIENT/true/g' /root/nodes/s3_$i/conf/seth.conf
     else

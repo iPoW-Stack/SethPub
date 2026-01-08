@@ -224,7 +224,7 @@ set(LINK_ARGS
     security
     common
     protos
-    tcmalloc # Memory allocator, critical for multi-threaded performance
+    #tcmalloc # Memory allocator, critical for multi-threaded performance
     ${LINK_PTHREAD}
     ${LINK_DL}
     ${LINK_RT}
@@ -234,6 +234,7 @@ set(LINK_ARGS
     pthread
     gmp # Big number library, performance critical
     -static-libstdc++
+    -static
 )
 
 # Unified Linking
