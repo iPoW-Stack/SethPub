@@ -1005,7 +1005,8 @@ void ViewBlockChain::MergeAllPrevBalanceMap(
 int ViewBlockChain::CheckTxNonceValid(
         const std::string& addr, 
         uint64_t nonce, 
-        const std::string& parent_hash) {
+        const std::string& parent_hash,
+        uint64_t* now_nonce) {
     std::string phash = parent_hash;
     while (true) {
         if (phash.empty()) {
@@ -1025,8 +1026,9 @@ int ViewBlockChain::CheckTxNonceValid(
             auto& tmp_map = *it->second->acc_balance_map_ptr;
             auto iter = tmp_map.find(addr);
             if (iter != tmp_map.end()) {
+                *now_nonce = iter->second->nonce();
                 if (iter->second->nonce() + 1 != nonce) {
-                    SETH_INFO("success check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
+                    SETH_DEBUG("success check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
                         common::Encode::HexEncode(addr).c_str(), 
                         nonce,
                         iter->second->nonce(),

@@ -490,11 +490,17 @@ void TxPool::GetTxIdempotently(
                 }
                 
                 if (valid_nonce == common::kInvalidUint64) {
+                    uint64_t now_nonce = 0llu;
                     int res = tx_valid_func(
                         *tx_ptr->address_info, 
                         *tx_ptr->tx_info);
                     if (res != 0) {
                         if (res > 0) {
+                            if (now_nonce >= tx_ptr->tx_info->nonce() + iter->second.size()) {
+                                break;
+                            }
+
+                            nonce_iter += (now_nonce - tx_ptr->tx_info->nonce());
                             SETH_DEBUG("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s",
                                 pool_index_,
                                 common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
