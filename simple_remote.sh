@@ -71,7 +71,7 @@ init() {
     fi
 
     if [ "$TARGET" == "" ]; then
-        TARGET=Debug
+        TARGET=Release
     fi
 
     killall -9 seth
