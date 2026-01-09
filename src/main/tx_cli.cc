@@ -472,6 +472,7 @@ int tx_main(int argc, char** argv) {
         thread_security->SetPrivateKey(from_prikey);
         uint32_t count = 0;
         uint32_t batch_count = 400;
+        auto addr = thread_security->GetAddress();
         while (!global_stop) {
             if (count % batch_count == 0) {
                 if (pool_id == -1) {
@@ -482,27 +483,28 @@ int tx_main(int argc, char** argv) {
 
                     from_prikey = g_prikeys[prikey_pos];
                     thread_security->SetPrivateKey(from_prikey);
-                    uint64_t nonce = src_prikey_with_nonce[from_prikey];
-                    if (nonce + 10000 <= prikey_with_nonce[from_prikey]) {
+                    addr = thread_security->GetAddress();
+                    uint64_t nonce = src_prikey_with_nonce[addr];
+                    if (nonce + 10000 <= prikey_with_nonce[addr]) {
                         printf("update address nonce: %s, now: %lu, chain: %lu\n",
-                            common::Encode::HexEncode(thread_security->GetAddress()).c_str(),
-                            prikey_with_nonce[from_prikey],
+                            common::Encode::HexEncode(addr).c_str(),
+                            prikey_with_nonce[addr],
                             nonce);
-                        prikey_with_nonce[from_prikey] = nonce;
+                        prikey_with_nonce[addr] = nonce;
                     }
                 }
                 usleep(100000lu);
             }
 
-            if (src_prikey_with_nonce[from_prikey] + 2 * common::kMaxTxCount <= prikey_with_nonce[from_prikey]) {
+            if (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
                 usleep(3000000);
                 update_nonce_con.notify_one();
-                prikey_with_nonce[from_prikey] = src_prikey_with_nonce[from_prikey];
+                prikey_with_nonce[addr] = src_prikey_with_nonce[addr];
             }
 
             auto tx_msg_ptr = CreateTransactionWithAttr(
                 thread_security,
-                ++prikey_with_nonce[from_prikey],
+                ++prikey_with_nonce[addr],
                 from_prikey,
                 to,
                 key,
@@ -840,13 +842,13 @@ int call_bentchmark(int argc, char** argv) {
 
                     from_prikey = g_prikeys[prikey_pos];
                     thread_security->SetPrivateKey(from_prikey);
-                    uint64_t nonce = src_prikey_with_nonce[from_prikey];
-                    if (nonce + 10000 <= prikey_with_nonce[from_prikey]) {
+                    uint64_t nonce = src_prikey_with_nonce[thread_security->GetAddress()];
+                    if (nonce + 10000 <= prikey_with_nonce[thread_security->GetAddress()]) {
                         printf("update address nonce: %s, now: %lu, chain: %lu\n",
                             common::Encode::HexEncode(thread_security->GetAddress()).c_str(),
-                            prikey_with_nonce[from_prikey],
+                            prikey_with_nonce[thread_security->GetAddress()],
                             nonce);
-                        prikey_with_nonce[from_prikey] = nonce;
+                        prikey_with_nonce[thread_security->GetAddress()] = nonce;
                     }
                 }
                 usleep(100000lu);
