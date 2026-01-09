@@ -174,7 +174,7 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
     }
 
     added_txs_.push(tx_ptr);
-    SETH_INFO("trace tx pool: %d, success add tx %s, key: %s, nonce: %lu, step: %d", 
+    SETH_DEBUG("trace tx pool: %d, success add tx %s, key: %s, nonce: %lu, step: %d", 
         pool_index_,
         common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
         common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(), 
@@ -233,7 +233,7 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
                         }
 
                         over_unique_hash_set_.insert(view_block.block_info().tx_list(i).unique_hash());
-                        SETH_INFO("trace tx pool: %d, success add unique tx %s, key: %s, "
+                        SETH_DEBUG("trace tx pool: %d, success add unique tx %s, key: %s, "
                             "nonce: %lu, step: %d, unique hash exists: %s", 
                             pool_index_,
                             common::Encode::HexEncode(view_block.block_info().tx_list(i).to()).c_str(), 
@@ -252,7 +252,7 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
                         all_delay_tm_us_ += now_tm_us - nonce_iter->second->receive_tm_us;
                     }
 
-                    SETH_INFO("trace tx pool: %d, over tx addr: %s, nonce: %lu", 
+                    SETH_DEBUG("trace tx pool: %d, over tx addr: %s, nonce: %lu", 
                         pool_index_,
                         common::Encode::HexEncode(addr).c_str(), 
                         nonce_iter->first);
@@ -277,7 +277,7 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
         remove_tx_func(system_tx_map_);
         remove_tx_func(tx_map_);
         remove_tx_func(consensus_tx_map_);
-        SETH_INFO("trace tx pool: %d, step: %d, to: %s, unique hash: %s, over tx addr: %s, nonce: %lu", 
+        SETH_DEBUG("trace tx pool: %d, step: %d, to: %s, unique hash: %s, over tx addr: %s, nonce: %lu", 
             pool_index_,
             (int32_t)view_block.block_info().tx_list(i).step(),
             common::Encode::HexEncode(view_block.block_info().tx_list(i).to()).c_str(), 
@@ -409,7 +409,7 @@ void TxPool::GetTxIdempotently(
         pools::CheckAddrNonceValidFunction tx_valid_func) {
     TxItemPtr tx_ptr;
     while (added_txs_.pop(&tx_ptr)) {
-        SETH_INFO("pop success add system tx nonce addr: %s, "
+        SETH_DEBUG("pop success add system tx nonce addr: %s, "
                 "addr nonce: %lu, tx nonce: %lu, unique hash: %s",
                 common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
                 tx_ptr->address_info->nonce(), 
@@ -417,7 +417,7 @@ void TxPool::GetTxIdempotently(
                 common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
         if (!IsUserTransaction(tx_ptr->tx_info->step())) {
             system_tx_map_[std::to_string(tx_ptr->tx_info->step())][tx_ptr->tx_info->nonce()] = tx_ptr;
-            SETH_INFO("success add system tx nonce addr: %s, "
+            SETH_DEBUG("success add system tx nonce addr: %s, "
                 "addr nonce: %lu, tx nonce: %lu, unique hash: %s",
                 common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
                 tx_ptr->address_info->nonce(), 
@@ -427,7 +427,7 @@ void TxPool::GetTxIdempotently(
         }
 
         if (tx_ptr->address_info->nonce() >= tx_ptr->tx_info->nonce()) {
-            SETH_INFO("failed get tx nonce invalid addr: %s, addr nonce: %lu, tx nonce: %lu",
+            SETH_DEBUG("failed get tx nonce invalid addr: %s, addr nonce: %lu, tx nonce: %lu",
                 common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
                 tx_ptr->address_info->nonce(), 
                 tx_ptr->tx_info->nonce());
@@ -438,7 +438,7 @@ void TxPool::GetTxIdempotently(
         if (iter != consensus_tx_map_.end()) {
             auto nonce_iter = iter->second.find(tx_ptr->tx_info->nonce());
             if (nonce_iter != iter->second.end()) {
-                SETH_INFO("exists failed get tx nonce invalid addr: %s, addr nonce: %lu, tx nonce: %lu",
+                SETH_DEBUG("exists failed get tx nonce invalid addr: %s, addr nonce: %lu, tx nonce: %lu",
                     common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
                     tx_ptr->address_info->nonce(), 
                     tx_ptr->tx_info->nonce());
@@ -448,7 +448,7 @@ void TxPool::GetTxIdempotently(
 
         tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
         consensus_tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
-        SETH_INFO("success add tx nonce addr: %s, addr nonce: %lu, tx nonce: %lu",
+        SETH_DEBUG("success add tx nonce addr: %s, addr nonce: %lu, tx nonce: %lu",
             common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
             tx_ptr->address_info->nonce(), 
             tx_ptr->tx_info->nonce());
@@ -468,7 +468,7 @@ void TxPool::GetTxIdempotently(
         }
 
         consensus_tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
-        SETH_INFO("consensus_added_txs_ success add tx nonce addr: %s, addr nonce: %lu, tx nonce: %lu",
+        SETH_DEBUG("consensus_added_txs_ success add tx nonce addr: %s, addr nonce: %lu, tx nonce: %lu",
             common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
             tx_ptr->address_info->nonce(), 
             tx_ptr->tx_info->nonce());
@@ -495,7 +495,7 @@ void TxPool::GetTxIdempotently(
                         *tx_ptr->tx_info);
                     if (res != 0) {
                         if (res > 0) {
-                            SETH_INFO("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s",
+                            SETH_DEBUG("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s",
                                 pool_index_,
                                 common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
                                 tx_ptr->tx_info->nonce(),
@@ -503,7 +503,7 @@ void TxPool::GetTxIdempotently(
                             continue;
                         }
                         
-                        SETH_INFO("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s",
+                        SETH_DEBUG("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s",
                             pool_index_,
                             common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
                             tx_ptr->tx_info->nonce(),
@@ -512,7 +512,7 @@ void TxPool::GetTxIdempotently(
                     }
                 } else {
                     if (tx_ptr->tx_info->nonce() != valid_nonce + 1) {
-                        SETH_INFO("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s",
+                        SETH_DEBUG("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s",
                             pool_index_,
                             common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
                             tx_ptr->tx_info->nonce(),
@@ -524,7 +524,7 @@ void TxPool::GetTxIdempotently(
                 valid_nonce = tx_ptr->tx_info->nonce();
                 tx_ptr->receive_tm_us = common::TimeUtils::TimestampUs();
                 res_map.push_back(tx_ptr);
-                SETH_INFO("trace tx pool: %d, consensus leader tx addr: %s, key: %s, nonce: %lu, "
+                SETH_DEBUG("trace tx pool: %d, consensus leader tx addr: %s, key: %s, nonce: %lu, "
                     "res count: %u, count: %u, tx_map size: %u, addr tx size: %u", 
                     pool_index_,
                     common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
@@ -547,7 +547,7 @@ void TxPool::GetTxIdempotently(
 
     get_tx_func(system_tx_map_);
     get_tx_func(consensus_tx_map_);
-    SETH_INFO("pool: %d, now get tx by leader all: %u, get: %u", pool_index_, all_tx_size(), res_map.size());
+    SETH_DEBUG("pool: %d, now get tx by leader all: %u, get: %u", pool_index_, all_tx_size(), res_map.size());
 }
 
 void TxPool::InitLatestInfo() {
