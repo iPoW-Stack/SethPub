@@ -55,7 +55,7 @@ void UpdateAddressNonce(const std::string& addr);
 void UpdateAddressNonceThread() {
     while (!global_stop) {
         UpdateAddressNonce();
-        usleep(3000000);
+        usleep(15000000);
     }
 }
 static void SignalCallback(int sig_int) { global_stop = true; }
@@ -455,7 +455,7 @@ int tx_main(int argc, char** argv) {
     std::atomic<uint32_t> all_count = 0;
     prikey_with_nonce  = src_prikey_with_nonce;
     auto update_nonce_thread = [&]() {
-        // UpdateAddressNonceThread();
+        UpdateAddressNonceThread();
     };
 
     const std::string key = "";
