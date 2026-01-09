@@ -359,9 +359,11 @@ void TxPool::GetTxSyncToLeader(
             }
 
             if (valid_nonce == common::kInvalidUint64) {
+                uint64_t now_nonce = 0ll;
                 int res = tx_valid_func(
                         *tx_ptr->address_info, 
-                        *tx_ptr->tx_info);
+                        *tx_ptr->tx_info,
+                        &now_nonce);
                 if (res != 0) {
                     if (res > 0) {
                         continue;
