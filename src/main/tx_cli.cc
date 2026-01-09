@@ -484,14 +484,6 @@ int tx_main(int argc, char** argv) {
                     from_prikey = g_prikeys[prikey_pos];
                     thread_security->SetPrivateKey(from_prikey);
                     addr = thread_security->GetAddress();
-                    uint64_t nonce = src_prikey_with_nonce[addr];
-                    if (nonce + 10000 <= prikey_with_nonce[addr]) {
-                        printf("update address nonce: %s, now: %lu, chain: %lu\n",
-                            common::Encode::HexEncode(addr).c_str(),
-                            prikey_with_nonce[addr],
-                            nonce);
-                        prikey_with_nonce[addr] = nonce;
-                    }
                 }
                 usleep(100000lu);
             }
