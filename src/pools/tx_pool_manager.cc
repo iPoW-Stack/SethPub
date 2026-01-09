@@ -420,7 +420,7 @@ void TxPoolManager::HandleMessage(const transport::MessagePtr& msg_ptr) {
             // if (tx_pool_[address_info->pool_index()].all_tx_size() >= 
             //         common::GlobalInfo::Instance()->each_tx_pool_max_txs()) {
                 if (!NewTxValid(address_info->pool_index(), address_info->addr(), tx_msg.nonce())) {
-                    SETH_DEBUG("add failed extend %u, %u, all valid: %u", 
+                    SETH_INFO("add failed extend %u, %u, all valid: %u", 
                         tx_pool_[address_info->pool_index()].all_tx_size(), 
                         common::GlobalInfo::Instance()->each_tx_pool_max_txs(), 
                         tx_pool_[address_info->pool_index()].all_tx_size());

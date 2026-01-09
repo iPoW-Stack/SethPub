@@ -494,12 +494,12 @@ int tx_main(int argc, char** argv) {
                 usleep(100000lu);
             }
 
-            if (src_prikey_with_nonce[from_prikey] + 100000 <= prikey_with_nonce[from_prikey]) {
+            if (src_prikey_with_nonce[from_prikey] + 2 * common::kMaxTxCount <= prikey_with_nonce[from_prikey]) {
                 usleep(3000000);
                 update_nonce_con.notify_one();
                 prikey_with_nonce[from_prikey] = src_prikey_with_nonce[from_prikey];
             }
-            
+
             auto tx_msg_ptr = CreateTransactionWithAttr(
                 thread_security,
                 ++prikey_with_nonce[from_prikey],
