@@ -493,7 +493,8 @@ void TxPool::GetTxIdempotently(
                     uint64_t now_nonce = 0llu;
                     int res = tx_valid_func(
                         *tx_ptr->address_info, 
-                        *tx_ptr->tx_info);
+                        *tx_ptr->tx_info,
+                        &now_nonce);
                     if (res != 0) {
                         if (res > 0) {
                             if (now_nonce >= tx_ptr->tx_info->nonce() + iter->second.size()) {
