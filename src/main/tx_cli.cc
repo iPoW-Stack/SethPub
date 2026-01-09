@@ -49,13 +49,16 @@ uint64_t batch_nonce_check_count = 10240;
 static uint32_t kThreadCount = 16u;
 std::map<std::string, std::shared_ptr<nlohmann::json>> account_info_jsons;
 
+std::mutex upadte_nonce_mutex;
+std::condition_variable update_nonce_con;
 
 void UpdateAddressNonce();
 void UpdateAddressNonce(const std::string& addr);
 void UpdateAddressNonceThread() {
     while (!global_stop) {
         UpdateAddressNonce();
-        usleep(15000000);
+        std::unique_lock<std::mutex> lock(upadte_nonce_mutex);
+        update_nonce_con.wait_for(lock, std::chrono::milliseconds(15000));
     }
 }
 static void SignalCallback(int sig_int) { global_stop = true; }
@@ -491,6 +494,12 @@ int tx_main(int argc, char** argv) {
                 usleep(100000lu);
             }
 
+            if (src_prikey_with_nonce[from_prikey] + 100000 <= prikey_with_nonce[from_prikey]) {
+                usleep(3000000);
+                update_nonce_con.notify_one();
+                prikey_with_nonce[from_prikey] = src_prikey_with_nonce[from_prikey];
+            }
+            
             auto tx_msg_ptr = CreateTransactionWithAttr(
                 thread_security,
                 ++prikey_with_nonce[from_prikey],
