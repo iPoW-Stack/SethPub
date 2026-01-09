@@ -488,10 +488,13 @@ int tx_main(int argc, char** argv) {
                 usleep(100000lu);
             }
 
-            if (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
-                usleep(3000000);
+            if (src_prikey_with_nonce[addr] + 3 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
+                usleep(10000000);
                 update_nonce_con.notify_one();
-                prikey_with_nonce[addr] = src_prikey_with_nonce[addr];
+                usleep(3000000);
+                if (src_prikey_with_nonce[addr] + 4 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
+                    prikey_with_nonce[addr] = src_prikey_with_nonce[addr];
+                }
             }
 
             auto tx_msg_ptr = CreateTransactionWithAttr(
