@@ -21,7 +21,7 @@ public:
         return event_handler_;
     }
 
-    void SetHandler(EventHandler* handler) {
+    void Sethandler(EventHandler* handler) {
         event_handler_ = handler;
     }
 

@@ -11,7 +11,7 @@ init() {
     tmp_ips_len=(${#tmp_ips[*]})
     ip_max_idx=0
     if (($tmp_ips_len > 1)); then
-        for tmp_ip_nodes in "${tmp_ips[@]}"; do
+        for tmp_ip_nodes in "${tmp_ips[@]}"; do 
             ips_array=(${tmp_ip_nodes//,/ })
             first_ip=(${ips_array[0]})
             second_ip=(${ips_array[1]})
@@ -59,29 +59,28 @@ init() {
     if [ "$node_ips" == "" ]; then
         echo "just use local single node."
         node_ips='127.0.0.1'
-    fi
+    fi  
 
     bash cmd.sh $node_ips "tc qdisc del dev eth0 root"  > /dev/null 2>&1 &
     if [ "$end_shard" == "" ]; then
         end_shard=3
-    fi
+    fi  
 
     if [ "$PASSWORD" == "" ]; then
         PASSWORD="NL!"
     fi
 
     if [ "$TARGET" == "" ]; then
-        TARGET=Release
+        TARGET=Debug
     fi
 
     killall -9 seth
-    killall -9 shardora
+    killall -9 seth
     killall -9 txcli
 
     bash build.sh a $TARGET
     sudo rm -rf /root/nodes
     sudo cp -rf ./nodes_local /root/nodes
-    ls /root/nodes
     rm -rf /root/nodes/*/seth /root/nodes/*/core* /root/nodes/*/log/* /root/nodes/*/*db*
 
     cp -rf ./nodes_local/seth/conf/GeoLite2-City.mmdb /root/nodes/seth
@@ -91,7 +90,7 @@ init() {
 
     sudo cp -rf ./cbuild_$TARGET/seth /root/nodes/seth
     if [[ "$each_nodes_count" -eq "" ]]; then
-        each_nodes_count=4
+        each_nodes_count=4 
     fi
 
     node_ips_array=(${node_ips//,/ })
@@ -105,12 +104,12 @@ init() {
     if [ "$shard3_node_count" != "$nodes_count" ]; then
         echo "new shard nodes file will create."
         rm -rf /root/seth/shards*
-    fi
+    fi  
 
     echo "node count: " $nodes_count
     rm -rf /root/nodes/seth/latest_blocks
-    cd /root/nodes/seth && ./seth -U -N $nodes_count
-    cd /root/nodes/seth && ./seth -S 3 -N $nodes_count
+    cd /root/nodes/seth && ./seth -U -N $nodes_count -E 4
+    cd /root/nodes/seth && ./seth -S 3 -N $nodes_count -E 4
     cd /root/nodes/seth && ./seth -C
 
 }
@@ -126,7 +125,7 @@ make_package() {
     cp /root/seth/temp_cmd.sh /root/nodes/seth/pkg
     cp /root/seth/start_cmd.sh /root/nodes/seth/pkg
     cp /root/seth/wondershaper /root/nodes/seth/pkg
-    cp -rf /root/nodes/seth/root_db /root/nodes/seth/pkg/shard_db_2
+    cp -rf /root/nodes/seth/shard_db_2 /root/nodes/seth/pkg/shard_db_2
     cp -rf /root/nodes/seth/shard_db_3 /root/nodes/seth/pkg
     cp -rf /root/nodes/temp /root/nodes/seth/pkg
     cp -rf /root/seth/gdb/* /root/nodes/seth/pkg
@@ -139,7 +138,7 @@ get_bootstrap() {
     node_ips_array=(${node_ips//,/ })
     for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
         i=1
-        for ip in "${node_ips_array[@]}"; do
+        for ip in "${node_ips_array[@]}"; do 
             tmppubkey=`sed -n "$i""p" /root/seth/shards$shard_id| awk -F'\t' '{print $2}'`
             node_info=$tmppubkey":"$ip":1"$shard_id"00"$i
             bootstrap=$node_info","$bootstrap
@@ -154,7 +153,7 @@ get_bootstrap() {
 check_cmd_finished() {
     echo "waiting..."
     sleep 1
-    ps -ef | grep sshpass
+    ps -ef | grep sshpass 
     while true
     do
         sshpass_count=`ps -ef | grep sshpass | grep ConnectTimeout | wc -l`
@@ -174,8 +173,8 @@ clear_command() {
     node_ips_array=(${node_ips//,/ })
     run_cmd_count=0
     start_pos=1
-    for ip in "${node_ips_array[@]}"; do
-        sshpass  ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "cd /root && rm -rf pkg*; killall -9 shardora; killall -9 seth" &
+    for ip in "${node_ips_array[@]}"; do 
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "cd /root && rm -rf pkg*; killall -9 seth; killall -9 seth" &
         run_cmd_count=$((run_cmd_count + 1))
         if ((start_pos==1)); then
             sleep 3
@@ -196,8 +195,8 @@ scp_package() {
     echo 'scp_package start'
     node_ips_array=(${node_ips//,/ })
     run_cmd_count=0
-    for ip in "${node_ips_array[@]}"; do
-        sshpass  scp -o ConnectTimeout=10  -o StrictHostKeyChecking=no /root/nodes/seth/pkg.tar.gz root@$ip:/root &
+    for ip in "${node_ips_array[@]}"; do 
+        sshpass -p $PASSWORD scp -o ConnectTimeout=10  -o StrictHostKeyChecking=no /root/nodes/seth/pkg.tar.gz root@$ip:/root &
         run_cmd_count=$((run_cmd_count + 1))
         if (($run_cmd_count >= 100)); then
             check_cmd_finished
@@ -214,14 +213,14 @@ run_command() {
     node_ips_array=(${node_ips//,/ })
     run_cmd_count=0
     start_pos=1
-    for ip in "${node_ips_array[@]}"; do
+    for ip in "${node_ips_array[@]}"; do 
         echo "start node: " $ip $each_nodes_count
         start_nodes_count=$(($each_nodes_count + 0))
         if ((start_pos==1)); then
             start_nodes_count=$FIRST_NODE_COUNT
         fi
 
-        sshpass  ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count $bootstrap 2 $end_shard"  > /dev/null 2>&1 &
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count $bootstrap 2 $end_shard"  > /dev/null 2>&1 &
         if ((start_pos==1)); then
             sleep 3
         fi
@@ -249,7 +248,7 @@ start_all_nodes() {
             start_nodes_count=$FIRST_NODE_COUNT
         fi
 
-        sshpass  ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "cd /root/pkg && bash start_cmd.sh $ip $start_pos $start_nodes_count $bootstrap 2 $end_shard "  &
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "cd /root/pkg && bash start_cmd.sh $ip $start_pos $start_nodes_count $bootstrap 2 $end_shard "  &
         if ((start_pos==1)); then
             sleep 3
         fi
@@ -263,7 +262,7 @@ start_all_nodes() {
 }
 
 killall -9 sshpass
-init
+init 
 make_package
 clear_command
 scp_package

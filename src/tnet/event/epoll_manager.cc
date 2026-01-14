@@ -174,7 +174,7 @@ int EpollManager::GetEvents(IoEvent* events, int expire) {
         }
 
         event.SetType(flags);
-        event.SetHandler(handler);
+        event.Sethandler(handler);
     }
 
     return n;

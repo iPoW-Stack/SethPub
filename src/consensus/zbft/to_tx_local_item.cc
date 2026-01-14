@@ -7,6 +7,7 @@ namespace seth {
 namespace consensus {
 
 int ToTxLocalItem::HandleTx(
+        uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
         zjcvm::ZjchainHost& zjc_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
@@ -34,11 +35,13 @@ int ToTxLocalItem::HandleTx(
     block_tx.set_unique_hash(unique_hash);
     block_tx.set_nonce(src_to_nonce + 1);
     auto& block_to_txs = *view_block.mutable_block_info()->mutable_local_to();
-    CreateLocalToTx(view_block, zjc_host, acc_balance_map, to_tx_item, block_to_txs);
+    CreateLocalToTx(tx_index, view_block, zjc_host, acc_balance_map, to_tx_item, block_to_txs);
     SETH_WARN("success call to tx local block pool: %d, view: %lu, to_nonce: %lu. tx nonce: %lu", 
         view_block.qc().pool_index(), view_block.qc().view(), src_to_nonce, block_tx.nonce());
     acc_balance_map[block_tx.to()]->set_balance(src_to_balance);
     acc_balance_map[block_tx.to()]->set_nonce(block_tx.nonce());
+    acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
+    acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
     SETH_DEBUG("success add addr: %s, value: %s", 
         common::Encode::HexEncode(block_tx.to()).c_str(), 
         ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str());
@@ -49,6 +52,7 @@ int ToTxLocalItem::HandleTx(
 }
 
 void ToTxLocalItem::CreateLocalToTx(
+        uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
         zjcvm::ZjchainHost& zjc_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
@@ -100,6 +104,8 @@ void ToTxLocalItem::CreateLocalToTx(
         to_balance += amount;
         acc_balance_map[addr]->set_balance(to_balance);
         acc_balance_map[addr]->set_nonce(nonce);
+        acc_balance_map[addr]->set_latest_height(view_block.block_info().height());
+        acc_balance_map[addr]->set_tx_index(tx_index);
         if (!to_tx_item.library_bytes().empty()) {
             acc_balance_map[addr]->set_bytes_code(to_tx_item.library_bytes());
         }

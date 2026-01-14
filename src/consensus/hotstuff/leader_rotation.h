@@ -34,7 +34,28 @@ public:
 
         auto now_tm_skip = 0;//common::TimeUtils::TimestampSeconds() / 30lu;
         auto index = (now_tm_skip + pool_idx_) % members->size();
-        return (*members)[index];
+        uint32_t try_times = 0;
+        while (try_times++ <= members->size()) {
+            if ((*members)[index]->bls_publick_key == libff::alt_bn128_G2::zero()) {
+                SETH_DEBUG("pool_idx_: %u, leader rotation: "
+                    "skip invalid bls leader index: %u, member size: %u", 
+                    pool_idx_,
+                    index, members->size());
+                ++index;
+                if (index >= members->size()) {
+                    index = 0;
+                }
+
+                continue;
+            }
+
+            SETH_DEBUG("leader rotation: %u, leader index: %u, member size: %u", 
+                pool_idx_, index, members->size());
+                
+            return (*members)[index];
+        }
+
+        return nullptr;
     }
 
     inline common::BftMemberPtr GetExpectedLeader() const {

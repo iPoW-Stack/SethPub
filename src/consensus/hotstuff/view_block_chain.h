@@ -5,6 +5,7 @@
 
 #include "block/account_manager.h"
 #include "block/account_lru_map.h"
+#include "common/lru_map.h"
 #include "common/time_utils.h"
 #include "consensus/hotstuff/types.h"
 #include "consensus/hotstuff/hotstuff_utils.h"
@@ -81,7 +82,6 @@ public:
     bool IsValid();
     std::string String() const;
     void UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_item);
-    bool ViewBlockIsCheckedParentHash(const std::string& hash);
     // void SaveBlockCheckedParentHash(const std::string& hash, uint64_t view);
     protos::AddressInfoPtr ChainGetAccountInfo(const std::string& acc_id);
     protos::AddressInfoPtr ChainGetPoolAccountInfo(uint32_t pool_index);
@@ -93,21 +93,11 @@ public:
         uint64_t vss_random);
     void HandleTimerMessage();
     std::shared_ptr<ViewBlockInfo> CheckCommit(const QC& qc);
-    bool view_commited(uint32_t network_id, View view) const {
-        if (commited_view_.find(view) != commited_view_.end()) {
-            return true;
-        }
-
-        if (prefix_db_->ViewBlockIsValidView(network_id, pool_index_, view)) {
-            return true;
-        }
-
-        return false;
-    }
-
+    
     uint64_t GetMaxHeight() {
-        if (latest_committed_block_->has_block_info()) {
-            return latest_committed_block_->block_info().height();
+        auto latest_committed_block = LatestCommittedBlock();
+        if (latest_committed_block && latest_committed_block->has_block_info()) {
+            return latest_committed_block->block_info().height();
         }
 
         return 0;
@@ -158,15 +148,16 @@ public:
 
     
     inline std::shared_ptr<ViewBlock> LatestCommittedBlock() const {
-        return latest_committed_block_;
+        return latest_committed_block_.load();
     }
     // Set the latest committed block
     inline void SetLatestCommittedBlock(const std::shared_ptr<ViewBlockInfo>& view_block_info) {
         auto view_block = view_block_info->view_block;
-        if (latest_committed_block_ &&
+        auto latest_committed_block = LatestCommittedBlock();
+        if (latest_committed_block &&
                 (view_block->qc().network_id() !=
-                latest_committed_block_->qc().network_id() ||
-                latest_committed_block_->qc().view() >= 
+                latest_committed_block->qc().network_id() ||
+                latest_committed_block->qc().view() >= 
                 view_block->qc().view())) {
             return;
         }
@@ -179,7 +170,7 @@ public:
             view_block->qc().view(),
             common::Encode::HexEncode(view_block->qc().sign_x()).c_str());
         assert(!view_block->qc().sign_x().empty());
-        latest_committed_block_ = view_block;
+        latest_committed_block_.store(view_block);
     }
 
     inline ViewBlockStatus GetViewBlockStatus(const std::shared_ptr<ViewBlock>& view_block) const {
@@ -264,7 +255,7 @@ private:
     std::atomic<View> high_view_block_view_ = 0llu;
     std::shared_ptr<ViewBlock> start_block_;
     std::unordered_map<HashStr, std::shared_ptr<ViewBlockInfo>> view_blocks_info_;
-    std::shared_ptr<ViewBlock> latest_committed_block_; // latest committed block
+    std::atomic<std::shared_ptr<ViewBlock>> latest_committed_block_; // latest committed block
     std::shared_ptr<db::Db> db_ = nullptr;
     std::shared_ptr<protos::PrefixDb> prefix_db_ = nullptr;
     uint32_t pool_index_ = common::kInvalidPoolIndex;
@@ -290,6 +281,10 @@ private:
     uint64_t prev_check_timeout_blocks_ms_ = 0;
     ChainType chain_type_ = kInvalidChain;
     std::map<uint64_t, std::vector<std::shared_ptr<ViewBlockInfo>>> view_with_blocks_;
+    common::LRUMap<BlockViewKey, std::shared_ptr<ViewBlockInfo>> latest_commited_view_lru_map_{ 128 };
+    common::LRUMap<std::string, std::shared_ptr<ViewBlockInfo>> latest_commited_hash_lru_map_{ 128 };
+    std::thread::id local_thread_id_;
+    uint64_t local_thread_id_count_ = 0;
 
 };
 

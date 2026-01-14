@@ -217,7 +217,7 @@ static const uint32_t kTestForNetworkId = 4u;
 static const uint16_t kDefaultVpnPort = 9033u;
 static const uint16_t kDefaultRoutePort = 9034u;
 // static const int64_t kRotationPeriod = 600ll * 1000ll * 1000ll; // epoch time
-static const int64_t kRotationPeriod = 600ll * 1000ll * 1000ll; // for quicker debugging
+static const int64_t kRotationPeriod = 120ll * 1000ll * 1000ll; // for quicker debugging
 static const int64_t kMessageTimeoutMs = 10000ll;
 static const uint32_t kMaxRotationCount = 4u;
 static const uint16_t kNodePortRangeMin = 1000u;
@@ -450,15 +450,17 @@ static inline bool isFileExist(const std::string& path) {
 
 #ifndef NDEBUG
 #define CheckThreadIdValid() { \
-    static uint64_t count = 0; \
-    ++count; \
-    static std::thread::id init_thread_id = std::this_thread::get_id(); \
-    auto now_thread_id = std::this_thread::get_id(); \
-    SETH_DEBUG("now handle thread id: %u, old: %u, count: %d", now_thread_id, init_thread_id, count); \
-    if (count > 3) { \
-        assert(init_thread_id == now_thread_id); \
-    } else { \
-        init_thread_id = now_thread_id; \
+    if (common::GlobalInfo::Instance()->main_inited_success()) { \
+        ++local_thread_id_count_; \
+        auto now_thread_id = std::this_thread::get_id(); \
+        uint32_t now_id_val = (uint32_t)std::hash<std::thread::id>{}(now_thread_id); \
+        uint32_t init_id_val = (uint32_t)std::hash<std::thread::id>{}(local_thread_id_); \
+        SETH_DEBUG("now handle thread id: %u, old: %u, count: %d", now_id_val, init_id_val, (int32_t)local_thread_id_count_); \
+        if (local_thread_id_count_ > 3) { \
+            assert(local_thread_id_ == now_thread_id); \
+        } else { \
+            local_thread_id_ = now_thread_id; \
+        } \
     } \
 }
 #else

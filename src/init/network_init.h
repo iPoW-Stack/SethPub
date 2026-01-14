@@ -49,12 +49,13 @@ private:
     int InitHttpServer();
     int InitSecurity();
     int CheckJoinWaitingPool();
-    int GenesisCmd(common::ParserArgs& parser_arg, std::string& net_name);
+    int GenesisCmd(common::ParserArgs& parser_arg);
     void AddCmds();
     void GetNetworkNodesFromConf(
+        uint32_t end_shard_id,
         uint32_t cons_shard_node_count,
         std::vector<GenisisNodeInfoPtr>&, 
-        std::vector<GenisisNodeInfoPtrVector>&, 
+        std::map<uint32_t, std::vector<GenisisNodeInfoPtr>>&, 
         const std::shared_ptr<db::Db>&);
     void InitAggBlsForGenesis(const std::string& node_id, std::shared_ptr<security::Security>& security_ptr, std::shared_ptr<protos::PrefixDb>&);
     void GetAggBlsSkFromFile(const std::string& node_id, libff::alt_bn128_Fr* agg_bls_sk);
@@ -83,6 +84,7 @@ private:
     void CreateContribution(bls::protobuf::VerifyVecBrdReq* bls_verify_req);
     void HandleNewBlock();
     void SaveLatestBlock(std::shared_ptr<db::Db> db, uint32_t sharding_id);
+    bool InitLocalNetworkIdWithLatestElectBlock();
     void SaveCrossBlockToEachShard();
         
     static const uint32_t kInvalidPoolFactor = 50u;  // 50%

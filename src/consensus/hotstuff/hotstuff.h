@@ -96,7 +96,7 @@ public:
     }
     ~Hotstuff() {};
 
-    void Init();
+    void Init() {}
 
     // std::shared_ptr<ViewBlock> GetViewBlock(uint64_t view) {
     //     return view_block_chain_->Get(view);
@@ -209,6 +209,7 @@ private:
     Status HandleProposeMsgStep_Directly(
         std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap,
         const std::string& expect_view_block_hash);
+    void StartInit();
 
     bool HandleProposeMsgCondition(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
         // 仅新 v_block 才能允许执行
@@ -254,7 +255,7 @@ private:
         common::BftMemberPtr leader,
         std::shared_ptr<transport::TransportMessage>& hotstuff_msg,
         const MsgType msg_type);
-    void InitLoadLatestBlock(
+    bool InitLoadLatestBlock(
         std::shared_ptr<ViewBlockChain> view_block_chain,
         uint32_t network_id,
         uint32_t pool_index);

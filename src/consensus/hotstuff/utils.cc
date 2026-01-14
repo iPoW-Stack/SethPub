@@ -6,6 +6,7 @@
 #include <consensus/hotstuff/types.h>
 #include "consensus/hotstuff/view_block_chain.h"
 #include "pools/tx_utils.h"
+#include "protos/prefix_db.h"
 #include "zjcvm/zjc_host.h"
 
 namespace seth {
@@ -78,6 +79,20 @@ int CheckTransactionValid(
     return 0;
 }
 
+bool BlockViewCommited(
+        std::shared_ptr<protos::PrefixDb> prefix_db, 
+        uint32_t network_id, 
+        uint32_t pool_index, 
+        uint64_t view) {
+    return prefix_db->ViewBlockIsValidView(network_id, pool_index, view);
+}
+
+
+bool ViewBlockIsCheckedParentHash(
+        std::shared_ptr<protos::PrefixDb> prefix_db, 
+        const std::string& hash) {
+    return prefix_db->ParentHashExists(hash);
+}
 
 } // namespace consensus
 

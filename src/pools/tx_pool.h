@@ -27,23 +27,6 @@
 #include "pools/height_tree_level.h"
 #include "sync/key_value_sync.h"
 
-#ifndef NDEBUG
-#define CheckThreadIdValid()
-// #define CheckThreadIdValid() { \
-//     auto now_thread_id = std::this_thread::get_id(); \
-//      \
-//     if (local_thread_id_count_ >= 1) { \
-//         assert(local_thread_id_ == now_thread_id); \
-//     } else { \
-//         local_thread_id_ = now_thread_id; \
-//     } \
-//     if (local_thread_id_ != now_thread_id) { ++local_thread_id_count_; } \
-// }
-#else
-#define CheckThreadIdValid()
-#endif
-
-
 namespace seth {
 
 namespace pools {
@@ -125,12 +108,11 @@ public:
     }
 
     void FlushHeightTree(db::DbWriteBatch& db_batch) {
-        CheckThreadIdValid();
+        // CheckThreadIdValid();
         // TODO: fix bug
         if (height_tree_ptr_ != nullptr) {
             auto tmp_tree_ptr = height_tree_ptr_;
             tmp_tree_ptr->FlushToDb(db_batch);
-            // 清理内存
             height_tree_ptr_ = nullptr;
         }
     }

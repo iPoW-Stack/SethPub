@@ -22,7 +22,7 @@ namespace hotstuff {
 std::atomic<uint32_t> Hotstuff::sendout_bft_message_count_ = 0;
 // #endif
 
-void Hotstuff::Init() {
+void Hotstuff::StartInit() {
     // set pacemaker timeout callback function
     last_vote_view_ = 0lu;
     InitLoadLatestBlock(
@@ -63,7 +63,7 @@ void Hotstuff::Init() {
         auto chain = std::make_shared<ViewBlockChain>();
         chain->Init(
             kCrossShardingChain,
-            network_id,
+            common::kGlobalPoolIndex,
             db_,
             block_mgr_,
             nullptr,
@@ -72,15 +72,17 @@ void Hotstuff::Init() {
             nullptr,
             new_block_cache_callback_);
         cross_shard_view_block_chain_[network_id] = chain;
-        InitLoadLatestBlock(
-            chain,
-            network_id, 
-            common::kImmutablePoolSize);
+        if (!InitLoadLatestBlock(
+                chain,
+                network_id, 
+                common::kImmutablePoolSize)) {
+            break;
+        }
         SETH_DEBUG("now init cross consensus shard: %u end.", network_id);
     }
 }
 
-void Hotstuff::InitLoadLatestBlock(
+bool Hotstuff::InitLoadLatestBlock(
         std::shared_ptr<ViewBlockChain> view_block_chain, 
         uint32_t network_id, uint32_t pool_index) {
     auto latest_view_block = std::make_shared<ViewBlock>(); // Get the last ViewBlock with QC from the db
@@ -108,10 +110,13 @@ void Hotstuff::InitLoadLatestBlock(
 
             parent_hash = view_block.parent_hash();
         }
+
+        return true;
     } else {
         SETH_DEBUG("no genesis, waiting for syncing, network: %lu, pool_idx: %d", network_id, pool_index);
-        assert(false);
     }
+
+    return false;
 }
 
 void Hotstuff::InitAddNewViewBlock(
@@ -139,6 +144,7 @@ void Hotstuff::InitAddNewViewBlock(
 }
 
 Status Hotstuff::Start() {
+    StartInit();
     auto leader = leader_rotation()->GetLeader();
     auto elect_item = elect_info_->GetElectItemWithShardingId(common::GlobalInfo::Instance()->network_id());
     if (!elect_item || !elect_item->IsValid()) {
@@ -495,7 +501,8 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     auto b = common::TimeUtils::TimestampMs();
     defer({
         auto e = common::TimeUtils::TimestampMs();
-        SETH_DEBUG("pool: %d handle propose duration: %lu ms", pool_idx_, e-b);
+        SETH_DEBUG("pool: %d handle propose duration: %lu ms, hash64: %lu",
+            pool_idx_, e-b, msg_ptr->header.hash64());
     });
 
     pro_msg_wrap->view_block_ptr = std::make_shared<ViewBlock>(
@@ -569,11 +576,9 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
     st = HandleProposeMessageByStep(pro_msg_wrap);
     if (st != Status::kSuccess) {
-#ifndef NDEBUG
         SETH_ERROR("handle propose message failed hash: %lu, propose_debug: %s",
             msg_ptr->header.hash64(),
-            ProtobufToJson(cons_debug).c_str());
-#endif
+            ProtobufToJson(msg_ptr->header).c_str());
         // leader_view_with_propose_msgs_[propose_view] = pro_msg_wrap;
         // CHECK_MEMORY_SIZE(leader_view_with_propose_msgs_);
     } else {
@@ -587,6 +592,10 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         //     CHECK_MEMORY_SIZE(leader_view_with_propose_msgs_);
         // }
     }
+
+    SETH_DEBUG("handle propose message success hash: %lu, propose_debug: %s",
+        msg_ptr->header.hash64(),
+        ProtobufToJson(cons_debug).c_str());
     ADD_DEBUG_PROCESS_TIMESTAMP();
 }
 
@@ -595,34 +604,52 @@ Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> p
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto st = HandleProposeMsgStep_VerifyLeader(pro_msg_wrap);
     if (st != Status::kSuccess) {
+        SETH_DEBUG("HandleProposeMsgStep_VerifyLeader failed hash: %lu, propose_debug: %s",
+            msg_ptr->header.hash64(),
+            ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
         return st;
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
     st = HandleProposeMsgStep_VerifyViewBlock(pro_msg_wrap);
     if (st != Status::kSuccess) {
+        SETH_DEBUG("HandleProposeMsgStep_VerifyViewBlock failed hash: %lu, propose_debug: %s",
+            msg_ptr->header.hash64(),
+            ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
         return st;
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
     st = HandleProposeMsgStep_TxAccept(pro_msg_wrap);
     if (st != Status::kSuccess) {
+        SETH_DEBUG("HandleProposeMsgStep_TxAccept failed hash: %lu, propose_debug: %s",
+            msg_ptr->header.hash64(),
+            ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
         return st;
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
     st = HandleProposeMsgStep_ChainStore(pro_msg_wrap);
     if (st != Status::kSuccess) {
+        SETH_DEBUG("HandleProposeMsgStep_ChainStore failed hash: %lu, propose_debug: %s",
+            msg_ptr->header.hash64(),
+            ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
         return st;
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
     st = HandleProposeMsgStep_Vote(pro_msg_wrap);
     if (st != Status::kSuccess) {
+        SETH_DEBUG("HandleProposeMsgStep_Vote failed hash: %lu, propose_debug: %s",
+            msg_ptr->header.hash64(),
+            ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
         return st;
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
+    SETH_DEBUG("HandleProposeMessageByStep success hash: %lu, propose_debug: %s",
+        msg_ptr->header.hash64(),
+        ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
     return Status::kSuccess;
 }
 
@@ -1478,6 +1505,24 @@ Status Hotstuff::Commit(
 
 void Hotstuff::HandleSyncedViewBlock(
         std::shared_ptr<view_block::protobuf::ViewBlockItem>& vblock) {
+    if (BlockViewCommited(
+            prefix_db_, 
+            vblock->qc().network_id(), 
+            vblock->qc().pool_index(), 
+            vblock->qc().view())) {
+        return;
+    }
+    
+    if (BlockViewCommited(
+            prefix_db_, 
+            vblock->qc().network_id(), 
+            vblock->qc().pool_index(), 
+            vblock->qc().view() + 1)) {
+        if (!ViewBlockIsCheckedParentHash(prefix_db_, vblock->qc().view_block_hash())) {
+            return;
+        }
+    }
+
     if (prefix_db_->BlockExists(vblock->qc().view_block_hash())) {
         SETH_DEBUG("block db exists %u_%u_%lu, height: %lu",
             vblock->qc().network_id(), 
@@ -1647,15 +1692,21 @@ Status Hotstuff::VerifyViewBlock(
             v_block.qc().view() - 1);
         if (view_block_chain->HighQC().view() < (v_block.qc().view() + db_stored_view_) && 
                 v_block.qc().view() > 0 && 
-                !view_block_chain->view_commited(
-                    v_block.qc().network_id(), v_block.qc().view() - 1)) {
+                !BlockViewCommited(
+                    prefix_db_,
+                    v_block.qc().network_id(), 
+                    v_block.qc().pool_index(), 
+                    v_block.qc().view() - 1)) {
             kv_sync_->AddSyncViewHash(
                 v_block.qc().network_id(), 
                 v_block.qc().pool_index(), 
                 v_block.parent_hash(),
                 0);
-        } else if (!view_block_chain->view_commited(
-                v_block.qc().network_id(), v_block.qc().view() - 1)) {
+        } else if (!BlockViewCommited(
+                prefix_db_,
+                v_block.qc().network_id(), 
+                v_block.qc().pool_index(), 
+                v_block.qc().view() - 1)) {
             SETH_DEBUG("now add sync height 0, %u_%u_%lu", 
                 v_block.qc().network_id(), 
                 v_block.qc().pool_index(), 

@@ -28,6 +28,7 @@ static const std::string kShardFinalStaticPrefix = common::Encode::HexDecode(
 int ShardStatistic::Init() {
     if (common::GlobalInfo::Instance()->network_id() < network::kRootCongressNetworkId ||
             common::GlobalInfo::Instance()->network_id() >= network::kConsensusShardEndNetworkId) {
+        SETH_ERROR("invalid network id: %u", common::GlobalInfo::Instance()->network_id());
         assert(false);
         return kPoolsError;
     }
@@ -51,7 +52,7 @@ int ShardStatistic::Init() {
         auto& pool_map = statistic_pool_info_[statistic_info.height()];
         for (int32_t i = 0; i < statistic_info.pool_statisitcs_size(); ++i) {
             StatisticInfoItem statistic_item;
-            statistic_item.statistic_min_height = statistic_info.pool_statisitcs(i).max_height() + 1;
+            statistic_item.statistic_min_height = statistic_info.pool_statisitcs(i).max_height();
             pool_map[i] = statistic_item;
             SETH_DEBUG("success set latest statisticed height "
                 "pool: %d, %lu, statistic_min_height: %lu", 
@@ -187,7 +188,10 @@ bool ShardStatistic::HandleStatistic(
         
         if (statistic_pool_info_.size() >= 2) {
             auto iter = statistic_pool_info_.rbegin();
-            ++iter;
+            while (iter->first >= block.pool_statistic_height()) {
+                ++iter;
+            }
+            
             iter->second[pool_idx].statistic_max_height = block.height() - 1;
             if (iter->second[pool_idx].statistic_max_height < iter->second[pool_idx].statistic_min_height) {
                 iter->second[pool_idx].statistic_max_height = iter->second[pool_idx].statistic_min_height;

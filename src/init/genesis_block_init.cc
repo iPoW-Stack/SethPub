@@ -52,43 +52,25 @@ GenesisBlockInit::GenesisBlockInit(
 GenesisBlockInit::~GenesisBlockInit() {}
 
 int GenesisBlockInit::CreateGenesisBlocks(
-    const GenisisNetworkType& net_type,
-    const std::vector<GenisisNodeInfoPtr>& root_genesis_nodes,
-    const std::vector<GenisisNodeInfoPtrVector>& cons_genesis_nodes_of_shards,
-    const std::set<uint32_t>& valid_net_ids_set) {
+        uint32_t network_id,
+        const std::vector<GenisisNodeInfoPtr>& root_genesis_nodes,
+        const std::map<uint32_t, std::vector<GenisisNodeInfoPtr>>& cons_genesis_nodes_of_shards) {
     int res = kInitSuccess;    
-    std::vector<GenisisNodeInfoPtr> real_root_genesis_nodes;
-    std::vector<GenisisNodeInfoPtrVector> real_cons_genesis_nodes_of_shards(cons_genesis_nodes_of_shards.size());
-    auto root_iter = valid_net_ids_set.find(network::kRootCongressNetworkId);
-    if (root_iter != valid_net_ids_set.end()) {
-        real_root_genesis_nodes = root_genesis_nodes;
-    }
-
-    for (uint32_t i = 0; i < cons_genesis_nodes_of_shards.size(); i++) {
-        uint32_t shard_node_net_id = i + network::kConsensusShardBeginNetworkId;
-        auto shard_iter = valid_net_ids_set.find(shard_node_net_id);
-        if (shard_iter != valid_net_ids_set.end()) {
-            real_cons_genesis_nodes_of_shards[i] = cons_genesis_nodes_of_shards[i]; 
-        }
-    }
-
-    if (net_type == GenisisNetworkType::RootNetwork) {
+    if (network_id == network::kRootCongressNetworkId) {
         CreatePoolsAddressInfo(network::kRootCongressNetworkId);
         std::vector<std::string> prikeys;
-        CreateNodePrivateInfo(network::kRootCongressNetworkId, 1llu, real_root_genesis_nodes);
-        for (uint32_t i = 0; i < real_cons_genesis_nodes_of_shards.size(); i++) {
-            uint32_t net_id = i + network::kConsensusShardBeginNetworkId;
-            if (cons_genesis_nodes_of_shards[i].size() != 0) {
-                CreateNodePrivateInfo(net_id, 1llu, cons_genesis_nodes_of_shards[i]);    
-            }
+        CreateNodePrivateInfo(network::kRootCongressNetworkId, 1llu, root_genesis_nodes);
+        for (auto iter = cons_genesis_nodes_of_shards.begin();
+                iter != cons_genesis_nodes_of_shards.end(); ++iter) {
+            CreateNodePrivateInfo(iter->first, 1llu, iter->second);    
         }
         
         common::GlobalInfo::Instance()->set_network_id(network::kRootCongressNetworkId);
         PrepareCreateGenesisBlocks(network::kRootCongressNetworkId);
-        res = CreateRootGenesisBlocks(real_root_genesis_nodes,
-                                      real_cons_genesis_nodes_of_shards);
-        for (uint32_t i = 0; i < real_root_genesis_nodes.size(); ++i) {
-            prikeys.push_back(real_root_genesis_nodes[i]->prikey);
+        res = CreateRootGenesisBlocks(root_genesis_nodes,
+                                      cons_genesis_nodes_of_shards);
+        for (uint32_t i = 0; i < root_genesis_nodes.size(); ++i) {
+            prikeys.push_back(root_genesis_nodes[i]->prikey);
         }
 
 #ifndef DISABLE_GENESIS_BLS_VERIFY
@@ -96,37 +78,29 @@ int GenesisBlockInit::CreateGenesisBlocks(
 #endif
         // SaveGenisisPoolHeights(network::kRootCongressNetworkId);
     } else {
-        for (uint32_t i = 0; i < real_cons_genesis_nodes_of_shards.size(); i++) {
-            std::vector<std::string> prikeys;
-            uint32_t shard_node_net_id = i + network::kConsensusShardBeginNetworkId;
-            std::vector<GenisisNodeInfoPtr> cons_genesis_nodes = real_cons_genesis_nodes_of_shards[i];
+        std::vector<std::string> prikeys;
+        auto& cons_genesis_nodes = cons_genesis_nodes_of_shards.at(network_id);
+        CreatePoolsAddressInfo(network_id);
+        CreateNodePrivateInfo(network_id, 1llu, cons_genesis_nodes);
+        common::GlobalInfo::Instance()->set_network_id(network_id);
+        PrepareCreateGenesisBlocks(network_id);            
+        res = CreateShardGenesisBlocks(root_genesis_nodes,
+                                        cons_genesis_nodes,
+                                        network_id);
+        assert(res == kInitSuccess);
 
-            if (shard_node_net_id == 0 || cons_genesis_nodes.size() == 0) {
-                continue;
-            }
-
-            CreatePoolsAddressInfo(shard_node_net_id);
-            CreateNodePrivateInfo(shard_node_net_id, 1llu, cons_genesis_nodes);
-            common::GlobalInfo::Instance()->set_network_id(shard_node_net_id);
-            PrepareCreateGenesisBlocks(shard_node_net_id);            
-            res = CreateShardGenesisBlocks(real_root_genesis_nodes,
-                                           cons_genesis_nodes,
-                                           shard_node_net_id);
-            assert(res == kInitSuccess);
-
-            for (uint32_t i = 0; i < cons_genesis_nodes.size(); ++i) {
-                prikeys.push_back(cons_genesis_nodes[i]->prikey);
-            }
+        for (uint32_t i = 0; i < cons_genesis_nodes.size(); ++i) {
+            prikeys.push_back(cons_genesis_nodes[i]->prikey);
+        }
 
 #ifndef DISABLE_GENESIS_BLS_VERIFY            
-            ComputeG2sForNodes(prikeys);
+        ComputeG2sForNodes(prikeys);
 #endif
             // SaveGenisisPoolHeights(shard_node_net_id);
-        }
     }
 
     // db_->CompactRange("", "");
-    if (net_type == GenisisNetworkType::RootNetwork) {
+    if (network_id == network::kRootCongressNetworkId) {
         FILE* fd = fopen("./bls_pk", "w");
         auto str = bls_pk_json_.dump();
         auto w_size = fwrite(str.c_str(), 1, str.size(), fd);
@@ -153,6 +127,7 @@ void GenesisBlockInit::CreatePoolsAddressInfo(uint16_t network_id) {
     immutable_pool_address_info_->set_addr(immutable_pool_addr);
     immutable_pool_address_info_->set_type(address::protobuf::kImmutablePoolAddress);
     immutable_pool_address_info_->set_latest_height(0);
+    immutable_pool_address_info_->set_tx_index(0);
     immutable_pool_address_info_->set_nonce(0);
     SETH_DEBUG("init pool immutable index net: %u, base address: %s", 
         network_id, common::Encode::HexEncode(immutable_pool_addr).c_str());
@@ -175,8 +150,8 @@ void GenesisBlockInit::CreatePoolsAddressInfo(uint16_t network_id) {
 
         pool_address_info_[pool_idx] = CreateAddress("", 0, network_id, pool_idx, addr, 0, 0);
         pool_idx_set.insert(pool_idx);
-        SETH_DEBUG("init pool index: %u, base address: %s", 
-            pool_idx, common::Encode::HexEncode(addr).c_str());
+        SETH_DEBUG("network_id: %u, init pool index: %u, base address: %s", 
+            network_id, pool_idx, common::Encode::HexEncode(addr).c_str());
     }
 }
 
@@ -196,6 +171,7 @@ std::shared_ptr<address::protobuf::AddressInfo> GenesisBlockInit::CreateAddress(
     addr_info->set_addr(addr);
     addr_info->set_type(address::protobuf::kNormal);
     addr_info->set_latest_height(latest_height);
+    addr_info->set_tx_index(0);
     addr_info->set_nonce(nonce);
     return addr_info;
 }
@@ -631,6 +607,7 @@ int GenesisBlockInit::CreateElectBlock(
     tx_info->set_to(account_info->addr());
     tx_info->set_nonce(account_info->nonce());
     account_info->set_nonce(account_info->nonce() + 1);
+    account_info->set_tx_index(account_info->nonce() + 1);
     tx_info->set_amount(0);
     tx_info->set_gas_limit(0);
     tx_info->set_gas_used(0);
@@ -810,6 +787,7 @@ int GenesisBlockInit::GenerateRootSingleBlock(
             immutable_pool_address_info_->pool_index(), 
             immutable_pool_address_info_->addr(), 0, tx_info->nonce());
         immutable_pool_address_info_->set_nonce(immutable_pool_address_info_->nonce() + 1);
+        immutable_pool_address_info_->set_tx_index(immutable_pool_address_info_->nonce() + 1);
         tx_info->set_step(pools::protobuf::kConsensusCreateGenesisAcount);
         tenon_block->set_version(common::kTransactionVersion);
         tenon_block->set_height(root_pool_height[common::kImmutablePoolSize]++);
@@ -849,6 +827,7 @@ int GenesisBlockInit::GenerateRootSingleBlock(
         tx_info->set_to(immutable_pool_address_info_->addr());
         tx_info->set_nonce(immutable_pool_address_info_->nonce());
         immutable_pool_address_info_->set_nonce(immutable_pool_address_info_->nonce() + 1);
+        immutable_pool_address_info_->set_tx_index(immutable_pool_address_info_->nonce() + 1);
         tx_info->set_amount(0);
         tx_info->set_balance(0);
         tx_info->set_gas_limit(0);
@@ -962,7 +941,7 @@ int GenesisBlockInit::GenerateShardSingleBlock(uint32_t sharding_id) {
 
 int GenesisBlockInit::CreateRootGenesisBlocks(
         const std::vector<GenisisNodeInfoPtr>& root_genesis_nodes,
-        const std::vector<GenisisNodeInfoPtrVector>& cons_genesis_nodes_of_shards) {
+        const std::map<uint32_t, std::vector<GenisisNodeInfoPtr>>& cons_genesis_nodes_of_shards) {
     // GenerateRootAccounts();
     InitShardGenesisAccount();
     std::unordered_map<uint32_t, std::string> pool_prev_hash_map;
@@ -994,6 +973,7 @@ int GenesisBlockInit::CreateRootGenesisBlocks(
             tx_info->set_to(pool_address_info_[i]->addr());
             tx_info->set_nonce(pool_address_info_[i]->nonce());
             pool_address_info_[i]->set_nonce(pool_address_info_[i]->nonce() + 1);
+            pool_address_info_[i]->set_tx_index(pool_address_info_[i]->nonce() + 1);
             tx_info->set_from("");
             tx_info->set_amount(0);
             tx_info->set_balance(0);
@@ -1045,9 +1025,9 @@ int GenesisBlockInit::CreateRootGenesisBlocks(
             }
         }
 
-        for (uint32_t k = 0; k < cons_genesis_nodes_of_shards.size(); k++) {
-            uint32_t net_id = k + network::kConsensusShardBeginNetworkId;
-            auto cons_genesis_nodes = cons_genesis_nodes_of_shards[k];
+        for (auto iter = cons_genesis_nodes_of_shards.begin(); iter != cons_genesis_nodes_of_shards.end(); ++iter) {
+            uint32_t net_id = iter->first;
+            auto cons_genesis_nodes = iter->second;
             for (uint32_t member_idx = 0; member_idx < cons_genesis_nodes.size(); ++member_idx) {
                 if (common::GetAddressPoolIndex(cons_genesis_nodes[member_idx]->id) == i) {
                     auto join_elect_tx_info = tx_list->Add();
@@ -1133,9 +1113,9 @@ int GenesisBlockInit::CreateRootGenesisBlocks(
     vb_latest_view[network::kRootCongressNetworkId]++;
     pool_prev_hash_map[network::kRootCongressNetworkId] = prehashes[network::kRootCongressNetworkId];
     pool_prev_vb_hash_map[network::kRootCongressNetworkId] = vb_prehashes[network::kRootCongressNetworkId];
-    for (uint32_t i = 0; i < cons_genesis_nodes_of_shards.size(); i++) {
-        uint32_t net_id = i + network::kConsensusShardBeginNetworkId;
-        GenisisNodeInfoPtrVector genesis_nodes = cons_genesis_nodes_of_shards[i];
+    for (auto iter = cons_genesis_nodes_of_shards.begin(); iter != cons_genesis_nodes_of_shards.end(); ++iter) {
+        uint32_t net_id = iter->first;
+        auto& genesis_nodes = iter->second;
         if (CreateElectBlock(
                 net_id,
                 prehashes[net_id],
@@ -1179,7 +1159,8 @@ int GenesisBlockInit::CreateRootGenesisBlocks(
         vb_latest_view);
     if (res == kInitSuccess) {
         std::vector<GenisisNodeInfoPtr> all_cons_genesis_nodes;
-        for (std::vector<GenisisNodeInfoPtr> nodes : cons_genesis_nodes_of_shards) {
+        for (auto iter = cons_genesis_nodes_of_shards.begin(); iter != cons_genesis_nodes_of_shards.end(); ++iter) {
+            auto& nodes = iter->second;
             all_cons_genesis_nodes.insert(all_cons_genesis_nodes.end(), nodes.begin(), nodes.end());
         }
 
@@ -1542,7 +1523,9 @@ int GenesisBlockInit::CreateShardNodesBlocks(
 
     for (auto iter = cons_genesis_nodes.begin(); iter != cons_genesis_nodes.end(); ++iter) {
         if (valid_ids.find((*iter)->id) != valid_ids.end()) {
-            SETH_FATAL("invalid id: %s", common::Encode::HexEncode((*iter)->id).c_str());
+            SETH_FATAL("invalid id: %s, prikey: %s", 
+                common::Encode::HexEncode((*iter)->id).c_str(), 
+                common::Encode::HexEncode((*iter)->prikey).c_str());
             return kInitError;
         }
 
@@ -1658,6 +1641,7 @@ int GenesisBlockInit::CreateShardGenesisBlocks(
             auto tx_info = tx_list->Add();
             tx_info->set_nonce(address_info->nonce());
             address_info->set_nonce(address_info->nonce() + 1);
+            address_info->set_tx_index(address_info->nonce() + 1);
             tx_info->set_from("");
             tx_info->set_to(address_info->addr());
             tx_info->set_amount(0);
@@ -1672,6 +1656,7 @@ int GenesisBlockInit::CreateShardGenesisBlocks(
             tx_info->set_to(pool_address_info_[i]->addr());
             tx_info->set_nonce(pool_address_info_[i]->nonce());
             pool_address_info_[i]->set_nonce(pool_address_info_[i]->nonce() + 1);
+            pool_address_info_[i]->set_tx_index(pool_address_info_[i]->nonce() + 1);
             tx_info->set_from("");
             tx_info->set_amount(0);
             tx_info->set_balance(0);
@@ -1788,9 +1773,14 @@ void GenesisBlockInit::InitShardGenesisAccount() {
     // Execute once
     static bool hasRunOnce = false;
     std::set<std::string> valid_ids;
-    auto load_addrs_func = [&](uint32_t net_id, const char* filename) {
+    auto load_addrs_func = [&](uint32_t net_id, const char* filename) -> bool {
+        SETH_DEBUG("now load file: %s", filename);
         auto fd = fopen(filename, "r");
-        assert(fd != nullptr);
+        if (fd == nullptr) {
+            SETH_WARN("open file failed: %s", filename);
+            return false;
+        }
+
         char data[1024 * 1024] = {0};
         fread(data, 1, sizeof(data), fd);
         auto lines = common::Split<2048>(data, '\n');
@@ -1798,6 +1788,7 @@ void GenesisBlockInit::InitShardGenesisAccount() {
         for (uint32_t i = 0; i < lines.Count(); ++i) {
             auto items = common::Split<>(lines[i], '\t');
             if (items.Count() != 2) {
+                SETH_WARN("open file failed: %s, %s", filename, lines[i]);
                 break;
             }
 
@@ -1814,29 +1805,38 @@ void GenesisBlockInit::InitShardGenesisAccount() {
         }
 
         fclose(fd);
+        return true;
     };
 
     if (!hasRunOnce) {
-        load_addrs_func(network::kConsensusShardBeginNetworkId, "/root/seth/root_nodes");
-        for (uint32_t net_id = network::kConsensusShardBeginNetworkId;
+        SETH_DEBUG("now load init addr from 2%u to: %u",
+            network::kRootCongressNetworkId, 
+            network::kConsensusShardEndNetworkId);
+        for (uint32_t net_id = network::kRootCongressNetworkId;
                 net_id < network::kConsensusShardEndNetworkId; net_id++) {
-            load_addrs_func(net_id, (std::string("/root/seth/init_accounts") + std::to_string(net_id)).c_str());
-            load_addrs_func(net_id, (std::string("/root/seth/shards") + std::to_string(net_id)).c_str());
-        }    
-    }
-
-
-    uint64_t aver_balance = common::kGenesisShardingNodesMaxZjc / valid_ids.size();
-    uint64_t rest_balance = common::kGenesisShardingNodesMaxZjc % valid_ids.size();
-    uint32_t count = 0;
-    for (auto it = valid_ids.begin(); it != valid_ids.end(); ++it, ++count) {
-        uint64_t balance = aver_balance;
-        if (count == valid_ids.size() - 1) {
-            balance += rest_balance;
+            load_addrs_func(
+                net_id, 
+                (std::string("/root/seth/init_accounts") + std::to_string(net_id)).c_str());
+            if (!load_addrs_func(
+                    net_id, 
+                    (std::string("/root/seth/shards") + std::to_string(net_id)).c_str())) {
+                SETH_DEBUG("failed load init shards%u", net_id);
+                break;
+            }
         }
 
-        genesis_acount_balance_map_.insert(std::pair<std::string, uint64_t>(*it, balance));
-        SETH_INFO("genesis add addr: %s, balance: %lu", common::Encode::HexEncode(*it).c_str(), balance);
+        uint64_t aver_balance = common::kGenesisShardingNodesMaxZjc / valid_ids.size();
+        uint64_t rest_balance = common::kGenesisShardingNodesMaxZjc % valid_ids.size();
+        uint32_t count = 0;
+        for (auto it = valid_ids.begin(); it != valid_ids.end(); ++it, ++count) {
+            uint64_t balance = aver_balance;
+            if (count == valid_ids.size() - 1) {
+                balance += rest_balance;
+            }
+
+            genesis_acount_balance_map_.insert(std::pair<std::string, uint64_t>(*it, balance));
+            SETH_INFO("genesis add addr: %s, balance: %lu", common::Encode::HexEncode(*it).c_str(), balance);
+        }
     }
 
     hasRunOnce = true;

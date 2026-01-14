@@ -103,11 +103,10 @@ int NetworkInit::Init(int argc, char** argv) {
         return kInitError;
     }
 
-    std::string net_name;
-    int genesis_check = GenesisCmd(parser_arg, net_name);
+    int genesis_check = GenesisCmd(parser_arg);
     if (genesis_check != -1) {
         common::GlobalInfo::Instance()->set_global_stoped();
-        std::cout << net_name << " genesis cmd over, exit." << std::endl;
+        std::cout << "genesis cmd over, exit." << std::endl;
         return genesis_check;
     }
 
@@ -260,14 +259,15 @@ int NetworkInit::Init(int argc, char** argv) {
         }
     }
 
+    SETH_WARN("init shard_statistic_ success.");
+    block_mgr_->LoadLatestBlocks();
+    RegisterFirewallCheck();
     if (shard_statistic_->Init() != pools::kPoolsSuccess) {
         INIT_ERROR("init shard statistic failed!");
         return kInitError;
     }
 
-    SETH_WARN("init shard_statistic_ success.");
-    block_mgr_->LoadLatestBlocks();
-    RegisterFirewallCheck();
+
     hotstuff_mgr_->Start(); // The above should be placed in the hotstuff instance initialization and receive the genesis block
     SETH_WARN("init hotstuff_mgr_ start success.");
     AddCmds();
@@ -411,18 +411,50 @@ void NetworkInit::HandleMessage(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
 }
 
+
+bool NetworkInit::InitLocalNetworkIdWithLatestElectBlock() {
+    for (uint32_t i = network::kRootCongressNetworkId;
+            i < network::kConsensusShardEndNetworkId; ++i) {
+        elect::protobuf::ElectBlock elect_block;
+        if (!prefix_db_->GetHavePrevlatestElectBlock(i, &elect_block)) {
+            SETH_ERROR("get elect latest block failed: %u", i);
+            break;
+        }
+
+        if (!elect_block.has_prev_members()) {
+            return false;
+        }
+
+        for (int32_t midx = 0; midx < elect_block.in_size(); ++midx) {
+            auto& member = elect_block.in(midx);
+            if (security_->GetAddress(member.pubkey()) == security_->GetAddress()) {
+                common::GlobalInfo::Instance()->set_network_id(i);
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void NetworkInit::InitLocalNetworkId() {
     uint32_t got_sharding_id = common::kInvalidUint32;
     if (!prefix_db_->GetJoinShard(&got_sharding_id, &des_sharding_id_)) {
         auto local_node_account_info = prefix_db_->GetAddressInfo(security_->GetAddress());
         if (local_node_account_info == nullptr) {
-            SETH_INFO("failed get local account info id: %s",
-                common::Encode::HexEncode(security_->GetAddress()).c_str());
-            return;
+            if (!InitLocalNetworkIdWithLatestElectBlock()) {
+                SETH_INFO("failed get local account info id: %s",
+                    common::Encode::HexEncode(security_->GetAddress()).c_str());
+                return;
+            }
+
+            got_sharding_id = common::GlobalInfo::Instance()->network_id();
+            des_sharding_id_ = got_sharding_id;
+        } else {
+            got_sharding_id = local_node_account_info->sharding_id();
+            des_sharding_id_ = got_sharding_id;
         }
 
-        got_sharding_id = local_node_account_info->sharding_id();
-        des_sharding_id_ = got_sharding_id;
         prefix_db_->SaveJoinShard(got_sharding_id, des_sharding_id_);
         SETH_INFO("success save local sharding %u, %u", got_sharding_id, des_sharding_id_);
     }
@@ -431,7 +463,8 @@ void NetworkInit::InitLocalNetworkId() {
             sharding_id < network::kConsensusShardEndNetworkId; ++sharding_id) {
         elect::protobuf::ElectBlock elect_block;
         if (!prefix_db_->GetLatestElectBlock(sharding_id, &elect_block)) {
-            SETH_FATAL("failed!");
+            SETH_WARN("get latest elect block failed: %u", sharding_id);
+            break;
         }
 
         auto& in = elect_block.in();
@@ -725,6 +758,7 @@ int NetworkInit::ParseParams(int argc, char** argv, common::ParserArgs& parser_a
     parser_arg.AddArgType('V', "vpn_vip_level", common::kNoValue);
     parser_arg.AddArgType('U', "gen_root", common::kNoValue);
     parser_arg.AddArgType('S', "gen_shard", common::kMaybeValue);
+    parser_arg.AddArgType('E', "end_net", common::kMaybeValue);
     parser_arg.AddArgType('N', "node_count", common::kMaybeValue);
     parser_arg.AddArgType('C', "cross_latest", common::kNoValue);
     // parser_arg.AddArgType('1', "root_nodes", common::kMaybeValue);    
@@ -780,7 +814,7 @@ void NetworkInit::CreateInitAddress(uint32_t net_id) {
     fclose(fd);
 }
 
-int NetworkInit::GenesisCmd(common::ParserArgs& parser_arg, std::string& net_name) {
+int NetworkInit::GenesisCmd(common::ParserArgs& parser_arg) {
     int consensus_shard_node_count = 4;
     if (parser_arg.Has("N")) {
         if (parser_arg.Get("N", consensus_shard_node_count) != common::kParseSuccess) {
@@ -788,21 +822,23 @@ int NetworkInit::GenesisCmd(common::ParserArgs& parser_arg, std::string& net_nam
         }
     }
     
+    uint32_t end_shard_id = 4;
+    parser_arg.Get("E", end_shard_id);
     std::set<uint32_t> valid_net_ids_set;
+    for (uint32_t i = network::kRootCongressNetworkId; i < end_shard_id; i++) {
+        valid_net_ids_set.insert(i);
+    }
+
     SETH_DEBUG("now consensus_shard_node_count: %u", consensus_shard_node_count);
     if (parser_arg.Has("U")) {
         std::string valid_arg_i_value;
         for (uint32_t net_id = network::kConsensusShardBeginNetworkId; 
-                net_id < network::kConsensusShardEndNetworkId; ++net_id) {
+                net_id < end_shard_id; ++net_id) {
             CreateInitAddress(net_id);
         }
         
-        net_name = "root2";
-        valid_net_ids_set.clear();
-        valid_net_ids_set.insert(network::kRootCongressNetworkId);
-        valid_net_ids_set.insert(3);
         auto db = std::make_shared<db::Db>();
-        if (!db->Init("./root_db")) {
+        if (!db->Init("./shard_db_2")) {
             INIT_ERROR("init db failed!");
             return kInitError;
         }
@@ -812,70 +848,56 @@ int NetworkInit::GenesisCmd(common::ParserArgs& parser_arg, std::string& net_nam
         block_mgr_ = std::make_shared<block::BlockManager>(net_handler_, nullptr);
         init::GenesisBlockInit genesis_block(account_mgr_, block_mgr_, db);
         std::vector<GenisisNodeInfoPtr> root_genesis_nodes;
-        std::vector<GenisisNodeInfoPtrVector> cons_genesis_nodes_of_shards(
-            network::kConsensusShardEndNetworkId-network::kConsensusShardBeginNetworkId);
+        std::map<uint32_t, std::vector<GenisisNodeInfoPtr>> cons_genesis_nodes_of_shards;
         GetNetworkNodesFromConf(
+            end_shard_id,
             consensus_shard_node_count, 
             root_genesis_nodes, 
             cons_genesis_nodes_of_shards, 
             db);
         if (genesis_block.CreateGenesisBlocks(
-                GenisisNetworkType::RootNetwork,
+                network::kRootCongressNetworkId,
                 root_genesis_nodes,
-                cons_genesis_nodes_of_shards,
-                valid_net_ids_set) != 0) {
+                cons_genesis_nodes_of_shards) != 0) {
             return kInitError;
         }
 
+        std::cout << "root genisis success!" << std::endl;
         return kInitSuccess;
     }
 
     if (parser_arg.Has("S")) {
-        std::string net_id_str;
-        if (parser_arg.Get("S", net_id_str) != common::kParseSuccess) {
-            return kInitError;
-        }
+        for (uint32_t i = 3; i < end_shard_id; i++) {
+            std::cout << "now genisis shard" << i << std::endl;
+            std::string net_id_str = std::to_string(i);
+            auto db = std::make_shared<db::Db>();
+            if (!db->Init("./shard_db_" + net_id_str)) {
+                INIT_ERROR("init db failed!");
+                return kInitError;
+            }
 
-        net_name = "shard" + net_id_str;
-        uint32_t net_id = static_cast<uint32_t>(std::stoul(net_id_str));
-        // shard3 创世时需要 root 节点参与
-        if (net_id == network::kConsensusShardBeginNetworkId) {
-            valid_net_ids_set.insert(network::kRootCongressNetworkId);
-        }
-        valid_net_ids_set.insert(net_id);
+            auto account_mgr = std::make_shared<block::AccountManager>();
+            auto block_mgr = std::make_shared<block::BlockManager>(net_handler_, nullptr);
+            init::GenesisBlockInit genesis_block(account_mgr, block_mgr, db);
+            std::vector<GenisisNodeInfoPtr> root_genesis_nodes;
+            std::map<uint32_t, std::vector<GenisisNodeInfoPtr>> cons_genesis_nodes_of_shards;
+            GetNetworkNodesFromConf(
+                end_shard_id,
+                consensus_shard_node_count, 
+                root_genesis_nodes, 
+                cons_genesis_nodes_of_shards, 
+                db);
+            if (genesis_block.CreateGenesisBlocks(
+                    i,
+                    root_genesis_nodes,
+                    cons_genesis_nodes_of_shards) != 0) {
+                return kInitError;
+            }
 
-        if (valid_net_ids_set.size() == 0) {
-            return kInitError;
+            SaveLatestBlock(db, i);
+            std::cout << "shard" << i << " genisis success!" << std::endl;
         }
-        
-        SETH_DEBUG("save shard db: shard_db");
-        auto db = std::make_shared<db::Db>();
-        if (!db->Init("./shard_db_" + net_id_str)) {
-            INIT_ERROR("init db failed!");
-            return kInitError;
-        }
-
-        account_mgr_ = std::make_shared<block::AccountManager>();
-        // account_mgr_->Init(db, pools_mgr_);
-        block_mgr_ = std::make_shared<block::BlockManager>(net_handler_, nullptr);
-        init::GenesisBlockInit genesis_block(account_mgr_, block_mgr_, db);
-        std::vector<GenisisNodeInfoPtr> root_genesis_nodes;
-        std::vector<GenisisNodeInfoPtrVector> cons_genesis_nodes_of_shards(
-            network::kConsensusShardEndNetworkId-network::kConsensusShardBeginNetworkId);
-        GetNetworkNodesFromConf(
-            consensus_shard_node_count, 
-            root_genesis_nodes, 
-            cons_genesis_nodes_of_shards, 
-            db);
-        if (genesis_block.CreateGenesisBlocks(
-                GenisisNetworkType::ShardNetwork,
-                root_genesis_nodes,
-                cons_genesis_nodes_of_shards,
-                valid_net_ids_set) != 0) {
-            return kInitError;
-        }
-
-        SaveLatestBlock(db, net_id);
+            
         return kInitSuccess;
     }
 
@@ -883,6 +905,7 @@ int NetworkInit::GenesisCmd(common::ParserArgs& parser_arg, std::string& net_nam
         SaveCrossBlockToEachShard();
         return kInitSuccess;
     }
+
     return -1;
 }
 
@@ -969,14 +992,15 @@ void NetworkInit::SaveCrossBlockToEachShard() {
 }
 
 void NetworkInit::GetNetworkNodesFromConf(
+        uint32_t end_shard_id,
         uint32_t cons_shard_node_count,
         std::vector<GenisisNodeInfoPtr>& root_genesis_nodes,
-        std::vector<GenisisNodeInfoPtrVector>& cons_genesis_nodes_of_shards,
+        std::map<uint32_t, std::vector<GenisisNodeInfoPtr>>& cons_genesis_nodes_of_shards,
         const std::shared_ptr<db::Db>& db) {
     auto prefix_db = std::make_shared<protos::PrefixDb>(db);
     auto get_sks_func = [](FILE *fd, std::vector<std::string>& sks, int32_t count, bool reuse) {
         if (reuse) {
-            char data[1024*1024];
+            char data[1024*1024] = {0};
             fread(data, 1, sizeof(data), fd);
             auto lines = common::Split<1024>(data, '\n');
             for (uint32_t i = 0; i < lines.Count(); ++i) {
@@ -1024,14 +1048,17 @@ void NetworkInit::GetNetworkNodesFromConf(
             common::Encode::HexEncode(node_ptr->id).c_str());
     }
     fclose(rfd);
-    uint32_t shard_num = network::kConsensusShardEndNetworkId-network::kConsensusShardBeginNetworkId;        
     uint32_t n = cons_shard_node_count;
     uint32_t t = common::GetSignerCount(n);
-    for (uint32_t net_i = network::kConsensusShardBeginNetworkId; net_i < network::kConsensusShardEndNetworkId; net_i++) {
+    for (uint32_t net_i = network::kConsensusShardBeginNetworkId; net_i < end_shard_id; net_i++) {
         auto filename = std::string("/root/seth/shards") + std::to_string(net_i);
         bool reuse_shard = common::isFileExist(filename);
         auto sfd = fopen(filename.c_str(), (reuse_shard ? "r" : "w"));
-        assert(sfd != nullptr);
+        if (sfd == nullptr) {
+            SETH_FATAL("open file failed: %s", filename.c_str());
+            break;
+        }
+
         std::vector<std::string> shard_sks;
         get_sks_func(sfd, shard_sks, n, reuse_shard);
         std::vector<GenisisNodeInfoPtr> cons_genesis_nodes;
@@ -1056,7 +1083,7 @@ void NetworkInit::GetNetworkNodesFromConf(
                 common::Encode::HexEncode(node_ptr->id).c_str());     
         }
         
-        cons_genesis_nodes_of_shards[net_i-network::kConsensusShardBeginNetworkId] = cons_genesis_nodes;
+        cons_genesis_nodes_of_shards[net_i] = cons_genesis_nodes;
         fclose(sfd);
     }
     // }

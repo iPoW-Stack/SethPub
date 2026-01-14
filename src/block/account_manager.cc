@@ -57,8 +57,8 @@ int AccountManager::Init(
 
         pool_base_addrs_[pool_idx] = addr;
         pool_idx_set.insert(pool_idx);
-        SETH_DEBUG("init pool index: %u, base address: %s", 
-            pool_idx, common::Encode::HexEncode(addr).c_str());
+        SETH_DEBUG("network_id: %u, init pool index: %u, base address: %s", 
+            network_id, pool_idx, common::Encode::HexEncode(addr).c_str());
     }
 
     return kBlockSuccess;
@@ -92,7 +92,13 @@ void AccountManager::AddNewBlock(const view_block::protobuf::ViewBlockItem& view
     for (int32_t i = 0; i < view_block_item.block_info().address_array_size(); ++i) {
         auto addr_info_ptr = std::make_shared<address::protobuf::AddressInfo>(
             view_block_item.block_info().address_array(i));
-        account_lru_map_.insert(addr_info_ptr);
+        auto acc_ptr = account_lru_map_.get(addr_info_ptr->addr());
+        if (!acc_ptr || 
+                acc_ptr->latest_height() < addr_info_ptr->latest_height() || 
+                (acc_ptr->latest_height() == addr_info_ptr->latest_height() &&
+                acc_ptr->tx_index() < addr_info_ptr->tx_index())) {
+            account_lru_map_.insert(addr_info_ptr);
+        }
     }
 }
 

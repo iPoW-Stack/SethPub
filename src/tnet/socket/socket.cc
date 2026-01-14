@@ -5,14 +5,19 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 
+#include "common/global_info.h"
+
 namespace seth {
 
 namespace tnet {
 
-Socket::Socket() {}
+Socket::Socket() {
+    common::GlobalInfo::Instance()->AddSharedObj(14);
+}
 
 Socket::~Socket() {
-    // Close();
+    common::GlobalInfo::Instance()->DecSharedObj(14);
+    Close();
 }
 
 int Socket::Read(void* buf, size_t len) const {
@@ -261,6 +266,7 @@ int Socket::GetIpPort(std::string* ip, uint16_t* port) {
         return 0;
     }
 
+    assert(false);
     if (fd_ == 0) {
         SETH_ERROR("get from connection ip port failed: fd = 0");
         return -1;

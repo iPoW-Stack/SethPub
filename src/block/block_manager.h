@@ -51,7 +51,6 @@ public:
     pools::TxItemPtr GetStatisticTx(uint32_t pool_index, const std::string&);
     pools::TxItemPtr GetElectTx(uint32_t pool_index, const std::string& tx_hash);
     pools::TxItemPtr GetToTx(uint32_t pool_index, const std::string& tx_hash);
-
     int Init(
         std::shared_ptr<AccountManager>& account_mgr,
         std::shared_ptr<db::Db>& db,
@@ -194,7 +193,7 @@ private:
     std::mutex wait_mutex_;
     std::condition_variable wait_con_;
     uint64_t latest_statistic_timeblock_height_ = 0; // memorize the latest timeblock height that has gathered statistic
-
+    std::atomic<bool> destroy_ = false;
     uint64_t step_with_nonce_[128] = { 0llu };
     DISALLOW_COPY_AND_ASSIGN(BlockManager);
 };
