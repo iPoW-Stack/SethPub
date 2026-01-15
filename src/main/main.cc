@@ -28,7 +28,7 @@ static void GlobalInitSpdlog() {
 
 int main(int argc, char** argv) {
     GlobalInitSpdlog();
-    SignalRegister();
+    seth::common::SignalRegister();
     seth::init::NetworkInit init;
     if (init.Init(argc, argv) != 0) {
         SETH_ERROR("init network error!");
