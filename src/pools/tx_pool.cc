@@ -188,26 +188,28 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
 }
 
 void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
+    CheckThreadIdValid();
     auto now_tm_us = common::TimeUtils::TimestampUs();
     SETH_DEBUG("0 now tx size: %u", all_tx_size());
     auto over_addr_nonce_ptr = std::make_shared<std::unordered_map<std::string, uint64_t>>();
     for (uint32_t i = 0; i < (uint32_t)view_block.block_info().tx_list_size(); ++i) {
-        auto addr = IsTxUseFromAddress(view_block.block_info().tx_list(i).step()) ? 
-            view_block.block_info().tx_list(i).from() : 
-            view_block.block_info().tx_list(i).to();
-        if (!IsUserTransaction(view_block.block_info().tx_list(i).step()) && 
-                !view_block.block_info().tx_list(i).unique_hash().empty()) {
-            addr = std::to_string(view_block.block_info().tx_list(i).step());
+        auto& tx_info = view_block.block_info().tx_list(i);
+        auto addr = IsTxUseFromAddress(tx_info.step()) ? 
+            tx_info.from() : 
+            tx_info.to();
+        if (!IsUserTransaction(tx_info.step()) && 
+                !tx_info.unique_hash().empty()) {
+            addr = std::to_string(tx_info.step());
         }
 
-        if (view_block.block_info().tx_list(i).step() == pools::protobuf::kContractExcute) {
-            addr = view_block.block_info().tx_list(i).to() + view_block.block_info().tx_list(i).from();
+        if (tx_info.step() == pools::protobuf::kContractExcute) {
+            addr = tx_info.to() + tx_info.from();
         }
 
         if (addr.empty()) {
             SETH_DEBUG("pool: %d, addr is empty: %s",
                 pool_index_,
-                ProtobufToJson(view_block.block_info().tx_list(i)).c_str());
+                ProtobufToJson(tx_info).c_str());
             assert(false);
             continue;
         }
@@ -220,38 +222,38 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
                         "step: %lu, nonce: %lu, consensus nonce: %lu, key: %s", 
                         pool_index_,
                         common::Encode::HexEncode(addr).c_str(),
-                        common::Encode::HexEncode(view_block.block_info().tx_list(i).unique_hash()).c_str(),
-                        (int32_t)view_block.block_info().tx_list(i).step(),
-                        view_block.block_info().tx_list(i).nonce(),
+                        common::Encode::HexEncode(tx_info.unique_hash()).c_str(),
+                        (int32_t)tx_info.step(),
+                        tx_info.nonce(),
                         nonce_iter->second->tx_info->nonce(),
                         common::Encode::HexEncode(nonce_iter->second->tx_info->key()).c_str());
                     SETH_DEBUG("pool: %d, find tx addr success: %s, nonce: %lu, remove nonce: %lu", 
                         pool_index_,
                         common::Encode::HexEncode(addr).c_str(), 
                         nonce_iter->first,
-                        view_block.block_info().tx_list(i).nonce());
-                    if (!IsUserTransaction(view_block.block_info().tx_list(i).step())) {
-                        if (nonce_iter->second->tx_info->key() != view_block.block_info().tx_list(i).unique_hash()) {
+                        tx_info.nonce());
+                    if (!IsUserTransaction(tx_info.step())) {
+                        if (nonce_iter->second->tx_info->key() != tx_info.unique_hash()) {
                             ++nonce_iter;
                             continue;
                         }
 
-                        over_unique_hash_set_.insert(view_block.block_info().tx_list(i).unique_hash());
+                        over_unique_hash_set_.insert(tx_info.unique_hash());
                         SETH_DEBUG("trace tx pool: %d, success add unique tx %s, key: %s, "
                             "nonce: %lu, step: %d, unique hash exists: %s", 
                             pool_index_,
-                            common::Encode::HexEncode(view_block.block_info().tx_list(i).to()).c_str(), 
-                            common::Encode::HexEncode(view_block.block_info().tx_list(i).unique_hash()).c_str(), 
-                            view_block.block_info().tx_list(i).nonce(),
-                            (int32_t)view_block.block_info().tx_list(i).step(),
+                            common::Encode::HexEncode(tx_info.to()).c_str(), 
+                            common::Encode::HexEncode(tx_info.unique_hash()).c_str(), 
+                            tx_info.nonce(),
+                            (int32_t)tx_info.step(),
                             common::Encode::HexEncode(addr).c_str());
                     } else {
-                        if (nonce_iter->first > view_block.block_info().tx_list(i).nonce()) {
+                        if (nonce_iter->first > tx_info.nonce()) {
                             break;
                         }
                     }
                     
-                    if (IsUserTransaction(view_block.block_info().tx_list(i).step())) {
+                    if (IsUserTransaction(tx_info.step())) {
                         ++all_delay_tx_count_;
                         all_delay_tm_us_ += now_tm_us - nonce_iter->second->receive_tm_us;
                     }
@@ -285,12 +287,12 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
         remove_tx_func(consensus_tx_map_);
         SETH_DEBUG("trace tx pool: %d, step: %d, to: %s, unique hash: %s, over tx addr: %s, nonce: %lu", 
             pool_index_,
-            (int32_t)view_block.block_info().tx_list(i).step(),
-            common::Encode::HexEncode(view_block.block_info().tx_list(i).to()).c_str(), 
-            common::Encode::HexEncode(view_block.block_info().tx_list(i).unique_hash()).c_str(), 
+            (int32_t)tx_info.step(),
+            common::Encode::HexEncode(tx_info.to()).c_str(), 
+            common::Encode::HexEncode(tx_info.unique_hash()).c_str(), 
             common::Encode::HexEncode(addr).c_str(), 
-            view_block.block_info().tx_list(i).nonce());
-        (*over_addr_nonce_ptr)[addr] = view_block.block_info().tx_list(i).nonce();
+            tx_info.nonce());
+        (*over_addr_nonce_ptr)[addr] = tx_info.nonce();
     }
         
     if (prev_delay_tm_timeout_ + 3000lu <= (now_tm_us / 1000lu) && all_delay_tx_count_ > 0) {
@@ -310,6 +312,7 @@ void TxPool::GetTxSyncToLeader(
         uint32_t count,
         ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs,
         pools::CheckAddrNonceValidFunction tx_valid_func) {
+    CheckThreadIdValid();
     TxItemPtr tx_ptr;
     while (added_txs_.pop(&tx_ptr)) {
         SETH_DEBUG("pool: %d, pop success add system tx nonce addr: %s, "
@@ -426,6 +429,7 @@ void TxPool::GetTxIdempotently(
         std::vector<pools::TxItemPtr>& res_map,
         uint32_t count,
         pools::CheckAddrNonceValidFunction tx_valid_func) {
+    CheckThreadIdValid();
     TxItemPtr tx_ptr;
     while (added_txs_.pop(&tx_ptr)) {
         SETH_DEBUG("pool: %d, pop success add system tx nonce addr: %s, "
