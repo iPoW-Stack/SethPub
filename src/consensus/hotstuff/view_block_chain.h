@@ -137,16 +137,6 @@ public:
         return high_view_block_view_;
     }
 
-    void ResetViewBlock(const HashStr& hash) {
-        auto it = view_blocks_info_.find(hash);
-        if (it != view_blocks_info_.end() && 
-                it->second->view_block != nullptr && 
-                it->second->view_block->qc().sign_x().empty()) {
-            it->second->view_block = nullptr;
-        }
-    }
-
-    
     inline std::shared_ptr<ViewBlock> LatestCommittedBlock() const {
         return latest_committed_block_.load();
     }
@@ -203,30 +193,16 @@ private:
         assert(!view_block_info->view_block->qc().view_block_hash().empty());
         auto it = view_blocks_info_.find(view_block_info->view_block->qc().view_block_hash());
         if (it != view_blocks_info_.end() && it->second->view_block != nullptr) {
-            auto strings = String();
-            if (strings.empty()) {
-                SETH_DEBUG("exists, failed add view block: %s, %u_%u_%lu, height: %lu, "
-                    "parent hash: %s, tx size: %u",
-                    common::Encode::HexEncode(view_block_info->view_block->qc().view_block_hash()).c_str(),
-                    view_block_info->view_block->qc().network_id(),
-                    view_block_info->view_block->qc().pool_index(),
-                    view_block_info->view_block->qc().view(),
-                    view_block_info->view_block->block_info().height(),
-                    common::Encode::HexEncode(view_block_info->view_block->parent_hash()).c_str(),
-                    view_block_info->view_block->block_info().tx_list_size());
-            } else {
-                SETH_DEBUG("exists, failed add view block: %s, %u_%u_%lu, height: %lu, "
-                    "parent hash: %s, tx size: %u, strings: %s",
-                    common::Encode::HexEncode(view_block_info->view_block->qc().view_block_hash()).c_str(),
-                    view_block_info->view_block->qc().network_id(),
-                    view_block_info->view_block->qc().pool_index(),
-                    view_block_info->view_block->qc().view(),
-                    view_block_info->view_block->block_info().height(),
-                    common::Encode::HexEncode(view_block_info->view_block->parent_hash()).c_str(),
-                    view_block_info->view_block->block_info().tx_list_size(),
-                    String().c_str());
-            }
-
+            SETH_DEBUG("exists, failed add view block: %s, %u_%u_%lu, height: %lu, "
+                "parent hash: %s, tx size: %u, strings: %s",
+                common::Encode::HexEncode(view_block_info->view_block->qc().view_block_hash()).c_str(),
+                view_block_info->view_block->qc().network_id(),
+                view_block_info->view_block->qc().pool_index(),
+                view_block_info->view_block->qc().view(),
+                view_block_info->view_block->block_info().height(),
+                common::Encode::HexEncode(view_block_info->view_block->parent_hash()).c_str(),
+                view_block_info->view_block->block_info().tx_list_size(),
+                String().c_str());
             return;
         }
         

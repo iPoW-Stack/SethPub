@@ -669,6 +669,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
 }
 
 void ViewBlockChain::HandleTimerMessage() {
+    CheckThreadIdValid();
     auto now_tm_ms = common::TimeUtils::TimestampMs();
     if (prev_check_timeout_blocks_ms_ + 3000u < now_tm_ms) {  
         // SETH_DEBUG("now check view_with_blocks_ size: %d", view_with_blocks_.size());      
