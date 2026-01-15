@@ -122,7 +122,7 @@ add_definitions(
     #-DFOR_CONSOLE_DEBUG
 #    -DTEST_TRANSPORT_PERFOMANCE
 #    -DSETH_TRACE_MESSAGE
-#  -DLEVELDB
+  -DLEVELDB
 #    -DCLIENT_USE_UV
 #    -DMAKE_CLIENT_LIB
     #-DARMEABI_V7A
@@ -224,7 +224,6 @@ set(LINK_ARGS
     security
     common
     protos
-    #tcmalloc # Memory allocator, critical for multi-threaded performance
     ${LINK_PTHREAD}
     ${LINK_DL}
     ${LINK_RT}
@@ -233,6 +232,7 @@ set(LINK_ARGS
     ${LINK_YAML}
     pthread
     gmp # Big number library, performance critical
+    #tcmalloc # Memory allocator, critical for multi-threaded performance
     -static-libstdc++
     -static
 )
