@@ -486,7 +486,9 @@ void BlockManager::CreateLocalToTx(
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
     tx->set_nonce(++step_with_nonce_[tx->step()]);
     pools_mgr_->HandleMessage(msg_ptr);
-    SETH_DEBUG("success add local transfer tx tos hash: %s, nonce: %lu, src to tx nonce: %lu, val: %s",
+    SETH_DEBUG("pool_index: %d, success add local transfer tx "
+        "tos hash: %s, nonce: %lu, src to tx nonce: %lu, val: %s",
+        pool_index,
         common::Encode::HexEncode(uinique_tx_str).c_str(),
         msg_ptr->address_info->nonce(),
         0,

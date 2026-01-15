@@ -533,7 +533,6 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
             HandleContractExcute(msg_ptr);
             break;
         case pools::protobuf::kConsensusLocalTos: {
-			// 如果要指定 pool index, tx_msg.to() 必须是 pool addr，否则就随机分配 pool index 了
             pool_index = common::GetAddressPoolIndex(tx_msg.to());
             msg_ptr->msg_hash = pools::GetTxMessageHash(msg_ptr->header.tx_proto());
             SETH_DEBUG("get local to tx message hash: %s, nonce: %lu",
