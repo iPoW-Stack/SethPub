@@ -343,6 +343,8 @@ Status BlockAcceptor::addTxsToPool(
             } else {
                 from_id = security_ptr_->GetAddress(tx->pubkey());
             }
+        } else {
+            prefix_db_->SaveOverUniqueHash(tx->key(), zjc_host.db_batch_);
         }
         
         if (tx->step() == pools::protobuf::kContractExcute) {

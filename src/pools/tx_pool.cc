@@ -155,24 +155,6 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
         tx_ptr->tx_key = pools::GetTxMessageHash(*tx_ptr->tx_info);
     }
 
-    if (!IsUserTransaction(tx_ptr->tx_info->step()) && !tx_ptr->tx_info->key().empty()) {
-        SETH_DEBUG("success add system tx step: %d, nonce: %lu, unique hash: %s", 
-            (int32_t)tx_ptr->tx_info->step(), 
-            tx_ptr->tx_info->nonce(), 
-            common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
-        if (over_unique_hash_set_.find(tx_ptr->tx_info->key()) != over_unique_hash_set_.end()) {
-            SETH_DEBUG("trace tx pool: %d, failed add tx %s, key: %s, "
-                "nonce: %lu, step: %d, unique hash exists: %s", 
-                pool_index_,
-                common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
-                common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(), 
-                tx_ptr->tx_info->nonce(),
-                (int32_t)tx_ptr->tx_info->step(),
-                common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
-            return kPoolsError;
-        }
-    }
-
     added_txs_.push(tx_ptr);
     SETH_DEBUG("trace tx pool: %d, success add tx %s, key: %s, nonce: %lu, step: %d", 
         pool_index_,
@@ -238,7 +220,6 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
                             continue;
                         }
 
-                        over_unique_hash_set_.insert(tx_info.unique_hash());
                         SETH_DEBUG("trace tx pool: %d, success add unique tx %s, key: %s, "
                             "nonce: %lu, step: %d, unique hash exists: %s", 
                             pool_index_,
@@ -323,6 +304,18 @@ void TxPool::GetTxSyncToLeader(
                 tx_ptr->tx_info->nonce(),
                 common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
          if (!IsUserTransaction(tx_ptr->tx_info->step())) {
+            if (prefix_db_->ExistsOverUniqueHash(tx_ptr->tx_info->key())) {
+                SETH_DEBUG("overed tx pool: %d, success add system tx nonce addr: %s, "
+                    "addr nonce: %lu, tx nonce: %lu, unique hash: %s, step: %u",
+                    pool_index_,
+                    common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
+                    tx_ptr->address_info->nonce(), 
+                    tx_ptr->tx_info->nonce(),
+                    common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(),
+                    (uint32_t)tx_ptr->tx_info->step());
+                continue;
+            }
+
             system_tx_map_[std::to_string(tx_ptr->tx_info->step())][tx_ptr->tx_info->nonce()] = tx_ptr;
             SETH_DEBUG("pool: %u, success add system tx nonce addr: %s, "
                 "addr nonce: %lu, tx nonce: %lu, unique hash: %s, step: %u",
@@ -440,6 +433,18 @@ void TxPool::GetTxIdempotently(
                 tx_ptr->tx_info->nonce(),
                 common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
         if (!IsUserTransaction(tx_ptr->tx_info->step())) {
+            if (prefix_db_->ExistsOverUniqueHash(tx_ptr->tx_info->key())) {
+                SETH_DEBUG("overed tx pool: %d, success add system tx nonce addr: %s, "
+                    "addr nonce: %lu, tx nonce: %lu, unique hash: %s, step: %u",
+                    pool_index_,
+                    common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
+                    tx_ptr->address_info->nonce(), 
+                    tx_ptr->tx_info->nonce(),
+                    common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(),
+                    (uint32_t)tx_ptr->tx_info->step());
+                continue;
+            }
+
             system_tx_map_[std::to_string(tx_ptr->tx_info->step())][tx_ptr->tx_info->nonce()] = tx_ptr;
             SETH_DEBUG("pool: %d, success add system tx nonce addr: %s, "
                 "addr nonce: %lu, tx nonce: %lu, unique hash: %s, step: %u",
@@ -508,8 +513,16 @@ void TxPool::GetTxIdempotently(
     auto get_tx_func = [&](std::map<std::string, std::map<uint64_t, TxItemPtr>>& tx_map) {
         for (auto iter = tx_map.begin(); iter != tx_map.end(); ++iter) {
             uint64_t valid_nonce = common::kInvalidUint64;
-            for (auto nonce_iter = iter->second.begin(); nonce_iter != iter->second.end(); ++nonce_iter) {
+            for (auto nonce_iter = iter->second.begin(); nonce_iter != iter->second.end(); ) {
                 auto tx_ptr = nonce_iter->second;
+                if (!IsUserTransaction(tx_ptr->tx_info->step())) {
+                    if (prefix_db_->ExistsOverUniqueHash(tx_ptr->tx_info->key())) {
+                        nonce_iter = iter->second.erase(nonce_iter);
+                        continue;
+                    }
+                }
+
+                ++nonce_iter;
                 if (valid_nonce == common::kInvalidUint64) {
                     uint64_t now_nonce = 0llu;
                     int res = tx_valid_func(
@@ -548,6 +561,7 @@ void TxPool::GetTxIdempotently(
                                 common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
                                 tx_ptr->tx_info->nonce(),
                                 common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
+                            ++nonce_iter;
                             continue;
                         }
                         

@@ -86,6 +86,7 @@ static const std::string kViewBlockVaildView = "bb\x01";
 static const std::string kUserTxPrefix = "bc\x01";
 static const std::string kUserTxGidPrefix = "bd\x01";
 static const std::string kElectHeightWithElectBlock = "bd\x02";
+static const std::string kOverUniqueHash = "be\x02";
 
 class PrefixDb {
 public:
@@ -281,6 +282,23 @@ public:
         SETH_DEBUG("success get elect block sharding id: %u, height: %lu",
             sharding_id, elect_block->elect_height());
         return true;
+    }
+
+    bool ExistsOverUniqueHash(const std::string& unique_hash) {
+        std::string key = kOverUniqueHash + unique_hash;
+        std::string val;
+        auto st = db_->Get(key, &val);
+        if (!st.ok()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    void SaveOverUniqueHash(const std::string& unique_hash , db::DbWriteBatch& db_batch) {
+        std::string key = kOverUniqueHash + unique_hash;
+        db_batch.Put(key, "1");
+        SETH_DEBUG("dddddd success latest time block: %lu", tmblock.height());
     }
 
     void SaveLatestTimeBlock(const timeblock::protobuf::TimeBlock& tmblock, db::DbWriteBatch& db_batch) {

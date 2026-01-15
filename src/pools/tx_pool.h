@@ -188,7 +188,6 @@ private:
     std::map<std::string, std::map<uint64_t, TxItemPtr>> tx_map_;
     std::map<std::string, std::map<uint64_t, TxItemPtr>> consensus_tx_map_;
     std::map<std::string, std::map<uint64_t, TxItemPtr>> system_tx_map_;
-    std::unordered_set<std::string> over_unique_hash_set_;
     uint32_t consensus_tx_map_count_ = 0;
 
 // TODO: just test
