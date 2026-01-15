@@ -343,6 +343,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) {
                 view_block.qc().view(),
                 common::Encode::HexEncode(view_block.qc().sign_x()).c_str(),
                 common::Encode::HexEncode(view_block.parent_hash()).c_str());
+            spdlog::default_logger()->flush();
             assert(view_block.qc().view_block_hash() == hash);
             return it->second;
         }
