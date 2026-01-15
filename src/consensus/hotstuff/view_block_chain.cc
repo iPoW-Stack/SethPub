@@ -333,18 +333,17 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) {
     CheckThreadIdValid();
     auto it = view_blocks_info_.find(hash);
     if (it != view_blocks_info_.end()) {
-        // SETH_DEBUG("get view block from store propose_debug: %s",
-        //     it->second->view_block->debug().c_str());
         if (it->second->view_block) {
+            auto& view_block = *it->second->view_block;
             SETH_DEBUG("get block hash: %s, view block hash: %s, %u_%u_%lu, sign x: %s, parent hash: %s",
                 common::Encode::HexEncode(hash).c_str(), 
-                common::Encode::HexEncode(it->second->view_block->qc().view_block_hash()).c_str(),
-                it->second->view_block->qc().network_id(),
-                it->second->view_block->qc().pool_index(),
-                it->second->view_block->qc().view(),
-                common::Encode::HexEncode(it->second->view_block->qc().sign_x()).c_str(),
-                common::Encode::HexEncode(it->second->view_block->parent_hash()).c_str());
-            assert(it->second->view_block->qc().view_block_hash() == hash);
+                common::Encode::HexEncode(view_block.qc().view_block_hash()).c_str(),
+                view_block.qc().network_id(),
+                view_block.qc().pool_index(),
+                view_block.qc().view(),
+                common::Encode::HexEncode(view_block.qc().sign_x()).c_str(),
+                common::Encode::HexEncode(view_block.parent_hash()).c_str());
+            assert(view_block.qc().view_block_hash() == hash);
             return it->second;
         }
     }
