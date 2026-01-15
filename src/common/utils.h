@@ -69,6 +69,25 @@ struct Construct {
     } \
 }
 
+#ifndef NDEBUG
+#define CheckThreadIdValid() { \
+    if (common::GlobalInfo::Instance()->main_inited_success()) { \
+        ++local_thread_id_count_; \
+        auto now_thread_id = std::this_thread::get_id(); \
+        uint32_t now_id_val = (uint32_t)std::hash<std::thread::id>{}(now_thread_id); \
+        uint32_t init_id_val = (uint32_t)std::hash<std::thread::id>{}(local_thread_id_); \
+        SETH_DEBUG("now handle thread id: %u, old: %u, count: %d", now_id_val, init_id_val, (int32_t)local_thread_id_count_); \
+        if (local_thread_id_count_ > 3) { \
+            assert(local_thread_id_ == now_thread_id); \
+        } else { \
+            local_thread_id_ = now_thread_id; \
+        } \
+    } \
+}
+#else
+#define CheckThreadIdValid()
+#endif
+
 // #define TMP_ADD_DEBUG_PROCESS_TIMESTAMP() { \
 //     if (msg_ptr) { \
 //         assert(msg_ptr->times_idx < (sizeof(msg_ptr->times) / sizeof(msg_ptr->times[0]))); \
@@ -448,24 +467,6 @@ static inline bool isFileExist(const std::string& path) {
     return std::filesystem::exists(path);
 }
 
-#ifndef NDEBUG
-#define CheckThreadIdValid() { \
-    if (common::GlobalInfo::Instance()->main_inited_success()) { \
-        ++local_thread_id_count_; \
-        auto now_thread_id = std::this_thread::get_id(); \
-        uint32_t now_id_val = (uint32_t)std::hash<std::thread::id>{}(now_thread_id); \
-        uint32_t init_id_val = (uint32_t)std::hash<std::thread::id>{}(local_thread_id_); \
-        SETH_DEBUG("now handle thread id: %u, old: %u, count: %d", now_id_val, init_id_val, (int32_t)local_thread_id_count_); \
-        if (local_thread_id_count_ > 3) { \
-            assert(local_thread_id_ == now_thread_id); \
-        } else { \
-            local_thread_id_ = now_thread_id; \
-        } \
-    } \
-}
-#else
-#define CheckThreadIdValid()
-#endif
 
 }  // namespace common
 

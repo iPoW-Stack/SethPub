@@ -708,6 +708,7 @@ void ViewBlockChain::HandleTimerMessage() {
 
 std::shared_ptr<ViewBlockInfo> ViewBlockChain::CheckCommit(const QC& qc) {
     // fast hotstuff
+    CheckThreadIdValid();
     if (qc.sign_x().empty()) {
         return nullptr;
     }
