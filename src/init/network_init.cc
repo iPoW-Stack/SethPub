@@ -267,7 +267,6 @@ int NetworkInit::Init(int argc, char** argv) {
         return kInitError;
     }
 
-
     hotstuff_mgr_->Start(); // The above should be placed in the hotstuff instance initialization and receive the genesis block
     SETH_WARN("init hotstuff_mgr_ start success.");
     AddCmds();

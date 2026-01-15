@@ -120,6 +120,9 @@ Status BlockAcceptor::Accept(
         return Status::kAcceptorBlockInvalid;
     }
 
+    zjc_host.parent_hash_ = view_block.parent_hash();
+    zjc_host.view_block_chain_ = view_block_chain_;
+    zjc_host.view_ = view_block.qc().view();
     // 2. Get txs from local pool
     auto txs_ptr = std::make_shared<consensus::WaitingTxsItem>();
     Status s = Status::kSuccess;
@@ -140,9 +143,6 @@ Status BlockAcceptor::Accept(
 
     // 3. Do txs and create block_tx.
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    zjc_host.parent_hash_ = view_block.parent_hash();
-    zjc_host.view_block_chain_ = view_block_chain_;
-    zjc_host.view_ = view_block.qc().view();
     s = DoTransactions(txs_ptr, &view_block, balance_and_nonce_map, zjc_host);
     if (s != Status::kSuccess) {
         SETH_WARN("DoTransactions error!");
