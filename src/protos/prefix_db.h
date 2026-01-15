@@ -284,21 +284,15 @@ public:
         return true;
     }
 
-    bool ExistsOverUniqueHash(const std::string& unique_hash) {
+    bool ExistsOverUniqueHash(const std::string& unique_hash) const {
         std::string key = kOverUniqueHash + unique_hash;
-        std::string val;
-        auto st = db_->Get(key, &val);
-        if (!st.ok()) {
-            return false;
-        }
-
-        return true;
+        auto st = db_->Exist(key);
+        return st.ok();
     }
 
     void SaveOverUniqueHash(const std::string& unique_hash , db::DbWriteBatch& db_batch) {
         std::string key = kOverUniqueHash + unique_hash;
         db_batch.Put(key, "1");
-        SETH_DEBUG("dddddd success latest time block: %lu", tmblock.height());
     }
 
     void SaveLatestTimeBlock(const timeblock::protobuf::TimeBlock& tmblock, db::DbWriteBatch& db_batch) {
