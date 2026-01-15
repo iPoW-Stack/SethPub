@@ -1505,6 +1505,7 @@ Status Hotstuff::Commit(
 
 void Hotstuff::HandleSyncedViewBlock(
         std::shared_ptr<view_block::protobuf::ViewBlockItem>& vblock) {
+    CheckThreadIdValid();
     if (BlockViewCommited(
             prefix_db_, 
             vblock->qc().network_id(), 

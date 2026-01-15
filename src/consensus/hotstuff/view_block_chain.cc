@@ -333,8 +333,9 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) {
     CheckThreadIdValid();
     auto it = view_blocks_info_.find(hash);
     if (it != view_blocks_info_.end()) {
-        if (it->second->view_block) {
-            auto& view_block = *it->second->view_block;
+        auto view_block_info_ptr = it->second;
+        if (view_block_info_ptr->view_block) {
+            auto& view_block = *view_block_info_ptr->view_block;
             SETH_DEBUG("get block hash: %s, view block hash: %s, %u_%u_%lu, sign x: %s, parent hash: %s",
                 common::Encode::HexEncode(hash).c_str(), 
                 common::Encode::HexEncode(view_block.qc().view_block_hash()).c_str(),
@@ -365,7 +366,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) {
                 assert(view_block.qc().view_block_hash() == hash);
             }
             
-            return it->second;
+            return view_block_info_ptr;
         }
     }
 
