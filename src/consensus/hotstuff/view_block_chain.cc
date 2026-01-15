@@ -45,6 +45,7 @@ Status ViewBlockChain::Store(
         BalanceAndNonceMapPtr balane_map_ptr,
         std::shared_ptr<zjcvm::ZjchainHost> zjc_host_ptr,
         bool init) {
+    CheckThreadIdValid();
     if (chain_type_ == kLocalChain && !network::IsSameToLocalShard(view_block->qc().network_id())) {
         return Status::kSuccess;
     }
@@ -329,6 +330,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashSt
 }
 
 std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) {
+    CheckThreadIdValid();
     auto it = view_blocks_info_.find(hash);
     if (it != view_blocks_info_.end()) {
         // SETH_DEBUG("get view block from store propose_debug: %s",
@@ -351,6 +353,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) {
 }
 
 bool ViewBlockChain::ReplaceWithSyncedBlock(std::shared_ptr<ViewBlock>& view_block) {
+    CheckThreadIdValid();
     auto it = view_blocks_info_.find(view_block->qc().view_block_hash());
     if (it != view_blocks_info_.end() && 
             it->second->view_block != nullptr && 
@@ -372,6 +375,7 @@ bool ViewBlockChain::ReplaceWithSyncedBlock(std::shared_ptr<ViewBlock>& view_blo
 }
 
 bool ViewBlockChain::Has(const HashStr& hash) {
+    CheckThreadIdValid();
     auto it = view_blocks_info_.find(hash);
     if (it != view_blocks_info_.end() && it->second->view_block != nullptr) {
         return true;
@@ -406,6 +410,7 @@ bool ViewBlockChain::Extends(const ViewBlock& block, const ViewBlock& target) {
 }
 
 Status ViewBlockChain::GetAll(std::vector<std::shared_ptr<ViewBlock>>& view_blocks) {
+    CheckThreadIdValid();
     for (auto it = view_blocks_info_.begin(); it != view_blocks_info_.end(); it++) {
         if (it->second->view_block) {
             view_blocks.push_back(it->second->view_block);
@@ -415,6 +420,7 @@ Status ViewBlockChain::GetAll(std::vector<std::shared_ptr<ViewBlock>>& view_bloc
 }
 
 Status ViewBlockChain::GetAllVerified(std::vector<std::shared_ptr<ViewBlock>>& view_blocks) {
+    CheckThreadIdValid();
     for (auto it = view_blocks_info_.begin(); it != view_blocks_info_.end(); it++) {
         if (it->second->view_block) {
             view_blocks.push_back(it->second->view_block);
@@ -447,6 +453,7 @@ void ViewBlockChain::CommitSynced(std::shared_ptr<view_block::protobuf::ViewBloc
 }
 
 void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) {
+    CheckThreadIdValid();
     std::list<std::shared_ptr<ViewBlockInfo>> to_commit_blocks;
     std::shared_ptr<ViewBlockInfo> tmp_block_info = v_block_info;
     while (tmp_block_info != nullptr) {
@@ -875,6 +882,7 @@ void ViewBlockChain::AddNewBlock(
 }
 
 bool ViewBlockChain::IsValid() {
+    CheckThreadIdValid();
     if (Size() == 0) {
         return false;
     }
@@ -896,6 +904,7 @@ bool ViewBlockChain::IsValid() {
 }
 
 std::string ViewBlockChain::String() const {
+    return "";
 #ifdef NDEBUG
     return "";
 #endif
@@ -986,6 +995,7 @@ bool ViewBlockChain::GetPrevStorageKeyValue(
         const std::string& id, 
         const std::string& key, 
         std::string* val) {
+    CheckThreadIdValid();
     std::string phash = parent_hash;
     while (true) {
         if (phash.empty()) {
@@ -1030,6 +1040,7 @@ evmc::bytes32 ViewBlockChain::GetPrevStorageBytes32KeyValue(
         const std::string& parent_hash, 
         const evmc::address& addr,
         const evmc::bytes32& key) {
+    CheckThreadIdValid();
     std::string phash = parent_hash;
     while (true) {
         if (phash.empty()) {
@@ -1067,6 +1078,7 @@ evmc::bytes32 ViewBlockChain::GetPrevStorageBytes32KeyValue(
 void ViewBlockChain::MergeAllPrevBalanceMap(
         const std::string& parent_hash, 
         BalanceAndNonceMap& acc_balance_map) {
+    CheckThreadIdValid();
     std::string phash = parent_hash;
     uint32_t count = 0;
     while (true) {
@@ -1115,6 +1127,7 @@ int ViewBlockChain::CheckTxNonceValid(
         uint64_t nonce, 
         const std::string& parent_hash,
         uint64_t* now_nonce) {
+    CheckThreadIdValid();
     std::string phash = parent_hash;
     while (true) {
         if (phash.empty()) {
