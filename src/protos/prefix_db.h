@@ -286,8 +286,7 @@ public:
 
     bool ExistsOverUniqueHash(const std::string& unique_hash) const {
         std::string key = kOverUniqueHash + unique_hash;
-        auto st = db_->Exist(key);
-        return st.ok();
+        return db_->Exist(key);
     }
 
     void SaveOverUniqueHash(const std::string& unique_hash , db::DbWriteBatch& db_batch) {
