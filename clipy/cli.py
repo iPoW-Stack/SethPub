@@ -183,7 +183,7 @@ if __name__ == "__main__":
     PORT = 23001
     
     # Sender private key
-    MY_PRIVATE_KEY = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    MY_PRIVATE_KEY = "cefc2c33064ea7691aee3e5e4f7842935d26f3ad790d81cf015e79b78958e848"
     
     # Receiver address
     TO_ADDR = "1234567890abcdef1234567890abcdef12345678" 
