@@ -161,6 +161,7 @@ std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHeight(
         uint32_t network_id, 
         uint64_t height) {
     // // CheckThreadIdValid();
+    GetViewBlockWithHash("");
     std::shared_ptr<ViewBlockInfo> view_block_ptr;
     if (latest_commited_view_lru_map_.Get(
             BlockViewKey(network_id, pool_index_, height), 
