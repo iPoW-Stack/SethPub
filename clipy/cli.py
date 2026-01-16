@@ -194,6 +194,5 @@ if __name__ == "__main__":
     client.send_transaction_auto(
         private_key_hex=MY_PRIVATE_KEY,
         to_hex=TO_ADDR,
-        amount=5000,
-        input_hex="112233" # Attach some data
+        amount=5000
     )
