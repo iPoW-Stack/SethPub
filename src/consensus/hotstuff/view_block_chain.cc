@@ -187,13 +187,13 @@ std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHeight(
                 break;
             }
 
-            auto p_block = GetViewBlockWithHash((*it)->view_block->parent_hash());
+            auto p_block = GetViewBlockWithHash((*it)->view_block->parent_hash(), false);
             if (!p_block) {
                 ++it;
                 continue;
             }
 
-            auto gp_block = GetViewBlockWithHash(p_block->view_block->parent_hash());
+            auto gp_block = GetViewBlockWithHash(p_block->view_block->parent_hash(), false);
             if (!gp_block) {
                 ++it;
                 continue;
@@ -250,7 +250,7 @@ std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHeight(
     return nullptr;   
 }
 
-std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashStr& hash) {
+std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashStr& hash, bool remove) {
     // CheckThreadIdValid();
     std::shared_ptr<ViewBlockInfo> view_block_info_ptr;
     while (cached_block_queue_.pop(&view_block_info_ptr)) {
@@ -271,7 +271,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashSt
         }
     }
 
-    while (cached_pri_queue_.size() >= kCachedViewBlockCount) {
+    while (remove && cached_pri_queue_.size() >= kCachedViewBlockCount) {
         auto temp_ptr = cached_pri_queue_.top();
         auto temp_iter = cached_block_map_.find(temp_ptr->view_block->qc().view_block_hash());
         if (temp_iter != cached_block_map_.end()) {
