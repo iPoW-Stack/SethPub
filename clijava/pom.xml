@@ -1,0 +1,12 @@
+<dependencies>
+    <dependency>
+        <groupId>org.web3j</groupId>
+        <artifactId>crypto</artifactId>
+        <version>5.0.0</version>
+    </dependency>
+    <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcprov-jdk15on</artifactId>
+        <version>1.70</version>
+    </dependency>
+</dependencies>

@@ -1,0 +1,260 @@
+{
+	"info": {
+		"name": "Seth Blockchain API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. 发送交易 (Transaction)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{ "key": "nonce", "value": "1", "type": "text" },
+						{ "key": "pubkey", "value": "hex_public_key_here", "type": "text", "description": "Hex编码的公钥" },
+						{ "key": "to", "value": "hex_dest_address_here", "type": "text", "description": "Hex编码的目标地址" },
+						{ "key": "amount", "value": "1000", "type": "text" },
+						{ "key": "gas_limit", "value": "50000", "type": "text" },
+						{ "key": "gas_price", "value": "100", "type": "text" },
+						{ "key": "shard_id", "value": "0", "type": "text" },
+						{ "key": "type", "value": "0", "type": "text", "description": "交易类型" },
+						{ "key": "sign_r", "value": "hex_sign_r", "type": "text" },
+						{ "key": "sign_s", "value": "hex_sign_s", "type": "text" },
+						{ "key": "sign_v", "value": "0", "type": "text" },
+						{ "key": "input", "value": "", "type": "text", "disabled": true, "description": "可选：合约输入" },
+						{ "key": "bytes_code", "value": "", "type": "text", "disabled": true, "description": "可选：合约代码" },
+						{ "key": "pepay", "value": "0", "type": "text", "disabled": true, "description": "可选：预付费" }
+					]
+				},
+				"url": {
+					"raw": "{{host}}/transaction",
+					"host": ["{{host}}"],
+					"path": ["transaction"]
+				}
+			}
+		},
+		{
+			"name": "2. 查询账户 (Query Account)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{ "key": "address", "value": "hex_address_here", "type": "text" }
+					]
+				},
+				"url": {
+					"raw": "{{host}}/query_account",
+					"host": ["{{host}}"],
+					"path": ["query_account"]
+				}
+			}
+		},
+		{
+			"name": "3. 查询合约 (Query Contract)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{ "key": "address", "value": "contract_addr_hex", "type": "text" },
+						{ "key": "from", "value": "caller_addr_hex", "type": "text" },
+						{ "key": "input", "value": "input_data_hex", "type": "text" }
+					]
+				},
+				"url": {
+					"raw": "{{host}}/query_contract",
+					"host": ["{{host}}"],
+					"path": ["query_contract"]
+				}
+			}
+		},
+		{
+			"name": "4. ABI 查询合约 (ABI Query Contract)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{ "key": "address", "value": "contract_addr_hex", "type": "text" },
+						{ "key": "from", "value": "caller_addr_hex", "type": "text" },
+						{ "key": "input", "value": "input_data_hex", "type": "text" }
+					]
+				},
+				"url": {
+					"raw": "{{host}}/abi_query_contract",
+					"host": ["{{host}}"],
+					"path": ["abi_query_contract"]
+				}
+			}
+		},
+		{
+			"name": "5. 批量验证账户 (Accounts Valid)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{ "key": "balance", "value": "1000", "type": "text", "description": "最小余额要求" },
+						{ "key": "addrs", "value": "addr1hex_addr2hex", "type": "text", "description": "下划线分隔的地址Hex" }
+					]
+				},
+				"url": {
+					"raw": "{{host}}/accounts_valid",
+					"host": ["{{host}}"],
+					"path": ["accounts_valid"]
+				}
+			}
+		},
+		{
+			"name": "6. 验证预付 (Prepayments Valid)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{ "key": "balance", "value": "1000", "type": "text" },
+						{ "key": "contract", "value": "contract_addr_hex", "type": "text" },
+						{ "key": "addrs", "value": "addr1hex_addr2hex", "type": "text" }
+					]
+				},
+				"url": {
+					"raw": "{{host}}/prepayment_valid",
+					"host": ["{{host}}"],
+					"path": ["prepayment_valid"]
+				}
+			}
+		},
+		{
+			"name": "7. 获取加密信息 (Get Sec And Enc Data)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{ "key": "data", "value": "raw_string_data", "type": "text" }
+					]
+				},
+				"url": {
+					"raw": "{{host}}/get_seckey_and_encrypt_data",
+					"host": ["{{host}}"],
+					"path": ["get_seckey_and_encrypt_data"]
+				}
+			}
+		},
+		{
+			"name": "8. 代理重加密信息 (Get Proxy Reenc Info)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{ "key": "id", "value": "proxy_id", "type": "text" },
+						{ "key": "contract", "value": "contract_hex", "type": "text" },
+						{ "key": "count", "value": "3", "type": "text" }
+					]
+				},
+				"url": {
+					"raw": "{{host}}/get_proxy_reenc_info",
+					"host": ["{{host}}"],
+					"path": ["get_proxy_reenc_info"]
+				}
+			}
+		},
+		{
+			"name": "9. 代理解密 (Proxy Decrypt)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{ "key": "id", "value": "id_key", "type": "text" }
+					]
+				},
+				"url": {
+					"raw": "{{host}}/proxy_decrypt",
+					"host": ["{{host}}"],
+					"path": ["proxy_decrypt"]
+				}
+			}
+		},
+		{
+			"name": "10. ARS 创建密钥 (Ars Create Sec Keys)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{ "key": "keys", "value": "key1-key2", "type": "text" },
+						{ "key": "signer_count", "value": "3", "type": "text" }
+					]
+				},
+				"url": {
+					"raw": "{{host}}/ars_create_sec_keys",
+					"host": ["{{host}}"],
+					"path": ["ars_create_sec_keys"]
+				}
+			}
+		},
+		{
+			"name": "11. 验证 GID (Commit Gid Valid)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{ "key": "gids", "value": "gid1hex_gid2hex", "type": "text" }
+					]
+				},
+				"url": {
+					"raw": "{{host}}/commit_gid_valid",
+					"host": ["{{host}}"],
+					"path": ["commit_gid_valid"]
+				}
+			}
+		},
+		{
+			"name": "12. 获取区块 (Get Block With Gid)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{ "key": "addr", "value": "address_hex", "type": "text" },
+						{ "key": "nonce", "value": "1", "type": "text" }
+					]
+				},
+				"url": {
+					"raw": "{{host}}/get_block_with_gid",
+					"host": ["{{host}}"],
+					"path": ["get_block_with_gid"]
+				}
+			}
+		},
+		{
+			"name": "13. 服务初始化查询 (Query Init)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{host}}/query_init",
+					"host": ["{{host}}"],
+					"path": ["query_init"]
+				}
+			}
+		}
+	]
+}

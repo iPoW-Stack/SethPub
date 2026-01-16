@@ -1,0 +1,9 @@
+dependencies:
+  flutter:
+    sdk: flutter
+  # For sending HTTP requests
+  http: ^1.1.0
+  # For handling Hex strings
+  hex: ^0.2.0
+  # Provides Keccak256 and Secp256k1 signing functions
+  web3dart: ^2.7.0
