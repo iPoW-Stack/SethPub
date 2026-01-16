@@ -152,11 +152,6 @@ private:
     static const uint64_t kUserPopedTxTimeoutSec = 10lu;
     static const uint64_t kSystemPopedTxTimeoutSec = 3lu;
 
-    std::unordered_map<std::string, TxItemPtr> gid_map_;
-    std::unordered_map<std::string, uint64_t> gid_start_time_map_;
-    std::vector<uint64_t> latencys_us_;
-    std::queue<std::string> timeout_txs_;
-    std::queue<std::string> timeout_remove_txs_;
     uint64_t latest_height_ = common::kInvalidUint64;
     std::string latest_hash_;
     uint64_t latest_timestamp_ = 0U;
@@ -191,7 +186,6 @@ private:
     uint32_t consensus_tx_map_count_ = 0;
 
 // TODO: just test
-    std::unordered_set<std::string> added_gids_;
     db::DbWriteBatch added_gids_batch_;
     uint64_t all_delay_tm_us_ = 0;
     uint64_t all_delay_tx_count_ = 0;

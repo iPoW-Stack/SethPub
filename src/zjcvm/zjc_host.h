@@ -59,6 +59,15 @@ struct MockedAccount {
 
 class ZjchainHost : public evmc::Host {
 public:
+    ZjchainHost() {
+        common::GlobalInfo::Instance()->AddSharedObj(6);
+        
+    }
+
+    ~ZjchainHost() {
+        common::GlobalInfo::Instance()->DecSharedObj(6);
+    }
+    
     struct log_record {
         evmc::address creator;
         std::string data;
