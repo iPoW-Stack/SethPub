@@ -4,7 +4,7 @@ import hashlib
 import json
 import time
 from Crypto.Hash import keccak
-# 使用纯 Python 的 ecdsa 库
+# Using pure Python ecdsa library
 from ecdsa import SigningKey, SECP256k1, VerifyingKey
 from ecdsa.util import sigencode_string_canonize
 
@@ -24,37 +24,37 @@ class SethClient:
 
     def _derive_address_from_pubkey(self, pubkey_bytes_no_prefix):
         """
-        根据公钥推导地址。
-        假设规则与以太坊类似：Keccak256(Pubkey_64bytes) 的后 20 字节
-        如果你的链规则不同，请修改此处。
+        Derive address from public key.
+        Assumption: Similar to Ethereum rules -> Last 20 bytes of Keccak256(Pubkey_64bytes).
+        If your chain rules differ, modify this.
         """
         k = keccak.new(digest_bits=256)
         k.update(pubkey_bytes_no_prefix)
         digest = k.digest()
-        # 取后 20 字节作为地址
+        # Take the last 20 bytes as the address
         address_bytes = digest[-20:]
         return address_bytes.hex()
 
     def get_latest_nonce(self, address_hex):
         """
-        查询账户信息并获取最新 Nonce
+        Query account info and get the latest Nonce
         """
         print(f"[Client] Querying nonce for address: {address_hex}")
         try:
-            # 构造请求，服务端 QueryAccount 接收 'address' 参数
+            # Construct request, server QueryAccount expects 'address' parameter
             data = {"address": address_hex}
             resp = requests.post(self.query_url, data=data, timeout=5)
             
             if resp.status_code != 200:
                 print(f"[Error] Query failed: {resp.text}")
-                return 0 # 账户可能不存在，默认从 0 开始
+                return 0 # Account might not exist, default to 0
             
-            # 解析返回的 JSON
-            # 服务端返回示例: {"address": "...", "balance": 1000, "nonce": 5, ...}
-            # 注意：protobuf JSON 字段如果是默认值可能会被省略，需要处理
+            # Parse returned JSON
+            # Server response example: {"address": "...", "balance": 1000, "nonce": 5, ...}
+            # Note: Protobuf JSON fields might be omitted if they are default values, need handling
             try:
                 account_info = resp.json()
-                # 如果是空对象或没有 nonce 字段，说明是新账户，返回 0
+                # If empty object or no nonce field, it's a new account, return 0
                 nonce = int(account_info.get("nonce", 0))
                 print(f"[Client] Current Nonce on chain: {nonce}")
                 return nonce
@@ -92,41 +92,41 @@ class SethClient:
                               contract_code='', input_hex='', prepayment=0,
                               key='', val=''):
         """
-        自动流程：
-        1. 从私钥推导公钥和地址
-        2. 联网查询该地址的最新 Nonce
+        Automatic Workflow:
+        1. Derive public key and address from private key
+        2. Query the latest Nonce for this address from the network
         3. Nonce + 1
-        4. 签名并发送
+        4. Sign and send
         """
         
-        # --- 1. 准备密钥 ---
+        # --- 1. Prepare Keys ---
         if private_key_hex.startswith('0x'):
             private_key_hex = private_key_hex[2:]
         
         sk = SigningKey.from_string(bytes.fromhex(private_key_hex), curve=SECP256k1)
         vk = sk.verifying_key
         
-        # 导出未压缩公钥 (65 bytes: 04 + X + Y)
+        # Export uncompressed public key (65 bytes: 04 + X + Y)
         pubkey_bytes_full = vk.to_string("uncompressed")
         pubkey_hex = pubkey_bytes_full.hex()
         
-        # 推导地址 (用于查询 Nonce)
-        # 获取不带 04 前缀的公钥字节 (64 bytes)
+        # Derive address (Used to query Nonce)
+        # Get raw public key bytes without '04' prefix (64 bytes)
         pubkey_bytes_raw = pubkey_bytes_full[1:] 
         my_address_hex = self._derive_address_from_pubkey(pubkey_bytes_raw)
         
-        # --- 2. 获取并递增 Nonce ---
+        # --- 2. Get and Increment Nonce ---
         current_nonce = self.get_latest_nonce(my_address_hex)
         next_nonce = current_nonce + 1
         print(f"[Client] Using Next Nonce: {next_nonce}")
 
-        # --- 3. 计算哈希 ---
+        # --- 3. Compute Hash ---
         tx_hash = self.compute_hash(
             next_nonce, pubkey_hex, to_hex, amount, gas_limit, gas_price, step,
             contract_code, input_hex, prepayment, key, val
         )
 
-        # --- 4. 签名 ---
+        # --- 4. Sign ---
         signature = sk.sign_digest_deterministic(
             tx_hash, 
             hashfunc=hashlib.sha256, 
@@ -135,10 +135,10 @@ class SethClient:
         r_bytes = signature[0:32]
         s_bytes = signature[32:64]
         
-        # 简单 Recovery ID 处理 (默认 0，失败重试 1)
+        # Simple Recovery ID handling (Default 0, retry 1 on failure)
         v_byte = 0
 
-        # --- 5. 发送请求 ---
+        # --- 5. Send Request ---
         data = {
             "nonce": str(next_nonce),
             "pubkey": pubkey_hex,
@@ -153,7 +153,7 @@ class SethClient:
             "sign_v": str(v_byte) 
         }
 
-        # 可选参数
+        # Optional parameters
         if contract_code: data["bytes_code"] = contract_code
         if input_hex: data["input"] = input_hex
         if prepayment > 0: data["pepay"] = str(prepayment)
@@ -165,7 +165,7 @@ class SethClient:
             resp = requests.post(self.tx_url, data=data, timeout=5)
             print(f"[Server Response] {resp.status_code}: {resp.text}")
             
-            # 自动重试 V=1
+            # Auto retry V=1
             if "SignatureInvalid" in resp.text or "verify signature failed" in resp.text:
                 print("[Client] Signature rejected (V=0), retrying with V=1...")
                 data["sign_v"] = "1"
@@ -176,24 +176,24 @@ class SethClient:
             print(f"[Error] Network error: {e}")
 
 # ==========================================
-# 运行测试
+# Run Test
 # ==========================================
 if __name__ == "__main__":
-    HOST = "127.0.0.1"
-    PORT = 8888
+    HOST = "35.184.150.163"
+    PORT = 23001
     
-    # 发送者私钥
+    # Sender private key
     MY_PRIVATE_KEY = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     
-    # 接收者地址
+    # Receiver address
     TO_ADDR = "1234567890abcdef1234567890abcdef12345678" 
     
     client = SethClient(HOST, PORT)
     
-    # 调用自动 Nonce 接口
+    # Call automatic Nonce interface
     client.send_transaction_auto(
         private_key_hex=MY_PRIVATE_KEY,
         to_hex=TO_ADDR,
         amount=5000,
-        input_hex="112233" # 附带一些数据
+        input_hex="112233" # Attach some data
     )
