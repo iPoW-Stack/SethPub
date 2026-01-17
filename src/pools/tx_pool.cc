@@ -245,12 +245,13 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
                         nonce_iter->first);
                     auto tx_ptr = nonce_iter->second;
                     SETH_DEBUG("pool: %d, over pop success add system tx nonce addr: %s, "
-                        "addr nonce: %lu, tx nonce: %lu, unique hash: %s",
+                        "addr nonce: %lu, tx nonce: %lu, unique hash: %s, step: %d",
                         pool_index_,
                         common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
                         tx_ptr->address_info->nonce(), 
                         tx_ptr->tx_info->nonce(),
-                        common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
+                        common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(),
+                        (int32_t)tx_ptr->tx_info->step());
                     nonce_iter = tx_iter->second.erase(nonce_iter);
                 }
 
@@ -516,7 +517,21 @@ void TxPool::GetTxIdempotently(
             for (auto nonce_iter = iter->second.begin(); nonce_iter != iter->second.end(); ) {
                 auto tx_ptr = nonce_iter->second;
                 if (!IsUserTransaction(tx_ptr->tx_info->step())) {
+                    SETH_DEBUG("trace tx pool: %d, tx_key invalid addr: %s, "
+                        "nonce: %lu, step: %d, unique hash: %s",
+                        pool_index_,
+                        common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
+                        tx_ptr->tx_info->nonce(), 
+                        (int32_t)tx_ptr->tx_info->step(),
+                        common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
                     if (prefix_db_->ExistsOverUniqueHash(tx_ptr->tx_info->key())) {
+                        SETH_DEBUG("unique hash exists trace tx pool: %d, tx_key invalid addr: %s, "
+                            "nonce: %lu, step: %d, unique hash: %s",
+                            pool_index_,
+                            common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
+                            tx_ptr->tx_info->nonce(), 
+                            (int32_t)tx_ptr->tx_info->step(),
+                            common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
                         nonce_iter = iter->second.erase(nonce_iter);
                         continue;
                     }
@@ -590,11 +605,12 @@ void TxPool::GetTxIdempotently(
                         tx_ptr->tx_info->step() != pools::protobuf::kConsensusLocalTos) {
                     auto iter = system_added_step.find(tx_ptr->tx_info->step());
                     if (iter != system_added_step.end()) {
-                        SETH_DEBUG("trace tx pool: %d, failed add tx addr: %s, nonce: %lu, step: %d", 
+                        SETH_DEBUG("trace tx pool: %d, failed add tx addr: %s, nonce: %lu, step: %d, unique hash: %s", 
                             pool_index_,
                             common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
                             tx_ptr->tx_info->nonce(), 
-                            (int32_t)tx_ptr->tx_info->step());
+                            (int32_t)tx_ptr->tx_info->step(),
+                            common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
                         assert(false);
                         continue;
                     }
