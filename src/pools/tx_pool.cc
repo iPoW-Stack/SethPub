@@ -614,9 +614,6 @@ void TxPool::TempGetTxIdempotently(
                     }
                 }
 
-                valid_nonce = tx_ptr->tx_info->nonce();
-                tx_ptr->receive_tm_us = common::TimeUtils::TimestampUs();
-                res_map.push_back(tx_ptr);
                 if (!IsUserTransaction(tx_ptr->tx_info->step()) &&
                         tx_ptr->tx_info->step() != pools::protobuf::kConsensusLocalTos) {
                     auto iter = system_added_step.find(tx_ptr->tx_info->step());
@@ -634,6 +631,9 @@ void TxPool::TempGetTxIdempotently(
                     system_added_step.insert(tx_ptr->tx_info->step());
                 }
 
+                valid_nonce = tx_ptr->tx_info->nonce();
+                tx_ptr->receive_tm_us = common::TimeUtils::TimestampUs();
+                res_map.push_back(tx_ptr);
                 SETH_DEBUG("trace tx pool: %d, consensus leader tx addr: %s, key: %s, nonce: %lu, "
                     "res count: %u, count: %u, tx_map size: %u, addr tx size: %u", 
                     pool_index_,
