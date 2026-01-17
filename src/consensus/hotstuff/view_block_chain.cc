@@ -1304,6 +1304,7 @@ void ViewBlockChain::AddPoolStatisticTag(uint64_t height) {
     assert(msg_ptr->address_info != nullptr);
     auto tx = msg_ptr->header.mutable_tx_proto();
     auto unique_hash = common::Hash::keccak256("pool_statistic_tag_" + 
+        std::to_string(network::GetLocalConsensusNetworkId()) + "_" + 
         std::to_string(pool_index_) + "_" + 
         std::to_string(height));
     tx->set_key(unique_hash);
