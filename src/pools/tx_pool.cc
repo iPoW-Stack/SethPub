@@ -418,6 +418,27 @@ void TxPool::GetTxIdempotently(
         std::vector<pools::TxItemPtr>& res_map,
         uint32_t count,
         pools::CheckAddrNonceValidFunction tx_valid_func) {
+    while (res_map.size() < count) {
+        TmpGetTxIdempotently(msg_ptr, res_map, count, tx_valid_func);
+        if (count == 1) {
+            break;
+        }
+
+        if (added_txs_.size() == 0) {
+            break;
+        }
+
+        if (!consensus_tx_map_.empty()) {
+            break;
+        }
+    }
+}
+
+void TxPool::TmpGetTxIdempotently(
+        transport::MessagePtr msg_ptr, 
+        std::vector<pools::TxItemPtr>& res_map,
+        uint32_t count,
+        pools::CheckAddrNonceValidFunction tx_valid_func) {
     // CheckThreadIdValid();
     TxItemPtr tx_ptr;
     while (added_txs_.pop(&tx_ptr)) {
@@ -636,7 +657,10 @@ void TxPool::GetTxIdempotently(
 
     get_tx_func(system_tx_map_);
     get_tx_func(consensus_tx_map_);
-    SETH_DEBUG("pool: %d, now get tx by leader all: %u, get: %u", pool_index_, all_tx_size(), res_map.size());
+    SETH_DEBUG("pool: %d, now get tx by leader all: %u, added tx size: %u, "
+        "system_tx_map_ size: %u, get: %u, count: %u", 
+        pool_index_, all_tx_size(), added_txs_.size(),
+        system_tx_map_.size(), res_map.size(), count);
 }
 
 void TxPool::InitLatestInfo() {

@@ -147,6 +147,11 @@ private:
     void InitHeightTree();
     void InitLatestInfo();
     void UpdateSyncedHeight();
+    void TempGetTxIdempotently(
+        transport::MessagePtr msg_ptr, 
+        std::vector<pools::TxItemPtr>& res_map, 
+        uint32_t count, 
+        pools::CheckAddrNonceValidFunction tx_valid_func);
 
     static const uint64_t kSyncBlockPeriodMs = 1000lu;
     static const uint64_t kUserPopedTxTimeoutSec = 10lu;
