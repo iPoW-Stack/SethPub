@@ -105,6 +105,7 @@ public:
         prefix_db_->SaveLatestPoolStatisticTag(elect_statistic.sharding_id(), pool_st_info, zjc_host.db_batch_);
         *view_block.mutable_block_info()->mutable_elect_statistic() = elect_statistic;
         *view_block.mutable_block_info()->mutable_pool_st_info() = pool_st_info;
+        view_block.mutable_block_info()->add_unique_hashs(block_tx.unique_hash());
         return consensus::kConsensusSuccess;
     }
 

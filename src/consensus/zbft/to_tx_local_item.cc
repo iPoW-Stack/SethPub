@@ -48,6 +48,7 @@ int ToTxLocalItem::HandleTx(
     SETH_DEBUG("success consensus local transfer to unique hash: %s, %s",
         common::Encode::HexEncode(unique_hash).c_str(), 
         ProtobufToJson(block_to_txs).c_str());
+    view_block.mutable_block_info()->add_unique_hashs(block_tx.unique_hash());
     return consensus::kConsensusSuccess;
 }
 

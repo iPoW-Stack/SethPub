@@ -79,6 +79,7 @@ public:
             common::Encode::HexEncode(block_tx.to()).c_str(), 
             ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str());
         view_block.mutable_block_info()->set_pool_statistic_height(statistic_height);
+        view_block.mutable_block_info()->add_unique_hashs(block_tx.unique_hash());
         return consensus::kConsensusSuccess;
     }
     

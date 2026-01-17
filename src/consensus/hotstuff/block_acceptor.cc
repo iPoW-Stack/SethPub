@@ -343,8 +343,6 @@ Status BlockAcceptor::addTxsToPool(
             } else {
                 from_id = security_ptr_->GetAddress(tx->pubkey());
             }
-        } else {
-            prefix_db_->SaveOverUniqueHash(tx->key(), zjc_host.db_batch_);
         }
         
         if (tx->step() == pools::protobuf::kContractExcute) {
@@ -476,7 +474,8 @@ Status BlockAcceptor::addTxsToPool(
             }
 
             if (directly_user_leader_txs) {
-                tx_ptr = std::make_shared<consensus::ToTxItem>(msg_ptr, i, account_mgr_, security_ptr_, address_info);
+                tx_ptr = std::make_shared<consensus::ToTxItem>(
+                    msg_ptr, i, account_mgr_, security_ptr_, address_info);
             } else {
                 auto tx_item = tx_pools_->GetToTxs(
                     pool_idx(), 

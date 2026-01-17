@@ -68,6 +68,7 @@ public:
             ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str());
 
         prefix_db_->SaveLatestTimeBlock(timer_block, zjc_host.db_batch_);
+        view_block.mutable_block_info()->add_unique_hashs(block_tx.unique_hash());
         return consensus::kConsensusSuccess;
     }
 

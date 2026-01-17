@@ -592,6 +592,10 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
             }
         }
 
+        for (int32_t i = 0; i < tmp_block->block_info().unique_hashs_size(); ++i) {
+            prefix_db_->SaveOverUniqueHash(tmp_block->block_info().unique_hashs(i), db_batch);
+        }
+
         view_blocks_info_.erase(tmp_block->parent_hash());
         // auto test_iter = view_with_blocks_.begin();
         // while (test_iter != view_with_blocks_.end()) {

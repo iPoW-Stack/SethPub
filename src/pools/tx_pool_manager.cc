@@ -434,10 +434,9 @@ void TxPoolManager::HandleMessage(const transport::MessagePtr& msg_ptr) {
             ++prev_tps_count_;
             uint64_t dur = 1000lu;
             if (now_tm > prev_show_tm_ms_ + dur) {
-                SETH_DEBUG("pools stored message size: %d, %d, pool index: %d, gid size: %u, tx all size: %u, tps: %lu", 
+                SETH_DEBUG("pools stored message size: %d, %d, pool index: %d, tx all size: %u, tps: %lu", 
                         -1, pools_msg_queue_.size(),
                         address_info->pool_index(),
-                        tx_pool_[address_info->pool_index()].all_tx_size(),
                         tx_pool_[address_info->pool_index()].all_tx_size(),
                         (prev_tps_count_/(dur / 1000)));
                 prev_show_tm_ms_ = now_tm;
