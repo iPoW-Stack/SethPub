@@ -209,11 +209,6 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
                         tx_info.nonce(),
                         nonce_iter->second->tx_info->nonce(),
                         common::Encode::HexEncode(nonce_iter->second->tx_info->key()).c_str());
-                    SETH_DEBUG("pool: %d, find tx addr success: %s, nonce: %lu, remove nonce: %lu", 
-                        pool_index_,
-                        common::Encode::HexEncode(addr).c_str(), 
-                        nonce_iter->first,
-                        tx_info.nonce());
                     if (!IsUserTransaction(tx_info.step())) {
                         if (nonce_iter->second->tx_info->key() != tx_info.unique_hash()) {
                             ++nonce_iter;

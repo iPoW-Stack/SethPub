@@ -593,6 +593,8 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
         }
 
         for (int32_t i = 0; i < tmp_block->block_info().unique_hashs_size(); ++i) {
+            SETH_DEBUG("success add unique hash: %s", 
+                common::Encode::HexEncode(tmp_block->block_info().unique_hashs(i)).c_str());
             prefix_db_->SaveOverUniqueHash(tmp_block->block_info().unique_hashs(i), db_batch);
         }
 

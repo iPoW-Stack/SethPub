@@ -89,9 +89,10 @@ public:
         acc_balance_map[block_tx.to()]->set_nonce(to_nonce + 1);
         acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
         acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
-        SETH_DEBUG("success add addr: %s, value: %s", 
+        SETH_DEBUG("success add addr: %s, value: %s, unique hash: %s", 
             common::Encode::HexEncode(block_tx.to()).c_str(), 
-            ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str());
+            ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str(),
+            common::Encode::HexEncode(unique_hash).c_str());
 
         pools::protobuf::PoolStatisticTxInfo pool_st_info;
         pool_st_info.set_height(elect_statistic.statistic_height());

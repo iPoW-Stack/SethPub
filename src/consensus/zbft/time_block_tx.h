@@ -63,9 +63,10 @@ public:
         acc_balance_map[block_tx.to()]->set_nonce(block_tx.nonce());
         acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
         acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
-        SETH_DEBUG("success add addr: %s, value: %s", 
+        SETH_DEBUG("success add addr: %s, value: %s, unique hash: %s", 
             common::Encode::HexEncode(block_tx.to()).c_str(), 
-            ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str());
+            ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str(),
+            common::Encode::HexEncode(unique_hash).c_str());
 
         prefix_db_->SaveLatestTimeBlock(timer_block, zjc_host.db_batch_);
         view_block.mutable_block_info()->add_unique_hashs(block_tx.unique_hash());

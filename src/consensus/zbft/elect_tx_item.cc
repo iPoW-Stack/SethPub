@@ -89,9 +89,10 @@ int ElectTxItem::HandleTx(
     acc_balance_map[block_tx.to()]->set_nonce(block_tx.nonce());
     acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
     acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
-    SETH_DEBUG("success add addr: %s, value: %s", 
+    SETH_DEBUG("success add addr: %s, value: %s, uqniue hash: %s", 
         common::Encode::HexEncode(block_tx.to()).c_str(), 
-        ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str());
+        ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str(),
+        common::Encode::HexEncode(unique_hash).c_str());
     // *view_block.mutable_block_info()->mutable_elect_statistic() = elect_statistic_;
     *view_block.mutable_block_info()->mutable_elect_block() = elect_block_;
     view_block.mutable_block_info()->add_unique_hashs(block_tx.unique_hash());

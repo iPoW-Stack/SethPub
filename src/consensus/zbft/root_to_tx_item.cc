@@ -118,9 +118,10 @@ int RootToTxItem::HandleTx(
             ProtobufToJson(*to_item_ptr).c_str());
     }
 
-    SETH_DEBUG("success add addr to: %s, value: %s", 
+    SETH_DEBUG("success add addr to: %s, value: %s, unique hash: %s", 
         common::Encode::HexEncode(block_tx.to()).c_str(), 
-        ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str());
+        ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str(),
+        common::Encode::HexEncode(unique_hash).c_str());
     view_block.mutable_block_info()->add_unique_hashs(block_tx.unique_hash());
     return kConsensusSuccess;
 }

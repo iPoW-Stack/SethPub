@@ -121,8 +121,11 @@ public:
             common::Encode::HexEncode(block_tx.to()).c_str(), 
             ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str());
 
-        SETH_WARN("success call time block pool: %d, view: %lu, to_nonce: %lu. tx nonce: %lu", 
-            view_block.qc().pool_index(), view_block.qc().view(), to_nonce, block_tx.nonce());
+        SETH_WARN("success call time block pool: %d, view: %lu, to_nonce: %lu, "
+            "tx nonce: %lu, to: %s, unique hash: %s", 
+            view_block.qc().pool_index(), view_block.qc().view(), to_nonce, block_tx.nonce(),
+            common::Encode::HexEncode(block_tx.to()).c_str(),
+            common::Encode::HexEncode(unique_hash).c_str());
         view_block.mutable_block_info()->add_unique_hashs(block_tx.unique_hash());
         return consensus::kConsensusSuccess;
     }
