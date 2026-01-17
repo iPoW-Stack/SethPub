@@ -419,7 +419,7 @@ void TxPool::GetTxIdempotently(
         uint32_t count,
         pools::CheckAddrNonceValidFunction tx_valid_func) {
     while (res_map.size() < count) {
-        TmpGetTxIdempotently(msg_ptr, res_map, count, tx_valid_func);
+        TempGetTxIdempotently(msg_ptr, res_map, count, tx_valid_func);
         if (count == 1) {
             break;
         }
@@ -434,7 +434,7 @@ void TxPool::GetTxIdempotently(
     }
 }
 
-void TxPool::TmpGetTxIdempotently(
+void TxPool::TempGetTxIdempotently(
         transport::MessagePtr msg_ptr, 
         std::vector<pools::TxItemPtr>& res_map,
         uint32_t count,
