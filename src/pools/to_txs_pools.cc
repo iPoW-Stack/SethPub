@@ -87,6 +87,7 @@ void ToTxsPools::ThreadToStatistic(
 
     if (block.has_normal_to()) {
         SETH_INFO("success update to heights: %s", ProtobufToJson(block.normal_to()).c_str());
+        leader_to_heights_.store(nullptr);
         common::AutoSpinLock lock(prev_to_heights_mutex_);
         prev_to_heights_ = std::make_shared<pools::protobuf::ShardToTxItem>(
             block.normal_to().to_heights());
@@ -228,29 +229,35 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
     }
 
     bool valid = false;
-    auto timeout = common::TimeUtils::TimestampMs();
-    for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
-        uint64_t cons_height = pool_consensus_heihgts_[i];
-        while (cons_height > 0) {
-            auto exist_iter = added_heights_[i].find(cons_height);
-            if (exist_iter != added_heights_[i].end()) {
-                if (exist_iter->second + 300lu > timeout) {
-                    --cons_height;
-                    continue;
+    auto leader_to_heights_ptr = leader_to_heights_.load();
+    if (leader_to_heights_ptr != nullptr) {
+        valid = true;
+    } else {
+        auto timeout = common::TimeUtils::TimestampMs();
+        for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
+            uint64_t cons_height = pool_consensus_heihgts_[i];
+            while (cons_height > 0) {
+                auto exist_iter = added_heights_[i].find(cons_height);
+                if (exist_iter != added_heights_[i].end()) {
+                    if (exist_iter->second + 1000lu > timeout) {
+                        --cons_height;
+                        continue;
+                    }
                 }
+
+                if (valided_heights_[i].find(cons_height) == valided_heights_[i].end()) {
+                    SETH_DEBUG("leader get to heights error, pool: %u, height: %lu", i, cons_height);
+                    return kPoolsError;
+                }
+
+                valid = true;
+                break;
             }
 
-            if (valided_heights_[i].find(cons_height) == valided_heights_[i].end()) {
-                SETH_DEBUG("leader get to heights error, pool: %u, height: %lu", i, cons_height);
-                return kPoolsError;
-            }
-
-            valid = true;
-            break;
+            to_heights.add_heights(cons_height);
         }
-
-        to_heights.add_heights(cons_height);
     }
+    
 
     std::shared_ptr<pools::protobuf::ShardToTxItem> prev_to_heights = nullptr;
     {
@@ -263,6 +270,8 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
         return kPoolsError;
     }
 
+    leader_to_heights_ptr = std::make_shared<pools::protobuf::ShardToTxItem>(to_heights);
+    leader_to_heights_.store(leader_to_heights_ptr);
     for (uint32_t i = 0; i < (uint32_t)to_heights.heights_size(); ++i) {
         if (prev_to_heights->heights(i) > to_heights.heights(i)) {
             SETH_DEBUG("prev heights invalid, pool: %u, prev height: %lu, now: %lu",
