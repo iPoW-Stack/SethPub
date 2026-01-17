@@ -177,15 +177,19 @@ static int CreateTransactionWithAttr(
             common::Encode::HexEncode(tx_hash).c_str(), ProtobufToJson(*new_tx).c_str());
         if (http_handler->security_ptr()->Verify(
                 tx_hash, from_pk, sign) != security::kSecuritySuccess) {
-            SETH_ERROR("verify signature failed tx_hash: %s, "
-                "sign_r: %s, sign_s: %s, sign_v: %d, pk: %s, hash64: %lu",
-                common::Encode::HexEncode(tx_hash).c_str(),
-                common::Encode::HexEncode(sign_r).c_str(),
-                common::Encode::HexEncode(sign_s).c_str(),
-                sign_v,
-                common::Encode::HexEncode(from_pk).c_str(),
-                msg.hash64());
-            return kSignatureInvalid;
+            sign[64] = sign_v == 0 ? 1 : 0;
+            if (http_handler->security_ptr()->Verify(
+                    tx_hash, from_pk, sign) != security::kSecuritySuccess) {
+                SETH_ERROR("verify signature failed tx_hash: %s, "
+                    "sign_r: %s, sign_s: %s, sign_v: %d, pk: %s, hash64: %lu",
+                    common::Encode::HexEncode(tx_hash).c_str(),
+                    common::Encode::HexEncode(sign_r).c_str(),
+                    common::Encode::HexEncode(sign_s).c_str(),
+                    sign_v,
+                    common::Encode::HexEncode(from_pk).c_str(),
+                    msg.hash64());
+                return kSignatureInvalid;
+            }
         }
 
         new_tx->set_sign(sign);

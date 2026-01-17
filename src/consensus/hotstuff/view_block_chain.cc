@@ -45,7 +45,7 @@ Status ViewBlockChain::Store(
         BalanceAndNonceMapPtr balane_map_ptr,
         std::shared_ptr<zjcvm::ZjchainHost> zjc_host_ptr,
         bool init) {
-    CheckThreadIdValid();
+    // CheckThreadIdValid();
     if (chain_type_ == kLocalChain && !network::IsSameToLocalShard(view_block->qc().network_id())) {
         return Status::kSuccess;
     }
@@ -160,7 +160,8 @@ Status ViewBlockChain::Store(
 std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHeight(
         uint32_t network_id, 
         uint64_t height) {
-    // CheckThreadIdValid();
+    // // CheckThreadIdValid();
+    GetViewBlockWithHash("", true);
     std::shared_ptr<ViewBlockInfo> view_block_ptr;
     if (latest_commited_view_lru_map_.Get(
             BlockViewKey(network_id, pool_index_, height), 
@@ -187,13 +188,13 @@ std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHeight(
                 break;
             }
 
-            auto p_block = GetViewBlockWithHash((*it)->view_block->parent_hash());
+            auto p_block = GetViewBlockWithHash((*it)->view_block->parent_hash(), false);
             if (!p_block) {
                 ++it;
                 continue;
             }
 
-            auto gp_block = GetViewBlockWithHash(p_block->view_block->parent_hash());
+            auto gp_block = GetViewBlockWithHash(p_block->view_block->parent_hash(), false);
             if (!gp_block) {
                 ++it;
                 continue;
@@ -250,10 +251,10 @@ std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHeight(
     return nullptr;   
 }
 
-std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashStr& hash) {
-    // CheckThreadIdValid();
+std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashStr& hash, bool remove) {
+    // // CheckThreadIdValid();
     std::shared_ptr<ViewBlockInfo> view_block_info_ptr;
-    while (cached_block_queue_.pop(&view_block_info_ptr)) {
+    while (remove && cached_block_queue_.pop(&view_block_info_ptr)) {
         cached_block_map_[view_block_info_ptr->view_block->qc().view_block_hash()] = view_block_info_ptr;
         cached_pri_queue_.push(view_block_info_ptr);
         CHECK_MEMORY_SIZE(cached_block_map_);
@@ -271,7 +272,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashSt
         }
     }
 
-    while (cached_pri_queue_.size() >= kCachedViewBlockCount) {
+    while (remove && cached_pri_queue_.size() >= kCachedViewBlockCount) {
         auto temp_ptr = cached_pri_queue_.top();
         auto temp_iter = cached_block_map_.find(temp_ptr->view_block->qc().view_block_hash());
         if (temp_iter != cached_block_map_.end()) {
@@ -330,7 +331,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashSt
 }
 
 std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) {
-    CheckThreadIdValid();
+    // CheckThreadIdValid();
     auto it = view_blocks_info_.find(hash);
     if (it != view_blocks_info_.end()) {
         auto view_block_info_ptr = it->second;
@@ -345,15 +346,6 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) {
                 common::Encode::HexEncode(view_block.qc().sign_x()).c_str(),
                 common::Encode::HexEncode(view_block.parent_hash()).c_str());
             if (view_block.qc().view_block_hash() != hash) {
-                SETH_DEBUG("bug 1 get block hash: %s, view block hash: %s, %u_%u_%lu, sign x: %s, parent hash: %s",
-                    common::Encode::HexEncode(hash).c_str(), 
-                    common::Encode::HexEncode(view_block.qc().view_block_hash()).c_str(),
-                    view_block.qc().network_id(),
-                    view_block.qc().pool_index(),
-                    view_block.qc().view(),
-                    common::Encode::HexEncode(view_block.qc().sign_x()).c_str(),
-                    common::Encode::HexEncode(view_block.parent_hash()).c_str());
-                spdlog::default_logger()->flush();
                 SETH_DEBUG("bug 2 get block hash: %s, view block hash: %s, %u_%u_%lu, sign x: %s, parent hash: %s",
                     common::Encode::HexEncode(hash).c_str(), 
                     common::Encode::HexEncode(view_block.qc().view_block_hash()).c_str(),
@@ -362,8 +354,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) {
                     view_block.qc().view(),
                     common::Encode::HexEncode(view_block.qc().sign_x()).c_str(),
                     common::Encode::HexEncode(view_block.parent_hash()).c_str());
-                spdlog::default_logger()->flush();
-                assert(view_block.qc().view_block_hash() == hash);
+                assert(false);
             }
             
             return view_block_info_ptr;
@@ -374,7 +365,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) {
 }
 
 bool ViewBlockChain::ReplaceWithSyncedBlock(std::shared_ptr<ViewBlock>& view_block) {
-    CheckThreadIdValid();
+    // CheckThreadIdValid();
     auto it = view_blocks_info_.find(view_block->qc().view_block_hash());
     if (it != view_blocks_info_.end() && 
             it->second->view_block != nullptr && 
@@ -396,7 +387,7 @@ bool ViewBlockChain::ReplaceWithSyncedBlock(std::shared_ptr<ViewBlock>& view_blo
 }
 
 bool ViewBlockChain::Has(const HashStr& hash) {
-    CheckThreadIdValid();
+    // CheckThreadIdValid();
     auto it = view_blocks_info_.find(hash);
     if (it != view_blocks_info_.end() && it->second->view_block != nullptr) {
         return true;
@@ -431,7 +422,7 @@ bool ViewBlockChain::Extends(const ViewBlock& block, const ViewBlock& target) {
 }
 
 Status ViewBlockChain::GetAll(std::vector<std::shared_ptr<ViewBlock>>& view_blocks) {
-    CheckThreadIdValid();
+    // CheckThreadIdValid();
     for (auto it = view_blocks_info_.begin(); it != view_blocks_info_.end(); it++) {
         if (it->second->view_block) {
             view_blocks.push_back(it->second->view_block);
@@ -441,7 +432,7 @@ Status ViewBlockChain::GetAll(std::vector<std::shared_ptr<ViewBlock>>& view_bloc
 }
 
 Status ViewBlockChain::GetAllVerified(std::vector<std::shared_ptr<ViewBlock>>& view_blocks) {
-    CheckThreadIdValid();
+    // CheckThreadIdValid();
     for (auto it = view_blocks_info_.begin(); it != view_blocks_info_.end(); it++) {
         if (it->second->view_block) {
             view_blocks.push_back(it->second->view_block);
@@ -474,7 +465,7 @@ void ViewBlockChain::CommitSynced(std::shared_ptr<view_block::protobuf::ViewBloc
 }
 
 void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) {
-    CheckThreadIdValid();
+    // CheckThreadIdValid();
     std::list<std::shared_ptr<ViewBlockInfo>> to_commit_blocks;
     std::shared_ptr<ViewBlockInfo> tmp_block_info = v_block_info;
     while (tmp_block_info != nullptr) {
@@ -670,7 +661,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
 }
 
 void ViewBlockChain::HandleTimerMessage() {
-    CheckThreadIdValid();
+    // CheckThreadIdValid();
     auto now_tm_ms = common::TimeUtils::TimestampMs();
     if (prev_check_timeout_blocks_ms_ + 3000u < now_tm_ms) {  
         // SETH_DEBUG("now check view_with_blocks_ size: %d", view_with_blocks_.size());      
@@ -737,7 +728,7 @@ void ViewBlockChain::HandleTimerMessage() {
 
 std::shared_ptr<ViewBlockInfo> ViewBlockChain::CheckCommit(const QC& qc) {
     // fast hotstuff
-    CheckThreadIdValid();
+    // CheckThreadIdValid();
     if (qc.sign_x().empty()) {
         return nullptr;
     }
@@ -904,7 +895,7 @@ void ViewBlockChain::AddNewBlock(
 }
 
 bool ViewBlockChain::IsValid() {
-    CheckThreadIdValid();
+    // CheckThreadIdValid();
     if (Size() == 0) {
         return false;
     }
@@ -1017,7 +1008,7 @@ bool ViewBlockChain::GetPrevStorageKeyValue(
         const std::string& id, 
         const std::string& key, 
         std::string* val) {
-    CheckThreadIdValid();
+    // CheckThreadIdValid();
     std::string phash = parent_hash;
     while (true) {
         if (phash.empty()) {
@@ -1062,7 +1053,7 @@ evmc::bytes32 ViewBlockChain::GetPrevStorageBytes32KeyValue(
         const std::string& parent_hash, 
         const evmc::address& addr,
         const evmc::bytes32& key) {
-    CheckThreadIdValid();
+    // CheckThreadIdValid();
     std::string phash = parent_hash;
     while (true) {
         if (phash.empty()) {
@@ -1100,7 +1091,7 @@ evmc::bytes32 ViewBlockChain::GetPrevStorageBytes32KeyValue(
 void ViewBlockChain::MergeAllPrevBalanceMap(
         const std::string& parent_hash, 
         BalanceAndNonceMap& acc_balance_map) {
-    CheckThreadIdValid();
+    // CheckThreadIdValid();
     std::string phash = parent_hash;
     uint32_t count = 0;
     while (true) {
@@ -1149,7 +1140,7 @@ int ViewBlockChain::CheckTxNonceValid(
         uint64_t nonce, 
         const std::string& parent_hash,
         uint64_t* now_nonce) {
-    CheckThreadIdValid();
+    // CheckThreadIdValid();
     std::string phash = parent_hash;
     while (true) {
         if (phash.empty()) {

@@ -171,7 +171,7 @@ void KeyValueSync::ConsensusTimerMessage() {
     PopItems();
     auto now_tm_ms2 = common::TimeUtils::TimestampMs();
     for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
-        hotstuff_mgr_->chain(i)->GetViewBlockWithHash("");
+        hotstuff_mgr_->chain(i)->GetViewBlockWithHash("", true);
     }
 
     auto now_tm_ms3 = common::TimeUtils::TimestampMs();
@@ -431,7 +431,8 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
 
         uint16_t* pool_index_arr = (uint16_t*)key.c_str();
         auto view_block_ptr_info = hotstuff_mgr_->chain(pool_index_arr[0])->GetViewBlockWithHash(
-            std::string(key.c_str() + 2, 32));
+            std::string(key.c_str() + 2, 32),
+            true);
         if (!view_block_ptr_info) {
             continue;
         }

@@ -36,7 +36,7 @@ void TxPool::Init(
 }
 
 void TxPool::InitHeightTree() {
-    // CheckThreadIdValid();
+    // // CheckThreadIdValid();
     if (common::GlobalInfo::Instance()->network_id() == common::kInvalidUint32) {
         return;
     }
@@ -170,7 +170,7 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
 }
 
 void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
-    CheckThreadIdValid();
+    // CheckThreadIdValid();
     auto now_tm_us = common::TimeUtils::TimestampUs();
     SETH_DEBUG("0 now tx size: %u", all_tx_size());
     auto over_addr_nonce_ptr = std::make_shared<std::unordered_map<std::string, uint64_t>>();
@@ -293,7 +293,7 @@ void TxPool::GetTxSyncToLeader(
         uint32_t count,
         ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs,
         pools::CheckAddrNonceValidFunction tx_valid_func) {
-    CheckThreadIdValid();
+    // CheckThreadIdValid();
     TxItemPtr tx_ptr;
     while (added_txs_.pop(&tx_ptr)) {
         SETH_DEBUG("pool: %d, pop success add system tx nonce addr: %s, "
@@ -422,7 +422,7 @@ void TxPool::GetTxIdempotently(
         std::vector<pools::TxItemPtr>& res_map,
         uint32_t count,
         pools::CheckAddrNonceValidFunction tx_valid_func) {
-    CheckThreadIdValid();
+    // CheckThreadIdValid();
     TxItemPtr tx_ptr;
     while (added_txs_.pop(&tx_ptr)) {
         SETH_DEBUG("pool: %d, pop success add system tx nonce addr: %s, "
@@ -679,7 +679,7 @@ uint64_t TxPool::UpdateLatestInfo(
         return common::kInvalidUint64;
     }
     
-    // CheckThreadIdValid();
+    // // CheckThreadIdValid();
     auto tmp_height_tree_ptr = height_tree_ptr_;
     if (!tmp_height_tree_ptr) {
         InitHeightTree();
@@ -772,7 +772,7 @@ void TxPool::ConsensusAddTxs(const pools::TxItemPtr& tx_ptr) {
         return;
     }
 
-    // CheckThreadIdValid();
+    // // CheckThreadIdValid();
     if (consensus_added_txs_.size() >= common::GlobalInfo::Instance()->each_tx_pool_max_txs()) {
         SETH_WARN("add failed extend %u, %u, all valid: %u", 
             consensus_added_txs_.size(), common::GlobalInfo::Instance()->each_tx_pool_max_txs(), all_tx_size());
