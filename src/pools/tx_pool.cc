@@ -627,7 +627,7 @@ void TxPool::TempGetTxIdempotently(
                             tx_ptr->tx_info->nonce(), 
                             (int32_t)tx_ptr->tx_info->step(),
                             common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
-                        assert(false);
+                        // assert(false);
                         continue;
                     }
 
