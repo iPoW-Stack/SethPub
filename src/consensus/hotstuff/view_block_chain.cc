@@ -379,7 +379,7 @@ bool ViewBlockChain::ReplaceWithSyncedBlock(std::shared_ptr<ViewBlock>& view_blo
     }
 
     if (it == view_blocks_info_.end()) {
-        auto st = Store(view_block, false, nullptr, nullptr, false);
+        auto st = Store(view_block, true, nullptr, nullptr, false);
         if (st != Status::kSuccess) {
             SETH_ERROR("add new block hash: %s, %u_%u_%lu, height: %lu",
                 common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(),
@@ -390,7 +390,7 @@ bool ViewBlockChain::ReplaceWithSyncedBlock(std::shared_ptr<ViewBlock>& view_blo
             assert(false);
             return false;
         }
-        
+
         SETH_DEBUG("add new block hash: %s, %u_%u_%lu, height: %lu",
             common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(),
             view_block->qc().network_id(), 
