@@ -427,10 +427,6 @@ void TxPool::GetTxIdempotently(
         if (added_txs_.size() == 0) {
             break;
         }
-
-        if (!consensus_tx_map_.empty()) {
-            break;
-        }
     }
 }
 
