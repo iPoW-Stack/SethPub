@@ -555,6 +555,15 @@ void TxPool::TempGetTxIdempotently(
 
                 ++nonce_iter;
                 if (valid_nonce == common::kInvalidUint64) {
+                    SETH_DEBUG("begin nonce, trace tx pool: %d, tx_key invalid addr: %s, "
+                        "nonce: %lu, unique hash: %s, "
+                        "now_nonce: %u, tx_ptr->tx_info->nonce() + iter->second.size(): %u", 
+                        pool_index_,
+                        common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
+                        tx_ptr->tx_info->nonce(),
+                        common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(),
+                        now_nonce,
+                        (tx_ptr->tx_info->nonce() + iter->second.size()));
                     uint64_t now_nonce = 0llu;
                     int res = tx_valid_func(
                         *tx_ptr->address_info, 
@@ -657,7 +666,7 @@ void TxPool::TempGetTxIdempotently(
 
     get_tx_func(system_tx_map_);
     get_tx_func(consensus_tx_map_);
-    SETH_DEBUG("pool: %d, now get tx by leader all: %u, added tx size: %u, "
+    SETH_INFO("pool: %d, now get tx by leader all: %u, added tx size: %u, "
         "system_tx_map_ size: %u, get: %u, count: %u", 
         pool_index_, all_tx_size(), added_txs_.size(),
         system_tx_map_.size(), res_map.size(), count);
