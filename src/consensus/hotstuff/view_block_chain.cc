@@ -378,29 +378,28 @@ bool ViewBlockChain::ReplaceWithSyncedBlock(std::shared_ptr<ViewBlock>& view_blo
         return false;
     }
 
-    if (it == view_blocks_info_.end()) {
-        auto st = Store(view_block, true, nullptr, nullptr, false);
-        if (st != Status::kSuccess) {
-            SETH_ERROR("add new block hash: %s, %u_%u_%lu, height: %lu",
-                common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(),
-                view_block->qc().network_id(), 
-                view_block->qc().pool_index(), 
-                view_block->qc().view(), 
-                view_block->block_info().height());
-            assert(false);
-            return false;
-        }
-
-        SETH_DEBUG("add new block hash: %s, %u_%u_%lu, height: %lu",
+    if (it != view_blocks_info_.end()) {
+        view_blocks_info_.erase(it);
+    }
+    
+    auto st = Store(view_block, true, nullptr, nullptr, false);
+    if (st != Status::kSuccess) {
+        SETH_ERROR("add new block hash: %s, %u_%u_%lu, height: %lu",
             common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(),
             view_block->qc().network_id(), 
             view_block->qc().pool_index(), 
             view_block->qc().view(), 
             view_block->block_info().height());
-        return true;
+        assert(false);
+        return false;
     }
-    
-    view_blocks_info_.erase(it);
+
+    SETH_DEBUG("add new block hash: %s, %u_%u_%lu, height: %lu",
+        common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(),
+        view_block->qc().network_id(), 
+        view_block->qc().pool_index(), 
+        view_block->qc().view(), 
+        view_block->block_info().height());
     return true;
 }
 
