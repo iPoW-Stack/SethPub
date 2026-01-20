@@ -623,38 +623,38 @@ Status BlockAcceptor::addTxsToPool(
         }
         
         if (tx_ptr != nullptr) {
-            auto tx_hash = pools::GetTxMessageHash(*tx);
-            if (checked_tx_hash_.Push(tx_hash) && pools::IsUserTransaction(tx_ptr->tx_info->step())) {
-                if (!msg_ptr->is_leader) {
-                    if (tx->pubkey().size() == 64u) {
-                        security::GmSsl gmssl;
-                        if (gmssl.Verify(
-                                tx_hash,
-                                tx_ptr->tx_info->pubkey(),
-                                tx_ptr->tx_info->sign()) != security::kSecuritySuccess) {
-                            assert(false);
-                            return Status::kError;
-                        }
-                    } else if (tx->pubkey().size() > 128u) {
-                        security::Oqs oqs;
-                        if (oqs.Verify(
-                                tx_hash,
-                                tx_ptr->tx_info->pubkey(),
-                                tx_ptr->tx_info->sign()) != security::kSecuritySuccess) {
-                            assert(false);
-                            return Status::kError;
-                        }
-                    } else {
-                        if (security_ptr_->Verify(
-                                tx_hash,
-                                tx_ptr->tx_info->pubkey(),
-                                tx_ptr->tx_info->sign()) != security::kSecuritySuccess) {
-                            assert(false);
-                            return Status::kError;
-                        }
-                    }
-                }
-            }
+            // auto tx_hash = pools::GetTxMessageHash(*tx);
+            // if (checked_tx_hash_.Push(tx_hash) && pools::IsUserTransaction(tx_ptr->tx_info->step())) {
+            //     if (!msg_ptr->is_leader) {
+            //         if (tx->pubkey().size() == 64u) {
+            //             security::GmSsl gmssl;
+            //             if (gmssl.Verify(
+            //                     tx_hash,
+            //                     tx_ptr->tx_info->pubkey(),
+            //                     tx_ptr->tx_info->sign()) != security::kSecuritySuccess) {
+            //                 assert(false);
+            //                 return Status::kError;
+            //             }
+            //         } else if (tx->pubkey().size() > 128u) {
+            //             security::Oqs oqs;
+            //             if (oqs.Verify(
+            //                     tx_hash,
+            //                     tx_ptr->tx_info->pubkey(),
+            //                     tx_ptr->tx_info->sign()) != security::kSecuritySuccess) {
+            //                 assert(false);
+            //                 return Status::kError;
+            //             }
+            //         } else {
+            //             if (security_ptr_->Verify(
+            //                     tx_hash,
+            //                     tx_ptr->tx_info->pubkey(),
+            //                     tx_ptr->tx_info->sign()) != security::kSecuritySuccess) {
+            //                 assert(false);
+            //                 return Status::kError;
+            //             }
+            //         }
+            //     }
+            // }
 
             txs_map.push_back(tx_ptr);
         }
