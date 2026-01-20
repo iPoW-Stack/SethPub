@@ -308,7 +308,7 @@ Status BlockAcceptor::addTxsToPool(
         BalanceAndNonceMap& now_balance_map,
         zjcvm::ZjchainHost& zjc_host) {
 
-    // 0. 基础检查
+    // 0. Basic check
     if (txs.size() == 0) {
         SETH_INFO("accepte empty called!");
         return Status::kAcceptorTxsEmpty;
@@ -320,37 +320,37 @@ Status BlockAcceptor::addTxsToPool(
     ADD_DEBUG_PROCESS_TIMESTAMP();
 
     // ========================================================================
-    // 1. 并发环境准备 (Producer-Consumer Setup)
+    // 1. Concurrent Environment Setup (Producer-Consumer)
     // ========================================================================
     
-    // 预分配容器，避免扩容导致的锁竞争和内存拷贝
-    // temp_items: 存放创建好的 TxItemPtr (主线程写，子线程读)
+    // Pre-allocate containers to avoid resizing locks and memory copying.
+    // temp_items: Store created TxItemPtr (Main thread writes, Child threads read)
     std::vector<pools::TxItemPtr> temp_items(txs.size(), nullptr);
     
-    // verify_results: 存放校验结果 (0:待定, 1:成功, -1:失败) - 子线程写
-    // 使用 int8_t 节省空间
+    // verify_results: Store verification results (0: pending, 1: success, -1: failure) - Child threads write
+    // Using int8_t to save space
     std::vector<int8_t> verify_results(txs.size(), 0); 
     
-    // 任务队列与同步原语
+    // Task queue and synchronization primitives
     std::deque<int> task_queue;
     std::mutex queue_mutex;
     std::condition_variable queue_cv;
-    bool producer_done = false; // 生产结束标志
+    bool producer_done = false; // Flag to indicate production is finished
     
     bool is_leader = msg_ptr->is_leader;
-    bool need_verify = !is_leader; // Leader 不验签，Follower 验签
+    bool need_verify = !is_leader; // Leader skips verification, Follower verifies
 
-    // --- 定义 Worker 线程函数 ---
+    // --- Define Worker Thread Function ---
     auto worker_func = [&]() {
         while (true) {
             int idx = -1;
             {
                 std::unique_lock<std::mutex> lock(queue_mutex);
-                // 等待：队列有数据 OR 生产者已结束
+                // Wait condition: Queue has data OR producer has finished
                 queue_cv.wait(lock, [&] { return !task_queue.empty() || producer_done; });
                 
                 if (task_queue.empty() && producer_done) {
-                    return; // 队列空且不再生产，退出线程
+                    return; // Queue is empty and production is done, exit thread
                 }
                 
                 if (!task_queue.empty()) {
@@ -359,23 +359,26 @@ Status BlockAcceptor::addTxsToPool(
                 }
             }
 
-            // 处理任务
+            // Process task
             if (idx != -1) {
-                // 注意：此时 temp_items[idx] 已经被主线程赋值，且主线程不再修改它，读取是安全的
+                // Note: At this point, temp_items[idx] has been assigned by the main thread
+                // and the main thread will not modify it again, so reading is safe.
                 auto tx_ptr = temp_items[idx];
                 
                 if (tx_ptr == nullptr || tx_ptr->tx_info == nullptr) {
-                    verify_results[idx] = -1; // 对象无效
+                    verify_results[idx] = -1; // Invalid object
                     continue;
                 }
 
-                // 执行签名校验 (耗时操作)
+                // Execute signature verification (Time-consuming operation)
                 const auto* tx = &txs[idx];
                 auto tx_hash = pools::GetTxMessageHash(*tx);
                 bool valid = true;
 
                 if (pools::IsUserTransaction(tx_ptr->tx_info->step())) {
-                    int verify_ret = security::kError;
+                    // Fix: Changed kError to kSecurityError
+                    int verify_ret = security::kSecurityError; 
+                    
                     if (tx->pubkey().size() == 64u) {
                         security::GmSsl gmssl;
                         verify_ret = gmssl.Verify(tx_hash, tx_ptr->tx_info->pubkey(), tx_ptr->tx_info->sign());
@@ -383,27 +386,27 @@ Status BlockAcceptor::addTxsToPool(
                         security::Oqs oqs;
                         verify_ret = oqs.Verify(tx_hash, tx_ptr->tx_info->pubkey(), tx_ptr->tx_info->sign());
                     } else {
-                        // 假设 security_ptr_ 是线程安全或只读的
+                        // Assuming security_ptr_ is thread-safe or read-only
                         verify_ret = security_ptr_->Verify(tx_hash, tx_ptr->tx_info->pubkey(), tx_ptr->tx_info->sign());
                     }
 
                     if (verify_ret != security::kSecuritySuccess) {
                         valid = false;
-                        // assert(false); // 多线程建议去掉 assert，改用日志
+                        // assert(false); // Avoid assert in multi-threaded environment, use logging if needed
                     }
                 }
                 
-                // 写入结果 (无锁，独占 idx)
+                // Write result (Lock-free, exclusive idx access)
                 verify_results[idx] = valid ? 1 : -1;
             }
         }
     };
 
-    // --- 启动线程池 ---
+    // --- Start Thread Pool ---
     std::vector<std::shared_ptr<std::thread>> threads;
     if (need_verify) {
         int thread_count = 10;
-        // 简单的自适应：任务极少时不启动过多线程
+        // Simple adaptation: Do not start too many threads if tasks are few
         if (txs.size() < (size_t)thread_count) thread_count = (int)txs.size();
         if (thread_count > 0) {
             threads.reserve(thread_count);
@@ -414,10 +417,10 @@ Status BlockAcceptor::addTxsToPool(
     }
 
     // ========================================================================
-    // 2. 主循环 (Producer) - 单次遍历 txs
+    // 2. Main Loop (Producer) - Single traversal of txs
     // ========================================================================
     
-    // 辅助 Lambda: 供 TimeBlockTx 使用
+    // Helper Lambda: Used by TimeBlockTx
     auto tx_valid_func = [&](
             const address::protobuf::AddressInfo& addr_info, 
             pools::protobuf::TxMessage& tx_info,
@@ -432,7 +435,7 @@ Status BlockAcceptor::addTxsToPool(
         protos::AddressInfoPtr contract_address_info = nullptr;
         std::string from_id;
 
-        // --- 串行逻辑：获取账号ID (耗时极短) ---
+        // --- Serial Logic: Get Account ID (Very short time) ---
         if (pools::IsUserTransaction(tx->step())) {
             if (tx->pubkey().size() == 64u) {
                 security::GmSsl gmssl;
@@ -445,14 +448,14 @@ Status BlockAcceptor::addTxsToPool(
             }
         }
         
-        // --- 串行逻辑：DB查询与AddressInfo获取 (必须串行) ---
+        // --- Serial Logic: DB Query & AddressInfo Retrieval (Must be serial) ---
         if (tx->step() == pools::protobuf::kContractExcute) {
             address_info = view_block_chain_->ChainGetAccountInfo(tx->to() + from_id);
             contract_address_info = view_block_chain_->ChainGetAccountInfo(tx->to());
             if (!contract_address_info) {
                 SETH_WARN("get contract address failed %s, nonce: %lu", 
                     common::Encode::HexEncode(tx->to()).c_str(), tx->nonce());
-                verify_results[i] = -1; // 标记失败
+                verify_results[i] = -1; // Mark as failed
                 continue;
             }
         } else {
@@ -469,7 +472,7 @@ Status BlockAcceptor::addTxsToPool(
             continue;
         }
 
-        // --- 串行逻辑：Nonce检查与余额更新 (状态依赖，必须串行) ---
+        // --- Serial Logic: Nonce Check & Balance Update (State dependency, must be serial) ---
         auto now_map_iter = now_balance_map.find(address_info->addr());
         if (now_map_iter == now_balance_map.end()) {
             if (pools::IsUserTransaction(tx->step())) {
@@ -508,7 +511,7 @@ Status BlockAcceptor::addTxsToPool(
             now_balance_map[address_info->addr()] = new_addr_info;
         }
 
-        // --- 串行逻辑：对象工厂创建 ---
+        // --- Serial Logic: Object Factory Creation ---
         std::string contract_prepayment_id;
         pools::TxItemPtr tx_ptr = nullptr;
         bool create_success = true;
@@ -647,7 +650,7 @@ Status BlockAcceptor::addTxsToPool(
             create_success = false;
         }
 
-        // 处理预付费
+        // Handle prepayment
         if (!contract_prepayment_id.empty()) {
             auto iter = prevs_balance_map.find(contract_prepayment_id);
             if (iter != prevs_balance_map.end()) {
@@ -662,15 +665,15 @@ Status BlockAcceptor::addTxsToPool(
             }
         }
 
-        // --- 核心逻辑：提交任务 ---
+        // --- Core Logic: Submit Task ---
         if (create_success && tx_ptr != nullptr) {
-            temp_items[i] = tx_ptr; // 先存储对象
+            temp_items[i] = tx_ptr; // Store object first
 
             if (!need_verify) {
-                // Leader 路径：直接标记成功
+                // Leader path: Mark success directly
                 verify_results[i] = 1;
             } else {
-                // Follower 路径：推送到队列，唤醒消费者
+                // Follower path: Push to queue, wake up consumers
                 {
                     std::lock_guard<std::mutex> lock(queue_mutex);
                     task_queue.push_back(i);
@@ -678,24 +681,24 @@ Status BlockAcceptor::addTxsToPool(
                 queue_cv.notify_one();
             }
         } else {
-            verify_results[i] = -1; // 创建失败
+            verify_results[i] = -1; // Creation failed
         }
 
-    } // 循环结束
+    } // End of loop
 
     // ========================================================================
-    // 3. 结束与收集
+    // 3. Finish and Collect
     // ========================================================================
 
     if (need_verify) {
-        // 通知停止生产
+        // Notify to stop production
         {
             std::lock_guard<std::mutex> lock(queue_mutex);
             producer_done = true;
         }
         queue_cv.notify_all();
 
-        // 等待所有消费者完成
+        // Wait for all consumers to finish
         for (auto& t : threads) {
             if (t && t->joinable()) {
                 t->join();
@@ -703,8 +706,8 @@ Status BlockAcceptor::addTxsToPool(
         }
     }
 
-    // 4. 按顺序收集有效结果
-    // verify_results[i] == 1 代表：(Leader直接通过) 或 (Follower验签通过)
+    // 4. Collect valid results in order
+    // verify_results[i] == 1 means: (Leader passed directly) OR (Follower verification passed)
     auto& final_txs = txs_ptr->txs;
     final_txs.reserve(final_txs.size() + txs.size());
 
