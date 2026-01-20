@@ -405,7 +405,7 @@ Status BlockAcceptor::addTxsToPool(
     // --- Start Thread Pool ---
     std::vector<std::shared_ptr<std::thread>> threads;
     if (need_verify) {
-        int thread_count = 10;
+        int thread_count = 8;
         // Simple adaptation: Do not start too many threads if tasks are few
         if (txs.size() < (size_t)thread_count) thread_count = (int)txs.size();
         if (thread_count > 0) {
