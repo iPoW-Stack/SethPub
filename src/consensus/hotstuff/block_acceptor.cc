@@ -298,6 +298,7 @@ Status BlockAcceptor::AcceptSync(const view_block::protobuf::ViewBlockItem& view
     
     return Status::kSuccess;
 }
+
 Status BlockAcceptor::addTxsToPool(
         transport::MessagePtr msg_ptr,
         const std::string& parent_hash,
@@ -306,61 +307,117 @@ Status BlockAcceptor::addTxsToPool(
         std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
         BalanceAndNonceMap& now_balance_map,
         zjcvm::ZjchainHost& zjc_host) {
-    
+
+    // 0. 基础检查
     if (txs.size() == 0) {
         SETH_INFO("accepte empty called!");
         return Status::kAcceptorTxsEmpty;
     }
-    
+
     ADD_DEBUG_PROCESS_TIMESTAMP();
     BalanceAndNonceMap prevs_balance_map;
     view_block_chain_->MergeAllPrevBalanceMap(parent_hash, prevs_balance_map);
     ADD_DEBUG_PROCESS_TIMESTAMP();
 
-    // 1. 定义校验函数 (保持 Lambda 逻辑不变)
-    // ---------------------------------------------------------
-    auto check_tx_func = [&](const pools::protobuf::TxMessage* tx, pools::TxItemPtr tx_ptr) -> Status {
-        // 如果对象创建失败或为空，直接跳过（视为成功或在后续逻辑过滤）
-        if (tx_ptr == nullptr || tx_ptr->tx_info == nullptr) {
-            return Status::kSuccess; 
-        }
+    // ========================================================================
+    // 1. 并发环境准备 (Producer-Consumer Setup)
+    // ========================================================================
+    
+    // 预分配容器，避免扩容导致的锁竞争和内存拷贝
+    // temp_items: 存放创建好的 TxItemPtr (主线程写，子线程读)
+    std::vector<pools::TxItemPtr> temp_items(txs.size(), nullptr);
+    
+    // verify_results: 存放校验结果 (0:待定, 1:成功, -1:失败) - 子线程写
+    // 使用 int8_t 节省空间
+    std::vector<int8_t> verify_results(txs.size(), 0); 
+    
+    // 任务队列与同步原语
+    std::deque<int> task_queue;
+    std::mutex queue_mutex;
+    std::condition_variable queue_cv;
+    bool producer_done = false; // 生产结束标志
+    
+    bool is_leader = msg_ptr->is_leader;
+    bool need_verify = !is_leader; // Leader 不验签，Follower 验签
 
-        auto tx_hash = pools::GetTxMessageHash(*tx);
-        if (pools::IsUserTransaction(tx_ptr->tx_info->step())) {
-            if (!msg_ptr->is_leader) {
-                if (tx->pubkey().size() == 64u) {
-                    security::GmSsl gmssl;
-                    if (gmssl.Verify(
-                            tx_hash,
-                            tx_ptr->tx_info->pubkey(),
-                            tx_ptr->tx_info->sign()) != security::kSecuritySuccess) {
-                        // assert(false); 
-                        return Status::kError;
-                    }
-                } else if (tx->pubkey().size() > 128u) {
-                    security::Oqs oqs;
-                    if (oqs.Verify(
-                            tx_hash,
-                            tx_ptr->tx_info->pubkey(),
-                            tx_ptr->tx_info->sign()) != security::kSecuritySuccess) {
-                        // assert(false);
-                        return Status::kError;
-                    }
-                } else {
-                    // 假设 security_ptr_ 是线程安全的（通常 Verify 是无状态的）
-                    if (security_ptr_->Verify(
-                            tx_hash,
-                            tx_ptr->tx_info->pubkey(),
-                            tx_ptr->tx_info->sign()) != security::kSecuritySuccess) {
-                        // assert(false);
-                        return Status::kError;
-                    }
+    // --- 定义 Worker 线程函数 ---
+    auto worker_func = [&]() {
+        while (true) {
+            int idx = -1;
+            {
+                std::unique_lock<std::mutex> lock(queue_mutex);
+                // 等待：队列有数据 OR 生产者已结束
+                queue_cv.wait(lock, [&] { return !task_queue.empty() || producer_done; });
+                
+                if (task_queue.empty() && producer_done) {
+                    return; // 队列空且不再生产，退出线程
+                }
+                
+                if (!task_queue.empty()) {
+                    idx = task_queue.front();
+                    task_queue.pop_front();
                 }
             }
+
+            // 处理任务
+            if (idx != -1) {
+                // 注意：此时 temp_items[idx] 已经被主线程赋值，且主线程不再修改它，读取是安全的
+                auto tx_ptr = temp_items[idx];
+                
+                if (tx_ptr == nullptr || tx_ptr->tx_info == nullptr) {
+                    verify_results[idx] = -1; // 对象无效
+                    continue;
+                }
+
+                // 执行签名校验 (耗时操作)
+                const auto* tx = &txs[idx];
+                auto tx_hash = pools::GetTxMessageHash(*tx);
+                bool valid = true;
+
+                if (pools::IsUserTransaction(tx_ptr->tx_info->step())) {
+                    int verify_ret = security::kError;
+                    if (tx->pubkey().size() == 64u) {
+                        security::GmSsl gmssl;
+                        verify_ret = gmssl.Verify(tx_hash, tx_ptr->tx_info->pubkey(), tx_ptr->tx_info->sign());
+                    } else if (tx->pubkey().size() > 128u) {
+                        security::Oqs oqs;
+                        verify_ret = oqs.Verify(tx_hash, tx_ptr->tx_info->pubkey(), tx_ptr->tx_info->sign());
+                    } else {
+                        // 假设 security_ptr_ 是线程安全或只读的
+                        verify_ret = security_ptr_->Verify(tx_hash, tx_ptr->tx_info->pubkey(), tx_ptr->tx_info->sign());
+                    }
+
+                    if (verify_ret != security::kSecuritySuccess) {
+                        valid = false;
+                        // assert(false); // 多线程建议去掉 assert，改用日志
+                    }
+                }
+                
+                // 写入结果 (无锁，独占 idx)
+                verify_results[idx] = valid ? 1 : -1;
+            }
         }
-        return Status::kSuccess;
     };
 
+    // --- 启动线程池 ---
+    std::vector<std::shared_ptr<std::thread>> threads;
+    if (need_verify) {
+        int thread_count = 10;
+        // 简单的自适应：任务极少时不启动过多线程
+        if (txs.size() < (size_t)thread_count) thread_count = (int)txs.size();
+        if (thread_count > 0) {
+            threads.reserve(thread_count);
+            for (int i = 0; i < thread_count; ++i) {
+                threads.emplace_back(std::make_shared<std::thread>(worker_func));
+            }
+        }
+    }
+
+    // ========================================================================
+    // 2. 主循环 (Producer) - 单次遍历 txs
+    // ========================================================================
+    
+    // 辅助 Lambda: 供 TimeBlockTx 使用
     auto tx_valid_func = [&](
             const address::protobuf::AddressInfo& addr_info, 
             pools::protobuf::TxMessage& tx_info,
@@ -368,19 +425,14 @@ Status BlockAcceptor::addTxsToPool(
         return CheckTransactionValid(parent_hash, view_block_chain_, addr_info, tx_info, now_nonce);
     };
 
-    // 2. 串行准备阶段：创建所有 TxItemPtr，但不立即 Push 到结果集
-    // ---------------------------------------------------------
-    size_t total_tasks = txs.size();
-    // 用于暂存创建好的对象，下标与 txs 一一对应
-    std::vector<pools::TxItemPtr> prepared_items(total_tasks, nullptr); 
-
     for (int i = 0; i < txs.size(); i++) {
         auto* tx = &txs[i];
+        
         protos::AddressInfoPtr address_info = nullptr;
         protos::AddressInfoPtr contract_address_info = nullptr;
         std::string from_id;
 
-        // --- 账号与地址获取逻辑 (保持原样) ---
+        // --- 串行逻辑：获取账号ID (耗时极短) ---
         if (pools::IsUserTransaction(tx->step())) {
             if (tx->pubkey().size() == 64u) {
                 security::GmSsl gmssl;
@@ -393,13 +445,15 @@ Status BlockAcceptor::addTxsToPool(
             }
         }
         
+        // --- 串行逻辑：DB查询与AddressInfo获取 (必须串行) ---
         if (tx->step() == pools::protobuf::kContractExcute) {
             address_info = view_block_chain_->ChainGetAccountInfo(tx->to() + from_id);
             contract_address_info = view_block_chain_->ChainGetAccountInfo(tx->to());
             if (!contract_address_info) {
                 SETH_WARN("get contract address failed %s, nonce: %lu", 
                     common::Encode::HexEncode(tx->to()).c_str(), tx->nonce());
-                return Status::kError;
+                verify_results[i] = -1; // 标记失败
+                continue;
             }
         } else {
             if (pools::IsUserTransaction(tx->step())) {
@@ -411,10 +465,11 @@ Status BlockAcceptor::addTxsToPool(
 
         if (!address_info) {
             SETH_WARN("get address failed nonce: %lu", tx->nonce());
-            return Status::kError;
+            verify_results[i] = -1;
+            continue;
         }
 
-        // --- Nonce 与 Balance 检查 (保持原样，这部分涉及状态修改，必须串行) ---
+        // --- 串行逻辑：Nonce检查与余额更新 (状态依赖，必须串行) ---
         auto now_map_iter = now_balance_map.find(address_info->addr());
         if (now_map_iter == now_balance_map.end()) {
             if (pools::IsUserTransaction(tx->step())) {
@@ -425,7 +480,8 @@ Status BlockAcceptor::addTxsToPool(
                         common::Encode::HexEncode(address_info->addr()).c_str(),
                         tx->nonce(), 
                         common::Encode::HexEncode(parent_hash).c_str());
-                    return Status::kError;
+                    verify_results[i] = -1;
+                    continue;
                 }
             } else {
                 std::string val;
@@ -433,7 +489,8 @@ Status BlockAcceptor::addTxsToPool(
                     SETH_WARN("invalid add tx now get local to tx to: %s, unique hash: %s", 
                         common::Encode::HexEncode(tx->to()).c_str(),
                         common::Encode::HexEncode(tx->key()).c_str());
-                    return Status::kError;
+                    verify_results[i] = -1;
+                    continue;
                 }
             }
         }
@@ -451,9 +508,11 @@ Status BlockAcceptor::addTxsToPool(
             now_balance_map[address_info->addr()] = new_addr_info;
         }
 
-        // --- 对象工厂创建 (保持原样) ---
+        // --- 串行逻辑：对象工厂创建 ---
         std::string contract_prepayment_id;
         pools::TxItemPtr tx_ptr = nullptr;
+        bool create_success = true;
+
         switch (tx->step()) {
         case pools::protobuf::kNormalFrom:
             tx_ptr = std::make_shared<consensus::FromTxItem>(
@@ -484,9 +543,11 @@ Status BlockAcceptor::addTxsToPool(
                     msg_ptr, i, db_, account_mgr_, security_ptr_, address_info);
             std::string val;
             if (zjc_host.GetKeyValue(tx_ptr->tx_info->to(), tx_ptr->tx_info->key(), &val) == zjcvm::kZjcvmSuccess) {
-                // ... logging ...
+                SETH_WARN("invalid add tx now get local to tx to: %s, unique hash: %s", 
+                    common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
+                    common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
                 tx_ptr = nullptr;
-                return Status::kError;
+                create_success = false;
             }
             break;
         }
@@ -494,6 +555,7 @@ Status BlockAcceptor::addTxsToPool(
             pools::protobuf::AllToTxMessage all_to_txs;
             if (!all_to_txs.ParseFromString(tx->value()) || all_to_txs.to_tx_arr_size() == 0) {
                 assert(false);
+                create_success = false;
                 break;
             }
             if (directly_user_leader_txs) {
@@ -506,16 +568,15 @@ Status BlockAcceptor::addTxsToPool(
                     tx_ptr = *(tx_item->txs.begin());
                     std::string val;
                     if (zjc_host.GetKeyValue(tx_ptr->tx_info->to(), tx_ptr->tx_info->key(), &val) == zjcvm::kZjcvmSuccess) {
-                        // ... logging ...
+                        SETH_WARN("invalid add tx local exists");
                         tx_ptr = nullptr;
-                        return Status::kError;
+                        create_success = false;
                     }
                 }
             }
             break;
         }
         case pools::protobuf::kStatistic: {
-            // SETH_WARN("add tx now get statistic tx: %u", pool_idx());
             if (directly_user_leader_txs) {
                 tx_ptr = std::make_shared<consensus::StatisticTxItem>(
                     msg_ptr, i, account_mgr_, security_ptr_, address_info);
@@ -583,10 +644,10 @@ Status BlockAcceptor::addTxsToPool(
         }
         default:
             SETH_FATAL("invalid tx step: %d", (int32_t)tx->step());
-            return Status::kError;
+            create_success = false;
         }
 
-        // 处理预付费逻辑 (保持原样)
+        // 处理预付费
         if (!contract_prepayment_id.empty()) {
             auto iter = prevs_balance_map.find(contract_prepayment_id);
             if (iter != prevs_balance_map.end()) {
@@ -601,61 +662,55 @@ Status BlockAcceptor::addTxsToPool(
             }
         }
 
-        // ***关键修改***： 不在这里 verify，只是保存创建好的对象
-        if (tx_ptr != nullptr) {
-            prepared_items[i] = tx_ptr;
-        }
-    } // End Loop
+        // --- 核心逻辑：提交任务 ---
+        if (create_success && tx_ptr != nullptr) {
+            temp_items[i] = tx_ptr; // 先存储对象
 
-    // 3. 并行校验阶段 (如果不是 Leader)
-    // ---------------------------------------------------------
-    std::vector<Status> results(total_tasks, Status::kSuccess); // 默认成功
-
-    if (!msg_ptr->is_leader && total_tasks > 0) {
-        int thread_count = 8;
-        if (total_tasks < (size_t)thread_count) {
-            thread_count = (int)total_tasks; // 任务少时减少线程数
-        }
-
-        std::vector<std::shared_ptr<std::thread>> verify_threads;
-        verify_threads.reserve(thread_count);
-        std::atomic<size_t> next_task_idx{0};
-
-        for (int i = 0; i < thread_count; ++i) {
-            verify_threads.emplace_back(std::make_shared<std::thread>([&]() {
-                while (true) {
-                    size_t idx = next_task_idx.fetch_add(1);
-                    if (idx >= total_tasks) {
-                        break;
-                    }
-                    
-                    // 仅当对象成功创建时才进行校验
-                    if (prepared_items[idx] != nullptr) {
-                        results[idx] = check_tx_func(&txs[idx], prepared_items[idx]);
-                    }
+            if (!need_verify) {
+                // Leader 路径：直接标记成功
+                verify_results[i] = 1;
+            } else {
+                // Follower 路径：推送到队列，唤醒消费者
+                {
+                    std::lock_guard<std::mutex> lock(queue_mutex);
+                    task_queue.push_back(i);
                 }
-            }));
+                queue_cv.notify_one();
+            }
+        } else {
+            verify_results[i] = -1; // 创建失败
         }
 
-        for (auto& t : verify_threads) {
+    } // 循环结束
+
+    // ========================================================================
+    // 3. 结束与收集
+    // ========================================================================
+
+    if (need_verify) {
+        // 通知停止生产
+        {
+            std::lock_guard<std::mutex> lock(queue_mutex);
+            producer_done = true;
+        }
+        queue_cv.notify_all();
+
+        // 等待所有消费者完成
+        for (auto& t : threads) {
             if (t && t->joinable()) {
                 t->join();
             }
         }
     }
 
-    // 4. 结果收集与提交 (串行)
-    // ---------------------------------------------------------
-    auto& txs_map = txs_ptr->txs;
-    txs_map.reserve(txs_map.size() + total_tasks); // 预分配
-    for (size_t i = 0; i < total_tasks; ++i) {
-        // 只有当: 1. 对象已创建 且 (2. 是Leader 或 3. 校验成功) 时才加入
-        if (prepared_items[i] != nullptr) {
-            if (msg_ptr->is_leader || results[i] == Status::kSuccess) {
-                txs_map.push_back(prepared_items[i]);
-            } else {
-                SETH_WARN("tx verify failed idx: %lu", i);
-            }
+    // 4. 按顺序收集有效结果
+    // verify_results[i] == 1 代表：(Leader直接通过) 或 (Follower验签通过)
+    auto& final_txs = txs_ptr->txs;
+    final_txs.reserve(final_txs.size() + txs.size());
+
+    for (size_t i = 0; i < txs.size(); ++i) {
+        if (verify_results[i] == 1 && temp_items[i] != nullptr) {
+            final_txs.push_back(temp_items[i]);
         }
     }
 
