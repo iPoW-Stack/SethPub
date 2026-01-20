@@ -304,6 +304,7 @@ Status Hotstuff::Propose(
         pb_pro_msg->release_view_item();
     }
     
+    ADD_DEBUG_PROCESS_TIMESTAMP();
 #ifndef NDEBUG
     auto t3 = common::TimeUtils::TimestampMs();
 #endif
@@ -318,6 +319,7 @@ Status Hotstuff::Propose(
         broadcast::SetDefaultBroadcastParam(brd_param);
     }
 
+    ADD_DEBUG_PROCESS_TIMESTAMP();
 #ifndef NDEBUG
     auto t4 = common::TimeUtils::TimestampMs();
 #endif
@@ -376,6 +378,7 @@ Status Hotstuff::Propose(
     // transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
     // SETH_DEBUG("1 success add local message: %lu", tmp_msg_ptr->header.hash64());
     network::Route::Instance()->Send(tmp_msg_ptr);
+    ADD_DEBUG_PROCESS_TIMESTAMP();
     HandleProposeMsg(tmp_msg_ptr);
 #ifndef NDEBUG
     auto t7 = common::TimeUtils::TimestampMs();
