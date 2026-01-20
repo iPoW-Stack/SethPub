@@ -69,7 +69,6 @@ struct Construct {
     } \
 }
 
-#ifndef NDEBUG
 #define CheckThreadIdValid()
 // #define CheckThreadIdValid() { \
 //     if (common::GlobalInfo::Instance()->main_inited_success()) { \
@@ -85,9 +84,6 @@ struct Construct {
 //         } \
 //     } \
 // }
-#else
-#define CheckThreadIdValid()
-#endif
 
 // #define TMP_ADD_DEBUG_PROCESS_TIMESTAMP() { \
 //     if (msg_ptr) { \
@@ -114,6 +110,7 @@ struct Construct {
 }
 // #define ADD_DEBUG_PROCESS_TIMESTAMP()
 #define TMP_ADD_DEBUG_PROCESS_TIMESTAMP()
+#define CheckThreadIdValid()
 #endif
 
 #ifndef NDEBUG

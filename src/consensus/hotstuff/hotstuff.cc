@@ -373,9 +373,10 @@ Status Hotstuff::Propose(
 #ifndef NDEBUG
     auto t6 = common::TimeUtils::TimestampMs();
 #endif
-    transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
-    SETH_DEBUG("1 success add local message: %lu", tmp_msg_ptr->header.hash64());
+    // transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
+    // SETH_DEBUG("1 success add local message: %lu", tmp_msg_ptr->header.hash64());
     network::Route::Instance()->Send(tmp_msg_ptr);
+    HandleProposeMsg(tmp_msg_ptr);
 #ifndef NDEBUG
     auto t7 = common::TimeUtils::TimestampMs();
 #endif
@@ -697,6 +698,9 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
 }
 
 Status Hotstuff::HandleProposeMsgStep_VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
+    if (pro_msg_wrap->msg_ptr->is_leader) {
+        return Status::kSuccess;
+    }
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
