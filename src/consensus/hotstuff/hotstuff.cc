@@ -698,9 +698,6 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
 }
 
 Status Hotstuff::HandleProposeMsgStep_VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
-    if (pro_msg_wrap->msg_ptr->is_leader) {
-        return Status::kSuccess;
-    }
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
@@ -1761,6 +1758,18 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
         SETH_ERROR("Get Leader is error.");
         return Status::kError;
     }
+
+    if (pro_msg_wrap->msg_ptr->is_leader) {
+        auto local_index = leader_rotation_->GetLocalMemberIdx();
+        if (local_index != leader->index()) {
+            SETH_ERROR("Get Leader is error: %d, %d", local_index, leader->index());
+            return Status::kError;
+        }
+        
+        pro_msg_wrap->leader = leader;
+        return Status::kSuccess;
+    }
+
 
     auto msg_hash = transport::TcpTransport::Instance()->GetHeaderHashForSign(
         pro_msg_wrap->msg_ptr->header);
