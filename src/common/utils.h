@@ -62,7 +62,7 @@ struct Construct {
         assert(msg_ptr->times_idx < (sizeof(msg_ptr->times) / sizeof(msg_ptr->times[0]))); \
         auto btime = common::TimeUtils::TimestampUs(); \
         uint64_t diff_time = 0; \
-        if (msg_ptr->times_idx > 0) { diff_time = btime - msg_ptr->times[msg_ptr->times_idx - 1]; if (diff_time > 200000lu)SETH_INFO("over handle message debug use time: %lu, type: %d", diff_time, msg_ptr->header.type());} \
+        if (msg_ptr->times_idx > 0) { diff_time = btime - msg_ptr->times[msg_ptr->times_idx - 1]; if (diff_time > 100000lu)SETH_INFO("over handle message debug use time: %lu, type: %d", diff_time, msg_ptr->header.type());} \
         msg_ptr->debug_str[msg_ptr->times_idx] = std::string(SETH_LOG_FILE_NAME) + ":" + std::to_string(__LINE__); \
         msg_ptr->times[msg_ptr->times_idx] = btime; \
         msg_ptr->times_idx++; \
