@@ -1761,11 +1761,11 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
 
     if (pro_msg_wrap->msg_ptr->is_leader) {
         auto local_index = leader_rotation_->GetLocalMemberIdx();
-        if (local_index != leader->index()) {
-            SETH_ERROR("Get Leader is error: %d, %d", local_index, leader->index());
+        if (local_index != leader->index) {
+            SETH_ERROR("Get Leader is error: %d, %d", local_index, leader->index);
             return Status::kError;
         }
-        
+
         pro_msg_wrap->leader = leader;
         return Status::kSuccess;
     }
