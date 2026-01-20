@@ -327,7 +327,7 @@ Status BlockAcceptor::addTxsToPool(
         return CheckTransactionValid(parent_hash, view_block_chain_, addr_info, tx_info, now_nonce);
     };
 
-    auto check_tx_func = [&](pools::protobuf::TxMessage* tx, pools::TxItemPtr tx_ptr) -> Status {
+    auto check_tx_func = [&](const pools::protobuf::TxMessage* tx, pools::TxItemPtr tx_ptr) -> Status {
         if (tx_ptr != nullptr) {
             auto tx_hash = pools::GetTxMessageHash(*tx);
             if (checked_tx_hash_.Push(tx_hash) && pools::IsUserTransaction(tx_ptr->tx_info->step())) {
