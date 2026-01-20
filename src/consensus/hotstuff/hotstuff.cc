@@ -464,6 +464,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         SETH_DEBUG("invalid time block height: %lu, %lu", 
             msg_ptr->header.hotstuff().pro_msg().view_item().block_info().timeblock_height(),
             tm_block_mgr_->LatestTimestampHeight());
+        ADD_DEBUG_PROCESS_TIMESTAMP();
         return;
     }
 
@@ -479,6 +480,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
             common::Encode::HexEncode(
             msg_ptr->header.hotstuff().pro_msg().tc().sign_x()).c_str(),
             ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
+        ADD_DEBUG_PROCESS_TIMESTAMP();
         return;
     }
 
@@ -500,9 +502,11 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         ProtobufToJson(cons_debug).c_str());
 #endif
     if (leader_rotation_->GetLocalMemberIdx() == common::kInvalidUint32) {
+        ADD_DEBUG_PROCESS_TIMESTAMP();
         return;
     }
 
+    ADD_DEBUG_PROCESS_TIMESTAMP();
     auto b = common::TimeUtils::TimestampMs();
     defer({
         auto e = common::TimeUtils::TimestampMs();
@@ -537,6 +541,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     auto st = HandleProposeMsgStep_HasVote(pro_msg_wrap);
     if (st != Status::kSuccess) {
         HandleProposeMsgStep_VerifyQC(pro_msg_wrap);
+        ADD_DEBUG_PROCESS_TIMESTAMP();
         return;
     }
 
