@@ -375,11 +375,11 @@ Status Hotstuff::Propose(
 #ifndef NDEBUG
     auto t6 = common::TimeUtils::TimestampMs();
 #endif
-    // transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
+    transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
     // SETH_DEBUG("1 success add local message: %lu", tmp_msg_ptr->header.hash64());
     network::Route::Instance()->Send(tmp_msg_ptr);
-    ADD_DEBUG_PROCESS_TIMESTAMP();
-    HandleProposeMsg(tmp_msg_ptr);
+    // ADD_DEBUG_PROCESS_TIMESTAMP();
+    // HandleProposeMsg(tmp_msg_ptr);
     ADD_DEBUG_PROCESS_TIMESTAMP();
 #ifndef NDEBUG
     auto t7 = common::TimeUtils::TimestampMs();
@@ -724,10 +724,6 @@ Status Hotstuff::HandleProposeMsgStep_VerifyLeader(std::shared_ptr<ProposeMsgWra
             pool_idx_, view_item.qc().view(), pro_msg_wrap->msg_ptr->header.hash64());
         return Status::kError;
     }        
-
-    if (view_item.qc().leader_idx() == local_idx) {
-        pro_msg_wrap->msg_ptr->is_leader = true;
-    }
 
     return Status::kSuccess;
 }
@@ -1758,27 +1754,18 @@ Status Hotstuff::VerifyVoteMsg(const hotstuff::protobuf::VoteMsg& vote_msg) {
 }
 
 Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
-    if (pro_msg_wrap->leader) {
-        return Status::kSuccess;
-    }
-
     auto leader = leader_rotation()->GetLeader(); // Check if it is empty
     if (!leader) {
         SETH_ERROR("Get Leader is error.");
         return Status::kError;
     }
 
-    if (pro_msg_wrap->msg_ptr->is_leader) {
-        auto local_index = leader_rotation_->GetLocalMemberIdx();
-        if (local_index != leader->index) {
-            SETH_ERROR("Get Leader is error: %d, %d", local_index, leader->index);
-            return Status::kError;
-        }
-
+    auto local_index = leader_rotation_->GetLocalMemberIdx();
+    if (local_index == leader->index) {
         pro_msg_wrap->leader = leader;
+        pro_msg_wrap->msg_ptr->is_leader = true;
         return Status::kSuccess;
     }
-
 
     auto msg_hash = transport::TcpTransport::Instance()->GetHeaderHashForSign(
         pro_msg_wrap->msg_ptr->header);
