@@ -380,6 +380,7 @@ Status Hotstuff::Propose(
     network::Route::Instance()->Send(tmp_msg_ptr);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     HandleProposeMsg(tmp_msg_ptr);
+    ADD_DEBUG_PROCESS_TIMESTAMP();
 #ifndef NDEBUG
     auto t7 = common::TimeUtils::TimestampMs();
 #endif
