@@ -327,7 +327,7 @@ Status BlockAcceptor::addTxsToPool(
         return CheckTransactionValid(parent_hash, view_block_chain_, addr_info, tx_info, now_nonce);
     };
 
-    auto check_tx_func = [&](pools::protobuf::TxMessage* tx) -> Status {
+    auto check_tx_func = [&](const pools::protobuf::TxMessage* tx, uint32_t i) -> Status {
         // ADD_TX_DEBUG_INFO(const_cast<pools::protobuf::TxMessage*>(tx));
         protos::AddressInfoPtr address_info = nullptr;
         protos::AddressInfoPtr contract_address_info = nullptr;
@@ -662,7 +662,7 @@ Status BlockAcceptor::addTxsToPool(
 
     for (uint32_t i = 0; i < uint32_t(txs.size()); i++) {
         auto* tx = &txs[i];
-        auto st = check_tx_func(tx);
+        auto st = check_tx_func(tx, i);
         if (st != Status::kSuccess) {
             return st;
         }
