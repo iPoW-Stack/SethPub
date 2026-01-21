@@ -374,6 +374,7 @@ Status Hotstuff::Propose(
 
 #ifndef NDEBUG
     auto t6 = common::TimeUtils::TimestampMs();
+    tmp_msg_ptr->header.set_debug(std::to_string(tmp_msg_ptr->header.hash64()));
 #endif
     transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
     // SETH_DEBUG("1 success add local message: %lu", tmp_msg_ptr->header.hash64());
@@ -1255,12 +1256,14 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    SETH_INFO("%u_%u_%lu, ====2.1 pool: %d, onVote, hash: %s, hash64: %lu, replica: %d",
+    SETH_INFO("%u_%u_%lu, ====2.1 pool: %d, onVote, hash: %s, "
+        "src debug: %s, hash64: %lu, replica: %d",
         common::GlobalInfo::Instance()->network_id(),
         pool_idx_,
         vote_msg.view(),
         pool_idx_,
         common::Encode::HexEncode(vote_msg.view_block_hash()).c_str(),
+        msg_ptr->header.debug().c_str(),
         msg_ptr->header.hash64(),
         vote_msg.replica_idx());
 
