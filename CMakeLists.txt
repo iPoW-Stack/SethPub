@@ -3,7 +3,7 @@ option(BUILD_SHARED_LIBS "build shared library(.so/.a)" OFF)
 option(BUILD_CLIENT "build seth client" OFF)
 
 # version required
-cmake_minimum_required(VERSION 3.24.0)
+cmake_minimum_required(VERSION 3.22.0)
 project(seth)
 
 # =========================================================

@@ -1612,6 +1612,28 @@ class Block : public ::google::protobuf::Message /* @@protoc_insertion_point(cla
   const ::google::protobuf::RepeatedPtrField< ::seth::bls::protobuf::JoinElectInfo >&
       joins() const;
 
+  // repeated bytes unique_hashs = 25;
+  int unique_hashs_size() const;
+  void clear_unique_hashs();
+  static const int kUniqueHashsFieldNumber = 25;
+  const ::std::string& unique_hashs(int index) const;
+  ::std::string* mutable_unique_hashs(int index);
+  void set_unique_hashs(int index, const ::std::string& value);
+  #if LANG_CXX11
+  void set_unique_hashs(int index, ::std::string&& value);
+  #endif
+  void set_unique_hashs(int index, const char* value);
+  void set_unique_hashs(int index, const void* value, size_t size);
+  ::std::string* add_unique_hashs();
+  void add_unique_hashs(const ::std::string& value);
+  #if LANG_CXX11
+  void add_unique_hashs(::std::string&& value);
+  #endif
+  void add_unique_hashs(const char* value);
+  void add_unique_hashs(const void* value, size_t size);
+  const ::google::protobuf::RepeatedPtrField< ::std::string>& unique_hashs() const;
+  ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_unique_hashs();
+
   // optional .seth.pools.protobuf.ElectStatistic elect_statistic = 11;
   bool has_elect_statistic() const;
   void clear_elect_statistic();
@@ -1786,6 +1808,7 @@ class Block : public ::google::protobuf::Message /* @@protoc_insertion_point(cla
   ::google::protobuf::RepeatedPtrField< ::seth::address::protobuf::AddressInfo > address_array_;
   ::google::protobuf::RepeatedPtrField< ::seth::pools::protobuf::ToTxMessageItem > cross_shard_to_array_;
   ::google::protobuf::RepeatedPtrField< ::seth::bls::protobuf::JoinElectInfo > joins_;
+  ::google::protobuf::RepeatedPtrField< ::std::string> unique_hashs_;
   ::seth::pools::protobuf::ElectStatistic* elect_statistic_;
   ::seth::elect::protobuf::ElectBlock* elect_block_;
   ::seth::elect::protobuf::ElectBlock* prev_elect_block_;
@@ -7954,6 +7977,75 @@ inline void Block::set_allocated_pool_st_info(::seth::pools::protobuf::PoolStati
   }
   pool_st_info_ = pool_st_info;
   // @@protoc_insertion_point(field_set_allocated:seth.block.protobuf.Block.pool_st_info)
+}
+
+// repeated bytes unique_hashs = 25;
+inline int Block::unique_hashs_size() const {
+  return unique_hashs_.size();
+}
+inline void Block::clear_unique_hashs() {
+  unique_hashs_.Clear();
+}
+inline const ::std::string& Block::unique_hashs(int index) const {
+  // @@protoc_insertion_point(field_get:seth.block.protobuf.Block.unique_hashs)
+  return unique_hashs_.Get(index);
+}
+inline ::std::string* Block::mutable_unique_hashs(int index) {
+  // @@protoc_insertion_point(field_mutable:seth.block.protobuf.Block.unique_hashs)
+  return unique_hashs_.Mutable(index);
+}
+inline void Block::set_unique_hashs(int index, const ::std::string& value) {
+  // @@protoc_insertion_point(field_set:seth.block.protobuf.Block.unique_hashs)
+  unique_hashs_.Mutable(index)->assign(value);
+}
+#if LANG_CXX11
+inline void Block::set_unique_hashs(int index, ::std::string&& value) {
+  // @@protoc_insertion_point(field_set:seth.block.protobuf.Block.unique_hashs)
+  unique_hashs_.Mutable(index)->assign(std::move(value));
+}
+#endif
+inline void Block::set_unique_hashs(int index, const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  unique_hashs_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:seth.block.protobuf.Block.unique_hashs)
+}
+inline void Block::set_unique_hashs(int index, const void* value, size_t size) {
+  unique_hashs_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:seth.block.protobuf.Block.unique_hashs)
+}
+inline ::std::string* Block::add_unique_hashs() {
+  // @@protoc_insertion_point(field_add_mutable:seth.block.protobuf.Block.unique_hashs)
+  return unique_hashs_.Add();
+}
+inline void Block::add_unique_hashs(const ::std::string& value) {
+  unique_hashs_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add:seth.block.protobuf.Block.unique_hashs)
+}
+#if LANG_CXX11
+inline void Block::add_unique_hashs(::std::string&& value) {
+  unique_hashs_.Add(std::move(value));
+  // @@protoc_insertion_point(field_add:seth.block.protobuf.Block.unique_hashs)
+}
+#endif
+inline void Block::add_unique_hashs(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  unique_hashs_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:seth.block.protobuf.Block.unique_hashs)
+}
+inline void Block::add_unique_hashs(const void* value, size_t size) {
+  unique_hashs_.Add()->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:seth.block.protobuf.Block.unique_hashs)
+}
+inline const ::google::protobuf::RepeatedPtrField< ::std::string>&
+Block::unique_hashs() const {
+  // @@protoc_insertion_point(field_list:seth.block.protobuf.Block.unique_hashs)
+  return unique_hashs_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::std::string>*
+Block::mutable_unique_hashs() {
+  // @@protoc_insertion_point(field_mutable_list:seth.block.protobuf.Block.unique_hashs)
+  return &unique_hashs_;
 }
 
 // -------------------------------------------------------------------
