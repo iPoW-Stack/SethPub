@@ -389,7 +389,12 @@ Status Hotstuff::Propose(
         hotstuff_msg->pro_msg().view_item().qc().view(), 
         hotstuff_msg->pro_msg().tc().view());
 
-    SETH_DEBUG("new propose message hash: %lu", tmp_msg_ptr->header.hash64());
+    SETH_INFO("new propose message hash: %lu, tx size: %u, %u_%u_%lu", 
+        tmp_msg_ptr->header.hash64(),
+        hotstuff_msg->pro_msg().tx_propose().txs_size(),
+        common::GlobalInfo::Instance()->network_id(), 
+        pool_idx_, 
+        hotstuff_msg->pro_msg().view_item().qc().view());
     ADD_DEBUG_PROCESS_TIMESTAMP();
 
 #ifndef NDEBUG
@@ -1250,11 +1255,14 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    SETH_DEBUG("====2.1 pool: %d, onVote, hash: %s, view: %lu, hash64: %lu",
+    SETH_INFO("%u_%u_%lu, ====2.1 pool: %d, onVote, hash: %s, hash64: %lu, replica: %d",
+        common::GlobalInfo::Instance()->network_id(),
+        pool_idx_,
+        vote_msg.view(),
         pool_idx_,
         common::Encode::HexEncode(vote_msg.view_block_hash()).c_str(),
-        vote_msg.view(),
-        msg_ptr->header.hash64());
+        msg_ptr->header.hash64(),
+        vote_msg.replica_idx());
 
     // Sync replica's txs
     // Generate aggregate signature, create qc

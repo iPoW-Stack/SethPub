@@ -96,11 +96,11 @@ public:
     std::atomic<bool> valid;
 
     ViewBlockInfo() : 
-        view_block(nullptr), 
-        status(ViewBlockStatus::Unknown), 
-        qc(nullptr),
-        valid(false) {
-            common::GlobalInfo::Instance()->AddSharedObj(3);
+            view_block(nullptr), 
+            status(ViewBlockStatus::Unknown), 
+            qc(nullptr),
+            valid(false) {
+        common::GlobalInfo::Instance()->AddSharedObj(3);
     }
 
     ~ViewBlockInfo() {
