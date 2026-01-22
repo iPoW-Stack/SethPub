@@ -1378,7 +1378,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     // assert(ret != Status::kInvalidOpposedCount); It may occur temporarily due to inconsistent status
     if (ret != Status::kSuccess) {
         if (ret == Status::kBlsVerifyWaiting) {
-            SETH_WARN("kBlsWaiting pool: %d, view: %lu, hash64: %lu",
+            SETH_DEBUG("kBlsWaiting pool: %d, view: %lu, hash64: %lu",
                 pool_idx_, vote_msg.view(), msg_ptr->header.hash64());
             return;
         }
