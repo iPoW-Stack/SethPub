@@ -337,9 +337,9 @@ static void LoadAllAccounts(int32_t shardnum=3) {
         std::string addr = security->GetAddress();
         g_pri_addrs_map[prikey] = addr;
         g_addrs.push_back(addr);
-        if (g_pri_addrs_map.size() >= common::kImmutablePoolSize) {
-            break;
-        }
+        // if (g_pri_addrs_map.size() >= common::kImmutablePoolSize) {
+        //     break;
+        // }
         std::cout << common::Encode::HexEncode(prikey) << " : " << common::Encode::HexEncode(addr) << std::endl;
     }
 
