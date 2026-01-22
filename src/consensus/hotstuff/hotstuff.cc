@@ -1266,7 +1266,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    SETH_INFO("%u_%u_%lu, ====2.1 pool: %d, onVote, hash: %s, "
+    SETH_DEBUG("%u_%u_%lu, ====2.1 pool: %d, onVote, hash: %s, "
         "src debug: %s, hash64: %lu, replica: %d",
         common::GlobalInfo::Instance()->network_id(),
         pool_idx_,

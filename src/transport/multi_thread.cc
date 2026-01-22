@@ -378,7 +378,7 @@ uint8_t MultiThreadHandler::GetThreadIndex(MessagePtr& msg_ptr) {
     case common::kHotstuffMessage: {
         auto thread_idx = msg_ptr->header.hotstuff().pool_index() %
             common::GlobalInfo::Instance()->hotstuff_thread_count();
-        SETH_INFO("get hotstuff message thread idx: %d, pool_idx: %u, hash64: %lu",
+        SETH_DEBUG("get hotstuff message thread idx: %d, pool_idx: %u, hash64: %lu",
             thread_idx,
             msg_ptr->header.hotstuff().pool_index(),
             msg_ptr->header.hash64());

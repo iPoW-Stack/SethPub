@@ -310,7 +310,7 @@ Status BlockAcceptor::addTxsToPool(
 
     // 0. Basic check
     if (txs.size() == 0) {
-        SETH_INFO("accepte empty called!");
+        SETH_DEBUG("accepte empty called!");
         return Status::kAcceptorTxsEmpty;
     }
 
