@@ -21,16 +21,16 @@ static const uint32_t kBroadcastHopToLayer = 1u;
 static const uint32_t kBroadcastIgnBloomfilter = 1u;
 
 static inline void SetDefaultBroadcastParam(transport::protobuf::BroadcastParam* broadcast) {
-    broadcast->set_ign_bloomfilter_hop(kBroadcastIgnBloomfilter);
-    broadcast->set_hop_to_layer(0);
+    // broadcast->set_ign_bloomfilter_hop(kBroadcastIgnBloomfilter);
+    // broadcast->set_hop_to_layer(0);
     int32_t hop_limit = kBroadcastHopLimit;
     broadcast->set_hop_limit(hop_limit);
-    broadcast->set_layer_left(0);
-    broadcast->set_layer_right(common::kInvalidUint64);
-    int32_t neigber_count = kBroadcastDefaultNeighborCount;
-    broadcast->set_neighbor_count(neigber_count);
-    float overlap = 1.0f;
-    broadcast->set_overlap(overlap);
+    // broadcast->set_layer_left(0);
+    // broadcast->set_layer_right(common::kInvalidUint64);
+    // int32_t neigber_count = kBroadcastDefaultNeighborCount;
+    // broadcast->set_neighbor_count(neigber_count);
+    // float overlap = 1.0f;
+    // broadcast->set_overlap(overlap);
 }
 
 }  // namespace broadcast
