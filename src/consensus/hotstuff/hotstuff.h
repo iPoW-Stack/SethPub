@@ -271,7 +271,7 @@ private:
         uint32_t pool_index,
         View view);
 
-    static const uint64_t kLatestPoposeSendTxToLeaderPeriodMs = 5000lu;
+    static const uint64_t kLatestPoposeSendTxToLeaderPeriodMs = 10000lu;
 
     std::shared_ptr<block::BlockManager> block_mgr_;
     uint32_t pool_idx_;
