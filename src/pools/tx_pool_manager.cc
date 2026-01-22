@@ -487,7 +487,7 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
     if (header.has_tx_proto()) {
         auto& tx_msg = header.tx_proto();
         ADD_TX_DEBUG_INFO(header.mutable_tx_proto());
-        SETH_INFO("success handle message hash64: %lu, from: %s, to: %s, type: %d, nonce: %lu",
+        SETH_DEBUG("success handle message hash64: %lu, from: %s, to: %s, type: %d, nonce: %lu",
             msg_ptr->header.hash64(),
             common::Encode::HexEncode(tx_msg.pubkey()).c_str(),
             common::Encode::HexEncode(tx_msg.to()).c_str(),
@@ -555,7 +555,7 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
 
         if (pool_index == common::kInvalidPoolIndex) {
             if (msg_ptr->address_info == nullptr) {
-                SETH_DEBUG("invalid tx step: %d, address invalid.", (int32_t)tx_msg.step());
+                SETH_INFO("invalid tx step: %d, address invalid.", (int32_t)tx_msg.step());
                 return;
             }
 
