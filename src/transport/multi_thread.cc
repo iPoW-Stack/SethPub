@@ -267,12 +267,6 @@ void MultiThreadHandler::HandleMessage(MessagePtr& msg_ptr) {
         return;
     }
 
-    auto thread_index = GetThreadIndex(msg_ptr);
-    if (thread_index >= common::kMaxThreadCount) {
-        assert(false);
-        return;
-    }
-
     // if (msg_ptr->header.type() == common::kPoolsMessage && msg_ptr->header.has_tx_proto()) {
     //     if (threads_message_queues_[thread_index][priority].size() >= kEachMessagePoolMaxCount) {
     //         SETH_DEBUG("message filtered: %lu, type: %d, from: %s:%d",
@@ -303,6 +297,12 @@ void MultiThreadHandler::HandleMessage(MessagePtr& msg_ptr) {
                 0);
         }
         
+        return;
+    }
+
+    auto thread_index = GetThreadIndex(msg_ptr);
+    if (thread_index >= common::kMaxThreadCount) {
+        assert(false);
         return;
     }
 
@@ -378,6 +378,10 @@ uint8_t MultiThreadHandler::GetThreadIndex(MessagePtr& msg_ptr) {
     case common::kHotstuffMessage: {
         auto thread_idx = msg_ptr->header.hotstuff().pool_index() %
             common::GlobalInfo::Instance()->hotstuff_thread_count();
+        SETH_DEBUG("get hotstuff message thread idx: %d, pool_idx: %u, hash64: %lu",
+            thread_idx,
+            msg_ptr->header.hotstuff().pool_index(),
+            msg_ptr->header.hash64());
         return thread_vec_[thread_idx]->thread_idx();
     }
     case common::kHotstuffTimeoutMessage: {

@@ -197,7 +197,6 @@ Status Hotstuff::Propose(
     //     pool_idx_, 
     //     readobly_dht->size());
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
     if (tc != nullptr) {
         if (latest_qc_item_ptr_ == nullptr || tc->view() >= latest_qc_item_ptr_->view()) {
             assert(tc->pool_index() == pool_idx_);
@@ -293,6 +292,12 @@ Status Hotstuff::Propose(
     header.set_hop_count(0);
     auto* hotstuff_msg = header.mutable_hotstuff();
     auto* pb_pro_msg = hotstuff_msg->mutable_pro_msg();
+    SETH_DEBUG("pool: %d, leader begin construct propose msg, pre_vb: %u_%u_%lu, timeblock_height: %lu",
+        pool_idx_,
+        pre_v_block->qc().network_id(),
+        pre_v_block->qc().pool_index(),
+        pre_v_block->qc().view(),
+        tm_block_mgr_->LatestTimestampHeight());
     Status s = ConstructProposeMsg(msg_ptr, pb_pro_msg);
     if (s != Status::kSuccess) {
         if (!tc) {
@@ -374,10 +379,14 @@ Status Hotstuff::Propose(
 
 #ifndef NDEBUG
     auto t6 = common::TimeUtils::TimestampMs();
+    tmp_msg_ptr->header.set_debug(std::to_string(tmp_msg_ptr->header.hash64()));
 #endif
     transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
     // SETH_DEBUG("1 success add local message: %lu", tmp_msg_ptr->header.hash64());
     network::Route::Instance()->Send(tmp_msg_ptr);
+    if (hotstuff_msg->pro_msg().tx_propose().txs_size() > 0) {
+        latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
+    }
     // ADD_DEBUG_PROCESS_TIMESTAMP();
     // HandleProposeMsg(tmp_msg_ptr);
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -389,7 +398,12 @@ Status Hotstuff::Propose(
         hotstuff_msg->pro_msg().view_item().qc().view(), 
         hotstuff_msg->pro_msg().tc().view());
 
-    SETH_DEBUG("new propose message hash: %lu", tmp_msg_ptr->header.hash64());
+    SETH_INFO("new propose message hash: %lu, tx size: %u, %u_%u_%lu", 
+        tmp_msg_ptr->header.hash64(),
+        hotstuff_msg->pro_msg().tx_propose().txs_size(),
+        common::GlobalInfo::Instance()->network_id(), 
+        pool_idx_, 
+        hotstuff_msg->pro_msg().view_item().qc().view());
     ADD_DEBUG_PROCESS_TIMESTAMP();
 
 #ifndef NDEBUG
@@ -487,7 +501,6 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     assert(msg_ptr->header.hotstuff().pro_msg().view_item().qc().view_block_hash().empty());
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
-    latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
     cons_debug.ParseFromString(msg_ptr->header.debug());
     SETH_DEBUG("handle propose called hash: %lu, %u_%u_%lu, "
         "view block hash: %s, sign x: %s, propose_debug: %s", 
@@ -606,6 +619,9 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     SETH_DEBUG("handle propose message success hash: %lu, propose_debug: %s",
         msg_ptr->header.hash64(),
         ProtobufToJson(cons_debug).c_str());
+    if (msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size() > 0) {
+        latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
+    }
     ADD_DEBUG_PROCESS_TIMESTAMP();
 }
 
@@ -1250,11 +1266,16 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    SETH_DEBUG("====2.1 pool: %d, onVote, hash: %s, view: %lu, hash64: %lu",
+    SETH_DEBUG("%u_%u_%lu, ====2.1 pool: %d, onVote, hash: %s, "
+        "src debug: %s, hash64: %lu, replica: %d",
+        common::GlobalInfo::Instance()->network_id(),
+        pool_idx_,
+        vote_msg.view(),
         pool_idx_,
         common::Encode::HexEncode(vote_msg.view_block_hash()).c_str(),
-        vote_msg.view(),
-        msg_ptr->header.hash64());
+        msg_ptr->header.debug().c_str(),
+        msg_ptr->header.hash64(),
+        vote_msg.replica_idx());
 
     // Sync replica's txs
     // Generate aggregate signature, create qc
@@ -1414,12 +1435,13 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     view_block_chain()->UpdateHighViewBlock(qc_item);
     BroadcastGlobalPoolBlock(view_block_info_ptr->view_block);
     pacemaker()->NewQcView(qc_item.view());
-    SETH_DEBUG("NewView propose newview called pool: %u, qc_view: %lu, tc_view: %lu, propose_debug: %s",
-        pool_idx_, view_block_chain()->HighViewBlock()->qc().view(), pacemaker()->HighTC()->view(),
-        "ProtobufToJson(cons_debug).c_str()");
+    SETH_INFO("NewView propose newview called %u_%u_%lu, tc_view: %lu, propose_debug: %s",
+        qc_item.network_id(),
+        pool_idx_, view_block_chain()->HighViewBlock()->qc().view(), 
+        pacemaker()->HighTC()->view(),
+        msg_ptr->header.debug().c_str());
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto s = Propose(qc_item_ptr, nullptr, msg_ptr);
-    ADD_DEBUG_PROCESS_TIMESTAMP();
     ADD_DEBUG_PROCESS_TIMESTAMP();
 }
 

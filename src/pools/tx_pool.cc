@@ -143,12 +143,13 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
         }
     }
 
-    if (IsUserTransaction(tx_ptr->tx_info->step()) && 
-            added_txs_.size() >= common::GlobalInfo::Instance()->each_tx_pool_max_txs()) {
-        SETH_DEBUG("add failed extend %u, %u, all valid: %u", 
-            added_txs_.size(), common::GlobalInfo::Instance()->each_tx_pool_max_txs(), all_tx_size());
-        return kPoolsError;
-    }
+    // TODO: remove invalid addr
+    // if (IsUserTransaction(tx_ptr->tx_info->step()) && 
+    //         added_txs_.size() >= common::GlobalInfo::Instance()->each_tx_pool_max_txs()) {
+    //     SETH_INFO("add failed extend %u, %u, all valid: %u", 
+    //         added_txs_.size(), common::GlobalInfo::Instance()->each_tx_pool_max_txs(), all_tx_size());
+    //     return kPoolsError;
+    // }
 
     if (tx_ptr->tx_key.empty()) {
         SETH_DEBUG("add failed unique hash empty: %d", (int32_t)tx_ptr->tx_info->step());
@@ -418,7 +419,8 @@ void TxPool::GetTxIdempotently(
         std::vector<pools::TxItemPtr>& res_map,
         uint32_t count,
         pools::CheckAddrNonceValidFunction tx_valid_func) {
-    while (res_map.size() < count) {
+    int32_t try_times = 0;
+    while (res_map.size() < count && try_times++ < 10) {
         TempGetTxIdempotently(msg_ptr, res_map, count, tx_valid_func);
         if (count == 1) {
             break;
@@ -568,7 +570,7 @@ void TxPool::TempGetTxIdempotently(
                     if (res != 0) {
                         if (res > 0) {
                             if (now_nonce >= tx_ptr->tx_info->nonce() + iter->second.size()) {
-                                SETH_DEBUG("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s, "
+                                SETH_INFO("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s, "
                                     "now_nonce: %u, tx_ptr->tx_info->nonce() + iter->second.size(): %u", 
                                     pool_index_,
                                     common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 

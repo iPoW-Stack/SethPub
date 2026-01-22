@@ -47,6 +47,7 @@ std::unordered_map<std::string, uint64_t> prikey_with_nonce;
 std::unordered_map<std::string, uint64_t> src_prikey_with_nonce;
 uint64_t batch_nonce_check_count = 10240;
 static uint32_t kThreadCount = 16u;
+int32_t global_pool_idx = -1;
 std::map<std::string, std::shared_ptr<nlohmann::json>> account_info_jsons;
 
 std::mutex upadte_nonce_mutex;
@@ -337,9 +338,9 @@ static void LoadAllAccounts(int32_t shardnum=3) {
         std::string addr = security->GetAddress();
         g_pri_addrs_map[prikey] = addr;
         g_addrs.push_back(addr);
-        if (g_pri_addrs_map.size() >= common::kImmutablePoolSize) {
-            break;
-        }
+        // if (g_pri_addrs_map.size() >= common::kImmutablePoolSize) {
+        //     break;
+        // }
         std::cout << common::Encode::HexEncode(prikey) << " : " << common::Encode::HexEncode(addr) << std::endl;
     }
 
@@ -398,14 +399,13 @@ static void GetOqsKeys() {
 
 int tx_main(int argc, char** argv) {
     // ./txcli 0 $net_id $pool_id $ip $port $delay_us $multi_pool
-    int32_t pool_id = -1;
     auto ip = kBroadcastIp;
     auto port = kBroadcastPort;
     auto delayus_a = delayus;
     auto multi = multi_pool;
     if (argc >= 4) {
         shardnum = std::stoi(argv[2]);
-        pool_id = std::stoi(argv[3]);
+        global_pool_idx = std::stoi(argv[3]);
     }
 
     if (argc >= 6) {
@@ -422,7 +422,7 @@ int tx_main(int argc, char** argv) {
         multi = std::stoi(argv[7]);
     }
 
-    std::cout << "send tcp client ip_port" << ip << ": " << port << ", pool_id: " << pool_id << std::endl;
+    std::cout << "send tcp client ip_port" << ip << ": " << port << ", pool_id: " << global_pool_idx << std::endl;
 
     LoadAllAccounts(shardnum);
     SignalRegister();
@@ -430,7 +430,7 @@ int tx_main(int argc, char** argv) {
     transport::MultiThreadHandler net_handler;
     std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
     auto db_ptr = std::make_shared<db::Db>();
-    if (!db_ptr->Init(db_path + "_" + std::to_string(shardnum) + "_" + std::to_string(pool_id))) {
+    if (!db_ptr->Init(db_path + "_" + std::to_string(shardnum) + "_" + std::to_string(global_pool_idx))) {
         std::cout << "init db failed!" << std::endl;
         return 1;
     }
@@ -467,15 +467,15 @@ int tx_main(int argc, char** argv) {
         std::cout << "begin: " << begin_idx << ", end: " << end_idx << ", all: " << g_prikeys.size() << std::endl;
         std::string to = common::Encode::HexDecode("27d4c39244f26c157b5a87898569ef4ce5807413");
         uint32_t prikey_pos = begin_idx;
-        auto from_prikey = g_prikeys[begin_idx];;
+        auto from_prikey = g_prikeys[begin_idx];
         std::shared_ptr<security::Security> thread_security = std::make_shared<security::Ecdsa>();
         thread_security->SetPrivateKey(from_prikey);
         uint32_t count = 0;
-        uint32_t batch_count = 20;
+        uint32_t batch_count = 2;
         auto addr = thread_security->GetAddress();
         while (!global_stop) {
             if (count % batch_count == 0) {
-                if (pool_id == -1) {
+                if (global_pool_idx == -1) {
                     ++prikey_pos;
                     if (prikey_pos >= end_idx) {
                         prikey_pos = begin_idx;
@@ -492,7 +492,7 @@ int tx_main(int argc, char** argv) {
                 usleep(1000000);
                 update_nonce_con.notify_one();
                 usleep(1000000);
-                if (src_prikey_with_nonce[addr] + 4 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
+                if (src_prikey_with_nonce[addr] + 3 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
                     prikey_with_nonce[addr] = src_prikey_with_nonce[addr];
                 }
             }
@@ -504,8 +504,8 @@ int tx_main(int argc, char** argv) {
                 to,
                 key,
                 value,
-                1980,
-                10000,
+                10,
+                1000,
                 1,
                 shardnum);
             if (transport::TcpTransport::Instance()->Send(ip, port, tx_msg_ptr->header) != 0) {
@@ -519,7 +519,7 @@ int tx_main(int argc, char** argv) {
     };
 
     std::vector<std::thread> thread_vec;
-    if (pool_id == -1) {
+    if (global_pool_idx == -1) {
         uint32_t each_thread_size = g_prikeys.size() / kThreadCount;
         for (uint32_t i = 0; i < kThreadCount; ++i) {
             thread_vec.push_back(std::thread(tx_thread, i * each_thread_size, (i + 1) * each_thread_size));
@@ -530,9 +530,9 @@ int tx_main(int argc, char** argv) {
             auto from_prikey = g_prikeys[i];
             std::shared_ptr<security::Security> thread_security = std::make_shared<security::Ecdsa>();
             thread_security->SetPrivateKey(from_prikey);
-            if (common::GetAddressPoolIndex(thread_security->GetAddress()) == pool_id) {
+            if (common::GetAddressPoolIndex(thread_security->GetAddress()) == global_pool_idx) {
                 thread_vec.push_back(std::thread(tx_thread, i, i + 1));
-                break;
+                // break;
             }
         }
     }
@@ -717,6 +717,10 @@ void UpdateAddressNonce(const std::string& contract_address) {
         std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
         security->SetPrivateKey(*iter);
         auto addr = security->GetAddress();
+        if (common::GetAddressPoolIndex(addr) != global_pool_idx) {
+            continue;
+        }
+
         if (!contract_address.empty()) {
             addr = contract_address + addr;
         }
@@ -727,6 +731,7 @@ void UpdateAddressNonce(const std::string& contract_address) {
         }
 
         src_prikey_with_nonce[addr] = nonce;
+        std::cout << common::Encode::HexEncode(addr) << ", nonce: " << nonce << std::endl;
     }
 }
 
@@ -769,6 +774,7 @@ int call_bentchmark(int argc, char** argv) {
         pool_id = std::stoi(argv[5]);
     }
 
+    global_pool_idx = pool_id;
     if (argc >= 8) {
         ip = argv[6];
         global_chain_node_ip = ip;

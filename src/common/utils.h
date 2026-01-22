@@ -115,14 +115,16 @@ struct Construct {
 
 #ifndef NDEBUG
 #define CHECK_MEMORY_SIZE(data_map) { \
-    if (data_map.size() >= 10240) { \
+    if (data_map.size() >= 102400) { \
         SETH_INFO("data size: %u", data_map.size()); \
+        assert(false); \
     } \
 }
 
 #define CHECK_MEMORY_SIZE_WITH_MESSAGE(data_map, msg) { \
-    if (data_map.size() >= 10240) { \
+    if (data_map.size() >= 102400) { \
         SETH_INFO("%s data size: %u, msg: %s", #data_map, data_map.size(), msg); \
+        assert(false); \
     } \
 }
 
@@ -228,7 +230,7 @@ static const uint32_t kUnicastAddressLength = 20u;
 static const uint32_t kPreypamentAddressLength = 40u;
 static const uint32_t kImmutablePoolSize = 32u;
 static const uint32_t kGlobalPoolIndex = kImmutablePoolSize;
-static const uint32_t kMaxTxCount = 14480u;
+static const uint32_t kMaxTxCount = 4096u;
 static const uint32_t kInvalidPoolIndex = kImmutablePoolSize + 1;
 static const uint32_t kTestForNetworkId = 4u;
 static const uint16_t kDefaultVpnPort = 9033u;

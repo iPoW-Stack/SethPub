@@ -40,7 +40,7 @@ void GlobalInfo::Timer() {
             i, count, shared_obj_max_count_[i]);
     }
 
-    tick_ptr_->CutOff(2000000lu, std::bind(&GlobalInfo::Timer, this));
+    tick_ptr_->CutOff(20000000lu, std::bind(&GlobalInfo::Timer, this));
 }
 
 int GlobalInfo::Init(const common::Config& config) {

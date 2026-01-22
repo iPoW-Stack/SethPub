@@ -975,7 +975,7 @@ std::string ViewBlockChain::String() const {
         view_set.insert(vb->qc().view());
     }
 
-    SETH_INFO("get chain pool: %u, views: %s, all size: %u, block_height_str: %s",
+    SETH_DEBUG("get chain pool: %u, views: %s, all size: %u, block_height_str: %s",
         pool_index_, ret.c_str(), view_blocks_info_.size(), block_height_str.c_str());
     assert(height_set.size() < 256);
     return ret;
@@ -1214,7 +1214,7 @@ int ViewBlockChain::CheckTxNonceValid(
     }
 
     if (addr_info->nonce() + 1 != nonce) {
-        SETH_INFO("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
+        SETH_DEBUG("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
             common::Encode::HexEncode(addr).c_str(), 
             nonce,
             addr_info->nonce(),
@@ -1222,7 +1222,7 @@ int ViewBlockChain::CheckTxNonceValid(
         return addr_info->nonce() + 1 > nonce ? 1 : -1;
     }
 
-    SETH_INFO("success check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
+    SETH_DEBUG("success check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
         common::Encode::HexEncode(addr).c_str(), 
         nonce,
         addr_info->nonce(),
@@ -1337,7 +1337,7 @@ void ViewBlockChain::AddPoolStatisticTag(uint64_t height) {
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
     tx->set_nonce(height);
     pools_mgr_->HandleMessage(msg_ptr);
-    SETH_INFO("success create kPoolStatisticTag nonce: %lu, pool idx: %u, "
+    SETH_DEBUG("success create kPoolStatisticTag nonce: %lu, pool idx: %u, "
         "pool addr: %s, addr get pool: %u, height: %lu, unique_hash: %s",
         tx->nonce(), 
         pool_index_,
@@ -1351,7 +1351,7 @@ void ViewBlockChain::OnTimeBlock(
         uint64_t lastest_time_block_tm,
         uint64_t latest_time_block_height,
         uint64_t vss_random) {
-    SETH_INFO("new timeblock coming: %lu, %lu, lastest_time_block_tm: %lu",
+    SETH_DEBUG("new timeblock coming: %lu, %lu, lastest_time_block_tm: %lu",
         static_cast<uint64_t>(latest_timeblock_height_), latest_time_block_height, lastest_time_block_tm);
     if (latest_timeblock_height_ >= latest_time_block_height) {
         return;

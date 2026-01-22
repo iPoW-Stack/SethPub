@@ -420,7 +420,7 @@ void TxPoolManager::HandleMessage(const transport::MessagePtr& msg_ptr) {
             // if (tx_pool_[address_info->pool_index()].all_tx_size() >= 
             //         common::GlobalInfo::Instance()->each_tx_pool_max_txs()) {
                 if (!NewTxValid(address_info->pool_index(), address_info->addr(), tx_msg.nonce())) {
-                    SETH_DEBUG("add failed extend %u, %u, all valid: %u", 
+                    SETH_INFO("add failed extend %u, %u, all valid: %u", 
                         tx_pool_[address_info->pool_index()].all_tx_size(), 
                         common::GlobalInfo::Instance()->each_tx_pool_max_txs(), 
                         tx_pool_[address_info->pool_index()].all_tx_size());
@@ -555,7 +555,7 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
 
         if (pool_index == common::kInvalidPoolIndex) {
             if (msg_ptr->address_info == nullptr) {
-                SETH_DEBUG("invalid tx step: %d, address invalid.", (int32_t)tx_msg.step());
+                SETH_INFO("invalid tx step: %d, address invalid.", (int32_t)tx_msg.step());
                 return;
             }
 
@@ -957,7 +957,7 @@ void TxPoolManager::HandleNormalFromTx(const transport::MessagePtr& msg_ptr) {
     if (msg_ptr->address_info->balance() <
             tx_msg.amount() + tx_msg.contract_prepayment() +
             consensus::kTransferGas * tx_msg.gas_price()) {
-        SETH_DEBUG("address: %s balance invalid: %lu, transfer amount: %lu, "
+        SETH_INFO("address: %s balance invalid: %lu, transfer amount: %lu, "
             "prepayment: %lu, default call contract gas: %lu",
             common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
             msg_ptr->address_info->balance(),
