@@ -267,12 +267,6 @@ void MultiThreadHandler::HandleMessage(MessagePtr& msg_ptr) {
         return;
     }
 
-    auto thread_index = GetThreadIndex(msg_ptr);
-    if (thread_index >= common::kMaxThreadCount) {
-        assert(false);
-        return;
-    }
-
     // if (msg_ptr->header.type() == common::kPoolsMessage && msg_ptr->header.has_tx_proto()) {
     //     if (threads_message_queues_[thread_index][priority].size() >= kEachMessagePoolMaxCount) {
     //         SETH_DEBUG("message filtered: %lu, type: %d, from: %s:%d",
@@ -303,6 +297,12 @@ void MultiThreadHandler::HandleMessage(MessagePtr& msg_ptr) {
                 0);
         }
         
+        return;
+    }
+
+    auto thread_index = GetThreadIndex(msg_ptr);
+    if (thread_index >= common::kMaxThreadCount) {
+        assert(false);
         return;
     }
 
