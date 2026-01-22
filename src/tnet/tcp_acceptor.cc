@@ -73,7 +73,7 @@ bool TcpAcceptor::Start() {
     bool rc = event_loop_.EnableIoEvent(socket_->GetFd(), kEventRead, *this);
     if (rc) {
         stop_ = false;
-        SETH_INFO("enable accept event success");
+        SETH_DEBUG("enable accept event success");
     } else {
         SETH_ERROR("enable accept event failed");
     }
@@ -198,7 +198,7 @@ bool TcpAcceptor::OnRead() {
             std::ref(*conn),
             std::ref(conn_handler_)));
         event_loop.Wakeup();
-        SETH_INFO("accept success %s:%d", from_ip.c_str(), from_port);
+        SETH_DEBUG("accept success %s:%d", from_ip.c_str(), from_port);
         conn_map_[from_ip + std::to_string(from_port)] = conn;
         CHECK_MEMORY_SIZE(conn_map_);
         in_check_queue_->push(conn);
@@ -214,7 +214,7 @@ bool TcpAcceptor::OnRead() {
             if (iter != conn_map_.end()) {
                 conn_map_.erase(iter);
                 CHECK_MEMORY_SIZE(conn_map_);
-                SETH_INFO("remove accept connection: %s", key.c_str());
+                SETH_DEBUG("remove accept connection: %s", key.c_str());
             }
         }
     }
@@ -241,7 +241,7 @@ void TcpAcceptor::CheckConnectionValid() {
         conn->ShouldReconnect();
         SETH_DEBUG("ShouldReconnect called now checked stopted conn waiting_check_queue_ size: %u", waiting_check_queue_.size());
         if (conn->CheckStoped()) {
-            SETH_INFO("checked stopted conn.");
+            SETH_DEBUG("checked stopted conn.");
             out_check_queue_->push(conn);
         } else {
             waiting_check_queue_.push_back(conn);
