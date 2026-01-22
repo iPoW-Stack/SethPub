@@ -448,7 +448,7 @@ std::shared_ptr<tnet::TcpConnection> TcpTransport::GetConnection(
     conn_map_[peer_spec] = tcp_conn;
     CHECK_MEMORY_SIZE(conn_map_);
     in_check_queue_.push(tcp_conn);
-    SETH_INFO("success connect new socket %s:%d, conn map size: %d", 
+    SETH_DEBUG("success connect new socket %s:%d, conn map size: %d", 
         ip.c_str(), port, conn_map_.size());
     int process_limit = 32;
     while (process_limit-- > 0 && !destroy_) {
@@ -462,7 +462,7 @@ std::shared_ptr<tnet::TcpConnection> TcpTransport::GetConnection(
         if (iter != conn_map_.end()) {
             conn_map_.erase(iter);
             CHECK_MEMORY_SIZE(conn_map_);
-            SETH_INFO("remove accept connection: %s", key.c_str());
+            SETH_DEBUG("remove accept connection: %s", key.c_str());
         }
     }
 
@@ -488,7 +488,7 @@ void TcpTransport::CheckConnectionValid() {
         waiting_check_queue_.pop_front();
         conn->ShouldReconnect();
         if (conn->CheckStoped()) {
-            SETH_INFO("1 checked stopted conn.");
+            SETH_DEBUG("1 checked stopted conn.");
             out_check_queue_.push(conn);
         } else {
             waiting_check_queue_.push_back(conn);
