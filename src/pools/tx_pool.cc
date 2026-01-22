@@ -568,7 +568,7 @@ void TxPool::TempGetTxIdempotently(
                     if (res != 0) {
                         if (res > 0) {
                             if (now_nonce >= tx_ptr->tx_info->nonce() + iter->second.size()) {
-                                SETH_DEBUG("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s, "
+                                SETH_INFO("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s, "
                                     "now_nonce: %u, tx_ptr->tx_info->nonce() + iter->second.size(): %u", 
                                     pool_index_,
                                     common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
