@@ -348,7 +348,9 @@ void HotstuffManager::HandleMessage(const transport::MessagePtr& msg_ptr) {
                     return;
                 }
                 
+                SETH_INFO("handle propose message bengin: hash64: %lu", header.hash64());
                 hotstuff(hotstuff_msg.pool_index())->HandleProposeMsg(msg_ptr);
+                SETH_INFO("handle propose message over: hash64: %lu", header.hash64());
                 ADD_DEBUG_PROCESS_TIMESTAMP();
                 break;
             }
