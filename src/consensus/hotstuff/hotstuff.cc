@@ -1403,7 +1403,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     qc_item.set_sign_x(libBLS::ThresholdUtils::fieldElementToString(reconstructed_sign->X));
     qc_item.set_sign_y(libBLS::ThresholdUtils::fieldElementToString(reconstructed_sign->Y));
     // switch view
-    SETH_DEBUG("success new set qc view: %lu, %u_%u_%lu",
+    SETH_INFO("success new set qc view: %lu, %u_%u_%lu",
         qc_item.view(),
         qc_item.network_id(),
         qc_item.pool_index(),
