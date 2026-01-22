@@ -418,7 +418,8 @@ void TxPool::GetTxIdempotently(
         std::vector<pools::TxItemPtr>& res_map,
         uint32_t count,
         pools::CheckAddrNonceValidFunction tx_valid_func) {
-    while (res_map.size() < count) {
+    int32_t try_times = 0;
+    while (res_map.size() < count && try_times++ < 10) {
         TempGetTxIdempotently(msg_ptr, res_map, count, tx_valid_func);
         if (count == 1) {
             break;
