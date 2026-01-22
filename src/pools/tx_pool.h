@@ -79,7 +79,7 @@ public:
         uint64_t over_nonce = 0lu;
         if (add_addr_nonce_map_.Get(addr, over_nonce)) {
             if (over_nonce >= nonce || (over_nonce + 4 * common::kMaxTxCount) <= nonce) {
-                SETH_DEBUG("trace tx pool: %d, failed add tx %s, nonce: %lu, over_nonce: %lu, max nonce: %lu", 
+                SETH_INFO("trace tx pool: %d, failed add tx %s, nonce: %lu, over_nonce: %lu, max nonce: %lu", 
                     pool_index_,
                     common::Encode::HexEncode(addr).c_str(),
                     nonce,
