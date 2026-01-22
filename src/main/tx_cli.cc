@@ -467,7 +467,7 @@ int tx_main(int argc, char** argv) {
         std::cout << "begin: " << begin_idx << ", end: " << end_idx << ", all: " << g_prikeys.size() << std::endl;
         std::string to = common::Encode::HexDecode("27d4c39244f26c157b5a87898569ef4ce5807413");
         uint32_t prikey_pos = begin_idx;
-        auto from_prikey = g_prikeys[begin_idx];;
+        auto from_prikey = g_prikeys[begin_idx];
         std::shared_ptr<security::Security> thread_security = std::make_shared<security::Ecdsa>();
         thread_security->SetPrivateKey(from_prikey);
         uint32_t count = 0;
@@ -488,11 +488,11 @@ int tx_main(int argc, char** argv) {
                 usleep(10000lu);
             }
 
-            if (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
+            if (src_prikey_with_nonce[addr] + 3 * 18240 <= prikey_with_nonce[addr]) {
                 usleep(1000000);
                 update_nonce_con.notify_one();
                 usleep(1000000);
-                if (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
+                if (src_prikey_with_nonce[addr] + 3 * 18240 <= prikey_with_nonce[addr]) {
                     prikey_with_nonce[addr] = src_prikey_with_nonce[addr];
                 }
             }
@@ -504,8 +504,8 @@ int tx_main(int argc, char** argv) {
                 to,
                 key,
                 value,
-                1980,
-                10000,
+                10,
+                1000,
                 1,
                 shardnum);
             if (transport::TcpTransport::Instance()->Send(ip, port, tx_msg_ptr->header) != 0) {
