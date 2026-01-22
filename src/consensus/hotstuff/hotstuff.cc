@@ -1378,7 +1378,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     // assert(ret != Status::kInvalidOpposedCount); It may occur temporarily due to inconsistent status
     if (ret != Status::kSuccess) {
         if (ret == Status::kBlsVerifyWaiting) {
-            SETH_DEBUG("kBlsWaiting pool: %d, view: %lu, hash64: %lu",
+            SETH_WARN("kBlsWaiting pool: %d, view: %lu, hash64: %lu",
                 pool_idx_, vote_msg.view(), msg_ptr->header.hash64());
             return;
         }
@@ -1435,12 +1435,13 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     view_block_chain()->UpdateHighViewBlock(qc_item);
     BroadcastGlobalPoolBlock(view_block_info_ptr->view_block);
     pacemaker()->NewQcView(qc_item.view());
-    SETH_DEBUG("NewView propose newview called pool: %u, qc_view: %lu, tc_view: %lu, propose_debug: %s",
-        pool_idx_, view_block_chain()->HighViewBlock()->qc().view(), pacemaker()->HighTC()->view(),
-        "ProtobufToJson(cons_debug).c_str()");
+    SETH_INFO("NewView propose newview called %u_%u_%lu, tc_view: %lu, propose_debug: %s",
+        qc_item.network_id(),
+        pool_idx_, view_block_chain()->HighViewBlock()->qc().view(), 
+        pacemaker()->HighTC()->view(),
+        msg_ptr->header.debug().c_str());
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto s = Propose(qc_item_ptr, nullptr, msg_ptr);
-    ADD_DEBUG_PROCESS_TIMESTAMP();
     ADD_DEBUG_PROCESS_TIMESTAMP();
 }
 
