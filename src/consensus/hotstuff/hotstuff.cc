@@ -292,7 +292,7 @@ Status Hotstuff::Propose(
     header.set_hop_count(0);
     auto* hotstuff_msg = header.mutable_hotstuff();
     auto* pb_pro_msg = hotstuff_msg->mutable_pro_msg();
-    SETH_INFO("pool: %d, leader begin construct propose msg, pre_vb: %u_%u_%lu, timeblock_height: %lu",
+    SETH_DEBUG("pool: %d, leader begin construct propose msg, pre_vb: %u_%u_%lu, timeblock_height: %lu",
         pool_idx_,
         pre_v_block->qc().network_id(),
         pre_v_block->qc().pool_index(),
