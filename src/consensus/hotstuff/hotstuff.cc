@@ -197,7 +197,6 @@ Status Hotstuff::Propose(
     //     pool_idx_, 
     //     readobly_dht->size());
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
     if (tc != nullptr) {
         if (latest_qc_item_ptr_ == nullptr || tc->view() >= latest_qc_item_ptr_->view()) {
             assert(tc->pool_index() == pool_idx_);
@@ -379,6 +378,9 @@ Status Hotstuff::Propose(
     transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
     // SETH_DEBUG("1 success add local message: %lu", tmp_msg_ptr->header.hash64());
     network::Route::Instance()->Send(tmp_msg_ptr);
+    if (hotstuff_msg->pro_msg().tx_propose().txs_size() > 0) {
+        latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
+    }
     // ADD_DEBUG_PROCESS_TIMESTAMP();
     // HandleProposeMsg(tmp_msg_ptr);
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -493,7 +495,6 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     assert(msg_ptr->header.hotstuff().pro_msg().view_item().qc().view_block_hash().empty());
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
-    latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
     cons_debug.ParseFromString(msg_ptr->header.debug());
     SETH_DEBUG("handle propose called hash: %lu, %u_%u_%lu, "
         "view block hash: %s, sign x: %s, propose_debug: %s", 
@@ -612,6 +613,9 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     SETH_DEBUG("handle propose message success hash: %lu, propose_debug: %s",
         msg_ptr->header.hash64(),
         ProtobufToJson(cons_debug).c_str());
+    if (msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size() > 0) {
+        latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
+    }
     ADD_DEBUG_PROCESS_TIMESTAMP();
 }
 
