@@ -133,6 +133,7 @@ make_package() {
     cp -rf /root/nodes/seth/shard_db_3 /root/nodes/seth/pkg
     cp -rf /root/nodes/temp /root/nodes/seth/pkg
     cp -rf /root/seth/gdb/* /root/nodes/seth/pkg
+    cp -rf /root/seth/init_accounts* /root/nodes/seth/pkg
     cd /root/nodes/seth/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
 }
 

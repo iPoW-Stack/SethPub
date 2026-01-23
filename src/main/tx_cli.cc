@@ -316,8 +316,11 @@ static std::unordered_map<std::string, std::string> g_oqs_pri_pub_map;
 static void LoadAllAccounts(int32_t shardnum=3) {
     FILE* fd = fopen((std::string("../init_accounts") + std::to_string(shardnum)).c_str(), "r");
     if (fd == nullptr) {
+        fd = fopen((std::string("./init_accounts") + std::to_string(shardnum)).c_str(), "r");
+	if (fd == nullptr) {
         std::cout << "invalid init acc file." << std::endl;
         exit(1);
+	}
     }
 
     bool res = true;
