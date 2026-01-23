@@ -205,14 +205,14 @@ Status Crypto::VerifyThresSign(
     return Status::kSuccess;
 #endif
     if (reconstructed_sign == libff::alt_bn128_G1::zero()) {
-        SETH_DEBUG("reconstructed_sign == nullptr");
+        SETH_WARN("reconstructed_sign == nullptr");
         assert(false);
         return Status::kBlsVerifyFailed;
     }    
     std::string verify_hash_a;
     Status s = GetVerifyHashA(sharding_id, elect_height, msg_hash, &verify_hash_a);
     if (s != Status::kSuccess) {
-        SETH_DEBUG("GetVerifyHashA faile net: %u, pool: %u, height: %lu, hash: %s",
+        SETH_WARN("GetVerifyHashA faile net: %u, pool: %u, height: %lu, hash: %s",
             sharding_id, sharding_id, elect_height,
             common::Encode::HexEncode(msg_hash).c_str());
         // assert(false);
@@ -222,7 +222,7 @@ Status Crypto::VerifyThresSign(
     std::string verify_hash_b;
     s = GetVerifyHashB(sharding_id, elect_height, reconstructed_sign, &verify_hash_b);
     if (s != Status::kSuccess) {
-        SETH_DEBUG("GetVerifyHashB failed!");
+        SETH_WARN("GetVerifyHashB failed!");
         assert(false);
         return s;
     }
@@ -233,7 +233,7 @@ Status Crypto::VerifyThresSign(
             elect_item->common_pk().X.c0);
         auto agg_sign_str = libBLS::ThresholdUtils::fieldElementToString(
             reconstructed_sign.X);
-        SETH_DEBUG("verify_hash_a != verify_hash_b %s, %s, msg_hash: %s, "
+        SETH_WARN("verify_hash_a != verify_hash_b %s, %s, msg_hash: %s, "
             "net: %u, pool: %u, elect height: %lu, common PK: %s, agg sign: %s", 
             common::Encode::HexEncode(verify_hash_a).c_str(),
             common::Encode::HexEncode(verify_hash_b).c_str(),
