@@ -43,6 +43,7 @@ static std::unordered_map<uint32_t, std::unordered_map<uint32_t, std::string>> n
 std::mutex cli_mutex;
 std::condition_variable cli_con;
 std::string global_chain_node_ip = "127.0.0.1";
+uint16_t global_chain_node_http_port = 13001;
 std::unordered_map<std::string, uint64_t> prikey_with_nonce;
 std::unordered_map<std::string, uint64_t> src_prikey_with_nonce;
 uint64_t batch_nonce_check_count = 10240;
@@ -316,8 +317,11 @@ static std::unordered_map<std::string, std::string> g_oqs_pri_pub_map;
 static void LoadAllAccounts(int32_t shardnum=3) {
     FILE* fd = fopen((std::string("../init_accounts") + std::to_string(shardnum)).c_str(), "r");
     if (fd == nullptr) {
+        fd = fopen((std::string("./init_accounts") + std::to_string(shardnum)).c_str(), "r");
+	if (fd == nullptr) {
         std::cout << "invalid init acc file." << std::endl;
         exit(1);
+	}
     }
 
     bool res = true;
@@ -412,6 +416,7 @@ int tx_main(int argc, char** argv) {
         ip = argv[4];
         global_chain_node_ip = ip;
         port = std::stoi(argv[5]);
+        global_chain_node_http_port = port + 10000;
     }
 
     if (argc >= 7) {
@@ -471,7 +476,7 @@ int tx_main(int argc, char** argv) {
         std::shared_ptr<security::Security> thread_security = std::make_shared<security::Ecdsa>();
         thread_security->SetPrivateKey(from_prikey);
         uint32_t count = 0;
-        uint32_t batch_count = 2;
+        uint32_t batch_count = 30;
         auto addr = thread_security->GetAddress();
         while (!global_stop) {
             if (count % batch_count == 0) {
@@ -485,7 +490,7 @@ int tx_main(int argc, char** argv) {
                     thread_security->SetPrivateKey(from_prikey);
                     addr = thread_security->GetAddress();
                 }
-                usleep(10000lu);
+                usleep(100000lu);
             }
 
             if (src_prikey_with_nonce[addr] + 3 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
@@ -712,7 +717,7 @@ void UpdateAddressNonce() {
 }
 
 void UpdateAddressNonce(const std::string& contract_address) {
-    SethSDK client(kBroadcastIp);
+    SethSDK client(global_chain_node_ip, global_chain_node_http_port);
     for (auto iter = g_prikeys.begin(); iter != g_prikeys.end(); ++iter) {
         std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
         security->SetPrivateKey(*iter);
