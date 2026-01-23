@@ -114,7 +114,7 @@ init() {
     cd /root/nodes/seth && ./seth -S 3 -N $nodes_count -E 4
     cd /root/nodes/seth && ./seth -C
     cd /root/seth/cbuild_$TARGET && make txcli
-    sudo cp -rf ./cbuild_$TARGET/txcli /root/nodes/txcli
+    sudo cp -rf /root/seth/cbuild_$TARGET/txcli /root/nodes/txcli
 }
 
 make_package() {
