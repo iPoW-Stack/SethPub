@@ -416,7 +416,12 @@ int tx_main(int argc, char** argv) {
         ip = argv[4];
         global_chain_node_ip = ip;
         port = std::stoi(argv[5]);
-        global_chain_node_http_port = port + (port > 10000 ? 10000 : (port > 1000 ? : 1000 : (port > 100 ? 100 : (port > 10 ? 10 : 0))))
+        global_chain_node_http_port = port + (
+            port > 10000 ? 10000 :        // 如果端口 > 10000 (如 13333)，加 10000 -> 23333
+            (port > 1000 ? 1000 :         // 如果端口 > 1000 (如 3000)，加 1000 -> 4000
+            (port > 100 ? 100 :           // 如果端口 > 100 (如 800)，加 100 -> 900
+            (port > 10 ? 10 : 0)))        // 如果端口 > 10，加 10
+        );
     }
 
     if (argc >= 7) {
