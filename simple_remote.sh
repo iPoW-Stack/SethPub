@@ -89,6 +89,7 @@ init() {
 
 
     sudo cp -rf ./cbuild_$TARGET/seth /root/nodes/seth
+    sudo cp -rf ./cbuild_$TARGET/txcli /root/nodes/txcli
     if [[ "$each_nodes_count" -eq "" ]]; then
         each_nodes_count=4
     fi
@@ -120,7 +121,7 @@ make_package() {
     rm -rf /root/nodes/seth/pkg
     mkdir /root/nodes/seth/pkg
     cp /root/nodes/seth/seth /root/nodes/seth/pkg
-    cp /root/nodes/seth/txcli /root/nodes/seth/pkg
+    cp /root/nodes/txcli /root/nodes/seth/pkg
     cp /root/nodes/seth/conf/GeoLite2-City.mmdb /root/nodes/seth/pkg
     cp /root/nodes/seth/conf/log4cpp.properties /root/nodes/seth/pkg
     cp /root/seth/shards3 /root/nodes/seth/pkg
