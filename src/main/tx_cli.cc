@@ -474,7 +474,7 @@ int tx_main(int argc, char** argv) {
         std::shared_ptr<security::Security> thread_security = std::make_shared<security::Ecdsa>();
         thread_security->SetPrivateKey(from_prikey);
         uint32_t count = 0;
-        uint32_t batch_count = 2;
+        uint32_t batch_count = 100;
         auto addr = thread_security->GetAddress();
         while (!global_stop) {
             if (count % batch_count == 0) {
