@@ -417,7 +417,6 @@ int tx_main(int argc, char** argv) {
         global_chain_node_ip = ip;
         port = std::stoi(argv[5]);
         global_chain_node_http_port = port + 10000;
-        );
     }
 
     if (argc >= 7) {
