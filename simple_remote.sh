@@ -89,7 +89,6 @@ init() {
 
 
     sudo cp -rf ./cbuild_$TARGET/seth /root/nodes/seth
-    sudo cp -rf ./cbuild_$TARGET/txcli /root/nodes/txcli
     if [[ "$each_nodes_count" -eq "" ]]; then
         each_nodes_count=4
     fi
@@ -115,6 +114,7 @@ init() {
     cd /root/nodes/seth && ./seth -S 3 -N $nodes_count -E 4
     cd /root/nodes/seth && ./seth -C
     cd /root/seth/cbuild_$TARGET && make txcli
+    sudo cp -rf /root/seth/cbuild_$TARGET/txcli /root/nodes/txcli
 }
 
 make_package() {
