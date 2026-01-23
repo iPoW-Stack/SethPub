@@ -43,7 +43,7 @@ static std::unordered_map<uint32_t, std::unordered_map<uint32_t, std::string>> n
 std::mutex cli_mutex;
 std::condition_variable cli_con;
 std::string global_chain_node_ip = "127.0.0.1";
-std::string global_chain_node_http_port = 13001;
+uint16_t global_chain_node_http_port = 13001;
 std::unordered_map<std::string, uint64_t> prikey_with_nonce;
 std::unordered_map<std::string, uint64_t> src_prikey_with_nonce;
 uint64_t batch_nonce_check_count = 10240;
