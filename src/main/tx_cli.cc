@@ -485,7 +485,7 @@ int tx_main(int argc, char** argv) {
                     thread_security->SetPrivateKey(from_prikey);
                     addr = thread_security->GetAddress();
                 }
-                usleep(10000lu);
+                usleep(100000lu);
             }
 
             if (src_prikey_with_nonce[addr] + 3 * common::kMaxTxCount <= prikey_with_nonce[addr]) {

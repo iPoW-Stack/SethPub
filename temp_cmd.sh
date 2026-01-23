@@ -50,6 +50,7 @@ deploy_nodes() {
 
             echo /root/seths/s$shard_id'_'$i/seth
             ln /root/pkg/seth /root/seths/s$shard_id'_'$i/seth
+            ln /root/pkg/txcli /root/seths/s$shard_id'_'$i/txcli
             ln /root/pkg/GeoLite2-City.mmdb /root/seths/s$shard_id'_'$i/conf/GeoLite2-City.mmdb
             ln /root/pkg/log4cpp.properties /root/seths/s$shard_id'_'$i/conf/log4cpp.properties
             mkdir -p /root/seths/s$shard_id'_'$i/log

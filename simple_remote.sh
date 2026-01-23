@@ -113,13 +113,14 @@ init() {
     cd /root/nodes/seth && ./seth -U -N $nodes_count -E 4
     cd /root/nodes/seth && ./seth -S 3 -N $nodes_count -E 4
     cd /root/nodes/seth && ./seth -C
-
+    cd /root/seth/cbuild_$TARGET && make txcli
 }
 
 make_package() {
     rm -rf /root/nodes/seth/pkg
     mkdir /root/nodes/seth/pkg
     cp /root/nodes/seth/seth /root/nodes/seth/pkg
+    cp /root/nodes/seth/txcli /root/nodes/seth/pkg
     cp /root/nodes/seth/conf/GeoLite2-City.mmdb /root/nodes/seth/pkg
     cp /root/nodes/seth/conf/log4cpp.properties /root/nodes/seth/pkg
     cp /root/seth/shards3 /root/nodes/seth/pkg
