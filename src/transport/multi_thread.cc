@@ -474,21 +474,21 @@ int MultiThreadHandler::CheckMessageValid(MessagePtr& msg_ptr) {
         return kFirewallCheckError;
     }
 
-    // if (msg_ptr->header.type() >= common::kMaxMessageTypeCount) {
-    //     SETH_DEBUG("invalid message type: %d", msg_ptr->header.type());
-    //     return kFirewallCheckError;
-    // }
+    if (msg_ptr->header.type() >= common::kMaxMessageTypeCount) {
+        SETH_DEBUG("invalid message type: %d", msg_ptr->header.type());
+        return kFirewallCheckError;
+    }
 
-    // if (firewall_checks_[msg_ptr->header.type()] == nullptr) {
-    //     // SETH_DEBUG("invalid fierwall check message type: %d", msg_ptr->header.type());
-    //     return kFirewallCheckSuccess;
-    // }
+    if (firewall_checks_[msg_ptr->header.type()] == nullptr) {
+        // SETH_DEBUG("invalid fierwall check message type: %d", msg_ptr->header.type());
+        return kFirewallCheckSuccess;
+    }
 
-    // int check_status = firewall_checks_[msg_ptr->header.type()](msg_ptr);
-    // if (check_status != kFirewallCheckSuccess) {
-    //     SETH_DEBUG("check firewall failed %d", msg_ptr->header.type());
-    //     return kFirewallCheckError;
-    // }
+    int check_status = firewall_checks_[msg_ptr->header.type()](msg_ptr);
+    if (check_status != kFirewallCheckSuccess) {
+        SETH_DEBUG("check firewall failed %d", msg_ptr->header.type());
+        return kFirewallCheckError;
+    }
 
     return kFirewallCheckSuccess;
 }

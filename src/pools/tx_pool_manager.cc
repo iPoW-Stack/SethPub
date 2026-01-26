@@ -162,13 +162,13 @@ int TxPoolManager::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
             return transport::kFirewallCheckError;
         }
     } else {
-        if (security_->Verify(
-                msg_ptr->msg_hash,
-                tx_msg.pubkey(),
-                tx_msg.sign()) != security::kSecuritySuccess) {
-            SETH_ERROR("verify signature failed!");
-            return transport::kFirewallCheckError;
-        }
+        // if (security_->Verify(
+        //         msg_ptr->msg_hash,
+        //         tx_msg.pubkey(),
+        //         tx_msg.sign()) != security::kSecuritySuccess) {
+        //     SETH_ERROR("verify signature failed!");
+        //     return transport::kFirewallCheckError;
+        // }
 
         auto tmp_acc_ptr = acc_mgr_.lock();
         msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(security_->GetAddress(tx_msg.pubkey()));
