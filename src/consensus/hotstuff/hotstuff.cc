@@ -465,7 +465,7 @@ void Hotstuff::BroadcastGlobalPoolBlock(const std::shared_ptr<ViewBlock>& v_bloc
 
 void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    SETH_DEBUG("handle propose called hash: %lu, propose_debug: %s", 
+    SETH_INFO("handle propose called hash: %lu, propose_debug: %s", 
         msg_ptr->header.hash64(), 
         ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
     auto pro_msg_wrap = std::make_shared<ProposeMsgWrapper>(msg_ptr);
@@ -616,7 +616,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         // }
     }
 
-    SETH_DEBUG("handle propose message success hash: %lu, propose_debug: %s",
+    SETH_INFO("handle propose message success hash: %lu, propose_debug: %s",
         msg_ptr->header.hash64(),
         ProtobufToJson(cons_debug).c_str());
     if (msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size() > 0) {
