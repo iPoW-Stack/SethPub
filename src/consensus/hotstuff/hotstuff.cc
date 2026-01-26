@@ -1437,11 +1437,13 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     view_block_chain()->UpdateHighViewBlock(qc_item);
     BroadcastGlobalPoolBlock(view_block_info_ptr->view_block);
     pacemaker()->NewQcView(qc_item.view());
-    SETH_INFO("NewView propose newview called %u_%u_%lu, tc_view: %lu, propose_debug: %s",
+    SETH_INFO("NewView propose newview called %u_%u_%lu, tc_view: %lu, "
+        "propose_debug: %s, use time: %lu",
         qc_item.network_id(),
         pool_idx_, view_block_chain()->HighViewBlock()->qc().view(), 
         pacemaker()->HighTC()->view(),
-        msg_ptr->header.debug().c_str());
+        msg_ptr->header.debug().c_str(),
+        (common::TimeUtils::TimestampMs() - view_block_info_ptr->b_tm_ms));
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto s = Propose(qc_item_ptr, nullptr, msg_ptr);
     ADD_DEBUG_PROCESS_TIMESTAMP();
