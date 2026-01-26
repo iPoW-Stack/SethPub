@@ -129,8 +129,21 @@ struct Construct {
 }
 
 #else
-#define CHECK_MEMORY_SIZE(data_map)
-#define CHECK_MEMORY_SIZE_WITH_MESSAGE(data_map, msg)
+// #define CHECK_MEMORY_SIZE(data_map)
+// #define CHECK_MEMORY_SIZE_WITH_MESSAGE(data_map, msg)
+#define CHECK_MEMORY_SIZE(data_map) { \
+    if (data_map.size() >= 10240) { \
+        SETH_INFO("data size: %u", data_map.size()); \
+        assert(false); \
+    } \
+}
+
+#define CHECK_MEMORY_SIZE_WITH_MESSAGE(data_map, msg) { \
+    if (data_map.size() >= 10240) { \
+        SETH_INFO("%s data size: %u, msg: %s", #data_map, data_map.size(), msg); \
+        assert(false); \
+    } \
+}
 #endif
 
 #ifndef NDEBUG
