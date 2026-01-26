@@ -2148,7 +2148,7 @@ Status Hotstuff::SendMsgToLeader(
 //     }
 // #endif
 
-    SETH_DEBUG("pool index: %u, send to leader %d message to leader net: %u, %s, "
+    SETH_INFO("pool index: %u, send to leader %d message to leader net: %u, %s, "
         "hash64: %lu, %s:%d, leader->index: %d, local_idx: %d",
         pool_idx_,
         (int32_t)msg_type,
