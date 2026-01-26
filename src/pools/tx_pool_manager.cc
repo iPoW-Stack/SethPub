@@ -120,11 +120,11 @@ int TxPoolManager::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
         return transport::kFirewallCheckError;
     }
 
-    if (!account_tx_qps_check_.check(tx_msg.pubkey())) {
-        SETH_DEBUG("pools check firewall message failed, invalid qps limit pk: %d, hash64: %lu", 
-            tx_msg.pubkey().size(), header.hash64());
-        return transport::kFirewallCheckError;
-    }
+    // if (!account_tx_qps_check_.check(tx_msg.pubkey())) {
+    //     SETH_DEBUG("pools check firewall message failed, invalid qps limit pk: %d, hash64: %lu", 
+    //         tx_msg.pubkey().size(), header.hash64());
+    //     return transport::kFirewallCheckError;
+    // }
 
     msg_ptr->msg_hash = pools::GetTxMessageHash(tx_msg);
     if (tx_msg.pubkey().size() == 64u) {
@@ -170,13 +170,13 @@ int TxPoolManager::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
         //     return transport::kFirewallCheckError;
         // }
 
-        auto tmp_acc_ptr = acc_mgr_.lock();
-        msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(security_->GetAddress(tx_msg.pubkey()));
-        if (msg_ptr->address_info == nullptr) {
-            SETH_DEBUG("failed get account info: %s", 
-                common::Encode::HexEncode(security_->GetAddress(tx_msg.pubkey())).c_str());
-            return transport::kFirewallCheckError;
-        }
+        // auto tmp_acc_ptr = acc_mgr_.lock();
+        // msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(security_->GetAddress(tx_msg.pubkey()));
+        // if (msg_ptr->address_info == nullptr) {
+        //     SETH_DEBUG("failed get account info: %s", 
+        //         common::Encode::HexEncode(security_->GetAddress(tx_msg.pubkey())).c_str());
+        //     return transport::kFirewallCheckError;
+        // }
     }
 
     return transport::kFirewallCheckSuccess;
@@ -554,12 +554,11 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
         }
 
         if (pool_index == common::kInvalidPoolIndex) {
-            if (msg_ptr->address_info == nullptr) {
-                SETH_INFO("invalid tx step: %d, address invalid.", (int32_t)tx_msg.step());
-                return;
-            }
-
-            pool_index = msg_ptr->address_info->pool_index();
+            // if (msg_ptr->address_info == nullptr) {
+            //     SETH_INFO("invalid tx step: %d, address invalid.", (int32_t)tx_msg.step());
+            //     return;
+            // }
+            pool_index = common::GetAddressPoolIndex(security_->GetAddress(tx_msg.pubkey()));
         }
 
         TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
