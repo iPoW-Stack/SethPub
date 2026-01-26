@@ -52,7 +52,7 @@ void FilterBroadcast::Broadcasting(
         return;
     }
 
-    // auto bloomfilter = GetBloomfilter(message);
+    auto bloomfilter = GetBloomfilter(message);
     // if (message.broadcast().has_hop_to_layer() &&
     //         now_hop_count >= message.broadcast().hop_to_layer()) {
     //     auto nodes = GetlayerNodes(dht_ptr, bloomfilter, message);
