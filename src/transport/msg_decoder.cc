@@ -1,6 +1,6 @@
 #include "transport/msg_decoder.h"
 
-#include "common/log.h"
+#include "common/utils.h"
 
 namespace seth {
 
