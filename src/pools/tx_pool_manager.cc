@@ -103,6 +103,10 @@ void TxPoolManager::InitCrossPools() {
 }
 
 int TxPoolManager::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
+    return transport::kFirewallCheckSuccess;
+}
+
+int TxPoolManager::TmpFirewallCheckMessage(transport::MessagePtr& msg_ptr) {
     // SETH_DEBUG("pools message fierwall coming.");
     // return transport::kFirewallCheckSuccess;
     auto& header = msg_ptr->header;
@@ -162,13 +166,13 @@ int TxPoolManager::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
             return transport::kFirewallCheckError;
         }
     } else {
-        // if (security_->Verify(
-        //         msg_ptr->msg_hash,
-        //         tx_msg.pubkey(),
-        //         tx_msg.sign()) != security::kSecuritySuccess) {
-        //     SETH_ERROR("verify signature failed!");
-        //     return transport::kFirewallCheckError;
-        // }
+        if (security_->Verify(
+                msg_ptr->msg_hash,
+                tx_msg.pubkey(),
+                tx_msg.sign()) != security::kSecuritySuccess) {
+            SETH_ERROR("verify signature failed!");
+            return transport::kFirewallCheckError;
+        }
 
         auto tmp_acc_ptr = acc_mgr_.lock();
         msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(security_->GetAddress(tx_msg.pubkey()));
@@ -396,6 +400,9 @@ void TxPoolManager::HandleMessage(const transport::MessagePtr& msg_ptr) {
     //         tx_pool_[pool_idx].CheckPopedTxs();
     //     }
     // }
+    if (TmpFirewallCheckMessage(msg_ptr) != transport::kFirewallCheckSuccess) {
+        return;
+    }
 
     auto& header = msg_ptr->header;
     if (header.has_tx_proto()) {
