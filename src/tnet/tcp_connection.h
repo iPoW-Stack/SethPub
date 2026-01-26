@@ -190,7 +190,7 @@ private:
     void NotifyCmdPacketAndClose(int type);
     void ReleaseByIOThread();
 
-    static const uint64_t kConnectTimeoutMs = 120000lu;
+    static const uint64_t kConnectTimeoutMs = 12000lu;
     static const int OUT_BUFFER_LIST_SIZE = 10240;
 
     common::SpinMutex spin_mutex_;
