@@ -618,7 +618,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
 
     SETH_INFO("handle propose message success hash: %lu, propose_debug: %s",
         msg_ptr->header.hash64(),
-        ProtobufToJson(cons_debug).c_str());
+        msg_ptr->header.debug().c_str());
     if (msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size() > 0) {
         latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
     }
