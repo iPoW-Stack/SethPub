@@ -121,12 +121,12 @@ void Route::HandleMessage(const transport::MessagePtr& header_ptr) {
         return;
     }
 
-    if (header.type() == common::kPoolsMessage) {
-        if (!CheckPoolsMessage(header_ptr, dht_ptr)) {
-            SETH_DEBUG("CheckPoolsMessage invalid: %d, hash: %lu", header.type(), header.hash64());
-            return;
-        }
-    }
+    // if (header.type() == common::kPoolsMessage) {
+    //     if (!CheckPoolsMessage(header_ptr, dht_ptr)) {
+    //         SETH_DEBUG("CheckPoolsMessage invalid: %d, hash: %lu", header.type(), header.hash64());
+    //         return;
+    //     }
+    // }
 
     message_processor_[header.type()](header_ptr);
     SETH_DEBUG("handle message success: %d, hash: %lu", header.type(), header.hash64());
