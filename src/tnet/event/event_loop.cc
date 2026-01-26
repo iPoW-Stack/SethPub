@@ -103,7 +103,7 @@ void EventLoop::RunTask() {
         auto b = common::TimeUtils::TimestampMs();
         (*iter)();
         auto e = common::TimeUtils::TimestampMs();
-        if (e - b >=10000lu) {
+        if (e - b >=10lu) {
             SETH_INFO("handle message user time: %lu", (e - b));
         }
     }
