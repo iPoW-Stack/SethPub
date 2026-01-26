@@ -106,7 +106,7 @@ int TxPoolManager::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
     return transport::kFirewallCheckSuccess;
 }
 
-int TxPoolManager::TmpFirewallCheckMessage(transport::MessagePtr& msg_ptr) {
+int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr) {
     // SETH_DEBUG("pools message fierwall coming.");
     // return transport::kFirewallCheckSuccess;
     auto& header = msg_ptr->header;
