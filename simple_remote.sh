@@ -67,7 +67,7 @@ init() {
     fi
 
     if [ "$PASSWORD" == "" ]; then
-        PASSWORD="NL!"
+        PASSWORD="Xf4aGbTaf&"
     fi
 
     if [ "$TARGET" == "" ]; then
