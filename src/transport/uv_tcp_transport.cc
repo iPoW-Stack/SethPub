@@ -30,7 +30,7 @@ struct connect_ex_t {
 };
 
 void on_close(uv_handle_t* handle) {
-    SETH_ERROR("close called: %p!", static_cast<void*>(handle));
+    SETH_DEBUG("close called: %p!", static_cast<void*>(handle));
     ex_uv_tcp_t* ex_uv_tcp = (ex_uv_tcp_t*)handle;
     assert(ex_uv_tcp->msg_decoder != nullptr);
     if (ex_uv_tcp->msg_decoder) {
@@ -43,7 +43,7 @@ void on_close(uv_handle_t* handle) {
 
 void on_write(uv_write_t* req, int status) {
     ex_uv_tcp_t* ex_uv_tcp = (ex_uv_tcp_t*)req->handle;
-    SETH_ERROR("on_write called back.");
+    SETH_DEBUG("on_write called back.");
     if (status) {
         SETH_DEBUG("1 now call FreeConnection: %s:%d, %p", 
             ex_uv_tcp->ip, ex_uv_tcp->port, &ex_uv_tcp->uv_tcp);
@@ -253,7 +253,7 @@ void alloc_buffer(uv_handle_t*, size_t suggested_size, uv_buf_t* buf) {
 
 void on_new_connection(uv_stream_t* server, int status) {
     if (status < 0) {
-        SETH_ERROR("connection failed: %s", uv_strerror(status));
+        SETH_DEBUG("connection failed: %s", uv_strerror(status));
         return;
     }
 
@@ -620,7 +620,7 @@ void TcpTransport::AddConnection(ex_uv_tcp_t* uv_tcp) {
         FreeConnection(iter->second);
     }
 
-    SETH_ERROR("AddConnection called: %s:%d %p!",
+    SETH_DEBUG("AddConnection called: %s:%d %p!",
         uv_tcp->ip, uv_tcp->port, static_cast<void*>(&uv_tcp->uv_tcp));
     conn_map_[peer_spec] = uv_tcp;
 }
