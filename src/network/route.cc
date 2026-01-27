@@ -94,6 +94,12 @@ void Route::HandleMessage(const transport::MessagePtr& header_ptr) {
         SETH_INFO("route handle message: %lu", header.hash64());
     }
 
+    if (header.des_dht_key().size() != dht::kDhtKeySize) {
+        SETH_INFO("invalid dht key message: %lu, size: %u",
+            header.hash64(), header.des_dht_key().size());
+        return;
+    }
+
     if (header.has_broadcast() && !header_ptr->header_str.empty()) {
 //         Broadcast(header_ptr->thread_idx, header_ptr);
         auto tmp_ptr = std::make_shared<transport::TransportMessage>();
