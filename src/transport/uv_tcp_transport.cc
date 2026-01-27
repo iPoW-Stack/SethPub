@@ -447,10 +447,10 @@ void uv_async_cb(uv_async_t* handle) {
             if (item_ptr->conn) {
                 ex_uv_tcp = std::dynamic_pointer_cast<UvTcpConnection>(item_ptr->conn)->ex_uv_tcp();
                 if (ex_uv_tcp != nullptr) {
-                    if (uv_is_closing((uv_handle_t*)tcp_handle)) {
+                    if (uv_is_closing((uv_handle_t*)ex_uv_tcp->uv_tcp)) {
                         ex_uv_tcp = nullptr;
                     } else {
-                        if (tcp_handle->type != UV_TCP) {
+                        if (ex_uv_tcp->uv_tcp->type != UV_TCP) {
                             ex_uv_tcp = nullptr;
                         }
                     }
