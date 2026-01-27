@@ -261,6 +261,7 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
             }
 
             to_heights.add_heights(cons_height);
+            SETH_INFO("pool: %u, success add cons height: %lu", i, cons_height);
         }
     }
     
@@ -287,6 +288,8 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
     }
 
     for (uint32_t i = 0; i < (uint32_t)to_heights.heights_size(); ++i) {
+        SETH_INFO("test prev heights valid, pool: %u, prev height: %lu, now: %lu",
+                i, prev_to_heights->heights(i), to_heights.heights(i));
         if (prev_to_heights->heights(i) < to_heights.heights(i)) {
             SETH_INFO("prev heights valid, pool: %u, prev height: %lu, now: %lu",
                 i, prev_to_heights->heights(i), to_heights.heights(i));
