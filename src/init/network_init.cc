@@ -150,21 +150,21 @@ int NetworkInit::Init(int argc, char** argv) {
         return kInitError;
     }
 
-    SETH_DEBUG("init 0 6");
-    SETH_DEBUG("init 0 7");
+    SETH_INFO("init 0 6");
+    SETH_INFO("init 0 7");
     int transport_res = transport::TcpTransport::Instance()->Init(
         common::GlobalInfo::Instance()->config_local_ip() + ":" +
         std::to_string(common::GlobalInfo::Instance()->config_local_port()),
         128,
         true,
         &net_handler_);
-    SETH_DEBUG("init 0 8");
+    SETH_INFO("init 0 8");
     if (transport_res != transport::kTransportSuccess) {
         INIT_ERROR("int tcp transport failed!");
         return kInitError;
     }
 
-    SETH_DEBUG("init 0 9");
+    SETH_INFO("init 0 9");
     network::DhtManager::Instance();
     network::Route::Instance()->Init(security_);
     network::Route::Instance()->RegisterMessage(
@@ -175,7 +175,7 @@ int NetworkInit::Init(int argc, char** argv) {
         std::bind(&NetworkInit::HandleMessage, this, std::placeholders::_1));
     account_mgr_ = std::make_shared<block::AccountManager>();
     network::UniversalManager::Instance()->Init(security_, db_, account_mgr_);
-    SETH_DEBUG("init 0 10");
+    SETH_INFO("init 0 10");
     if (InitNetworkSingleton() != kInitSuccess) {
         INIT_ERROR("InitNetworkSingleton failed!");
         return kInitError;
@@ -272,21 +272,21 @@ int NetworkInit::Init(int argc, char** argv) {
     AddCmds();
     net_handler_.Start();
     transport::TcpTransport::Instance()->Start(false);
-    SETH_DEBUG("init 6");
+    SETH_INFO("init 6");
     if (InitHttpServer() != kInitSuccess) {
         INIT_ERROR("InitHttpServer failed!");
         return kInitError;
     }
-    SETH_DEBUG("init 7");
+    SETH_INFO("init 7");
     if (InitCommand() != kInitSuccess) {
         INIT_ERROR("InitCommand failed!");
         return kInitError;
     }
 
-    SETH_DEBUG("init 8");
+    SETH_INFO("init 8");
     inited_ = true;
     common::GlobalInfo::Instance()->set_main_inited_success();
-    SETH_DEBUG("init 9");
+    SETH_INFO("init 9");
     cmd_.AddCommand("gs", [this](const std::vector<std::string>& args) {
         if (args.size() < 3) {
             return;
