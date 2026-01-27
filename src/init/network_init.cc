@@ -1147,12 +1147,6 @@ void NetworkInit::AddBlockItemToCache(
         std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block,
         db::DbWriteBatch& db_batch) {
     auto* block = &view_block->block_info();
-    SETH_DEBUG("cache new block coming sharding id: %u_%d_%lu, tx size: %u, hash: %s",
-        view_block->qc().network_id(),
-        view_block->qc().pool_index(),
-        block->height(),
-        block->tx_list_size(),
-        common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str());
     if (network::IsSameToLocalShard(view_block->qc().network_id())) {
         // thread thafe
         pools_mgr_->UpdateLatestInfo(view_block, db_batch);
@@ -1163,6 +1157,14 @@ void NetworkInit::AddBlockItemToCache(
 
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     new_blocks_queue_[thread_idx].push(view_block);
+    SETH_INFO("cache new block coming sharding id: %u_%d_%lu, tx size: %u, hash: %s, size: %u",
+        view_block->qc().network_id(),
+        view_block->qc().pool_index(),
+        block->height(),
+        block->tx_list_size(),
+        common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(),
+        new_blocks_queue_[thread_idx].size());
+
 }
 
 void NetworkInit::HandleNewBlock() {
