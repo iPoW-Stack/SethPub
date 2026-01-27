@@ -386,6 +386,7 @@ int TcpTransport::Send(
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     output_queues_[thread_idx].push(output_item);
     output_con_.notify_one();
+    return kTransportSuccess;
 }
     
 int TcpTransport::Send(
