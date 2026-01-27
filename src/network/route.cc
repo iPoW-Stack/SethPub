@@ -90,10 +90,6 @@ void Route::HandleMessage(const transport::MessagePtr& header_ptr) {
         return;
     }
 
-    if (header.type() == common::kHotstuffMessage) {
-        SETH_INFO("route handle message: %lu", header.hash64());
-    }
-
     if (header.des_dht_key().size() != dht::kDhtKeySize) {
         SETH_INFO("invalid dht key message: %lu, size: %u",
             header.hash64(), header.des_dht_key().size());

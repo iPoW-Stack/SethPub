@@ -292,7 +292,7 @@ Status Hotstuff::Propose(
     header.set_hop_count(0);
     auto* hotstuff_msg = header.mutable_hotstuff();
     auto* pb_pro_msg = hotstuff_msg->mutable_pro_msg();
-    SETH_DEBUG("pool: %d, leader begin construct propose msg, pre_vb: %u_%u_%lu, timeblock_height: %lu",
+    SETH_INFO("pool: %d, leader begin construct propose msg, pre_vb: %u_%u_%lu, timeblock_height: %lu",
         pool_idx_,
         pre_v_block->qc().network_id(),
         pre_v_block->qc().pool_index(),
@@ -400,7 +400,7 @@ Status Hotstuff::Propose(
         hotstuff_msg->pro_msg().view_item().qc().view(), 
         hotstuff_msg->pro_msg().tc().view());
 
-    SETH_INFO("new propose message hash: %lu, tx size: %u, %u_%u_%lu", 
+    SETH_DEBUG("new propose message hash: %lu, tx size: %u, %u_%u_%lu", 
         tmp_msg_ptr->header.hash64(),
         hotstuff_msg->pro_msg().tx_propose().txs_size(),
         common::GlobalInfo::Instance()->network_id(), 
@@ -467,7 +467,7 @@ void Hotstuff::BroadcastGlobalPoolBlock(const std::shared_ptr<ViewBlock>& v_bloc
 
 void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    SETH_INFO("handle propose called hash: %lu, propose_debug: %s", 
+    SETH_DEBUG("handle propose called hash: %lu, propose_debug: %s", 
         msg_ptr->header.hash64(), 
         ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
     auto pro_msg_wrap = std::make_shared<ProposeMsgWrapper>(msg_ptr);
@@ -618,7 +618,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         // }
     }
 
-    SETH_INFO("handle propose message success hash: %lu, propose_debug: %s",
+    SETH_DEBUG("handle propose message success hash: %lu, propose_debug: %s",
         msg_ptr->header.hash64(),
         msg_ptr->header.debug().c_str());
     if (msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size() > 0) {
@@ -1268,7 +1268,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    SETH_INFO("%u_%u_%lu, ====2.1 pool: %d, onVote, hash: %s, "
+    SETH_DEBUG("%u_%u_%lu, ====2.1 pool: %d, onVote, hash: %s, "
         "src debug: %s, hash64: %lu, replica: %d",
         common::GlobalInfo::Instance()->network_id(),
         pool_idx_,
@@ -1405,7 +1405,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     qc_item.set_sign_x(libBLS::ThresholdUtils::fieldElementToString(reconstructed_sign->X));
     qc_item.set_sign_y(libBLS::ThresholdUtils::fieldElementToString(reconstructed_sign->Y));
     // switch view
-    SETH_INFO("success new set qc view: %lu, %u_%u_%lu",
+    SETH_DEBUG("success new set qc view: %lu, %u_%u_%lu",
         qc_item.view(),
         qc_item.network_id(),
         qc_item.pool_index(),
@@ -1437,7 +1437,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     view_block_chain()->UpdateHighViewBlock(qc_item);
     BroadcastGlobalPoolBlock(view_block_info_ptr->view_block);
     pacemaker()->NewQcView(qc_item.view());
-    SETH_INFO("NewView propose newview called %u_%u_%lu, tc_view: %lu, "
+    SETH_DEBUG("NewView propose newview called %u_%u_%lu, tc_view: %lu, "
         "propose_debug: %s, use time: %lu",
         qc_item.network_id(),
         pool_idx_, view_block_chain()->HighViewBlock()->qc().view(), 
@@ -2148,7 +2148,7 @@ Status Hotstuff::SendMsgToLeader(
 //     }
 // #endif
 
-    SETH_INFO("pool index: %u, send to leader %d message to leader net: %u, %s, "
+    SETH_DEBUG("pool index: %u, send to leader %d message to leader net: %u, %s, "
         "hash64: %lu, %s:%d, leader->index: %d, local_idx: %d",
         pool_idx_,
         (int32_t)msg_type,

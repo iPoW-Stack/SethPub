@@ -1157,7 +1157,7 @@ void NetworkInit::AddBlockItemToCache(
 
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     new_blocks_queue_[thread_idx].push(view_block);
-    SETH_INFO("cache new block coming sharding id: %u_%d_%lu, tx size: %u, hash: %s, size: %u",
+    SETH_DEBUG("cache new block coming sharding id: %u_%d_%lu, tx size: %u, hash: %s, size: %u",
         view_block->qc().network_id(),
         view_block->qc().pool_index(),
         block->height(),
