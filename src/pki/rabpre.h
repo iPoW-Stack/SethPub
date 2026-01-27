@@ -85,7 +85,7 @@ public:
         long long t1 = CryptoUtils::rand_int(2, p-2);
         long long A0 = CryptoUtils::mod_pow(g, t0, p);
         long long A1 = CryptoUtils::mod_pow(g, t1, p);
-        long long B0 = CryptoUtils::mod_pow(g, a + t0*b, p);
+        long long B0_val = CryptoUtils::mod_pow(g, a + t0*b, p);
         long long B1 = CryptoUtils::mod_pow(g, a + t1*b, p);
 
         long long u0 = CryptoUtils::rand_int(2, p-2);
@@ -96,7 +96,7 @@ public:
         long long W10 = CryptoUtils::mod_pow(A1, u0, p);
 
         return {p, g, h, Z,
-                {A0, B0}, {A1, B1},
+                {A0, B0_val}, {A1, B1},
                 {U0, W01}, {U1, W10}};
     }
 
