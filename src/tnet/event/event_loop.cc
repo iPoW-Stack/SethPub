@@ -100,7 +100,12 @@ void EventLoop::RunTask() {
     }
 
     for (auto iter = task_list.begin(); iter != task_list.end(); ++iter) {
+        auto b = common::TimeUtils::TimestampMs();
         (*iter)();
+        auto e = common::TimeUtils::TimestampMs();
+        if (e - b >=10lu) {
+            SETH_INFO("handle message user time: %lu", (e - b));
+        }
     }
 }
 
