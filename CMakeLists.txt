@@ -117,7 +117,7 @@ add_definitions(
     -DOPENSSL_ROOT_DIR=/usr/local/Cellar/openssl/1.0.2r
     -DENABLE_HOTSTUFF
     -DDISABLE_GENESIS_BLS_VERIFY
-
+    -DSETH_USE_UV
     #    -DSETH_UNITTEST # for testing
     #-DFOR_CONSOLE_DEBUG
 #    -DTEST_TRANSPORT_PERFOMANCE
