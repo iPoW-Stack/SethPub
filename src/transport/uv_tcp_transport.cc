@@ -367,6 +367,7 @@ int TcpTransport::Send(
         const transport::protobuf::Header& message) {
     auto output_item = std::make_shared<ClientItem>();
     output_item->conn = conn;
+    output_item->type = message.type();
     output_item->hash64 = message.hash64();
     message.SerializeToString(&output_item->msg);
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
@@ -403,6 +404,7 @@ int TcpTransport::Send(
     auto output_item = std::make_shared<ClientItem>();
     output_item->des_ip = des_ip;
     output_item->port = des_port;
+    output_item->type = message.type();
     output_item->hash64 = message.hash64();
     message.SerializeToString(&output_item->msg);
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
