@@ -363,7 +363,7 @@ uint8_t TcpTransport::GetThreadIndexWithPool(uint32_t pool_index) {
 }
 
 int TcpTransport::Send(
-        tnet::TcpInterface* conn,
+        std::shared_ptr<tnet::TcpInterface> conn,
         const transport::protobuf::Header& message) {
     auto output_item = std::make_shared<ClientItem>();
     output_item->conn = conn;
