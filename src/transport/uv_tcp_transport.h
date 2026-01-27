@@ -42,6 +42,9 @@ public:
         const std::string& ip,
         uint16_t port,
         transport::protobuf::Header& message);
+    int Send(
+        tnet::TcpInterface* conn,
+        const std::string& message);
     int SendToLocal(transport::protobuf::Header& message);
     int GetSocket();
     void SetMessageHash(const transport::protobuf::Header& message);
@@ -55,7 +58,7 @@ public:
 
     void RealFreeInvalidConnections();
     void AddLocalMessage(transport::MessagePtr msg_ptr);
-
+    uint8_t GetThreadIndexWithPool(uint32_t pool_index);
 
 private:
     TcpTransport();

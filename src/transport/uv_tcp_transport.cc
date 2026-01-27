@@ -106,6 +106,10 @@ public:
     virtual void CloseWithoutLock() {
 
     }
+
+    ex_uv_tcp* ex_uv_tcp() {
+        return ex_uv_tcp_;
+    }
     
 private:
     std::string peer_node_public_ip_;
@@ -368,6 +372,22 @@ void TcpTransport::Stop() {
     }
 }
 
+uint8_t TcpTransport::GetThreadIndexWithPool(uint32_t pool_index) {
+    return msg_handler_->GetThreadIndexWithPool(pool_index);
+}
+
+int TcpTransport::Send(
+        tnet::TcpInterface* conn,
+        const std::string& message) {
+    auto output_item = std::make_shared<ClientItem>();
+    output_item->conn = conn;
+    output_item->hash64 = message.hash64();
+    message.SerializeToString(&output_item->msg);
+    auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
+    output_queues_[thread_idx].push(output_item);
+    output_con_.notify_one();
+}
+    
 int TcpTransport::Send(
         const std::string& des_ip,
         uint16_t des_port,
@@ -423,12 +443,17 @@ void uv_async_cb(uv_async_t* handle) {
 
             auto& des_ip = item_ptr->des_ip;
             auto des_port = item_ptr->port;
-            SETH_DEBUG("send to %s:%d,thread id: %u", des_ip.c_str(), des_port, std::this_thread::get_id());
-            ex_uv_tcp_t* ex_uv_tcp = transport::TcpTransport::Instance()->GetConnection(des_ip, des_port);
-            if (ex_uv_tcp != nullptr && !uv_is_active((uv_handle_t*)&ex_uv_tcp->uv_tcp)) {
-                SETH_DEBUG("now call FreeConnection: %s:%d, %p", ex_uv_tcp->ip, ex_uv_tcp->port, &ex_uv_tcp->uv_tcp);
-                transport::TcpTransport::Instance()->FreeConnection(ex_uv_tcp);
-                ex_uv_tcp = nullptr;
+            ex_uv_tcp_t* ex_uv_tcp = nullptr;
+            if (item_ptr->conn != nullptr) {
+                ex_uv_tcp = dynamic_cast<UvTcpConnection*>(item_ptr->conn.get())->ex_uv_tcp();
+            } else {
+                SETH_DEBUG("send to %s:%d,thread id: %u", des_ip.c_str(), des_port, std::this_thread::get_id());
+                ex_uv_tcp = transport::TcpTransport::Instance()->GetConnection(des_ip, des_port);
+                if (ex_uv_tcp != nullptr && !uv_is_active((uv_handle_t*)&ex_uv_tcp->uv_tcp)) {
+                    SETH_DEBUG("now call FreeConnection: %s:%d, %p", ex_uv_tcp->ip, ex_uv_tcp->port, &ex_uv_tcp->uv_tcp);
+                    transport::TcpTransport::Instance()->FreeConnection(ex_uv_tcp);
+                    ex_uv_tcp = nullptr;
+                }
             }
 
             if (ex_uv_tcp == nullptr) {
