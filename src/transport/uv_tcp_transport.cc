@@ -107,7 +107,7 @@ public:
 
     }
 
-    ex_uv_tcp* ex_uv_tcp() {
+    ex_uv_tcp_t* ex_uv_tcp() {
         return ex_uv_tcp_;
     }
     
@@ -381,8 +381,8 @@ int TcpTransport::Send(
         const std::string& message) {
     auto output_item = std::make_shared<ClientItem>();
     output_item->conn = conn;
-    output_item->hash64 = message.hash64();
-    message.SerializeToString(&output_item->msg);
+    output_item->hash64 = 0;
+    output_item->msg = message;
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     output_queues_[thread_idx].push(output_item);
     output_con_.notify_one();
@@ -445,7 +445,7 @@ void uv_async_cb(uv_async_t* handle) {
             auto des_port = item_ptr->port;
             ex_uv_tcp_t* ex_uv_tcp = nullptr;
             if (item_ptr->conn != nullptr) {
-                ex_uv_tcp = dynamic_cast<UvTcpConnection*>(item_ptr->conn.get())->ex_uv_tcp();
+                ex_uv_tcp = dynamic_cast<UvTcpConnection>(item_ptr->conn)->ex_uv_tcp();
             } else {
                 SETH_DEBUG("send to %s:%d,thread id: %u", des_ip.c_str(), des_port, std::this_thread::get_id());
                 ex_uv_tcp = transport::TcpTransport::Instance()->GetConnection(des_ip, des_port);
