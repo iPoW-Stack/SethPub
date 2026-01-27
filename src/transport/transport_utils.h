@@ -142,6 +142,7 @@ public:
     uint16_t port;
     std::string msg;
     uint64_t hash64;
+    uint32_t type;
 };
 
 static const uint32_t kMaxHops = 20u;
