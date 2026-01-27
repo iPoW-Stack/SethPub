@@ -30,7 +30,7 @@ ulimit -n 1000000
 
 # 使用独立文件管理 sysctl
 cat > /etc/sysctl.d/99-seth-tuning.conf <<EOF
-# --- P2P & High Concurrency Optimization ---
+# --- SETH & High Concurrency Optimization ---
 fs.file-max = 1000000
 net.core.default_qdisc = fq
 net.ipv4.tcp_congestion_control = bbr

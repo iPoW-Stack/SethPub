@@ -1,3 +1,4 @@
+#ifndef SETH_USE_UV
 #include "transport/tcp_transport.h"
 
 #include "common/global_info.h"
@@ -573,3 +574,5 @@ int TcpTransport::Send(
 }  // namespace transport
 
 }  // namespace seth
+
+#endif
