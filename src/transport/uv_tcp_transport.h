@@ -51,9 +51,7 @@ public:
     void FreeConnection(ex_uv_tcp_t* uv_tcp);
     std::string ClearAllConnection();
 
-    MultiThreadHandler* msg_handler() {
-        return msg_handler_;
-    }
+    MultiThreadHandler* msg_handler();
 
     void RealFreeInvalidConnections();
     void AddLocalMessage(transport::MessagePtr msg_ptr);
@@ -76,7 +74,6 @@ private:
     std::string ip_port_;
     int backlog_;
     bool create_server_{ false };
-    MultiThreadHandler* msg_handler_ = nullptr;
     std::string msg_random_;
     uint64_t thread_msg_count_[common::kMaxThreadCount] = { 0 };
     std::shared_ptr<std::thread> output_thread_ = nullptr;

@@ -13,6 +13,7 @@ namespace transport {
 
 static common::ThreadSafeQueue<std::shared_ptr<ClientItem>>* output_queues_ = nullptr;
 common::ThreadSafeQueue<transport::MessagePtr> local_messages_[common::kMaxThreadCount];
+MultiThreadHandler* msg_handler_ = nullptr;
 
 static const int kTcpBufferSize = 10 * 1024 * 1024;
 using namespace tnet;
@@ -331,6 +332,11 @@ int TcpTransport::Init(
     loop = uv_default_loop();
     msg_random_ = common::Random::RandomString(32);
     return kTransportSuccess;
+}
+
+
+MultiThreadHandler* TcpTransport::msg_handler() {
+    return msg_handler_;
 }
 
 int TcpTransport::Start(bool hold) {
