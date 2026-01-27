@@ -298,6 +298,7 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
     }
 
     SETH_INFO("final leader get to heights error, pool: %u, height: %lu", 0, 0);
+    leader_to_heights_.store(nullptr);
     return kPoolsError;
 }
 
