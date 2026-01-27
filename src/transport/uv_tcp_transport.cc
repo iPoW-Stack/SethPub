@@ -444,18 +444,18 @@ void uv_async_cb(uv_async_t* handle) {
             auto& des_ip = item_ptr->des_ip;
             auto des_port = item_ptr->port;
             ex_uv_tcp_t* ex_uv_tcp = nullptr;
-            if (item_ptr->conn) {
-                ex_uv_tcp = std::dynamic_pointer_cast<UvTcpConnection>(item_ptr->conn)->ex_uv_tcp();
-                if (ex_uv_tcp != nullptr) {
-                    if (uv_is_closing((uv_handle_t*)ex_uv_tcp->uv_tcp)) {
-                        ex_uv_tcp = nullptr;
-                    } else {
-                        if (ex_uv_tcp->uv_tcp->type != UV_TCP) {
-                            ex_uv_tcp = nullptr;
-                        }
-                    }
-                }
-            }
+            // if (item_ptr->conn) {
+            //     ex_uv_tcp = std::dynamic_pointer_cast<UvTcpConnection>(item_ptr->conn)->ex_uv_tcp();
+            //     if (ex_uv_tcp != nullptr) {
+            //         if (uv_is_closing((uv_handle_t*)ex_uv_tcp->uv_tcp)) {
+            //             ex_uv_tcp = nullptr;
+            //         } else {
+            //             if (ex_uv_tcp->uv_tcp->type != UV_TCP) {
+            //                 ex_uv_tcp = nullptr;
+            //             }
+            //         }
+            //     }
+            // }
             
             if (ex_uv_tcp == nullptr) {
                 SETH_DEBUG("send to %s:%d,thread id: %u", des_ip.c_str(), des_port, std::this_thread::get_id());
