@@ -208,6 +208,7 @@ private:
         
         view_blocks_info_[view_block_info->view_block->qc().view_block_hash()] = view_block_info;
         view_with_blocks_[view_block_info->view_block->qc().view()].push_back(view_block_info);
+        SETH_INFO("success add view block info now size: %u", view_blocks_info_.size());
     }
 
     std::shared_ptr<ViewBlockInfo> GetViewBlockInfo(

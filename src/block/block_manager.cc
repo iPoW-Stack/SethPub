@@ -98,7 +98,7 @@ void BlockManager::ConsensusAddBlock(
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     auto block_item = block_item_info->view_block;
     consensus_block_queues_[thread_idx].push(block_item_info);
-    SETH_DEBUG("add new block thread: %d, size: %u, %u_%u_%lu", 
+    SETH_INFO("success add view block add new block thread: %d, size: %u, %u_%u_%lu", 
         thread_idx, consensus_block_queues_[thread_idx].size(),
         block_item->qc().network_id(),
         block_item->qc().pool_index(),
