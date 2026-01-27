@@ -1176,6 +1176,7 @@ const int ViewBlockItem::kDebugFieldNumber;
 
 ViewBlockItem::ViewBlockItem()
   : ::google::protobuf::Message(), _internal_metadata_(NULL) {
+    common::GlobalInfo::Instance()->AddSharedObj(18);
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2fview_5fblock_2eproto::scc_info_ViewBlockItem.base);
   SharedCtor();
@@ -1185,6 +1186,7 @@ ViewBlockItem::ViewBlockItem(const ViewBlockItem& from)
   : ::google::protobuf::Message(),
       _internal_metadata_(NULL),
       _has_bits_(from._has_bits_) {
+    common::GlobalInfo::Instance()->AddSharedObj(18);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   parent_hash_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (from.has_parent_hash()) {
@@ -1222,6 +1224,7 @@ void ViewBlockItem::SharedCtor() {
 
 ViewBlockItem::~ViewBlockItem() {
   // @@protoc_insertion_point(destructor:seth.view_block.protobuf.ViewBlockItem)
+    common::GlobalInfo::Instance()->DecSharedObj(18);
   SharedDtor();
 }
 

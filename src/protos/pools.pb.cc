@@ -2,7 +2,7 @@
 // source: protos/pools.proto
 
 #include "protos/pools.pb.h"
-
+#include "common/global_info.h"
 #include <algorithm>
 
 #include <google/protobuf/stubs/common.h>
@@ -7893,6 +7893,7 @@ const int TxMessage::kTxDebugTimeoutSecondsFieldNumber;
 
 TxMessage::TxMessage()
   : ::google::protobuf::Message(), _internal_metadata_(NULL) {
+    common::GlobalInfo::Instance()->AddSharedObj(22);
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2fpools_2eproto::scc_info_TxMessage.base);
   SharedCtor();
@@ -7903,6 +7904,7 @@ TxMessage::TxMessage(const TxMessage& from)
       _internal_metadata_(NULL),
       _has_bits_(from._has_bits_),
       tx_debug_(from.tx_debug_) {
+    common::GlobalInfo::Instance()->AddSharedObj(22);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   pubkey_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (from.has_pubkey()) {
@@ -7952,6 +7954,7 @@ void TxMessage::SharedCtor() {
 }
 
 TxMessage::~TxMessage() {
+    common::GlobalInfo::Instance()->DecSharedObj(22);
   // @@protoc_insertion_point(destructor:seth.pools.protobuf.TxMessage)
   SharedDtor();
 }

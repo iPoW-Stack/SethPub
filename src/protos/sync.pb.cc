@@ -2,7 +2,7 @@
 // source: protos/sync.proto
 
 #include "protos/sync.pb.h"
-
+#include "common/global_info.h"
 #include <algorithm>
 
 #include <google/protobuf/stubs/common.h>
@@ -2582,6 +2582,7 @@ const int SyncMessage::kSyncValueResFieldNumber;
 
 SyncMessage::SyncMessage()
   : ::google::protobuf::Message(), _internal_metadata_(NULL) {
+    common::GlobalInfo::Instance()->AddSharedObj(21);
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2fsync_2eproto::scc_info_SyncMessage.base);
   SharedCtor();
@@ -2591,6 +2592,7 @@ SyncMessage::SyncMessage(const SyncMessage& from)
   : ::google::protobuf::Message(),
       _internal_metadata_(NULL),
       _has_bits_(from._has_bits_) {
+    common::GlobalInfo::Instance()->AddSharedObj(21);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   if (from.has_sync_value_req()) {
     sync_value_req_ = new ::seth::sync::protobuf::SyncValueRequest(*from.sync_value_req_);
@@ -2612,6 +2614,7 @@ void SyncMessage::SharedCtor() {
 }
 
 SyncMessage::~SyncMessage() {
+    common::GlobalInfo::Instance()->DecSharedObj(21);
   // @@protoc_insertion_point(destructor:seth.sync.protobuf.SyncMessage)
   SharedDtor();
 }

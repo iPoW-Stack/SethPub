@@ -2,7 +2,7 @@
 // source: protos/hotstuff.proto
 
 #include "protos/hotstuff.pb.h"
-
+#include "common/global_info.h"
 #include <algorithm>
 
 #include <google/protobuf/stubs/common.h>
@@ -707,6 +707,7 @@ const int HotstuffMessage::kPoolIndexFieldNumber;
 
 HotstuffMessage::HotstuffMessage()
   : ::google::protobuf::Message(), _internal_metadata_(NULL) {
+    common::GlobalInfo::Instance()->AddSharedObj(24);
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2fhotstuff_2eproto::scc_info_HotstuffMessage.base);
   SharedCtor();
@@ -716,6 +717,7 @@ HotstuffMessage::HotstuffMessage(const HotstuffMessage& from)
   : ::google::protobuf::Message(),
       _internal_metadata_(NULL),
       _has_bits_(from._has_bits_) {
+    common::GlobalInfo::Instance()->AddSharedObj(24);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   if (from.has_pro_msg()) {
     pro_msg_ = new ::seth::hotstuff::protobuf::ProposeMsg(*from.pro_msg_);
@@ -756,6 +758,7 @@ void HotstuffMessage::SharedCtor() {
 }
 
 HotstuffMessage::~HotstuffMessage() {
+    common::GlobalInfo::Instance()->DecSharedObj(24);
   // @@protoc_insertion_point(destructor:seth.hotstuff.protobuf.HotstuffMessage)
   SharedDtor();
 }
