@@ -230,6 +230,7 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
     return kPoolsError;
 #endif
     if (prev_to_heights_ == nullptr) {
+        SETH_INFO("prev_to_heights_ == nullptr");
         return kPoolsError;
     }
 
@@ -251,7 +252,7 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
                 }
 
                 if (valided_heights_[i].find(cons_height) == valided_heights_[i].end()) {
-                    SETH_DEBUG("leader get to heights error, pool: %u, height: %lu", i, cons_height);
+                    SETH_INFO("leader get to heights error, pool: %u, height: %lu", i, cons_height);
                     return kPoolsError;
                 }
 
@@ -271,7 +272,7 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
     }
 
     if (!valid) {
-        SETH_DEBUG("final leader get to heights error, pool: %u, height: %lu", 0, 0);
+        SETH_INFO("final leader get to heights error, pool: %u, height: %lu", 0, 0);
         return kPoolsError;
     }
 
@@ -279,7 +280,7 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
     leader_to_heights_.store(leader_to_heights_ptr);
     for (uint32_t i = 0; i < (uint32_t)to_heights.heights_size(); ++i) {
         if (prev_to_heights->heights(i) > to_heights.heights(i)) {
-            SETH_DEBUG("prev heights invalid, pool: %u, prev height: %lu, now: %lu",
+            SETH_INFO("prev heights invalid, pool: %u, prev height: %lu, now: %lu",
                 i, prev_to_heights->heights(i), to_heights.heights(i));
             return kPoolsError;
         }
@@ -287,12 +288,13 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
 
     for (uint32_t i = 0; i < (uint32_t)to_heights.heights_size(); ++i) {
         if (prev_to_heights->heights(i) < to_heights.heights(i)) {
-            SETH_DEBUG("prev heights valid, pool: %u, prev height: %lu, now: %lu",
+            SETH_INFO("prev heights valid, pool: %u, prev height: %lu, now: %lu",
                 i, prev_to_heights->heights(i), to_heights.heights(i));
             return kPoolsSuccess;
         }
     }
 
+    SETH_INFO("final leader get to heights error, pool: %u, height: %lu", 0, 0);
     return kPoolsError;
 }
 
