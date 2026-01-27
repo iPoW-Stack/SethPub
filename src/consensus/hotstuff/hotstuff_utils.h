@@ -106,6 +106,10 @@ public:
     }
 
     ~ViewBlockInfo() {
+        SETH_INFO("success add view block remove %u_%u_%lu", 
+            view_block ? view_block->qc().network_id() : 0,
+            view_block ? view_block->qc().pool_index() : 0,
+            view_block ? view_block->qc().view() : 0);
         common::GlobalInfo::Instance()->DecSharedObj(3);
     }
 };
