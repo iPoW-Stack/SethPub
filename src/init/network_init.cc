@@ -533,8 +533,10 @@ int NetworkInit::InitHttpServer() {
             wait_con_.notify_one();
         }
 
+            SETH_INFO("http init waiting response coming.");
         std::unique_lock<std::mutex> lock(wait_mutex_);
         wait_con_.wait_for(lock, std::chrono::milliseconds(10000));
+            SETH_INFO("http init waiting response coming success.");
     }
 
     return kInitSuccess;
