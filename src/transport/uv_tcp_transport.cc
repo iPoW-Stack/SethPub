@@ -150,19 +150,6 @@ const char *inet_ntop(int af, const void *src, char *dst, socklen_t size) {
 
 #endif // _WIN32
 
-static void get_peer_ip_port(uv_tcp_t* tcp, std::string* ip, uint16_t *port) {
-    struct sockaddr sockname;
-    memset(&sockname, -1, sizeof sockname);
-    int namelen = sizeof(sockname);
-    uv_tcp_getpeername(tcp, &sockname, &namelen);
-    struct sockaddr_in *sock = (struct sockaddr_in*)&sockname;
-    *port = ntohs(sock->sin_port);
-    struct in_addr in = sock->sin_addr;
-    char str[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &in, str, sizeof(str));
-    *ip = str;
-}
-
 bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
     auto& from_ip = ex_uv_tcp->ip;
     auto from_port = ex_uv_tcp->port;
