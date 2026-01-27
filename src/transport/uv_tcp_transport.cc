@@ -30,7 +30,7 @@ struct connect_ex_t {
 };
 
 void on_close(uv_handle_t* handle) {
-    SETH_ERROR("close called: %p!", handle);
+    SETH_ERROR("close called: %p!", static_cast<void*>(handle));
     ex_uv_tcp_t* ex_uv_tcp = (ex_uv_tcp_t*)handle;
     assert(ex_uv_tcp->msg_decoder != nullptr);
     if (ex_uv_tcp->msg_decoder) {
@@ -596,7 +596,7 @@ void TcpTransport::AddConnection(ex_uv_tcp_t* uv_tcp) {
     }
 
     SETH_ERROR("AddConnection called: %s:%d %p!",
-        uv_tcp->ip, uv_tcp->port, &uv_tcp->uv_tcp);
+        uv_tcp->ip, uv_tcp->port, static_cast<void*>(&uv_tcp->uv_tcp));
     conn_map_[peer_spec] = uv_tcp;
 }
 
