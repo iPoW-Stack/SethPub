@@ -12,6 +12,8 @@ namespace seth {
 namespace transport {
 
 static common::ThreadSafeQueue<std::shared_ptr<ClientItem>>* output_queues_ = nullptr;
+common::ThreadSafeQueue<transport::MessagePtr> local_messages_[common::kMaxThreadCount];
+
 static const int kTcpBufferSize = 10 * 1024 * 1024;
 using namespace tnet;
 // single loop, thread safe

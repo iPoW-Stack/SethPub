@@ -85,7 +85,6 @@ private:
     std::unordered_map<std::string, int32_t> ip_socket_map_;
     std::atomic<bool> destroy_ = false;
     std::queue<ex_uv_tcp_t*> invalid_conns_;
-    common::ThreadSafeQueue<transport::MessagePtr> local_messages_[common::kMaxThreadCount];
 
     DISALLOW_COPY_AND_ASSIGN(TcpTransport);
 };
