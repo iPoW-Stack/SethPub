@@ -60,9 +60,6 @@ public:
 private:
     TcpTransport();
     ~TcpTransport();
-    void GetProtoHash(
-        const transport::protobuf::Header& message,
-        std::string* msg_for_hash);
     void Run();
     void Output();
 

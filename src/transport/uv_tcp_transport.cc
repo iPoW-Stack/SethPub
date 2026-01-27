@@ -641,22 +641,7 @@ std::string TcpTransport::GetHeaderHashForSign(const transport::protobuf::Header
     msg_for_hash.append(std::string((char*)&type, sizeof(type)));
     int32_t version = message.version();
     msg_for_hash.append(std::string((char*)&version, sizeof(version)));
-    protos::GetProtoHash(message, &msg_for_hash);
     return common::Hash::keccak256(msg_for_hash);
-}
-
-void TcpTransport::SetMessageHash(
-        const transport::protobuf::OldHeader& message) {
-    auto tmpHeader = const_cast<transport::protobuf::OldHeader*>(&message);
-    std::string hash_str;
-    hash_str.reserve(1024);
-    hash_str.append(msg_random_);
-    auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
-    hash_str.append((char*)&thread_idx, sizeof(thread_idx));
-    auto msg_count = ++thread_msg_count_[thread_idx];
-    hash_str.append((char*)&msg_count, sizeof(msg_count));
-    tmpHeader->set_hash64(common::Hash::Hash64(hash_str));
-    SETH_DEBUG("3 send message hash64: %lu", message.hash64());
 }
 
 }  // namespace transport
