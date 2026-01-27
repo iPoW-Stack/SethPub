@@ -291,6 +291,9 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashSt
         cached_pri_queue_.pop();
     }
 
+    SETH_INFO("success add view block cached_block_map_: %u, "
+        "cached_view_with_blocks_: %u, cached_pri_queue_: %u", 
+        cached_block_map_.size(), cached_view_with_blocks_.size(), cached_pri_queue_.size());
     if (hash.empty()) {
         return nullptr;
     }
@@ -1251,6 +1254,7 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
         view_block_ptr->mutable_qc()->set_sign_x(qc_item.sign_x());
         view_block_ptr->mutable_qc()->set_sign_y(qc_item.sign_y());
         cached_block_queue_.push(view_block_ptr_info);
+        SETH_INFO("success add view block info cached_block_queue_: %u", cached_block_queue_.size());
     }
 
     if (high_view_block_ == nullptr ||
