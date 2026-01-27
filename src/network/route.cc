@@ -90,6 +90,10 @@ void Route::HandleMessage(const transport::MessagePtr& header_ptr) {
         return;
     }
 
+    if (header.type() == common::kHotstuffMessage) {
+        SETH_INFO("route handle message: %lu", header.hash64());
+    }
+
     if (header.has_broadcast() && !header_ptr->header_str.empty()) {
 //         Broadcast(header_ptr->thread_idx, header_ptr);
         auto tmp_ptr = std::make_shared<transport::TransportMessage>();
