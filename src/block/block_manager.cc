@@ -839,17 +839,17 @@ pools::TxItemPtr BlockManager::GetToTx(
             return nullptr;
         }
 
-        SETH_DEBUG("now leader get to to tx.");
+        SETH_INFO("now leader get to to tx.");
         leader_prev_get_to_tx_tm_ = cur_time + 3000lu;
         auto latest_to_block_ptr = latest_to_block_ptr_[latest_to_block_ptr_index_].load();
         if (latest_to_block_ptr != nullptr &&
                 latest_to_block_ptr->block_info().timestamp() + 10000lu >= cur_time) {
-            SETH_DEBUG("now leader get to to tx timestamp error");
+            SETH_INFO("now leader get to to tx timestamp error");
             return nullptr;
         }
 
         if (to_txs_pool_->LeaderCreateToHeights(heights) != pools::kPoolsSuccess) {
-            SETH_DEBUG("now leader get to to tx leader get error");
+            SETH_INFO("now leader get to to tx leader get error");
             return nullptr;
         }
     } else {
@@ -864,13 +864,13 @@ pools::TxItemPtr BlockManager::GetToTx(
     if (tx_ptr != nullptr) {
         // heights_str_map_[height_hash] = tx_ptr;
         // CHECK_MEMORY_SIZE(heights_str_map_);
-        SETH_DEBUG("success get to tx tx info: %s, nonce: %lu, val: %s, heights: %s",
+        SETH_INFO("success get to tx tx info: %s, nonce: %lu, val: %s, heights: %s",
             ProtobufToJson(*tx_ptr->tx_info).c_str(),
             tx_ptr->tx_info->nonce(), 
             "common::Encode::HexEncode(tx_ptr->tx_info.value()).c_str()",
             ProtobufToJson(heights).c_str());
     } else {
-        SETH_DEBUG("failed get to tx tx info: %s", ProtobufToJson(heights).c_str());
+        SETH_INFO("failed get to tx tx info: %s", ProtobufToJson(heights).c_str());
     }
 
     return tx_ptr;
