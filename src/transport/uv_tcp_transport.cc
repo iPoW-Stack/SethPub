@@ -325,7 +325,6 @@ int TcpTransport::Init(
     return kTransportSuccess;
 }
 
-
 MultiThreadHandler* TcpTransport::msg_handler() {
     return msg_handler_;
 }
@@ -361,6 +360,19 @@ void TcpTransport::Stop() {
 
 uint8_t TcpTransport::GetThreadIndexWithPool(uint32_t pool_index) {
     return msg_handler_->GetThreadIndexWithPool(pool_index);
+}
+
+int TcpTransport::Send(
+        tnet::TcpInterface* conn,
+        const transport::protobuf::Header& message) {
+    auto output_item = std::make_shared<ClientItem>();
+    output_item->conn = conn;
+    output_item->hash64 = message.hash64();
+    message.SerializeToString(&output_item->msg);
+    auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
+    output_queues_[thread_idx].push(output_item);
+    output_con_.notify_one();
+    return kTransportSuccess;
 }
 
 int TcpTransport::Send(

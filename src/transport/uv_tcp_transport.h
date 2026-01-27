@@ -44,6 +44,9 @@ public:
         transport::protobuf::Header& message);
     int Send(
         tnet::TcpInterface* conn,
+        const transport::protobuf::Header& message);
+    int Send(
+        tnet::TcpInterface* conn,
         const std::string& message);
     int SendToLocal(transport::protobuf::Header& message);
     int GetSocket();
