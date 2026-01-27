@@ -72,9 +72,9 @@ WorkingDirectory=/root/seths/%i
 # 启动命令，对应原脚本逻辑
 ExecStart=/root/seths/%i/seth -f 0 -g 0 %i
 # 进程挂掉后自动重启
-Restart=always
+Restart=no
 # 重启间隔 5秒
-RestartSec=5
+# RestartSec=5
 # 资源限制
 LimitNOFILE=1000000
 LimitCORE=infinity
