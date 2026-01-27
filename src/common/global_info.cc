@@ -44,10 +44,10 @@ void GlobalInfo::Timer() {
 }
 
 int GlobalInfo::Init(const common::Config& config) {
-#ifndef NDEBUG
+// #ifndef NDEBUG
     tick_ptr_ = std::make_shared<common::Tick>();
     tick_ptr_->CutOff(2000000lu, std::bind(&GlobalInfo::Timer, this));
-#endif
+// #endif
     begin_run_timestamp_ms_ = common::TimeUtils::TimestampMs() + 10000lu;
     config.Get("seth", "consensus_thread_count", hotstuff_thread_count_);
     message_handler_thread_count_ = hotstuff_thread_count_ + 2;

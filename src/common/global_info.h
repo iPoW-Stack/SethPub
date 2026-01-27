@@ -182,15 +182,15 @@ public:
     }
 
     void AddSharedObj(int32_t index) {
-#ifndef NDEBUG
+// #ifndef NDEBUG
         shared_obj_count_[index].fetch_add(1);
-#endif
+// #endif
     }
 
     void DecSharedObj(int32_t index) {
-#ifndef NDEBUG
+// #ifndef NDEBUG
         shared_obj_count_[index].fetch_sub(1);
-#endif
+// #endif
     }
 
     uint32_t tx_user_qps_limit_window_sconds() const {
