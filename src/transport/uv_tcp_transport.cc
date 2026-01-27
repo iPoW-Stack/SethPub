@@ -1,7 +1,6 @@
 #include "transport/uv_tcp_transport.h"
 #ifdef SETH_USE_UV
 
-#include "address/node_manager.h"
 #include "common/global_info.h"
 #include "common/split.h"
 #include "common/string_utils.h"
@@ -159,12 +158,6 @@ static void get_peer_ip_port(uv_tcp_t* tcp, std::string* ip, uint16_t *port) {
 
 bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
     auto& from_ip = ex_uv_tcp->ip;
-    if (!address::NodeManager::Instance()->Exists(from_ip)) {
-        SETH_DEBUG("check join node failed! ip invalid %s",
-            from_ip.c_str());
-        return false;
-    }
-
     auto from_port = ex_uv_tcp->port;
     tnet::MsgPacket* msg_packet = dynamic_cast<tnet::MsgPacket*>(&packet);
     char* data = nullptr;
@@ -371,12 +364,6 @@ int TcpTransport::Send(
         const std::string& des_ip,
         uint16_t des_port,
         transport::protobuf::Header& message) {
-    if (!address::NodeManager::Instance()->Exists(des_ip)) {
-        SETH_DEBUG("check join node failed! ip invalid %s",
-            des_ip.c_str());
-        return false;
-    }
-
     assert(des_port > 0);
     auto tmpHeader = const_cast<transport::protobuf::Header*>(&message);
     tmpHeader->set_from_public_port(common::GlobalInfo::Instance()->config_public_port());
