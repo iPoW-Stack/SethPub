@@ -236,6 +236,10 @@ std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHeight(
     view_block_ptr->view_block = std::make_shared<ViewBlock>();
     auto& view_block = *view_block_ptr->view_block;
     if (prefix_db_->GetBlockWithHeight(network_id, pool_index_, height, &view_block)) {
+        SETH_INFO("success add view block remove add %u_%u_%lu", 
+            view_block.qc().network_id(), 
+            view_block.qc().pool_index(), 
+            view_block.qc().view());
         latest_commited_hash_lru_map_.Put(
             view_block_ptr->view_block->qc().view_block_hash(), 
             view_block_ptr);
@@ -317,6 +321,10 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashSt
     view_block_ptr->view_block = std::make_shared<ViewBlock>();
     auto& view_block = *view_block_ptr->view_block;
     if (prefix_db_->GetBlock(hash, &view_block)) {
+        SETH_INFO("1 success add view block remove add %u_%u_%lu", 
+            view_block.qc().network_id(), 
+            view_block.qc().pool_index(), 
+            view_block.qc().view());
         view_block_ptr->valid = true;
         latest_commited_hash_lru_map_.Put(
             view_block_ptr->view_block->qc().view_block_hash(), 

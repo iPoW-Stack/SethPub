@@ -221,6 +221,10 @@ private:
             BalanceAndNonceMapPtr acc_balance_map_ptr,
             std::shared_ptr<zjcvm::ZjchainHost> zjc_host_ptr) {
         auto view_block_info_ptr = std::make_shared<ViewBlockInfo>();
+        SETH_INFO("2 success add view block remove add %u_%u_%lu", 
+            view_block->qc().network_id(), 
+            view_block->qc().pool_index(), 
+            view_block->qc().view());
         view_block_info_ptr->view_block = view_block;
         view_block_info_ptr->acc_balance_map_ptr = acc_balance_map_ptr;
         view_block_info_ptr->zjc_host_ptr = zjc_host_ptr;
