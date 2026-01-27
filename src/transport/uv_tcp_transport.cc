@@ -188,7 +188,7 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
     msg_ptr->conn = std::make_shared<UvTcpConnection>(ex_uv_tcp);
     msg_ptr->conn->SetPeerIp(from_ip);
     msg_ptr->conn->SetPeerPort(from_port);
-    SETH_DEBUG("message coming: %s:%d, type: %d", from_ip, from_port, msg_ptr->header.type());
+    SETH_INFO("message coming: %s:%d, type: %d", from_ip, from_port, msg_ptr->header.type());
     assert(from_port > 0);
     tcp_transport->msg_handler()->HandleMessage(msg_ptr);
     packet.Free();
