@@ -55,7 +55,7 @@ void ToTxsPools::ThreadToStatistic(
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(view_block_ptr->debug());
-    SETH_DEBUG("to txs new block coming %u_%u_%lu, "
+    SETH_INFO("to txs new block coming %u_%u_%lu, "
         "cons height: %lu, tx size: %d, propose_debug: %s, step: %d, tx status: %d, block: %s",
         view_block_ptr->qc().network_id(),
         view_block_ptr->qc().pool_index(),
