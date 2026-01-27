@@ -43,7 +43,7 @@ public:
         uint16_t port,
         transport::protobuf::Header& message);
     int Send(
-        tnet::TcpInterface* conn,
+        std::shared_ptr<tnet::TcpInterface> conn,
         const transport::protobuf::Header& message);
     int Send(
         tnet::TcpInterface* conn,

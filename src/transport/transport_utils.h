@@ -144,7 +144,7 @@ public:
     std::string msg;
     uint64_t hash64;
     uint32_t type;
-    tnet::TcpInterface* conn;
+    std::shared_ptr<tnet::TcpInterface> conn;
 };
 
 static const uint32_t kMaxHops = 20u;
