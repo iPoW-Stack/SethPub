@@ -33,8 +33,8 @@ public:
 
         if (item_list_.size() > max_size_) {
             Type last = item_list_.back();
-            item_list_.pop_back();
             item_map_.erase(last);
+            item_list_.pop_back();
             // CHECK_MEMORY_SIZE(item_list_);
         }
 
