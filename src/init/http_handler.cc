@@ -996,7 +996,7 @@ void HttpHandler::Init(
     svr.Post("/get_block_with_gid", GetBlockWithGid);
     http_ip_ = ip;
     http_port_ = port;
-    if (!http_svr_->is_valid()) {
+    if (!svr.is_valid()) {
         SETH_ERROR("http server invalid.");
         return;
     }
