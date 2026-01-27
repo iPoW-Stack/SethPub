@@ -445,7 +445,7 @@ void uv_async_cb(uv_async_t* handle) {
             auto des_port = item_ptr->port;
             ex_uv_tcp_t* ex_uv_tcp = nullptr;
             if (item_ptr->conn) {
-                ex_uv_tcp = dynamic_cast<UvTcpConnection>(item_ptr->conn)->ex_uv_tcp();
+                ex_uv_tcp = std::dynamic_pointer_cast<UvTcpConnection>(item_ptr->conn)->ex_uv_tcp();
             } else {
                 SETH_DEBUG("send to %s:%d,thread id: %u", des_ip.c_str(), des_port, std::this_thread::get_id());
                 ex_uv_tcp = transport::TcpTransport::Instance()->GetConnection(des_ip, des_port);
