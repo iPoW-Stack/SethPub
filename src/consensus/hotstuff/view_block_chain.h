@@ -208,10 +208,10 @@ private:
         
         view_blocks_info_[view_block_info->view_block->qc().view_block_hash()] = view_block_info;
         view_with_blocks_[view_block_info->view_block->qc().view()].push_back(view_block_info);
-        SETH_INFO("success add view block info now size: %u", view_blocks_info_.size());
+        SETH_DEBUG("success add view block info now size: %u", view_blocks_info_.size());
 #ifndef NDEBUG
         for (auto iter = view_with_blocks_.begin(); iter != view_with_blocks_.end(); ++iter) {
-            SETH_INFO("success add view block info now size: %u, %u", iter->first, iter->second.size());
+            SETH_DEBUG("success add view block info now size: %u, %u", iter->first, iter->second.size());
         }
 #endif
     }
@@ -221,7 +221,7 @@ private:
             BalanceAndNonceMapPtr acc_balance_map_ptr,
             std::shared_ptr<zjcvm::ZjchainHost> zjc_host_ptr) {
         auto view_block_info_ptr = std::make_shared<ViewBlockInfo>();
-        SETH_INFO("2 success add view block remove add %u_%u_%lu", 
+        SETH_DEBUG("2 success add view block remove add %u_%u_%lu", 
             view_block->qc().network_id(), 
             view_block->qc().pool_index(), 
             view_block->qc().view());
