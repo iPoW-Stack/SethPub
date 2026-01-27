@@ -82,6 +82,11 @@ void ToTxsPools::ThreadToStatistic(
         auto height_iter = height_map.find(view_block_ptr->block_info().height());
         if (height_iter == height_map.end()) {
             height_map[view_block_ptr->block_info().height()] = tx_map;
+            SETH_INFO("height_map: %u_%u_%lu, size: %lu", 
+                view_block_ptr->qc().network_id(),
+                view_block_ptr->qc().pool_index(),
+                view_block_ptr->block_info().height(),
+                height_map.size());
         }
     }
 

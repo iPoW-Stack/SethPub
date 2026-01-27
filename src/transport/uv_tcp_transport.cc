@@ -500,7 +500,7 @@ void uv_async_cb(uv_async_t* handle) {
                     free(ex_conn);
                 }
                 if (item_ptr->type == common::kHotstuffMessage) {
-                    SETH_INFO("success connect to server: %s:%d, hash64: %lu", 
+                    SETH_DEBUG("success connect to server: %s:%d, hash64: %lu", 
                         des_ip.c_str(), des_port, item_ptr->hash64);
                 }
             } else {
@@ -511,7 +511,7 @@ void uv_async_cb(uv_async_t* handle) {
                 uv_buf_t buf = uv_buf_init((char*)tmp_msg.c_str(), tmp_msg.size());
                 uv_write_t *req = (uv_write_t*)malloc(sizeof(uv_write_t));
                 if (item_ptr->type == common::kHotstuffMessage) {
-                    SETH_INFO("now send to server: %s:%d, hash64: %lu", des_ip.c_str(), des_port, item_ptr->hash64);
+                    SETH_DEBUG("now send to server: %s:%d, hash64: %lu", des_ip.c_str(), des_port, item_ptr->hash64);
                 }
                 uv_write(req, (uv_stream_t*)&ex_uv_tcp->uv_tcp, &buf, 1, on_write);
             }
