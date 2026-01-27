@@ -630,6 +630,7 @@ void BaseDht::ProcessRefreshNeighborsRequest(const transport::MessagePtr& msg_pt
     }
 
     transport::protobuf::Header res;
+    assert(local_node_->dht_key.size() == kDhtKeySize);
     DhtProto::CreateRefreshNeighborsResponse(
         local_node_->sharding_id,
         local_node_->dht_key,
@@ -978,6 +979,7 @@ void BaseDht::ProcessTimerRequest() {
     auto rand_idx = common::Random::RandomInt32() % dht_ptr->size();
     auto node = (*dht_ptr)[rand_idx];
     transport::protobuf::Header msg;
+    assert(node->dht_key.size() == kDhtKeySize);
     DhtProto::CreateRefreshNeighborsRequest(
         *dht_ptr,
         local_node_,
