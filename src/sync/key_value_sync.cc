@@ -541,7 +541,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
     msg.set_des_dht_key(dht_key.StrKey());
     msg.set_type(common::kSyncMessage);
     transport::TcpTransport::Instance()->SetMessageHash(msg);
-    transport::TcpTransport::Instance()->Send(msg_ptr->conn.get(), msg);
+    transport::TcpTransport::Instance()->Send(msg_ptr->conn, msg);
     SETH_DEBUG("sync response ok des: %u, src hash64: %lu, des hash64: %lu",
         msg_ptr->header.src_sharding_id(), msg_ptr->header.hash64(), msg.hash64());
 }

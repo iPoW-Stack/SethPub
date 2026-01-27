@@ -640,7 +640,7 @@ void TxPoolManager::HandleSyncPoolsMaxHeight(const transport::MessagePtr& msg_pt
         }
 
         transport::TcpTransport::Instance()->SetMessageHash(msg);
-        transport::TcpTransport::Instance()->Send(msg_ptr->conn.get(), msg);
+        transport::TcpTransport::Instance()->Send(msg_ptr->conn, msg);
         SETH_DEBUG("response pool heights: %s, cross pool heights: %s, "
             "now_max_sharding_id_: %u, src sharding id: %u, src hash64: %lu, des hash64: %lu",
             sync_debug.c_str(), cross_debug.c_str(),
