@@ -488,7 +488,7 @@ void BaseDht::ProcessBootstrapRequest(const transport::MessagePtr& msg_ptr) {
         msg_ptr->conn->PeerIp().c_str(), msg_ptr->conn->PeerPort(),
         dht_msg.bootstrap_req().public_ip().c_str(),
         dht_msg.bootstrap_req().public_port());
-    transport::TcpTransport::Instance()->Send(msg_ptr->conn, msg);
+    transport::TcpTransport::Instance()->Send(msg_ptr->conn->PeerIp(), msg_ptr->conn->PeerPort(), msg);
     NodePtr node = std::make_shared<Node>(
         msg.src_sharding_id(),
         dht_msg.bootstrap_req().public_ip(),
@@ -638,7 +638,8 @@ void BaseDht::ProcessRefreshNeighborsRequest(const transport::MessagePtr& msg_pt
         res);
     transport::TcpTransport::Instance()->SetMessageHash(res);
     // SETH_DEBUG("send refresh neighbers response hash: %lu", res.hash64());
-    transport::TcpTransport::Instance()->Send(msg_ptr->conn, res);
+    // transport::TcpTransport::Instance()->Send(msg_ptr->conn, res);
+    transport::TcpTransport::Instance()->Send(msg_ptr->conn->PeerIp(), msg_ptr->conn->PeerPort(), res);
 }
 
 void BaseDht::ProcessRefreshNeighborsResponse(const transport::MessagePtr& msg_ptr) {
