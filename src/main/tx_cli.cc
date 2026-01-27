@@ -499,6 +499,8 @@ int tx_main(int argc, char** argv) {
                 usleep(1000000);
                 if (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
                     prikey_with_nonce[addr] = src_prikey_with_nonce[addr];
+                    std::cout << "reset add nonce " << common::Encode::HexEncode(addr) << ":" << prikey_with_nonce[addr] << std::endl;
+                    continue;
                 }
             }
 
