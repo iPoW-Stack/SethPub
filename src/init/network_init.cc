@@ -526,9 +526,9 @@ int NetworkInit::InitHttpServer() {
             http_ip, 
             http_port);
         std::this_thread::sleep_for(std::chrono::milliseconds{200});
-        httplib::Client cli("127.0.0.1", http_port);
+        httplib::Client cli(common::GlobalInfo::Instance()->config_local_ip(), http_port);
         if (auto res = cli.Post("/query_init", "text", "text/plain")) {
-            SETH_DEBUG("http init wait response coming.");
+            SETH_INFO("http init wait response coming.");
             std::unique_lock<std::mutex> lock(wait_mutex_);
             wait_con_.notify_one();
         }
