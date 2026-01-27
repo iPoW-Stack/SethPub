@@ -797,7 +797,7 @@ void NetworkInit::CreateInitAddress(uint32_t net_id) {
 
     auto fd = fopen(file_name.c_str(), "w");
     uint32_t address_count_now = 0;
-    for (uint32_t j = 0; j < 16; j++) {
+    for (uint32_t j = 0; j < 64; j++) {
         for (uint32_t i = 0; i < common::kImmutablePoolSize; ++i) {
             while (true) {
                 auto private_key = common::Random::RandomString(32);
