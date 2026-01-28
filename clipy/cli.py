@@ -44,11 +44,11 @@ class SethClient:
             # Construct request, server QueryAccount expects 'address' parameter
             data = {"address": address_hex}
             resp = requests.post(self.query_url, data=data, timeout=5)
-            
+
             if resp.status_code != 200:
                 print(f"[Error] Query failed: {resp.text}")
                 return 0 # Account might not exist, default to 0
-            
+
             # Parse returned JSON
             # Server response example: {"address": "...", "balance": 1000, "nonce": 5, ...}
             # Note: Protobuf JSON fields might be omitted if they are default values, need handling
@@ -66,7 +66,7 @@ class SethClient:
             print(f"[Error] Get nonce error: {e}")
             return 0
 
-    def compute_hash(self, nonce, pubkey_hex, to_hex, amount, gas_limit, gas_price, step, 
+    def compute_hash(self, nonce, pubkey_hex, to_hex, amount, gas_limit, gas_price, step,
                      contract_code='', input_hex='', prepayment=0, key='', val=''):
         msg = bytearray()
         msg.extend(self._uint64_to_bytes(nonce))
@@ -82,12 +82,12 @@ class SethClient:
         if key:
             msg.extend(key.encode('utf-8'))
             if val: msg.extend(val.encode('utf-8'))
-        
+
         k = keccak.new(digest_bits=256)
         k.update(msg)
         return k.digest()
 
-    def send_transaction_auto(self, private_key_hex, to_hex, amount=0, 
+    def send_transaction_auto(self, private_key_hex, to_hex, amount=0,
                               gas_limit=50000, gas_price=1, step=0, shard_id=0,
                               contract_code='', input_hex='', prepayment=0,
                               key='', val=''):
@@ -98,23 +98,23 @@ class SethClient:
         3. Nonce + 1
         4. Sign and send
         """
-        
+
         # --- 1. Prepare Keys ---
         if private_key_hex.startswith('0x'):
             private_key_hex = private_key_hex[2:]
-        
+
         sk = SigningKey.from_string(bytes.fromhex(private_key_hex), curve=SECP256k1)
         vk = sk.verifying_key
-        
+
         # Export uncompressed public key (65 bytes: 04 + X + Y)
         pubkey_bytes_full = vk.to_string("uncompressed")
         pubkey_hex = pubkey_bytes_full.hex()
-        
+
         # Derive address (Used to query Nonce)
         # Get raw public key bytes without '04' prefix (64 bytes)
-        pubkey_bytes_raw = pubkey_bytes_full[1:] 
+        pubkey_bytes_raw = pubkey_bytes_full[1:]
         my_address_hex = self._derive_address_from_pubkey(pubkey_bytes_raw)
-        
+
         # --- 2. Get and Increment Nonce ---
         current_nonce = self.get_latest_nonce(my_address_hex)
         next_nonce = current_nonce + 1
@@ -128,13 +128,13 @@ class SethClient:
 
         # --- 4. Sign ---
         signature = sk.sign_digest_deterministic(
-            tx_hash, 
-            hashfunc=hashlib.sha256, 
+            tx_hash,
+            hashfunc=hashlib.sha256,
             sigencode=sigencode_string_canonize
         )
         r_bytes = signature[0:32]
         s_bytes = signature[32:64]
-        
+
         # Simple Recovery ID handling (Default 0, retry 1 on failure)
         v_byte = 0
 
@@ -150,7 +150,7 @@ class SethClient:
             "type": str(step),
             "sign_r": r_bytes.hex(),
             "sign_s": s_bytes.hex(),
-            "sign_v": str(v_byte) 
+            "sign_v": str(v_byte)
         }
 
         # Optional parameters
@@ -164,7 +164,7 @@ class SethClient:
         try:
             resp = requests.post(self.tx_url, data=data, timeout=5)
             print(f"[Server Response] {resp.status_code}: {resp.text}")
-            
+
             # Auto retry V=1
             if "SignatureInvalid" in resp.text or "verify signature failed" in resp.text:
                 print("[Client] Signature rejected (V=0), retrying with V=1...")
@@ -179,17 +179,17 @@ class SethClient:
 # Run Test
 # ==========================================
 if __name__ == "__main__":
-    HOST = "35.184.150.163"
+    HOST = "35.197.170.240"
     PORT = 23001
-    
+
     # Sender private key
-    MY_PRIVATE_KEY = "cefc2c33064ea7691aee3e5e4f7842935d26f3ad790d81cf015e79b78958e848"
-    
+    MY_PRIVATE_KEY = "c75f8d9b2a6bc0fe68eac7fef67c6b6f7c4f85163d58829b59110ff9e9210848"
+
     # Receiver address
-    TO_ADDR = "1234567890abcdef1234567890abcdef12345678" 
-    
+    TO_ADDR = "1234567890abcdef1234567890abcdef12345678"
+
     client = SethClient(HOST, PORT)
-    
+
     # Call automatic Nonce interface
     client.send_transaction_auto(
         private_key_hex=MY_PRIVATE_KEY,
