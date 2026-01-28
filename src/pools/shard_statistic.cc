@@ -90,6 +90,9 @@ int ShardStatistic::Init() {
 
 void ShardStatistic::OnNewBlock(
     const std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block_ptr) {
+    // TODO: 
+    return;
+    
 #ifdef TEST_NO_CROSS
     return;
 #endif

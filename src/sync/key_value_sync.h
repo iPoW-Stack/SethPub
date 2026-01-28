@@ -73,7 +73,7 @@ public:
     std::string key;
     uint32_t priority{ 0 };
     uint32_t sync_times{ 0 };
-    uint32_t pool_idx{ common::kInvalidUint32 }; // 对于 SyncElectBlock 来说pool 就是 elect network id
+    uint32_t pool_idx{ common::kInvalidUint32 };
     uint64_t height{ common::kInvalidUint64 };
     uint64_t sync_tm_us;
     uint64_t responsed_timeout_us;

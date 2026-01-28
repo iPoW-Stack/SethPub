@@ -960,9 +960,9 @@ HttpHandler::~HttpHandler() {
 }
 
 void HttpHandler::Run() {
-    SETH_DEBUG("http server now listen!");
+    SETH_INFO("http server now listen!");
     svr.listen(http_ip_, http_port_);
-    SETH_DEBUG("http server now listen over!");
+    SETH_INFO("http server now listen over!");
 }
 
 void HttpHandler::Init(
@@ -996,6 +996,11 @@ void HttpHandler::Init(
     svr.Post("/get_block_with_gid", GetBlockWithGid);
     http_ip_ = ip;
     http_port_ = port;
+    if (!svr.is_valid()) {
+        SETH_ERROR("http server invalid.");
+        return;
+    }
+
     http_svr_thread_ = std::make_shared<std::thread>(std::bind(&HttpHandler::Run, this));
 }
 

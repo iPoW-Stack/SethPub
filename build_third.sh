@@ -15,8 +15,26 @@ apt install -y pkg-config
 apt install -y yasm
 apt install -y libgnutls28-dev zlib1g-dev libssh2-1-dev
 SRC_PATH=`pwd`
+if [ ! -d "$SRC_PATH/third_party/include/libuv" ]; then
+    cd $SRC_PATH
+    cd third_party/libuv && rm -rf build_release && git checkout 5152db2 && git submodule init && git submodule update && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=$TARGET -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j8 && make install
+    rm -rf $SRC_PATH/third_party/include/libuv
+    mv $SRC_PATH/third_party/include/uv $SRC_PATH/third_party/include/libuv
+    sed -i 's/"uv\//"libuv\//g' $SRC_PATH/third_party/include/uv.h
+    sed -i 's/"uv\//"libuv\//g' $SRC_PATH/third_party/include/libuv/unix.h
+    sed -i 's/"uv\//"libuv\//g' $SRC_PATH/third_party/include/libuv/win.h
+fi
+exit 0
+cd $SRC_PATH
+cd third_party/libbls && cd ./deps && PARALLEL_COUNT=1 bash build.sh && cp deps_inst/x86_or_x64/lib64/lib* deps_inst/x86_or_x64/lib/ ; cd .. && cmake -S . -B build_release  -DUSE_ASM=False  -DWITH_PROCPS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DLIBBLS_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j8 && make install
+mkdir -p $SRC_PATH/third_party/include/libbls && cp -rnf ../third_party ../tools ../dkg ../bls $SRC_PATH/third_party/include/libbls
+cp -rnf ../deps/deps_inst/x86_or_x64/include/boost/* $SRC_PATH/third_party/include/boost/
+cp -rnf ./libbls.a $SRC_PATH/third_party/lib/libdkgbls.a
+exit 0
+
 cd $SRC_PATH
 cd third_party/protobuf/ && git checkout 48cb18e && ./autogen.sh && ./configure --disable-shared --enable-static CXXFLAGS="-fPIC -O3" CFLAGS="-fPIC -O3" --prefix=$SRC_PATH/third_party/ && make -j${nproc} && make install
+
 cd $SRC_PATH
 cd third_party/spdlog && git checkout . && git submodule update --init && cmake -S . -B build_release -DSPDLOG_ENABLE_SOURCE_LOC=ON -DWITH_TESTS=OFF -DPORTABLE=1  -DCMAKE_CXX_FLAGS="-Wno-maybe-uninitialized" -DWITH_GFLAGS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && make install
 
@@ -37,11 +55,6 @@ cd third_party/gperftools/ && git checkout d9a5d38 && ./autogen.sh && ./configur
 cd $SRC_PATH
 #cd third_party/secp256k1 && git checkout a660a49 && cmake -S . -B build_release -DSECP256K1_ENABLE_MODULE_RECOVERY=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && make install
 cd third_party/secp256k1 && git checkout a660a49 && bash ./autogen.sh && ./configure --enable-module-ecdh --with-internal-keccak --disable-ecmult-static-precomputation --enable-module-recovery --enable-module-schnorrsig --prefix=$SRC_PATH/third_party/ && make -j${nproc} && make install
-cd $SRC_PATH
-cd third_party/libbls && cd ./deps && PARALLEL_COUNT=1 bash build.sh && cp deps_inst/x86_or_x64/lib64/lib* deps_inst/x86_or_x64/lib/ ; cd .. && cmake -S . -B build_release  -DUSE_ASM=False  -DWITH_PROCPS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DLIBBLS_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j8 && make install
-mkdir -p $SRC_PATH/third_party/include/libbls && cp -rnf ../third_party ../tools ../dkg ../bls $SRC_PATH/third_party/include/libbls
-cp -rnf ../deps/deps_inst/x86_or_x64/include/boost/* $SRC_PATH/third_party/include/boost/
-cp -rnf ./libbls.a $SRC_PATH/third_party/lib/libdkgbls.a
 
 cd $SRC_PATH
 cd third_party/gtest &&  git submodule update --init && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && make install

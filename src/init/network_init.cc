@@ -150,21 +150,21 @@ int NetworkInit::Init(int argc, char** argv) {
         return kInitError;
     }
 
-    SETH_DEBUG("init 0 6");
-    SETH_DEBUG("init 0 7");
+    SETH_INFO("init 0 6");
+    SETH_INFO("init 0 7");
     int transport_res = transport::TcpTransport::Instance()->Init(
         common::GlobalInfo::Instance()->config_local_ip() + ":" +
         std::to_string(common::GlobalInfo::Instance()->config_local_port()),
         128,
         true,
         &net_handler_);
-    SETH_DEBUG("init 0 8");
+    SETH_INFO("init 0 8");
     if (transport_res != transport::kTransportSuccess) {
         INIT_ERROR("int tcp transport failed!");
         return kInitError;
     }
 
-    SETH_DEBUG("init 0 9");
+    SETH_INFO("init 0 9");
     network::DhtManager::Instance();
     network::Route::Instance()->Init(security_);
     network::Route::Instance()->RegisterMessage(
@@ -175,7 +175,7 @@ int NetworkInit::Init(int argc, char** argv) {
         std::bind(&NetworkInit::HandleMessage, this, std::placeholders::_1));
     account_mgr_ = std::make_shared<block::AccountManager>();
     network::UniversalManager::Instance()->Init(security_, db_, account_mgr_);
-    SETH_DEBUG("init 0 10");
+    SETH_INFO("init 0 10");
     if (InitNetworkSingleton() != kInitSuccess) {
         INIT_ERROR("InitNetworkSingleton failed!");
         return kInitError;
@@ -272,21 +272,21 @@ int NetworkInit::Init(int argc, char** argv) {
     AddCmds();
     net_handler_.Start();
     transport::TcpTransport::Instance()->Start(false);
-    SETH_DEBUG("init 6");
+    SETH_INFO("init 6");
     if (InitHttpServer() != kInitSuccess) {
         INIT_ERROR("InitHttpServer failed!");
         return kInitError;
     }
-    SETH_DEBUG("init 7");
+    SETH_INFO("init 7");
     if (InitCommand() != kInitSuccess) {
         INIT_ERROR("InitCommand failed!");
         return kInitError;
     }
 
-    SETH_DEBUG("init 8");
+    SETH_INFO("init 8");
     inited_ = true;
     common::GlobalInfo::Instance()->set_main_inited_success();
-    SETH_DEBUG("init 9");
+    SETH_INFO("init 9");
     cmd_.AddCommand("gs", [this](const std::vector<std::string>& args) {
         if (args.size() < 3) {
             return;
@@ -526,15 +526,17 @@ int NetworkInit::InitHttpServer() {
             http_ip, 
             http_port);
         std::this_thread::sleep_for(std::chrono::milliseconds{200});
-        httplib::Client cli("127.0.0.1", http_port);
+        httplib::Client cli(common::GlobalInfo::Instance()->config_local_ip(), http_port);
         if (auto res = cli.Post("/query_init", "text", "text/plain")) {
-            SETH_DEBUG("http init wait response coming.");
+            SETH_INFO("http init wait response coming.");
             std::unique_lock<std::mutex> lock(wait_mutex_);
             wait_con_.notify_one();
         }
 
+            SETH_INFO("http init waiting response coming.");
         std::unique_lock<std::mutex> lock(wait_mutex_);
         wait_con_.wait_for(lock, std::chrono::milliseconds(10000));
+            SETH_INFO("http init waiting response coming success.");
     }
 
     return kInitSuccess;
@@ -795,7 +797,7 @@ void NetworkInit::CreateInitAddress(uint32_t net_id) {
 
     auto fd = fopen(file_name.c_str(), "w");
     uint32_t address_count_now = 0;
-    for (uint32_t j = 0; j < 16; j++) {
+    for (uint32_t j = 0; j < 64; j++) {
         for (uint32_t i = 0; i < common::kImmutablePoolSize; ++i) {
             while (true) {
                 auto private_key = common::Random::RandomString(32);
@@ -1145,12 +1147,6 @@ void NetworkInit::AddBlockItemToCache(
         std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block,
         db::DbWriteBatch& db_batch) {
     auto* block = &view_block->block_info();
-    SETH_DEBUG("cache new block coming sharding id: %u_%d_%lu, tx size: %u, hash: %s",
-        view_block->qc().network_id(),
-        view_block->qc().pool_index(),
-        block->height(),
-        block->tx_list_size(),
-        common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str());
     if (network::IsSameToLocalShard(view_block->qc().network_id())) {
         // thread thafe
         pools_mgr_->UpdateLatestInfo(view_block, db_batch);
@@ -1161,6 +1157,14 @@ void NetworkInit::AddBlockItemToCache(
 
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     new_blocks_queue_[thread_idx].push(view_block);
+    SETH_DEBUG("cache new block coming sharding id: %u_%d_%lu, tx size: %u, hash: %s, size: %u",
+        view_block->qc().network_id(),
+        view_block->qc().pool_index(),
+        block->height(),
+        block->tx_list_size(),
+        common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(),
+        new_blocks_queue_[thread_idx].size());
+
 }
 
 void NetworkInit::HandleNewBlock() {

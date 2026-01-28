@@ -208,6 +208,12 @@ private:
         
         view_blocks_info_[view_block_info->view_block->qc().view_block_hash()] = view_block_info;
         view_with_blocks_[view_block_info->view_block->qc().view()].push_back(view_block_info);
+        SETH_DEBUG("success add view block info now size: %u", view_blocks_info_.size());
+#ifndef NDEBUG
+        for (auto iter = view_with_blocks_.begin(); iter != view_with_blocks_.end(); ++iter) {
+            SETH_DEBUG("success add view block info now size: %u, %u", iter->first, iter->second.size());
+        }
+#endif
     }
 
     std::shared_ptr<ViewBlockInfo> GetViewBlockInfo(
@@ -215,6 +221,10 @@ private:
             BalanceAndNonceMapPtr acc_balance_map_ptr,
             std::shared_ptr<zjcvm::ZjchainHost> zjc_host_ptr) {
         auto view_block_info_ptr = std::make_shared<ViewBlockInfo>();
+        SETH_DEBUG("2 success add view block remove add %u_%u_%lu", 
+            view_block->qc().network_id(), 
+            view_block->qc().pool_index(), 
+            view_block->qc().view());
         view_block_info_ptr->view_block = view_block;
         view_block_info_ptr->acc_balance_map_ptr = acc_balance_map_ptr;
         view_block_info_ptr->zjc_host_ptr = zjc_host_ptr;
@@ -257,8 +267,8 @@ private:
     uint64_t prev_check_timeout_blocks_ms_ = 0;
     ChainType chain_type_ = kInvalidChain;
     std::map<uint64_t, std::vector<std::shared_ptr<ViewBlockInfo>>> view_with_blocks_;
-    common::LRUMap<BlockViewKey, std::shared_ptr<ViewBlockInfo>> latest_commited_view_lru_map_{ 128 };
-    common::LRUMap<std::string, std::shared_ptr<ViewBlockInfo>> latest_commited_hash_lru_map_{ 128 };
+    common::LRUMap<BlockViewKey, std::shared_ptr<ViewBlockInfo>> latest_commited_view_lru_map_{ 16 };
+    common::LRUMap<std::string, std::shared_ptr<ViewBlockInfo>> latest_commited_hash_lru_map_{ 16 };
     std::thread::id local_thread_id_;
     uint64_t local_thread_id_count_ = 0;
 

@@ -183,8 +183,9 @@ uint32_t iclock() {
 }
 
 static void SignalCallback(int sig_int) {
-    spdlog::shutdown();
+    SETH_ERROR("signal coming: %d", sig_int);
     common::GlobalInfo::Instance()->set_global_stoped();
+    spdlog::shutdown();
 }
 
 void SignalRegister() {

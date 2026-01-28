@@ -53,19 +53,19 @@ void FilterBroadcast::Broadcasting(
     }
 
     auto bloomfilter = GetBloomfilter(message);
-    if (message.broadcast().has_hop_to_layer() &&
-            now_hop_count >= message.broadcast().hop_to_layer()) {
-        auto nodes = GetlayerNodes(dht_ptr, bloomfilter, message);
-        for (auto iter = nodes.begin(); iter != nodes.end(); ++iter) {
-            bloomfilter->insert((*iter)->id_hash);
-        }
+    // if (message.broadcast().has_hop_to_layer() &&
+    //         now_hop_count >= message.broadcast().hop_to_layer()) {
+    //     auto nodes = GetlayerNodes(dht_ptr, bloomfilter, message);
+    //     for (auto iter = nodes.begin(); iter != nodes.end(); ++iter) {
+    //         bloomfilter->insert((*iter)->id_hash);
+    //     }
 
-        SETH_DEBUG("layer Broadcasting: %lu, size: %u", msg_ptr->header.hash64(), nodes.size());
-        // msg_ptr->header.mutable_broadcast()->clear_bloomfilter();
-        // TODO(xielei): test gossip ,remove it later
-        message.set_hop_count(now_hop_count + 1);
-        LayerSend(dht_ptr, msg_ptr, nodes);
-    } else {
+    //     SETH_DEBUG("layer Broadcasting: %lu, size: %u", msg_ptr->header.hash64(), nodes.size());
+    //     // msg_ptr->header.mutable_broadcast()->clear_bloomfilter();
+    //     // TODO(xielei): test gossip ,remove it later
+    //     message.set_hop_count(now_hop_count + 1);
+    //     LayerSend(dht_ptr, msg_ptr, nodes);
+    // } else {
         auto nodes = GetRandomFilterNodes(dht_ptr, bloomfilter, message);
         // for (auto iter = nodes.begin(); iter != nodes.end(); ++iter) {
         //     bloomfilter->insert((*iter)->id_hash);
@@ -80,7 +80,7 @@ void FilterBroadcast::Broadcasting(
         // msg_ptr->header.mutable_broadcast()->clear_bloomfilter();
         message.set_hop_count(now_hop_count + 1);
         Send(dht_ptr, msg_ptr, nodes);
-    }
+    // }
 }
 
 std::shared_ptr<std::unordered_set<uint64_t>> FilterBroadcast::GetBloomfilter(
@@ -221,11 +221,11 @@ std::vector<dht::NodePtr> FilterBroadcast::GetRandomFilterNodes(
     auto cast_msg = const_cast<transport::protobuf::Header*>(&message);
     auto broad_param = cast_msg->mutable_broadcast();
     broad_param->clear_bloomfilter();
-    for (auto iter = bloomfilter->begin(); iter != bloomfilter->end(); ++iter) {
-        if (broad_param->bloomfilter_size() < 64) {
-            broad_param->add_bloomfilter(*iter);
-        }
-    }
+    // for (auto iter = bloomfilter->begin(); iter != bloomfilter->end(); ++iter) {
+    //     if (broad_param->bloomfilter_size() < 64) {
+    //         broad_param->add_bloomfilter(*iter);
+    //     }
+    // }
 
     return nodes;
 }

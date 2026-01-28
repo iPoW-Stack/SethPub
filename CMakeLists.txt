@@ -117,7 +117,7 @@ add_definitions(
     -DOPENSSL_ROOT_DIR=/usr/local/Cellar/openssl/1.0.2r
     -DENABLE_HOTSTUFF
     -DDISABLE_GENESIS_BLS_VERIFY
-
+    -DSETH_USE_UV
     #    -DSETH_UNITTEST # for testing
     #-DFOR_CONSOLE_DEBUG
 #    -DTEST_TRANSPORT_PERFOMANCE
@@ -165,7 +165,7 @@ else()
         # -march=native: Use all instruction sets available on the host CPU (AVX2/AVX512 etc).
         #                Huge performance boost for BLS/Crypto.
         # -funroll-loops: Aggressive loop unrolling
-        add_compile_options(-O3 -funroll-loops)
+        add_compile_options(-O3 -march=native -funroll-loops)
 
         # Enable Dead Code Elimination (works with Linker options below)
         add_compile_options(-ffunction-sections -fdata-sections)
@@ -232,9 +232,9 @@ set(LINK_ARGS
     ${LINK_YAML}
     pthread
     gmp # Big number library, performance critical
-    #tcmalloc # Memory allocator, critical for multi-threaded performance
-    -static-libstdc++
-    -static
+    tcmalloc # Memory allocator, critical for multi-threaded performance
+    #-static-libstdc++
+    #-static
 )
 
 # Unified Linking

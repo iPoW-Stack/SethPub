@@ -131,6 +131,7 @@ typedef std::function<int(transport::MessagePtr& message)> FirewallCheckCallback
 class ClientItem {
 public:
     ClientItem() {
+        conn = nullptr;
         common::GlobalInfo::Instance()->AddSharedObj(12);
     }
 
@@ -142,6 +143,8 @@ public:
     uint16_t port;
     std::string msg;
     uint64_t hash64;
+    uint32_t type;
+    std::shared_ptr<tnet::TcpInterface> conn;
 };
 
 static const uint32_t kMaxHops = 20u;

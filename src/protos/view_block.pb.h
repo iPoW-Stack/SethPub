@@ -4,6 +4,7 @@
 #ifndef PROTOBUF_INCLUDED_protos_2fview_5fblock_2eproto
 #define PROTOBUF_INCLUDED_protos_2fview_5fblock_2eproto
 
+#include "common/global_info.h"
 #include <string>
 
 #include <google/protobuf/stubs/common.h>

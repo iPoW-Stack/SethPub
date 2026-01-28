@@ -2,7 +2,7 @@
 // source: protos/transport.proto
 
 #include "protos/transport.pb.h"
-
+#include "common/global_info.h"
 #include <algorithm>
 
 #include <google/protobuf/stubs/common.h>
@@ -1801,6 +1801,7 @@ const int Header::kEcdhEncryptFieldNumber;
 
 Header::Header()
   : ::google::protobuf::Message(), _internal_metadata_(NULL) {
+    common::GlobalInfo::Instance()->AddSharedObj(20);
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2ftransport_2eproto::scc_info_Header.base);
   SharedCtor();
@@ -1810,6 +1811,7 @@ Header::Header(const Header& from)
   : ::google::protobuf::Message(),
       _internal_metadata_(NULL),
       _has_bits_(from._has_bits_) {
+    common::GlobalInfo::Instance()->AddSharedObj(20);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   des_dht_key_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (from.has_des_dht_key()) {
@@ -1965,6 +1967,7 @@ void Header::SharedCtor() {
 
 Header::~Header() {
   // @@protoc_insertion_point(destructor:seth.transport.protobuf.Header)
+    common::GlobalInfo::Instance()->DecSharedObj(20);
   SharedDtor();
 }
 

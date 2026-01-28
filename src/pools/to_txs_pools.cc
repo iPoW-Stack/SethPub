@@ -55,7 +55,7 @@ void ToTxsPools::ThreadToStatistic(
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(view_block_ptr->debug());
-    SETH_DEBUG("to txs new block coming %u_%u_%lu, "
+    SETH_INFO("to txs new block coming %u_%u_%lu, "
         "cons height: %lu, tx size: %d, propose_debug: %s, step: %d, tx status: %d, block: %s",
         view_block_ptr->qc().network_id(),
         view_block_ptr->qc().pool_index(),
@@ -82,6 +82,11 @@ void ToTxsPools::ThreadToStatistic(
         auto height_iter = height_map.find(view_block_ptr->block_info().height());
         if (height_iter == height_map.end()) {
             height_map[view_block_ptr->block_info().height()] = tx_map;
+            SETH_INFO("height_map: %u_%u_%lu, size: %lu", 
+                view_block_ptr->qc().network_id(),
+                view_block_ptr->qc().pool_index(),
+                view_block_ptr->block_info().height(),
+                height_map.size());
         }
     }
 
@@ -225,6 +230,7 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
     return kPoolsError;
 #endif
     if (prev_to_heights_ == nullptr) {
+        SETH_INFO("prev_to_heights_ == nullptr");
         return kPoolsError;
     }
 
@@ -246,7 +252,7 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
                 }
 
                 if (valided_heights_[i].find(cons_height) == valided_heights_[i].end()) {
-                    SETH_DEBUG("leader get to heights error, pool: %u, height: %lu", i, cons_height);
+                    SETH_INFO("leader get to heights error, pool: %u, height: %lu", i, cons_height);
                     return kPoolsError;
                 }
 
@@ -255,6 +261,7 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
             }
 
             to_heights.add_heights(cons_height);
+            SETH_INFO("pool: %u, success add cons height: %lu", i, cons_height);
         }
     }
     
@@ -266,7 +273,7 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
     }
 
     if (!valid) {
-        SETH_DEBUG("final leader get to heights error, pool: %u, height: %lu", 0, 0);
+        SETH_INFO("final leader get to heights error, pool: %u, height: %lu", 0, 0);
         return kPoolsError;
     }
 
@@ -274,20 +281,24 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
     leader_to_heights_.store(leader_to_heights_ptr);
     for (uint32_t i = 0; i < (uint32_t)to_heights.heights_size(); ++i) {
         if (prev_to_heights->heights(i) > to_heights.heights(i)) {
-            SETH_DEBUG("prev heights invalid, pool: %u, prev height: %lu, now: %lu",
+            SETH_INFO("prev heights invalid, pool: %u, prev height: %lu, now: %lu",
                 i, prev_to_heights->heights(i), to_heights.heights(i));
             return kPoolsError;
         }
     }
 
     for (uint32_t i = 0; i < (uint32_t)to_heights.heights_size(); ++i) {
+        SETH_INFO("test prev heights valid, pool: %u, prev height: %lu, now: %lu",
+                i, prev_to_heights->heights(i), to_heights.heights(i));
         if (prev_to_heights->heights(i) < to_heights.heights(i)) {
-            SETH_DEBUG("prev heights valid, pool: %u, prev height: %lu, now: %lu",
+            SETH_INFO("prev heights valid, pool: %u, prev height: %lu, now: %lu",
                 i, prev_to_heights->heights(i), to_heights.heights(i));
             return kPoolsSuccess;
         }
     }
 
+    SETH_INFO("final leader get to heights error, pool: %u, height: %lu", 0, 0);
+    leader_to_heights_.store(nullptr);
     return kPoolsError;
 }
 

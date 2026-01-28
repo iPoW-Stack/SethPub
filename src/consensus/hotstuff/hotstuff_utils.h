@@ -94,16 +94,22 @@ public:
     BalanceAndNonceMapPtr acc_balance_map_ptr;
     std::shared_ptr<zjcvm::ZjchainHost> zjc_host_ptr;
     std::atomic<bool> valid;
+    uint64_t b_tm_ms;
 
     ViewBlockInfo() : 
             view_block(nullptr), 
             status(ViewBlockStatus::Unknown), 
             qc(nullptr),
             valid(false) {
+        b_tm_ms = common::TimeUtils::TimestampMs();
         common::GlobalInfo::Instance()->AddSharedObj(3);
     }
 
     ~ViewBlockInfo() {
+        SETH_DEBUG("success add view block remove %u_%u_%lu", 
+            view_block ? view_block->qc().network_id() : 0,
+            view_block ? view_block->qc().pool_index() : 0,
+            view_block ? view_block->qc().view() : 0);
         common::GlobalInfo::Instance()->DecSharedObj(3);
     }
 };

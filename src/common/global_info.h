@@ -169,6 +169,7 @@ public:
     uint8_t get_thread_index();
 
     void set_global_stoped() {
+        SETH_ERROR("global stop");
         global_stoped_ = true;
     }
 

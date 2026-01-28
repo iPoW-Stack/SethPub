@@ -488,8 +488,7 @@ void BaseDht::ProcessBootstrapRequest(const transport::MessagePtr& msg_ptr) {
         msg_ptr->conn->PeerIp().c_str(), msg_ptr->conn->PeerPort(),
         dht_msg.bootstrap_req().public_ip().c_str(),
         dht_msg.bootstrap_req().public_port());
-    auto msg_str = msg.SerializeAsString();
-    msg_ptr->conn->Send(msg_str);
+    transport::TcpTransport::Instance()->Send(msg_ptr->conn->PeerIp(), msg_ptr->conn->PeerPort(), msg);
     NodePtr node = std::make_shared<Node>(
         msg.src_sharding_id(),
         dht_msg.bootstrap_req().public_ip(),
@@ -631,6 +630,7 @@ void BaseDht::ProcessRefreshNeighborsRequest(const transport::MessagePtr& msg_pt
     }
 
     transport::protobuf::Header res;
+    assert(local_node_->dht_key.size() == kDhtKeySize);
     DhtProto::CreateRefreshNeighborsResponse(
         local_node_->sharding_id,
         local_node_->dht_key,
@@ -638,7 +638,8 @@ void BaseDht::ProcessRefreshNeighborsRequest(const transport::MessagePtr& msg_pt
         res);
     transport::TcpTransport::Instance()->SetMessageHash(res);
     // SETH_DEBUG("send refresh neighbers response hash: %lu", res.hash64());
-    msg_ptr->conn->Send(res.SerializeAsString());
+    // transport::TcpTransport::Instance()->Send(msg_ptr->conn, res);
+    transport::TcpTransport::Instance()->Send(msg_ptr->conn->PeerIp(), msg_ptr->conn->PeerPort(), res);
 }
 
 void BaseDht::ProcessRefreshNeighborsResponse(const transport::MessagePtr& msg_ptr) {
@@ -979,6 +980,7 @@ void BaseDht::ProcessTimerRequest() {
     auto rand_idx = common::Random::RandomInt32() % dht_ptr->size();
     auto node = (*dht_ptr)[rand_idx];
     transport::protobuf::Header msg;
+    assert(node->dht_key.size() == kDhtKeySize);
     DhtProto::CreateRefreshNeighborsRequest(
         *dht_ptr,
         local_node_,

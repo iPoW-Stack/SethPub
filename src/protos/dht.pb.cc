@@ -2,7 +2,7 @@
 // source: protos/dht.proto
 
 #include "protos/dht.pb.h"
-
+#include "common/global_info.h"
 #include <algorithm>
 
 #include <google/protobuf/stubs/common.h>
@@ -3439,6 +3439,7 @@ const int DhtMessage::kTimerFieldNumber;
 
 DhtMessage::DhtMessage()
   : ::google::protobuf::Message(), _internal_metadata_(NULL) {
+    common::GlobalInfo::Instance()->AddSharedObj(25);
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2fdht_2eproto::scc_info_DhtMessage.base);
   SharedCtor();
@@ -3448,6 +3449,7 @@ DhtMessage::DhtMessage(const DhtMessage& from)
   : ::google::protobuf::Message(),
       _internal_metadata_(NULL),
       _has_bits_(from._has_bits_) {
+    common::GlobalInfo::Instance()->AddSharedObj(25);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   if (from.has_bootstrap_req()) {
     bootstrap_req_ = new ::seth::dht::protobuf::BootstrapRequest(*from.bootstrap_req_);
@@ -3499,6 +3501,7 @@ void DhtMessage::SharedCtor() {
 }
 
 DhtMessage::~DhtMessage() {
+    common::GlobalInfo::Instance()->DecSharedObj(25);
   // @@protoc_insertion_point(destructor:seth.dht.protobuf.DhtMessage)
   SharedDtor();
 }

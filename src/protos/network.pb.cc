@@ -2,6 +2,7 @@
 // source: protos/network.proto
 
 #include "protos/network.pb.h"
+#include "common/global_info.h"
 
 #include <algorithm>
 
@@ -1454,6 +1455,7 @@ const int NetworkMessage::kDropNodeFieldNumber;
 
 NetworkMessage::NetworkMessage()
   : ::google::protobuf::Message(), _internal_metadata_(NULL) {
+    common::GlobalInfo::Instance()->AddSharedObj(23);
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2fnetwork_2eproto::scc_info_NetworkMessage.base);
   SharedCtor();
@@ -1463,6 +1465,7 @@ NetworkMessage::NetworkMessage(const NetworkMessage& from)
   : ::google::protobuf::Message(),
       _internal_metadata_(NULL),
       _has_bits_(from._has_bits_) {
+    common::GlobalInfo::Instance()->AddSharedObj(23);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   if (from.has_get_net_nodes_req()) {
     get_net_nodes_req_ = new ::seth::network::protobuf::GetNetworkNodesRequest(*from.get_net_nodes_req_);
@@ -1489,6 +1492,7 @@ void NetworkMessage::SharedCtor() {
 }
 
 NetworkMessage::~NetworkMessage() {
+    common::GlobalInfo::Instance()->DecSharedObj(23);
   // @@protoc_insertion_point(destructor:seth.network.protobuf.NetworkMessage)
   SharedDtor();
 }

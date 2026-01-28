@@ -103,6 +103,10 @@ void TxPoolManager::InitCrossPools() {
 }
 
 int TxPoolManager::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
+    return transport::kFirewallCheckSuccess;
+}
+
+int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr) {
     // SETH_DEBUG("pools message fierwall coming.");
     // return transport::kFirewallCheckSuccess;
     auto& header = msg_ptr->header;
@@ -396,6 +400,9 @@ void TxPoolManager::HandleMessage(const transport::MessagePtr& msg_ptr) {
     //         tx_pool_[pool_idx].CheckPopedTxs();
     //     }
     // }
+    if (TmpFirewallCheckMessage(msg_ptr) != transport::kFirewallCheckSuccess) {
+        return;
+    }
 
     auto& header = msg_ptr->header;
     if (header.has_tx_proto()) {
@@ -633,7 +640,8 @@ void TxPoolManager::HandleSyncPoolsMaxHeight(const transport::MessagePtr& msg_pt
         }
 
         transport::TcpTransport::Instance()->SetMessageHash(msg);
-        transport::TcpTransport::Instance()->Send(msg_ptr->conn.get(), msg);
+        // transport::TcpTransport::Instance()->Send(msg_ptr->conn, msg);
+        transport::TcpTransport::Instance()->Send(msg_ptr->conn->PeerIp(), msg_ptr->conn->PeerPort(), msg);
         SETH_DEBUG("response pool heights: %s, cross pool heights: %s, "
             "now_max_sharding_id_: %u, src sharding id: %u, src hash64: %lu, des hash64: %lu",
             sync_debug.c_str(), cross_debug.c_str(),

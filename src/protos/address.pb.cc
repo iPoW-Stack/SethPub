@@ -2,7 +2,7 @@
 // source: protos/address.proto
 
 #include "protos/address.pb.h"
-
+#include "common/global_info.h"
 #include <algorithm>
 
 #include <google/protobuf/stubs/common.h>
@@ -209,6 +209,7 @@ const int AddressInfo::kNonceFieldNumber;
 
 AddressInfo::AddressInfo()
   : ::google::protobuf::Message(), _internal_metadata_(NULL) {
+    common::GlobalInfo::Instance()->AddSharedObj(29);
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2faddress_2eproto::scc_info_AddressInfo.base);
   SharedCtor();
@@ -219,6 +220,7 @@ AddressInfo::AddressInfo(const AddressInfo& from)
       _internal_metadata_(NULL),
       _has_bits_(from._has_bits_),
       g2s_(from.g2s_) {
+    common::GlobalInfo::Instance()->AddSharedObj(29);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   pubkey_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (from.has_pubkey()) {
@@ -249,6 +251,7 @@ void AddressInfo::SharedCtor() {
 }
 
 AddressInfo::~AddressInfo() {
+    common::GlobalInfo::Instance()->DecSharedObj(29);
   // @@protoc_insertion_point(destructor:seth.address.protobuf.AddressInfo)
   SharedDtor();
 }

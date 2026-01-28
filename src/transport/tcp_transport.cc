@@ -1,3 +1,4 @@
+#ifndef SETH_USE_UV
 #include "transport/tcp_transport.h"
 
 #include "common/global_info.h"
@@ -282,6 +283,7 @@ int TcpTransport::Send(
     output_item->des_ip = des_ip;
     output_item->port = des_port;
     output_item->hash64 = message.hash64();
+    output_item->type = message.type();
     // if (message.has_broadcast()) {
     //     msg_handler_->AddLocalBroadcastedMessages(message.hash64());
     // }
@@ -373,10 +375,12 @@ void TcpTransport::Output() {
                         continue;
                     }
 
-                    SETH_DEBUG("send to tcp connection success[%s][%d][hash64: %llu] "
-                        "res: %d, size: %u",
-                        item_ptr->des_ip.c_str(), item_ptr->port, 
-                        item_ptr->hash64, res, item_ptr->msg.size());
+                    if (item_ptr->type == common::kHotstuffMessage) {
+                        SETH_INFO("send to tcp connection success[%s][%d][hash64: %llu] "
+                            "res: %d, size: %u",
+                            item_ptr->des_ip.c_str(), item_ptr->port, 
+                            item_ptr->hash64, res, item_ptr->msg.size());
+                    }
                     break;
                 }
 
@@ -556,6 +560,7 @@ int TcpTransport::Send(
     output_item->des_ip = des_ip;
     output_item->port = des_port;
     output_item->hash64 = message.hash64();
+    output_item->type = message.type();
     // if (message.has_broadcast()) {
     //     msg_handler_->AddLocalBroadcastedMessages(message.hash64());
     // }
@@ -569,3 +574,5 @@ int TcpTransport::Send(
 }  // namespace transport
 
 }  // namespace seth
+
+#endif

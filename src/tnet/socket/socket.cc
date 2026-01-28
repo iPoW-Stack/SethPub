@@ -266,31 +266,7 @@ int Socket::GetIpPort(std::string* ip, uint16_t* port) {
         return 0;
     }
 
-    assert(false);
-    if (fd_ == 0) {
-        SETH_ERROR("get from connection ip port failed: fd = 0");
-        return -1;
-    }
-
-    struct sockaddr_in addr;
-    socklen_t addrlen = sizeof(addr);
-    if (getpeername(fd_, (struct sockaddr*)&addr, &addrlen) == -1) {
-        SETH_ERROR("get from connection ip port failed: getpeername error");
-        return -1;
-    }
-
-    char tmp_ip[INET6_ADDRSTRLEN];
-    memset(tmp_ip, 0, sizeof(tmp_ip));
-    if ((inet_ntop(addr.sin_family, &addr.sin_addr, tmp_ip, INET6_ADDRSTRLEN)) == NULL) {
-        SETH_ERROR("get from connection ip port failed: inet_ntop error");
-        return -1;
-    }
-
-    *ip = tmp_ip;
-    *port = ntohs(addr.sin_port);
-    ip_ = *ip;
-    port_ = *port;
-    return 0;
+    return -1;
 }
 
 }  // namespace tnet

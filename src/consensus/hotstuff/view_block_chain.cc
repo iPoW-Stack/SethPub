@@ -236,6 +236,10 @@ std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHeight(
     view_block_ptr->view_block = std::make_shared<ViewBlock>();
     auto& view_block = *view_block_ptr->view_block;
     if (prefix_db_->GetBlockWithHeight(network_id, pool_index_, height, &view_block)) {
+        SETH_DEBUG("success add view block remove add %u_%u_%lu", 
+            view_block.qc().network_id(), 
+            view_block.qc().pool_index(), 
+            view_block.qc().view());
         latest_commited_hash_lru_map_.Put(
             view_block_ptr->view_block->qc().view_block_hash(), 
             view_block_ptr);
@@ -291,6 +295,9 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashSt
         cached_pri_queue_.pop();
     }
 
+    SETH_DEBUG("success add view block cached_block_map_: %u, "
+        "cached_view_with_blocks_: %u, cached_pri_queue_: %u", 
+        cached_block_map_.size(), cached_view_with_blocks_.size(), cached_pri_queue_.size());
     if (hash.empty()) {
         return nullptr;
     }
@@ -314,6 +321,10 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashSt
     view_block_ptr->view_block = std::make_shared<ViewBlock>();
     auto& view_block = *view_block_ptr->view_block;
     if (prefix_db_->GetBlock(hash, &view_block)) {
+        SETH_DEBUG("1 success add view block remove add %u_%u_%lu", 
+            view_block.qc().network_id(), 
+            view_block.qc().pool_index(), 
+            view_block.qc().view());
         view_block_ptr->valid = true;
         latest_commited_hash_lru_map_.Put(
             view_block_ptr->view_block->qc().view_block_hash(), 
@@ -1251,6 +1262,7 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
         view_block_ptr->mutable_qc()->set_sign_x(qc_item.sign_x());
         view_block_ptr->mutable_qc()->set_sign_y(qc_item.sign_y());
         cached_block_queue_.push(view_block_ptr_info);
+        SETH_DEBUG("success add view block info cached_block_queue_: %u", cached_block_queue_.size());
     }
 
     if (high_view_block_ == nullptr ||

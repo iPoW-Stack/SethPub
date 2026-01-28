@@ -90,12 +90,19 @@ void Route::HandleMessage(const transport::MessagePtr& header_ptr) {
         return;
     }
 
+    if (header.des_dht_key().size() != dht::kDhtKeySize) {
+        SETH_INFO("invalid dht key message: %lu, size: %u",
+            header.hash64(), header.des_dht_key().size());
+        return;
+    }
+
     if (header.has_broadcast() && !header_ptr->header_str.empty()) {
 //         Broadcast(header_ptr->thread_idx, header_ptr);
         auto tmp_ptr = std::make_shared<transport::TransportMessage>();
         tmp_ptr->header.ParseFromString(header_ptr->header_str);
         auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
-        SETH_DEBUG("====5 broadcast t: %lu, hash: %lu, now size: %u", thread_idx, header_ptr->header.hash64(), broadcast_queue_[thread_idx].size());
+        SETH_DEBUG("====5 broadcast t: %lu, hash: %lu, now size: %u", 
+            thread_idx, header_ptr->header.hash64(), broadcast_queue_[thread_idx].size());
         broadcast_queue_[thread_idx].push(tmp_ptr);
         broadcast_con_.notify_one();
     }
@@ -121,12 +128,12 @@ void Route::HandleMessage(const transport::MessagePtr& header_ptr) {
         return;
     }
 
-    if (header.type() == common::kPoolsMessage) {
-        if (!CheckPoolsMessage(header_ptr, dht_ptr)) {
-            SETH_DEBUG("CheckPoolsMessage invalid: %d, hash: %lu", header.type(), header.hash64());
-            return;
-        }
-    }
+    // if (header.type() == common::kPoolsMessage) {
+    //     if (!CheckPoolsMessage(header_ptr, dht_ptr)) {
+    //         SETH_DEBUG("CheckPoolsMessage invalid: %d, hash: %lu", header.type(), header.hash64());
+    //         return;
+    //     }
+    // }
 
     message_processor_[header.type()](header_ptr);
     SETH_DEBUG("handle message success: %d, hash: %lu", header.type(), header.hash64());
