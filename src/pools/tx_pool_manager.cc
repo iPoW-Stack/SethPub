@@ -410,7 +410,7 @@ void TxPoolManager::HandleMessage(const transport::MessagePtr& msg_ptr) {
         if (IsUserTransaction(tx_msg.step())) {
             auto tmp_acc_ptr = acc_mgr_.lock();
             protos::AddressInfoPtr address_info = nullptr;
-            auto addr = "";
+            std::string addr;
             if (tx_msg.pubkey().size() == 64u) {
                 security::GmSsl gmssl;
                 addr = gmssl.GetAddress(tx_msg.pubkey());
@@ -424,7 +424,7 @@ void TxPoolManager::HandleMessage(const transport::MessagePtr& msg_ptr) {
             if (tx_msg.step() == pools::protobuf::kContractExcute) {
                 addr = tx_msg.to() + addr;
             }
-            
+
             address_info = tmp_acc_ptr->GetAccountInfo(addr);
             if (!address_info) {
                 return;
