@@ -205,7 +205,6 @@ void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
             packet = ex_uv_tcp->msg_decoder->GetPacket();
         }
     } else {
-        SETH_DEBUG("0 now call FreeConnection: %s:%d, %p", ex_uv_tcp->ip, ex_uv_tcp->port, &ex_uv_tcp->uv_tcp);
         tcp_transport->FreeConnection(ex_uv_tcp);
     }
 
