@@ -455,7 +455,6 @@ void uv_async_cb(uv_async_t* handle) {
             if (ex_uv_tcp == nullptr) {
                 ex_uv_tcp = transport::TcpTransport::Instance()->GetConnection(des_ip, des_port);
                 if (ex_uv_tcp != nullptr && !uv_is_active((uv_handle_t*)&ex_uv_tcp->uv_tcp)) {
-                    SETH_DEBUG("now call FreeConnection: %s:%d, %p", ex_uv_tcp->ip, ex_uv_tcp->port, &ex_uv_tcp->uv_tcp);
                     transport::TcpTransport::Instance()->FreeConnection(ex_uv_tcp);
                     ex_uv_tcp = nullptr;
                 }
