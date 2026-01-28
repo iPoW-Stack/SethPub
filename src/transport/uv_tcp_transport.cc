@@ -44,12 +44,6 @@ void on_close(uv_handle_t* handle) {
 void on_write(uv_write_t* req, int status) {
     ex_uv_tcp_t* ex_uv_tcp = (ex_uv_tcp_t*)req->handle;
     SETH_DEBUG("on_write called back.");
-    if (status) {
-        SETH_DEBUG("1 now call FreeConnection: %s:%d, %p", 
-            ex_uv_tcp->ip, ex_uv_tcp->port, &ex_uv_tcp->uv_tcp);
-        tcp_transport->FreeConnection(ex_uv_tcp);
-    }
-
     free(req);
 }
 
@@ -211,7 +205,6 @@ void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
             packet = ex_uv_tcp->msg_decoder->GetPacket();
         }
     } else {
-        SETH_DEBUG("0 now call FreeConnection: %s:%d, %p", ex_uv_tcp->ip, ex_uv_tcp->port, &ex_uv_tcp->uv_tcp);
         tcp_transport->FreeConnection(ex_uv_tcp);
     }
 
@@ -460,10 +453,8 @@ void uv_async_cb(uv_async_t* handle) {
             // }
             
             if (ex_uv_tcp == nullptr) {
-                SETH_DEBUG("send to %s:%d,thread id: %u", des_ip.c_str(), des_port, std::this_thread::get_id());
                 ex_uv_tcp = transport::TcpTransport::Instance()->GetConnection(des_ip, des_port);
                 if (ex_uv_tcp != nullptr && !uv_is_active((uv_handle_t*)&ex_uv_tcp->uv_tcp)) {
-                    SETH_DEBUG("now call FreeConnection: %s:%d, %p", ex_uv_tcp->ip, ex_uv_tcp->port, &ex_uv_tcp->uv_tcp);
                     transport::TcpTransport::Instance()->FreeConnection(ex_uv_tcp);
                     ex_uv_tcp = nullptr;
                 }
@@ -609,8 +600,6 @@ void TcpTransport::RealFreeInvalidConnections() {
     while (!invalid_conns_.empty()) {
         auto* ex_uv_tcp = invalid_conns_.front();
         if (now_sec <= ex_uv_tcp->timeout + kInvalidConnectionTimeoutSec) {
-            SETH_DEBUG("real release connect %s, %d, %p", 
-                ex_uv_tcp->ip, ex_uv_tcp->port, &ex_uv_tcp->uv_tcp);
             uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
             invalid_conns_.pop();
             continue;
