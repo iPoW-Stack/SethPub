@@ -9,11 +9,18 @@ dnf install -y procps-ng-devel
 dnf install -y texinfo
 dnf install -y xz-devel
 #ubuntu
+
 apt update
-apt install -y libprocps-dev texinfo libgnutls28-dev liblzma-dev
+sudo apt install autoconf automake libtool -y
+apt install -y libprocps-dev 
+apt install -y texinfo
+apt install -y libgnutls28-dev 
+apt install -y liblzma-dev
 apt install -y pkg-config
 apt install -y yasm
-apt install -y libgnutls28-dev zlib1g-dev libssh2-1-dev
+apt install -y libgnutls28-dev 
+apt install -y zlib1g-dev 
+apt install -y libssh2-1-dev
 SRC_PATH=`pwd`
 if [ ! -d "$SRC_PATH/third_party/include/libuv" ]; then
     cd $SRC_PATH
@@ -24,7 +31,6 @@ if [ ! -d "$SRC_PATH/third_party/include/libuv" ]; then
     sed -i 's/"uv\//"libuv\//g' $SRC_PATH/third_party/include/libuv/unix.h
     sed -i 's/"uv\//"libuv\//g' $SRC_PATH/third_party/include/libuv/win.h
 fi
-exit 0
 cd $SRC_PATH
 cd third_party/libbls && cd ./deps && PARALLEL_COUNT=1 bash build.sh && cp deps_inst/x86_or_x64/lib64/lib* deps_inst/x86_or_x64/lib/ ; cd .. && cmake -S . -B build_release  -DUSE_ASM=False  -DWITH_PROCPS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DLIBBLS_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j8 && make install
 mkdir -p $SRC_PATH/third_party/include/libbls && cp -rnf ../third_party ../tools ../dkg ../bls $SRC_PATH/third_party/include/libbls
