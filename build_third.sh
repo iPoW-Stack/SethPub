@@ -36,7 +36,6 @@ cd third_party/libbls && cd ./deps && PARALLEL_COUNT=1 bash build.sh && cp deps_
 mkdir -p $SRC_PATH/third_party/include/libbls && cp -rnf ../third_party ../tools ../dkg ../bls $SRC_PATH/third_party/include/libbls
 cp -rnf ../deps/deps_inst/x86_or_x64/include/boost/* $SRC_PATH/third_party/include/boost/
 cp -rnf ./libbls.a $SRC_PATH/third_party/lib/libdkgbls.a
-exit 0
 
 cd $SRC_PATH
 cd third_party/protobuf/ && git checkout 48cb18e && ./autogen.sh && ./configure --disable-shared --enable-static CXXFLAGS="-fPIC -O3" CFLAGS="-fPIC -O3" --prefix=$SRC_PATH/third_party/ && make -j${nproc} && make install
