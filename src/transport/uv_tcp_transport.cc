@@ -600,8 +600,6 @@ void TcpTransport::RealFreeInvalidConnections() {
     while (!invalid_conns_.empty()) {
         auto* ex_uv_tcp = invalid_conns_.front();
         if (now_sec <= ex_uv_tcp->timeout + kInvalidConnectionTimeoutSec) {
-            SETH_DEBUG("real release connect %s, %d, %p", 
-                ex_uv_tcp->ip, ex_uv_tcp->port, &ex_uv_tcp->uv_tcp);
             uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
             invalid_conns_.pop();
             continue;
