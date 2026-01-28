@@ -44,12 +44,6 @@ void on_close(uv_handle_t* handle) {
 void on_write(uv_write_t* req, int status) {
     ex_uv_tcp_t* ex_uv_tcp = (ex_uv_tcp_t*)req->handle;
     SETH_DEBUG("on_write called back.");
-    if (status) {
-        SETH_DEBUG("1 now call FreeConnection: %s:%d, %p", 
-            ex_uv_tcp->ip, ex_uv_tcp->port, &ex_uv_tcp->uv_tcp);
-        tcp_transport->FreeConnection(ex_uv_tcp);
-    }
-
     free(req);
 }
 
