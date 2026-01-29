@@ -421,11 +421,13 @@ int ToTxsPools::CreateToTxWithHeights(
                     }
                     
                     SETH_DEBUG("to block pool: %u, height: %lu, success add account "
-                        "transfer amount height: %lu, id: %s, amount: %lu, all: %lu, to info: %s",
+                        "transfer amount height: %lu, id: %s, amount: %lu, prepayement: %lu, "
+                        "all: %lu, to info: %s",
                         pool_idx, height,
                         height, common::Encode::HexEncode(to_iter->first).c_str(),
                         to_iter->second.amount(),
                         amount_iter->second.amount(),
+                        amount_iter->second.prepayment(),
                         ProtobufToJson(to_iter->second).c_str());
                 }
             }

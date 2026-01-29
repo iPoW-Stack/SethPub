@@ -69,14 +69,14 @@
 #define DEBUG(logfmt, ...)
 #define SETH_DEBUG(logfmt, ...)
 #else
-#define DEBUG(logfmt, ...)
-#define SETH_DEBUG(logfmt, ...)
-//  #define DEBUG(logfmt, ...)  do {\
-//      spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
-//  } while (0)
-//  #define SETH_DEBUG(logfmt, ...)  do {\
-//      spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
-//  } while (0)
+//#define DEBUG(logfmt, ...)
+//#define SETH_DEBUG(logfmt, ...)
+#define DEBUG(logfmt, ...)  do {\
+    spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+} while (0)
+#define SETH_DEBUG(logfmt, ...)  do {\
+    spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+} while (0)
 #endif
 // #define SETH_INFO(logfmt, ...)
 // #define SETH_WARN(logfmt, ...)
@@ -104,7 +104,7 @@
 // #ifdef LOG
 // #undef LOG
 // #endif // LOG
-// #define LOG(level) LOG_INS << level << "[" << SETH_LOG_FILE_NAME << ": " << __LINE__ << "]" 
+// #define LOG(level) LOG_INS << level << "[" << SETH_LOG_FILE_NAME << ": " << __LINE__ << "]"
 
 #ifdef FOR_CONSOLE_DEBUG
 #undef DEBUG
