@@ -179,8 +179,8 @@ class SethClient:
 # Run Test
 # ==========================================
 if __name__ == "__main__":
-    HOST = "35.197.170.240"
-    PORT = 23001
+    HOST = "10.148.0.27"
+    PORT = 23014
 
     # Sender private key
     MY_PRIVATE_KEY = "c75f8d9b2a6bc0fe68eac7fef67c6b6f7c4f85163d58829b59110ff9e9210848"
