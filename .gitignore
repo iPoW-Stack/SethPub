@@ -1,3 +1,4 @@
+init_accounts*
 extract_sks.py
 gen_genesis_script.py
 gen_new_node_config.py
