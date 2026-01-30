@@ -8,12 +8,6 @@
       g++8.3.0
       cmake3.25.1+
 
-## Run local seth network
-      git clone git@github.com:iPoW-Stack/SethPub.git /root/seth && cd /root/seth
-	  bash build_third.sh
-      bash simple_dep.sh $node_count  
-      # node_count like 4, mean create 4 nodes seth network on local machine
-	  
 ## Run customized network
       bash simple_remote.sh $each_machine_node_count $ip_list  
       # each_machine_node_count like 4, mean each machine create 4 nodes. 
@@ -23,9 +17,10 @@
 
 ## Transaction test
 ```
-      cd ./cbuild_Release && make txcli
-      ./txcli
+cd ./cbuild_Release && make txcli
+./txcli 0 3 0 $fist_node_ip 13001
 ```
+
 
 
 
