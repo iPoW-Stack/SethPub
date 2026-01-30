@@ -5,7 +5,7 @@
 
 # Quick Start
 ## Requirements
-      g++8.3.0
+      gcc/g++13.0+
       cmake3.25.1+
 
 ## Run customized network
@@ -20,6 +20,7 @@
 cd ./cbuild_Release && make txcli
 ./txcli 0 3 0 $fist_node_ip 13001
 ```
+
 
 
 
