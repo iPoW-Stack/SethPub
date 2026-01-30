@@ -1,12 +1,19 @@
-# Seth
-      A Dynamic Blockchain Sharding System with Resilient and Seamless Shard Reconfiguration
-      paper: https://ccs2025a.hotcrp.com/doc/ccs2025a-paper756.pdf?cap=hcav756eNAubdJqApSsXnJDucFgJMXB
-      
+# Seth: A Dynamic Blockchain Sharding System
 
-# Quick Start
-## Requirements
-      gcc/g++13.0+
-      cmake3.25.1+
+**Seth** is a high-performance blockchain sharding system featuring resilient and seamless shard reconfiguration. It optimizes consensus and transaction processing to maintain system stability even during complex shard transitions.
+
+### 📄 Related Papers
+* **Seth (CCS 2025)**: [A Dynamic Blockchain Sharding System with Resilient and Seamless Shard Reconfiguration](https://ccs2025a.hotcrp.com/doc/ccs2025a-paper756.pdf?cap=hcav756eNAubdJqApSsXnJDucFgJMXB)
+* **Akaverse**: [Boosting Sharded Blockchain via Multi-Leader Parallel Pipelines](https://github.com/user-attachments/files/24961427/Akaverse.Boosting.Sharded.Blockchain.via.Multi-Leader.Parallel.Pipelines.pdf)
+
+---
+
+## 🚀 Quick Start
+
+### 1. Requirements
+Ensure your development environment meets the following specifications:
+* **GCC/G++**: 13.0 or higher
+* **CMake**: 3.25.1 or higher
 
 ## Run customized network
       bash build_third.sh
@@ -21,6 +28,7 @@
 cd ./cbuild_Release && make txcli
 ./txcli 0 3 0 $fist_node_ip 13001
 ```
+
 
 
 
