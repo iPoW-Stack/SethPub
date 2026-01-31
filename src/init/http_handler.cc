@@ -14,6 +14,7 @@
 #include "network/network_utils.h"
 #include "network/route.h"
 #include "pools/tx_utils.h"
+#include "protos/pools.pb.h"
 #include "protos/transport.pb.h"
 #include "protos/view_block.pb.h"
 #include "transport/tcp_transport.h"
@@ -1039,6 +1040,44 @@ static void GetBlocks(const httplib::Request& req, httplib::Response& http_res) 
     http_res.set_content(json_str, "text/plain");
 }
 
+static void GetLatestPoolHeights(const httplib::Request& req, httplib::Response& http_res) {
+    auto network = req.get_param_value("network");
+    if (network.empty()) {
+        std::string res = common::StringUtil::Format("param network is null");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    uint32_t network_id = 0;
+    if (!common::StringUtil::ToUint32(network, &network_id)) {
+        std::string res = common::StringUtil::Format("param network is null");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    if (!network::IsSameToLocalShard(network_id)) {
+        std::string res = common::StringUtil::Format("param network invalid");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    nlohmann::json res_json;
+    res_json["status"] = 0;
+    res_json["pools"] = nlohmann::json::array();
+    for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
+        pools::protobuf::PoolLatestInfo pool_info;
+        bool res = prefix_db->GetLatestPoolInfo(network_id, i, &pool_info);
+        if (!res) {
+            res_json["pools"].push_back(nlohmann::json::parse("{}"));
+        } else {
+            res_json["pools"].push_back(nlohmann::json::parse(HttpProtobufToJson(pool_info)));
+        }
+    }
+
+    auto json_str = res_json.dump();
+    http_res.set_content(json_str, "text/plain");
+}
+
 HttpHandler::HttpHandler() {
     http_handler = this;
 }
@@ -1086,6 +1125,7 @@ void HttpHandler::Init(
     svr.Post("/prepayment_valid", PrepaymentsValid);
     svr.Post("/get_block_with_gid", GetBlockWithGid);
     svr.Post("/get_blocks", GetBlocks);
+    svr.Post("/get_latest_pool_info", GetLatestPoolHeights);
     http_ip_ = ip;
     http_port_ = port;
     if (!svr.is_valid()) {
