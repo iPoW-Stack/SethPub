@@ -979,7 +979,7 @@ static void GetBlocks(const httplib::Request& req, httplib::Response& http_res) 
         return;
     }
 
-    if (!network::IsSameShardOrSameWaitingPool(network_id)) {
+    if (!network::IsSameToLocalShard(network_id)) {
         std::string res = common::StringUtil::Format("param network invalid");
         http_res.set_content(res, "text/plain");
         return;
@@ -1009,7 +1009,7 @@ static void GetBlocks(const httplib::Request& req, httplib::Response& http_res) 
     res_json["status"] = 0;
     auto blocks = res_json["blocks"];
     for (uint32_t i = 0; i < count_val; ++i) {
-        block::protobuf::ViewBlockItem view_block;
+        view_block::protobuf::ViewBlockItem view_block;
         bool res = prefix_db->GetBlockWithHeight(network_id, pool_index, height_val + i, &view_block);
         if (!res) {
             break;
