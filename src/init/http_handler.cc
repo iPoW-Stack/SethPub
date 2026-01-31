@@ -11,9 +11,11 @@
 #include "contract/contract_ars.h"
 #include "contract/contract_reencryption.h"
 #include "dht/dht_key.h"
+#include "network/network_utils.h"
 #include "network/route.h"
 #include "pools/tx_utils.h"
 #include "protos/transport.pb.h"
+#include "protos/view_block.pb.h"
 #include "transport/tcp_transport.h"
 #include "zjcvm/execution.h"
 #include "zjcvm/zjc_host.h"
@@ -1000,7 +1002,7 @@ static void GetBlocks(const httplib::Request& req, httplib::Response& http_res) 
     uint32_t count_val = 1;
     auto count = req.get_param_value("count");
     if (!count.empty()) {
-        common::StringUtil::ToUint32(count, &count_val)
+        common::StringUtil::ToUint32(count, &count_val);
     }
 
     nlohmann::json res_json;
