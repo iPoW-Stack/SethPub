@@ -1082,7 +1082,6 @@ static void GetBlockWithHash(const httplib::Request& req, httplib::Response& htt
     nlohmann::json res_json;
     res_json["status"] = 0;
     res_json["blocks"] = nlohmann::json::array();
-
     nlohmann::json req_json;
     try {
         req_json = nlohmann::json::parse(req.body);
@@ -1112,7 +1111,7 @@ static void GetBlockWithHash(const httplib::Request& req, httplib::Response& htt
             break;
         }
 
-        std::string block_hash = hash_val.get<std::string>();
+        std::string block_hash = common::Encode::HexDecode(hash_val.get<std::string>());
         view_block::protobuf::ViewBlockItem view_block;
         bool res = prefix_db->GetBlock(block_hash, &view_block);
         if (res) {
