@@ -1032,7 +1032,7 @@ static void GetBlocks(const httplib::Request& req, httplib::Response& http_res) 
             break;
         }
 
-        res_json["blocks"].push_back(HttpProtobufToJson(view_block));
+        res_json["blocks"].push_back(nlohmann::json::parse(HttpProtobufToJson(view_block)));
     }
 
     auto json_str = res_json.dump();
