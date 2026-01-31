@@ -26,8 +26,9 @@ Ensure your development environment meets the following specifications:
 ## Transaction test
 ```
 cd ./cbuild_Release && make txcli
-./txcli 0 3 0 $fist_node_ip 13001
+./txcli 0 3 0 $first_node_ip 13001
 ```
+
 
 
 
