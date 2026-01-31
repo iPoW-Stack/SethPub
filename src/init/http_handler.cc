@@ -1078,6 +1078,54 @@ static void GetLatestPoolHeights(const httplib::Request& req, httplib::Response&
     http_res.set_content(json_str, "text/plain");
 }
 
+static void GetBlockWithHash(const httplib::Request& req, httplib::Response& http_res) {
+    nlohmann::json res_json;
+    res_json["status"] = 0;
+    res_json["blocks"] = nlohmann::json::array();
+    nlohmann::json req_json;
+    try {
+        req_json = nlohmann::json::parse(req.body);
+    } catch (const std::exception& e) {
+        res_json["status"] = 1;
+        res_json["error"] = "Invalid JSON format";
+        http_res.set_content(res_json.dump(), "application/json");
+        return;
+    }
+
+    if (!req_json.contains("hash_list") || !req_json["hash_list"].is_array()) {
+        res_json["status"] = 1;
+        res_json["error"] = "param hash_list is required and must be an array";
+        http_res.set_content(res_json.dump(), "application/json");
+        return;
+    }
+
+    auto hash_list = req_json["hash_list"];
+    int32_t count = 0;
+    for (auto& hash_val : hash_list) {
+        if (!hash_val.is_string()) {
+            continue;
+        }
+
+        ++count;
+        if (count > 128) {
+            break;
+        }
+
+        std::string block_hash = common::Encode::HexDecode(hash_val.get<std::string>());
+        view_block::protobuf::ViewBlockItem view_block;
+        bool res = prefix_db->GetBlock(block_hash, &view_block);
+        if (res) {
+            try {
+                res_json["blocks"].push_back(nlohmann::json::parse(HttpProtobufToJson(view_block)));
+            } catch (...) {
+                SETH_ERROR("Parse block json failed for hash: %s", block_hash.c_str());
+            }
+        }
+    }
+
+    http_res.set_content(res_json.dump(), "application/json");
+}
+
 HttpHandler::HttpHandler() {
     http_handler = this;
 }
@@ -1126,6 +1174,7 @@ void HttpHandler::Init(
     svr.Post("/get_block_with_gid", GetBlockWithGid);
     svr.Post("/get_blocks", GetBlocks);
     svr.Post("/get_latest_pool_info", GetLatestPoolHeights);
+    svr.Post("/get_block_with_hash", GetBlockWithHash);
     http_ip_ = ip;
     http_port_ = port;
     if (!svr.is_valid()) {
