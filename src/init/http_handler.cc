@@ -1066,7 +1066,7 @@ static void GetLatestPoolHeights(const httplib::Request& req, httplib::Response&
     res_json["pools"] = nlohmann::json::array();
     for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
         pools::protobuf::PoolLatestInfo pool_info;
-        bool res = prefix_db->GetPoolLatestInfo(network_id, i, &pool_info);
+        bool res = prefix_db->GetLatestPoolInfo(network_id, i, &pool_info);
         if (!res) {
             res_json["pools"].push_back(nlohmann::json::parse("{}"));
         } else {
