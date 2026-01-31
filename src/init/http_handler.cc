@@ -948,6 +948,78 @@ static void QueryInit(const httplib::Request& req, httplib::Response& http_res) 
     SETH_DEBUG("sunccess init http ser: %d", thread_index);
 }
 
+static void GetBlocks(const httplib::Request& req, httplib::Response& http_res) {
+    auto network = req.get_param_value("network");
+    if (network.empty()) {
+        std::string res = common::StringUtil::Format("param network is null");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    auto pool = req.get_param_value("pool_index");
+    if (pool.empty()) {
+        std::string res = common::StringUtil::Format("param pool is null");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    auto height = req.get_param_value("height");
+    if (height.empty()) {
+        std::string res = common::StringUtil::Format("param height is null");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    uint32_t network_id = 0;
+    if (!common::StringUtil::ToUint32(network, &network_id)) {
+        std::string res = common::StringUtil::Format("param network is null");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    if (!network::IsSameShardOrSameWaitingPool(network_id)) {
+        std::string res = common::StringUtil::Format("param network invalid");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    uint32_t pool_index = 0;
+    if (!common::StringUtil::ToUint32(pool, &pool_index)) {
+        std::string res = common::StringUtil::Format("param pool is null");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    uint64_t height_val = 0;
+    if (!common::StringUtil::ToUint64(height, &height_val)) {
+        std::string res = common::StringUtil::Format("param height is null");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    uint32_t count_val = 1;
+    auto count = req.get_param_value("count");
+    if (!count.empty()) {
+        common::StringUtil::ToUint32(count, &count_val)
+    }
+
+    nlohmann::json res_json;
+    res_json["status"] = 0;
+    auto blocks = res_json["blocks"];
+    for (uint32_t i = 0; i < count_val; ++i) {
+        block::protobuf::ViewBlockItem view_block;
+        bool res = prefix_db->GetBlockWithHeight(network_id, pool_index, height_val + i, &view_block);
+        if (!res) {
+            break;
+        }
+
+        res_json["status"][i] = ProtobufToJson(view_block);
+    }
+
+    auto json_str = res_json.dump();
+    http_res.set_content(json_str, "text/plain");
+}
+
 HttpHandler::HttpHandler() {
     http_handler = this;
 }
@@ -994,6 +1066,7 @@ void HttpHandler::Init(
     svr.Post("/commit_gid_valid", GidsValid);
     svr.Post("/prepayment_valid", PrepaymentsValid);
     svr.Post("/get_block_with_gid", GetBlockWithGid);
+    svr.Post("/get_blocks", GetBlocks);
     http_ip_ = ip;
     http_port_ = port;
     if (!svr.is_valid()) {
