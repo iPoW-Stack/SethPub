@@ -76,7 +76,7 @@ class SethHttpClient:
         :param port: 端口 (例如 8080)
         :param hash_list: 十六进制哈希字符串列表
         """
-        url = f"{self.base_url}/get_blocks"
+        url = f"{self.base_url}/get_block_with_hash"
         
         # 构造 JSON 请求体
         payload = {
