@@ -1018,6 +1018,10 @@ static void GetBlocks(const httplib::Request& req, httplib::Response& http_res) 
         common::StringUtil::ToUint32(count, &count_val);
     }
 
+    if (count_val > 128) {
+        count_val = 128;
+    }
+
     nlohmann::json res_json;
     res_json["status"] = 0;
     res_json["blocks"] = nlohmann::json::array();
