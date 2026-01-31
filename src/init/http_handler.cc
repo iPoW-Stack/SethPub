@@ -1101,7 +1101,7 @@ static void GetBlockWithHash(const httplib::Request& req, httplib::Response& htt
     }
 
     auto hash_list = req_json["hash_list"];
-    int23_t count = 0;
+    int32_t count = 0;
     for (auto& hash_val : hash_list) {
         if (!hash_val.is_string()) {
             continue;
