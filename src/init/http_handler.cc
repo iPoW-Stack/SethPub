@@ -202,6 +202,19 @@ static int CreateTransactionWithAttr(
     return kHttpSuccess;
 }
  
+static inline std::string HttpProtobufToJson(
+        const google::protobuf::Message& message, 
+        bool pretty_print = false) {
+    std::string json_str;
+    google::protobuf::util::JsonPrintOptions options;
+    options.add_whitespace = pretty_print;
+    auto status = google::protobuf::util::MessageToJsonString(message, &json_str, options);
+    if (!status.ok()) {
+        return "";
+    }
+    return json_str;
+}
+
 static void HttpTransaction(const httplib::Request& req, httplib::Response& http_res) {
     SETH_DEBUG("http transaction coming.");
     auto nonce_str = req.get_param_value("nonce");
@@ -1015,7 +1028,7 @@ static void GetBlocks(const httplib::Request& req, httplib::Response& http_res) 
             break;
         }
 
-        res_json["blocks"].push_back(ProtobufToJson(view_block));
+        res_json["blocks"].push_back(HttpProtobufToJson(view_block));
     }
 
     auto json_str = res_json.dump();
