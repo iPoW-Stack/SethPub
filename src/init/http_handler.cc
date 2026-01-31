@@ -1007,7 +1007,7 @@ static void GetBlocks(const httplib::Request& req, httplib::Response& http_res) 
 
     nlohmann::json res_json;
     res_json["status"] = 0;
-    auto blocks = res_json["blocks"];
+    res_json["blocks"] = nlohmann::json::array();
     for (uint32_t i = 0; i < count_val; ++i) {
         view_block::protobuf::ViewBlockItem view_block;
         bool res = prefix_db->GetBlockWithHeight(network_id, pool_index, height_val + i, &view_block);
@@ -1015,7 +1015,7 @@ static void GetBlocks(const httplib::Request& req, httplib::Response& http_res) 
             break;
         }
 
-        res_json["status"][i] = ProtobufToJson(view_block);
+        res_json["blocks"].push_back(ProtobufToJson(view_block));
     }
 
     auto json_str = res_json.dump();
