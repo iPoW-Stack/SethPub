@@ -11,9 +11,11 @@
 #include "contract/contract_ars.h"
 #include "contract/contract_reencryption.h"
 #include "dht/dht_key.h"
+#include "network/network_utils.h"
 #include "network/route.h"
 #include "pools/tx_utils.h"
 #include "protos/transport.pb.h"
+#include "protos/view_block.pb.h"
 #include "transport/tcp_transport.h"
 #include "zjcvm/execution.h"
 #include "zjcvm/zjc_host.h"
@@ -200,6 +202,19 @@ static int CreateTransactionWithAttr(
     return kHttpSuccess;
 }
  
+static inline std::string HttpProtobufToJson(
+        const google::protobuf::Message& message, 
+        bool pretty_print = false) {
+    std::string json_str;
+    google::protobuf::util::JsonPrintOptions options;
+    options.add_whitespace = pretty_print;
+    auto status = google::protobuf::util::MessageToJsonString(message, &json_str, options);
+    if (!status.ok()) {
+        return "";
+    }
+    return json_str;
+}
+
 static void HttpTransaction(const httplib::Request& req, httplib::Response& http_res) {
     SETH_DEBUG("http transaction coming.");
     auto nonce_str = req.get_param_value("nonce");
@@ -948,6 +963,82 @@ static void QueryInit(const httplib::Request& req, httplib::Response& http_res) 
     SETH_DEBUG("sunccess init http ser: %d", thread_index);
 }
 
+static void GetBlocks(const httplib::Request& req, httplib::Response& http_res) {
+    auto network = req.get_param_value("network");
+    if (network.empty()) {
+        std::string res = common::StringUtil::Format("param network is null");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    auto pool = req.get_param_value("pool_index");
+    if (pool.empty()) {
+        std::string res = common::StringUtil::Format("param pool is null");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    auto height = req.get_param_value("height");
+    if (height.empty()) {
+        std::string res = common::StringUtil::Format("param height is null");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    uint32_t network_id = 0;
+    if (!common::StringUtil::ToUint32(network, &network_id)) {
+        std::string res = common::StringUtil::Format("param network is null");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    if (!network::IsSameToLocalShard(network_id)) {
+        std::string res = common::StringUtil::Format("param network invalid");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    uint32_t pool_index = 0;
+    if (!common::StringUtil::ToUint32(pool, &pool_index)) {
+        std::string res = common::StringUtil::Format("param pool is null");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    uint64_t height_val = 0;
+    if (!common::StringUtil::ToUint64(height, &height_val)) {
+        std::string res = common::StringUtil::Format("param height is null");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    uint32_t count_val = 1;
+    auto count = req.get_param_value("count");
+    if (!count.empty()) {
+        common::StringUtil::ToUint32(count, &count_val);
+    }
+
+    if (count_val > 128) {
+        count_val = 128;
+    }
+
+    nlohmann::json res_json;
+    res_json["status"] = 0;
+    res_json["blocks"] = nlohmann::json::array();
+    for (uint32_t i = 0; i < count_val; ++i) {
+        view_block::protobuf::ViewBlockItem view_block;
+        bool res = prefix_db->GetBlockWithHeight(network_id, pool_index, height_val + i, &view_block);
+        if (!res) {
+            break;
+        }
+
+        res_json["blocks"].push_back(nlohmann::json::parse(HttpProtobufToJson(view_block)));
+    }
+
+    auto json_str = res_json.dump();
+    http_res.set_content(json_str, "text/plain");
+}
+
 HttpHandler::HttpHandler() {
     http_handler = this;
 }
@@ -994,6 +1085,7 @@ void HttpHandler::Init(
     svr.Post("/commit_gid_valid", GidsValid);
     svr.Post("/prepayment_valid", PrepaymentsValid);
     svr.Post("/get_block_with_gid", GetBlockWithGid);
+    svr.Post("/get_blocks", GetBlocks);
     http_ip_ = ip;
     http_port_ = port;
     if (!svr.is_valid()) {
