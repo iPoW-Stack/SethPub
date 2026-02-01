@@ -7,6 +7,8 @@ import time
 from Crypto.Hash import keccak
 from ecdsa import SigningKey, SECP256k1, VerifyingKey
 from ecdsa.util import sigencode_string_canonize
+import sha3 # 对应你代码中的 sha3.keccak_256
+from eth_abi import encode # 用于标准的 ABI 编码
 
 # ==========================================
 # 1. 核心工具类
@@ -111,12 +113,39 @@ def generate_random_account():
     k = keccak.new(digest_bits=256).update(pub_raw)
     return {"priv": priv_bytes.hex(), "addr": k.digest()[-20:].hex()}
 
+def _keccak256_str(s: str) -> str:
+    """对应你提供的代码片段"""
+    k = sha3.keccak_256()
+    k.update(bytes(s, 'utf-8'))
+    return k.hexdigest()
+
+def encode_contract_call(function_name: str, types_list: list, params_list: list) -> str:
+    """
+    生成合约调用的 Input 编码
+    逻辑：keccak256(签名)[:8] + encode(参数)
+    """
+    # 1. 构造函数签名，例如 "sendIncentive(address)"
+    signature = f"{function_name}({','.join(types_list)})"
+    
+    # 2. 获取函数选择器 (前 8 位)
+    selector = _keccak256_str(signature)[:8]
+    
+    # 3. 对参数进行 ABI 编码
+    # encode 后的结果是 bytes，转为 hex 并去掉 0x (如果有)
+    encoded_params = encode(types_list, params_list).hex()
+    
+    # 4. 拼接最终的 Input 数据
+    return selector + encoded_params
+
 def encode_abi_send_incentive(receiver_addr):
     """编码 sendIncentive(address) 调用数据"""
     # keccak256("sendIncentive(address)")[:4] -> 9b8d80f0
-    selector = "9b8d80f0" 
-    clean_addr = receiver_addr.replace('0x', '').lower()
-    return selector + clean_addr.zfill(64)
+    input_data = encode_contract_call(
+        "sendIncentive", 
+        ["address"], 
+        [receiver_addr]
+    )
+    return input_data
 
 # ==========================================
 # 3. 主程序：生成、执行、查询
@@ -141,7 +170,7 @@ if __name__ == "__main__":
     
     # 第三步：发起合约调用交易
     status, msg = client.send_contract_call(OWNER_KEY, CONTRACT_ADDR, abi_input)
-    print(f"[2] Transaction Sent. Status: {status}, Msg: {msg}")
+    print(f"[2] Transaction Sent. Status: {status}, Msg: {msg}， abi_input: {abi_input}")
 
     if status == 200:
         print(f"[3] Waiting 5 seconds for block confirmation...")
