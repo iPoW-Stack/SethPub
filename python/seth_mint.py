@@ -9,6 +9,7 @@ from ecdsa import SigningKey, SECP256k1, VerifyingKey
 from ecdsa.util import sigencode_string_canonize
 import sha3 # 对应你代码中的 sha3.keccak_256
 from eth_abi import encode # 用于标准的 ABI 编码
+from eth_utils import decode_hex, encode_hex
 
 # ==========================================
 # 1. 核心工具类
@@ -124,18 +125,8 @@ def encode_contract_call(function_name: str, types_list: list, params_list: list
     生成合约调用的 Input 编码
     逻辑：keccak256(签名)[:8] + encode(参数)
     """
-    # 1. 构造函数签名，例如 "sendIncentive(address)"
-    signature = f"{function_name}({','.join(types_list)})"
-    
-    # 2. 获取函数选择器 (前 8 位)
-    selector = _keccak256_str(signature)[:8]
-    
-    # 3. 对参数进行 ABI 编码
-    # encode 后的结果是 bytes，转为 hex 并去掉 0x (如果有)
-    encoded_params = encode(types_list, params_list).hex()
-    
-    # 4. 拼接最终的 Input 数据
-    return selector + encoded_params
+    return (_keccak256_str(f"{function}({','.join(types_list)})")[:8] + 
+        encode_hex(encode(types_list, params_list))[2:])
 
 def encode_abi_send_incentive(receiver_addr):
     """编码 sendIncentive(address) 调用数据"""
