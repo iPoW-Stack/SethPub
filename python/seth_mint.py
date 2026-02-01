@@ -120,7 +120,7 @@ def _keccak256_str(s: str) -> str:
     k.update(bytes(s, 'utf-8'))
     return k.hexdigest()
 
-def encode_contract_call(function_name: str, types_list: list, params_list: list) -> str:
+def encode_contract_call(function: str, types_list: list, params_list: list) -> str:
     """
     生成合约调用的 Input 编码
     逻辑：keccak256(签名)[:8] + encode(参数)
