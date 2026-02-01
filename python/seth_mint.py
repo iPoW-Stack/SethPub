@@ -127,7 +127,7 @@ if __name__ == "__main__":
     HOST = "136.110.63.32"
     PORT = 23014
     CONTRACT_ADDR = "f7c3746fdb9ac38726ca9f9626eb6eef6e761300"
-    OWNER_KEY = "c75f8d9b2a6bc0fe68eac7fef67c6b6f7c4f85163d58829b59110ff9e9210848"
+    OWNER_KEY = "73cc68053322814403e2e549a0fac941f9c04f64b78420967ceabda6f30c95b8"
     INCENTIVE_UNIT = 1000000
 
     client = SethClient(HOST, PORT)
