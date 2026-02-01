@@ -63,7 +63,7 @@ class SethClient:
         sk = SigningKey.from_string(bytes.fromhex(priv_key_hex), curve=SECP256k1)
         pubkey_full = sk.verifying_key.to_string("uncompressed")
         pubkey_hex = pubkey_full.hex()
-        my_addr = self._derive_address_from_pubkey(pubkey_full[1:])
+        my_addr = contract_addr + self._derive_address_from_pubkey(pubkey_full[1:])
 
         # 2. 获取 Nonce
         acc_info = self.get_account_info(my_addr)
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     # 配置信息
     HOST = "136.110.63.32"
     PORT = 23014
-    CONTRACT_ADDR = "73af64c019a42f2bb6347261b75429b1b4771a92"
+    CONTRACT_ADDR = "f7c3746fdb9ac38726ca9f9626eb6eef6e761300"
     OWNER_KEY = "c75f8d9b2a6bc0fe68eac7fef67c6b6f7c4f85163d58829b59110ff9e9210848"
     INCENTIVE_UNIT = 1000000
 
