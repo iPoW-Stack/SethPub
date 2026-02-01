@@ -105,7 +105,7 @@ class SethClient:
 
 def generate_random_account():
     """生成随机私钥及其对应的地址"""
-    priv_bytes = secrets.token_bytes(32)
+    priv_bytes = bytes.fromhex("fb0e810c37300541a67c9f7d4c79a62697a154b8327b72dbf8d1e241955dff13")
     sk = SigningKey.from_string(priv_bytes, curve=SECP256k1)
     pub_raw = sk.verifying_key.to_string("uncompressed")[1:]
     k = keccak.new(digest_bits=256).update(pub_raw)

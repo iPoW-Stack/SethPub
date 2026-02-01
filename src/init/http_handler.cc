@@ -526,12 +526,12 @@ static void QueryAccount(const httplib::Request& req, httplib::Response& http_re
     std::string addr = common::Encode::HexDecode(tmp_addr);
     auto addr_info = prefix_db->GetAddressInfo(addr);
     if (addr_info == nullptr) {
-        std::string res = "get address failed from db: " + addr;
+        std::string res = "get address failed from db: " + tmp_addr;
         addr_info =  http_handler->acc_mgr()->GetAccountInfo(addr);
     }
 
     if (addr_info == nullptr) {
-        std::string res = "get address failed from cache: " + addr;
+        std::string res = "get address failed from cache: " + tmp_addr;
         http_res.set_content(res, "text/plain");
         SETH_DEBUG("%s", res.c_str());
         return;
