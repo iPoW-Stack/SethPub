@@ -70,7 +70,7 @@ class SethClient:
         nonce = (int(acc_info.get("nonce", 0)) if acc_info else 0) + 1
         
         # 3. 签名
-        tx_hash = self.compute_hash(nonce, pubkey_hex, contract_addr, 0, 500000, 1, 0, input_hex)
+        tx_hash = self.compute_hash(nonce, pubkey_hex, contract_addr, 0, 500000, 1, 8, input_hex)
         signature = sk.sign_digest_deterministic(tx_hash, hashfunc=hashlib.sha256, sigencode=sigencode_string_canonize)
         
         # 4. 构造参数
