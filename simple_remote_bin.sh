@@ -72,7 +72,7 @@ init() {
     fi
 
     if [ "$TARGET" == "" ]; then
-        TARGET=Release
+        TARGET=Debug
     fi
 
 
@@ -96,7 +96,6 @@ check_cmd_finished() {
     ps -ef | grep sshpass
     echo "waiting ok"
 }
-
 
 clear_command() {
     echo 'run_command start'
@@ -149,11 +148,15 @@ start_all_nodes() {
             start_nodes_count=$FIRST_NODE_COUNT
         fi
 
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "cd /root/pkg && bash start_cmd.sh $ip $start_pos $start_nodes_count $bootstrap 2 $end_shard "  &
-        if ((start_pos==1)); then
-            sleep 3
-        fi
-
+        for shard in {2..$end_shard}; do
+            if [ -d "/root/seths/s$shard_$start_pos/" ]; then
+                sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "rm -rf /root/seths/s$shard_$start_pos/seth && ln /root/pkg/seth /root/seths/s$shard_$start_pos/seth "  &
+                if ((start_pos==1)); then
+                    sleep 3
+                fi
+            fi
+        done
+        
         sleep 0.1
         start_pos=$(($start_pos+$start_nodes_count))
     done
