@@ -168,7 +168,7 @@ if __name__ == "__main__":
 
     if status == 200:
         print(f"[3] Waiting 5 seconds for block confirmation...")
-        time.sleep(5) # 等待出块
+        time.sleep(15) # 等待出块
 
         # 第四步：查询新账户余额验证结果
         print(f"[4] Verifying Balance for {new_user['addr']}...")
