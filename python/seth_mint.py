@@ -144,8 +144,8 @@ def encode_abi_send_incentive(receiver_addr):
 
 if __name__ == "__main__":
     # 配置信息
-    HOST = "136.110.63.32"
-    PORT = 23014
+    HOST = "35.197.170.240"
+    PORT = 23001
     CONTRACT_ADDR = "e464718ceba0a18a225fe28a963e3aab0071771c"
     OWNER_KEY = "73cc68053322814403e2e549a0fac941f9c04f64b78420967ceabda6f30c95b8"
     INCENTIVE_UNIT = 1000000
