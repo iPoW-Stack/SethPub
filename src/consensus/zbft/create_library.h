@@ -32,6 +32,8 @@ public:
         uint64_t to_balance = 0;
         auto& from = address_info->addr();
         int balance_status = GetTempAccountBalance(pre_zjc_host, from, acc_balance_map, &from_balance, &from_nonce);
+        zjcvm::ZjchainHost zjc_host;
+        zjc_host.pre_zjc_host_ = &pre_zjc_host;
         do  {
             gas_used = consensus::kCreateLibraryDefaultUseGas;
             if (balance_status != kConsensusSuccess) {
@@ -107,6 +109,7 @@ public:
             block_tx.gas_used(),
             block_tx.status());
         if (block_tx.status() == kConsensusSuccess) {
+            zjc_host.MergeToPrev();
             auto iter = pre_zjc_host.cross_to_map_.find(block_tx.to());
             std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
             if (iter == pre_zjc_host.cross_to_map_.end()) {
