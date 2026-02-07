@@ -148,7 +148,7 @@ start_all_nodes() {
             start_nodes_count=$FIRST_NODE_COUNT
         fi
 
-        for shard in {2..$end_shard}; do
+        for ((shard=2; shard<=end_shard; shard++)); do
             if [ -d "/root/seths/s${shard}_${start_pos}/" ]; then
                 echo "rm -rf /root/seths/s${shard}_${start_pos}/seth && ln /root/pkg/seth /root/seths/s${shard}_${start_pos}/seth "
                 sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "rm -rf /root/seths/s${shard}_${start_pos}/seth && ln /root/pkg/seth /root/seths/s${shard}_${start_pos}/seth "  &
