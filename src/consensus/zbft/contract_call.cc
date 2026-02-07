@@ -240,18 +240,11 @@ int ContractCall::HandleTx(
                     acc_balance_map[block_tx.to()]->set_balance(0);
                     acc_balance_map[block_tx.to()]->set_destructed(true);
                 }
-
             } while (0);
         }
 
         if (block_tx.status() == kConsensusSuccess) {
             from_balance = tmp_from_balance;
-            if (!acc_balance_map[block_tx.to()]->destructed()) {
-                acc_balance_map[block_tx.to()]->set_balance(block_tx.amount());
-                acc_balance_map[block_tx.to()]->set_nonce(0);
-                acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
-                acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
-            }
         }
 
         if (block_tx.contract_input().size() < protos::kContractBytesStartCode.size()) {
@@ -274,10 +267,15 @@ int ContractCall::HandleTx(
         }
     }
 
-    if (block_tx.status() == kConsensusSuccess) {
-        block_tx.set_amount(new_contract_balance);
-    } else {
-        block_tx.set_amount(src_to_balance);
+    if (!acc_balance_map[block_tx.to()]->destructed()) {
+        acc_balance_map[block_tx.to()]->set_nonce(0);
+        acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
+        acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
+        if (block_tx.status() == kConsensusSuccess) {
+            acc_balance_map[block_tx.to()]->set_balance(new_contract_balance);
+        } else {
+            acc_balance_map[block_tx.to()]->set_balance(src_to_balance);
+        }
     }
     
     // must prepayment's nonce, not caller or contract
