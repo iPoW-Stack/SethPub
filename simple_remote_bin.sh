@@ -137,7 +137,7 @@ scp_package() {
     echo 'scp_package over'
 }
 
-start_all_nodes() {
+ln_all_nodes() {
     echo 'start_all_nodes start'
     node_ips_array=(${node_ips//,/ })
     start_pos=1
@@ -151,6 +151,7 @@ start_all_nodes() {
         for ((shard=2; shard<=end_shard; shard++)); do
             REMOTE_CMD="if [ -d \"/root/seths/s${shard}_${start_pos}/\" ]; then 
                             rm -rf /root/seths/s${shard}_${start_pos}/seth && \
+                            rm -rf /root/seths/s${shard}_${start_pos}/log/* && \
                             ln /root/pkg/seth /root/seths/s${shard}_${start_pos}/seth && \
                             echo \"[Shard $shard] Updated\"; 
                         else 
@@ -161,11 +162,30 @@ start_all_nodes() {
                 sleep 3
             fi
         done
+        sleep 0.1
+        start_pos=$(($start_pos+$start_nodes_count))
+    done
 
-        # 等待所有后台任务完成
-        wait
-        echo "All tasks dispatched."
-        
+    check_cmd_finished
+    echo 'start_all_nodes over'
+}
+
+start_all_nodes() {
+    echo 'start_all_nodes start'
+    node_ips_array=(${node_ips//,/ })
+    start_pos=1
+    for ip in "${node_ips_array[@]}"; do
+        echo "start node: " $ip $each_nodes_count
+        start_nodes_count=$(($each_nodes_count + 0))
+        if ((start_pos==1)); then
+            start_nodes_count=$FIRST_NODE_COUNT
+        fi
+
+        REMOTE_CMD="killall -9 seth "
+        sshpass -p "$PASSWORD" ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5 root@$ip "$REMOTE_CMD" &
+        if ((start_pos == 1)); then
+            sleep 3
+        fi
         sleep 0.1
         start_pos=$(($start_pos+$start_nodes_count))
     done
@@ -178,4 +198,5 @@ killall -9 sshpass
 init
 clear_command
 scp_package
+ln_all_nodes
 start_all_nodes
