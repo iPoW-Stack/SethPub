@@ -36,6 +36,8 @@ int ContractCall::HandleTx(
     auto gas_used = kCallContractDefaultUseGas;
     int64_t contract_balance_add = 0;
     auto gas_limit = block_tx.gas_limit();
+    zjcvm::ZjchainHost zjc_host;
+    zjc_host.pre_zjc_host_ = &pre_zjc_host;
     do {
         if (from_balance <= kCallContractDefaultUseGas * block_tx.gas_price() + block_tx.amount()) {
             block_tx.set_status(kConsensusOutOfGas);
@@ -81,8 +83,6 @@ int ContractCall::HandleTx(
         }
     } else {
         new_contract_balance += block_tx.amount();
-        zjcvm::ZjchainHost zjc_host;
-        zjc_host.pre_zjc_host_ = &pre_zjc_host;
         InitHost(zjc_host, block_tx, gas_limit, block_tx.gas_price(), view_block);
         // user caller prepayment 's gas
         zjc_host.AddTmpAccountBalance(
