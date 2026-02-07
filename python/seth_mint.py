@@ -27,9 +27,10 @@ class SethClient:
     def _hex_to_bytes(self, hex_str):
         return bytes.fromhex(hex_str.replace('0x', ''))
 
-    def _derive_address_from_pubkey(self, pubkey_bytes_no_prefix):
-        k = keccak.new(digest_bits=256)
-        k.update(pubkey_bytes_no_prefix)
+    def _derive_address_from_pubkey(self, priv_bytes):
+        sk = SigningKey.from_string(priv_bytes, curve=SECP256k1)
+        pub_raw = sk.verifying_key.to_string("uncompressed")[1:]
+        k = keccak.new(digest_bits=256).update(pub_raw)
         return k.digest()[-20:].hex()
 
     def get_account_info(self, address_hex):
@@ -68,7 +69,7 @@ class SethClient:
         sk = SigningKey.from_string(bytes.fromhex(priv_key_hex), curve=SECP256k1)
         pubkey_full = sk.verifying_key.to_string("uncompressed")
         pubkey_hex = pubkey_full.hex()
-        my_addr = contract_addr + self._derive_address_from_pubkey(pubkey_full[1:])
+        my_addr = contract_addr + self._derive_address_from_pubkey(bytes.fromhex(priv_key_hex))
 
         # 2. 获取 Nonce
         acc_info = self.get_account_info(my_addr)
