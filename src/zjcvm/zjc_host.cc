@@ -22,7 +22,7 @@ bool ZjchainHost::account_exists(const evmc::address& addr) const noexcept {
         std::string((char*)addr.bytes, sizeof(addr.bytes)));
 }
 
-evmc::bytes32 ZjchainHost::get_cached_storage(
+evmc::bytes32 ZjchainHost::GetCachedStorage(
         const evmc::address& addr,
         const evmc::bytes32& key) const noexcept {
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
@@ -122,6 +122,10 @@ evmc::bytes32 ZjchainHost::get_storage(
             "",
             false,
             thread_idx);
+    }
+
+    if (pre_zjc_host_ != nullptr) {
+        return pre_zjc_host_->get_storage(addr, key);
     }
 
     // auto str_key = std::string((char*)addr.bytes, sizeof(addr.bytes)) +
@@ -238,21 +242,21 @@ evmc::uint256be ZjchainHost::get_balance(const evmc::address& addr) const noexce
     // don't use real balance
     SETH_DEBUG("called 3");
     auto iter = account_balance_.find(addr);
-    if (iter == account_balance_.end()) {
-        SETH_DEBUG("failed now get balace: %s, my: %s, origin: %s",
+    if (iter != account_balance_.end()) {
+        auto val = EvmcBytes32ToUint64(iter->second);
+        SETH_DEBUG("success now get balace: %s, my: %s, origin: %s, %lu",
             common::Encode::HexEncode(std::string((char*)addr.bytes, 20)).c_str(),
             common::Encode::HexEncode(my_address_).c_str(),
-            common::Encode::HexEncode(origin_address_).c_str());
-        return {};
+            common::Encode::HexEncode(origin_address_).c_str(),
+            val);
+        return iter->second;
     }
 
-    auto val = EvmcBytes32ToUint64(iter->second);
-    SETH_DEBUG("success now get balace: %s, my: %s, origin: %s, %lu",
-        common::Encode::HexEncode(std::string((char*)addr.bytes, 20)).c_str(),
-        common::Encode::HexEncode(my_address_).c_str(),
-        common::Encode::HexEncode(origin_address_).c_str(),
-        val);
-    return iter->second;
+    if (pre_zjc_host_ != nullptr) {
+        return pre_zjc_host_->get_balance(addr);
+    }
+    
+    return {}
 }
 
 size_t ZjchainHost::get_code_size(const evmc::address& addr) const noexcept {
@@ -576,6 +580,10 @@ int ZjchainHost::GetKeyValue(const std::string& id, const std::string& key_str, 
                 common::Encode::HexEncode(*val).c_str());
             return kZjcvmSuccess;
         }
+    }
+
+    if (pre_zjc_host_ != nullptr) {
+        return pre_zjc_host_->GetKeyValue(id, key_str, val);
     }
 
     auto str_key = id + key_str;

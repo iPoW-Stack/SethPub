@@ -45,12 +45,14 @@ int ElectTxItem::TxToBlockTx(
 int ElectTxItem::HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        zjcvm::ZjchainHost& zjc_host,
+        zjcvm::ZjchainHost& pre_zjc_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
     elect_block_ = elect::protobuf::ElectBlock();
-    view_block_chain_ = zjc_host.view_block_chain_;
+    view_block_chain_ = pre_zjc_host.view_block_chain_;
     g2_ = std::make_shared<std::mt19937_64>(vss_mgr_->EpochRandom());
+    zjcvm::ZjchainHost zjc_host;
+    zjc_host.pre_zjc_host_ = &pre_zjc_host;
     InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
     auto& unique_hash = tx_info->key();
     if (!elect_statistic_.ParseFromString(tx_info->value())) {
@@ -96,6 +98,7 @@ int ElectTxItem::HandleTx(
     // *view_block.mutable_block_info()->mutable_elect_statistic() = elect_statistic_;
     *view_block.mutable_block_info()->mutable_elect_block() = elect_block_;
     view_block.mutable_block_info()->add_unique_hashs(block_tx.unique_hash());
+    zjc_host.MergeToPrev();
     return consensus::kConsensusSuccess;
 }
 

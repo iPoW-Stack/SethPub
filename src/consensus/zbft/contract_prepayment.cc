@@ -9,7 +9,7 @@ namespace consensus {
 int ContractPrepayment::HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        zjcvm::ZjchainHost& zjc_host,
+        zjcvm::ZjchainHost& pre_zjc_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
     uint64_t gas_used = 0;
@@ -18,7 +18,7 @@ int ContractPrepayment::HandleTx(
     uint64_t from_nonce = 0;
     uint64_t to_balance = 0;
     auto& from = address_info->addr();
-    int balance_status = GetTempAccountBalance(zjc_host, from, acc_balance_map, &from_balance, &from_nonce);
+    int balance_status = GetTempAccountBalance(pre_zjc_host, from, acc_balance_map, &from_balance, &from_nonce);
     if (balance_status != kConsensusSuccess) {
         block_tx.set_status(balance_status);
         // will never happen
@@ -102,13 +102,13 @@ int ContractPrepayment::HandleTx(
         from_balance);
     if (block_tx.status() == kConsensusSuccess) {
         auto preypayment_id = block_tx.to() + block_tx.from();
-        auto iter = zjc_host.cross_to_map_.find(preypayment_id);
+        auto iter = pre_zjc_host.cross_to_map_.find(preypayment_id);
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
-        if (iter == zjc_host.cross_to_map_.end()) {
+        if (iter == pre_zjc_host.cross_to_map_.end()) {
             to_item_ptr = std::make_shared<pools::protobuf::ToTxMessageItem>();
             to_item_ptr->set_des(preypayment_id);
             to_item_ptr->set_prepayment(block_tx.contract_prepayment());
-            zjc_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
+            pre_zjc_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
         } else {
             to_item_ptr = iter->second;
             to_item_ptr->set_prepayment(block_tx.contract_prepayment() + to_item_ptr->prepayment());

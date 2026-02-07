@@ -11,7 +11,7 @@ namespace consensus {
 int ContractUserCreateCall::HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        zjcvm::ZjchainHost& zjc_host,
+        zjcvm::ZjchainHost& pre_zjc_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
     // contract create call
@@ -19,7 +19,7 @@ int ContractUserCreateCall::HandleTx(
     uint64_t from_balance = 0;
     uint64_t from_nonce = 0;
     auto& from = address_info->addr();
-    int balance_status = GetTempAccountBalance(zjc_host, from, acc_balance_map, &from_balance, &from_nonce);
+    int balance_status = GetTempAccountBalance(pre_zjc_host, from, acc_balance_map, &from_balance, &from_nonce);
     SETH_DEBUG("contract user call create called: %s, balance: %lu", 
         common::Encode::HexEncode(from).c_str(), from_balance);
     uint64_t gas_used = consensus::kTransferGas;
@@ -38,7 +38,7 @@ int ContractUserCreateCall::HandleTx(
             break;
         }
 
-	    protos::AddressInfoPtr contract_info = zjc_host.view_block_chain_->ChainGetAccountInfo(block_tx.to());
+	    protos::AddressInfoPtr contract_info = pre_zjc_host.view_block_chain_->ChainGetAccountInfo(block_tx.to());
         if (contract_info != nullptr) {
             block_tx.set_status(kConsensusAccountExists);
             break;
@@ -63,6 +63,8 @@ int ContractUserCreateCall::HandleTx(
     } while(0);
 
     int64_t tmp_from_balance = from_balance;
+    zjcvm::ZjchainHost zjc_host,
+    zjc_host.pre_zjc_host_ = &pre_zjc_host;
     if (block_tx.status() == kConsensusSuccess) {
         InitHost(
             zjc_host, 
@@ -234,15 +236,16 @@ int ContractUserCreateCall::HandleTx(
         block_tx.amount(),
         block_tx.status());
     if (block_tx.status() == kConsensusSuccess) {
-        auto iter = zjc_host.cross_to_map_.find(block_tx.to());
+        zjc_host.MergeToPrev();
+        auto iter = pre_zjc_host.cross_to_map_.find(block_tx.to());
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
-        if (iter == zjc_host.cross_to_map_.end()) {
+        if (iter == pre_zjc_host.cross_to_map_.end()) {
             to_item_ptr = std::make_shared<pools::protobuf::ToTxMessageItem>();
             to_item_ptr->set_des(block_tx.to() + block_tx.from());
             to_item_ptr->set_amount(0);  // create contract direct set balance, not cross by root
             to_item_ptr->set_sharding_id(view_block.qc().network_id());
             to_item_ptr->set_des_sharding_id(network::kRootCongressNetworkId);
-            zjc_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
+            pre_zjc_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
             // if (block_tx.contract_prepayment() > 0) {
             //     to_item_ptr->set_prepayment(block_tx.contract_prepayment());
             // }
@@ -257,10 +260,10 @@ int ContractUserCreateCall::HandleTx(
         }
 
         for (auto exists_iter = cross_to_map_.begin(); exists_iter != cross_to_map_.end(); ++exists_iter) {
-            auto iter = zjc_host.cross_to_map_.find(exists_iter->first);
+            auto iter = pre_zjc_host.cross_to_map_.find(exists_iter->first);
             std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
-            if (iter == zjc_host.cross_to_map_.end()) {
-                zjc_host.cross_to_map_[exists_iter->first] = exists_iter->second;
+            if (iter == pre_zjc_host.cross_to_map_.end()) {
+                pre_zjc_host.cross_to_map_[exists_iter->first] = exists_iter->second;
             } else {
                 to_item_ptr = iter->second;
                 to_item_ptr->set_amount(exists_iter->second->amount() + to_item_ptr->amount());
@@ -271,7 +274,7 @@ int ContractUserCreateCall::HandleTx(
                 exists_iter->second->amount());
         }
     }
-    
+
     return kConsensusSuccess;
 }
 
