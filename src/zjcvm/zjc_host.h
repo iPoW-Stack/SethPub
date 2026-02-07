@@ -151,7 +151,7 @@ public:
         }
 
         for (auto iter = to_account_value_.begin(); iter != to_account_value_.end(); ++iter) {
-            pre_zjc_host_->to_account_value[iter->first] = iter->second;
+            pre_zjc_host_->to_account_value_[iter->first] = iter->second;
         }
 
         for (auto iter = accounts_.begin(); iter != accounts_.end(); ++iter) {
