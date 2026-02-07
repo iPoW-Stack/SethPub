@@ -256,7 +256,7 @@ evmc::uint256be ZjchainHost::get_balance(const evmc::address& addr) const noexce
         return pre_zjc_host_->get_balance(addr);
     }
     
-    return {}
+    return {};
 }
 
 size_t ZjchainHost::get_code_size(const evmc::address& addr) const noexcept {
