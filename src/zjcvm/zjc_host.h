@@ -155,9 +155,9 @@ public:
         }
 
         for (auto iter = accounts_.begin(); iter != accounts_.end(); ++iter) {
-            auto old_iter = pre_zjc_host_->accounts.find(iter->first);
-            if (old_iter == pre_zjc_host_->accounts.end()) {
-                pre_zjc_host_->accounts[iter->first] = iter->second;
+            auto old_iter = pre_zjc_host_->accounts_.find(iter->first);
+            if (old_iter == pre_zjc_host_->accounts_.end()) {
+                pre_zjc_host_->accounts_[iter->first] = iter->second;
                 continue;
             }
 
@@ -175,11 +175,11 @@ public:
         }
 
         for (auto iter = account_balance_.begin(); iter != account_balance_.end(); ++iter) {
-            pre_zjc_host_->account_balance[iter->first] = iter->second;
+            pre_zjc_host_->account_balance_[iter->first] = iter->second;
         }
 
         for (auto iter = cross_to_map_.begin(); iter != cross_to_map_.end(); ++iter) {
-            pre_zjc_host_->cross_to_map[iter->first] = iter->second;
+            pre_zjc_host_->cross_to_map_[iter->first] = iter->second;
         }
     }
     // void SavePrevStorages(const std::string& key, const std::string& val, bool cover) {
