@@ -35,12 +35,11 @@ class SethClient:
 
     def get_account_info(self, address_hex):
         """查询账户信息"""
-        print (f"query account: {address_hex}")
         try:
             data = {"address": address_hex.replace('0x', '')}
             resp = requests.post(self.query_url, data=data, timeout=5)
-            print (f"get account: {resp}")
             if resp.status_code == 200:
+                print (f"get account: {resp.json()}")
                 return resp.json()
         except Exception as e:
             print(f"[Query Error] {e}")
