@@ -155,6 +155,8 @@ start_all_nodes() {
                 if ((start_pos==1)); then
                     sleep 3
                 fi
+            else
+                echo "not exits: rm -rf /root/seths/s$shard_$start_pos/seth && ln /root/pkg/seth /root/seths/s$shard_$start_pos/seth "
             fi
         done
         
