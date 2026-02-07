@@ -149,14 +149,14 @@ start_all_nodes() {
         fi
 
         for shard in {2..$end_shard}; do
-            if [ -d "/root/seths/s$shard_$start_pos/" ]; then
-                echo "rm -rf /root/seths/s$shard_$start_pos/seth && ln /root/pkg/seth /root/seths/s$shard_$start_pos/seth "
-                sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "rm -rf /root/seths/s$shard_$start_pos/seth && ln /root/pkg/seth /root/seths/s$shard_$start_pos/seth "  &
+            if [ -d "/root/seths/s${shard}_${start_pos}/" ]; then
+                echo "rm -rf /root/seths/s${shard}_${start_pos}/seth && ln /root/pkg/seth /root/seths/s${shard}_${start_pos}/seth "
+                sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "rm -rf /root/seths/s${shard}_${start_pos}/seth && ln /root/pkg/seth /root/seths/s${shard}_${start_pos}/seth "  &
                 if ((start_pos==1)); then
                     sleep 3
                 fi
             else
-                echo "not exits: rm -rf /root/seths/s$shard_$start_pos/seth && ln /root/pkg/seth /root/seths/s$shard_$start_pos/seth "
+                echo "not exits: rm -rf /root/seths/s${shard}_${start_pos}/seth && ln /root/pkg/seth /root/seths/s${shard}_${start_pos}/seth "
             fi
         done
         
