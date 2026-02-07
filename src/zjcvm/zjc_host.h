@@ -147,7 +147,7 @@ public:
         const evmc::bytes32& key) const noexcept;
     void MergeToPrev() {
         for (auto iter = recorded_logs_.begin(); iter != recorded_logs_.end(); ++iter) {
-            pre_zjc_host_->recorded_logs.push_back(*iter);
+            pre_zjc_host_->recorded_logs_.push_back(*iter);
         }
 
         for (auto iter = to_account_value_.begin(); iter != to_account_value_.end(); ++iter) {
