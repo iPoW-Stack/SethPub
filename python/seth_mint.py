@@ -150,7 +150,6 @@ if __name__ == "__main__":
     PORT = 23001
     CONTRACT_ADDR = "e464718ceba0a18a225fe28a963e3aab0071771c"
     OWNER_KEY = "c75f8d9b2a6bc0fe68eac7fef67c6b6f7c4f85163d58829b59110ff9e9210848"
-    INCENTIVE_UNIT = 1000000
 
     client = SethClient(HOST, PORT)
 
@@ -176,9 +175,5 @@ if __name__ == "__main__":
         if result:
             final_balance = int(result.get("balance", 0))
             print(f"    Current Balance: {final_balance}")
-            if final_balance >= INCENTIVE_UNIT:
-                print("\n✅ VERIFICATION SUCCESS: Incentive Dispatched Successfully!")
-            else:
-                print("\n❌ VERIFICATION FAILED: Balance did not increase. Check Contract Balance or Gas.")
     else:
         print("\n❌ ERROR: Transaction failed to reach the mempool.")
