@@ -27,9 +27,10 @@ class SethClient:
     def _hex_to_bytes(self, hex_str):
         return bytes.fromhex(hex_str.replace('0x', ''))
 
-    def _derive_address_from_pubkey(self, pubkey_bytes_no_prefix):
-        k = keccak.new(digest_bits=256)
-        k.update(pubkey_bytes_no_prefix)
+    def _derive_address_from_pubkey(self, priv_bytes):
+        sk = SigningKey.from_string(priv_bytes, curve=SECP256k1)
+        pub_raw = sk.verifying_key.to_string("uncompressed")[1:]
+        k = keccak.new(digest_bits=256).update(pub_raw)
         return k.digest()[-20:].hex()
 
     def get_account_info(self, address_hex):
@@ -38,6 +39,7 @@ class SethClient:
             data = {"address": address_hex.replace('0x', '')}
             resp = requests.post(self.query_url, data=data, timeout=5)
             if resp.status_code == 200:
+                print (f"get account: {resp.json()}")
                 return resp.json()
         except Exception as e:
             print(f"[Query Error] {e}")
@@ -66,7 +68,7 @@ class SethClient:
         sk = SigningKey.from_string(bytes.fromhex(priv_key_hex), curve=SECP256k1)
         pubkey_full = sk.verifying_key.to_string("uncompressed")
         pubkey_hex = pubkey_full.hex()
-        my_addr = contract_addr + self._derive_address_from_pubkey(pubkey_full[1:])
+        my_addr = contract_addr + self._derive_address_from_pubkey(bytes.fromhex(priv_key_hex))
 
         # 2. 获取 Nonce
         acc_info = self.get_account_info(my_addr)
@@ -144,11 +146,10 @@ def encode_abi_send_incentive(receiver_addr):
 
 if __name__ == "__main__":
     # 配置信息
-    HOST = "136.110.63.32"
-    PORT = 23014
-    CONTRACT_ADDR = "670436a24c9cc7df7699c407d435810583643854"
-    OWNER_KEY = "73cc68053322814403e2e549a0fac941f9c04f64b78420967ceabda6f30c95b8"
-    INCENTIVE_UNIT = 1000000
+    HOST = "35.197.170.240"
+    PORT = 23001
+    CONTRACT_ADDR = "e464718ceba0a18a225fe28a963e3aab0071771c"
+    OWNER_KEY = "c75f8d9b2a6bc0fe68eac7fef67c6b6f7c4f85163d58829b59110ff9e9210848"
 
     client = SethClient(HOST, PORT)
 
@@ -165,7 +166,7 @@ if __name__ == "__main__":
 
     if status == 200:
         print(f"[3] Waiting 5 seconds for block confirmation...")
-        time.sleep(5) # 等待出块
+        time.sleep(15) # 等待出块
 
         # 第四步：查询新账户余额验证结果
         print(f"[4] Verifying Balance for {new_user['addr']}...")
@@ -174,9 +175,5 @@ if __name__ == "__main__":
         if result:
             final_balance = int(result.get("balance", 0))
             print(f"    Current Balance: {final_balance}")
-            if final_balance >= INCENTIVE_UNIT:
-                print("\n✅ VERIFICATION SUCCESS: Incentive Dispatched Successfully!")
-            else:
-                print("\n❌ VERIFICATION FAILED: Balance did not increase. Check Contract Balance or Gas.")
     else:
         print("\n❌ ERROR: Transaction failed to reach the mempool.")

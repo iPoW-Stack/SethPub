@@ -1105,7 +1105,7 @@ evmc::bytes32 ViewBlockChain::GetPrevStorageBytes32KeyValue(
         }
 
         if (it->second->zjc_host_ptr) {
-            auto res = it->second->zjc_host_ptr->get_cached_storage(addr, key);
+            auto res = it->second->zjc_host_ptr->GetCachedStorage(addr, key);
             if (res) {
                 return res;
             }

@@ -77,20 +77,20 @@ class SethHttpClient:
         :param hash_list: 十六进制哈希字符串列表
         """
         url = f"{self.base_url}/get_block_with_hash"
-        
+
         # 构造 JSON 请求体
         payload = {
             "hash_list": hash_list
         }
-        
+
         try:
             # 使用 json= 参数会自动设置 Content-Type: application/json
             # 并且将 dict 自动转换为 JSON 字符串
             response = requests.post(url, json=payload, timeout=15)
-            
+
             print(f"请求发送至: {url}")
             print(f"响应状态码: {response.status_code}")
-            
+
             if response.status_code == 200:
                 result = response.json()
                 if result.get("status") == 0:
@@ -102,11 +102,11 @@ class SethHttpClient:
             else:
                 print(f"HTTP 错误: {response.text}")
                 return None
-                
+
         except requests.exceptions.RequestException as e:
             print(f"网络请求异常: {e}")
             return None
-        
+
 # --- 使用示例 ---
 if __name__ == "__main__":
     # 配置你的服务器 IP 和端口（对应 Init 函数中的 ip, port）
@@ -129,11 +129,9 @@ if __name__ == "__main__":
         print(res)
 
     hashes_to_query = [
-        "68eb9317daf6ec703213b3beb725b1e8b0ea847af196729726ef2b80014d5fbd", 
-        "8f349e30335c38e3f7d1960b8a769eee00b9354409da9fb878f0fbfe6b8db048",
-        "63c3ac2fae1caf51161db0152f07af498884ad375a8a8f8214650cffbef181d9"
+        "8fc02e2cf2fe1895e943c6aaa15f1186f8296f3840b4443c432083a2c9e170a7",
     ]
-    
+
     # 3. 执行调用
     res = client.get_blocks_by_hashes(hashes_to_query)
     # 格式化输出结果

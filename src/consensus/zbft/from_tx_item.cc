@@ -7,7 +7,7 @@ namespace consensus {
 int FromTxItem::HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        zjcvm::ZjchainHost& zjc_host,
+        zjcvm::ZjchainHost& pre_zjc_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
     uint64_t gas_used = 0;
@@ -16,7 +16,7 @@ int FromTxItem::HandleTx(
     uint64_t from_nonce = 0;
     uint64_t to_balance = 0;
     auto& from = address_info->addr();
-    int balance_status = GetTempAccountBalance(zjc_host, from, acc_balance_map, &from_balance, &from_nonce);
+    int balance_status = GetTempAccountBalance(pre_zjc_host, from, acc_balance_map, &from_balance, &from_nonce);
     auto src_banalce = from_balance;
     if (balance_status != kConsensusSuccess) {
         block_tx.set_status(balance_status);
@@ -25,6 +25,8 @@ int FromTxItem::HandleTx(
         return kConsensusSuccess;
     }
 
+    zjcvm::ZjchainHost zjc_host;
+    zjc_host.pre_zjc_host_ = &pre_zjc_host;
     InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
     do  {
         gas_used = consensus::kTransferGas; // Transfer transaction fee calculation
@@ -82,13 +84,14 @@ int FromTxItem::HandleTx(
     }
 
     if (block_tx.status() == kConsensusSuccess) {
-        auto iter = zjc_host.cross_to_map_.find(block_tx.to());
+        zjc_host.MergeToPrev();
+        auto iter = pre_zjc_host.cross_to_map_.find(block_tx.to());
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
-        if (iter == zjc_host.cross_to_map_.end()) {
+        if (iter == pre_zjc_host.cross_to_map_.end()) {
             to_item_ptr = std::make_shared<pools::protobuf::ToTxMessageItem>();
             to_item_ptr->set_des(block_tx.to());
             to_item_ptr->set_amount(block_tx.amount());
-            zjc_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
+            pre_zjc_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
             SETH_DEBUG("success add cross to shard array: %s, %lu",
                 common::Encode::HexEncode(block_tx.to()).c_str(),
                 block_tx.amount());

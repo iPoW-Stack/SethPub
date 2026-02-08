@@ -142,9 +142,46 @@ public:
     int SaveKeyValue(const evmc::address& addr, const std::string& key, const std::string& val);
     int GetKeyValue(const std::string& id, const std::string& key, std::string* val);
     int GetCachedKeyValue(const std::string& id, const std::string& key, std::string* val);
-    evmc::bytes32 get_cached_storage(
+    evmc::bytes32 GetCachedStorage(
         const evmc::address& addr,
         const evmc::bytes32& key) const noexcept;
+    void MergeToPrev() {
+        for (auto iter = recorded_logs_.begin(); iter != recorded_logs_.end(); ++iter) {
+            pre_zjc_host_->recorded_logs_.push_back(*iter);
+        }
+
+        for (auto iter = to_account_value_.begin(); iter != to_account_value_.end(); ++iter) {
+            pre_zjc_host_->to_account_value_[iter->first] = iter->second;
+        }
+
+        for (auto iter = accounts_.begin(); iter != accounts_.end(); ++iter) {
+            auto old_iter = pre_zjc_host_->accounts_.find(iter->first);
+            if (old_iter == pre_zjc_host_->accounts_.end()) {
+                pre_zjc_host_->accounts_[iter->first] = iter->second;
+                continue;
+            }
+
+            old_iter->second.nonce = iter->second.nonce;
+            old_iter->second.code = iter->second.code;
+            old_iter->second.codehash = iter->second.codehash;
+            old_iter->second.balance = iter->second.balance;
+            for (auto iter2 = iter->second.storage.begin(); iter2 != iter->second.storage.end(); ++iter2) {
+                old_iter->second.storage[iter2->first] = iter2->second;
+            }
+
+            for (auto iter2 = iter->second.str_storage.begin(); iter2 != iter->second.str_storage.end(); ++iter2) {
+                old_iter->second.str_storage[iter2->first] = iter2->second;
+            }
+        }
+
+        for (auto iter = account_balance_.begin(); iter != account_balance_.end(); ++iter) {
+            pre_zjc_host_->account_balance_[iter->first] = iter->second;
+        }
+
+        for (auto iter = cross_to_map_.begin(); iter != cross_to_map_.end(); ++iter) {
+            pre_zjc_host_->cross_to_map_[iter->first] = iter->second;
+        }
+    }
     // void SavePrevStorages(const std::string& key, const std::string& val, bool cover) {
         // if (!cover) {
         //     auto iter = prev_storages_map_.find(key);
@@ -184,6 +221,8 @@ public:
     std::shared_ptr<contract::ContractManager> contract_mgr_ = nullptr;
     std::shared_ptr<hotstuff::ViewBlockChain> view_block_chain_ = nullptr;
     db::DbWriteBatch db_batch_;
+
+    ZjchainHost* pre_zjc_host_ = nullptr;
 };
 
 }  // namespace zjcvm

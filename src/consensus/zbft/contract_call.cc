@@ -9,7 +9,7 @@ namespace consensus {
 int ContractCall::HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        zjcvm::ZjchainHost& zjc_host,
+        zjcvm::ZjchainHost& pre_zjc_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
     // gas just consume from 's prepayment
@@ -18,14 +18,14 @@ int ContractCall::HandleTx(
     uint64_t from_balance = 0;
     uint64_t from_nonce = 0;
     auto preppayment_id = block_tx.to() + block_tx.from();
-    auto res = GetTempAccountBalance(zjc_host, preppayment_id, acc_balance_map, &from_balance, &from_nonce);
+    auto res = GetTempAccountBalance(pre_zjc_host, preppayment_id, acc_balance_map, &from_balance, &from_nonce);
     if (res != kConsensusSuccess) {
         return kConsensusError;
     }
 
     uint64_t src_to_balance = 0;
     uint64_t src_to_nonce = 0;
-    res = GetTempAccountBalance(zjc_host, block_tx.to(), acc_balance_map, &src_to_balance, &src_to_nonce);
+    res = GetTempAccountBalance(pre_zjc_host, block_tx.to(), acc_balance_map, &src_to_balance, &src_to_nonce);
     if (res != kConsensusSuccess) {
         return kConsensusError;
     }
@@ -36,6 +36,8 @@ int ContractCall::HandleTx(
     auto gas_used = kCallContractDefaultUseGas;
     int64_t contract_balance_add = 0;
     auto gas_limit = block_tx.gas_limit();
+    zjcvm::ZjchainHost zjc_host;
+    zjc_host.pre_zjc_host_ = &pre_zjc_host;
     do {
         if (from_balance <= kCallContractDefaultUseGas * block_tx.gas_price() + block_tx.amount()) {
             block_tx.set_status(kConsensusOutOfGas);
@@ -240,18 +242,11 @@ int ContractCall::HandleTx(
                     acc_balance_map[block_tx.to()]->set_balance(0);
                     acc_balance_map[block_tx.to()]->set_destructed(true);
                 }
-
             } while (0);
         }
 
         if (block_tx.status() == kConsensusSuccess) {
             from_balance = tmp_from_balance;
-            if (!acc_balance_map[block_tx.to()]->destructed()) {
-                acc_balance_map[block_tx.to()]->set_balance(block_tx.amount());
-                acc_balance_map[block_tx.to()]->set_nonce(0);
-                acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
-                acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
-            }
         }
 
         if (block_tx.contract_input().size() < protos::kContractBytesStartCode.size()) {
@@ -274,10 +269,15 @@ int ContractCall::HandleTx(
         }
     }
 
-    if (block_tx.status() == kConsensusSuccess) {
-        block_tx.set_amount(new_contract_balance);
-    } else {
-        block_tx.set_amount(src_to_balance);
+    if (!acc_balance_map[block_tx.to()]->destructed()) {
+        acc_balance_map[block_tx.to()]->set_nonce(0);
+        acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
+        acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
+        if (block_tx.status() == kConsensusSuccess) {
+            acc_balance_map[block_tx.to()]->set_balance(new_contract_balance);
+        } else {
+            acc_balance_map[block_tx.to()]->set_balance(src_to_balance);
+        }
     }
     
     // must prepayment's nonce, not caller or contract
@@ -308,11 +308,12 @@ int ContractCall::HandleTx(
         new_contract_balance,
         (etime - btime));
     if (block_tx.status() == kConsensusSuccess) {
+        zjc_host.MergeToPrev();
         for (auto exists_iter = cross_to_map_.begin(); exists_iter != cross_to_map_.end(); ++exists_iter) {
-            auto iter = zjc_host.cross_to_map_.find(exists_iter->first);
+            auto iter = pre_zjc_host.cross_to_map_.find(exists_iter->first);
             std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
-            if (iter == zjc_host.cross_to_map_.end()) {
-                zjc_host.cross_to_map_[exists_iter->first] = exists_iter->second;
+            if (iter == pre_zjc_host.cross_to_map_.end()) {
+                pre_zjc_host.cross_to_map_[exists_iter->first] = exists_iter->second;
             } else {
                 to_item_ptr = iter->second;
                 to_item_ptr->set_amount(exists_iter->second->amount() + to_item_ptr->amount());
