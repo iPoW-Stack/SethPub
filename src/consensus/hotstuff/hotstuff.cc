@@ -268,7 +268,7 @@ Status Hotstuff::Propose(
     if (max_view() != 0 && max_view() <= last_leader_propose_view_) {
         SETH_DEBUG("pool: %d construct propose msg failed, %d, "
             "max_view(): %lu last_leader_propose_view_: %lu",
-            pool_idx_, Status::kError,
+            pool_idx_, (int32_t)Status::kError,
             max_view(), last_leader_propose_view_);
         return Status::kError;
     }
