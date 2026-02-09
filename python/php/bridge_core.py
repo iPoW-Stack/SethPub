@@ -1,4 +1,5 @@
 import sys
+import time
 import struct
 import requests
 import hashlib
@@ -25,6 +26,44 @@ class DataMarketFullClient:
         """修复报错：实现 ID 生成逻辑"""
         return "0x" + hashlib.sha256(seed_str.encode()).hexdigest()
 
+    def _uint64_to_bytes(self, val):
+        return struct.pack('<Q', val)
+
+    def _hex_to_bytes(self, hex_str):
+        if hex_str.startswith('0x'):
+            hex_str = hex_str[2:]
+        return bytes.fromhex(hex_str)
+
+    def get_latest_nonce(self, address_hex):
+        """
+        Query account info and get the latest Nonce
+        """
+        print(f"[Client] Querying nonce for address: {address_hex}")
+        try:
+            # Construct request, server QueryAccount expects 'address' parameter
+            data = {"address": address_hex}
+            resp = requests.post(self.query_url, data=data, timeout=5)
+
+            if resp.status_code != 200:
+                print(f"[Error] Query failed: {resp.text}")
+                return 0 # Account might not exist, default to 0
+
+            # Parse returned JSON
+            # Server response example: {"address": "...", "balance": 1000, "nonce": 5, ...}
+            # Note: Protobuf JSON fields might be omitted if they are default values, need handling
+            try:
+                account_info = resp.json()
+                # If empty object or no nonce field, it's a new account, return 0
+                nonce = int(account_info.get("nonce", 0))
+                print(f"[Client] Current Nonce on chain: {nonce}")
+                return nonce
+            except json.JSONDecodeError:
+                print(f"[Client] Failed to parse JSON, assuming new account. Resp: {resp.text}")
+                return 0
+
+        except Exception as e:
+            print(f"[Error] Get nonce error: {e}")
+
     def _send_call(self, func_name, params, p_types, o_types):
         selector = keccak.new(digest_bits=256, data=f"{func_name}({','.join(p_types)})".encode()).digest()[:4].hex()
         encoded = selector + encode(p_types, params).hex()
@@ -39,9 +78,7 @@ class DataMarketFullClient:
         selector = keccak.new(digest_bits=256, data=f"{func_name}({','.join(p_types)})".encode()).digest()[:4].hex()
         input_hex = selector + encode(p_types, params).hex()
         addr = self.contract_addr + self.my_address
-        acc_info = requests.post(self.query_url, data={"address": addr}).json()
-        nonce = (int(acc_info.get("nonce", 0)) if acc_info else 0) + 1
-        
+        nonce = self.get_latest_nonce(addr) + 1
         msg = bytearray()
         msg.extend(struct.pack('<Q', nonce))
         msg.extend(self.pubkey_uncompressed)
@@ -66,7 +103,17 @@ class DataMarketFullClient:
         if "verify signature failed" in resp.text:
             data["sign_v"] = "1"
             resp = requests.post(self.tx_url, data=data)
-        return {"code": resp.status_code, "result": resp.text}
+        
+        try_times = 0
+        while try_times < 15:
+            new_nonce = self.get_latest_nonce(addr)
+            if new_nonce >= nonce: 
+                return True
+            
+            time.sleep(1)
+            try_times += 1
+
+        return False
 
     # --- 读接口 ---
     def getDataCount(self): return self._send_call("getDataCount", [], [], ["uint256"])[0]
