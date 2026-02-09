@@ -5,7 +5,7 @@ class DataMarketAPI {
 
     public function __call($name, $args) {
         $payload = json_encode(["conf" => $this->conf, "method" => $name, "args" => $args]);
-        $process = proc_open("python3 bridge.py", [0=>["pipe","r"], 1=>["pipe","w"], 2=>["pipe","w"]], $pipes);
+        $process = proc_open("./python3.10/bin/python3 bridge.py", [0=>["pipe","r"], 1=>["pipe","w"], 2=>["pipe","w"]], $pipes);
         if (is_resource($process)) {
             fwrite($pipes[0], $payload); fclose($pipes[0]);
             $out = stream_get_contents($pipes[1]); $err = stream_get_contents($pipes[2]);
