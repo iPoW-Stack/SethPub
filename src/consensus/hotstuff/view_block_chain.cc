@@ -1365,15 +1365,13 @@ void ViewBlockChain::OnTimeBlock(
         uint64_t vss_random) {
     SETH_DEBUG("new timeblock coming: %lu, %lu, lastest_time_block_tm: %lu",
         static_cast<uint64_t>(latest_timeblock_height_), latest_time_block_height, lastest_time_block_tm);
-    if (latest_timeblock_height_ >= latest_time_block_height) {
-        return;
+    if (latest_timeblock_height_ < latest_time_block_height) {
+        latest_timeblock_height_ = latest_time_block_height;
     }
 
     if (latest_time_block_height > 1) {
         AddPoolStatisticTag(latest_time_block_height);
     }
-
-    latest_timeblock_height_ = latest_time_block_height;
 }
 
 } // namespace hotstuff
