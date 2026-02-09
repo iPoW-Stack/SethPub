@@ -489,6 +489,7 @@ void ShardStatistic::CallNewElectBlock(
         uint32_t sharding_id,
         uint64_t prepare_elect_height) {
     if (sharding_id != common::GlobalInfo::Instance()->network_id()) {
+        
         return;
     }
 

@@ -761,7 +761,7 @@ void ViewBlockChain::HandleTimerMessage() {
 }
 
 std::shared_ptr<ViewBlockInfo> ViewBlockChain::CheckCommit(const QC& qc) {
-    // fast hotstuff
+    // fast hotstuff 2 phase commit
     // CheckThreadIdValid();
     if (qc.sign_x().empty()) {
         return nullptr;
@@ -825,64 +825,64 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::CheckCommit(const QC& qc) {
         return nullptr;
     }
 
-#ifndef NDEBUG
-    transport::protobuf::ConsensusDebug cons_debug2;
-    cons_debug2.ParseFromString(v_block2->debug());
-    SETH_DEBUG("pool: %d, success get v block 2: %s, %u_%u_%lu, propose_debug: %s",
-        pool_index_,
-        common::Encode::HexEncode(v_block2->qc().view_block_hash()).c_str(),
-        v_block2->qc().network_id(), v_block2->qc().pool_index(), 
-        v_block2->qc().view(), ProtobufToJson(cons_debug2).c_str());
-#endif
+// #ifndef NDEBUG
+//     transport::protobuf::ConsensusDebug cons_debug2;
+//     cons_debug2.ParseFromString(v_block2->debug());
+//     SETH_DEBUG("pool: %d, success get v block 2: %s, %u_%u_%lu, propose_debug: %s",
+//         pool_index_,
+//         common::Encode::HexEncode(v_block2->qc().view_block_hash()).c_str(),
+//         v_block2->qc().network_id(), v_block2->qc().pool_index(), 
+//         v_block2->qc().view(), ProtobufToJson(cons_debug2).c_str());
+// #endif
 
-    auto v_block3_info = Get(v_block2->parent_hash());
-    if (!v_block3_info) {
-        SETH_DEBUG("pool: %d, Failed get v block 3 block hash: %s, %u_%u_%lu, now chain: %s", 
-            pool_index_,
-            common::Encode::HexEncode(v_block2->parent_hash()).c_str(), 
-            qc.network_id(), 
-            qc.pool_index(), 
-            v_block2->qc().view() - 1,
-            String().c_str());
-        if (v_block2->qc().view() > 0 && !BlockViewCommited(
-                prefix_db_,
-                v_block2->qc().network_id(), 
-                v_block2->qc().pool_index(),
-                v_block2->qc().view() - 1)) {
-            kv_sync_->AddSyncViewHash(qc.network_id(), qc.pool_index(), v_block2->parent_hash(), 0);
-        }
-        return nullptr;
-    }
+//     auto v_block3_info = Get(v_block2->parent_hash());
+//     if (!v_block3_info) {
+//         SETH_DEBUG("pool: %d, Failed get v block 3 block hash: %s, %u_%u_%lu, now chain: %s", 
+//             pool_index_,
+//             common::Encode::HexEncode(v_block2->parent_hash()).c_str(), 
+//             qc.network_id(), 
+//             qc.pool_index(), 
+//             v_block2->qc().view() - 1,
+//             String().c_str());
+//         if (v_block2->qc().view() > 0 && !BlockViewCommited(
+//                 prefix_db_,
+//                 v_block2->qc().network_id(), 
+//                 v_block2->qc().pool_index(),
+//                 v_block2->qc().view() - 1)) {
+//             kv_sync_->AddSyncViewHash(qc.network_id(), qc.pool_index(), v_block2->parent_hash(), 0);
+//         }
+//         return nullptr;
+//     }
     
-    auto v_block3 = v_block3_info->view_block;
-#ifndef NDEBUG
-    transport::protobuf::ConsensusDebug cons_debug3;
-    cons_debug3.ParseFromString(v_block2->debug());
-    SETH_DEBUG("pool: %d, success get v block views: %lu, %lu, %lu, hash: %s, %s, %s, %s, %s, now: %s, propose_debug: %s",
-        pool_index_,
-        v_block1->qc().view(),
-        v_block2->qc().view(),
-        v_block3->qc().view(),
-        common::Encode::HexEncode(v_block1->qc().view_block_hash()).c_str(),
-        common::Encode::HexEncode(v_block1->parent_hash()).c_str(),
-        common::Encode::HexEncode(v_block2->qc().view_block_hash()).c_str(),
-        common::Encode::HexEncode(v_block2->parent_hash()).c_str(),
-        common::Encode::HexEncode(v_block3->qc().view_block_hash()).c_str(),
-        common::Encode::HexEncode(qc.view_block_hash()).c_str(),
-        ProtobufToJson(cons_debug3).c_str());
-#endif
-    // fast hotstuff
-    if (v_block3->qc().view() + 1 != v_block2->qc().view()) {
-        SETH_DEBUG("pool: %d, Failed get v block 2 ref: %s, "
-            "v_block3->qc().view() + 1 != v_block2->qc().view(): %lu, %lu",
-            pool_index_,
-            common::Encode::HexEncode(v_block1->parent_hash()).c_str(),
-            v_block3->qc().view(),
-            v_block2->qc().view());
-        return nullptr;
-    }
+//     auto v_block3 = v_block3_info->view_block;
+// #ifndef NDEBUG
+//     transport::protobuf::ConsensusDebug cons_debug3;
+//     cons_debug3.ParseFromString(v_block2->debug());
+//     SETH_DEBUG("pool: %d, success get v block views: %lu, %lu, %lu, hash: %s, %s, %s, %s, %s, now: %s, propose_debug: %s",
+//         pool_index_,
+//         v_block1->qc().view(),
+//         v_block2->qc().view(),
+//         v_block3->qc().view(),
+//         common::Encode::HexEncode(v_block1->qc().view_block_hash()).c_str(),
+//         common::Encode::HexEncode(v_block1->parent_hash()).c_str(),
+//         common::Encode::HexEncode(v_block2->qc().view_block_hash()).c_str(),
+//         common::Encode::HexEncode(v_block2->parent_hash()).c_str(),
+//         common::Encode::HexEncode(v_block3->qc().view_block_hash()).c_str(),
+//         common::Encode::HexEncode(qc.view_block_hash()).c_str(),
+//         ProtobufToJson(cons_debug3).c_str());
+// #endif
+//     // fast hotstuff
+//     if (v_block3->qc().view() + 1 != v_block2->qc().view()) {
+//         SETH_DEBUG("pool: %d, Failed get v block 2 ref: %s, "
+//             "v_block3->qc().view() + 1 != v_block2->qc().view(): %lu, %lu",
+//             pool_index_,
+//             common::Encode::HexEncode(v_block1->parent_hash()).c_str(),
+//             v_block3->qc().view(),
+//             v_block2->qc().view());
+//         return nullptr;
+//     }
 
-    return v_block3_info;
+    return v_block2_info;
 }
 
 void ViewBlockChain::AddNewBlock(
