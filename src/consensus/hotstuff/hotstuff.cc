@@ -266,6 +266,7 @@ Status Hotstuff::Propose(
             sendout_bft_message_count_.fetch_add(0));
 #endif
         // HandleProposeMsg(latest_leader_propose_message_);
+        latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
         return Status::kSuccess;
     }
 
