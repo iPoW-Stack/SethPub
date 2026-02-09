@@ -1328,7 +1328,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     auto replica_idx = vote_msg.replica_idx();
     if (replica_idx == leader_rotation_->GetLocalMemberIdx()) {
         if (latest_leader_propose_message_) {
-            auto* leader_qc = latest_leader_propose_message_->header.mutable_hotstuff()->mutable_pro_msg()->mutable_qc();
+            auto* leader_qc = latest_leader_propose_message_->header.mutable_hotstuff()->mutable_pro_msg()->mutable_view_item->mutable_qc();
             leader_qc->set_view_block_hash(vote_msg.view_block_hash());
         }
     }
