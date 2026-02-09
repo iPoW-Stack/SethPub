@@ -293,7 +293,7 @@ private:
     View last_vote_view_ = 0;
     View last_leader_propose_view_ = 0;
     SyncPoolFn sync_pool_fn_ = nullptr;
-    std::map<View, transport::MessagePtr> voted_msgs_;
+    std::unordered_map<uint32_t, std::map<View, transport::MessagePtr>> voted_msgs_;
     uint64_t latest_propose_msg_tm_ms_ = 0;
     std::shared_ptr<view_block::protobuf::QcItem> latest_qc_item_ptr_;
     uint64_t propose_debug_index_ = 0;

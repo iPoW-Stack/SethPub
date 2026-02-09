@@ -214,64 +214,64 @@ Status Hotstuff::Propose(
 #ifndef NDEBUG
     auto t1 = common::TimeUtils::TimestampMs();
 #endif
-//     if (latest_leader_propose_message_ &&
-//             latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view() >= 
-//             pacemaker_->CurView()) {
-//         auto tmp_msg_ptr = std::make_shared<transport::TransportMessage>();
-//         tmp_msg_ptr->header.CopyFrom(latest_leader_propose_message_->header);
-//         tmp_msg_ptr->is_leader = true;
-//         tmp_msg_ptr->header.release_broadcast();
-//         tmp_msg_ptr->header.mutable_hotstuff()->mutable_pro_msg()->mutable_view_item()->mutable_block_info()->set_timeblock_height(tm_block_mgr_->LatestTimestampHeight());
-//         auto broadcast = tmp_msg_ptr->header.mutable_broadcast();
-//         auto* hotstuff_msg = tmp_msg_ptr->header.mutable_hotstuff();
-//         if (tc != nullptr) {
-//             auto* pb_pro_msg = hotstuff_msg->mutable_pro_msg();
-//             *pb_pro_msg->mutable_tc() = *tc;
-//         }
+    if (latest_leader_propose_message_ &&
+            latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view() >= 
+            pacemaker_->CurView()) {
+        auto tmp_msg_ptr = std::make_shared<transport::TransportMessage>();
+        tmp_msg_ptr->header.CopyFrom(latest_leader_propose_message_->header);
+        tmp_msg_ptr->is_leader = true;
+        tmp_msg_ptr->header.release_broadcast();
+        tmp_msg_ptr->header.mutable_hotstuff()->mutable_pro_msg()->mutable_view_item()->mutable_block_info()->set_timeblock_height(tm_block_mgr_->LatestTimestampHeight());
+        auto broadcast = tmp_msg_ptr->header.mutable_broadcast();
+        auto* hotstuff_msg = tmp_msg_ptr->header.mutable_hotstuff();
+        if (tc != nullptr) {
+            auto* pb_pro_msg = hotstuff_msg->mutable_pro_msg();
+            *pb_pro_msg->mutable_tc() = *tc;
+        }
 
-//         transport::TcpTransport::Instance()->SetMessageHash(tmp_msg_ptr->header);
-//         auto s = crypto()->SignMessage(tmp_msg_ptr);
-//         auto& header = tmp_msg_ptr->header;
-//         if (s != Status::kSuccess) {
-//             SETH_WARN("sign message failed pool: %d, view: %lu, construct hotstuff msg failed",
-//                 pool_idx_, hotstuff_msg->pro_msg().view_item().qc().view());
-//             return s;
-//         }
+        transport::TcpTransport::Instance()->SetMessageHash(tmp_msg_ptr->header);
+        auto s = crypto()->SignMessage(tmp_msg_ptr);
+        auto& header = tmp_msg_ptr->header;
+        if (s != Status::kSuccess) {
+            SETH_WARN("sign message failed pool: %d, view: %lu, construct hotstuff msg failed",
+                pool_idx_, hotstuff_msg->pro_msg().view_item().qc().view());
+            return s;
+        }
 
-//         transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
-//         SETH_DEBUG("0 success add local message: %lu", tmp_msg_ptr->header.hash64());
-//         network::Route::Instance()->Send(tmp_msg_ptr);
-// #ifndef NDEBUG
-//         ++sendout_bft_message_count_;
-//         transport::protobuf::ConsensusDebug cons_debug;
-//         cons_debug.ParseFromString(header.debug());
-//         SETH_DEBUG("pool: %d, header pool: %d, propose, txs size: %lu, view: %lu, "
-//             "hash: %s, qc_view: %lu, hash64: %lu, propose_debug: %s, "
-//             "msg view: %lu, cur view: %lu, propose msg: %s, sendout_bft_message_count_: %u",
-//             pool_idx_,
-//             header.hotstuff().pool_index(),
-//             hotstuff_msg->pro_msg().tx_propose().txs_size(),
-//             hotstuff_msg->pro_msg().view_item().qc().view(),
-//             common::Encode::HexEncode(hotstuff_msg->pro_msg().view_item().qc().view_block_hash()).c_str(),
-//             view_block_chain()->HighViewBlock()->qc().view(),
-//             header.hash64(),
-//             ProtobufToJson(cons_debug).c_str(),
-//             tmp_msg_ptr->header.hotstuff().pro_msg().view_item().qc().view(),
-//             pacemaker_->CurView(),
-//             ProtobufToJson(header.hotstuff().pro_msg()).c_str(),
-//             sendout_bft_message_count_.fetch_add(0));
-// #endif
-//         // HandleProposeMsg(latest_leader_propose_message_);
-//         return Status::kSuccess;
-//     }
+        transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
+        SETH_DEBUG("0 success add local message: %lu", tmp_msg_ptr->header.hash64());
+        network::Route::Instance()->Send(tmp_msg_ptr);
+#ifndef NDEBUG
+        ++sendout_bft_message_count_;
+        transport::protobuf::ConsensusDebug cons_debug;
+        cons_debug.ParseFromString(header.debug());
+        SETH_DEBUG("pool: %d, header pool: %d, propose, txs size: %lu, view: %lu, "
+            "hash: %s, qc_view: %lu, hash64: %lu, propose_debug: %s, "
+            "msg view: %lu, cur view: %lu, propose msg: %s, sendout_bft_message_count_: %u",
+            pool_idx_,
+            header.hotstuff().pool_index(),
+            hotstuff_msg->pro_msg().tx_propose().txs_size(),
+            hotstuff_msg->pro_msg().view_item().qc().view(),
+            common::Encode::HexEncode(hotstuff_msg->pro_msg().view_item().qc().view_block_hash()).c_str(),
+            view_block_chain()->HighViewBlock()->qc().view(),
+            header.hash64(),
+            ProtobufToJson(cons_debug).c_str(),
+            tmp_msg_ptr->header.hotstuff().pro_msg().view_item().qc().view(),
+            pacemaker_->CurView(),
+            ProtobufToJson(header.hotstuff().pro_msg()).c_str(),
+            sendout_bft_message_count_.fetch_add(0));
+#endif
+        // HandleProposeMsg(latest_leader_propose_message_);
+        return Status::kSuccess;
+    }
 
-//     if (max_view() != 0 && max_view() <= last_leader_propose_view_) {
-//         SETH_DEBUG("pool: %d construct propose msg failed, %d, "
-//             "max_view(): %lu last_leader_propose_view_: %lu",
-//             pool_idx_, Status::kError,
-//             max_view(), last_leader_propose_view_);
-//         return Status::kError;
-//     }
+    if (max_view() != 0 && max_view() <= last_leader_propose_view_) {
+        SETH_DEBUG("pool: %d construct propose msg failed, %d, "
+            "max_view(): %lu last_leader_propose_view_: %lu",
+            pool_idx_, Status::kError,
+            max_view(), last_leader_propose_view_);
+        return Status::kError;
+    }
 
 #ifndef NDEBUG
     auto t2 = common::TimeUtils::TimestampMs();
@@ -373,9 +373,10 @@ Status Hotstuff::Propose(
         return s;
     }
 
-    // if (tmp_msg_ptr->header.hotstuff().pro_msg().has_view_item()) {
-    //     latest_leader_propose_message_ = tmp_msg_ptr;
-    // }
+    latest_leader_propose_message_ = nullptr;
+    if (tmp_msg_ptr->header.hotstuff().pro_msg().has_view_item()) {
+        latest_leader_propose_message_ = tmp_msg_ptr;
+    }
 
 #ifndef NDEBUG
     auto t6 = common::TimeUtils::TimestampMs();
@@ -693,15 +694,25 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
         ProtobufToJson(cons_debug).c_str());
 #endif
     if (latest_qc_item_ptr_->view() >= view_item.qc().view()) {
+        // locked view
+        return Status::kError;
+    }
+
+    if (last_vote_view_ >= view_item.qc().view()) {
         SETH_DEBUG("pool: %d has voted view: %lu, last_locked_view_: %u, "
             "hash64: %lu, pacemaker()->CurView(): %lu",
             pool_idx_, view_item.qc().view(),
             latest_qc_item_ptr_->view(), pro_msg_wrap->msg_ptr->header.hash64(),
             pacemaker()->CurView());
         if (last_vote_view_ == view_item.qc().view()) {
-            // return Status::kSuccess;
-            auto iter = voted_msgs_.find(view_item.qc().view());
-            if (iter != voted_msgs_.end()) {
+            auto leader_iter = voted_msgs_.find(view_item.qc().leader_idx());
+            if (leader_iter == voted_msgs_.end()) {
+                return Status::kSuccess;
+            }
+
+            auto iter = leader_iter->second.find(view_item.qc().view());
+            if (iter != leader_iter->second.end() && 
+                    iter->second->header.hotstuff().vote_msg().view_block_hash() == view_item.qc().view_block_hash()) {
                 SETH_DEBUG("pool: %d has voted: %lu, last_vote_view_: %u, "
                     "hash64: %lu and resend vote: hash: %s",
                     pool_idx_, view_item.qc().view(),
@@ -716,7 +727,7 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
                 }
             }
         }
-        
+
         return Status::kError;
     }
 
@@ -1143,14 +1154,16 @@ Status Hotstuff::HandleProposeMsgStep_Vote(std::shared_ptr<ProposeMsgWrapper>& p
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (!pro_msg_wrap->msg_ptr->is_leader) {
         // Avoid repeated voting on the view
-        voted_msgs_[pro_msg_wrap->view_block_ptr->qc().view()] = trans_msg;
-        auto iter = voted_msgs_.begin();
-        auto riter = voted_msgs_.rbegin();
+        uint32_t leader_idx = pro_msg_wrap->view_block_ptr->qc().leader_idx();
+        View current_view = pro_msg_wrap->view_block_ptr->qc().view();
+        voted_msgs_[leader_idx][current_view] = trans_msg;
+        auto iter = voted_msgs_[leader_idx].begin();
+        auto riter = voted_msgs_[leader_idx].rbegin();
         if (iter->first + 16 < riter->first) {
-            voted_msgs_.erase(iter);
+            voted_msgs_[leader_idx].erase(iter);
         }
         
-        CHECK_MEMORY_SIZE(voted_msgs_);
+        CHECK_MEMORY_SIZE(voted_msgs_[leader_idx]);
         SETH_DEBUG("pool: %d, Send vote message is success., hash64: %lu, "
             "last_vote_view_: %lu, send to leader tx size: %u, last_vote_view_: %lu",
             pool_idx_, pro_msg_wrap->msg_ptr->header.hash64(),
