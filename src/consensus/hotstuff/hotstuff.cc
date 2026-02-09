@@ -226,7 +226,6 @@ Status Hotstuff::Propose(
         tmp_msg_ptr->header.CopyFrom(latest_leader_propose_message_->header);
         tmp_msg_ptr->is_leader = true;
         tmp_msg_ptr->header.release_broadcast();
-        tmp_msg_ptr->header.mutable_hotstuff()->mutable_pro_msg()->mutable_view_item()->mutable_block_info()->set_timeblock_height(tm_block_mgr_->LatestTimestampHeight());
         auto broadcast = tmp_msg_ptr->header.mutable_broadcast();
         auto* hotstuff_msg = tmp_msg_ptr->header.mutable_hotstuff();
         if (tc != nullptr) {
@@ -725,8 +724,7 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
 
             auto iter = leader_iter->second.find(view_item.qc().view());
             if (iter != leader_iter->second.end()) {
-                // TODO: check hash
-                // if (iter->second->header.hotstuff().vote_msg().view_block_hash() == view_item.qc().view_block_hash()) {
+                if (iter->second->header.hotstuff().vote_msg().view_block_hash() == view_item.qc().view_block_hash()) {
                     SETH_DEBUG("pool: %d has voted: %lu, last_vote_view_: %u, "
                         "hash64: %lu and resend vote: hash: %s",
                         pool_idx_, view_item.qc().view(),
@@ -739,17 +737,17 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
                         SETH_ERROR("pool: %d, Send vote message is error.",
                             pool_idx_, pro_msg_wrap->msg_ptr->header.hash64());
                     }
-                // } else {
-                //     SETH_DEBUG("not eq hash: %s, %s, leader: %d, pool: %d has voted view: %lu, last_locked_view_: %u, "
-                //         "last_vote_view_: %lu, hash64: %lu, pacemaker()->CurView(): %lu",
-                //         common::Encode::HexEncode(iter->second->header.hotstuff().vote_msg().view_block_hash()).c_str(),
-                //         common::Encode::HexEncode(view_item.qc().view_block_hash()).c_str(),
-                //         view_item.qc().leader_idx(),
-                //         pool_idx_, view_item.qc().view(),
-                //         latest_qc_item_ptr_->view(), last_vote_view_,
-                //         pro_msg_wrap->msg_ptr->header.hash64(),
-                //         pacemaker()->CurView());
-                // }
+                } else {
+                    SETH_DEBUG("not eq hash: %s, %s, leader: %d, pool: %d has voted view: %lu, last_locked_view_: %u, "
+                        "last_vote_view_: %lu, hash64: %lu, pacemaker()->CurView(): %lu",
+                        common::Encode::HexEncode(iter->second->header.hotstuff().vote_msg().view_block_hash()).c_str(),
+                        common::Encode::HexEncode(view_item.qc().view_block_hash()).c_str(),
+                        view_item.qc().leader_idx(),
+                        pool_idx_, view_item.qc().view(),
+                        latest_qc_item_ptr_->view(), last_vote_view_,
+                        pro_msg_wrap->msg_ptr->header.hash64(),
+                        pacemaker()->CurView());
+                }
             } else {
                 SETH_DEBUG("not find view leader: %d, pool: %d has voted view: %lu, last_locked_view_: %u, "
                     "last_vote_view_: %lu, hash64: %lu, pacemaker()->CurView(): %lu",
@@ -1328,6 +1326,12 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     // Generate aggregate signature, create qc
     auto elect_height = vote_msg.elect_height();
     auto replica_idx = vote_msg.replica_idx();
+    if (replica_idx == leader_rotation_->GetLocalMemberIdx()) {
+        if (latest_leader_propose_message_->msg_ptr->is_leader) {
+            auto* leader_qc = latest_leader_propose_message_->msg_ptr->header.mutable_hotstuff()->mutable_pro_msg()->mutable_qc();
+            leader_qc->set_view_block_hash(vote_msg.view_block_hash());
+        }
+    }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
 #ifdef USE_AGG_BLS
