@@ -92,6 +92,8 @@ bool Hotstuff::InitLoadLatestBlock(
         view_block_chain->Store(latest_view_block, false, balane_map_ptr, nullptr, true);
         auto temp_ptr = view_block_chain->Get(latest_view_block->qc().view_block_hash());
         assert(temp_ptr);
+        assert(!latest_view_block->qc().sign_x().empty());
+        latest_qc_item_ptr_ = std::make_shared<view_block::protobuf::QcItem>(latest_view_block->qc());
         view_block_chain->SetLatestCommittedBlock(temp_ptr);
         InitAddNewViewBlock(view_block_chain, latest_view_block);
         auto parent_hash = latest_view_block->parent_hash();
