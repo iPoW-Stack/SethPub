@@ -31,6 +31,7 @@ try {
     // 2. 发起创建交易
     echo "2. 发起创建交易...\n";
     $api->createData($id, $testIdRaw, 1);
+    echo "3. 发起创修改数据交易...\n";
     $api->updateData($id, '{"enabled":true,"preferred":0,"defaultOn":false,"presets":[{"key":"I1","value":"-Ku -a3 -An -s2 -s3+s -r3 -d3+s -d4 -d5 -s5 -d6 -s6 -s8 -r8 -s9 -Qr -Mh -At -s2+s -r2 -o2+s -d2 -s4 -d5 -q5+s -r5 -d6 -s7 -d7 -At,s -s2+s -r2 -d2 -s4 -d5 -r5 -d6 -s7 -d7"}]}');
     
     // // 3. 执行所有查询
