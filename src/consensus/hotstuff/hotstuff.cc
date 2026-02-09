@@ -683,21 +683,20 @@ Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> p
 
 
 Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
-    return Status::kSuccess;
     auto& view_item = *pro_msg_wrap->view_block_ptr;
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
     SETH_DEBUG("HandleProposeMsgStep_HasVote called hash: %lu, "
         "last_vote_view_: %lu, view_item.qc().view(): %lu, propose_debug: %s",
-        pro_msg_wrap->msg_ptr->header.hash64(), last_vote_view_, view_item.qc().view(),
+        pro_msg_wrap->msg_ptr->header.hash64(), latest_qc_item_ptr_->view(), view_item.qc().view(),
         ProtobufToJson(cons_debug).c_str());
 #endif
-    if (last_vote_view_ >= view_item.qc().view()) {
-        SETH_DEBUG("pool: %d has voted view: %lu, last_vote_view_: %u, "
+    if (latest_qc_item_ptr_->view() >= view_item.qc().view()) {
+        SETH_DEBUG("pool: %d has voted view: %lu, last_locked_view_: %u, "
             "hash64: %lu, pacemaker()->CurView(): %lu",
             pool_idx_, view_item.qc().view(),
-            last_vote_view_, pro_msg_wrap->msg_ptr->header.hash64(),
+            latest_qc_item_ptr_->view(), pro_msg_wrap->msg_ptr->header.hash64(),
             pacemaker()->CurView());
         if (last_vote_view_ == view_item.qc().view()) {
             // return Status::kSuccess;
