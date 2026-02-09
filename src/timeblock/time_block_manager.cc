@@ -150,6 +150,10 @@ void TimeBlockManager::OnTimeBlock(
         uint64_t vss_random) {
     if (latest_time_block_height_ != common::kInvalidUint64 &&
             latest_time_block_height_ >= latest_time_block_height) {
+        if (latest_time_block_height > prev_time_block_height_) {
+            prev_time_block_height_ = latest_time_block_height;
+        }
+        
         return;
     }
 
@@ -160,6 +164,7 @@ void TimeBlockManager::OnTimeBlock(
         static_cast<int>(latest_time_block_tm_),
         vss_random);
     assert(vss_random != 0);
+    prev_time_block_height_ = latest_time_block_height;
     latest_time_block_height_ = latest_time_block_height;
     latest_time_block_tm_ = latest_time_block_tm;
     latest_tm_block_local_sec_ = common::TimeUtils::TimestampSeconds();

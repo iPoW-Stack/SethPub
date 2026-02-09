@@ -481,14 +481,17 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         HandleTC(pro_msg_wrap);
     }
 
-    if (msg_ptr->header.hotstuff().pro_msg().view_item().block_info().timeblock_height() != 
-            tm_block_mgr_->LatestTimestampHeight()) {
-        SETH_DEBUG("invalid time block height: %lu, %lu", 
-            msg_ptr->header.hotstuff().pro_msg().view_item().block_info().timeblock_height(),
-            tm_block_mgr_->LatestTimestampHeight());
-        ADD_DEBUG_PROCESS_TIMESTAMP();
-        return;
-    }
+    // if (msg_ptr->header.hotstuff().pro_msg().view_item().block_info().timeblock_height() != 
+    //         tm_block_mgr_->LatestTimestampHeight() && 
+    //         msg_ptr->header.hotstuff().pro_msg().view_item().block_info().timeblock_height() != 
+    //         tm_block_mgr_->LatestPrevTimestampHeight()) {
+    //     SETH_DEBUG("invalid time block height: %lu, %lu, prev: %lu", 
+    //         msg_ptr->header.hotstuff().pro_msg().view_item().block_info().timeblock_height(),
+    //         tm_block_mgr_->LatestTimestampHeight(),
+    //         tm_block_mgr_->LatestPrevTimestampHeight());
+    //     ADD_DEBUG_PROCESS_TIMESTAMP();
+    //     return;
+    // }
 
     if (!msg_ptr->header.hotstuff().pro_msg().has_view_item()) {
         SETH_DEBUG("handle propose called hash: %lu, %u_%u_%lu, "
