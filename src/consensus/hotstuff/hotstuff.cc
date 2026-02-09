@@ -725,7 +725,8 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
 
             auto iter = leader_iter->second.find(view_item.qc().view());
             if (iter != leader_iter->second.end()) {
-                if (iter->second->header.hotstuff().vote_msg().view_block_hash() == view_item.qc().view_block_hash()) {
+                // TODO: check hash
+                // if (iter->second->header.hotstuff().vote_msg().view_block_hash() == view_item.qc().view_block_hash()) {
                     SETH_DEBUG("pool: %d has voted: %lu, last_vote_view_: %u, "
                         "hash64: %lu and resend vote: hash: %s",
                         pool_idx_, view_item.qc().view(),
@@ -738,17 +739,17 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
                         SETH_ERROR("pool: %d, Send vote message is error.",
                             pool_idx_, pro_msg_wrap->msg_ptr->header.hash64());
                     }
-                } else {
-                    SETH_DEBUG("not eq hash: %s, %s, leader: %d, pool: %d has voted view: %lu, last_locked_view_: %u, "
-                        "last_vote_view_: %lu, hash64: %lu, pacemaker()->CurView(): %lu",
-                        common::Encode::HexEncode(iter->second->header.hotstuff().vote_msg().view_block_hash()).c_str(),
-                        common::Encode::HexEncode(view_item.qc().view_block_hash()).c_str(),
-                        view_item.qc().leader_idx(),
-                        pool_idx_, view_item.qc().view(),
-                        latest_qc_item_ptr_->view(), last_vote_view_,
-                        pro_msg_wrap->msg_ptr->header.hash64(),
-                        pacemaker()->CurView());
-                }
+                // } else {
+                //     SETH_DEBUG("not eq hash: %s, %s, leader: %d, pool: %d has voted view: %lu, last_locked_view_: %u, "
+                //         "last_vote_view_: %lu, hash64: %lu, pacemaker()->CurView(): %lu",
+                //         common::Encode::HexEncode(iter->second->header.hotstuff().vote_msg().view_block_hash()).c_str(),
+                //         common::Encode::HexEncode(view_item.qc().view_block_hash()).c_str(),
+                //         view_item.qc().leader_idx(),
+                //         pool_idx_, view_item.qc().view(),
+                //         latest_qc_item_ptr_->view(), last_vote_view_,
+                //         pro_msg_wrap->msg_ptr->header.hash64(),
+                //         pacemaker()->CurView());
+                // }
             } else {
                 SETH_DEBUG("not find view leader: %d, pool: %d has voted view: %lu, last_locked_view_: %u, "
                     "last_vote_view_: %lu, hash64: %lu, pacemaker()->CurView(): %lu",
