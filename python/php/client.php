@@ -31,18 +31,16 @@ try {
     // 2. 发起创建交易
     echo "2. 发起创建交易...\n";
     $api->createData($id, $testIdRaw, 1);
+    $api->updateData($id, '{"enabled":true,"preferred":0,"defaultOn":false,"presets":[{"key":"I1","value":"-Ku -a3 -An -s2 -s3+s -r3 -d3+s -d4 -d5 -s5 -d6 -s6 -s8 -r8 -s9 -Qr -Mh -At -s2+s -r2 -o2+s -d2 -s4 -d5 -q5+s -r5 -d6 -s7 -d7 -At,s -s2+s -r2 -d2 -s4 -d5 -r5 -d6 -s7 -d7"}]}');
     
-    echo "等待 15 秒同步区块...\n";
-    sleep(15);
-
-    // 3. 执行所有查询
-    echo "--- 查询结果 ---\n";
-    echo "Total Count: " . $api->getDataCount() . "\n";
-    echo "Price: " . $api->getPrice($id) . "\n";
-    echo "Owner: " . $api->dataOwner($id) . "\n";
+    // // 3. 执行所有查询
+    // echo "--- 查询结果 ---\n";
+    // echo "Total Count: " . $api->getDataCount() . "\n";
+    // echo "Price: " . $api->getPrice($id) . "\n";
+    // echo "Owner: " . $api->dataOwner($id) . "\n";
     
-    echo "\nLatest Records (Top 3):\n";
-    print_r(array_slice($api->getAllLatestRecords(0, 10), 0, 3));
+    // echo "\nLatest Records (Top 3):\n";
+    // print_r(array_slice($api->getAllLatestRecords(0, 10), 0, 3));
 
     echo "\nHistory:\n";
     print_r($api->getHistory($id));
