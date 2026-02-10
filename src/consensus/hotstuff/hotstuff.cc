@@ -226,6 +226,11 @@ Status Hotstuff::Propose(
         tmp_msg_ptr->header.CopyFrom(latest_leader_propose_message_->header);
         tmp_msg_ptr->is_leader = true;
         tmp_msg_ptr->header.release_broadcast();
+        if (!leader_view_block_hash_.empty()) {
+            auto* leader_qc = tmp_msg_ptr->header.mutable_hotstuff()->mutable_pro_msg()->mutable_view_item()->mutable_qc();
+            leader_qc->set_view_block_hash(vote_msg.view_block_hash());
+        }
+        
         auto broadcast = tmp_msg_ptr->header.mutable_broadcast();
         auto* hotstuff_msg = tmp_msg_ptr->header.mutable_hotstuff();
         if (tc != nullptr) {
@@ -633,6 +638,12 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     if (msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size() > 0) {
         latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
     }
+
+    leader_view_block_hash_ = "";
+    if (msg_ptr->is_leader) {
+        leader_view_block_hash_ = pro_msg_wrap->view_block_ptr->qc().view_block_hash();
+    }
+
     ADD_DEBUG_PROCESS_TIMESTAMP();
 }
 
@@ -1330,12 +1341,12 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     // Generate aggregate signature, create qc
     auto elect_height = vote_msg.elect_height();
     auto replica_idx = vote_msg.replica_idx();
-    if (replica_idx == leader_rotation_->GetLocalMemberIdx()) {
-        if (latest_leader_propose_message_) {
-            auto* leader_qc = latest_leader_propose_message_->header.mutable_hotstuff()->mutable_pro_msg()->mutable_view_item()->mutable_qc();
-            leader_qc->set_view_block_hash(vote_msg.view_block_hash());
-        }
-    }
+    // if (replica_idx == leader_rotation_->GetLocalMemberIdx()) {
+    //     if (latest_leader_propose_message_) {
+    //         auto* leader_qc = latest_leader_propose_message_->header.mutable_hotstuff()->mutable_pro_msg()->mutable_view_item()->mutable_qc();
+    //         leader_qc->set_view_block_hash(vote_msg.view_block_hash());
+    //     }
+    // }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
 #ifdef USE_AGG_BLS
