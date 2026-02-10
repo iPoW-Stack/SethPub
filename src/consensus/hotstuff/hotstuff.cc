@@ -228,9 +228,9 @@ Status Hotstuff::Propose(
         tmp_msg_ptr->header.release_broadcast();
         if (!leader_view_block_hash_.empty()) {
             auto* leader_qc = tmp_msg_ptr->header.mutable_hotstuff()->mutable_pro_msg()->mutable_view_item()->mutable_qc();
-            leader_qc->set_view_block_hash(vote_msg.view_block_hash());
+            leader_qc->set_view_block_hash(leader_view_block_hash_);
         }
-        
+
         auto broadcast = tmp_msg_ptr->header.mutable_broadcast();
         auto* hotstuff_msg = tmp_msg_ptr->header.mutable_hotstuff();
         if (tc != nullptr) {

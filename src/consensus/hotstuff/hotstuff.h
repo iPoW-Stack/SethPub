@@ -307,7 +307,7 @@ private:
     std::shared_ptr<timeblock::TimeBlockManager> tm_block_mgr_ = nullptr;
     consensus::BlockCacheCallback new_block_cache_callback_ = nullptr;
     common::Tick layter_sync_tick_;
-    const std::string leader_view_block_hash_;
+    std::string leader_view_block_hash_;
 
 // #ifndef NDEBUG
     static std::atomic<uint32_t> sendout_bft_message_count_;
