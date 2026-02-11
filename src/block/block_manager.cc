@@ -1110,12 +1110,6 @@ pools::TxItemPtr BlockManager::GetStatisticTx(
         return nullptr;
     }
 
-    static uint64_t prev_get_tx_tm = common::TimeUtils::TimestampMs();
-    auto now_tx_tm = common::TimeUtils::TimestampMs();
-    if (now_tx_tm > prev_get_tx_tm + 10000) {
-        prev_get_tx_tm = now_tx_tm;
-    }
-
     if (shard_statistic_tx != nullptr) {
         auto now_tm = common::TimeUtils::TimestampUs();
         if (leader && shard_statistic_tx->tx_ptr->time_valid > now_tm) {
