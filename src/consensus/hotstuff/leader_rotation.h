@@ -29,8 +29,8 @@ public:
     common::BftMemberPtr GetLeader(
             std::shared_ptr<ViewBlock> high_view_block, 
             int32_t consecutive_failures, 
-            View* out_view,
-            uint32_t last_stable_leader_member_index) const {
+            uint32_t last_stable_leader_member_index,
+            View* out_view) const {
         auto members = Members(common::GlobalInfo::Instance()->network_id());
         if (members->empty()) {
             return nullptr;
@@ -51,10 +51,6 @@ public:
             int leader_pos = (last_stable_leader_member_index + static_cast<int>(k)) % members->size(); //
             return (*members)[leader_pos]; //
         }
-    }
-
-    inline common::BftMemberPtr GetExpectedLeader() const {
-        return GetLeader();
     }
 
     inline common::BftMemberPtr GetMember(uint32_t member_index) const {
