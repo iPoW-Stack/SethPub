@@ -36,18 +36,18 @@ public:
             return nullptr;
         }
 
-        auto now = clock_ns::system_clock::now(); //
-        auto timeout = BASE_TIMEOUT * std::pow(2, std::min(consecutive_failures, 6)); //
+        auto now = common::TimeUtils::TimestampSeconds();
+        auto timeout = kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures, 6)); //
         auto elapsed = now - high_view_block->block_info().timestamp(); //
         uint64_t k = (elapsed > timeout) ? (elapsed / timeout) : 0; //
         if (k == 0) {
             // 粘性模式：视图紧凑递增，Leader连任
-            out_view = high_view_block->qc().view() + 1; //
+            *out_view = high_view_block->qc().view() + 1; //
             return (*members)[last_stable_leader_member_index % members->size()]; //
         } else {
             // 切换模式：强制跳过一个视图号 (V + k + 1)
             // 当超时刚刚发生(k=1)时，out_view = last_qc.view + 2
-            out_view = high_view_block->qc().view() + k + 1; 
+            *out_view = high_view_block->qc().view() + k + 1; 
             int leader_pos = (last_stable_leader_member_index + static_cast<int>(k)) % members->size(); //
             return (*members)[leader_pos]; //
         }
@@ -71,7 +71,7 @@ public:
             return common::kInvalidUint32;
         }
 
-        auto index = (elect_item->elect_height_ + pool_idx_) % elect_item->valid_leaders()->size();
+        auto index = (elect_item->ElectHeight() + pool_idx_) % elect_item->valid_leaders()->size();
         return elect_item->valid_leaders()->at(index)->index;
     }
 
