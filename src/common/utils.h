@@ -271,7 +271,7 @@ static const uint32_t kNodeModIndexMaxCount = 64u;
 static const uint32_t kNodePublicIpMaskLen = 22u;  // node public ip just Mask length to protect security
 static const int32_t kInitNodeCredit = 30;
 static const double kMiningTokenMultiplicationFactor = 1.0;
-static const int32_t kLeaderRoatationBaseTimeoutSec = 30;
+static const int32_t kLeaderRoatationBaseTimeoutSec = 120;
 
 static const uint64_t kToPeriodMs = 10000lu;
 
