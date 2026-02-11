@@ -1128,6 +1128,7 @@ pools::TxItemPtr BlockManager::GetStatisticTx(
 
         if (prev_timeblock_tm_sec_ + (common::kRotationPeriod / (1000lu * 1000lu)) > (now_tm / 1000000lu)) {
             static uint64_t prev_get_tx_tm1 = common::TimeUtils::TimestampMs();
+            auto now_tx_tm = common::TimeUtils::TimestampMs();
             if (now_tx_tm > prev_get_tx_tm1 + 10000) {
                 SETH_DEBUG("failed get statistic tx: %lu, %lu, %lu", 
                     prev_timeblock_tm_sec_, 
