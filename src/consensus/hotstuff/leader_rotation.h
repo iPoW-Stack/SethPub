@@ -37,11 +37,12 @@ public:
         }
 
         auto now = common::TimeUtils::TimestampSeconds();
-        auto timeout = common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures, 6)); //
+        auto timeout = static_cast<uint64_t>(
+            common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures, 6))); //
         auto elapsed = now - high_view_block->block_info().timestamp(); //
         uint64_t k = (elapsed > timeout) ? (elapsed / timeout) : 0; //
         SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
-            "consecutive_failures: %d, now: %lu, block tm: %lu", 
+            "consecutive_failures: %d, now: %u, block tm: %lu", 
             pool_idx_, 
             high_view_block->qc().view(), 
             elapsed, 
