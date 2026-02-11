@@ -833,6 +833,8 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
                 tc_ptr->view() >= latest_qc_item_ptr_->view()) {
             assert(IsQcTcValid(*tc_ptr));
             latest_qc_item_ptr_ = tc_ptr;
+            consecutive_failures_ = 0;
+            last_stable_leader_member_index_ = latest_qc_item_ptr_->leader_idx();
         }
         SETH_DEBUG("commit use time: %lu", (common::TimeUtils::TimestampMs() - btime));
 

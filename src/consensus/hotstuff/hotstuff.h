@@ -106,6 +106,25 @@ public:
         sync_pool_fn_ = sync_fn;
     }
 
+    void OnNewElectBlock(
+            uint32_t sharding_id,
+            uint64_t elect_height,
+            common::MembersPtr& members,
+            const libff::alt_bn128_G2& common_pk,
+            const libff::alt_bn128_Fr& sec_key) {
+        if (sharding_id != common::GlobalInfo::Instance()->network_id()) {
+            return;
+        }
+
+        if (latest_elect_height_ >= elect_height) {
+            return;
+        }
+
+        latest_elect_height_ = elect_height;
+        consecutive_failures_ = 0;
+        last_stable_leader_member_index_ = leader_rotation_->GetEpochLeaderIndex();
+    }
+
     Status Start();
     void HandleProposeMsg(const transport::MessagePtr& msg_ptr);
     void HandlePreResetTimerMsg(const transport::MessagePtr& msg_ptr);
@@ -308,6 +327,9 @@ private:
     consensus::BlockCacheCallback new_block_cache_callback_ = nullptr;
     common::Tick layter_sync_tick_;
     std::string leader_view_block_hash_;
+
+    uint32_t consecutive_failures_ = 0u;
+    uint32_t last_stable_leader_member_index_ = 0u;
 
 // #ifndef NDEBUG
     static std::atomic<uint32_t> sendout_bft_message_count_;

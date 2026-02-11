@@ -292,6 +292,9 @@ void HotstuffManager::OnNewElectBlock(
         const libff::alt_bn128_G2& common_pk, 
         const libff::alt_bn128_Fr& sec_key) {        
     elect_info_->OnNewElectBlock(sharding_id, elect_height, members, common_pk, sec_key);
+    for (auto iter = pool_hotstuff_.begin(); iter != pool_hotstuff_.end(); iter++) {
+        iter->second->OnNewElectBlock(sharding_id, elect_height, members, common_pk, sec_key);
+    }
 }
 
 void HotstuffManager::HandleMessage(const transport::MessagePtr& msg_ptr) {

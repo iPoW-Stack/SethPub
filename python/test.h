@@ -147,6 +147,7 @@ public:
         std::cout << "[Node " << self_id << "] 投票 View: " << p.view << "\n";
     }
 
+    
     // --- 机制四：QC 达成时更新状态 ---
     void on_receive_qc_aggregation(const QuorumCertificate& new_qc) {
         std::lock_guard s_lock(state_mtx);

@@ -26,36 +26,31 @@ public:
     LeaderRotation& operator=(const LeaderRotation&) = delete;
 
     // Generally committed_view_block.view is used
-    common::BftMemberPtr GetLeader() const {
+    common::BftMemberPtr GetLeader(
+            std::shared_ptr<ViewBlock> high_view_block, 
+            int32_t consecutive_failures, 
+            View* out_view,
+            uint32_t last_stable_leader_member_index) const {
         auto members = Members(common::GlobalInfo::Instance()->network_id());
         if (members->empty()) {
             return nullptr;
         }
 
-        auto now_tm_skip = 0;//common::TimeUtils::TimestampSeconds() / 30lu;
-        auto index = (now_tm_skip + pool_idx_) % members->size();
-        uint32_t try_times = 0;
-        while (try_times++ <= members->size()) {
-            if ((*members)[index]->bls_publick_key == libff::alt_bn128_G2::zero()) {
-                SETH_DEBUG("pool_idx_: %u, leader rotation: "
-                    "skip invalid bls leader index: %u, member size: %u", 
-                    pool_idx_,
-                    index, members->size());
-                ++index;
-                if (index >= members->size()) {
-                    index = 0;
-                }
-
-                continue;
-            }
-
-            SETH_DEBUG("leader rotation: %u, leader index: %u, member size: %u", 
-                pool_idx_, index, members->size());
-                
-            return (*members)[index];
+        auto now = clock_ns::system_clock::now(); //
+        auto timeout = BASE_TIMEOUT * std::pow(2, std::min(consecutive_failures, 6)); //
+        auto elapsed = now - high_view_block->block_info().timestamp(); //
+        uint64_t k = (elapsed > timeout) ? (elapsed / timeout) : 0; //
+        if (k == 0) {
+            // 粘性模式：视图紧凑递增，Leader连任
+            out_view = high_view_block->qc().view() + 1; //
+            return (*members)[last_stable_leader_member_index % members->size()]; //
+        } else {
+            // 切换模式：强制跳过一个视图号 (V + k + 1)
+            // 当超时刚刚发生(k=1)时，out_view = last_qc.view + 2
+            out_view = high_view_block->qc().view() + k + 1; 
+            int leader_pos = (last_stable_leader_member_index + static_cast<int>(k)) % members->size(); //
+            return (*members)[leader_pos]; //
         }
-
-        return nullptr;
     }
 
     inline common::BftMemberPtr GetExpectedLeader() const {
@@ -69,6 +64,19 @@ public:
         }
 
         return (*members)[member_index];
+    }
+
+    inline uint32_t GetEpochLeaderIndex() const {
+        auto sharding_id = common::GlobalInfo::Instance()->network_id();
+        assert(elect_info_ != nullptr);
+        auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
+        if (elect_item == nullptr) {
+            // assert(false);
+            return common::kInvalidUint32;
+        }
+
+        auto index = (elect_item->elect_height_ + pool_idx_) % elect_item->valid_leaders()->size();
+        return elect_item->valid_leaders()->at(index)->index;
     }
 
     inline uint32_t GetLocalMemberIdx() const {

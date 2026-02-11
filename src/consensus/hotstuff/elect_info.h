@@ -32,13 +32,16 @@ public:
             const libff::alt_bn128_Fr& sk) :
             members_(members), local_member_(nullptr), elect_height_(0), security_ptr_(security) {
         for (uint32_t i = 0; i < members->size(); i++) {
+            if ((*members)[i]->bls_publick_key != libff::alt_bn128_G2::zero()) {
+                valid_leaders_->push_back((*members)[i]);
+            }
+
             if ((*members)[i]->id == security_ptr_->GetAddress()) {
                 local_member_ = (*members)[i];
                 // assert(local_member_->bls_publick_key != libff::alt_bn128_G2::zero());
                 if (local_member_->bls_publick_key != libff::alt_bn128_G2::zero()) {
                     bls_valid_ = true;
                 } 
-                break;
             }
         }
 #ifdef USE_AGG_BLS
@@ -144,6 +147,10 @@ public:
         return nullptr;
     }
     
+    common::MembersPtr valid_leaders() const {
+        return valid_leaders_;
+    }
+
 private:
     void SetMemberCount(uint32_t mem_cnt) {
         bls_n_ = mem_cnt;
@@ -151,6 +158,7 @@ private:
     }
     
     common::MembersPtr members_;
+    common::MembersPtr valid_leaders_;
     common::BftMemberPtr local_member_;
     uint64_t elect_height_;
     libff::alt_bn128_G2 common_pk_;
