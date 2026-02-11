@@ -428,7 +428,7 @@ Status Hotstuff::Propose(
     auto t8 = common::TimeUtils::TimestampMs();
     ++sendout_bft_message_count_;
     SETH_DEBUG("pool: %d, header pool: %d, propose, txs size: %lu, view: %lu, "
-        "old_last_leader_propose_view_: %lu, "
+        "old_last_leader_propose_view_: %lu, block tm: %lu, "
         "last_leader_propose_view_: %lu, tc view: %lu, hash: %s, "
         "qc_view: %lu, hash64: %lu, propose_debug: %s, t1: %lu, t2: %lu, "
         "t3: %u, t4: %lu, t5: %lu, t6: %lu, t7: %lu, t8: %lu, sendout_bft_message_count_: %u",
@@ -437,6 +437,7 @@ Status Hotstuff::Propose(
         hotstuff_msg->pro_msg().tx_propose().txs_size(),
         hotstuff_msg->pro_msg().view_item().qc().view(),
         old_last_leader_propose_view_,
+        hotstuff_msg->pro_msg().view_item().block_info().timestamp(),
         last_leader_propose_view_,
         hotstuff_msg->pro_msg().tc().view(),
         common::Encode::HexEncode(hotstuff_msg->pro_msg().view_item().qc().view_block_hash()).c_str(),

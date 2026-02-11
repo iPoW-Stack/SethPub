@@ -645,6 +645,7 @@ int GenesisBlockInit::CreateElectBlock(
     }
 
     tenon_block->set_height(height);
+    tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
     ec_block.set_shard_network_id(shard_netid);
     ec_block.set_elect_height(tenon_block->height());
     if (prev_height != common::kInvalidUint64) {
@@ -790,6 +791,7 @@ int GenesisBlockInit::GenerateRootSingleBlock(
         immutable_pool_address_info_->set_tx_index(immutable_pool_address_info_->nonce() + 1);
         tx_info->set_step(pools::protobuf::kConsensusCreateGenesisAcount);
         tenon_block->set_version(common::kTransactionVersion);
+        tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         tenon_block->set_height(root_pool_height[common::kImmutablePoolSize]++);
         view_block_ptr->set_parent_hash(root_pre_vb_hash);
         if (CreateAllQc(
@@ -840,9 +842,11 @@ int GenesisBlockInit::GenerateRootSingleBlock(
             immutable_pool_address_info_->pool_index(), 
             immutable_pool_address_info_->addr(), 0, tx_info->nonce());
         tenon_block->set_height(root_pool_height[common::kImmutablePoolSize]++);
+        tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         timeblock::protobuf::TimeBlock& tm_block = *tenon_block->mutable_timer_block();
         tm_block.set_timestamp(common::TimeUtils::TimestampSeconds());
         tm_block.set_height(tenon_block->height());
+        tm_block.set_timestamp(common::TimeUtils::TimestampMs());
         tm_block.set_vss_random(common::Random::RandomUint64());
         tenon_block->set_version(common::kTransactionVersion);
         view_block_ptr->set_parent_hash(root_pre_vb_hash);
@@ -1051,6 +1055,7 @@ int GenesisBlockInit::CreateRootGenesisBlocks(
 
         tenon_block->set_version(common::kTransactionVersion);
         tenon_block->set_height(pool_with_heights[i]++);
+        tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         tenon_block->set_timeblock_height(0);
         auto hash = hotstuff::GetQCMsgHash(view_block_ptr->qc());
         prehashes[i] = hash;
@@ -1181,6 +1186,7 @@ int GenesisBlockInit::CreateRootGenesisBlocks(
         auto* tenon_block = view_block_ptr->mutable_block_info();
         tenon_block->set_version(common::kTransactionVersion);
         tenon_block->set_height(pool_with_heights[pool_index]++);
+        tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         tenon_block->set_timeblock_height(0);
         view_block_ptr->set_parent_hash(pool_prev_vb_hash_map[pool_index]);
         if (CreateAllQc(
@@ -1564,6 +1570,7 @@ int GenesisBlockInit::CreateShardNodesBlocks(
 
         tenon_block->set_version(common::kTransactionVersion);
         tenon_block->set_height(pool_with_heights[pool_index]++);
+        tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         tenon_block->set_timeblock_height(0);
         view_block_ptr->set_parent_hash(pool_prev_vb_hash_map[pool_index]);
         if (net_id == network::kRootCongressNetworkId) {
@@ -1691,6 +1698,7 @@ int GenesisBlockInit::CreateShardGenesisBlocks(
         
         tenon_block->set_version(common::kTransactionVersion);
         tenon_block->set_height(pool_with_heights[i]++);
+        tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         tenon_block->set_timeblock_height(0);
         view_block_ptr->set_parent_hash("");
         if (CreateAllQc(
@@ -1720,6 +1728,7 @@ int GenesisBlockInit::CreateShardGenesisBlocks(
         auto* tenon_block = view_block_ptr->mutable_block_info();
         tenon_block->set_version(common::kTransactionVersion);
         tenon_block->set_height(pool_with_heights[pool_index]++);
+        tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         tenon_block->set_timeblock_height(0);
         view_block_ptr->set_parent_hash(pool_prev_vb_hash_map[pool_index]);
         if (CreateAllQc(
