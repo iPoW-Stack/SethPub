@@ -838,7 +838,6 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
         pacemaker()->NewQcView(qc.view());
         view_block_chain()->UpdateHighViewBlock(qc);
         TryCommit(view_block_chain(), pro_msg_wrap->msg_ptr, qc);
-
         if (latest_qc_item_ptr_ == nullptr ||
                 tc_ptr->view() >= latest_qc_item_ptr_->view()) {
             assert(IsQcTcValid(*tc_ptr));
@@ -1788,6 +1787,28 @@ Status Hotstuff::VerifyViewBlock(
         SETH_ERROR("new view block height error: %lu, last commited block height: %lu", 
             v_block.block_info().height(),
             view_block_chain->LatestCommittedBlock()->block_info().height());
+        return Status::kError;
+    }
+
+    if (v_block.block_info().timestamp() < view_block_chain->HighViewBlock()->block_info().timestamp()) {
+        SETH_ERROR("%u_%u_%lu_%lu, new view block timestamp error: %lu, last view block timestamp: %lu", 
+            common::GlobalInfo::Instance()->network_id(),
+            pool_idx_,
+            v_block.qc().view(),
+            v_block.block_info().height(),
+            v_block.block_info().timestamp(),
+            view_block_chain->HighViewBlock()->block_info().timestamp());
+        return Status::kError;
+    }
+
+    if (v_block.block_info().height() != view_block_chain->HighViewBlock()->block_info().height() + 1) {
+        SETH_ERROR("%u_%u_%lu_%lu, new view block height error: %lu, last view block timestamp: %lu", 
+            common::GlobalInfo::Instance()->network_id(),
+            pool_idx_,
+            v_block.qc().view(),
+            v_block.block_info().height(),
+            v_block.block_info().height(),
+            view_block_chain->HighViewBlock()->block_info().height());
         return Status::kError;
     }
 

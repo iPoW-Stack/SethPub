@@ -67,7 +67,7 @@ protected:
         zjc_host.view_ = view_block.qc().view();
         zjc_host.tx_context_.block_gas_limit = gas_limit;
         zjc_host.tx_context_.block_number = view_block.block_info().height();
-        zjc_host.tx_context_.block_timestamp= view_block.block_info().timestamp();
+        zjc_host.tx_context_.block_timestamp = view_block.block_info().timestamp();
     }
 
     bool DefaultTxItem(
