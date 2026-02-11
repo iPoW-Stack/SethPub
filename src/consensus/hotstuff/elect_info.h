@@ -31,7 +31,7 @@ public:
             const libff::alt_bn128_G2& common_pk, // useless for aggbls
             const libff::alt_bn128_Fr& sk) :
             members_(members), local_member_(nullptr), elect_height_(0), security_ptr_(security) {
-        auto valid_leaders_ = std::make_shared<common::Members>();
+        valid_leaders_ = std::make_shared<common::Members>();
         for (uint32_t i = 0; i < members->size(); i++) {
             if ((*members)[i]->bls_publick_key != libff::alt_bn128_G2::zero()) {
                 valid_leaders_->push_back((*members)[i]);
