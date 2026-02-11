@@ -37,7 +37,7 @@ public:
         }
 
         auto now = common::TimeUtils::TimestampSeconds();
-        auto timeout = kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures, 6)); //
+        auto timeout = common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures, 6)); //
         auto elapsed = now - high_view_block->block_info().timestamp(); //
         uint64_t k = (elapsed > timeout) ? (elapsed / timeout) : 0; //
         if (k == 0) {
