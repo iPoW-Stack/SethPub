@@ -152,7 +152,7 @@ Status Hotstuff::Start() {
     StartInit();
     View out_view = 0;
     auto leader = leader_rotation()->GetLeader(
-        view_blcok_chain()->HighViewBlock(), 
+        view_block_chain_->HighViewBlock(), 
         consecutive_failures_, 
         last_stable_leader_member_index_,
         &out_view);
@@ -754,7 +754,7 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
                     tmp_msg_ptr->header.CopyFrom(iter->second->header);
                     View out_view = 0;
                     auto leader = leader_rotation()->GetLeader(
-                        view_blcok_chain()->HighViewBlock(), 
+                        view_block_chain_->HighViewBlock(), 
                         consecutive_failures_, 
                         last_stable_leader_member_index_,
                         &out_view);
@@ -1859,7 +1859,7 @@ Status Hotstuff::VerifyVoteMsg(const hotstuff::protobuf::VoteMsg& vote_msg) {
 Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
     View out_view = 0;
     auto leader = leader_rotation()->GetLeader(
-        view_blcok_chain()->HighViewBlock(), 
+        view_block_chain_->HighViewBlock(), 
         consecutive_failures_, 
         last_stable_leader_member_index_,
         &out_view);
@@ -1880,7 +1880,7 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
             out_view);
         return Status::kError;
     }
-    
+
     if (last_vote_view_ >= out_view) {
         SETH_ERROR("%u_%u_%lu_%lu, last_vote_view_: %lu >= out_view: %lu", 
             common::GlobalInfo::Instance()->network_id(),
@@ -2319,7 +2319,7 @@ void Hotstuff::TryRecoverFromStuck(
 
     View out_view = 0;
     auto leader = leader_rotation()->GetLeader(
-        view_blcok_chain()->HighViewBlock(), 
+        view_block_chain_->HighViewBlock(), 
         consecutive_failures_, 
         last_stable_leader_member_index_,
         &out_view);
