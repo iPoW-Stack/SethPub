@@ -1871,7 +1871,7 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
     auto& qc = pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().view_item().qc();
     auto& block_info = pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().view_item().block_info();
     if (qc.view() != out_view) {
-        SETH_ERROR("%u_%u_%lu_%lu, last_vote_view_: %lu >= out_view: %lu", 
+        SETH_ERROR("%u_%u_%lu_%lu, last_vote_view_: %lu != out_view: %lu", 
             common::GlobalInfo::Instance()->network_id(),
             pool_idx_,
             qc.view(),
