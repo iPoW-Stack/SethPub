@@ -1886,13 +1886,6 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
         return Status::kError;
     }
 
-    if (leader->pubkey != pro_msg_wrap->msg_ptr->header.pubkey()) {
-        SETH_ERROR("verify leader failed: %s, expect leader: %s", 
-            common::Encode::HexEncode(pro_msg_wrap->msg_ptr->header.pubkey()).c_str(),
-            common::Encode::HexEncode(leader->pubkey).c_str());
-        return Status::kError;
-    }
-
     auto& qc = pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().view_item().qc();
     auto& block_info = pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().view_item().block_info();
     if (qc.view() != out_view) {
@@ -1941,8 +1934,10 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
             msg_hash,
             leader->pubkey,
             pro_msg_wrap->msg_ptr->header.sign()) != security::kSecuritySuccess) {
-        SETH_DEBUG("verify leader sign failed: %s", 
-            common::Encode::HexEncode(leader->id).c_str());
+        SETH_DEBUG("verify leader sign failed: %s, index: %d, pk: %s", 
+            common::Encode::HexEncode(leader->id).c_str(),
+            leader->index,
+            common::Encode::HexEncode(leader->pubkey).c_str());
         return Status::kError;
     }
     
