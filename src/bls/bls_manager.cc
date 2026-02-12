@@ -280,7 +280,7 @@ void BlsManager::OnTimeBlock(
     }
 
     auto timeblock_info = std::make_shared<TimeBlockItem>();
-    timeblock_info->lastest_time_block_tm = lastest_time_block_tm;
+    timeblock_info->lastest_time_block_tm = lastest_time_block_tm / 1000lu;
     timeblock_info->latest_time_block_height = latest_time_block_height;
     timeblock_info->vss_random = vss_random;
     latest_timeblock_info_.store(timeblock_info);
