@@ -845,6 +845,8 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
             latest_qc_item_ptr_ = tc_ptr;
             consecutive_failures_ = 0;
             last_stable_leader_member_index_ = latest_qc_item_ptr_->leader_idx();
+            SETH_DEBUG("pool: %d, success set last_stable_leader_member_index_: %d",
+                pool_idx_, last_stable_leader_member_index_);
         }
         SETH_DEBUG("commit use time: %lu", (common::TimeUtils::TimestampMs() - btime));
 

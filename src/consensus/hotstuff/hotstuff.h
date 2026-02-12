@@ -123,6 +123,8 @@ public:
         latest_elect_height_ = elect_height;
         consecutive_failures_ = 0;
         last_stable_leader_member_index_ = leader_rotation_->GetEpochLeaderIndex();
+        SETH_DEBUG("pool: %d, success set last_stable_leader_member_index_: %d",
+            pool_idx_, last_stable_leader_member_index_);
     }
 
     Status Start();
