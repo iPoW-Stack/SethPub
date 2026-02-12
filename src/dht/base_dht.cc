@@ -131,11 +131,12 @@ int BaseDht::Join(NodePtr& node) {
     auto invalid_idx = (valid_dht_idx + 1) % 2;
     readonly_hash_sort_dht_[invalid_idx] = tmp_dht_ptr;
     valid_dht_idx = invalid_idx;
-    SETH_DEBUG("sharding: %u, join new node: %s:%d",
+    valid_count_ = member_dht.size() + 1;
+    SETH_DEBUG("sharding: %u, join new node: %s:%d, valid_count_: %u",
         local_node_->sharding_id,
         node->public_ip.c_str(),
-        node->public_port);
-    valid_count_ = member_dht.size() + 1;
+        node->public_port,
+        valid_count_);
     return kDhtSuccess;
 }
 
