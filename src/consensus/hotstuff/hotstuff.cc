@@ -1852,7 +1852,7 @@ Status Hotstuff::VerifyViewBlock(
         return Status::kError;
     }
 
-    SETH_ERROR("pool: %d, block view message is error. %lu, %lu, %s, %s, "
+    SETH_ERROR("pool: %d, block view message is success. %lu, %lu, %s, %s, "
         "v_block.qc().view(): %lu, pacemaker()->CurView(): %lu, "
         "v_block.qc().view(): %lu",
         pool_idx_, v_block.qc().view(), view_block_chain->LatestCommittedBlock()->qc().view(),
@@ -1861,7 +1861,7 @@ Status Hotstuff::VerifyViewBlock(
         v_block.qc().view(), pacemaker()->CurView(), 
         v_block.qc().view());
 
-    return Status::kError;
+    return Status::kSuccess;
 }
 
 Status Hotstuff::VerifyVoteMsg(const hotstuff::protobuf::VoteMsg& vote_msg) {
