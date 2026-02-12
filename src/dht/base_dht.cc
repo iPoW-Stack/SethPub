@@ -484,10 +484,11 @@ void BaseDht::ProcessBootstrapRequest(const transport::MessagePtr& msg_ptr) {
     }
 
     msg.set_sign(sign);
-    SETH_DEBUG("bootstrap response to: %s:%d, node: %s:%d",
+    SETH_DEBUG("bootstrap response to: %s:%d, node: %s:%d, hash: %lu",
         msg_ptr->conn->PeerIp().c_str(), msg_ptr->conn->PeerPort(),
         dht_msg.bootstrap_req().public_ip().c_str(),
-        dht_msg.bootstrap_req().public_port());
+        dht_msg.bootstrap_req().public_port(),
+        msg.hash64());
     transport::TcpTransport::Instance()->Send(msg_ptr->conn->PeerIp(), msg_ptr->conn->PeerPort(), msg);
     NodePtr node = std::make_shared<Node>(
         msg.src_sharding_id(),
@@ -504,7 +505,7 @@ void BaseDht::ProcessBootstrapRequest(const transport::MessagePtr& msg_ptr) {
 void BaseDht::ProcessBootstrapResponse(const transport::MessagePtr& msg_ptr) {
     auto& header = msg_ptr->header;
     auto& dht_msg = header.dht_proto();
-    SETH_DEBUG("boot response coming.");
+    SETH_DEBUG("boot response coming: %lu", msg_ptr->header.hash64());
     if (!CheckDestination(header.des_dht_key(), false)) {
         DHT_WARN("bootstrap request destination error[%s][%s]!",
             common::Encode::HexEncode(header.des_dht_key()).c_str(),
