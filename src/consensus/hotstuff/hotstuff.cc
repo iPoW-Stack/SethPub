@@ -1852,12 +1852,6 @@ Status Hotstuff::VerifyViewBlock(
         return Status::kError;
     }
 
-    auto qc_view_block = qc_view_block_info->view_block;
-    if ((v_block.qc().view() + 1) >= pacemaker()->CurView() && 
-            v_block.qc().view() == qc_view_block->qc().view() + 1) {
-        return Status::kSuccess;
-    }
-
     SETH_ERROR("pool: %d, block view message is error. %lu, %lu, %s, %s, "
         "v_block.qc().view(): %lu, pacemaker()->CurView(): %lu, "
         "v_block.qc().view(): %lu, qc_view_block->qc().view(): %lu",
@@ -1911,6 +1905,17 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
             block_info.height(),
             last_vote_view_, 
             out_view);
+        return Status::kError;
+    }
+
+    if (view_block_chain_->HighViewBlock()->qc().view() >= qc.view()) {
+        SETH_ERROR("%u_%u_%lu_%lu, view_block_chain_->HighViewBlock()->qc().view(): %lu >= out_view: %lu", 
+            common::GlobalInfo::Instance()->network_id(),
+            pool_idx_,
+            qc.view(),
+            block_info.height(),
+            view_block_chain_->HighViewBlock()->qc().view(), 
+            qc.view());
         return Status::kError;
     }
 
