@@ -2342,6 +2342,7 @@ void Hotstuff::TryRecoverFromStuck(
         return;
     }
 
+    SETH_DEBUG("pool index: %d, no leader", pool_idx_);
     // auto stuck_st = IsStuck();
     // if (stuck_st != 0) {
     //     if (stuck_st != 1) {
@@ -2357,7 +2358,7 @@ void Hotstuff::TryRecoverFromStuck(
         last_stable_leader_member_index_,
         &out_view);
     if (!leader) {
-        // SETH_DEBUG("no leader");
+        SETH_DEBUG("pool index: %d, no leader", pool_idx_);
         return;
     }
     
@@ -2401,7 +2402,7 @@ void Hotstuff::TryRecoverFromStuck(
     
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (txs->empty()) {
-        // SETH_DEBUG("pool: %u txs.empty().", pool_idx_);
+        SETH_DEBUG("pool: %u txs.empty().", pool_idx_);
         return;
     }
     
