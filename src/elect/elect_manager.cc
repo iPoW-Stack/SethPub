@@ -242,7 +242,7 @@ bool ElectManager::ProcessPrevElectMembers(
         auto pval = libBLS::ThresholdUtils::fieldElementToString((*iter)->bls_publick_key.X.c0);
         ELECT_WARN("DDDDDDDDDD now height: %lu, now elect height: %lu, "
             "elect height: %lu, network: %d,"
-            "leader: %s, pool_index_mod_num: %d, valid pk: %s, pval: %s",
+            "leader: %s, pool_index_mod_num: %d, valid pk: %s, pval: %s, ecdsa pk: %s",
             height,
             elect_block.elect_height(),
             elect_block.prev_members().prev_elect_height(),
@@ -250,7 +250,8 @@ bool ElectManager::ProcessPrevElectMembers(
             common::Encode::HexEncode((*iter)->id).c_str(),
             static_cast<int>((*iter)->pool_index_mod_num),
             val.c_str(),
-            pval.c_str());
+            pval.c_str(),
+            common::Encode::HexEncode((*iter)->pubkey).c_str());
     }
 
     if (*elected) {
