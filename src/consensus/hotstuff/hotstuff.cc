@@ -2079,9 +2079,15 @@ Status Hotstuff::ConstructViewBlock(
         }
     }
 #endif
+    View out_view = 0;
+    auto leader = leader_rotation()->GetLeader(
+        view_block_chain_->HighViewBlock(), 
+        consecutive_failures_, 
+        last_stable_leader_member_index_,
+        &out_view);
     auto* qc = view_block->mutable_qc();
     qc->set_leader_idx(leader_idx);
-    qc->set_view(pre_v_block->qc().view() + 1);
+    qc->set_view(out_view);
     qc->set_network_id(common::GlobalInfo::Instance()->network_id());
     qc->set_pool_index(pool_idx_);
     view_block->set_parent_hash(pre_v_block->qc().view_block_hash());
