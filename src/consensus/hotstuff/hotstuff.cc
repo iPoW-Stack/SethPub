@@ -2377,12 +2377,15 @@ void Hotstuff::TryRecoverFromStuck(
         Propose(nullptr, nullptr, msg_ptr);
         ADD_DEBUG_PROCESS_TIMESTAMP();
         if (latest_qc_item_ptr_) {
-            SETH_DEBUG("leader do propose message: %d, pool index: %u, %u_%u_%lu", 
+            SETH_DEBUG("leader do propose message: %d, pool index: %u, %u_%u_%lu, "
+                "sec pk: %s, leader pk: %s", 
                 local_idx,
                 pool_idx_,
                 latest_qc_item_ptr_->network_id(), 
                 latest_qc_item_ptr_->pool_index(), 
-                latest_qc_item_ptr_->view());
+                latest_qc_item_ptr_->view(),
+                common::Encode::HexEncode(crypto_->security()->GetPublicKey()).c_str(),
+                common::Encode::HexEncode(leader->pubkey).c_str());
         }
 
         if (latest_propose_msg_tm_ms_ > prev_sync_latest_view_tm_ms_) {
