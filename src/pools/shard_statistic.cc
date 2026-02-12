@@ -178,13 +178,14 @@ bool ShardStatistic::HandleStatistic(
                 latest_timeblock_height_, block.pool_statistic_height());
             StatisticInfoItem statistic_item;
             std::map<uint32_t, StatisticInfoItem> pool_map;
-            for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
-                pool_map[i] = statistic_item;
-            }
-
+            pool_map[pool_idx] = statistic_item;
             statistic_pool_info_[block.pool_statistic_height()] = pool_map;
             exist_iter = statistic_pool_info_.find(block.pool_statistic_height());
-        } 
+        }
+
+        if (exist_iter->second.find(pool_idx) == exist_iter->second.end()) {
+            exist_iter->second[pool_idx] = StatisticInfoItem();
+        }
         
         if (statistic_pool_info_.size() >= 2) {
             auto iter = statistic_pool_info_.rbegin();
@@ -248,7 +249,7 @@ bool ShardStatistic::HandleStatistic(
     }
 
     if (pool_statistic_riter == statistic_pool_info_.rend()) {
-        // assert(false);
+        assert(false);
         return false;
     }
 
@@ -399,7 +400,7 @@ bool ShardStatistic::HandleStatistic(
                     join_elect_stoke_map[view_block_ptr->qc().elect_height()] =
                         std::map<std::string, uint64_t>();
                 }
-
+  v 
                 auto& elect_stoke_map = join_elect_stoke_map[view_block_ptr->qc().elect_height()];
                 elect_stoke_map[elect_statistic.join_elect_nodes(node_idx).pubkey()] =
                     elect_statistic.join_elect_nodes(node_idx).stoke();

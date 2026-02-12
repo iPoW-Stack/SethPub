@@ -185,6 +185,11 @@ void BlockManager::HandleStatisticTx(const view_block::protobuf::ViewBlockItem& 
 
     auto& elect_statistic = view_block.block_info().elect_statistic();
     if (elect_statistic.sharding_id() == net_id) {
+        while (!timeblock_height_pq_.empty() && 
+                timeblock_height_pq_.top() <= elect_statistic.height_info().tm_height()) {
+            timeblock_height_pq_.pop();
+        }
+
         auto iter = shard_statistics_map_.find(elect_statistic.height_info().tm_height());
         if (iter != shard_statistics_map_.end()) {
             SETH_DEBUG("success remove shard statistic block tm height: %lu", iter->first);
@@ -690,7 +695,10 @@ void BlockManager::CreateStatisticTx() {
     }
 
     pools::protobuf::ElectStatistic elect_statistic;
-    uint64_t timeblock_height = prev_timeblock_height_;
+    uint64_t timeblock_height = timeblock_height_pq_.top();
+    timeblock_height_pq_.pop();
+    uint64_t des_timeblock_height = timeblock_height_pq_.top();
+    timeblock_height_pq_.push(timeblock_height);
     SETH_DEBUG("StatisticWithHeights called!");
 
     // Some nodes will receive statistic block ahead of timeblock.
@@ -709,8 +717,6 @@ void BlockManager::CreateStatisticTx() {
         return;
     }
 
-    // 对应 timeblock_height 的 elect_statistic 已经收集，不会进行重复收集
-    MarkDoneTimeblockHeightStatistic(timeblock_height);
     auto unique_hash = common::Hash::keccak256(
         std::string("create_statistic_tx_") + 
         std::to_string(elect_statistic.sharding_id()) + "_" +
@@ -719,6 +725,11 @@ void BlockManager::CreateStatisticTx() {
         common::Encode::HexEncode(unique_hash).c_str(), 
         timeblock_height, ProtobufToJson(elect_statistic).c_str());
     if (!unique_hash.empty()) {
+        if (elect_statistic.statistic_height() != des_timeblock_height) {
+            return;
+        }
+
+        MarkDoneTimeblockHeightStatistic(timeblock_height);
         auto tm_statistic_iter = shard_statistics_map_.find(timeblock_height);
         if (tm_statistic_iter == shard_statistics_map_.end()) {
             auto new_msg_ptr = std::make_shared<transport::TransportMessage>();
@@ -1212,6 +1223,7 @@ void BlockManager::CallTimeBlock(
         uint64_t lastest_time_block_tm,
         uint64_t latest_time_block_height,
         uint64_t vss_random) {
+    timeblock_height_pq_.push(latest_time_block_height);
     lastest_time_block_tm = lastest_time_block_tm / 1000llu;  // use sec
     SETH_DEBUG("new timeblock coming: %lu, %lu, lastest_time_block_tm: %lu",
         latest_timeblock_height_, latest_time_block_height, lastest_time_block_tm);
@@ -1219,12 +1231,10 @@ void BlockManager::CallTimeBlock(
         return;
     }
 
-    prev_timeblock_height_ = latest_timeblock_height_;
     latest_timeblock_height_ = latest_time_block_height;
     prev_timeblock_tm_sec_ = latest_timeblock_tm_sec_;
     latest_timeblock_tm_sec_ = lastest_time_block_tm;
-    SETH_DEBUG("success update timeblock height: %lu, %lu, tm: %lu, %lu",
-        prev_timeblock_height_, latest_timeblock_height_,
+    SETH_DEBUG("success update timeblock height: %lu, tm: %lu, %lu", latest_timeblock_height_,
         prev_timeblock_tm_sec_, latest_timeblock_tm_sec_);
 
     if (statistic_mgr_) {
