@@ -400,7 +400,7 @@ bool ShardStatistic::HandleStatistic(
                     join_elect_stoke_map[view_block_ptr->qc().elect_height()] =
                         std::map<std::string, uint64_t>();
                 }
-  v 
+  
                 auto& elect_stoke_map = join_elect_stoke_map[view_block_ptr->qc().elect_height()];
                 elect_stoke_map[elect_statistic.join_elect_nodes(node_idx).pubkey()] =
                     elect_statistic.join_elect_nodes(node_idx).stoke();
