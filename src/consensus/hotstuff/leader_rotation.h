@@ -42,7 +42,7 @@ public:
         auto elapsed = 0;//now - (high_view_block->block_info().timestamp() / 1000llu);
         uint64_t k = (elapsed > timeout) ? (elapsed / timeout) : 0;
         SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
-            "consecutive_failures: %d, now: %u, block tm: %lu", 
+            "consecutive_failures: %d, now: %u, block tm: %lu, last_stable_leader_member_index: %d", 
             pool_idx_, 
             high_view_block->qc().view(), 
             elapsed, 
@@ -50,7 +50,8 @@ public:
             k, 
             consecutive_failures,
             now, 
-            high_view_block->block_info().timestamp());
+            high_view_block->block_info().timestamp(),
+            last_stable_leader_member_index);
         if (k == 0) {
             // 粘性模式：视图紧凑递增，Leader连任
             *out_view = high_view_block->qc().view() + 1;

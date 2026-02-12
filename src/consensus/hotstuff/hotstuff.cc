@@ -1886,6 +1886,7 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
         return Status::kError;
     }
 
+    assert(leader->pubkey() == pro_msg_wrap->leader->pubkey());
     auto& qc = pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().view_item().qc();
     auto& block_info = pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().view_item().block_info();
     if (qc.view() != out_view) {
@@ -2366,6 +2367,7 @@ void Hotstuff::TryRecoverFromStuck(
     
     auto local_idx = leader_rotation_->GetLocalMemberIdx();
     if (leader && leader->index == local_idx) {
+        assert(leader->pubkey == crypto_->security()->GetPublicKey());
         ADD_DEBUG_PROCESS_TIMESTAMP();
         Propose(nullptr, nullptr, msg_ptr);
         ADD_DEBUG_PROCESS_TIMESTAMP();
