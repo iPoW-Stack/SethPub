@@ -1886,7 +1886,7 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
         return Status::kError;
     }
 
-    assert(leader->pubkey() == pro_msg_wrap->msg_ptr->header.pubkey());
+    assert(leader->pubkey == pro_msg_wrap->msg_ptr->header.pubkey());
     auto& qc = pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().view_item().qc();
     auto& block_info = pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().view_item().block_info();
     if (qc.view() != out_view) {
