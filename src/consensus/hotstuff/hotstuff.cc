@@ -1837,6 +1837,7 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
     }
 
     auto& qc = pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().view_item().qc();
+    auto& block_info = pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().view_item().block_info();
     if (leader->index != qc.leader_idx()) {
         SETH_ERROR("%u_%u_%lu_%lu, leader->index: %d != qc.leader_idx(): %d", 
             common::GlobalInfo::Instance()->network_id(),
@@ -1848,7 +1849,6 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
         return Status::kError;
     }
     
-    auto& block_info = pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().view_item().block_info();
     if (qc.view() != out_view) {
         SETH_ERROR("%u_%u_%lu_%lu, last_vote_view_: %lu != out_view: %lu", 
             common::GlobalInfo::Instance()->network_id(),
