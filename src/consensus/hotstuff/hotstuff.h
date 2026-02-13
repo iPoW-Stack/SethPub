@@ -1,9 +1,5 @@
 #pragma once
-#ifdef USE_AGG_BLS
-#include <consensus/hotstuff/agg_crypto.h>
-#else
 #include <consensus/hotstuff/crypto.h>
-#endif
 #include "consensus/consensus_utils.h"
 #include <consensus/hotstuff/block_acceptor.h>
 #include <consensus/hotstuff/block_wrapper.h>
@@ -66,11 +62,7 @@ public:
             const std::shared_ptr<IBlockAcceptor>& acceptor,
             const std::shared_ptr<IBlockWrapper>& wrapper,
             const std::shared_ptr<Pacemaker>& pm,
-#ifdef USE_AGG_BLS
-            const std::shared_ptr<AggCrypto>& crypto,
-#else
             const std::shared_ptr<Crypto>& crypto,
-#endif
             const std::shared_ptr<ElectInfo>& elect_info,
             std::shared_ptr<db::Db>& db,
             std::shared_ptr<timeblock::TimeBlockManager> tm_block_mgr,
@@ -160,15 +152,9 @@ public:
         return block_wrapper_;
     }
 
-#ifdef USE_AGG_BLS
-    inline std::shared_ptr<AggCrypto> crypto() const {
-        return crypto_;
-    }
-#else
     inline std::shared_ptr<Crypto> crypto() const {
         return crypto_;
     }
-#endif
 
     inline std::shared_ptr<IBlockAcceptor> acceptor() const {
         return block_acceptor_;
@@ -296,11 +282,7 @@ private:
 
     std::shared_ptr<block::BlockManager> block_mgr_;
     uint32_t pool_idx_;
-#ifdef USE_AGG_BLS
-    std::shared_ptr<AggCrypto> crypto_;
-#else
     std::shared_ptr<Crypto> crypto_;
-#endif
     std::shared_ptr<Pacemaker> pacemaker_;
     std::shared_ptr<IBlockAcceptor> block_acceptor_;
     std::shared_ptr<IBlockWrapper> block_wrapper_;

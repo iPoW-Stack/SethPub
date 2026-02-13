@@ -18,11 +18,7 @@ namespace hotstuff {
 
 Pacemaker::Pacemaker(
         const uint32_t& pool_idx,
-#ifdef USE_AGG_BLS
-        const std::shared_ptr<AggCrypto>& c,
-#else
         const std::shared_ptr<Crypto>& c,
-#endif
         std::shared_ptr<LeaderRotation>& lr,
         const std::shared_ptr<ViewDuration>& d,
         GetHighQCFn get_high_qc_fn,
@@ -65,23 +61,6 @@ void Pacemaker::NewTc(const std::shared_ptr<view_block::protobuf::QcItem>& tc) {
 }
 
 void Pacemaker::NewAggQc(const std::shared_ptr<AggregateQC>& agg_qc) {
-#ifdef USE_AGG_BLS 
-    if (agg_qc && agg_qc->IsValid()) {
-        auto high_qc = std::make_shared<QC>();
-        Status s = crypto_->VerifyAggregateQC(
-                common::GlobalInfo::Instance()->network_id(),
-                agg_qc,
-                high_qc);
-        if (s != Status::kSuccess) {
-            SETH_ERROR("new agg qc failed, pool: %d, s: %d, view: %lu", pool_idx_, (int32_t)s, agg_qc->GetView());
-            return;
-        }
-
-        // update high_qc.
-        UpdateHighQC(*high_qc);
-        NewQcView(high_qc->view());
-    }
-#endif
 }
 
 void Pacemaker::NewQcView(uint64_t qc_view) {

@@ -59,9 +59,6 @@ void BlsDkg::Destroy() {
 }
 
 void BlsDkg::TimerMessage() {
-#ifdef USE_AGG_BLS
-    return;
-#endif
     auto now_tm_us = common::TimeUtils::TimestampUs();
     PopBlsMessage();
     if (!has_broadcast_verify_ &&

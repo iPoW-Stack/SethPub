@@ -77,13 +77,8 @@ int HotstuffManager::Init(
     //     this);
 
     for (uint32_t pool_idx = 0; pool_idx < common::kInvalidPoolIndex; pool_idx++) {
-#ifdef USE_AGG_BLS
-        auto crypto = std::make_shared<AggCrypto>(pool_idx, elect_info_, bls_mgr);
-        auto pcrypto = std::make_shared<AggCrypto>(pool_idx, elect_info_, bls_mgr);
-#else
         auto crypto = std::make_shared<Crypto>(pool_idx, elect_info_, bls_mgr);
         auto pcrypto = std::make_shared<Crypto>(pool_idx, elect_info_, bls_mgr);
-#endif
         auto chain = std::make_shared<ViewBlockChain>();
         auto leader_rotation = std::make_shared<LeaderRotation>(pool_idx, chain, elect_info_);
         pools::protobuf::PoolLatestInfo pool_latest_info;
@@ -189,45 +184,7 @@ Status HotstuffManager::VerifyViewBlockWithCommitQC(const view_block::protobuf::
     //     assert(false);
     //     return Status::kInvalidArgument;
     // }
-#ifdef USE_AGG_BLS
-    AggregateSignature agg_sig;
-    if (!agg_sig.LoadFromProto(vblock.qc().agg_sig())) {
-        return Status::kError;
-    }
 
-    auto view_block_hash = GetQCMsgHash(vblock.qc());
-    auto hf = hotstuff(vblock.qc().pool_index());
-    
-    Status s = hf->crypto()->Verify(
-            agg_sig,
-            view_block_hash,
-            vblock.qc().network_id(), 
-            vblock.qc().elect_height());
-    if (s != Status::kSuccess) {
-        SETH_ERROR("qc verify failed, s: %d, blockview: %lu, "
-            "qcview: %lu, %u_%u_%lu, block elect height: %lu, elect height: %u_%u_%lu",
-            (int32_t)s, vblock.qc().view(), vblock.qc().view(),
-            vblock.qc().network_id(),
-            vblock.qc().pool_index(),
-            vblock.block_info().height(),
-            vblock.qc().elect_height(),
-            network::kRootCongressNetworkId,
-            vblock.qc().network_id(),
-            vblock.qc().elect_height());
-        return s;
-    }
-
-    SETH_DEBUG("qc verify success, s: %d, blockview: %lu, "
-            "qcview: %lu, %u_%u_%lu, block elect height: %lu, elect height: %u_%u_%lu",
-            (int32_t)s, vblock.qc().view(), vblock.qc().view(),
-            vblock.qc().network_id(),
-            vblock.qc().pool_index(),
-            vblock.block_info().height(),
-            vblock.qc().elect_height(),
-            network::kRootCongressNetworkId,
-            vblock.qc().network_id(),
-            vblock.qc().elect_height());    
-#else
     libff::alt_bn128_G1 sign = libff::alt_bn128_G1::zero();
     try {
         if (vblock.qc().sign_x() != "") {
@@ -280,7 +237,6 @@ Status HotstuffManager::VerifyViewBlockWithCommitQC(const view_block::protobuf::
             network::kRootCongressNetworkId,
             vblock.qc().network_id(),
             vblock.qc().elect_height());
-#endif    
     return Status::kSuccess;
 }
 

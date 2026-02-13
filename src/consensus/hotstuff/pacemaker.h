@@ -3,11 +3,7 @@
 #include <common/tick.h>
 #include <common/time_utils.h>
 #include <protos/view_block.pb.h>
-#ifdef USE_AGG_BLS
-#include <consensus/hotstuff/agg_crypto.h>
-#else
 #include <consensus/hotstuff/crypto.h>
-#endif
 #include <functional>
 
 #include <consensus/hotstuff/leader_rotation.h>

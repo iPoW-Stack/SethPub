@@ -26,10 +26,9 @@ BlockWrapper::~BlockWrapper(){};
 Status BlockWrapper::Wrap(
         const transport::MessagePtr& msg_ptr, 
         const std::shared_ptr<ViewBlock>& prev_view_block,
-        const uint32_t& leader_idx,
         view_block::protobuf::ViewBlockItem* view_block,
         hotstuff::protobuf::TxPropose* tx_propose,
-        const bool& no_tx_allowed,
+        bool no_tx_allowed,
         std::shared_ptr<ViewBlockChain>& view_block_chain) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto* prev_block = &prev_view_block->block_info();
@@ -117,7 +116,6 @@ Status BlockWrapper::Wrap(
     }
     
     view_block->mutable_qc()->set_elect_height(elect_item->ElectHeight());
-    view_block->mutable_qc()->set_leader_idx(leader_idx);
     block->set_timeblock_height(tm_block_mgr_->LatestTimestampHeight());
     SETH_DEBUG("====3 success propose block net: %u, pool: %u, set height: %lu, pre height: %lu, "
         "elect height: %lu, timeblock height: %lu, hash: %s, parent hash: %s, %u_%u_%lu",
