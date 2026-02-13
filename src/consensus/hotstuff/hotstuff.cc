@@ -1407,6 +1407,12 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
         qc_item.view(),
         vote_msg.leader_idx());
     ADD_DEBUG_PROCESS_TIMESTAMP();
+    if (latest_leader_propose_message_ && 
+            latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().leader_idx() != vote_msg.leader_idx()) {
+        assert(false);
+        return;
+    }
+
     Status ret = crypto()->ReconstructAndVerifyThresSign(
         msg_ptr,
         elect_height,
