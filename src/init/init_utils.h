@@ -66,8 +66,6 @@ struct GenisisNodeInfo {
     libff::alt_bn128_G2 bls_pubkey;
     std::vector<libff::alt_bn128_G2> verification;
     bls::protobuf::JoinElectInfo g2_val;
-    libff::alt_bn128_G2 agg_bls_pk;
-    libff::alt_bn128_G1 agg_bls_pk_proof;
     uint64_t nonce;
 };
 

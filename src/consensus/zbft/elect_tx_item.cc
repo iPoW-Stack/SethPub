@@ -37,8 +37,6 @@ int ElectTxItem::TxToBlockTx(
         return consensus::kConsensusError;
     }
 
-    
-
     return consensus::kConsensusSuccess;
 }
 

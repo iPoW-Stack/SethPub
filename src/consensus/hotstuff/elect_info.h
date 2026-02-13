@@ -110,22 +110,6 @@ public:
     inline std::shared_ptr<ConsensusStat> consensus_stat(uint32_t pool_idx) {
         return pool_consen_stat_map_[pool_idx];
     }
-
-    std::shared_ptr<libff::alt_bn128_G2> agg_bls_pk(uint32_t member_idx) {
-        if (member_aggbls_pk_map_.find(member_idx) != member_aggbls_pk_map_.end()) {
-            return member_aggbls_pk_map_[member_idx];
-        }
-        SETH_ERROR("cannot find agg pk, member: %lu, elect: %lu, right: %d", member_idx, elect_height_, member_aggbls_pk_map_[member_idx] != nullptr);
-        assert(false);
-        return nullptr;
-    }
-
-    std::shared_ptr<libff::alt_bn128_G1> agg_bls_pk_proof(uint32_t member_idx) {
-        if (member_aggbls_pk_proof_map_.find(member_idx) != member_aggbls_pk_proof_map_.end()) {
-            return member_aggbls_pk_proof_map_[member_idx];
-        }
-        return nullptr;
-    }
     
     common::MembersPtr valid_leaders() const {
         return valid_leaders_;
