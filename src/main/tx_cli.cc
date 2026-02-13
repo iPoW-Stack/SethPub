@@ -468,11 +468,10 @@ int tx_main(int argc, char** argv) {
 
     const std::string key = "";
     const std::string value = "";
-    auto tx_thread = [&](uint32_t begin_idx, uint32_t end_idx) {
-        std::cout << "begin: " << begin_idx << ", end: " << end_idx << ", all: " << g_prikeys.size() << std::endl;
+    auto tx_thread = [&](std::vector<std::string> prikeys) {
         std::string to = common::Encode::HexDecode("27d4c39244f26c157b5a87898569ef4ce5807413");
-        uint32_t prikey_pos = begin_idx;
-        auto from_prikey = g_prikeys[begin_idx];
+        uint32_t prikey_pos = 0;
+        auto from_prikey = prikeys[0];
         std::shared_ptr<security::Security> thread_security = std::make_shared<security::Ecdsa>();
         thread_security->SetPrivateKey(from_prikey);
         uint32_t count = 0;
@@ -482,11 +481,11 @@ int tx_main(int argc, char** argv) {
             if (count % batch_count == 0) {
                 if (global_pool_idx == -1) {
                     ++prikey_pos;
-                    if (prikey_pos >= end_idx) {
-                        prikey_pos = begin_idx;
+                    if (prikey_pos >= prikeys.size()) {
+                        prikey_pos = 0;
                     }
 
-                    from_prikey = g_prikeys[prikey_pos];
+                    from_prikey = prikeys[prikey_pos];
                     thread_security->SetPrivateKey(from_prikey);
                     addr = thread_security->GetAddress();
                 }
@@ -527,22 +526,31 @@ int tx_main(int argc, char** argv) {
     };
 
     std::vector<std::thread> thread_vec;
-    if (global_pool_idx == -1) {
-        uint32_t each_thread_size = g_prikeys.size() / kThreadCount;
-        for (uint32_t i = 0; i < kThreadCount; ++i) {
-            thread_vec.push_back(std::thread(tx_thread, i * each_thread_size, (i + 1) * each_thread_size));
+    std::vector<std::string> all_valid_keys;
+    kThreadCount = 4;
+    for (uint32_t i = 0; i < g_prikeys.size(); ++i) {
+        auto from_prikey = g_prikeys[i];
+        std::shared_ptr<security::Security> thread_security = std::make_shared<security::Ecdsa>();
+        thread_security->SetPrivateKey(from_prikey);
+        if (common::GetAddressPoolIndex(thread_security->GetAddress()) == global_pool_idx) {
+            all_valid_keys.push_back(from_prikey);
         }
-    } else {
-        kThreadCount = 1;
-        for (uint32_t i = 0; i < g_prikeys.size(); ++i) {
-            auto from_prikey = g_prikeys[i];
-            std::shared_ptr<security::Security> thread_security = std::make_shared<security::Ecdsa>();
-            thread_security->SetPrivateKey(from_prikey);
-            if (common::GetAddressPoolIndex(thread_security->GetAddress()) == global_pool_idx) {
-                thread_vec.push_back(std::thread(tx_thread, i, i + 1));
-                // break;
-            }
+    }
+
+    if (all_valid_keys.empty()) {
+        return 1;
+    }
+    
+    uint32_t start = 0;
+    uint32_t length = all_valid_keys.size() / kThreadCount;
+    for (uint32_t i = 0; i < kThreadCount; ++i) {
+        if (i == kThreadCount - 1) {
+            length = all_valid_keys.size() - start;
         }
+
+        std::vector<std::string> tmp_vec(all_valid_keys.begin() + start, all_valid_keys.begin() + start + length)
+        thread_vec.push_back(std::thread(tx_thread, tmp_vec));
+        start += length;
     }
 
     auto tps_thread = [&]() {
@@ -560,7 +568,7 @@ int tx_main(int argc, char** argv) {
 
     thread_vec.push_back(std::thread(tps_thread));
     thread_vec.push_back(std::thread(update_nonce_thread));
-    for (uint32_t i = 0; i < kThreadCount; ++i) {
+    for (uint32_t i = 0; i < thread_vec.size(); ++i) {
         thread_vec[i].join();
     }
 
