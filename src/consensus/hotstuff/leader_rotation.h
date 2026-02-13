@@ -52,17 +52,17 @@ public:
             now, 
             high_view_block->block_info().timestamp(),
             last_stable_leader_member_index);
-        if (k == 0) {
+        // if (k == 0) {
             // 粘性模式：视图紧凑递增，Leader连任
             *out_view = high_view_block->qc().view() + 1;
             return (*members)[last_stable_leader_member_index % members->size()];
-        } else {
-            // 切换模式：强制跳过一个视图号 (V + k + 1)
-            // 当超时刚刚发生(k=1)时，out_view = last_qc.view + 2
-            *out_view = high_view_block->qc().view() + k + 1; 
-            int leader_pos = (last_stable_leader_member_index + static_cast<int>(k)) % members->size();
-            return (*members)[leader_pos];
-        }
+        // } else {
+        //     // 切换模式：强制跳过一个视图号 (V + k + 1)
+        //     // 当超时刚刚发生(k=1)时，out_view = last_qc.view + 2
+        //     *out_view = high_view_block->qc().view() + k + 1; 
+        //     int leader_pos = (last_stable_leader_member_index + static_cast<int>(k)) % members->size();
+        //     return (*members)[leader_pos];
+        // }
     }
 
     inline common::BftMemberPtr GetMember(uint32_t member_index) const {
