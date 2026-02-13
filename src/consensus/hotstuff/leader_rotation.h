@@ -56,7 +56,7 @@ public:
         // if (k == 0) {
             // 粘性模式：视图紧凑递增，Leader连任
             *out_view = high_view_block->qc().view() + latest_elect_height + 1;
-            return (*members)[last_stable_leader_member_index + % members->size()];
+            return (*members)[last_stable_leader_member_index % members->size()];
         // } else {
         //     // 切换模式：强制跳过一个视图号 (V + k + 1)
         //     // 当超时刚刚发生(k=1)时，out_view = last_qc.view + 2
