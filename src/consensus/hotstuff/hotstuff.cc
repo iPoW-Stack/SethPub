@@ -232,9 +232,26 @@ Status Hotstuff::Propose(
         tmp_msg_ptr->header.CopyFrom(latest_leader_propose_message_->header);
         tmp_msg_ptr->is_leader = true;
         tmp_msg_ptr->header.release_broadcast();
+        auto* leader_qc = tmp_msg_ptr->header.mutable_hotstuff()->mutable_pro_msg()->mutable_view_item()->mutable_qc();
         if (!leader_view_block_hash_.empty()) {
-            auto* leader_qc = tmp_msg_ptr->header.mutable_hotstuff()->mutable_pro_msg()->mutable_view_item()->mutable_qc();
             leader_qc->set_view_block_hash(leader_view_block_hash_);
+        }
+
+        View out_view = 0;
+        auto leader = leader_rotation()->GetLeader(
+            view_block_chain_->HighViewBlock(), 
+            consecutive_failures_, 
+            last_stable_leader_member_index_,
+            latest_elect_height_,
+            &out_view);
+        if (leader->index != leader_qc->leader_idx()) {
+            latest_leader_propose_message_ = nullptr;
+            return;
+        }
+
+        if (out_view > view_block_chain_->HighViewBlock()->qc().view()) {
+            latest_leader_propose_message_ = nullptr;
+            return;
         }
 
         auto broadcast = tmp_msg_ptr->header.mutable_broadcast();
