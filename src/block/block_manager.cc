@@ -428,7 +428,7 @@ void BlockManager::AddNewBlock(
         SETH_DEBUG("now handle root cross %u_%u_%lu_%lu, local net: %d,  block: %s",
             view_block_item->qc().network_id(),
             view_block_item->qc().pool_index(),
-            view_block_item->block_info).height(),
+            view_block_item->block_info().height(),
             view_block_item->qc().view(),
             common::GlobalInfo::Instance()->network_id(),
             ProtobufToJson(*block_item).c_str());
