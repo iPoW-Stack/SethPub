@@ -249,7 +249,7 @@ Status Hotstuff::Propose(
             return Status::kError;
         }
 
-        if (out_view > view_block_chain_->HighViewBlock()->qc().view()) {
+        if (out_view > leader_qc->view()) {
             latest_leader_propose_message_ = nullptr;
             return Status::kError;
         }
