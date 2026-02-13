@@ -53,7 +53,7 @@ public:
         const std::shared_ptr<ViewBlock>& prev_block,
         view_block::protobuf::ViewBlockItem* view_block,
         hotstuff::protobuf::TxPropose* tx_propose,
-        const bool& no_tx_allowed,
+        bool no_tx_allowed,
         std::shared_ptr<ViewBlockChain>& view_block_chain) override;
 
     // Whether there is a built-in transaction
