@@ -494,9 +494,9 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
     auto network_id = sync_msg.sync_value_req().network_id();
     for (int32_t i = 0; i < sync_msg.sync_value_req().heights_size(); ++i) {
         auto& req_height = sync_msg.sync_value_req().heights(i);
-        std::shared_ptr<ViewBlock> view_block_ptr = nullptr;
+        std::shared_ptr<view_block::protobuf::ViewBlockItem> view_block_ptr = nullptr;
         if (req_height.tag() == kBlockHeight) {
-            auto view_block_ptr = hotstuff_mgr_->chain(req_height.pool_idx())->GetViewBlockWithHeight(
+            view_block_ptr = hotstuff_mgr_->chain(req_height.pool_idx())->GetViewBlockWithHeight(
                 network_id, req_height.height());
             if (!view_block_ptr) {
                 SETH_DEBUG("sync key value %u_%u_%lu, handle sync value failed request "
@@ -513,7 +513,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
         }
 
         if (req_height.tag() == kBlockView) {
-            auto view_block_ptr = hotstuff_mgr_->chain(req_height.pool_idx())->GetViewBlockWithView(
+            view_block_ptr = hotstuff_mgr_->chain(req_height.pool_idx())->GetViewBlockWithView(
                 network_id, req_height.height());
             if (!view_block_ptr) {
                 SETH_DEBUG("sync key value %u_%u_%lu, handle sync value failed request "
