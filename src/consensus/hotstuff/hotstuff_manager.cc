@@ -16,7 +16,6 @@
 #include "common/random.h"
 #include "common/time_utils.h"
 #include "common/utils.h"
-#include "consensus/hotstuff/agg_crypto.h"
 #include "consensus/hotstuff/block_acceptor.h"
 #include "consensus/hotstuff/block_wrapper.h"
 #include "consensus/hotstuff/hotstuff.h"

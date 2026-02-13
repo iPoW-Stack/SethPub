@@ -628,29 +628,11 @@ int ElectTxItem::CreateNewElect(
 
             auto in = elect_block.add_in();
             in->set_pubkey((*elect_members_)[i]->pubkey);
-            // auto agg_bls_pk_proto = bls::BlsPublicKey2Proto((*elect_members_)[i]->agg_bls_pk);
-            // if (agg_bls_pk_proto) {
-            //     in->mutable_agg_bls_pk()->CopyFrom(*agg_bls_pk_proto);
-            // }
-            // auto proof_proto = bls::BlsPopProof2Proto((*elect_members_)[i]->agg_bls_pk_proof);
-            // if (proof_proto) {
-            //     in->mutable_agg_bls_pk_proof()->CopyFrom(*proof_proto);
-            // }
-            
             in->set_pool_idx_mod_num(-1);
             in->set_mining_amount(0);
         } else {
             auto in = elect_block.add_in();
             in->set_pubkey(elect_nodes[i]->pubkey);
-            // auto agg_bls_pk_proto = bls::BlsPublicKey2Proto(elect_nodes[i]->agg_bls_pk);
-            // if (agg_bls_pk_proto) {
-            //     in->mutable_agg_bls_pk()->CopyFrom(*agg_bls_pk_proto);
-            // }
-            // auto proof_proto = bls::BlsPopProof2Proto(elect_nodes[i]->agg_bls_pk_proof);
-            // if (proof_proto) {
-            //     in->mutable_agg_bls_pk_proof()->CopyFrom(*proof_proto);
-            // }
-            
             in->set_pool_idx_mod_num(elect_nodes[i]->leader_mod_index);
             in->set_mining_amount(elect_nodes[i]->mining_token);
             in->set_fts_value(elect_nodes[i]->fts_value);
@@ -765,7 +747,6 @@ int ElectTxItem::CheckWeedout(
         node_info->index = member_idx;
         node_info->pubkey = (*members)[member_idx]->pubkey;
         node_info->consensus_gap = statistic_item.consensus_gap(member_idx); 
-
         if (*min_area_weight > min_dis) {
             *min_area_weight = min_dis;
         }
