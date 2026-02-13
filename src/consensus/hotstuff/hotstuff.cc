@@ -225,6 +225,13 @@ Status Hotstuff::Propose(
 #ifndef NDEBUG
     auto t1 = common::TimeUtils::TimestampMs();
 #endif
+    View out_view = 0;
+    auto leader = leader_rotation()->GetLeader(
+        view_block_chain_->HighViewBlock(), 
+        consecutive_failures_, 
+        last_stable_leader_member_index_,
+        latest_elect_height_,
+        &out_view);
     if (latest_leader_propose_message_ &&
             latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view() >= 
             pacemaker_->CurView()) {
@@ -237,13 +244,6 @@ Status Hotstuff::Propose(
             leader_qc->set_view_block_hash(leader_view_block_hash_);
         }
 
-        View out_view = 0;
-        auto leader = leader_rotation()->GetLeader(
-            view_block_chain_->HighViewBlock(), 
-            consecutive_failures_, 
-            last_stable_leader_member_index_,
-            latest_elect_height_,
-            &out_view);
         if (leader->index != leader_qc->leader_idx()) {
             latest_leader_propose_message_ = nullptr;
             return Status::kError;
@@ -298,7 +298,9 @@ Status Hotstuff::Propose(
         return Status::kSuccess;
     }
 
-    if (max_view() != 0 && max_view() <= last_leader_propose_view_) {
+    if (max_view() != 0 && 
+            max_view() <= last_leader_propose_view_ && 
+            last_leader_propose_view_ >= out_view) {
         SETH_DEBUG("pool: %d construct propose msg failed, %d, "
             "max_view(): %lu last_leader_propose_view_: %lu",
             pool_idx_, (int32_t)Status::kError,
