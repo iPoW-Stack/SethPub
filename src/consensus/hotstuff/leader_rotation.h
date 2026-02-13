@@ -43,7 +43,8 @@ public:
         auto elapsed = now - (high_view_block->block_info().timestamp() / 1000llu);
         uint64_t k = (elapsed > timeout) ? (elapsed / timeout) : 0;
         SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
-            "consecutive_failures: %d, now: %u, block tm: %lu, last_stable_leader_member_index: %d", 
+            "consecutive_failures: %d, now: %u, block tm: %lu, "
+            "last_stable_leader_member_index: %d, latest_elect_height: %lu, out view: %lu", 
             pool_idx_, 
             high_view_block->qc().view(), 
             elapsed, 
@@ -52,10 +53,16 @@ public:
             consecutive_failures,
             now, 
             high_view_block->block_info().timestamp(),
-            last_stable_leader_member_index);
+            last_stable_leader_member_index,
+            latest_elect_height,
+            (high_view_block->qc().view() + latest_elect_height + 1));
         // if (k == 0) {
+            if (high_view_block->qc().elect_height() < latest_elect_height) {
+                *out_view = high_view_block->qc().view() + latest_elect_height + 1;
+            } else {
+                *out_view = high_view_block->qc().view() + 1;
+            }
             // 粘性模式：视图紧凑递增，Leader连任
-            *out_view = high_view_block->qc().view() + latest_elect_height + 1;
             return (*members)[last_stable_leader_member_index % members->size()];
         // } else {
         //     // 切换模式：强制跳过一个视图号 (V + k + 1)
