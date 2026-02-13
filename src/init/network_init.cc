@@ -1039,10 +1039,6 @@ void NetworkInit::GetNetworkNodesFromConf(
         node_ptr->prikey = sk;
         node_ptr->pubkey = secptr->GetPublicKey();
         node_ptr->id = secptr->GetAddress(node_ptr->pubkey);
-        InitAggBlsForGenesis(node_ptr->id, secptr, prefix_db);
-        auto keypair = bls::AggBls::Instance()->GetKeyPair();
-        node_ptr->agg_bls_pk = keypair->pk();
-        node_ptr->agg_bls_pk_proof = keypair->proof();
         node_ptr->nonce = 0;
         root_genesis_nodes.push_back(node_ptr);
         SETH_DEBUG("root private key: %s, id: %s", 
@@ -1073,10 +1069,6 @@ void NetworkInit::GetNetworkNodesFromConf(
             node_ptr->prikey = sk;
             node_ptr->pubkey = secptr->GetPublicKey();
             node_ptr->id = secptr->GetAddress(node_ptr->pubkey);
-            InitAggBlsForGenesis(node_ptr->id, secptr, prefix_db);
-            auto keypair = bls::AggBls::Instance()->GetKeyPair();
-            node_ptr->agg_bls_pk = keypair->pk();
-            node_ptr->agg_bls_pk_proof = keypair->proof();
             node_ptr->nonce = 0;
             cons_genesis_nodes.push_back(node_ptr);   
             SETH_DEBUG("shard: %d private key: %s, id: %s", 

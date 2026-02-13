@@ -221,16 +221,12 @@ bool ElectManager::ProcessPrevElectMembers(
             ++leader_count;
         }
 
-        auto agg_bls_pk = bls::Proto2BlsPublicKey(in[i].agg_bls_pk());
-        auto agg_bls_pk_proof = bls::Proto2BlsPopProof(in[i].agg_bls_pk_proof());
         shard_members_ptr->push_back(std::make_shared<common::BftMember>(
             prev_elect_block.shard_network_id(),
             id,
             in[i].pubkey(),
             i,
-            pool_idx_mod_num,
-            *agg_bls_pk,
-            *agg_bls_pk_proof));
+            pool_idx_mod_num));
         now_elected_ids_.insert(id);
     }
 
@@ -310,16 +306,12 @@ void ElectManager::ProcessNewElectBlock(
     auto shard_members_ptr = std::make_shared<common::Members>();
     for (int32_t i = 0; i < in.size(); ++i) {
         auto id = security_->GetAddress(in[i].pubkey());
-        auto agg_bls_pk = bls::Proto2BlsPublicKey(in[i].agg_bls_pk());
-        auto agg_bls_pk_proof = bls::Proto2BlsPopProof(in[i].agg_bls_pk_proof());
         shard_members_ptr->push_back(std::make_shared<common::BftMember>(
             elect_block.shard_network_id(),
             id,
             in[i].pubkey(),
             i,
-            in[i].pool_idx_mod_num(),
-            *agg_bls_pk,
-            *agg_bls_pk_proof));
+            in[i].pool_idx_mod_num()));
         if (id == security_->GetAddress()) {
             *elected = true;
         }

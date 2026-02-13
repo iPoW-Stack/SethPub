@@ -784,7 +784,7 @@ void BlockManager::HandleStatisticBlock(
     if (common::GlobalInfo::Instance()->network_id() != network::kRootCongressNetworkId) {
         return;
     }
-#ifdef NDEBUG
+#ifndef NDEBUG
     for (int32_t i = 0; i < elect_statistic.join_elect_nodes_size(); ++i) {
         SETH_DEBUG("sharding: %u, new elect node: %s, balance: %lu, shard: %u, pos: %u", 
             elect_statistic.sharding_id(), 

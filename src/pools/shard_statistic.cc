@@ -953,21 +953,7 @@ void ShardStatistic::addNewNode2JoinStatics(
                 continue;
             }
 
-            auto iter2 = id_agg_bls_pk_map.find(node_id);
-            if (iter2 == id_agg_bls_pk_map.end()) {
-                assert(false);
-                continue;
-            }
-
-            auto iter3 = id_agg_bls_pk_proof_map.find(node_id);
-            if (iter3 == id_agg_bls_pk_proof_map.end()) {
-                assert(false);
-                continue;
-            }            
-
             pubkey = iter->second;
-            agg_bls_pk = iter2->second;
-            agg_bls_pk_proof = iter3->second; 
         }
 
         auto shard_iter = r_siter->second.find(elect_nodes[i]);

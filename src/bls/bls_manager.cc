@@ -99,16 +99,12 @@ void BlsManager::OnNewElectBlock(
     auto& in = elect_block->in();
     for (int32_t i = 0; i < in.size(); ++i) {
         auto id = security_->GetAddress(in[i].pubkey());
-        auto agg_bls_pk = bls::Proto2BlsPublicKey(in[i].agg_bls_pk());
-        auto agg_bls_pk_proof = bls::Proto2BlsPopProof(in[i].agg_bls_pk_proof());
         members->push_back(std::make_shared<common::BftMember>(
             elect_block->shard_network_id(),
             id,
             in[i].pubkey(),
             i,
-            in[i].pool_idx_mod_num(),
-            *agg_bls_pk,
-            *agg_bls_pk_proof));
+            in[i].pool_idx_mod_num()));
         SETH_INFO("new elect set elect item index: %u, net: %u, pk: %s", i, elect_block->shard_network_id(),
             common::Encode::HexEncode(in[i].pubkey()).c_str());
     }
