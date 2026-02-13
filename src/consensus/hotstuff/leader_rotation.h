@@ -30,6 +30,7 @@ public:
             std::shared_ptr<ViewBlock> high_view_block, 
             int32_t consecutive_failures, 
             uint32_t last_stable_leader_member_index,
+            uint64_t latest_elect_height,
             View* out_view) const {
         auto members = Members(common::GlobalInfo::Instance()->network_id());
         if (members->empty()) {
@@ -54,8 +55,8 @@ public:
             last_stable_leader_member_index);
         // if (k == 0) {
             // 粘性模式：视图紧凑递增，Leader连任
-            *out_view = high_view_block->qc().view() + 1;
-            return (*members)[last_stable_leader_member_index % members->size()];
+            *out_view = high_view_block->qc().view() + latest_elect_height + 1;
+            return (*members)[last_stable_leader_member_index + % members->size()];
         // } else {
         //     // 切换模式：强制跳过一个视图号 (V + k + 1)
         //     // 当超时刚刚发生(k=1)时，out_view = last_qc.view + 2

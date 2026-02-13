@@ -155,6 +155,7 @@ Status Hotstuff::Start() {
         view_block_chain_->HighViewBlock(), 
         consecutive_failures_, 
         last_stable_leader_member_index_,
+        latest_elect_height_,
         &out_view);
     auto elect_item = elect_info_->GetElectItemWithShardingId(common::GlobalInfo::Instance()->network_id());
     if (!elect_item || !elect_item->IsValid()) {
@@ -758,6 +759,7 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
                         view_block_chain_->HighViewBlock(), 
                         consecutive_failures_, 
                         last_stable_leader_member_index_,
+                        latest_elect_height_,
                         &out_view);
                     if (!leader || SendMsgToLeader(leader, tmp_msg_ptr, VOTE) != Status::kSuccess) {
                         SETH_ERROR("pool: %d, Send vote message is error.",
@@ -1830,6 +1832,7 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
         view_block_chain_->HighViewBlock(), 
         consecutive_failures_, 
         last_stable_leader_member_index_,
+        latest_elect_height_,
         &out_view);
     if (!leader) {
         SETH_ERROR("Get Leader is error.");
@@ -2046,6 +2049,7 @@ Status Hotstuff::ConstructViewBlock(
         view_block_chain_->HighViewBlock(), 
         consecutive_failures_, 
         last_stable_leader_member_index_,
+        latest_elect_height_,
         &out_view);
     auto* qc = view_block->mutable_qc();
     qc->set_leader_idx(leader->index);
@@ -2312,6 +2316,7 @@ void Hotstuff::TryRecoverFromStuck(
         view_block_chain_->HighViewBlock(), 
         consecutive_failures_, 
         last_stable_leader_member_index_,
+        latest_elect_height_,
         &out_view);
     if (!leader) {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
