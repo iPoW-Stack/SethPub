@@ -43,6 +43,7 @@ struct BlockViewKey {
     }
 };
 
+using BlockHeightKey = BlockViewKey;
 
 std::string GetTxMessageHash(
     const block::protobuf::BlockTx& tx_info, 

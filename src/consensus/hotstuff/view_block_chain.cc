@@ -163,7 +163,7 @@ std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHeight(
     GetViewBlockWithHash("", true);
     std::shared_ptr<ViewBlockInfo> view_block_ptr;
     if (latest_commited_height_lru_map_.Get(
-            BlockViewKey(network_id, pool_index_, view), 
+            BlockHeightKey(network_id, pool_index_, height), 
             view_block_ptr)) {
         return view_block_ptr->view_block;
     }
@@ -171,19 +171,20 @@ std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHeight(
     view_block_ptr = std::make_shared<ViewBlockInfo>();
     view_block_ptr->view_block = std::make_shared<ViewBlock>();
     auto& view_block = *view_block_ptr->view_block;
-    if (prefix_db_->GetBlockWithHeight(network_id, pool_index_, view, &view_block)) {
-        SETH_DEBUG("success add view block remove add %u_%u_%lu", 
+    if (prefix_db_->GetBlockWithHeight(network_id, pool_index_, height, &view_block)) {
+        SETH_DEBUG("success add view block remove add %u_%u_%lu_%lu", 
             view_block.qc().network_id(), 
             view_block.qc().pool_index(), 
+            view_block.block_info().height(),
             view_block.qc().view());
         latest_commited_hash_lru_map_.Put(
             view_block_ptr->view_block->qc().view_block_hash(), 
             view_block_ptr);
         latest_commited_height_lru_map_.Put(
-            BlockViewKey(
+            BlockHeightKey(
                 view_block_ptr->view_block->qc().network_id(), 
                 view_block_ptr->view_block->qc().pool_index(), 
-                view_block_ptr->view_block->qc().view()), 
+                view_block.block_info().height()), 
             view_block_ptr);
         return view_block_ptr->view_block;
     }
@@ -282,7 +283,9 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashSt
                 view_block_info_ptr->view_block->qc().view_block_hash(), 
                 view_block_info_ptr);
             latest_commited_height_lru_map_.Put(
-                view_block_info_ptr->view_block->block_info().height(), 
+                BlockHeightKey(view_block_info_ptr->view_block->qc().network_id(), 
+                    view_block_info_ptr->view_block->qc().pool_index(),
+                    view_block_info_ptr->view_block->block_info().height()), 
                 view_block_info_ptr);
             latest_commited_view_lru_map_.Put(
                 BlockViewKey(
