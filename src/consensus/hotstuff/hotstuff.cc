@@ -1935,8 +1935,15 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
             msg_hash,
             leader->pubkey,
             pro_msg_wrap->msg_ptr->header.sign()) != security::kSecuritySuccess) {
-        SETH_DEBUG("verify leader sign failed: %s", 
-            common::Encode::HexEncode(leader->id).c_str());
+        SETH_DEBUG("pool index: %d, verify leader sign failed: %s, index: %d, pk: %s, "
+            "consecutive_failures_: %d, last_stable_leader_member_index_: %d, out_view: %lu", 
+            pool_idx_,
+            common::Encode::HexEncode(leader->id).c_str(),
+            leader->index,
+            common::Encode::HexEncode(leader->pubkey).c_str(),
+            consecutive_failures_,
+            last_stable_leader_member_index_,
+            out_view);
         return Status::kError;
     }
     
@@ -2094,7 +2101,7 @@ Status Hotstuff::ConstructViewBlock(
         last_stable_leader_member_index_,
         &out_view);
     auto* qc = view_block->mutable_qc();
-    qc->set_leader_idx(leader_idx);
+    qc->set_leader_idx(leader->index);
     qc->set_view(out_view);
     qc->set_network_id(common::GlobalInfo::Instance()->network_id());
     qc->set_pool_index(pool_idx_);
@@ -2372,12 +2379,15 @@ void Hotstuff::TryRecoverFromStuck(
         Propose(nullptr, nullptr, msg_ptr);
         ADD_DEBUG_PROCESS_TIMESTAMP();
         if (latest_qc_item_ptr_) {
-            SETH_DEBUG("leader do propose message: %d, pool index: %u, %u_%u_%lu", 
+            SETH_DEBUG("leader do propose message: %d, pool index: %u, %u_%u_%lu, "
+                "sec pk: %s, leader pk: %s", 
                 local_idx,
                 pool_idx_,
                 latest_qc_item_ptr_->network_id(), 
                 latest_qc_item_ptr_->pool_index(), 
-                latest_qc_item_ptr_->view());
+                latest_qc_item_ptr_->view(),
+                common::Encode::HexEncode(crypto_->security()->GetPublicKey()).c_str(),
+                common::Encode::HexEncode(leader->pubkey).c_str());
         }
 
         if (latest_propose_msg_tm_ms_ > prev_sync_latest_view_tm_ms_) {
