@@ -540,7 +540,7 @@ int tx_main(int argc, char** argv) {
     if (all_valid_keys.empty()) {
         return 1;
     }
-    
+
     uint32_t start = 0;
     uint32_t length = all_valid_keys.size() / kThreadCount;
     for (uint32_t i = 0; i < kThreadCount; ++i) {
@@ -548,7 +548,7 @@ int tx_main(int argc, char** argv) {
             length = all_valid_keys.size() - start;
         }
 
-        std::vector<std::string> tmp_vec(all_valid_keys.begin() + start, all_valid_keys.begin() + start + length)
+        std::vector<std::string> tmp_vec(all_valid_keys.begin() + start, all_valid_keys.begin() + start + length);
         thread_vec.push_back(std::thread(tx_thread, tmp_vec));
         start += length;
     }
