@@ -77,23 +77,25 @@ Status BlockAcceptor::Accept(
     auto& view_block = *pro_msg_wrap->view_block_ptr;
     if (propose_msg.txs().empty()) {
         if (no_tx_allowed) {
-            SETH_DEBUG("success do transaction tx size: %u, add: %u, %u_%u_%lu, "
+            SETH_DEBUG("success do transaction tx size: %u, add: %u, %u_%u_%lu_%lu, "
                 "height: %lu, view hash: %s", 
                 0, 
                 view_block.block_info().tx_list_size(), 
                 view_block.qc().network_id(), 
                 view_block.qc().pool_index(), 
+                view_block.block_info().height(),
                 view_block.qc().view(), 
                 view_block.block_info().height(),
                 common::Encode::HexEncode(view_block.qc().view_block_hash()).c_str());
             // assert(view_block.qc().view_block_hash().empty());
             view_block.mutable_qc()->set_view_block_hash(GetBlockHash(view_block));
-            SETH_DEBUG("success set view block hash: %s, parent: %s, %u_%u_%lu, "
+            SETH_DEBUG("success set view block hash: %s, parent: %s, %u_%u_%lu_%lu, "
                 "chain has hash: %d, db has hash: %d",
                 common::Encode::HexEncode(view_block.qc().view_block_hash()).c_str(),
                 common::Encode::HexEncode(view_block.parent_hash()).c_str(),
                 view_block.qc().network_id(),
                 view_block.qc().pool_index(),
+                view_block.block_info().height(),
                 view_block.qc().view(),
                 view_block_chain_->Has(view_block.qc().view_block_hash()),
                 prefix_db_->BlockExists(view_block.qc().view_block_hash()));
@@ -157,9 +159,10 @@ Status BlockAcceptor::Accept(
 
         auto* addr_info = view_block.mutable_block_info()->add_address_array();
         *addr_info = *iter->second;
-        SETH_DEBUG("%u_%u_%lu, success addr info: %s, balance: %lu, nonce: %lu", 
+        SETH_DEBUG("%u_%u_%lu_%lu, success addr info: %s, balance: %lu, nonce: %lu", 
             view_block.qc().network_id(),
             view_block.qc().pool_index(),
+            view_block.block_info().height(),
             view_block.qc().view(),
             common::Encode::HexEncode(addr_info->addr()).c_str(), 
             addr_info->balance(),
@@ -189,9 +192,10 @@ Status BlockAcceptor::Accept(
                 kv_info.addr() + kv_info.key(), 
                 kv_info.SerializeAsString(), 
                 zjc_host.db_batch_);
-            SETH_DEBUG("%u_%u_%lu, success add key value addr: %s, key: %s", 
+            SETH_DEBUG("%u_%u_%lu_%lu, success add key value addr: %s, key: %s", 
                 view_block.qc().network_id(),
                 view_block.qc().pool_index(),
+                view_block.block_info().height(),
                 view_block.qc().view(),
                 common::Encode::HexEncode(kv_info.addr()).c_str(), 
                 common::Encode::HexEncode(kv_info.key()).c_str());
@@ -210,9 +214,10 @@ Status BlockAcceptor::Accept(
                 kv_info.addr() + kv_info.key(), 
                 kv_info.SerializeAsString(), 
                 zjc_host.db_batch_);
-            SETH_DEBUG("%u_%u_%lu, success add key value addr: %s, key: %s", 
+            SETH_DEBUG("%u_%u_%lu_%lu, success add key value addr: %s, key: %s", 
                 view_block.qc().network_id(),
                 view_block.qc().pool_index(),
+                view_block.block_info().height(),
                 view_block.qc().view(),
                 common::Encode::HexEncode(kv_info.addr()).c_str(), 
                 common::Encode::HexEncode(kv_info.key()).c_str());
@@ -247,22 +252,24 @@ Status BlockAcceptor::Accept(
             ProtobufToJson(view_block).c_str());
     }
 
-    SETH_DEBUG("success do transaction tx size: %u, add: %u, %u_%u_%lu, height: %lu, "
+    SETH_DEBUG("success do transaction tx size: %u, add: %u, %u_%u_%lu_%lu, height: %lu, "
         "timeblock height: %lu, local latest timeblock height: %lu", 
         txs_ptr->txs.size(), 
         view_block.block_info().tx_list_size(), 
         view_block.qc().network_id(), 
         view_block.qc().pool_index(), 
+        view_block.block_info().height(),
         view_block.qc().view(), 
         view_block.block_info().height(),
         view_block.block_info().timeblock_height(),
         tm_block_mgr_->LatestTimestampHeight());
     view_block.mutable_qc()->set_view_block_hash(GetBlockHash(view_block));
-    SETH_DEBUG("success set view block hash: %s, parent: %s, %u_%u_%lu",
+    SETH_DEBUG("success set view block hash: %s, parent: %s, %u_%u_%lu_%lu",
         common::Encode::HexEncode(view_block.qc().view_block_hash()).c_str(),
         common::Encode::HexEncode(view_block.parent_hash()).c_str(),
         view_block.qc().network_id(),
         view_block.qc().pool_index(),
+        view_block.block_info().height(),
         view_block.qc().view());
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (prefix_db_->BlockExists(view_block.qc().view_block_hash())) {

@@ -98,10 +98,11 @@ void BlockManager::ConsensusAddBlock(
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     auto block_item = block_item_info->view_block;
     consensus_block_queues_[thread_idx].push(block_item_info);
-    SETH_DEBUG("success add view block add new block thread: %d, size: %u, %u_%u_%lu", 
+    SETH_DEBUG("success add view block add new block thread: %d, size: %u, %u_%u_%lu_%lu", 
         thread_idx, consensus_block_queues_[thread_idx].size(),
         block_item->qc().network_id(),
         block_item->qc().pool_index(),
+        block_item->block_info().height(),
         block_item->qc().view());
 }
 
@@ -247,18 +248,20 @@ void BlockManager::ConsensusShardHandleRootCreateAddress(
 void BlockManager::HandleNormalToTx(const std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block_ptr) {
     auto& view_block = *view_block_ptr;
     if (view_block.block_info().normal_to().to_tx_arr_size() <= 0) {
-        SETH_DEBUG("0 handle normale to message coming: %u_%u_%lu, des: %u, %s", 
+        SETH_DEBUG("0 handle normale to message coming: %u_%u_%lu_%lu, des: %u, %s", 
             view_block.qc().network_id(), 
             view_block.qc().pool_index(), 
             view_block.qc().view(), 
+            view_block.block_info().height(), 
             0, 
             ProtobufToJson(view_block).c_str());
         return;
     }
 
-    SETH_DEBUG("handle normale to message coming: %u_%u_%lu, des: %u, %s", 
+    SETH_DEBUG("handle normale to message coming: %u_%u_%lu_%lu, des: %u, %s", 
         view_block.qc().network_id(), 
         view_block.qc().pool_index(), 
+        view_block.block_info().height(), 
         view_block.qc().view(), 
         view_block.block_info().normal_to().to_tx_arr(0).des_shard(), 
         ProtobufToJson(view_block).c_str());
@@ -364,11 +367,12 @@ void BlockManager::AddNewBlock(
     assert(!view_block_item->qc().sign_x().empty());
     auto* block_item = &view_block_item->block_info();
     auto btime = common::TimeUtils::TimestampMs();
-    SETH_DEBUG("new block coming sharding id: %u_%d_%lu, view: %u_%u_%lu,"
+    SETH_DEBUG("new block coming sharding id: %u_%d_%lu, view: %u_%u_%lu_%lu,"
         "tx size: %u, hash: %s, prehash: %s, elect height: %lu, tm height: %lu, %s, ck_client_: %d",
         view_block_item->qc().network_id(),
         view_block_item->qc().pool_index(),
         block_item->height(),
+        view_block_item->qc().view(),
         view_block_item->qc().network_id(),
         view_block_item->qc().pool_index(),
         view_block_item->qc().view(),
@@ -421,9 +425,10 @@ void BlockManager::AddNewBlock(
     }
 
     if (block_item->cross_shard_to_array_size() > 0) {
-        SETH_DEBUG("now handle root cross %u_%u_%lu, local net: %d,  block: %s",
+        SETH_DEBUG("now handle root cross %u_%u_%lu_%lu, local net: %d,  block: %s",
             view_block_item->qc().network_id(),
             view_block_item->qc().pool_index(),
+            view_block_item->block_info).height(),
             view_block_item->qc().view(),
             common::GlobalInfo::Instance()->network_id(),
             ProtobufToJson(*block_item).c_str());

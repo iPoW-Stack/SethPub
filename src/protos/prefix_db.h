@@ -358,7 +358,7 @@ public:
         return true;
     }
 
-    bool SaveBlock(const view_block::protobuf::ViewBlockItem& view_block, db::DbWriteBatch& batch) {
+    void SaveBlock(const view_block::protobuf::ViewBlockItem& view_block, db::DbWriteBatch& batch) {
         assert(!view_block.qc().view_block_hash().empty());
         // if (BlockExists(view_block.qc().view_block_hash())) {
         //     auto* block_item = &view_block.block_info();
@@ -398,12 +398,6 @@ public:
             batch);
         std::string block_str;
         view_block.SerializeToString(&block_str);
-        if (view_block.block_info().tx_list_size() >= 500) {
-            SETH_DEBUG("block tx size: %u, block size: %u",
-                view_block.block_info().tx_list_size(), 
-                block_str.size());
-        }
-
         batch.Put(key, block_str);
         std::string view_key;
         view_key.reserve(48);
@@ -416,7 +410,6 @@ public:
         u64_arr[0] = view_block.qc().view();
         view_key.append(std::string(key_data, sizeof(key_data)));
         batch.Put(view_key, "1");
-        return true;
     }
 
     bool ViewBlockIsValidView(uint32_t network_id, uint32_t pool_index, uint64_t view) {

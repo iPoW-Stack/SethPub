@@ -1717,7 +1717,7 @@ void Hotstuff::SyncLaterBlocks(
             
             SETH_DEBUG("real now sync later block %u_%u_%lu",
                 network_id, pool_index, i);
-            kv_sync_->AddSyncHeight(
+            kv_sync_->AddSyncView(
                 network_id,
                 pool_index,
                 i,

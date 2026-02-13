@@ -42,6 +42,7 @@ using ViewBlockSyncedCallback = std::function<int(const view_block::protobuf::Vi
 enum SyncItemTag : uint32_t {
     kBlockHeight = 1,
     kViewHash = 2,
+    kBlockView = 3,
 };
 
 class SyncItem {
@@ -54,13 +55,13 @@ public:
         common::GlobalInfo::Instance()->AddSharedObj(9);
     }
 
-    SyncItem(uint32_t net_id, uint32_t in_pool_idx, uint64_t in_height, uint32_t pri)
+    SyncItem(uint32_t net_id, uint32_t in_pool_idx, uint64_t in_height, uint32_t pri, uint32_t sync_tag)
             : network_id(net_id), pool_idx(in_pool_idx), 
             height(in_height), priority(pri), sync_times(0), responsed_timeout_us(common::kInvalidUint64) {
         key = std::to_string(network_id) + "_" +
             std::to_string(pool_idx) + "_" +
             std::to_string(height);
-        tag = kBlockHeight;
+        tag = sync_tag;
         sync_tm_us = 0;
         common::GlobalInfo::Instance()->AddSharedObj(9);
     }
@@ -88,6 +89,11 @@ public:
     KeyValueSync();
     ~KeyValueSync();
     void AddSyncHeight(
+        uint32_t network_id,
+        uint32_t pool_idx,
+        uint64_t height,
+        uint32_t priority);
+    void AddSyncView(
         uint32_t network_id,
         uint32_t pool_idx,
         uint64_t height,
