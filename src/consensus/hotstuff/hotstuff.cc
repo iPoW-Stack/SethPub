@@ -246,12 +246,12 @@ Status Hotstuff::Propose(
             &out_view);
         if (leader->index != leader_qc->leader_idx()) {
             latest_leader_propose_message_ = nullptr;
-            return;
+            return Status::kError;
         }
 
         if (out_view > view_block_chain_->HighViewBlock()->qc().view()) {
             latest_leader_propose_message_ = nullptr;
-            return;
+            return Status::kError;
         }
 
         auto broadcast = tmp_msg_ptr->header.mutable_broadcast();
