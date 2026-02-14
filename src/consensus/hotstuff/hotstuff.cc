@@ -2051,7 +2051,6 @@ Status Hotstuff::ConstructViewBlock(
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    auto leader_idx = local_member->index;
     auto pre_v_block = view_block_chain()->HighViewBlock();
 #ifdef TEST_FORKING_ATTACK
     auto new_prev_view = pre_v_block->qc().view();
@@ -2076,6 +2075,12 @@ Status Hotstuff::ConstructViewBlock(
         last_stable_leader_member_index_,
         latest_elect_height_,
         &out_view);
+    if (leader->index != local_member->index) {
+        SETH_DEBUG("pool index: %d, leader->index: %d != local_member->index: %d",
+            pool_idx_, leader->index, local_member->index);
+        return Status::kError;
+    }
+    
     auto* qc = view_block->mutable_qc();
     qc->set_leader_idx(leader->index);
     qc->set_view(out_view);
