@@ -571,7 +571,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         msg_ptr->header.hotstuff().pro_msg().view_item().qc().sign_x()).c_str(),
         ProtobufToJson(cons_debug).c_str());
 #endif
-    if (leader_rotation_->GetLocalMemberIdx() == common::kInvalidUint32) {
+    if (GetLocalMemberIdx() == common::kInvalidUint32) {
         ADD_DEBUG_PROCESS_TIMESTAMP();
         return;
     }
@@ -835,7 +835,7 @@ Status Hotstuff::HandleProposeMsgStep_VerifyLeader(std::shared_ptr<ProposeMsgWra
         pro_msg_wrap->msg_ptr->header.hash64(), ProtobufToJson(cons_debug).c_str());
 #endif
     auto& view_item = *pro_msg_wrap->view_block_ptr;
-    auto local_idx = leader_rotation_->GetLocalMemberIdx();
+    auto local_idx = GetLocalMemberIdx();
     if (VerifyLeader(pro_msg_wrap) != Status::kSuccess) {
         if (sync_pool_fn_) {
             sync_pool_fn_(pool_idx_, 1);
@@ -1280,7 +1280,7 @@ Status Hotstuff::VerifyFollower(const transport::MessagePtr& msg_ptr) {
     return Status::kSuccess;
 #endif
     auto& vote_msg = msg_ptr->header.hotstuff().vote_msg();
-    auto member = leader_rotation_->GetMember(vote_msg.replica_idx());
+    auto member = GetMember(vote_msg.replica_idx());
     if (!member) {
         return Status::kError;
     }
@@ -1392,13 +1392,6 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     // Generate aggregate signature, create qc
     auto elect_height = vote_msg.elect_height();
     auto replica_idx = vote_msg.replica_idx();
-    // if (replica_idx == leader_rotation_->GetLocalMemberIdx()) {
-    //     if (latest_leader_propose_message_) {
-    //         auto* leader_qc = latest_leader_propose_message_->header.mutable_hotstuff()->mutable_pro_msg()->mutable_view_item()->mutable_qc();
-    //         leader_qc->set_view_block_hash(vote_msg.view_block_hash());
-    //     }
-    // }
-
     ADD_DEBUG_PROCESS_TIMESTAMP();
     std::shared_ptr<libff::alt_bn128_G1> reconstructed_sign;
     auto qc_item_ptr = std::make_shared<QC>();
@@ -1926,7 +1919,7 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
         return Status::kError;
     }
 
-    auto local_index = leader_rotation_->GetLocalMemberIdx();
+    auto local_index = GetLocalMemberIdx();
     if (local_index == leader->index) {
         pro_msg_wrap->leader = leader;
         pro_msg_wrap->msg_ptr->is_leader = true;
@@ -2252,7 +2245,7 @@ Status Hotstuff::SendMsgToLeader(
     }
 
     trans_msg->header.set_ecdh_encrypt(crypt_msg);
-    auto local_idx = leader_rotation_->GetLocalMemberIdx();
+    auto local_idx = GetLocalMemberIdx();
     if (leader->index != local_idx) {
         // if (leader->public_ip == 0 || leader->public_port == 0) {
             network::Route::Instance()->Send(trans_msg);
@@ -2326,8 +2319,8 @@ void Hotstuff::TryRecoverFromStuck(
         has_user_tx_tag_ = true;
     }
 
-    if (leader_rotation_->GetLocalMemberIdx() == common::kInvalidUint32) {
-        // SETH_DEBUG("leader_rotation_->GetLocalMemberIdx() == common::kInvalidUint32, pool: %u", pool_idx_);
+    if (GetLocalMemberIdx() == common::kInvalidUint32) {
+        // SETH_DEBUG("GetLocalMemberIdx() == common::kInvalidUint32, pool: %u", pool_idx_);
         return;
     }
 
@@ -2377,7 +2370,7 @@ void Hotstuff::TryRecoverFromStuck(
         return;
     }
     
-    auto local_idx = leader_rotation_->GetLocalMemberIdx();
+    auto local_idx = GetLocalMemberIdx();
     if (leader && leader->index == local_idx) {
         assert(leader->pubkey == crypto_->security()->GetPublicKey());
         ADD_DEBUG_PROCESS_TIMESTAMP();

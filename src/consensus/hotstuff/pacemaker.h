@@ -6,7 +6,6 @@
 #include <consensus/hotstuff/crypto.h>
 #include <functional>
 
-#include <consensus/hotstuff/leader_rotation.h>
 #include <consensus/hotstuff/types.h>
 #include <consensus/hotstuff/view_duration.h>
 #include <libff/algebra/curves/alt_bn128/alt_bn128_g1.hpp>
@@ -35,7 +34,6 @@ public:
 #else
             const std::shared_ptr<Crypto>& crypto,
 #endif
-            std::shared_ptr<LeaderRotation>& leader_rotation,
             const std::shared_ptr<ViewDuration>& duration,
             GetHighQCFn get_high_qc_fn,
             UpdateHighQCFn update_high_qc_fn,
@@ -132,7 +130,6 @@ private:
 #else
     std::shared_ptr<Crypto> crypto_;
 #endif
-    std::shared_ptr<LeaderRotation> leader_rotation_ = nullptr;
     std::shared_ptr<ViewDuration> duration_;
     std::shared_ptr<TC> high_tc_ = nullptr;
     GetHighQCFn get_high_qc_fn_ = nullptr;

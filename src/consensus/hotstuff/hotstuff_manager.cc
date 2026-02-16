@@ -1,5 +1,4 @@
 #include "hotstuff_manager.h"
-#include "leader_rotation.h"
 
 #include <cassert>
 #include <chrono>
@@ -80,13 +79,11 @@ int HotstuffManager::Init(
         auto crypto = std::make_shared<Crypto>(pool_idx, elect_info_, bls_mgr);
         auto pcrypto = std::make_shared<Crypto>(pool_idx, elect_info_, bls_mgr);
         auto chain = std::make_shared<ViewBlockChain>();
-        auto leader_rotation = std::make_shared<LeaderRotation>(pool_idx, chain, elect_info_);
         pools::protobuf::PoolLatestInfo pool_latest_info;
         InitLatestInfo(pool_latest_info, pool_idx);
         auto pacemaker = std::make_shared<Pacemaker>(
             pool_idx,
             pcrypto,
-            leader_rotation,
             std::make_shared<ViewDuration>(
                 pool_idx,
                 ViewDurationSampleSize,
@@ -110,7 +107,7 @@ int HotstuffManager::Init(
         pool_hotstuff_[pool_idx] = std::make_shared<Hotstuff>(
             block_mgr_,
             *this,
-            kv_sync, pool_idx, leader_rotation, chain,
+            kv_sync, pool_idx, chain,
             acceptor, wrapper, pacemaker, crypto, elect_info_, db_, tm_block_mgr,
             new_block_cache_callback);
         pool_hotstuff_[pool_idx]->Init();

@@ -4,7 +4,6 @@
 #include <consensus/hotstuff/block_acceptor.h>
 #include <consensus/hotstuff/block_wrapper.h>
 #include <consensus/hotstuff/elect_info.h>
-#include <consensus/hotstuff/leader_rotation.h>
 #include <consensus/hotstuff/pacemaker.h>
 #include <consensus/hotstuff/types.h>
 #include <consensus/hotstuff/view_block_chain.h>
@@ -57,7 +56,6 @@ public:
             consensus::HotstuffManager& hotstuff_mgr,
             std::shared_ptr<sync::KeyValueSync>& kv_sync,
             const uint32_t& pool_idx,
-            const std::shared_ptr<LeaderRotation>& lr,
             const std::shared_ptr<ViewBlockChain>& chain,
             const std::shared_ptr<IBlockAcceptor>& acceptor,
             const std::shared_ptr<IBlockWrapper>& wrapper,
@@ -76,7 +74,6 @@ public:
         block_acceptor_(acceptor),
         block_wrapper_(wrapper),
         view_block_chain_(chain),
-        leader_rotation_(lr),
         elect_info_(elect_info),
         db_(db),
         tm_block_mgr_(tm_block_mgr),
@@ -114,7 +111,7 @@ public:
 
         latest_elect_height_ = elect_height;
         consecutive_failures_ = 0;
-        last_stable_leader_member_index_ = leader_rotation_->GetEpochLeaderIndex();
+        last_stable_leader_member_index_ = GetEpochLeaderIndex();
         SETH_DEBUG("pool: %d, success set last_stable_leader_member_index_: %d, "
             "latest_elect_height_: %lu",
             pool_idx_, last_stable_leader_member_index_, latest_elect_height_);
@@ -167,10 +164,6 @@ public:
 
     inline std::shared_ptr<Pacemaker> pacemaker() const {
         return pacemaker_;
-    }
-
-    inline std::shared_ptr<LeaderRotation> leader_rotation() const {
-        return leader_rotation_;
     }
 
     inline std::shared_ptr<ElectInfo> elect_info() const {
@@ -279,6 +272,117 @@ private:
         uint32_t pool_index,
         View view);
 
+    common::BftMemberPtr GetLeader(
+            std::shared_ptr<ViewBlock> high_view_block, 
+            int32_t consecutive_failures, 
+            uint32_t last_stable_leader_member_index,
+            uint64_t latest_elect_height,
+            View* out_view) const {
+        auto sharding_id = common::GlobalInfo::Instance()->network_id();
+        assert(elect_info_ != nullptr);
+        auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
+        if (elect_item == nullptr) {
+            // assert(false);
+            return nullptr;
+        }
+
+        auto members = elect_item->valid_leaders();
+        if (members->empty()) {
+            return nullptr;
+        }
+
+        auto now = common::TimeUtils::TimestampSeconds();
+        auto timeout = static_cast<uint64_t>(
+            common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures, 6)));
+        auto elapsed = now - (high_view_block->block_info().timestamp() / 1000llu);
+        uint64_t k = (elapsed > timeout) ? (elapsed / timeout) : 0;
+        SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
+            "consecutive_failures: %d, now: %u, block tm: %lu, "
+            "last_stable_leader_member_index: %d, latest_elect_height: %lu, out view: %lu", 
+            pool_idx_, 
+            high_view_block->qc().view(), 
+            elapsed, 
+            timeout, 
+            k, 
+            consecutive_failures,
+            now, 
+            high_view_block->block_info().timestamp(),
+            last_stable_leader_member_index,
+            latest_elect_height,
+            (high_view_block->qc().view() + latest_elect_height + 1));
+        // if (k == 0) {
+            if (high_view_block->qc().elect_height() < latest_elect_height) {
+                *out_view = high_view_block->qc().view() + latest_elect_height + 1;
+            } else {
+                *out_view = high_view_block->qc().view() + 1;
+            }
+            // 粘性模式：视图紧凑递增，Leader连任
+            return (*members)[last_stable_leader_member_index % members->size()];
+        // } else {
+        //     // 切换模式：强制跳过一个视图号 (V + k + 1)
+        //     // 当超时刚刚发生(k=1)时，out_view = last_qc.view + 2
+        //     if (high_view_block->qc().elect_height() < latest_elect_height) {
+        //         *out_view = high_view_block->qc().view() + latest_elect_height + k + 1;
+        //     } else {
+        //         *out_view = high_view_block->qc().view() + k + 1;
+        //     }
+
+        //     int leader_pos = (
+        //         last_stable_leader_member_index + 
+        //         static_cast<int>(k) + 
+        //         common::kImmutablePoolSize) % members->size();
+        //     return (*members)[leader_pos];
+        // }
+    }
+
+    inline common::BftMemberPtr GetMember(uint32_t member_index) const {
+        auto members = Members(common::GlobalInfo::Instance()->network_id());
+        if (member_index >= members->size()) {
+            return nullptr;
+        }
+
+        return (*members)[member_index];
+    }
+
+    inline uint32_t GetEpochLeaderIndex() const {
+        auto sharding_id = common::GlobalInfo::Instance()->network_id();
+        assert(elect_info_ != nullptr);
+        auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
+        if (elect_item == nullptr) {
+            // assert(false);
+            return common::kInvalidUint32;
+        }
+
+        auto index = (elect_item->ElectHeight() + pool_idx_) % elect_item->valid_leaders()->size();
+        return elect_item->valid_leaders()->at(index)->index;
+    }
+
+    inline uint32_t GetLocalMemberIdx() const {
+        auto sharding_id = common::GlobalInfo::Instance()->network_id();
+        assert(elect_info_ != nullptr);
+        auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
+        if (elect_item == nullptr) {
+            // assert(false);
+            return common::kInvalidUint32;
+        }
+
+        auto local_mem_ptr = elect_info_->GetElectItemWithShardingId(sharding_id)->LocalMember();
+        if (local_mem_ptr == nullptr) {
+            // assert(false);
+            return common::kInvalidUint32;
+        }
+
+        return local_mem_ptr->index;
+    }
+
+    inline common::MembersPtr Members(uint32_t sharding_id) const {
+        auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
+        if (!elect_item) {
+            return std::make_shared<common::Members>();
+        }
+        return elect_item->Members();
+    }
+
     static const uint64_t kLatestPoposeSendTxToLeaderPeriodMs = 10000lu;
 
     std::shared_ptr<block::BlockManager> block_mgr_;
@@ -290,7 +394,6 @@ private:
     std::shared_ptr<ViewBlockChain> view_block_chain_;
     std::shared_ptr<ViewBlockChain> root_view_block_chain_;
     std::unordered_map<uint32_t, std::shared_ptr<ViewBlockChain>> cross_shard_view_block_chain_;
-    std::shared_ptr<LeaderRotation> leader_rotation_;
     std::shared_ptr<ElectInfo> elect_info_;
     std::shared_ptr<db::Db> db_ = nullptr;
     std::shared_ptr<protos::PrefixDb> prefix_db_ = nullptr;
