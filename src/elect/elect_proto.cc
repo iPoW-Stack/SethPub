@@ -19,38 +19,6 @@ namespace seth {
 
 namespace elect {
 
-bool ElectProto::CreateLeaderRotation(
-        std::shared_ptr<security::Security>& security_ptr,
-        const dht::NodePtr& local_node,
-        const std::string& leader_id,
-        uint32_t pool_mod_num,
-        transport::protobuf::Header& msg) {
-    msg.set_src_sharding_id(local_node->sharding_id);
-    dht::DhtKeyManager dht_key(common::GlobalInfo::Instance()->network_id());
-    msg.set_des_dht_key(dht_key.StrKey());
-    msg.set_type(common::kElectMessage);
-    // now just for test
-    protobuf::ElectMessage ec_msg;
-    auto leader_rotation = ec_msg.mutable_leader_rotation();
-    leader_rotation->set_leader_id(leader_id);
-    leader_rotation->set_pool_mod_num(pool_mod_num);
-//     ec_msg.set_pubkey(security_ptr->GetPublicKey());
-    auto broad_param = msg.mutable_broadcast();
-    broadcast::SetDefaultBroadcastParam(broad_param);
-    broad_param->set_hop_limit(10);
-    std::string hash_str = leader_id + std::to_string(pool_mod_num);
-    auto message_hash = transport::TcpTransport::Instance()->GetHeaderHashForSign(msg);
-    std::string sign;
-    int sign_res = security_ptr->Sign(message_hash, &sign);
-    if (sign_res != security::kSecuritySuccess) {
-        ELECT_ERROR("signature error.");
-        return false;
-    }
-
-    msg.set_sign(sign);
-    return true;
-}
-
 bool ElectProto::CreateElectWaitingNodes(
         std::shared_ptr<security::Security>& security_ptr,
         const dht::NodePtr& local_node,

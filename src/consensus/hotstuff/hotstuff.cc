@@ -151,7 +151,7 @@ void Hotstuff::InitAddNewViewBlock(
 Status Hotstuff::Start() {
     StartInit();
     View out_view = 0;
-    auto leader = leader_rotation()->GetLeader(
+    auto leader = GetLeader(
         view_block_chain_->HighViewBlock(), 
         consecutive_failures_, 
         last_stable_leader_member_index_,
@@ -231,7 +231,7 @@ Status Hotstuff::Propose(
     auto t1 = common::TimeUtils::TimestampMs();
 #endif
     View out_view = 0;
-    auto leader = leader_rotation()->GetLeader(
+    auto leader = GetLeader(
         view_block_chain_->HighViewBlock(), 
         consecutive_failures_, 
         last_stable_leader_member_index_,
@@ -789,7 +789,7 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
                     auto tmp_msg_ptr = std::make_shared<transport::TransportMessage>();
                     tmp_msg_ptr->header.CopyFrom(iter->second->header);
                     View out_view = 0;
-                    auto leader = leader_rotation()->GetLeader(
+                    auto leader = GetLeader(
                         view_block_chain_->HighViewBlock(), 
                         consecutive_failures_, 
                         last_stable_leader_member_index_,
@@ -1862,7 +1862,7 @@ Status Hotstuff::VerifyVoteMsg(const hotstuff::protobuf::VoteMsg& vote_msg) {
 
 Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
     View out_view = 0;
-    auto leader = leader_rotation()->GetLeader(
+    auto leader = GetLeader(
         view_block_chain_->HighViewBlock(), 
         consecutive_failures_, 
         last_stable_leader_member_index_,
@@ -2078,7 +2078,7 @@ Status Hotstuff::ConstructViewBlock(
     }
 #endif
     View out_view = 0;
-    auto leader = leader_rotation()->GetLeader(
+    auto leader = GetLeader(
         view_block_chain_->HighViewBlock(), 
         consecutive_failures_, 
         last_stable_leader_member_index_,
@@ -2359,7 +2359,7 @@ void Hotstuff::TryRecoverFromStuck(
     // }
 
     View out_view = 0;
-    auto leader = leader_rotation()->GetLeader(
+    auto leader = GetLeader(
         view_block_chain_->HighViewBlock(), 
         consecutive_failures_, 
         last_stable_leader_member_index_,
