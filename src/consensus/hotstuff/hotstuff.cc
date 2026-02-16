@@ -546,6 +546,15 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         return;
     }
 
+    auto latest_view_block_ptr = view_block_chain()->HighViewBlock();
+    if (msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size() == 0) {
+        if (latest_view_block_ptr->block_info().tx_list_size() == 0) {
+            ADD_DEBUG_PROCESS_TIMESTAMP();
+            SETH_INFO("pool: %d, high view block tx size is 0, and propose tx size is 0, ignore.", pool_idx_);
+            return;
+        }
+    }
+
     // assert(msg_ptr->header.hotstuff().pro_msg().view_item().qc().view_block_hash().empty());
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
