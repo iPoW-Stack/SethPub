@@ -279,7 +279,7 @@ private:
             uint64_t latest_elect_height,
             View* out_view) const {
         auto members = Members(common::GlobalInfo::Instance()->network_id());
-        if (member_index >= members->size()) {
+        if (members == nullptr) {
             return nullptr;
         }
 
