@@ -2080,7 +2080,7 @@ Status Hotstuff::ConstructViewBlock(
             pool_idx_, leader->index, local_member->index);
         return Status::kError;
     }
-    
+
     auto* qc = view_block->mutable_qc();
     qc->set_leader_idx(leader->index);
     qc->set_view(out_view);
@@ -2318,6 +2318,13 @@ void Hotstuff::TryRecoverFromStuck(
     auto now_tm_ms = common::TimeUtils::TimestampMs();
     if (now_tm_ms >= prev_sync_latest_view_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs) {
         prev_sync_latest_view_tm_ms_ = now_tm_ms;
+        auto hight_view_block = view_block_chain_->HighViewBlock();
+        if (hight_view_block) {
+            kv_sync_->AddSyncView(
+                hight_view_block->qc().network_id(), 
+                hight_view_block->qc().pool_index(), 
+                hight_view_block->qc().view() + 1);
+        }
     } else {
         if (!has_user_tx_tag_ && !has_system_tx) {
             return;
