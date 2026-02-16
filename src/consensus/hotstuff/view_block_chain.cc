@@ -62,10 +62,12 @@ Status ViewBlockChain::Store(
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(view_block->debug());
 #endif
+
     if (Has(view_block->qc().view_block_hash())) {
 #ifndef NDEBUG
         SETH_DEBUG("view block already stored, hash: %s, view: %lu, propose_debug: %s",
-            common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(), view_block->qc().view(),
+            common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(), 
+            view_block->qc().view(),
             ProtobufToJson(cons_debug).c_str());        
 #endif
         return Status::kSuccess;
@@ -96,6 +98,14 @@ Status ViewBlockChain::Store(
                 key, 
                 view_block->block_info().key_value_array(i).value(), 
                 zjc_host_ptr->db_batch_);
+            zjc_host_ptr->SaveKeyValue(
+                view_block->block_info().key_value_array(i).addr(),
+                view_block->block_info().key_value_array(i).key(), 
+                view_block->block_info().key_value_array(i).value());
+            SETH_DEBUG("addr: %s, success add key: %s, value: %s", 
+                common::Encode::HexEncode(view_block->block_info().key_value_array(i).addr()).c_str(), 
+                common::Encode::HexEncode(view_block->block_info().key_value_array(i).key()).c_str(), 
+                common::Encode::HexEncode(view_block->block_info().key_value_array(i).value()).c_str());
         }
     }
 
