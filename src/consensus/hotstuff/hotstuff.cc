@@ -2323,7 +2323,8 @@ void Hotstuff::TryRecoverFromStuck(
             kv_sync_->AddSyncView(
                 hight_view_block->qc().network_id(), 
                 hight_view_block->qc().pool_index(), 
-                hight_view_block->qc().view() + 1);
+                hight_view_block->qc().view() + 1,
+                sync::kSyncHighest);
         }
     } else {
         if (!has_user_tx_tag_ && !has_system_tx) {
