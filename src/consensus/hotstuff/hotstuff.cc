@@ -214,13 +214,17 @@ Status Hotstuff::Propose(
             assert(tc->network_id() == common::GlobalInfo::Instance()->network_id());
             assert(IsQcTcValid(*tc));
             latest_qc_item_ptr_ = tc;
-            latest_leader_propose_message_ = nullptr;
         }
 
         // if (latest_leader_propose_message_ && 
         //         latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view() <= tc->view()) {
         //     latest_leader_propose_message_ = nullptr;
         // }
+    }
+
+    if (latest_leader_propose_message_ &&
+            latest_leader_propose_message_->latest_qc_view < latest_qc_item_ptr_->view()) {
+        latest_leader_propose_message_ = nullptr;
     }
 
 #ifndef NDEBUG
@@ -412,6 +416,7 @@ Status Hotstuff::Propose(
     latest_leader_propose_message_ = nullptr;
     if (tmp_msg_ptr->header.hotstuff().pro_msg().has_view_item()) {
         latest_leader_propose_message_ = tmp_msg_ptr;
+        latest_leader_propose_message_->latest_qc_view = latest_qc_item_ptr_->view();
     }
 
 #ifndef NDEBUG
@@ -870,7 +875,6 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
             // last_stable_leader_member_index_ = latest_qc_item_ptr_->leader_idx();
             // SETH_DEBUG("pool: %d, success set last_stable_leader_member_index_: %d",
             //     pool_idx_, last_stable_leader_member_index_);
-            latest_leader_propose_message_ = nullptr;
         }
         SETH_DEBUG("commit use time: %lu", (common::TimeUtils::TimestampMs() - btime));
 
@@ -924,7 +928,6 @@ Status Hotstuff::HandleProposeMsgStep_VerifyQC(std::shared_ptr<ProposeMsgWrapper
                 pro_msg.tc().view() >= latest_qc_item_ptr_->view()) {
             assert(IsQcTcValid(pro_msg.tc()));
             latest_qc_item_ptr_ = std::make_shared<view_block::protobuf::QcItem>(pro_msg.tc());
-            latest_leader_propose_message_ = nullptr;
         }
 
         ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -1655,8 +1658,6 @@ void Hotstuff::HandleSyncedViewBlock(
             if (IsQcTcValid(vblock->qc())) {
                 latest_qc_item_ptr_ = std::make_shared<view_block::protobuf::QcItem>(vblock->qc());
             }
-
-            latest_leader_propose_message_ = nullptr;
         }
         TryCommit(view_block_chain(), msg_ptr, *latest_qc_item_ptr_);
         TryCommit(view_block_chain(), msg_ptr, vblock->qc());
