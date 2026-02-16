@@ -278,16 +278,8 @@ private:
             uint32_t last_stable_leader_member_index,
             uint64_t latest_elect_height,
             View* out_view) const {
-        auto sharding_id = common::GlobalInfo::Instance()->network_id();
-        assert(elect_info_ != nullptr);
-        auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
-        if (elect_item == nullptr) {
-            // assert(false);
-            return nullptr;
-        }
-
-        auto members = elect_item->valid_leaders();
-        if (members->empty()) {
+        auto members = Members(common::GlobalInfo::Instance()->network_id());
+        if (member_index >= members->size()) {
             return nullptr;
         }
 
