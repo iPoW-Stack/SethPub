@@ -60,7 +60,8 @@ public:
             height(in_height), priority(pri), sync_times(0), responsed_timeout_us(common::kInvalidUint64) {
         key = std::to_string(network_id) + "_" +
             std::to_string(pool_idx) + "_" +
-            std::to_string(height);
+            std::to_string(height) + "_" + 
+            std::to_string(sync_tag);
         tag = sync_tag;
         sync_tm_us = 0;
         common::GlobalInfo::Instance()->AddSharedObj(9);

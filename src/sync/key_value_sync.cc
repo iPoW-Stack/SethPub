@@ -589,16 +589,17 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
     std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>> res_map;
     for (auto iter = res_arr.begin(); iter != res_arr.end(); ++iter) {
         std::string key = iter->key();
-        if (iter->tag() == kBlockHeight) {
+        if (iter->tag() == kBlockHeight || iter->tag() == kBlockView) {
             key = std::to_string(iter->network_id()) + "_" +
                 std::to_string(iter->pool_idx()) + "_" +
-                std::to_string(iter->height());
+                std::to_string(iter->height()) + "_" +
+                std::to_string(iter->tag());
         }
 
         do {
             SETH_DEBUG("now handle kv response hash64: %lu, key: %s, tag: %d",
                 msg_ptr->header.hash64(), 
-                (iter->tag() == kBlockHeight ? key.c_str() : common::Encode::HexEncode(key).c_str()), 
+                (iter->tag() != kViewHash ? key.c_str() : common::Encode::HexEncode(key).c_str()), 
                 iter->tag());
             auto pb_vblock = std::make_shared<view_block::protobuf::ViewBlockItem>();
             if (!pb_vblock->ParseFromString(iter->value())) {
