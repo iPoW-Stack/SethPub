@@ -276,6 +276,7 @@ int NetworkInit::Init(int argc, char** argv) {
         INIT_ERROR("InitHttpServer failed!");
         return kInitError;
     }
+
     SETH_INFO("init 7");
     if (InitCommand() != kInitSuccess) {
         INIT_ERROR("InitCommand failed!");
@@ -1259,7 +1260,6 @@ void NetworkInit::HandleElectionBlock(
         return;
     }
 
-    // TODO log members
     auto sharding_id = elect_block->shard_network_id();
     auto elect_height = elect_mgr_->latest_height(sharding_id);
     libff::alt_bn128_G2 common_pk;
@@ -1389,7 +1389,6 @@ void NetworkInit::SendJoinElectTransaction() {
         common::Encode::HexEncode(new_tx->pubkey()).c_str(),
         common::Encode::HexEncode(new_tx->sign()).c_str());
 }
-
 
 void NetworkInit::CreateContribution(bls::protobuf::VerifyVecBrdReq* bls_verify_req) {
     auto n = common::GlobalInfo::Instance()->each_shard_max_members();

@@ -151,12 +151,7 @@ void Hotstuff::InitAddNewViewBlock(
 Status Hotstuff::Start() {
     StartInit();
     View out_view = 0;
-    auto leader = GetLeader(
-        view_block_chain_->HighViewBlock(), 
-        consecutive_failures_, 
-        last_stable_leader_member_index_,
-        latest_elect_height_,
-        &out_view);
+    auto leader = GetLeader(&out_view);
     auto elect_item = elect_info_->GetElectItemWithShardingId(common::GlobalInfo::Instance()->network_id());
     if (!elect_item || !elect_item->IsValid()) {
         return Status::kElectItemNotFound;
@@ -231,12 +226,7 @@ Status Hotstuff::Propose(
     auto t1 = common::TimeUtils::TimestampMs();
 #endif
     View out_view = 0;
-    auto leader = GetLeader(
-        view_block_chain_->HighViewBlock(), 
-        consecutive_failures_, 
-        last_stable_leader_member_index_,
-        latest_elect_height_,
-        &out_view);
+    auto leader = GetLeader(&out_view);
     if (latest_leader_propose_message_ &&
             latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view() >= 
             pacemaker_->CurView()) {
@@ -789,12 +779,7 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
                     auto tmp_msg_ptr = std::make_shared<transport::TransportMessage>();
                     tmp_msg_ptr->header.CopyFrom(iter->second->header);
                     View out_view = 0;
-                    auto leader = GetLeader(
-                        view_block_chain_->HighViewBlock(), 
-                        consecutive_failures_, 
-                        last_stable_leader_member_index_,
-                        latest_elect_height_,
-                        &out_view);
+                    auto leader = GetLeader(&out_view);
                     if (!leader || SendMsgToLeader(leader, tmp_msg_ptr, VOTE) != Status::kSuccess) {
                         SETH_ERROR("pool: %d, Send vote message is error.",
                             pool_idx_, pro_msg_wrap->msg_ptr->header.hash64());
@@ -1862,12 +1847,7 @@ Status Hotstuff::VerifyVoteMsg(const hotstuff::protobuf::VoteMsg& vote_msg) {
 
 Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
     View out_view = 0;
-    auto leader = GetLeader(
-        view_block_chain_->HighViewBlock(), 
-        consecutive_failures_, 
-        last_stable_leader_member_index_,
-        latest_elect_height_,
-        &out_view);
+    auto leader = GetLeader(&out_view);
     if (!leader) {
         SETH_ERROR("Get Leader is error.");
         return Status::kError;
@@ -2078,12 +2058,7 @@ Status Hotstuff::ConstructViewBlock(
     }
 #endif
     View out_view = 0;
-    auto leader = GetLeader(
-        view_block_chain_->HighViewBlock(), 
-        consecutive_failures_, 
-        last_stable_leader_member_index_,
-        latest_elect_height_,
-        &out_view);
+    auto leader = GetLeader(&out_view);
     if (leader->index != local_member->index) {
         SETH_DEBUG("pool index: %d, leader->index: %d != local_member->index: %d",
             pool_idx_, leader->index, local_member->index);
@@ -2359,12 +2334,7 @@ void Hotstuff::TryRecoverFromStuck(
     // }
 
     View out_view = 0;
-    auto leader = GetLeader(
-        view_block_chain_->HighViewBlock(), 
-        consecutive_failures_, 
-        last_stable_leader_member_index_,
-        latest_elect_height_,
-        &out_view);
+    auto leader = GetLeader(&out_view);
     if (!leader) {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
         return;
