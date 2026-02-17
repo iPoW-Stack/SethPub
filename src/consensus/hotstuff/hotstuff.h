@@ -278,10 +278,10 @@ private:
         auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
         if (elect_item == nullptr) {
             // assert(false);
-            return common::kInvalidUint32;
+            return nullptr;
         }
 
-        members = elect_item->valid_leaders();
+        auto members = elect_item->valid_leaders();
         // auto members = Members(common::GlobalInfo::Instance()->network_id());
         // if (members == nullptr) {
         //     return nullptr;
