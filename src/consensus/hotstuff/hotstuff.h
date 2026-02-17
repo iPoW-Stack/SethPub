@@ -273,10 +273,19 @@ private:
         View view);
 
     common::BftMemberPtr GetLeader(View* out_view) {
-        auto members = Members(common::GlobalInfo::Instance()->network_id());
-        if (members == nullptr) {
-            return nullptr;
+        auto sharding_id = common::GlobalInfo::Instance()->network_id();
+        assert(elect_info_ != nullptr);
+        auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
+        if (elect_item == nullptr) {
+            // assert(false);
+            return common::kInvalidUint32;
         }
+
+        members = elect_item->valid_leaders();
+        // auto members = Members(common::GlobalInfo::Instance()->network_id());
+        // if (members == nullptr) {
+        //     return nullptr;
+        // }
 
         auto high_view_block = view_block_chain_->HighViewBlock();
         auto now = common::TimeUtils::TimestampSeconds();
