@@ -272,7 +272,7 @@ private:
         uint32_t pool_index,
         View view);
 
-    common::BftMemberPtr GetLeader(View* out_view) const {
+    common::BftMemberPtr GetLeader(View* out_view) {
         auto members = Members(common::GlobalInfo::Instance()->network_id());
         if (members == nullptr) {
             return nullptr;
@@ -281,7 +281,7 @@ private:
         auto high_view_block = view_block_chain_->HighViewBlock();
         auto now = common::TimeUtils::TimestampSeconds();
         auto timeout = static_cast<uint64_t>(
-            common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6)));
+            common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
         auto elapsed = now - (high_view_block->block_info().timestamp() / 1000llu);
         uint64_t k = (elapsed > timeout) ? (elapsed / timeout) : 0;
         SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
