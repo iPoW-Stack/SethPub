@@ -117,7 +117,7 @@ void KeyValueSync::BroadcastGlobalBlock() {
             auto res = sync_res->add_res();
             res->set_network_id(view_block_ptr->qc().network_id());
             res->set_pool_idx(view_block_ptr->qc().pool_index());
-            res->set_height(view_block_ptr->qc().view());
+            res->set_height(view_block_ptr->block_info().height());
             res->set_value(view_block_ptr->SerializeAsString());
             res->set_key("");
             res->set_tag(kBlockHeight);
@@ -233,7 +233,7 @@ void KeyValueSync::PopItems() {
             }
 
             if (responsed_keys_.exists(item->key)) {
-                // SETH_DEBUG("responsed_keys_.exists(item->key): %s", item->key.c_str());
+                SETH_DEBUG("responsed_keys_.exists(item->key): %s", item->key.c_str());
                 continue;
             }
 
