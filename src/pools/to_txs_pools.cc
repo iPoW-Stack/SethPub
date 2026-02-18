@@ -193,8 +193,7 @@ void ToTxsPools::LoadLatestHeights() {
                 height <= pool_latest_height; ++height) {
             auto view_block_ptr = std::make_shared<view_block::protobuf::ViewBlockItem>();
             auto& view_block = *view_block_ptr;
-            if (!prefix_db_->GetBlockWithHeight(
-                    common::GlobalInfo::Instance()->network_id(), i, height, &view_block)) {
+            if (!prefix_db_->GetBlockWithHeight(net_id, i, height, &view_block)) {
                 consensus_stop = true;
             } else {
                 NewBlock(view_block_ptr);
