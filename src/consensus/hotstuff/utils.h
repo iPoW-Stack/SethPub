@@ -3,6 +3,9 @@
 #include <memory>
 #include <tuple>
 
+#include <google/protobuf/io/coded_stream.h>
+#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
+
 #include "common/hash.h"
 #include "protos/block.pb.h"
 #include "protos/view_block.pb.h"
@@ -67,6 +70,47 @@ bool ViewBlockIsCheckedParentHash(
 } // namespace hotstuff
 
 } // namespace seth
+/**
+ * @brief Universal Deterministic Serialization Function
+ * @param message The Protobuf message object to be serialized
+ * @return std::string The serialized byte string, or an empty string if failed
+ */
+template <typename T>
+std::string SerializeDeterministic(const T& message) {
+    // 1. Pre-calculate the total byte size
+    // Crucial for multi-threaded safety: if the message is modified between 
+    // size calculation and writing, Protobuf will trigger a consistency crash.
+    size_t size = message.ByteSizeLong();
+    
+    // Optional: Check if the message is initialized (all required fields present)
+    if (size == 0 && !message.IsInitialized()) {
+        // Log or handle uninitialized message if necessary
+    }
+
+    std::string output;
+    output.reserve(size); // Pre-allocate memory to optimize performance
+
+    {
+        google::protobuf::io::StringOutputStream string_stream(&output);
+        google::protobuf::io::CodedOutputStream coded_output(&string_stream);
+
+        // Enable Deterministic Serialization: Ensures identical messages 
+        // result in identical byte sequences across different platforms/instances.
+        // Critical for hash calculations and distributed signature verification.
+        coded_output.SetSerializationDeterministic(true);
+
+        // Using SerializePartialToCodedStream allows serialization even if 
+        // some 'required' fields are missing. Use SerializeToCodedStream for strict checks.
+        if (!message.SerializePartialToCodedStream(&coded_output)) {
+            return ""; 
+        }
+        
+        // The buffer is flushed to the StringOutputStream when coded_output 
+        // goes out of scope or Trim() is called.
+    }
+
+    return output;
+}
 
 namespace std {
     template <>

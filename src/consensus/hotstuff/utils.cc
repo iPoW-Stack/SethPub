@@ -1,8 +1,5 @@
 #include "consensus/hotstuff/utils.h"
 
-#include <google/protobuf/io/coded_stream.h>
-#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
-
 #include <consensus/hotstuff/types.h>
 #include "consensus/hotstuff/view_block_chain.h"
 #include "pools/tx_utils.h"
@@ -14,16 +11,7 @@ namespace seth {
 namespace hotstuff {
 
 std::string GetBlockHash(const view_block::protobuf::ViewBlockItem &view_block) {
-    std::string serialized;
-    google::protobuf::io::StringOutputStream string_stream(&serialized);
-    google::protobuf::io::CodedOutputStream coded_output(&string_stream);
-    coded_output.SetSerializationDeterministic(true); 
-    auto& block = view_block.block_info();
-    if (!block.SerializePartialToCodedStream(&coded_output)) {
-        return "";
-    }
-
-    coded_output.Trim();
+    std::string serialized = SerializeDeterministic(view_block);
     uint32_t sharding_id = view_block.qc().network_id();
     serialized.append((char*)&sharding_id, sizeof(sharding_id));
     uint32_t pool_index = view_block.qc().pool_index();
