@@ -11,7 +11,8 @@ namespace seth {
 namespace hotstuff {
 
 std::string GetBlockHash(const view_block::protobuf::ViewBlockItem &view_block) {
-    std::string serialized = SerializeDeterministic(view_block);
+    auto& block = view_block.block_info();
+    std::string serialized = SerializeDeterministic(block);
     uint32_t sharding_id = view_block.qc().network_id();
     serialized.append((char*)&sharding_id, sizeof(sharding_id));
     uint32_t pool_index = view_block.qc().pool_index();
@@ -19,7 +20,6 @@ std::string GetBlockHash(const view_block::protobuf::ViewBlockItem &view_block) 
     serialized.append(view_block.parent_hash());
     auto hash = common::Hash::keccak256(serialized);
 
-    auto& block = view_block.block_info();
     SETH_DEBUG("get block hash: %s, sharding_id: %u, pool_index: %u, "
         "phash: %s, vss_random: %lu, height: %lu, "
         "timeblock_height: %lu, timestamp: %lu, msg: %s",
