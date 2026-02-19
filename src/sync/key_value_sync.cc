@@ -118,7 +118,7 @@ void KeyValueSync::BroadcastGlobalBlock() {
             res->set_network_id(view_block_ptr->qc().network_id());
             res->set_pool_idx(view_block_ptr->qc().pool_index());
             res->set_height(view_block_ptr->block_info().height());
-            res->set_value(view_block_ptr->SerializeAsString());
+            res->set_value(SerializeDeterministic(*view_block_ptr));
             res->set_key("");
             res->set_tag(kBlockHeight);
             add_size += 16 + res->value().size();
@@ -462,7 +462,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
             res->set_network_id(view_block_ptr->qc().network_id());
             res->set_pool_idx(view_block_ptr->qc().pool_index());
             res->set_height(view_block_ptr->qc().view());
-            res->set_value(view_block_ptr->SerializeAsString());
+            res->set_value(SerializeDeterministic(*view_block_ptr));
             res->set_key(key);
             res->set_tag(kViewHash);
             add_size += 16 + res->value().size();
@@ -551,7 +551,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
         res->set_network_id(network_id);
         res->set_pool_idx(req_height.pool_idx());
         res->set_height(req_height.height());
-        res->set_value(view_block_ptr->SerializeAsString());
+        res->set_value(SerializeDeterministic(*view_block_ptr));
         res->set_tag(req_height.tag());
         add_size += 16 + res->value().size();
         if (add_size >= kSyncPacketMaxSize) {

@@ -326,7 +326,7 @@ void BlockManager::RootHandleNormalToTx(
         tx->set_amount(0);
         tx->set_gas_price(common::kBuildinTransactionGasPrice);
         tx->set_nonce(++step_with_nonce_[tx->step()]);
-        tx->set_value(tos_item.SerializeAsString());
+        tx->set_value(SerializeDeterministic(tos_item));
         auto unique_hash = common::Hash::keccak256(
             tx->to() + "_" +
             std::to_string(block.height()) + "_" +
@@ -487,7 +487,7 @@ void BlockManager::CreateLocalToTx(
         view_block.qc().sign_y() +
         to_tx_item.des());
     tx->set_key(uinique_tx_str);
-    tx->set_value(to_tx_item.SerializeAsString());
+    tx->set_value(SerializeDeterministic(to_tx_item));
     tx->set_pubkey("");
     tx->set_to(msg_ptr->address_info->addr());
     tx->set_step(pools::protobuf::kConsensusLocalTos);
@@ -740,7 +740,7 @@ void BlockManager::CreateStatisticTx() {
             auto new_msg_ptr = std::make_shared<transport::TransportMessage>();
             auto* tx = new_msg_ptr->header.mutable_tx_proto();
             tx->set_key(unique_hash);
-            tx->set_value(elect_statistic.SerializeAsString());
+            tx->set_value(SerializeDeterministic(elect_statistic));
             tx->set_pubkey("");
             tx->set_step(pools::protobuf::kStatistic);
             tx->set_gas_limit(0);
@@ -814,7 +814,7 @@ void BlockManager::HandleStatisticBlock(
         std::to_string(elect_statistic.sharding_id()) + "_" +
         std::to_string(block.timeblock_height()));
     tx->set_key(unique_hash);
-    tx->set_value(elect_statistic.SerializeAsString());
+    tx->set_value(SerializeDeterministic(elect_statistic));
     tx->set_pubkey("");
     tx->set_to(new_msg_ptr->address_info->addr());
     tx->set_step(pools::protobuf::kConsensusRootElectShard);
@@ -929,7 +929,7 @@ pools::TxItemPtr BlockManager::HandleToTxsMessage(
     }
 
     tx->set_key(common::Hash::keccak256(unique_str));
-    tx->set_value(all_to_txs.SerializeAsString());
+    tx->set_value(SerializeDeterministic(all_to_txs));
     tx->set_pubkey("");
     tx->set_to(new_msg_ptr->address_info->addr());
     tx->set_step(pools::protobuf::kNormalTo);

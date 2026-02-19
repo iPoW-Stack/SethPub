@@ -19,6 +19,7 @@ std::string GetBlockHash(const view_block::protobuf::ViewBlockItem &view_block) 
     serialized.append(view_block.parent_hash());
     auto hash = common::Hash::keccak256(serialized);
 
+    auto& block = view_block.block_info();
     SETH_DEBUG("get block hash: %s, sharding_id: %u, pool_index: %u, "
         "phash: %s, vss_random: %lu, height: %lu, "
         "timeblock_height: %lu, timestamp: %lu, msg: %s",

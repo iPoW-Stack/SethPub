@@ -1367,7 +1367,7 @@ void NetworkInit::SendJoinElectTransaction() {
         }
     }
 
-    new_tx->set_value(join_info.SerializeAsString());
+    new_tx->set_value(SerializeDeterministic(join_info));
     transport::TcpTransport::Instance()->SetMessageHash(msg);
     auto tx_hash = pools::GetTxMessageHash(*new_tx);
     std::string sign;
