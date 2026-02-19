@@ -81,9 +81,10 @@ public:
     void OnTimeBlock(
             uint64_t lastest_time_block_tm,
             uint64_t latest_time_block_height,
-            uint64_t vss_random) {
+            uint64_t vss_random,
+            uint64_t timeblock_addr_nonce) {
         for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
-            chain(i)->OnTimeBlock(lastest_time_block_tm, latest_time_block_height, vss_random);
+            chain(i)->OnTimeBlock(lastest_time_block_tm, latest_time_block_height, vss_random, timeblock_addr_nonce);
         }
     }
     

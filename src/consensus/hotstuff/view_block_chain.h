@@ -91,7 +91,8 @@ public:
     void OnTimeBlock(
         uint64_t lastest_time_block_tm,
         uint64_t latest_time_block_height,
-        uint64_t vss_random);
+        uint64_t vss_random,
+        uint64_t timeblock_addr_nonce);
     void HandleTimerMessage();
     std::shared_ptr<ViewBlockInfo> CheckCommit(const QC& qc);
     
@@ -189,7 +190,7 @@ public:
 #endif
 
 private:
-    void AddPoolStatisticTag(uint64_t height);
+    void AddPoolStatisticTag(uint64_t height, uint64_t timeblock_addr_nonce);
     void SetViewBlockToMap(const std::shared_ptr<ViewBlockInfo>& view_block_info) {
         assert(!view_block_info->view_block->qc().view_block_hash().empty());
         auto it = view_blocks_info_.find(view_block_info->view_block->qc().view_block_hash());

@@ -129,6 +129,20 @@ void GenesisBlockInit::CreatePoolsAddressInfo(uint16_t network_id) {
     immutable_pool_address_info_->set_latest_height(0);
     immutable_pool_address_info_->set_tx_index(0);
     immutable_pool_address_info_->set_nonce(0);
+
+    if (network_id == network::kRootCongressNetworkId) {
+        timeblock_address_info_ = std::make_shared<address::protobuf::AddressInfo>();
+        timeblock_address_info_->set_pubkey("");
+        timeblock_address_info_->set_balance(0);
+        timeblock_address_info_->set_sharding_id(network_id);
+        timeblock_address_info_->set_pool_index(common::kImmutablePoolSize);
+        timeblock_address_info_->set_addr(common::kTimeBlockAddress);
+        timeblock_address_info_->set_type(address::protobuf::kImmutablePoolAddress);
+        timeblock_address_info_->set_latest_height(0);
+        timeblock_address_info_->set_tx_index(0);
+        timeblock_address_info_->set_nonce(0);
+    }
+
     SETH_DEBUG("init pool immutable index net: %u, base address: %s", 
         network_id, common::Encode::HexEncode(immutable_pool_addr).c_str());
     uint32_t i = 0;
@@ -816,10 +830,8 @@ int GenesisBlockInit::GenerateRootSingleBlock(
         auto tx_list = tenon_block->mutable_tx_list();
         auto tx_info = tx_list->Add();
         tx_info->set_from("");
-        tx_info->set_to(immutable_pool_address_info_->addr());
-        tx_info->set_nonce(immutable_pool_address_info_->nonce());
-        immutable_pool_address_info_->set_nonce(immutable_pool_address_info_->nonce() + 1);
-        immutable_pool_address_info_->set_tx_index(immutable_pool_address_info_->nonce() + 1);
+        tx_info->set_to(timeblock_address_info_->addr());
+        tx_info->set_nonce(timeblock_address_info_->nonce());
         tx_info->set_amount(0);
         tx_info->set_balance(0);
         tx_info->set_gas_limit(0);
@@ -827,10 +839,10 @@ int GenesisBlockInit::GenerateRootSingleBlock(
         tx_info->set_gas_limit(0llu);
         tx_info->set_amount(0);
         std::map<std::string, std::shared_ptr<address::protobuf::AddressInfo>> address_info_map;
-        address_info_map[immutable_pool_address_info_->addr()] = CreateAddress(
+        address_info_map[timeblock_address_info_->addr()] = CreateAddress(
             "", tx_info->balance(), network::kConsensusShardBeginNetworkId, 
-            immutable_pool_address_info_->pool_index(), 
-            immutable_pool_address_info_->addr(), 0, tx_info->nonce());
+            timeblock_address_info_->pool_index(), 
+            timeblock_address_info_->addr(), 0, tx_info->nonce());
         tenon_block->set_height(root_pool_height[common::kImmutablePoolSize]++);
         tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         timeblock::protobuf::TimeBlock& tm_block = *tenon_block->mutable_timer_block();

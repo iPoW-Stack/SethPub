@@ -313,7 +313,9 @@ static const uint32_t kDefaultBroadcastNeighborCount = 7u;
 static const uint64_t kBuildinTransactionGasPrice = 999999999lu;
 static const std::string kRootPoolsAddressPrefix = common::Encode::HexDecode(
     "000000000000000000000000000000000000");
-
+static const std::string kTimeBlockAddress = common::Encode::HexDecode(
+    "9392e6249d97275822e16f562b847492c3a50993");
+    
 #pragma pack(push)
 #pragma pack(1)
 union DhtKey {

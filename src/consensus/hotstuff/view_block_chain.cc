@@ -1303,7 +1303,7 @@ protos::AddressInfoPtr ViewBlockChain::ChainGetPoolAccountInfo(uint32_t pool_ind
 }
 
 // same thread: common::kPoolsMessage common::kPoolTimerMessage
-void ViewBlockChain::AddPoolStatisticTag(uint64_t height) {
+void ViewBlockChain::AddPoolStatisticTag(uint64_t height, uint64_t timeblock_addr_nonce) {
     auto msg_ptr = std::make_shared<transport::TransportMessage>();
     msg_ptr->address_info = ChainGetPoolAccountInfo(pool_index_);
     assert(msg_ptr->address_info != nullptr);
@@ -1323,7 +1323,7 @@ void ViewBlockChain::AddPoolStatisticTag(uint64_t height) {
     tx->set_gas_limit(0);
     tx->set_amount(0);
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
-    tx->set_nonce(height);
+    tx->set_nonce(timeblock_addr_nonce);
     pools_mgr_->HandleMessage(msg_ptr);
     SETH_DEBUG("success create kPoolStatisticTag nonce: %lu, pool idx: %u, "
         "pool addr: %s, addr get pool: %u, height: %lu, unique_hash: %s",
@@ -1338,7 +1338,8 @@ void ViewBlockChain::AddPoolStatisticTag(uint64_t height) {
 void ViewBlockChain::OnTimeBlock(
         uint64_t lastest_time_block_tm,
         uint64_t latest_time_block_height,
-        uint64_t vss_random) {
+        uint64_t vss_random,
+        uint64_t timeblock_addr_nonce) {
     SETH_DEBUG("new timeblock coming: %lu, %lu, lastest_time_block_tm: %lu",
         static_cast<uint64_t>(latest_timeblock_height_), latest_time_block_height, lastest_time_block_tm);
     if (latest_timeblock_height_ < latest_time_block_height) {
@@ -1346,7 +1347,7 @@ void ViewBlockChain::OnTimeBlock(
     }
 
     if (latest_time_block_height > 1) {
-        AddPoolStatisticTag(latest_time_block_height);
+        AddPoolStatisticTag(latest_time_block_height, timeblock_addr_nonce);
     }
 }
 
