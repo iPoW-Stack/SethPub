@@ -32,6 +32,7 @@ int ShardStatistic::Init() {
         return kPoolsError;
     }
 
+    inited_ = true;
     pools::protobuf::PoolStatisticTxInfo statistic_info;
     if (prefix_db_->GetLatestPoolStatisticTag(
             common::GlobalInfo::Instance()->network_id(), 
@@ -84,7 +85,6 @@ int ShardStatistic::Init() {
         }
     }
 
-    inited_ = true;
     return kPoolsSuccess;
 }
 
