@@ -394,7 +394,7 @@ void ElectTxItem::JoinNewNodes2ElectNodes(
     }
 }
 
-void ElectTxItem::ChooseNodeForEachIndex(
+void ElectTxItem::          ChooseNodeForEachIndex(
         bool hold_pos,
         uint32_t min_area_weight,
         uint32_t min_tx_count,
