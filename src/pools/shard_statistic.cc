@@ -29,7 +29,6 @@ int ShardStatistic::Init() {
     if (common::GlobalInfo::Instance()->network_id() < network::kRootCongressNetworkId ||
             common::GlobalInfo::Instance()->network_id() >= network::kConsensusShardEndNetworkId) {
         SETH_ERROR("invalid network id: %u", common::GlobalInfo::Instance()->network_id());
-        assert(false);
         return kPoolsError;
     }
 
