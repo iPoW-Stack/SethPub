@@ -512,6 +512,10 @@ void Hotstuff::BroadcastGlobalPoolBlock(const std::shared_ptr<ViewBlock>& v_bloc
 }
 
 void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
+    if (!view_block_chain()->HighViewBlock()) {
+        return;
+    }
+    
     ADD_DEBUG_PROCESS_TIMESTAMP();
     SETH_DEBUG("handle propose called hash: %lu, propose_debug: %s", 
         msg_ptr->header.hash64(), 
