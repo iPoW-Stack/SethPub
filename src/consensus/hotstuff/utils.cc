@@ -17,6 +17,8 @@ std::string GetBlockHash(const view_block::protobuf::ViewBlockItem &view_block) 
     serialized.append((char*)&sharding_id, sizeof(sharding_id));
     uint32_t pool_index = view_block.qc().pool_index();
     serialized.append((char*)&pool_index, sizeof(pool_index));
+    uint32_t leader_index = view_block.qc().leader_idx();
+    serialized.append((char*)&leader_index, sizeof(leader_index));
     serialized.append(view_block.parent_hash());
     auto hash = common::Hash::keccak256(serialized);
 
@@ -31,7 +33,7 @@ std::string GetBlockHash(const view_block::protobuf::ViewBlockItem &view_block) 
         block.height(), 
         block.timeblock_height(), 
         block.timestamp(),
-        ProtobufToJson(block).c_str());
+        ProtobufToJson(view_block).c_str());
 
     return hash;
 }
@@ -75,7 +77,6 @@ bool BlockViewCommited(
         uint64_t view) {
     return prefix_db->ViewBlockIsValidView(network_id, pool_index, view);
 }
-
 
 bool ViewBlockIsCheckedParentHash(
         std::shared_ptr<protos::PrefixDb> prefix_db, 
