@@ -84,6 +84,7 @@ int ShardStatistic::Init() {
         }
     }
 
+    inited_ = true;
     return kPoolsSuccess;
 }
 
@@ -92,6 +93,13 @@ void ShardStatistic::OnNewBlock(
 #ifdef TEST_NO_CROSS
     return;
 #endif
+    if (!inited_) {
+        Init();
+        if (!inited_) {
+            return;
+        }
+    }
+
     ThreadToStatistic(view_block_ptr);
     // view_block_queue_.push(view_block_ptr);
     // thread_wait_conn_.notify_one();
@@ -528,6 +536,10 @@ void ShardStatistic::CallTimeBlock(
 int ShardStatistic::StatisticWithHeights(
         pools::protobuf::ElectStatistic& elect_statistic,
         uint64_t statisticed_timeblock_height) {
+    if (!inited_) {
+        return kPoolsError;
+    }
+
 #ifdef TEST_NO_CROSS
         return kPoolsError;
 #endif

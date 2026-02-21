@@ -123,6 +123,7 @@ public:
     std::mutex thread_wait_mutex_;
     std::atomic<bool> destroy_ = false;
     std::map<uint64_t, std::map<uint32_t, uint64_t>> pool_statistic_height_with_block_height_map_;
+    std::atomic<bool> inited_ = false;
 
     DISALLOW_COPY_AND_ASSIGN(ShardStatistic);
 };

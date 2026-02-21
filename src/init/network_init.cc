@@ -263,7 +263,6 @@ int NetworkInit::Init(int argc, char** argv) {
     RegisterFirewallCheck();
     if (shard_statistic_->Init() != pools::kPoolsSuccess) {
         INIT_ERROR("init shard statistic failed!");
-        return kInitError;
     }
 
     hotstuff_mgr_->Start(); // The above should be placed in the hotstuff instance initialization and receive the genesis block
