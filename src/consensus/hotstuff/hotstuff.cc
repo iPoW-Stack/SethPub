@@ -236,6 +236,10 @@ Status Hotstuff::Propose(
 #endif
     View out_view = 0;
     auto leader = GetLeader(&out_view);
+    if (!leader) {
+        return Status::kError;
+    }
+
     if (latest_leader_propose_message_ &&
             latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view() >= 
             pacemaker_->CurView()) {
@@ -2068,7 +2072,7 @@ Status Hotstuff::ConstructViewBlock(
 #endif
     View out_view = 0;
     auto leader = GetLeader(&out_view);
-    if (leader->index != local_member->index) {
+    if (!leader || leader->index != local_member->index) {
         SETH_DEBUG("pool index: %d, leader->index: %d != local_member->index: %d",
             pool_idx_, leader->index, local_member->index);
         return Status::kError;

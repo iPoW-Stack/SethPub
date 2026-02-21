@@ -288,6 +288,10 @@ private:
         // }
 
         auto high_view_block = view_block_chain_->HighViewBlock();
+        if (!high_view_block) {
+            return nullptr;
+        }
+        
         auto now = common::TimeUtils::TimestampSeconds();
         auto timeout = static_cast<uint64_t>(
             common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
