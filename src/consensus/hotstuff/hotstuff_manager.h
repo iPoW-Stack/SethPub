@@ -235,11 +235,6 @@ private:
     }
 
     pools::TxItemPtr CreateJoinElectTx(const transport::MessagePtr& msg_ptr) {
-        auto keypair = bls::AggBls::Instance()->GetKeyPair();
-        if (keypair == nullptr || !keypair->IsValid()) {
-            return nullptr;
-        }
-
         return std::make_shared<JoinElectTxItem>(
                 msg_ptr, -1, 
                 account_mgr_, 
@@ -247,9 +242,7 @@ private:
                 prefix_db_, 
                 elect_mgr_, 
                 msg_ptr->address_info,
-                msg_ptr->header.tx_proto().pubkey(),
-                keypair->pk(),
-                keypair->proof());
+                msg_ptr->header.tx_proto().pubkey());
     }
 
     pools::TxItemPtr CreateCrossTx(const transport::MessagePtr& msg_ptr) {

@@ -636,10 +636,9 @@ Status BlockAcceptor::addTxsToPool(
             break;
         }
         case pools::protobuf::kJoinElect: {
-            auto keypair = bls::AggBls::Instance()->GetKeyPair();
             tx_ptr = std::make_shared<consensus::JoinElectTxItem>(
                 msg_ptr, i, account_mgr_, security_ptr_, prefix_db_, elect_mgr_, address_info,
-                (*tx).pubkey(), keypair->pk(), keypair->proof());
+                (*tx).pubkey());
             break;
         }
         case pools::protobuf::kPoolStatisticTag: {

@@ -336,7 +336,7 @@ void HotstuffManager::HandleTimerMessage(const transport::MessagePtr& msg_ptr) {
     if (network::IsWaitingForElect()) {
         return;
     }
-    
+
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto thread_index = common::GlobalInfo::Instance()->get_thread_index();
     auto now_tm_ms = common::TimeUtils::TimestampMs();
@@ -514,7 +514,6 @@ void HotstuffManager::PopPoolsMessage() {
                 break;
             case pools::protobuf::kJoinElect:
             {
-                auto keypair = bls::AggBls::Instance()->GetKeyPair();
                 tx_ptr = std::make_shared<consensus::JoinElectTxItem>(
                     msg_ptr, i, 
                     account_mgr_, 
@@ -522,9 +521,7 @@ void HotstuffManager::PopPoolsMessage() {
                     prefix_db_, 
                     elect_mgr_, 
                     address_info,
-                    (*tx).pubkey(),
-                    keypair->pk(),
-                    keypair->proof());
+                    (*tx).pubkey());
                 break;
             }
             default:
