@@ -23,7 +23,7 @@ public:
     : TxItemBase(msg_ptr, tx_index, account_mgr, sec_ptr, addr_info), 
       prefix_db_(prefix_db), 
       elect_mgr_(elect_mgr), 
-      from_pk_(from_pk)
+      from_pk_(from_pk) {
     }
 
     virtual ~JoinElectTxItem() {}
