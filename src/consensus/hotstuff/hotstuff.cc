@@ -80,6 +80,11 @@ void Hotstuff::StartInit() {
         }
         SETH_DEBUG("now init cross consensus shard: %u end.", network_id);
     }
+
+    SETH_DEBUG("success start init network: %d, pool index: %d, root_view_block_chain_: %d", 
+        common::GlobalInfo::Instance()->network_id(), 
+        pool_idx_, 
+        (root_view_block_chain_ != nullptr));
 }
 
 bool Hotstuff::InitLoadLatestBlock(
