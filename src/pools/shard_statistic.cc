@@ -318,16 +318,6 @@ bool ShardStatistic::HandleStatistic(
                 block.timeblock_height());
         }
 
-        if (join_info.has_bls_pk()) {
-            auto agg_bls_pk_proto = std::make_shared<elect::protobuf::BlsPublicKey>(join_info.bls_pk());
-            id_agg_bls_pk_map[join_addr] = agg_bls_pk_proto;
-        }
-
-        if (join_info.has_bls_proof()) {
-            auto proof_proto = std::make_shared<elect::protobuf::BlsPopProof>(join_info.bls_proof());
-            id_agg_bls_pk_proof_map[join_addr] = proof_proto;
-        }                    
-
         {
             auto shard_iter = join_elect_shard_map.find(view_block_ptr->qc().elect_height());
             if (shard_iter == join_elect_shard_map.end()) {
