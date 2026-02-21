@@ -158,7 +158,7 @@ Status Hotstuff::Start() {
     if (network::IsWaitingForElect()) {
         return Status::kSuccess;
     }
-    
+
     View out_view = 0;
     auto leader = GetLeader(&out_view);
     auto elect_item = elect_info_->GetElectItemWithShardingId(common::GlobalInfo::Instance()->network_id());

@@ -333,6 +333,10 @@ void HotstuffManager::HandleMessage(const transport::MessagePtr& msg_ptr) {
 }
 
 void HotstuffManager::HandleTimerMessage(const transport::MessagePtr& msg_ptr) {
+    if (network::IsWaitingForElect()) {
+        return;
+    }
+    
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto thread_index = common::GlobalInfo::Instance()->get_thread_index();
     auto now_tm_ms = common::TimeUtils::TimestampMs();
