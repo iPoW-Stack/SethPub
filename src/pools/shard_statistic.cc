@@ -199,20 +199,22 @@ bool ShardStatistic::HandleStatistic(
             while (iter->first >= block.pool_statistic_height()) {
                 ++iter;
             }
-            
-            iter->second[pool_idx].statistic_max_height = block.height() - 1;
-            if (iter->second[pool_idx].statistic_max_height < iter->second[pool_idx].statistic_min_height) {
-                iter->second[pool_idx].statistic_max_height = iter->second[pool_idx].statistic_min_height;
+
+            if (iter != statistic_pool_info_.rend()) {
+                iter->second[pool_idx].statistic_max_height = block.height() - 1;
+                if (iter->second[pool_idx].statistic_max_height < iter->second[pool_idx].statistic_min_height) {
+                    iter->second[pool_idx].statistic_max_height = iter->second[pool_idx].statistic_min_height;
+                }
+                
+                SETH_DEBUG(
+                    "prev exists success handle kPoolStatisticTag tx statistic_height: %lu, "
+                    "pool: %u, height: %lu, statistic_min_height: %lu, statistic_max_height: %lu", 
+                    iter->first, 
+                    pool_idx, 
+                    block.height(), 
+                    iter->second[pool_idx].statistic_min_height,
+                    iter->second[pool_idx].statistic_max_height);
             }
-            
-            SETH_DEBUG(
-                "prev exists success handle kPoolStatisticTag tx statistic_height: %lu, "
-                "pool: %u, height: %lu, statistic_min_height: %lu, statistic_max_height: %lu", 
-                iter->first, 
-                pool_idx, 
-                block.height(), 
-                iter->second[pool_idx].statistic_min_height,
-                iter->second[pool_idx].statistic_max_height);
         }
 
         exist_iter->second[pool_idx].statistic_min_height = block.height();
