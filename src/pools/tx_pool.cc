@@ -568,9 +568,9 @@ void TxPool::TempGetTxIdempotently(
                         now_nonce,
                         (tx_ptr->tx_info->nonce() + iter->second.size()));
                     if (res != 0) {
-                        if (res > 0) {
-                            if (now_nonce >= tx_ptr->tx_info->nonce() + iter->second.size()) {
-                                SETH_INFO("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s, "
+                        if (!IsUserTransaction(tx_ptr->tx_info->step())) {
+                            if (nonce_iter == iter->second.end()) {
+                                SETH_DEBUG("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s, "
                                     "now_nonce: %u, tx_ptr->tx_info->nonce() + iter->second.size(): %u", 
                                     pool_index_,
                                     common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
@@ -581,8 +581,7 @@ void TxPool::TempGetTxIdempotently(
                                 break;
                             }
 
-                            nonce_iter = iter->second.lower_bound(now_nonce);
-                            if (nonce_iter->second->tx_info->nonce() != now_nonce) {
+                            if (nonce_iter->second->tx_info->nonce() != tx_ptr->tx_info->nonce() + 1) {
                                 SETH_DEBUG("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s, "
                                     "now_nonce: %u, nonce_iter->second->tx_info->nonce(): %u", 
                                     pool_index_,
@@ -593,15 +592,45 @@ void TxPool::TempGetTxIdempotently(
                                     nonce_iter->second->tx_info->nonce());
                                 break;
                             }
-                            
-                            SETH_DEBUG("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s",
-                                pool_index_,
-                                common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
-                                tx_ptr->tx_info->nonce(),
-                                common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
-                            ++nonce_iter;
+
                             continue;
+                        } else {
+                            if (res > 0) {
+                                if (now_nonce >= tx_ptr->tx_info->nonce() + iter->second.size()) {
+                                    SETH_INFO("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s, "
+                                        "now_nonce: %u, tx_ptr->tx_info->nonce() + iter->second.size(): %u", 
+                                        pool_index_,
+                                        common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
+                                        tx_ptr->tx_info->nonce(),
+                                        common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(),
+                                        now_nonce,
+                                        (tx_ptr->tx_info->nonce() + iter->second.size()));
+                                    break;
+                                }
+
+                                nonce_iter = iter->second.lower_bound(now_nonce);
+                                if (nonce_iter->second->tx_info->nonce() != now_nonce) {
+                                    SETH_DEBUG("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s, "
+                                        "now_nonce: %u, nonce_iter->second->tx_info->nonce(): %u", 
+                                        pool_index_,
+                                        common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
+                                        tx_ptr->tx_info->nonce(),
+                                        common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(),
+                                        now_nonce,
+                                        nonce_iter->second->tx_info->nonce());
+                                    break;
+                                }
+                                
+                                SETH_DEBUG("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s",
+                                    pool_index_,
+                                    common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
+                                    tx_ptr->tx_info->nonce(),
+                                    common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
+                                ++nonce_iter;
+                                continue;
+                            }
                         }
+                        
                         
                         SETH_DEBUG("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s",
                             pool_index_,

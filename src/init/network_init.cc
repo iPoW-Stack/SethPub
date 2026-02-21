@@ -1290,9 +1290,10 @@ void NetworkInit::HandleElectionBlock(
         elect_height,
         members,
         elect_block);
-    SETH_DEBUG("1 success called election block. height: %lu, "
+    SETH_DEBUG("%s success called election block. height: %lu, "
         "elect height: %lu, latest_valid_elect_height_: %lu, used elect height: %lu, net: %u, "
         "local net id: %u, prev elect height: %lu",
+        common::Encode::HexEncode(security_->GetAddress()).c_str(),
         block->height(), elect_height,
         latest_valid_elect_height_,
         view_block->qc().elect_height(),
