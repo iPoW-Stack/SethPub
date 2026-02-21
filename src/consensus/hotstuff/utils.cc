@@ -19,6 +19,8 @@ std::string GetBlockHash(const view_block::protobuf::ViewBlockItem &view_block) 
     serialized.append((char*)&pool_index, sizeof(pool_index));
     uint32_t leader_index = view_block.qc().leader_idx();
     serialized.append((char*)&leader_index, sizeof(leader_index));
+    uint64_t view = view_block.qc().view();
+    serialized.append((char*)&view, sizeof(view));
     serialized.append(view_block.parent_hash());
     auto hash = common::Hash::keccak256(serialized);
 

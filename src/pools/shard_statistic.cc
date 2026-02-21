@@ -225,7 +225,7 @@ bool ShardStatistic::HandleStatistic(
             exist_iter->second[pool_idx].statistic_min_height,
             0);
     }
-    
+
     SETH_DEBUG("real handle new block coming net: %u, pool: %u, height: %lu, timeblock height: %lu",
         view_block_ptr->qc().network_id(),
         view_block_ptr->qc().pool_index(),
