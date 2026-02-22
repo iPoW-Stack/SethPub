@@ -111,6 +111,8 @@ public:
 
         latest_elect_height_ = elect_height;
         consecutive_failures_ = 0;
+        prev_qc_leader_k_ = 0;
+        prev_qc_timestamp_sec_ = 0;
         last_stable_leader_member_index_ = GetEpochLeaderIndex();
         SETH_DEBUG("pool: %d, success set last_stable_leader_member_index_: %d, "
             "latest_elect_height_: %lu",
