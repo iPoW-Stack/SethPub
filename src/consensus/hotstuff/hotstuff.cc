@@ -521,20 +521,10 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         msg_ptr->header.hash64(), 
         ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
     auto pro_msg_wrap = std::make_shared<ProposeMsgWrapper>(msg_ptr);
-
-    ADD_DEBUG_PROCESS_TIMESTAMP();
-    auto st = HandleProposeMsgStep_VerifyLeader(pro_msg_wrap);
     if (msg_ptr->header.hotstuff().pro_msg().has_tc()) {
         HandleTC(pro_msg_wrap);
     }
 
-    if (st != Status::kSuccess) {
-        SETH_DEBUG("HandleProposeMsgStep_VerifyLeader failed hash: %lu, propose_debug: %s",
-            msg_ptr->header.hash64(),
-            ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
-        return;
-    }
-    
     // if (msg_ptr->header.hotstuff().pro_msg().view_item().block_info().timeblock_height() != 
     //         tm_block_mgr_->LatestTimestampHeight() && 
     //         msg_ptr->header.hotstuff().pro_msg().view_item().block_info().timeblock_height() != 
@@ -601,6 +591,8 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
             pool_idx_, e-b, msg_ptr->header.hash64());
     });
 
+    pro_msg_wrap->view_block_ptr = std::make_shared<ViewBlock>(
+        msg_ptr->header.hotstuff().pro_msg().view_item());
 #ifndef NDEBUG
     pro_msg_wrap->view_block_ptr->set_debug(cons_debug.SerializeAsString());
     SETH_DEBUG("handle new propose message parent hash: %s, %u_%u_%lu, view hash: %s, "
@@ -623,7 +615,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         pro_msg_wrap->msg_ptr->header.hash64(), last_vote_view_, view_item.qc().view(),
         ProtobufToJson(cons_debug).c_str());
 #endif
-    st = HandleProposeMsgStep_HasVote(pro_msg_wrap);
+    auto st = HandleProposeMsgStep_HasVote(pro_msg_wrap);
     if (st != Status::kSuccess) {
         HandleProposeMsgStep_VerifyQC(pro_msg_wrap);
         ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -706,7 +698,16 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
 Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> pro_msg_wrap) {
     auto msg_ptr = pro_msg_wrap->msg_ptr;
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    auto st = HandleProposeMsgStep_VerifyViewBlock(pro_msg_wrap);
+    auto st = HandleProposeMsgStep_VerifyLeader(pro_msg_wrap);
+    if (st != Status::kSuccess) {
+        SETH_DEBUG("HandleProposeMsgStep_VerifyLeader failed hash: %lu, propose_debug: %s",
+            msg_ptr->header.hash64(),
+            ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
+        return st;
+    }
+
+    ADD_DEBUG_PROCESS_TIMESTAMP();
+    st = HandleProposeMsgStep_VerifyViewBlock(pro_msg_wrap);
     if (st != Status::kSuccess) {
         SETH_DEBUG("HandleProposeMsgStep_VerifyViewBlock failed hash: %lu, propose_debug: %s",
             msg_ptr->header.hash64(),
@@ -829,13 +830,6 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
 }
 
 Status Hotstuff::HandleProposeMsgStep_VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
-    if (!pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().has_view_item()) {
-        return Status::kError;
-    }
-
-    pro_msg_wrap->view_block_ptr = std::make_shared<ViewBlock>(
-        pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().view_item());
-
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
