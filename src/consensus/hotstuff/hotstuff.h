@@ -309,8 +309,8 @@ private:
                 last_stable_leader_member_index_ + 
                 static_cast<int>(k) + 
                 common::kImmutablePoolSize) % members->size();
-            ++consecutive_failures_;
-            prev_qc_leader_k_ = k;
+            // ++consecutive_failures_;
+            prev_qc_leader_k_ = prev_qc_timestamp_sec_ / common::kLeaderRoatationBaseTimeoutSec;
             SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
                 "consecutive_failures: %d, now: %u, block tm: %lu, "
                 "last_stable_leader_member_index: %d, latest_elect_height: %lu, out view: %lu", 
