@@ -293,23 +293,28 @@ private:
         if (!high_view_block) {
             return nullptr;
         }
-        
-        if (prev_qc_timestamp_sec_ < high_view_block->block_info().timestamp()) {
-            auto now = common::TimeUtils::TimestampSeconds();
-            auto timeout = static_cast<uint64_t>(
-            common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
-            auto elapsed = now - (high_view_block->block_info().timestamp() / 1000llu);
-            auto k = (elapsed > timeout) ? (elapsed / timeout) : 0;
-            if (k != 0) {
-                prev_qc_timestamp_sec_ = high_view_block->block_info().timestamp();
-                last_stable_leader_member_index_ = (
-                    last_stable_leader_member_index_ + 
-                    static_cast<int>(k) + 
-                    common::kImmutablePoolSize) % members->size();
-                ++consecutive_failures_;
-                prev_qc_leader_k_ = k;
-            }
 
+        if (prev_qc_timestamp_sec_ == common::kInvalidUint64) {
+            prev_qc_timestamp_sec_ = high_view_block->block_info().timestamp();
+        }
+        
+        auto now = common::TimeUtils::TimestampSeconds();
+        auto timeout = static_cast<uint64_t>(
+        common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
+        auto elapsed = now - (prev_qc_timestamp_sec_ / 1000llu);
+        auto k = (elapsed > timeout) ? (elapsed / timeout) : 0;
+        if (k != 0) {
+            if (prev_qc_timestamp_sec_ < high_view_block->block_info().timestamp()) {
+                prev_qc_timestamp_sec_ = high_view_block->block_info().timestamp();
+            }
+            
+            prev_qc_timestamp_sec_ += timeout;
+            last_stable_leader_member_index_ = (
+                last_stable_leader_member_index_ + 
+                static_cast<int>(k) + 
+                common::kImmutablePoolSize) % members->size();
+            ++consecutive_failures_;
+            prev_qc_leader_k_ = k;
             SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
                 "consecutive_failures: %d, now: %u, block tm: %lu, "
                 "last_stable_leader_member_index: %d, latest_elect_height: %lu, out view: %lu", 
@@ -431,7 +436,7 @@ private:
     uint32_t consecutive_failures_ = 0u;
     uint32_t last_stable_leader_member_index_ = 0u;
     uint64_t latest_elect_height_ = 0llu;
-    uint64_t prev_qc_timestamp_sec_ = 0llu;
+    uint64_t prev_qc_timestamp_sec_ = common::kInvalidUint64;
     uint64_t prev_qc_leader_k_ = 0llu;
 
 // #ifndef NDEBUG
