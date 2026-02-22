@@ -601,8 +601,6 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
             pool_idx_, e-b, msg_ptr->header.hash64());
     });
 
-    pro_msg_wrap->view_block_ptr = std::make_shared<ViewBlock>(
-        msg_ptr->header.hotstuff().pro_msg().view_item());
 #ifndef NDEBUG
     pro_msg_wrap->view_block_ptr->set_debug(cons_debug.SerializeAsString());
     SETH_DEBUG("handle new propose message parent hash: %s, %u_%u_%lu, view hash: %s, "
@@ -834,7 +832,10 @@ Status Hotstuff::HandleProposeMsgStep_VerifyLeader(std::shared_ptr<ProposeMsgWra
     if (!pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().has_view_item()) {
         return Status::kError;
     }
-    
+
+    pro_msg_wrap->view_block_ptr = std::make_shared<ViewBlock>(
+        msg_ptr->header.hotstuff().pro_msg().view_item());
+
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
