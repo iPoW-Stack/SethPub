@@ -295,8 +295,15 @@ private:
         auto now = common::TimeUtils::TimestampSeconds();
         auto timeout = static_cast<uint64_t>(
             common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
-        auto elapsed = now - (high_view_block->block_info().timestamp() / 1000llu);
-        uint64_t k = (elapsed > timeout) ? (elapsed / timeout) : 0;
+        uint64_t k = 0;
+        if (prev_qc_timestamp_sec_ < high_view_block->block_info().timestamp()) {
+            auto elapsed = now - (high_view_block->block_info().timestamp() / 1000llu);
+            k = (elapsed > timeout) ? (elapsed / timeout) : 0;
+            if (k != 0) {
+                prev_qc_timestamp_sec_ = high_view_block->block_info().timestamp();
+            }
+        }
+
         SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
             "consecutive_failures: %d, now: %u, block tm: %lu, "
             "last_stable_leader_member_index: %d, latest_elect_height: %lu, out view: %lu", 
@@ -328,12 +335,12 @@ private:
                 *out_view = high_view_block->qc().view() + k + 1;
             }
 
-            auto new_index = (
+            last_stable_leader_member_index_ = (
                 last_stable_leader_member_index_ + 
                 static_cast<int>(k) + 
                 common::kImmutablePoolSize) % members->size();
-            // ++consecutive_failures_;
-            return (*members)[new_index];
+            ++consecutive_failures_;
+            return (*members)[last_stable_leader_member_index_];
         }
     }
 
