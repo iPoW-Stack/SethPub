@@ -294,7 +294,7 @@ private:
             return nullptr;
         }
 
-        if (prev_qc_timestamp_sec_ == common::kInvalidUint64) {
+        if (prev_qc_timestamp_sec_ < high_view_block->block_info().timestamp()) {
             prev_qc_timestamp_sec_ = high_view_block->block_info().timestamp();
         }
         
@@ -304,10 +304,6 @@ private:
         auto elapsed = now - (prev_qc_timestamp_sec_ / 1000llu);
         auto k = (elapsed > timeout) ? (elapsed / timeout) : 0;
         if (k != 0) {
-            if (prev_qc_timestamp_sec_ < high_view_block->block_info().timestamp()) {
-                prev_qc_timestamp_sec_ = high_view_block->block_info().timestamp();
-            }
-            
             prev_qc_timestamp_sec_ += timeout;
             last_stable_leader_member_index_ = (
                 last_stable_leader_member_index_ + 
@@ -436,7 +432,7 @@ private:
     uint32_t consecutive_failures_ = 0u;
     uint32_t last_stable_leader_member_index_ = 0u;
     uint64_t latest_elect_height_ = 0llu;
-    uint64_t prev_qc_timestamp_sec_ = common::kInvalidUint64;
+    uint64_t prev_qc_timestamp_sec_ = 0llu;
     uint64_t prev_qc_leader_k_ = 0llu;
 
 // #ifndef NDEBUG
