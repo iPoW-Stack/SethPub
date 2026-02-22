@@ -521,10 +521,20 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         msg_ptr->header.hash64(), 
         ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
     auto pro_msg_wrap = std::make_shared<ProposeMsgWrapper>(msg_ptr);
+
+    ADD_DEBUG_PROCESS_TIMESTAMP();
+    auto st = HandleProposeMsgStep_VerifyLeader(pro_msg_wrap);
     if (msg_ptr->header.hotstuff().pro_msg().has_tc()) {
         HandleTC(pro_msg_wrap);
     }
 
+    if (st != Status::kSuccess) {
+        SETH_DEBUG("HandleProposeMsgStep_VerifyLeader failed hash: %lu, propose_debug: %s",
+            msg_ptr->header.hash64(),
+            ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
+        return st;
+    }
+    
     // if (msg_ptr->header.hotstuff().pro_msg().view_item().block_info().timeblock_height() != 
     //         tm_block_mgr_->LatestTimestampHeight() && 
     //         msg_ptr->header.hotstuff().pro_msg().view_item().block_info().timeblock_height() != 
@@ -698,16 +708,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
 Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> pro_msg_wrap) {
     auto msg_ptr = pro_msg_wrap->msg_ptr;
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    auto st = HandleProposeMsgStep_VerifyLeader(pro_msg_wrap);
-    if (st != Status::kSuccess) {
-        SETH_DEBUG("HandleProposeMsgStep_VerifyLeader failed hash: %lu, propose_debug: %s",
-            msg_ptr->header.hash64(),
-            ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
-        return st;
-    }
-
-    ADD_DEBUG_PROCESS_TIMESTAMP();
-    st = HandleProposeMsgStep_VerifyViewBlock(pro_msg_wrap);
+    auto st = HandleProposeMsgStep_VerifyViewBlock(pro_msg_wrap);
     if (st != Status::kSuccess) {
         SETH_DEBUG("HandleProposeMsgStep_VerifyViewBlock failed hash: %lu, propose_debug: %s",
             msg_ptr->header.hash64(),
