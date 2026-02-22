@@ -295,12 +295,17 @@ private:
         auto now = common::TimeUtils::TimestampSeconds();
         auto timeout = static_cast<uint64_t>(
             common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
-        uint64_t k = 0;
         if (prev_qc_timestamp_sec_ < high_view_block->block_info().timestamp()) {
             auto elapsed = now - (high_view_block->block_info().timestamp() / 1000llu);
-            k = (elapsed > timeout) ? (elapsed / timeout) : 0;
+            auto k = (elapsed > timeout) ? (elapsed / timeout) : 0;
             if (k != 0) {
                 prev_qc_timestamp_sec_ = high_view_block->block_info().timestamp();
+                last_stable_leader_member_index_ = (
+                    last_stable_leader_member_index_ + 
+                    static_cast<int>(k) + 
+                    common::kImmutablePoolSize) % members->size();
+                ++consecutive_failures_;
+                prev_qc_leader_k_ = k;
             }
 
             SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
@@ -319,30 +324,25 @@ private:
                 (high_view_block->qc().view() + latest_elect_height_ + 1));
         }
 
-        if (k == 0) {
-            if (high_view_block->qc().elect_height() < latest_elect_height_) {
-                *out_view = high_view_block->qc().view() + latest_elect_height_ + 1;
-            } else {
-                *out_view = high_view_block->qc().view() + 1;
-            }
-            // 粘性模式：视图紧凑递增，Leader连任
-            return (*members)[last_stable_leader_member_index_ % members->size()];
-        } else {
+        // if (k == 0) {
+        //     if (high_view_block->qc().elect_height() < latest_elect_height_) {
+        //         *out_view = high_view_block->qc().view() + latest_elect_height_ + 1;
+        //     } else {
+        //         *out_view = high_view_block->qc().view() + 1;
+        //     }
+        //     // 粘性模式：视图紧凑递增，Leader连任
+        //     return (*members)[last_stable_leader_member_index_ % members->size()];
+        // } else {
             // 切换模式：强制跳过一个视图号 (V + k + 1)
             // 当超时刚刚发生(k=1)时，out_view = last_qc.view + 2
             if (high_view_block->qc().elect_height() < latest_elect_height_) {
-                *out_view = high_view_block->qc().view() + latest_elect_height_ + k + 1;
+                *out_view = high_view_block->qc().view() + latest_elect_height_ + prev_qc_leader_k_ + 1;
             } else {
-                *out_view = high_view_block->qc().view() + k + 1;
+                *out_view = high_view_block->qc().view() + prev_qc_leader_k_ + 1;
             }
 
-            last_stable_leader_member_index_ = (
-                last_stable_leader_member_index_ + 
-                static_cast<int>(k) + 
-                common::kImmutablePoolSize) % members->size();
-            ++consecutive_failures_;
             return (*members)[last_stable_leader_member_index_];
-        }
+        // }
     }
 
     inline common::BftMemberPtr GetMember(uint32_t member_index) const {
@@ -430,6 +430,7 @@ private:
     uint32_t last_stable_leader_member_index_ = 0u;
     uint64_t latest_elect_height_ = 0llu;
     uint64_t prev_qc_timestamp_sec_ = 0llu;
+    uint64_t prev_qc_leader_k_ = 0llu;
 
 // #ifndef NDEBUG
     static std::atomic<uint32_t> sendout_bft_message_count_;
