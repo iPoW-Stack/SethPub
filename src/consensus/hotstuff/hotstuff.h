@@ -294,14 +294,14 @@ private:
             return nullptr;
         }
 
-        if (prev_qc_timestamp_sec_ < high_view_block->block_info().timestamp()) {
-            prev_qc_timestamp_sec_ = high_view_block->block_info().timestamp();
+        if (prev_qc_timestamp_sec_ < (high_view_block->block_info().timestamp() / 1000lu)) {
+            prev_qc_timestamp_sec_ = (high_view_block->block_info().timestamp() / 1000lu);
         }
         
         auto now = common::TimeUtils::TimestampSeconds();
         auto timeout = static_cast<uint64_t>(
         common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
-        auto elapsed = now - (prev_qc_timestamp_sec_ / 1000llu);
+        auto elapsed = now - prev_qc_timestamp_sec_;
         auto k = (elapsed > timeout) ? (elapsed / timeout) : 0;
         if (k != 0) {
             prev_qc_timestamp_sec_ += timeout;
