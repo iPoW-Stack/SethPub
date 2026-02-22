@@ -332,7 +332,7 @@ private:
                 last_stable_leader_member_index_ + 
                 static_cast<int>(k) + 
                 common::kImmutablePoolSize) % members->size();
-            ++consecutive_failures_;
+            // ++consecutive_failures_;
             return (*members)[new_index];
         }
     }
