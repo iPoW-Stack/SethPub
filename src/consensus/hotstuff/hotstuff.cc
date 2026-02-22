@@ -834,7 +834,7 @@ Status Hotstuff::HandleProposeMsgStep_VerifyLeader(std::shared_ptr<ProposeMsgWra
     }
 
     pro_msg_wrap->view_block_ptr = std::make_shared<ViewBlock>(
-        msg_ptr->header.hotstuff().pro_msg().view_item());
+        pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().view_item());
 
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
