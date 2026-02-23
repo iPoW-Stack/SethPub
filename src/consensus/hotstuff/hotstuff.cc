@@ -159,6 +159,7 @@ Status Hotstuff::Start() {
 }
 
 Status Hotstuff::Propose(
+        View leader_view,
         common::BftMemberPtr leader,
         std::shared_ptr<TC> tc,
         std::shared_ptr<AggregateQC> agg_qc,
@@ -215,7 +216,6 @@ Status Hotstuff::Propose(
 #ifndef NDEBUG
     auto t1 = common::TimeUtils::TimestampMs();
 #endif
-    View out_view = 0;
     if (!leader) {
         return Status::kError;
     }
@@ -321,7 +321,7 @@ Status Hotstuff::Propose(
         pre_v_block->qc().pool_index(),
         pre_v_block->qc().view(),
         tm_block_mgr_->LatestTimestampHeight());
-    Status s = ConstructProposeMsg(out_view, leader, msg_ptr, pb_pro_msg);
+    Status s = ConstructProposeMsg(leader_view, leader, msg_ptr, pb_pro_msg);
     if (s != Status::kSuccess) {
         if (!tc) {
             SETH_DEBUG("pool: %d construct propose msg failed, %d",
@@ -1529,7 +1529,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
         return;
     }
 
-    auto s = Propose(leader, qc_item_ptr, nullptr, msg_ptr);
+    auto s = Propose(out_view, leader, qc_item_ptr, nullptr, msg_ptr);
     ADD_DEBUG_PROCESS_TIMESTAMP();
 }
 
@@ -1578,7 +1578,7 @@ void Hotstuff::HandlePreResetTimerMsg(const transport::MessagePtr& msg_ptr) {
         return;
     }
 
-    Propose(leader, nullptr, nullptr, msg_ptr);
+    Propose(out_view, leader, nullptr, nullptr, msg_ptr);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     SETH_DEBUG("reset timer success!");
 }
@@ -2376,7 +2376,7 @@ void Hotstuff::TryRecoverFromStuck(
     if (leader && leader->index == local_idx) {
         assert(leader->pubkey == crypto_->security()->GetPublicKey());
         ADD_DEBUG_PROCESS_TIMESTAMP();
-        Propose(leader, nullptr, nullptr, msg_ptr);
+        Propose(out_view, leader, nullptr, nullptr, msg_ptr);
         ADD_DEBUG_PROCESS_TIMESTAMP();
         if (latest_qc_item_ptr_) {
             SETH_DEBUG("leader do propose message: %d, pool index: %u, %u_%u_%lu, "
