@@ -617,7 +617,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
 #endif
     auto st = HandleProposeMsgStep_HasVote(pro_msg_wrap);
     if (st != Status::kSuccess) {
-        HandleProposeMsgStep_VerifyQC(pro_msg_wrap);
+        // HandleProposeMsgStep_VerifyQC(pro_msg_wrap);
         ADD_DEBUG_PROCESS_TIMESTAMP();
         return;
     }
@@ -659,7 +659,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     // }
     
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    HandleProposeMsgStep_VerifyQC(pro_msg_wrap);
+    // HandleProposeMsgStep_VerifyQC(pro_msg_wrap);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     st = HandleProposeMessageByStep(pro_msg_wrap);
     if (st != Status::kSuccess) {
