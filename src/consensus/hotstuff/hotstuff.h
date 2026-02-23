@@ -79,9 +79,6 @@ public:
         tm_block_mgr_(tm_block_mgr),
         new_block_cache_callback_(new_block_cache_callback) {
         prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
-        pacemaker_->SetNewProposalFn(std::bind(&Hotstuff::Propose, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-        pacemaker_->SetStopVotingFn(std::bind(&Hotstuff::StopVoting, this, std::placeholders::_1));
-
     }
     ~Hotstuff() {};
 

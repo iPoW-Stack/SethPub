@@ -43,14 +43,6 @@ public:
     Pacemaker(const Pacemaker&) = delete;
     Pacemaker& operator=(const Pacemaker&) = delete;
 
-    void SetNewProposalFn(NewProposalFn fn) {
-        new_proposal_fn_ = fn;
-    }
-
-    void SetStopVotingFn(StopVotingFn fn) {
-        stop_voting_fn_ = fn;
-    }
-
     void SetSyncPoolFn(SyncPoolFn fn) {
         sync_pool_fn_ = fn;
     }
@@ -134,8 +126,6 @@ private:
     std::shared_ptr<TC> high_tc_ = nullptr;
     GetHighQCFn get_high_qc_fn_ = nullptr;
     UpdateHighQCFn update_high_qc_fn_ = nullptr;
-    NewProposalFn new_proposal_fn_ = nullptr;
-    StopVotingFn stop_voting_fn_ = nullptr;
     SyncPoolFn sync_pool_fn_ = nullptr;
     uint64_t last_time_us_ = 0;
     uint64_t duration_us_ = 0;
