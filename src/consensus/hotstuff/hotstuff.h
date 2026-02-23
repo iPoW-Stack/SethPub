@@ -204,7 +204,7 @@ private:
         std::shared_ptr<ViewBlock>& view_block);
     Status HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
     Status HandleProposeMsgStep_VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
-    Status HandleProposeMsgStep_VerifyQC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
+    // Status HandleProposeMsgStep_VerifyQC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
     Status HandleProposeMsgStep_VerifyViewBlock(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
     Status HandleProposeMsgStep_TxAccept(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
     Status HandleProposeMsgStep_ChainStore(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
@@ -274,7 +274,10 @@ private:
         uint32_t pool_index,
         View view);
 
-    common::BftMemberPtr GetLeader(View* out_view) {
+    common::BftMemberPtr GetLeader(
+            uint32_t new_leader_idx, 
+            const view_block::protobuf::QcItem& leader_latest_qc, 
+            View* out_view) {
         auto sharding_id = common::GlobalInfo::Instance()->network_id();
         assert(elect_info_ != nullptr);
         auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
@@ -294,50 +297,15 @@ private:
             return nullptr;
         }
 
-        // if (prev_qc_timestamp_sec_ < (high_view_block->block_info().timestamp() / 1000lu)) {
-        //     prev_qc_timestamp_sec_ = (high_view_block->block_info().timestamp() / 1000lu);
-        // }
-        
-        // auto now = common::TimeUtils::TimestampSeconds();
-        // auto timeout = static_cast<uint64_t>(
-        // common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
-        // auto elapsed = now - prev_qc_timestamp_sec_;
-        // auto k = (elapsed > timeout) ? (elapsed / timeout) : 0;
-        // if (k != 0) {
-        //     prev_qc_timestamp_sec_ += timeout;
-        //     last_stable_leader_member_index_ = (
-        //         last_stable_leader_member_index_ + 
-        //         static_cast<int>(k) + 
-        //         common::kImmutablePoolSize) % members->size();
-        //     // ++consecutive_failures_;
-        //     prev_qc_leader_k_ = prev_qc_timestamp_sec_ / common::kLeaderRoatationBaseTimeoutSec;
-        //     SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
-        //         "consecutive_failures: %d, now: %u, block tm: %lu, "
-        //         "last_stable_leader_member_index: %d, latest_elect_height: %lu, out view: %lu", 
-        //         pool_idx_, 
-        //         high_view_block->qc().view(), 
-        //         elapsed, 
-        //         timeout, 
-        //         k, 
-        //         consecutive_failures_,
-        //         now, 
-        //         high_view_block->block_info().timestamp(),
-        //         last_stable_leader_member_index_,
-        //         latest_elect_height_,
-        //         (high_view_block->qc().view() + latest_elect_height_ + 1));
-        // }
+        if (leader_latest_qc.leader_idx() == new_leader_idx) {
+            if (leader_latest_qc.view() != high_view_block->qc().view()) {
+                return nullptr;
+            }
 
-        // if (k == 0) {
-        //     if (high_view_block->qc().elect_height() < latest_elect_height_) {
-        //         *out_view = high_view_block->qc().view() + latest_elect_height_ + 1;
-        //     } else {
-        //         *out_view = high_view_block->qc().view() + 1;
-        //     }
-        //     // 粘性模式：视图紧凑递增，Leader连任
-        //     return (*members)[last_stable_leader_member_index_ % members->size()];
-        // } else {
-            // 切换模式：强制跳过一个视图号 (V + k + 1)
-            // 当超时刚刚发生(k=1)时，out_view = last_qc.view + 2
+            if (last_stable_leader_member_index_ != new_leader_idx) {
+                return nullptr;
+            }
+
             if (high_view_block->qc().elect_height() < latest_elect_height_) {
                 *out_view = high_view_block->qc().view() + latest_elect_height_ + prev_qc_leader_k_ + 1;
             } else {
@@ -345,7 +313,61 @@ private:
             }
 
             return (*members)[last_stable_leader_member_index_ % members->size()];
-        // }
+        }
+
+        if (leader_latest_qc.view() <= view_block_chain_->LatestCommittedBlock()->qc().view()) {
+            return nullptr;
+        }
+
+        high_view_block = view_block_chain_->Get(leader_latest_qc.view_block_hash());
+        if (high_view_block == nullptr) {
+            return nullptr;
+        }
+
+
+        if (prev_qc_timestamp_sec_ < (high_view_block->block_info().timestamp() / 1000lu)) {
+            prev_qc_timestamp_sec_ = (high_view_block->block_info().timestamp() / 1000lu);
+        }
+        
+        auto now = common::TimeUtils::TimestampSeconds();
+        auto timeout = static_cast<uint64_t>(
+        common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
+        auto elapsed = now - prev_qc_timestamp_sec_;
+        auto k = (elapsed > timeout) ? (elapsed / timeout) : 0;
+        if (k == 0) {
+            return nullptr;
+        }
+        prev_qc_timestamp_sec_ += timeout;
+        auto leader_idx = (
+            last_stable_leader_member_index_ + 
+            static_cast<int>(k) + 
+            common::kImmutablePoolSize) % members->size();
+        // ++consecutive_failures_;
+        prev_qc_leader_k_ = prev_qc_timestamp_sec_ / common::kLeaderRoatationBaseTimeoutSec;
+        SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
+            "consecutive_failures: %d, now: %u, block tm: %lu, "
+            "last_stable_leader_member_index: %d, latest_elect_height: %lu, out view: %lu", 
+            pool_idx_, 
+            high_view_block->qc().view(), 
+            elapsed, 
+            timeout, 
+            k, 
+            consecutive_failures_,
+            now, 
+            high_view_block->block_info().timestamp(),
+            leader_idx,
+            latest_elect_height_,
+            (high_view_block->qc().view() + latest_elect_height_ + 1));
+       
+        // 切换模式：强制跳过一个视图号 (V + k + 1)
+        // 当超时刚刚发生(k=1)时，out_view = last_qc.view + 2
+        if (high_view_block->qc().elect_height() < latest_elect_height_) {
+            *out_view = high_view_block->qc().view() + latest_elect_height_ + prev_qc_leader_k_ + 1;
+        } else {
+            *out_view = high_view_block->qc().view() + prev_qc_leader_k_ + 1;
+        }
+
+        return (*members)[leader_idx % members->size()];
     }
 
     inline common::BftMemberPtr GetMember(uint32_t member_index) const {

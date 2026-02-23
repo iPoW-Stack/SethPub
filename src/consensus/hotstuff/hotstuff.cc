@@ -878,6 +878,7 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
         pacemaker()->NewQcView(qc.view());
         view_block_chain()->UpdateHighViewBlock(qc);
         TryCommit(view_block_chain(), pro_msg_wrap->msg_ptr, qc);
+        last_stable_leader_member_index_ = qc.leader_idx();
         if (latest_qc_item_ptr_ == nullptr ||
                 tc_ptr->view() >= latest_qc_item_ptr_->view()) {
             assert(IsQcTcValid(*tc_ptr));
@@ -903,63 +904,63 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
     return Status::kSuccess;
 }
 
-Status Hotstuff::HandleProposeMsgStep_VerifyQC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
-    auto& msg_ptr = pro_msg_wrap->msg_ptr;
-    auto& pro_msg = msg_ptr->header.hotstuff().pro_msg();
-#ifndef NDEBUG
-    transport::protobuf::ConsensusDebug cons_debug;
-    cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
-
-    SETH_DEBUG("HandleProposeMsgStep_VerifyQC called hash: %lu, "
-        "view_block_hash: %s, propose_debug: %s, sign x: %s",
-        msg_ptr->header.hash64(), 
-        common::Encode::HexEncode(pro_msg.tc().view_block_hash()).c_str(),
-        ProtobufToJson(cons_debug).c_str(),
-        common::Encode::HexEncode(pro_msg.tc().sign_x()).c_str());
-#endif
-    if (pro_msg.has_tc() && pro_msg.tc().has_view_block_hash() && IsQcTcValid(pro_msg.tc())) {
-        ADD_DEBUG_PROCESS_TIMESTAMP();
-        if (VerifyQC(pro_msg.tc()) != Status::kSuccess) {
-            SETH_DEBUG("pool: %d verify qc failed: %lu", pool_idx_, pro_msg.tc().view());
-            return Status::kError;
-        }
-
-        ADD_DEBUG_PROCESS_TIMESTAMP();
-        SETH_DEBUG("success new set qc view: %lu, %u_%u_%lu",
-            pro_msg.tc().view(),
-            pro_msg.tc().network_id(),
-            pro_msg.tc().pool_index(),
-            pro_msg.tc().view());
-        pacemaker()->NewQcView(pro_msg.tc().view());
-        ADD_DEBUG_PROCESS_TIMESTAMP();
-        view_block_chain()->UpdateHighViewBlock(pro_msg.tc());
-        ADD_DEBUG_PROCESS_TIMESTAMP();
-        TryCommit(view_block_chain(), msg_ptr, pro_msg.tc());
-        if (latest_qc_item_ptr_ == nullptr ||
-                pro_msg.tc().view() >= latest_qc_item_ptr_->view()) {
-            assert(IsQcTcValid(pro_msg.tc()));
-            latest_qc_item_ptr_ = std::make_shared<view_block::protobuf::QcItem>(pro_msg.tc());
-        }
-
-        ADD_DEBUG_PROCESS_TIMESTAMP();
+// Status Hotstuff::HandleProposeMsgStep_VerifyQC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
+//     auto& msg_ptr = pro_msg_wrap->msg_ptr;
+//     auto& pro_msg = msg_ptr->header.hotstuff().pro_msg();
 // #ifndef NDEBUG
-//         auto msg_hash = GetQCMsgHash(pro_msg.tc());爱他
-//         auto* tc_ptr = &pro_msg.tc();
-//         SETH_WARN("HandleProposeMsgStep_VerifyQC success verify qc %u_%u_%lu, hash: %s, "
-//             "view block hash: %s, sign x: %s called hash: %lu, propose_debug: %s",
-//             tc_ptr->network_id(), 
-//             tc_ptr->pool_index(), 
-//             tc_ptr->view(), 
-//             common::Encode::HexEncode(msg_hash).c_str(), 
-//             common::Encode::HexEncode(tc_ptr->view_block_hash()).c_str(), 
-//             common::Encode::HexEncode(tc_ptr->sign_x()).c_str(), 
-//             pro_msg_wrap->msg_ptr->header.hash64(),
-//             pro_msg_wrap->msg_ptr->header.debug().c_str());
+//     transport::protobuf::ConsensusDebug cons_debug;
+//     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
+
+//     SETH_DEBUG("HandleProposeMsgStep_VerifyQC called hash: %lu, "
+//         "view_block_hash: %s, propose_debug: %s, sign x: %s",
+//         msg_ptr->header.hash64(), 
+//         common::Encode::HexEncode(pro_msg.tc().view_block_hash()).c_str(),
+//         ProtobufToJson(cons_debug).c_str(),
+//         common::Encode::HexEncode(pro_msg.tc().sign_x()).c_str());
 // #endif
-    }
+//     if (pro_msg.has_tc() && pro_msg.tc().has_view_block_hash() && IsQcTcValid(pro_msg.tc())) {
+//         ADD_DEBUG_PROCESS_TIMESTAMP();
+//         if (VerifyQC(pro_msg.tc()) != Status::kSuccess) {
+//             SETH_DEBUG("pool: %d verify qc failed: %lu", pool_idx_, pro_msg.tc().view());
+//             return Status::kError;
+//         }
+
+//         ADD_DEBUG_PROCESS_TIMESTAMP();
+//         SETH_DEBUG("success new set qc view: %lu, %u_%u_%lu",
+//             pro_msg.tc().view(),
+//             pro_msg.tc().network_id(),
+//             pro_msg.tc().pool_index(),
+//             pro_msg.tc().view());
+//         pacemaker()->NewQcView(pro_msg.tc().view());
+//         ADD_DEBUG_PROCESS_TIMESTAMP();
+//         view_block_chain()->UpdateHighViewBlock(pro_msg.tc());
+//         ADD_DEBUG_PROCESS_TIMESTAMP();
+//         TryCommit(view_block_chain(), msg_ptr, pro_msg.tc());
+//         if (latest_qc_item_ptr_ == nullptr ||
+//                 pro_msg.tc().view() >= latest_qc_item_ptr_->view()) {
+//             assert(IsQcTcValid(pro_msg.tc()));
+//             latest_qc_item_ptr_ = std::make_shared<view_block::protobuf::QcItem>(pro_msg.tc());
+//         }
+
+//         ADD_DEBUG_PROCESS_TIMESTAMP();
+// // #ifndef NDEBUG
+// //         auto msg_hash = GetQCMsgHash(pro_msg.tc());爱他
+// //         auto* tc_ptr = &pro_msg.tc();
+// //         SETH_WARN("HandleProposeMsgStep_VerifyQC success verify qc %u_%u_%lu, hash: %s, "
+// //             "view block hash: %s, sign x: %s called hash: %lu, propose_debug: %s",
+// //             tc_ptr->network_id(), 
+// //             tc_ptr->pool_index(), 
+// //             tc_ptr->view(), 
+// //             common::Encode::HexEncode(msg_hash).c_str(), 
+// //             common::Encode::HexEncode(tc_ptr->view_block_hash()).c_str(), 
+// //             common::Encode::HexEncode(tc_ptr->sign_x()).c_str(), 
+// //             pro_msg_wrap->msg_ptr->header.hash64(),
+// //             pro_msg_wrap->msg_ptr->header.debug().c_str());
+// // #endif
+//     }
     
-    return Status::kSuccess;
-}
+//     return Status::kSuccess;
+// }
 
 Status Hotstuff::HandleProposeMsgStep_VerifyViewBlock(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
 #ifndef NDEBUG
