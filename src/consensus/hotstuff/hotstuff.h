@@ -330,20 +330,15 @@ private:
         
         auto now = common::TimeUtils::TimestampSeconds();
         auto timeout = static_cast<uint64_t>(
-        common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
+            common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
         auto elapsed = now - prev_qc_timestamp_sec_;
-        auto k = (elapsed > timeout) ? (elapsed / timeout) : 0;
-        if (k == 0) {
-            return nullptr;
-        }
-
         prev_qc_timestamp_sec_ += timeout;
+        auto k = prev_qc_timestamp_sec_ / common::kLeaderRoatationBaseTimeoutSec;
         auto leader_idx = (
             last_stable_leader_member_index_ + 
             static_cast<int>(k) + 
             common::kImmutablePoolSize) % members->size();
         // ++consecutive_failures_;
-        auto k = prev_qc_timestamp_sec_ / common::kLeaderRoatationBaseTimeoutSec;
         SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
             "consecutive_failures: %d, now: %u, block tm: %lu, "
             "last_stable_leader_member_index: %d, latest_elect_height: %lu, out view: %lu", 
