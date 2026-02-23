@@ -292,10 +292,10 @@ private:
         //     return nullptr;
         // }
 
-        // auto high_view_block = view_block_chain_->HighViewBlock();
-        // if (!high_view_block) {
-        //     return nullptr;
-        // }
+        auto high_view_block = view_block_chain_->HighViewBlock();
+        if (!high_view_block) {
+            return nullptr;
+        }
 
         // if (leader_latest_qc.leader_idx() == new_leader_idx) {
         //     if (leader_latest_qc.view() != high_view_block->qc().view()) {
