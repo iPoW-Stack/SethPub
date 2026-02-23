@@ -1521,9 +1521,8 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
         (common::TimeUtils::TimestampMs() - view_block_info_ptr->b_tm_ms));
     ADD_DEBUG_PROCESS_TIMESTAMP();
     latest_propose_msg_tm_ms_ = 0;
-    auto local_idx = GetLocalMemberIdx();
     View out_view = 0;
-    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view);
+    auto leader = GetLeader(last_stable_leader_member_index_, *latest_qc_item_ptr_, &out_view);
     if (!leader) {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
         return;
@@ -1570,9 +1569,8 @@ void Hotstuff::HandlePreResetTimerMsg(const transport::MessagePtr& msg_ptr) {
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    auto local_idx = GetLocalMemberIdx();
     View out_view = 0;
-    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view);
+    auto leader = GetLeader(last_stable_leader_member_index_, *latest_qc_item_ptr_, &out_view);
     if (!leader) {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
         return;
@@ -2367,7 +2365,7 @@ void Hotstuff::TryRecoverFromStuck(
 
     auto local_idx = GetLocalMemberIdx();
     View out_view = 0;
-    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view);
+    auto leader = GetLeader(last_stable_leader_member_index_, *latest_qc_item_ptr_, &out_view);
     if (!leader) {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
         return;
