@@ -624,7 +624,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         pro_msg_wrap->msg_ptr->header.hash64(), last_vote_view_, view_item.qc().view(),
         ProtobufToJson(cons_debug).c_str());
 #endif
-    auto st = HandleProposeMsgStep_HasVote(pro_msg_wrap);
+    st = HandleProposeMsgStep_HasVote(pro_msg_wrap);
     if (st != Status::kSuccess) {
         // HandleProposeMsgStep_VerifyQC(pro_msg_wrap);
         ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -1521,7 +1521,15 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
         (common::TimeUtils::TimestampMs() - view_block_info_ptr->b_tm_ms));
     ADD_DEBUG_PROCESS_TIMESTAMP();
     latest_propose_msg_tm_ms_ = 0;
-    auto s = Propose(qc_item_ptr, nullptr, msg_ptr);
+    auto local_idx = GetLocalMemberIdx();
+    View out_view = 0;
+    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view);
+    if (!leader) {
+        SETH_DEBUG("pool index: %d, no leader", pool_idx_);
+        return;
+    }
+
+    auto s = Propose(leader, qc_item_ptr, nullptr, msg_ptr);
     ADD_DEBUG_PROCESS_TIMESTAMP();
 }
 
@@ -1562,7 +1570,15 @@ void Hotstuff::HandlePreResetTimerMsg(const transport::MessagePtr& msg_ptr) {
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    Propose(nullptr, nullptr, msg_ptr);
+    auto local_idx = GetLocalMemberIdx();
+    View out_view = 0;
+    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view);
+    if (!leader) {
+        SETH_DEBUG("pool index: %d, no leader", pool_idx_);
+        return;
+    }
+    
+    Propose(leader, nullptr, nullptr, msg_ptr);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     SETH_DEBUG("reset timer success!");
 }
