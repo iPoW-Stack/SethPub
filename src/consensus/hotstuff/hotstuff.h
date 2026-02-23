@@ -302,10 +302,14 @@ private:
 
         if (leader_latest_qc.leader_idx() == new_leader_idx) {
             if (leader_latest_qc.view() != high_view_block->qc().view()) {
+                SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is not equal with high view block qc view: %lu",
+                    pool_idx_, leader_latest_qc.view(), high_view_block->qc().view());
                 return nullptr;
             }
 
             if (last_stable_leader_member_index_ != new_leader_idx) {
+                SETH_DEBUG("pool: %u, leader_latest_qc view: %lu, last_stable_leader_member_index_: %d is not equal with new_leader_idx: %d",
+                    pool_idx_, leader_latest_qc.view(), last_stable_leader_member_index_, new_leader_idx);
                 return nullptr;
             }
 
@@ -319,11 +323,16 @@ private:
         }
 
         if (leader_latest_qc.view() <= view_block_chain_->LatestCommittedBlock()->qc().view()) {
+            SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is too old, latest committed block view: %lu",
+                pool_idx_, leader_latest_qc.view(), view_block_chain_->LatestCommittedBlock()->qc().view());
             return nullptr;
         }
 
         auto high_view_block_info = view_block_chain_->Get(leader_latest_qc.view_block_hash());
         if (high_view_block_info == nullptr || high_view_block_info->view_block == nullptr) {
+            SETH_DEBUG("pool: %u, leader_latest_qc view: %lu, view_block_hash: %s "
+                "not found in view block chain", 
+                pool_idx_, leader_latest_qc.view(), leader_latest_qc.view_block_hash().c_str());
             return nullptr;
         }
 
