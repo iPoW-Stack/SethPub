@@ -155,30 +155,11 @@ void Hotstuff::InitAddNewViewBlock(
 
 Status Hotstuff::Start() {
     StartInit();
-    if (network::IsWaitingForElect()) {
-        return Status::kSuccess;
-    }
-
-    View out_view = 0;
-    auto leader = GetLeader(&out_view);
-    auto elect_item = elect_info_->GetElectItemWithShardingId(common::GlobalInfo::Instance()->network_id());
-    if (!elect_item || !elect_item->IsValid()) {
-        return Status::kElectItemNotFound;
-    }
-    auto local_member = elect_item->LocalMember();
-    if (!local_member) {
-        return Status::kError;
-    }
-    if (!leader) { // Check if it is empty
-        SETH_ERROR("Get Leader is error.");
-    } else if (leader->index == local_member->index) {
-        SETH_DEBUG("ViewBlock start propose");
-        Propose(nullptr, nullptr, nullptr);
-    }
     return Status::kSuccess;
 }
 
 Status Hotstuff::Propose(
+        common::BftMemberPtr leader,
         std::shared_ptr<TC> tc,
         std::shared_ptr<AggregateQC> agg_qc,
         const transport::MessagePtr& msg_ptr) {
@@ -235,7 +216,6 @@ Status Hotstuff::Propose(
     auto t1 = common::TimeUtils::TimestampMs();
 #endif
     View out_view = 0;
-    auto leader = GetLeader(&out_view);
     if (!leader) {
         return Status::kError;
     }
@@ -341,7 +321,7 @@ Status Hotstuff::Propose(
         pre_v_block->qc().pool_index(),
         pre_v_block->qc().view(),
         tm_block_mgr_->LatestTimestampHeight());
-    Status s = ConstructProposeMsg(msg_ptr, pb_pro_msg);
+    Status s = ConstructProposeMsg(leader, msg_ptr, pb_pro_msg);
     if (s != Status::kSuccess) {
         if (!tc) {
             SETH_DEBUG("pool: %d construct propose msg failed, %d",
@@ -521,8 +501,21 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         msg_ptr->header.hash64(), 
         ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
     auto pro_msg_wrap = std::make_shared<ProposeMsgWrapper>(msg_ptr);
-    if (msg_ptr->header.hotstuff().pro_msg().has_tc()) {
-        HandleTC(pro_msg_wrap);
+    if (!msg_ptr->header.hotstuff().pro_msg().has_tc()) {
+        SETH_DEBUG("not has tc handle propose called hash: %lu, propose_debug: %s", 
+            msg_ptr->header.hash64(), 
+            ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
+        assert(false);
+        return;
+    }
+
+    auto st = HandleTC(pro_msg_wrap);
+    if (st != Status::kSuccess) {
+        SETH_DEBUG("invalid tc handle propose called hash: %lu, propose_debug: %s", 
+            msg_ptr->header.hash64(), 
+            ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
+        assert(false);
+        return;
     }
 
     // if (msg_ptr->header.hotstuff().pro_msg().view_item().block_info().timeblock_height() != 
@@ -609,6 +602,22 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     assert(pro_msg_wrap->view_block_ptr->block_info().tx_list_size() == 0);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto& view_item = *pro_msg_wrap->view_block_ptr;
+    View out_view = 0;
+    auto leader = GetLeader(
+        view_item.qc().leader_idx(), 
+        msg_ptr->header.hotstuff().pro_msg().tc(), 
+        &out_view);
+    if (!leader) {
+        SETH_ERROR("pool: %d, Send vote message is error.",
+            pool_idx_, pro_msg_wrap->msg_ptr->header.hash64());
+        return;
+    }
+
+    if (view_item.qc().view() != out_view) {
+        return;
+    }
+
+    pro_msg_wrap->leader = leader;
 #ifndef NDEBUG
     SETH_DEBUG("HandleProposeMessageByStep called hash: %lu, "
         "last_vote_view_: %lu, view_item.qc().view(): %lu, propose_debug: %s",
@@ -795,8 +804,7 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
                         common::Encode::HexEncode(iter->second->header.hotstuff().vote_msg().view_block_hash()).c_str());
                     auto tmp_msg_ptr = std::make_shared<transport::TransportMessage>();
                     tmp_msg_ptr->header.CopyFrom(iter->second->header);
-                    View out_view = 0;
-                    auto leader = GetLeader(&out_view);
+                    auto leader = pro_msg_wrap->leader;
                     if (!leader || SendMsgToLeader(leader, tmp_msg_ptr, VOTE) != Status::kSuccess) {
                         SETH_ERROR("pool: %d, Send vote message is error.",
                             pool_idx_, pro_msg_wrap->msg_ptr->header.hash64());
@@ -1864,8 +1872,7 @@ Status Hotstuff::VerifyVoteMsg(const hotstuff::protobuf::VoteMsg& vote_msg) {
 }
 
 Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
-    View out_view = 0;
-    auto leader = GetLeader(&out_view);
+    auto leader = pro_msg_wrap->leader;
     if (!leader) {
         SETH_ERROR("Get Leader is error.");
         return Status::kError;
@@ -1883,26 +1890,15 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
             qc.leader_idx());
         return Status::kError;
     }
-    
-    if (qc.view() != out_view) {
-        SETH_ERROR("%u_%u_%lu_%lu, last_vote_view_: %lu != out_view: %lu", 
-            common::GlobalInfo::Instance()->network_id(),
-            pool_idx_,
-            qc.view(),
-            block_info.height(),
-            last_vote_view_, 
-            out_view);
-        return Status::kError;
-    }
-
-    if (last_vote_view_ >= out_view) {
+   
+    if (last_vote_view_ >= qc.view()) {
         SETH_ERROR("%u_%u_%lu_%lu, last_vote_view_: %lu >= out_view: %lu", 
             common::GlobalInfo::Instance()->network_id(),
             pool_idx_,
             qc.view(),
             block_info.height(),
             last_vote_view_, 
-            out_view);
+            qc.view());
         return Status::kError;
     }
 
@@ -1938,7 +1934,7 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
             common::Encode::HexEncode(leader->pubkey).c_str(),
             consecutive_failures_,
             last_stable_leader_member_index_,
-            out_view);
+            qc.view());
         return Status::kError;
     }
     
@@ -1947,6 +1943,7 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
 }
 
 Status Hotstuff::ConstructProposeMsg(
+        common::BftMemberPtr leader,
         const transport::MessagePtr& msg_ptr, 
         hotstuff::protobuf::ProposeMsg* pro_msg) {
     auto elect_item = elect_info_->GetElectItemWithShardingId(
@@ -1957,7 +1954,7 @@ Status Hotstuff::ConstructProposeMsg(
 
     auto new_view_block = pro_msg->mutable_view_item();
     auto* tx_propose = pro_msg->mutable_tx_propose();
-    Status s = ConstructViewBlock(msg_ptr, new_view_block, tx_propose);
+    Status s = ConstructViewBlock(leader, msg_ptr, new_view_block, tx_propose);
     if (s != Status::kSuccess) {
         SETH_DEBUG("pool: %d construct view block failed, view: %lu, %d, member_index: %d",
             pool_idx_, view_block_chain()->HighViewBlock()->qc().view(), (int32_t)s, 
@@ -2041,6 +2038,7 @@ Status Hotstuff::ConstructVoteMsg(
 }
 
 Status Hotstuff::ConstructViewBlock(
+        common::BftMemberPtr leader,
         const transport::MessagePtr& msg_ptr, 
         ViewBlock* view_block,
         hotstuff::protobuf::TxPropose* tx_propose) {
@@ -2076,7 +2074,6 @@ Status Hotstuff::ConstructViewBlock(
     }
 #endif
     View out_view = 0;
-    auto leader = GetLeader(&out_view);
     if (!leader || leader->index != local_member->index) {
         SETH_DEBUG("pool index: %d, leader->index: %d != local_member->index: %d",
             pool_idx_, leader->index, local_member->index);
@@ -2351,18 +2348,18 @@ void Hotstuff::TryRecoverFromStuck(
     //     return;
     // }
 
+    auto local_idx = GetLocalMemberIdx();
     View out_view = 0;
-    auto leader = GetLeader(&out_view);
+    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view);
     if (!leader) {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
         return;
     }
     
-    auto local_idx = GetLocalMemberIdx();
     if (leader && leader->index == local_idx) {
         assert(leader->pubkey == crypto_->security()->GetPublicKey());
         ADD_DEBUG_PROCESS_TIMESTAMP();
-        Propose(nullptr, nullptr, msg_ptr);
+        Propose(leader, nullptr, nullptr, msg_ptr);
         ADD_DEBUG_PROCESS_TIMESTAMP();
         if (latest_qc_item_ptr_) {
             SETH_DEBUG("leader do propose message: %d, pool index: %u, %u_%u_%lu, "

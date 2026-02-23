@@ -111,7 +111,6 @@ public:
 
         latest_elect_height_ = elect_height;
         consecutive_failures_ = 0;
-        prev_qc_timestamp_sec_ = 0;
         last_stable_leader_member_index_ = GetEpochLeaderIndex();
         SETH_DEBUG("pool: %d, success set last_stable_leader_member_index_: %d, "
             "latest_elect_height_: %lu",
@@ -123,6 +122,7 @@ public:
     void HandlePreResetTimerMsg(const transport::MessagePtr& msg_ptr);
     void HandleVoteMsg(const transport::MessagePtr& msg_ptr);
     Status Propose(
+        common::BftMemberPtr leader,
         std::shared_ptr<TC> tc,
         std::shared_ptr<AggregateQC> agg_qc,
         const transport::MessagePtr& msg_ptr);
@@ -237,13 +237,17 @@ private:
             const std::shared_ptr<ViewBlockChain>& view_block_chain,
             const TC* tc,
             const uint32_t& elect_height);
-    Status ConstructProposeMsg(const transport::MessagePtr& msg_ptr, hotstuff::protobuf::ProposeMsg* pro_msg);
+    Status ConstructProposeMsg(
+        common::BftMemberPtr leader,
+        const transport::MessagePtr& msg_ptr, 
+        hotstuff::protobuf::ProposeMsg* pro_msg);
     Status ConstructVoteMsg(
         const transport::MessagePtr& msg_ptr,
         hotstuff::protobuf::VoteMsg* vote_msg,
         uint64_t elect_height,
         const std::shared_ptr<ViewBlock>& v_block);
     Status ConstructViewBlock(
+        common::BftMemberPtr leader,
         const transport::MessagePtr& msg_ptr,
         ViewBlock* view_block,
         hotstuff::protobuf::TxPropose* tx_propose);
@@ -324,16 +328,16 @@ private:
         }
 
         high_view_block = high_view_block_info->view_block;
-        if (prev_qc_timestamp_sec_ < (high_view_block->block_info().timestamp() / 1000lu)) {
-            prev_qc_timestamp_sec_ = (high_view_block->block_info().timestamp() / 1000lu);
-        }
-        
+        auto prev_qc_timestamp_sec = (high_view_block->block_info().timestamp() / 1000lu);
         auto now = common::TimeUtils::TimestampSeconds();
         auto timeout = static_cast<uint64_t>(
             common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
-        auto elapsed = now - prev_qc_timestamp_sec_;
-        prev_qc_timestamp_sec_ += timeout;
-        auto k = prev_qc_timestamp_sec_ / common::kLeaderRoatationBaseTimeoutSec;
+        auto elapsed = now - prev_qc_timestamp_sec;
+        if (elapsed < timeout) {
+            return (*members)[last_stable_leader_member_index_ % members->size()];
+        }
+
+        auto k = prev_qc_timestamp_sec / common::kLeaderRoatationBaseTimeoutSec;
         auto leader_idx = (
             last_stable_leader_member_index_ + 
             static_cast<int>(k) + 
@@ -449,7 +453,6 @@ private:
     uint32_t consecutive_failures_ = 0u;
     uint32_t last_stable_leader_member_index_ = 0u;
     uint64_t latest_elect_height_ = 0llu;
-    uint64_t prev_qc_timestamp_sec_ = 0llu;
 
 // #ifndef NDEBUG
     static std::atomic<uint32_t> sendout_bft_message_count_;
