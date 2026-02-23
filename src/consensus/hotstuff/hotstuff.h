@@ -235,6 +235,7 @@ private:
             const TC* tc,
             const uint32_t& elect_height);
     Status ConstructProposeMsg(
+        View leader_view,
         common::BftMemberPtr leader,
         const transport::MessagePtr& msg_ptr, 
         hotstuff::protobuf::ProposeMsg* pro_msg);
@@ -244,6 +245,7 @@ private:
         uint64_t elect_height,
         const std::shared_ptr<ViewBlock>& v_block);
     Status ConstructViewBlock(
+        View leader_view,
         common::BftMemberPtr leader,
         const transport::MessagePtr& msg_ptr,
         ViewBlock* view_block,

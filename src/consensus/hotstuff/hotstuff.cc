@@ -321,7 +321,7 @@ Status Hotstuff::Propose(
         pre_v_block->qc().pool_index(),
         pre_v_block->qc().view(),
         tm_block_mgr_->LatestTimestampHeight());
-    Status s = ConstructProposeMsg(leader, msg_ptr, pb_pro_msg);
+    Status s = ConstructProposeMsg(out_view, leader, msg_ptr, pb_pro_msg);
     if (s != Status::kSuccess) {
         if (!tc) {
             SETH_DEBUG("pool: %d construct propose msg failed, %d",
@@ -1959,6 +1959,7 @@ Status Hotstuff::VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) 
 }
 
 Status Hotstuff::ConstructProposeMsg(
+        View leader_view,
         common::BftMemberPtr leader,
         const transport::MessagePtr& msg_ptr, 
         hotstuff::protobuf::ProposeMsg* pro_msg) {
@@ -1970,7 +1971,7 @@ Status Hotstuff::ConstructProposeMsg(
 
     auto new_view_block = pro_msg->mutable_view_item();
     auto* tx_propose = pro_msg->mutable_tx_propose();
-    Status s = ConstructViewBlock(leader, msg_ptr, new_view_block, tx_propose);
+    Status s = ConstructViewBlock(leader_view, leader, msg_ptr, new_view_block, tx_propose);
     if (s != Status::kSuccess) {
         SETH_DEBUG("pool: %d construct view block failed, view: %lu, %d, member_index: %d",
             pool_idx_, view_block_chain()->HighViewBlock()->qc().view(), (int32_t)s, 
@@ -2054,6 +2055,7 @@ Status Hotstuff::ConstructVoteMsg(
 }
 
 Status Hotstuff::ConstructViewBlock(
+        View leader_view,
         common::BftMemberPtr leader,
         const transport::MessagePtr& msg_ptr, 
         ViewBlock* view_block,
@@ -2089,7 +2091,6 @@ Status Hotstuff::ConstructViewBlock(
         }
     }
 #endif
-    View out_view = 0;
     if (!leader || leader->index != local_member->index) {
         SETH_DEBUG("pool index: %d, leader->index: %d != local_member->index: %d",
             pool_idx_, leader->index, local_member->index);
@@ -2098,7 +2099,7 @@ Status Hotstuff::ConstructViewBlock(
 
     auto* qc = view_block->mutable_qc();
     qc->set_leader_idx(leader->index);
-    qc->set_view(out_view);
+    qc->set_view(leader_view);
     qc->set_network_id(common::GlobalInfo::Instance()->network_id());
     qc->set_pool_index(pool_idx_);
     view_block->set_parent_hash(pre_v_block->qc().view_block_hash());
