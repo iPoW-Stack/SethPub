@@ -322,11 +322,11 @@ private:
             return (*members)[last_stable_leader_member_index_ % members->size()];
         }
 
-        if (leader_latest_qc.view() <= view_block_chain_->LatestCommittedBlock()->qc().view()) {
-            SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is too old, latest committed block view: %lu",
-                pool_idx_, leader_latest_qc.view(), view_block_chain_->LatestCommittedBlock()->qc().view());
-            return nullptr;
-        }
+        // if (leader_latest_qc.view() <= view_block_chain_->LatestCommittedBlock()->qc().view()) {
+        //     SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is too old, latest committed block view: %lu",
+        //         pool_idx_, leader_latest_qc.view(), view_block_chain_->LatestCommittedBlock()->qc().view());
+        //     return nullptr;
+        // }
 
         auto high_view_block_info = view_block_chain_->Get(leader_latest_qc.view_block_hash());
         if (high_view_block_info == nullptr || high_view_block_info->view_block == nullptr) {
@@ -337,6 +337,12 @@ private:
         }
 
         high_view_block = high_view_block_info->view_block;
+        if (high_view_block->qc().elect_height() < latest_elect_height_) {
+            *out_view = high_view_block->qc().view() + latest_elect_height_ + 1;
+        } else {
+            *out_view = high_view_block->qc().view() + 1;
+        }
+        
         auto prev_qc_timestamp_sec = (high_view_block->block_info().timestamp() / 1000lu);
         auto now = common::TimeUtils::TimestampSeconds();
         auto timeout = static_cast<uint64_t>(
