@@ -886,15 +886,11 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
         pacemaker()->NewQcView(qc.view());
         view_block_chain()->UpdateHighViewBlock(qc);
         TryCommit(view_block_chain(), pro_msg_wrap->msg_ptr, qc);
-        last_stable_leader_member_index_ = qc.leader_idx();
+        // last_stable_leader_member_index_ = qc.leader_idx();
         if (latest_qc_item_ptr_ == nullptr ||
                 tc_ptr->view() >= latest_qc_item_ptr_->view()) {
             assert(IsQcTcValid(*tc_ptr));
             latest_qc_item_ptr_ = tc_ptr;
-            // consecutive_failures_ = 0;
-            // last_stable_leader_member_index_ = latest_qc_item_ptr_->leader_idx();
-            // SETH_DEBUG("pool: %d, success set last_stable_leader_member_index_: %d",
-            //     pool_idx_, last_stable_leader_member_index_);
         }
         SETH_DEBUG("commit use time: %lu", (common::TimeUtils::TimestampMs() - btime));
 
@@ -1577,7 +1573,7 @@ void Hotstuff::HandlePreResetTimerMsg(const transport::MessagePtr& msg_ptr) {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
         return;
     }
-    
+
     Propose(leader, nullptr, nullptr, msg_ptr);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     SETH_DEBUG("reset timer success!");
