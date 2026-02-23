@@ -307,9 +307,9 @@ private:
             }
 
             if (high_view_block->qc().elect_height() < latest_elect_height_) {
-                *out_view = high_view_block->qc().view() + latest_elect_height_ + prev_qc_leader_k_ + 1;
+                *out_view = high_view_block->qc().view() + latest_elect_height_ + 1;
             } else {
-                *out_view = high_view_block->qc().view() + prev_qc_leader_k_ + 1;
+                *out_view = high_view_block->qc().view() + 1;
             }
 
             return (*members)[last_stable_leader_member_index_ % members->size()];
@@ -337,13 +337,14 @@ private:
         if (k == 0) {
             return nullptr;
         }
+
         prev_qc_timestamp_sec_ += timeout;
         auto leader_idx = (
             last_stable_leader_member_index_ + 
             static_cast<int>(k) + 
             common::kImmutablePoolSize) % members->size();
         // ++consecutive_failures_;
-        prev_qc_leader_k_ = prev_qc_timestamp_sec_ / common::kLeaderRoatationBaseTimeoutSec;
+        auto k = prev_qc_timestamp_sec_ / common::kLeaderRoatationBaseTimeoutSec;
         SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
             "consecutive_failures: %d, now: %u, block tm: %lu, "
             "last_stable_leader_member_index: %d, latest_elect_height: %lu, out view: %lu", 
@@ -362,9 +363,9 @@ private:
         // 切换模式：强制跳过一个视图号 (V + k + 1)
         // 当超时刚刚发生(k=1)时，out_view = last_qc.view + 2
         if (high_view_block->qc().elect_height() < latest_elect_height_) {
-            *out_view = high_view_block->qc().view() + latest_elect_height_ + prev_qc_leader_k_ + 1;
+            *out_view = high_view_block->qc().view() + latest_elect_height_ + k + 1;
         } else {
-            *out_view = high_view_block->qc().view() + prev_qc_leader_k_ + 1;
+            *out_view = high_view_block->qc().view() + k + 1;
         }
 
         return (*members)[leader_idx % members->size()];
@@ -455,7 +456,6 @@ private:
     uint32_t last_stable_leader_member_index_ = 0u;
     uint64_t latest_elect_height_ = 0llu;
     uint64_t prev_qc_timestamp_sec_ = 0llu;
-    uint64_t prev_qc_leader_k_ = 0llu;
 
 // #ifndef NDEBUG
     static std::atomic<uint32_t> sendout_bft_message_count_;
