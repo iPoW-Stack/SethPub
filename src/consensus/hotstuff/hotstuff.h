@@ -111,7 +111,6 @@ public:
 
         latest_elect_height_ = elect_height;
         consecutive_failures_ = 0;
-        prev_qc_leader_k_ = 0;
         prev_qc_timestamp_sec_ = 0;
         last_stable_leader_member_index_ = GetEpochLeaderIndex();
         SETH_DEBUG("pool: %d, success set last_stable_leader_member_index_: %d, "
@@ -319,12 +318,12 @@ private:
             return nullptr;
         }
 
-        high_view_block = view_block_chain_->Get(leader_latest_qc.view_block_hash());
-        if (high_view_block == nullptr) {
+        auto high_view_block_info = view_block_chain_->Get(leader_latest_qc.view_block_hash());
+        if (high_view_block_info == nullptr || high_view_block_info->view_block == nullptr) {
             return nullptr;
         }
 
-
+        high_view_block = high_view_block_info->view_block;
         if (prev_qc_timestamp_sec_ < (high_view_block->block_info().timestamp() / 1000lu)) {
             prev_qc_timestamp_sec_ = (high_view_block->block_info().timestamp() / 1000lu);
         }
