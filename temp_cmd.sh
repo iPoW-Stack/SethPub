@@ -1,4 +1,4 @@
-local_ip=$1
+public_ip=$1
 start_pos=$2
 node_count=$3
 bootstrap=$4
@@ -7,7 +7,7 @@ end_shard=$6
 TEST_TX_TPS=5000
 TEST_TX_MAX_POOL_INDEX=1
 
-echo "new node: $local_ip $start_pos $node_count $start_shard $end_shard"
+echo "new node: $public_ip $start_pos $node_count $start_shard $end_shard"
 rm -rf /root/seths/
 mkdir -p /root/seths/
 
@@ -27,7 +27,8 @@ deploy_nodes() {
             pubkey=`sed -n "$i""p" /root/pkg/shards$shard_id | awk -F'\t' '{print $2}'`
             cp -rf /root/pkg/temp /root/seths/s$shard_id'_'$i
             sed -i 's/PRIVATE_KEY/'$prikey'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
-            sed -i 's/LOCAL_IP/'$local_ip'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
+            sed -i 's/PUBLIC_IP/'$public_ip'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
+            sed -i 's/LOCAL_IP/0.0.0.0/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
             sed -i 's/BOOTSTRAP/'$bootstrap'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
             if ((i<=TEST_TX_MAX_POOL_INDEX)); then
                 sed -i 's/TEST_POOL_INDEX/'$(($i-1))'/g' /root/seths/s3_$i/conf/seth.conf
