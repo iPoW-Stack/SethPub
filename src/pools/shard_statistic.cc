@@ -1019,15 +1019,15 @@ void ShardStatistic::setElectStatistics(
             auto ip_int = (*members)[midx]->public_ip;
             area_point->set_x(0);
             area_point->set_y(0);
-            if (ip_int != 0) {
-                auto ip = common::Uint32ToIp(ip_int);
-                float x = 0.0;
-                float y = 0.0;
-                if (common::Ip::Instance()->GetIpLocation(ip, &x, &y) == 0) {
-                    area_point->set_x(static_cast<int32_t>(x * 100));
-                    area_point->set_y(static_cast<int32_t>(y * 100));
-                }
-            }
+            // if (ip_int != 0) {
+            //     auto ip = common::Uint32ToIp(ip_int);
+            //     float x = 0.0;
+            //     float y = 0.0;
+            //     if (common::Ip::Instance()->GetIpLocation(ip, &x, &y) == 0) {
+            //         area_point->set_x(static_cast<int32_t>(x * 100));
+            //         area_point->set_y(static_cast<int32_t>(y * 100));
+            //     }
+            // }
 
             int32_t x1 = area_point->x();
             int32_t y1 = area_point->y();
