@@ -50,6 +50,7 @@ int ElectTxItem::HandleTx(
     view_block_chain_ = pre_zjc_host.view_block_chain_;
     g2_ = std::make_shared<std::mt19937_64>(vss_mgr_->EpochRandom());
     zjcvm::ZjchainHost zjc_host;
+    zjc_host.view_block_chain_ = pre_zjc_host.view_block_chain_;
     zjc_host.pre_zjc_host_ = &pre_zjc_host;
     InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
     auto& unique_hash = tx_info->key();

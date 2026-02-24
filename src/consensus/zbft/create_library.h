@@ -33,6 +33,7 @@ public:
         auto& from = address_info->addr();
         int balance_status = GetTempAccountBalance(pre_zjc_host, from, acc_balance_map, &from_balance, &from_nonce);
         zjcvm::ZjchainHost zjc_host;
+        zjc_host.view_block_chain_ = pre_zjc_host.view_block_chain_;
         zjc_host.pre_zjc_host_ = &pre_zjc_host;
         do  {
             gas_used = consensus::kCreateLibraryDefaultUseGas;

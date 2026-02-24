@@ -64,6 +64,7 @@ int ContractUserCreateCall::HandleTx(
 
     int64_t tmp_from_balance = from_balance;
     zjcvm::ZjchainHost zjc_host;
+    zjc_host.view_block_chain_ = pre_zjc_host.view_block_chain_;
     zjc_host.pre_zjc_host_ = &pre_zjc_host;
     if (block_tx.status() == kConsensusSuccess) {
         InitHost(

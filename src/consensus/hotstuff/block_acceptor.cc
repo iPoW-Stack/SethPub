@@ -123,6 +123,7 @@ Status BlockAcceptor::Accept(
 
     zjc_host.parent_hash_ = view_block.parent_hash();
     zjc_host.view_block_chain_ = view_block_chain_;
+    assert(zjc_host.view_block_chain_ != nullptr);
     zjc_host.view_ = view_block.qc().view();
     // 2. Get txs from local pool
     auto txs_ptr = std::make_shared<consensus::WaitingTxsItem>();
