@@ -300,18 +300,18 @@ private:
             return nullptr;
         }
 
-        if (leader_latest_qc.leader_idx() == new_leader_idx) {
-            if (leader_latest_qc.view() != high_view_block->qc().view()) {
-                SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is not equal with high view block qc view: %lu",
-                    pool_idx_, leader_latest_qc.view(), high_view_block->qc().view());
-                return nullptr;
-            }
+        // if (leader_latest_qc.leader_idx() == new_leader_idx) {
+        //     if (leader_latest_qc.view() != high_view_block->qc().view()) {
+        //         SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is not equal with high view block qc view: %lu",
+        //             pool_idx_, leader_latest_qc.view(), high_view_block->qc().view());
+        //         return nullptr;
+        //     }
 
-            if (last_stable_leader_member_index_ != new_leader_idx) {
-                SETH_DEBUG("pool: %u, leader_latest_qc view: %lu, last_stable_leader_member_index_: %d is not equal with new_leader_idx: %d",
-                    pool_idx_, leader_latest_qc.view(), last_stable_leader_member_index_, new_leader_idx);
-                return nullptr;
-            }
+        //     if (last_stable_leader_member_index_ != new_leader_idx) {
+        //         SETH_DEBUG("pool: %u, leader_latest_qc view: %lu, last_stable_leader_member_index_: %d is not equal with new_leader_idx: %d",
+        //             pool_idx_, leader_latest_qc.view(), last_stable_leader_member_index_, new_leader_idx);
+        //         return nullptr;
+        //     }
 
             if (high_view_block->qc().elect_height() < latest_elect_height_) {
                 *out_view = high_view_block->qc().view() + latest_elect_height_ + 1;
@@ -320,7 +320,7 @@ private:
             }
 
             return (*members)[last_stable_leader_member_index_ % members->size()];
-        }
+        // }
 
         // if (leader_latest_qc.view() <= view_block_chain_->LatestCommittedBlock()->qc().view()) {
         //     SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is too old, latest committed block view: %lu",
