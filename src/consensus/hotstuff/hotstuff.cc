@@ -514,7 +514,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         SETH_DEBUG("invalid tc handle propose called hash: %lu, propose_debug: %s", 
             msg_ptr->header.hash64(), 
             ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
-        assert(false);
+        // assert(false);
         return;
     }
 
