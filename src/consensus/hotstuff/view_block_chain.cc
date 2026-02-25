@@ -8,6 +8,7 @@
 #include "consensus/hotstuff/view_block_chain.h"
 #include "consensus/hotstuff/types.h"
 #include "protos/block.pb.h"
+#include "security/ecdsa/secp256k1.h"
 
 namespace seth {
 
