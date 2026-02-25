@@ -846,7 +846,6 @@ int GenesisBlockInit::GenerateRootSingleBlock(
         tenon_block->set_height(root_pool_height[common::kImmutablePoolSize]++);
         tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         timeblock::protobuf::TimeBlock& tm_block = *tenon_block->mutable_timer_block();
-        tm_block.set_timestamp(common::TimeUtils::TimestampSeconds());
         tm_block.set_height(tenon_block->height());
         tm_block.set_timestamp(common::TimeUtils::TimestampMs());
         tm_block.set_vss_random(common::Random::RandomUint64());

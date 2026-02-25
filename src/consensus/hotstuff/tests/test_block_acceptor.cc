@@ -150,7 +150,7 @@ protected:
         block->set_height(height);
         block->set_prehash(prehash);
         block->set_hash(GetBlockHash(*block));
-        block->set_timestamp(common::TimeUtils::TimestampUs());
+        block->set_timestamp(common::TimeUtils::TimestampMs());
         return block;
     }
 };

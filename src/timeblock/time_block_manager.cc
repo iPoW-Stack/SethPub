@@ -122,7 +122,7 @@ pools::TxItemPtr TimeBlockManager::tmblock_tx_ptr(
         }
 
         timeblock::protobuf::TimeBlock timer_block;
-        timer_block.set_timestamp(new_time_block_tm);
+        timer_block.set_timestamp(new_time_block_tm * 1000lu);
         timer_block.set_vss_random(vss_mgr_->GetConsensusFinalRandom());
         tx_info->set_value(SerializeDeterministic(timer_block));
         auto account_info = account_mgr_->GetAccountInfo(common::kTimeBlockAddress);
@@ -159,13 +159,13 @@ void TimeBlockManager::OnTimeBlock(
     SETH_INFO("LeaderNewTimeBlockValid height[%lu:%lu], tm[%lu:%lu], vss[%lu]",
         latest_time_block_height,
         static_cast<int>(latest_time_block_height_),
-        latest_time_block_tm,
+        (latest_time_block_tm / 1000lu),
         static_cast<int>(latest_time_block_tm_),
         vss_random);
     assert(vss_random != 0);
     prev_time_block_height_ = latest_time_block_height;
     latest_time_block_height_ = latest_time_block_height;
-    latest_time_block_tm_ = latest_time_block_tm;
+    latest_time_block_tm_ = latest_time_block_tm / 1000lu;
     latest_tm_block_local_sec_ = common::TimeUtils::TimestampSeconds();
     CreateTimeBlockTx();
 }
