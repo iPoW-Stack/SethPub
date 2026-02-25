@@ -316,7 +316,9 @@ static const std::string kRootPoolsAddressPrefix = common::Encode::HexDecode(
 static const std::string kTimeBlockAddress = common::Encode::HexDecode(
     "9392e6249d97275822e16f562b847492c3a50993");
 static const std::string kStatisticBlockBashAddress = common::Encode::HexDecode(
-    "f221d07c60d95bfbc3ef6ac8065f957b");
+    "d7fcbe47f221d07c60d95bfbc3ef6ac8065f957b");
+static const std::string kStatisticPoolTagBlockBashAddress = common::Encode::HexDecode(
+    "32128549f33777d06e231189d2d09618d2d09618");
 
 #pragma pack(push)
 #pragma pack(1)

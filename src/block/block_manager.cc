@@ -754,9 +754,9 @@ void BlockManager::CreateStatisticTx() {
             std::string statistic_addr = security::Secp256k1::Instance()->UnicastAddress(
                     common::Hash::keccak256(
                         common::kStatisticBlockBashAddress + std::to_string(elect_statistic.sharding_id())));
-            new_msg_ptr->address_info = account_mgr_->GetAccountInfo(statistic_addr);
             tx->set_nonce(timeblock_height_with_nonce_[elect_statistic.statistic_height()]);
             auto tx_ptr = std::make_shared<BlockTxsItem>();
+            new_msg_ptr->address_info = account_mgr_->GetAccountInfo(statistic_addr);
             if (new_msg_ptr->address_info == nullptr) {
                 auto addr_info = std::make_shared<address::protobuf::AddressInfo>();
                 addr_info->set_addr(statistic_addr);

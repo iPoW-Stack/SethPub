@@ -1304,8 +1304,6 @@ protos::AddressInfoPtr ViewBlockChain::ChainGetPoolAccountInfo(uint32_t pool_ind
 
 void ViewBlockChain::AddPoolStatisticTag(uint64_t height, uint64_t timeblock_addr_nonce) {
     auto msg_ptr = std::make_shared<transport::TransportMessage>();
-    msg_ptr->address_info = ChainGetPoolAccountInfo(pool_index_);
-    assert(msg_ptr->address_info != nullptr);
     auto tx = msg_ptr->header.mutable_tx_proto();
     auto unique_hash = common::Hash::keccak256("pool_statistic_tag_" + 
         std::to_string(network::GetLocalConsensusNetworkId()) + "_" + 
@@ -1317,12 +1315,38 @@ void ViewBlockChain::AddPoolStatisticTag(uint64_t height, uint64_t timeblock_add
     udata[0] = height;
     tx->set_value(std::string(data, sizeof(data)));
     tx->set_pubkey("");
-    tx->set_to(msg_ptr->address_info->addr());
     tx->set_step(pools::protobuf::kPoolStatisticTag);
     tx->set_gas_limit(0);
     tx->set_amount(0);
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
     tx->set_nonce(timeblock_addr_nonce);
+    // msg_ptr->address_info = ChainGetPoolAccountInfo(pool_index_);
+    std::string pool_tag_addr = security::Secp256k1::Instance()->UnicastAddress(
+        common::Hash::keccak256(
+            common::kStatisticPoolTagBlockBashAddress + "_" +
+            std::to_string(network::GetLocalConsensusNetworkId()) + "_" +
+            std::to_string(pool_index_)));
+    tx->set_to(pool_tag_addr);
+    msg_ptr->address_info = account_mgr_->GetAccountInfo(pool_tag_addr);
+    if (msg_ptr->address_info == nullptr) {
+        auto addr_info = std::make_shared<address::protobuf::AddressInfo>();
+        addr_info->set_addr(pool_tag_addr);
+        addr_info->set_pool_index(common::kImmutablePoolSize);
+        addr_info->set_sharding_id(elect_statistic.sharding_id());
+        addr_info->set_nonce(tx->nonce() - 1llu);
+        msg_ptr->address_info = addr_info;
+    }
+
+    if (msg_ptr->address_info->nonce() >= tx->nonce()) {
+        SETH_WARN("statistic tx already exist, hash: %s, nonce: %lu, addr: %s",
+            common::Encode::HexEncode(unique_hash).c_str(),
+            msg_ptr->address_info->nonce(),
+            common::Encode::HexEncode(pool_tag_addr).c_str());
+        return;
+    }
+    
+    assert(msg_ptr->address_info != nullptr);
+   
     pools_mgr_->AddPoolMessage(msg_ptr);
     SETH_DEBUG("success create kPoolStatisticTag nonce: %lu, pool idx: %u, "
         "pool addr: %s, addr get pool: %u, height: %lu, unique_hash: %s",
