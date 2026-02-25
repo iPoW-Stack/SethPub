@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='seth.elect.protobuf',
   syntax='proto2',
   serialized_options=None,
-  serialized_pb=_b('\n\x12protos/elect.proto\x12\x13seth.elect.protobuf\"u\n\x0eVerifyVecValue\x12\x0c\n\x04x_c0\x18\x01 \x01(\x0c\x12\x0c\n\x04x_c1\x18\x02 \x01(\x0c\x12\x0c\n\x04y_c0\x18\x03 \x01(\x0c\x12\x0c\n\x04y_c1\x18\x04 \x01(\x0c\x12\x0c\n\x04z_c0\x18\x05 \x01(\x0c\x12\x0c\n\x04z_c1\x18\x06 \x01(\x0c\x12\x0f\n\x07valid_t\x18\x07 \x01(\r\"F\n\x0c\x42lsPublicKey\x12\x0c\n\x04x_c0\x18\x01 \x01(\x0c\x12\x0c\n\x04x_c1\x18\x02 \x01(\x0c\x12\x0c\n\x04y_c0\x18\x03 \x01(\x0c\x12\x0c\n\x04y_c1\x18\x04 \x01(\x0c\"=\n\x0b\x42lsPopProof\x12\x0e\n\x06sign_x\x18\x01 \x01(\x0c\x12\x0e\n\x06sign_y\x18\x02 \x01(\x0c\x12\x0e\n\x06sign_z\x18\x03 \x01(\x0c\"f\n\x0ePrevMemberInfo\x12\x0c\n\x04x_c0\x18\x01 \x01(\x0c\x12\x0c\n\x04x_c1\x18\x02 \x01(\x0c\x12\x0c\n\x04y_c0\x18\x03 \x01(\x0c\x12\x0c\n\x04y_c1\x18\x04 \x01(\x0c\x12\x1c\n\x10pool_idx_mod_num\x18\x05 \x01(\x05:\x02-1\"\x9b\x01\n\x0bPrevMembers\x12\x37\n\nbls_pubkey\x18\x01 \x03(\x0b\x32#.seth.elect.protobuf.PrevMemberInfo\x12\x19\n\x11prev_elect_height\x18\x02 \x01(\x04\x12\x38\n\rcommon_pubkey\x18\x03 \x01(\x0b\x32!.seth.elect.protobuf.BlsPublicKey\"\xe6\x01\n\x06member\x12\x0e\n\x06pubkey\x18\x01 \x01(\x0c\x12\x18\n\x10pool_idx_mod_num\x18\x02 \x01(\x05\x12\x15\n\rmining_amount\x18\x03 \x01(\x04\x12\x11\n\tfts_value\x18\x04 \x01(\x04\x12\x15\n\rconsensus_gap\x18\x05 \x01(\x04\x12\x35\n\nagg_bls_pk\x18\x06 \x01(\x0b\x32!.seth.elect.protobuf.BlsPublicKey\x12:\n\x10\x61gg_bls_pk_proof\x18\x07 \x01(\x0b\x32 .seth.elect.protobuf.BlsPopProof\"\xcb\x01\n\nElectBlock\x12\'\n\x02in\x18\x01 \x03(\x0b\x32\x1b.seth.elect.protobuf.member\x12\x36\n\x0cprev_members\x18\x02 \x01(\x0b\x32 .seth.elect.protobuf.PrevMembers\x12\x18\n\x10shard_network_id\x18\x03 \x01(\r\x12\x14\n\x0c\x65lect_height\x18\x04 \x01(\x04\x12\x16\n\x0e\x61ll_gas_amount\x18\x05 \x01(\x04\x12\x14\n\x0cgas_for_root\x18\x06 \x01(\x04\"Y\n\x13WaitingNodesMessage\x12\x14\n\x0cnodes_filter\x18\x01 \x03(\x04\x12\x18\n\x10waiting_shard_id\x18\x02 \x01(\r\x12\x12\n\nstoke_hash\x18\x03 \x01(\x0c\"i\n\x14WaitingNodeHeartbeat\x12\x11\n\tpublic_ip\x18\x01 \x01(\x0c\x12\x13\n\x0bpublic_port\x18\x02 \x01(\r\x12\x12\n\nnetwork_id\x18\x03 \x01(\r\x12\x15\n\rtimestamp_sec\x18\x04 \x01(\x04\"@\n\x15LeaderRotationMessage\x12\x11\n\tleader_id\x18\x01 \x01(\x0c\x12\x14\n\x0cpool_mod_num\x18\x02 \x01(\r\"9\n\x11SyncNodeStokeItem\x12\n\n\x02id\x18\x01 \x01(\x0c\x12\x18\n\x10synced_tm_height\x18\x02 \x01(\x04\"h\n\x14SyncNodeStokeRequest\x12\x39\n\tsync_item\x18\x01 \x03(\x0b\x32&.seth.elect.protobuf.SyncNodeStokeItem\x12\x15\n\rnow_tm_height\x18\x02 \x01(\x04\"3\n\x14SyncNodeStokeResItem\x12\n\n\x02id\x18\x01 \x01(\x0c\x12\x0f\n\x07\x62\x61lance\x18\x02 \x01(\x04\"h\n\x15SyncNodeStokeResponse\x12\x38\n\x05items\x18\x01 \x03(\x0b\x32).seth.elect.protobuf.SyncNodeStokeResItem\x12\x15\n\rnow_tm_height\x18\x02 \x01(\x04\"\x8b\x04\n\x0c\x45lectMessage\x12\x34\n\x0b\x65lect_block\x18\x01 \x01(\x0b\x32\x1f.seth.elect.protobuf.ElectBlock\x12\x39\n\x10prev_elect_block\x18\x02 \x01(\x0b\x32\x1f.seth.elect.protobuf.ElectBlock\x12?\n\rwaiting_nodes\x18\x03 \x01(\x0b\x32(.seth.elect.protobuf.WaitingNodesMessage\x12\x14\n\x0cmember_index\x18\x04 \x01(\x05\x12\x0f\n\x07sign_ch\x18\x05 \x01(\x0c\x12\x10\n\x08sign_res\x18\x06 \x01(\x0c\x12\x44\n\x11waiting_heartbeat\x18\x07 \x01(\x0b\x32).seth.elect.protobuf.WaitingNodeHeartbeat\x12\x43\n\x0fleader_rotation\x18\x08 \x01(\x0b\x32*.seth.elect.protobuf.LeaderRotationMessage\x12\x41\n\x0esync_stoke_req\x18\t \x01(\x0b\x32).seth.elect.protobuf.SyncNodeStokeRequest\x12\x42\n\x0esync_stoke_res\x18\n \x01(\x0b\x32*.seth.elect.protobuf.SyncNodeStokeResponse')
+  serialized_pb=_b('\n\x12protos/elect.proto\x12\x13seth.elect.protobuf\"u\n\x0eVerifyVecValue\x12\x0c\n\x04x_c0\x18\x01 \x01(\x0c\x12\x0c\n\x04x_c1\x18\x02 \x01(\x0c\x12\x0c\n\x04y_c0\x18\x03 \x01(\x0c\x12\x0c\n\x04y_c1\x18\x04 \x01(\x0c\x12\x0c\n\x04z_c0\x18\x05 \x01(\x0c\x12\x0c\n\x04z_c1\x18\x06 \x01(\x0c\x12\x0f\n\x07valid_t\x18\x07 \x01(\r\"F\n\x0c\x42lsPublicKey\x12\x0c\n\x04x_c0\x18\x01 \x01(\x0c\x12\x0c\n\x04x_c1\x18\x02 \x01(\x0c\x12\x0c\n\x04y_c0\x18\x03 \x01(\x0c\x12\x0c\n\x04y_c1\x18\x04 \x01(\x0c\"=\n\x0b\x42lsPopProof\x12\x0e\n\x06sign_x\x18\x01 \x01(\x0c\x12\x0e\n\x06sign_y\x18\x02 \x01(\x0c\x12\x0e\n\x06sign_z\x18\x03 \x01(\x0c\"f\n\x0ePrevMemberInfo\x12\x0c\n\x04x_c0\x18\x01 \x01(\x0c\x12\x0c\n\x04x_c1\x18\x02 \x01(\x0c\x12\x0c\n\x04y_c0\x18\x03 \x01(\x0c\x12\x0c\n\x04y_c1\x18\x04 \x01(\x0c\x12\x1c\n\x10pool_idx_mod_num\x18\x05 \x01(\x05:\x02-1\"\x9b\x01\n\x0bPrevMembers\x12\x37\n\nbls_pubkey\x18\x01 \x03(\x0b\x32#.seth.elect.protobuf.PrevMemberInfo\x12\x19\n\x11prev_elect_height\x18\x02 \x01(\x04\x12\x38\n\rcommon_pubkey\x18\x03 \x01(\x0b\x32!.seth.elect.protobuf.BlsPublicKey\"s\n\x06member\x12\x0e\n\x06pubkey\x18\x01 \x01(\x0c\x12\x18\n\x10pool_idx_mod_num\x18\x02 \x01(\x05\x12\x15\n\rmining_amount\x18\x03 \x01(\x04\x12\x11\n\tfts_value\x18\x04 \x01(\x04\x12\x15\n\rconsensus_gap\x18\x05 \x01(\x04\"\xcb\x01\n\nElectBlock\x12\'\n\x02in\x18\x01 \x03(\x0b\x32\x1b.seth.elect.protobuf.member\x12\x36\n\x0cprev_members\x18\x02 \x01(\x0b\x32 .seth.elect.protobuf.PrevMembers\x12\x18\n\x10shard_network_id\x18\x03 \x01(\r\x12\x14\n\x0c\x65lect_height\x18\x04 \x01(\x04\x12\x16\n\x0e\x61ll_gas_amount\x18\x05 \x01(\x04\x12\x14\n\x0cgas_for_root\x18\x06 \x01(\x04\"Y\n\x13WaitingNodesMessage\x12\x14\n\x0cnodes_filter\x18\x01 \x03(\x04\x12\x18\n\x10waiting_shard_id\x18\x02 \x01(\r\x12\x12\n\nstoke_hash\x18\x03 \x01(\x0c\"i\n\x14WaitingNodeHeartbeat\x12\x11\n\tpublic_ip\x18\x01 \x01(\x0c\x12\x13\n\x0bpublic_port\x18\x02 \x01(\r\x12\x12\n\nnetwork_id\x18\x03 \x01(\r\x12\x15\n\rtimestamp_sec\x18\x04 \x01(\x04\"@\n\x15LeaderRotationMessage\x12\x11\n\tleader_id\x18\x01 \x01(\x0c\x12\x14\n\x0cpool_mod_num\x18\x02 \x01(\r\"9\n\x11SyncNodeStokeItem\x12\n\n\x02id\x18\x01 \x01(\x0c\x12\x18\n\x10synced_tm_height\x18\x02 \x01(\x04\"h\n\x14SyncNodeStokeRequest\x12\x39\n\tsync_item\x18\x01 \x03(\x0b\x32&.seth.elect.protobuf.SyncNodeStokeItem\x12\x15\n\rnow_tm_height\x18\x02 \x01(\x04\"3\n\x14SyncNodeStokeResItem\x12\n\n\x02id\x18\x01 \x01(\x0c\x12\x0f\n\x07\x62\x61lance\x18\x02 \x01(\x04\"h\n\x15SyncNodeStokeResponse\x12\x38\n\x05items\x18\x01 \x03(\x0b\x32).seth.elect.protobuf.SyncNodeStokeResItem\x12\x15\n\rnow_tm_height\x18\x02 \x01(\x04\"\x8b\x04\n\x0c\x45lectMessage\x12\x34\n\x0b\x65lect_block\x18\x01 \x01(\x0b\x32\x1f.seth.elect.protobuf.ElectBlock\x12\x39\n\x10prev_elect_block\x18\x02 \x01(\x0b\x32\x1f.seth.elect.protobuf.ElectBlock\x12?\n\rwaiting_nodes\x18\x03 \x01(\x0b\x32(.seth.elect.protobuf.WaitingNodesMessage\x12\x14\n\x0cmember_index\x18\x04 \x01(\x05\x12\x0f\n\x07sign_ch\x18\x05 \x01(\x0c\x12\x10\n\x08sign_res\x18\x06 \x01(\x0c\x12\x44\n\x11waiting_heartbeat\x18\x07 \x01(\x0b\x32).seth.elect.protobuf.WaitingNodeHeartbeat\x12\x43\n\x0fleader_rotation\x18\x08 \x01(\x0b\x32*.seth.elect.protobuf.LeaderRotationMessage\x12\x41\n\x0esync_stoke_req\x18\t \x01(\x0b\x32).seth.elect.protobuf.SyncNodeStokeRequest\x12\x42\n\x0esync_stoke_res\x18\n \x01(\x0b\x32*.seth.elect.protobuf.SyncNodeStokeResponse')
 )
 
 
@@ -341,20 +341,6 @@ _MEMBER = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
-    _descriptor.FieldDescriptor(
-      name='agg_bls_pk', full_name='seth.elect.protobuf.member.agg_bls_pk', index=5,
-      number=6, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR),
-    _descriptor.FieldDescriptor(
-      name='agg_bls_pk_proof', full_name='seth.elect.protobuf.member.agg_bls_pk_proof', index=6,
-      number=7, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -367,8 +353,8 @@ _MEMBER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=560,
-  serialized_end=790,
+  serialized_start=559,
+  serialized_end=674,
 )
 
 
@@ -433,8 +419,8 @@ _ELECTBLOCK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=793,
-  serialized_end=996,
+  serialized_start=677,
+  serialized_end=880,
 )
 
 
@@ -478,8 +464,8 @@ _WAITINGNODESMESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=998,
-  serialized_end=1087,
+  serialized_start=882,
+  serialized_end=971,
 )
 
 
@@ -530,8 +516,8 @@ _WAITINGNODEHEARTBEAT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1089,
-  serialized_end=1194,
+  serialized_start=973,
+  serialized_end=1078,
 )
 
 
@@ -568,8 +554,8 @@ _LEADERROTATIONMESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1196,
-  serialized_end=1260,
+  serialized_start=1080,
+  serialized_end=1144,
 )
 
 
@@ -606,8 +592,8 @@ _SYNCNODESTOKEITEM = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1262,
-  serialized_end=1319,
+  serialized_start=1146,
+  serialized_end=1203,
 )
 
 
@@ -644,8 +630,8 @@ _SYNCNODESTOKEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1321,
-  serialized_end=1425,
+  serialized_start=1205,
+  serialized_end=1309,
 )
 
 
@@ -682,8 +668,8 @@ _SYNCNODESTOKERESITEM = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1427,
-  serialized_end=1478,
+  serialized_start=1311,
+  serialized_end=1362,
 )
 
 
@@ -720,8 +706,8 @@ _SYNCNODESTOKERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1480,
-  serialized_end=1584,
+  serialized_start=1364,
+  serialized_end=1468,
 )
 
 
@@ -814,14 +800,12 @@ _ELECTMESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1587,
-  serialized_end=2110,
+  serialized_start=1471,
+  serialized_end=1994,
 )
 
 _PREVMEMBERS.fields_by_name['bls_pubkey'].message_type = _PREVMEMBERINFO
 _PREVMEMBERS.fields_by_name['common_pubkey'].message_type = _BLSPUBLICKEY
-_MEMBER.fields_by_name['agg_bls_pk'].message_type = _BLSPUBLICKEY
-_MEMBER.fields_by_name['agg_bls_pk_proof'].message_type = _BLSPOPPROOF
 _ELECTBLOCK.fields_by_name['in'].message_type = _MEMBER
 _ELECTBLOCK.fields_by_name['prev_members'].message_type = _PREVMEMBERS
 _SYNCNODESTOKEREQUEST.fields_by_name['sync_item'].message_type = _SYNCNODESTOKEITEM

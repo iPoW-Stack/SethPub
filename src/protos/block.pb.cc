@@ -2,7 +2,7 @@
 // source: protos/block.proto
 
 #include "protos/block.pb.h"
-#include "common/global_info.h"
+
 #include <algorithm>
 
 #include <google/protobuf/stubs/common.h>
@@ -52,7 +52,7 @@ extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2fblock_2eproto ::google::protob
 extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2fblock_2eproto ::google::protobuf::internal::SCCInfo<2> scc_info_BlockTx;
 }  // namespace protobuf_protos_2fblock_2eproto
 namespace protobuf_protos_2fbls_2eproto {
-extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2fbls_2eproto ::google::protobuf::internal::SCCInfo<3> scc_info_JoinElectInfo;
+extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2fbls_2eproto ::google::protobuf::internal::SCCInfo<1> scc_info_JoinElectInfo;
 }  // namespace protobuf_protos_2fbls_2eproto
 namespace protobuf_protos_2felect_2eproto {
 extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2felect_2eproto ::google::protobuf::internal::SCCInfo<2> scc_info_ElectBlock;
@@ -4408,7 +4408,6 @@ const int Block::kUniqueHashsFieldNumber;
 
 Block::Block()
   : ::google::protobuf::Message(), _internal_metadata_(NULL) {
-    common::GlobalInfo::Instance()->AddSharedObj(26);
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2fblock_2eproto::scc_info_Block.base);
   SharedCtor();
@@ -4426,7 +4425,6 @@ Block::Block(const Block& from)
       cross_shard_to_array_(from.cross_shard_to_array_),
       joins_(from.joins_),
       unique_hashs_(from.unique_hashs_) {
-    common::GlobalInfo::Instance()->AddSharedObj(26);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   if (from.has_elect_statistic()) {
     elect_statistic_ = new ::seth::pools::protobuf::ElectStatistic(*from.elect_statistic_);
@@ -4476,7 +4474,6 @@ void Block::SharedCtor() {
 }
 
 Block::~Block() {
-    common::GlobalInfo::Instance()->DecSharedObj(26);
   // @@protoc_insertion_point(destructor:seth.block.protobuf.Block)
   SharedDtor();
 }
@@ -12997,7 +12994,6 @@ const int BlockMessage::kStatisticTxFieldNumber;
 
 BlockMessage::BlockMessage()
   : ::google::protobuf::Message(), _internal_metadata_(NULL) {
-    common::GlobalInfo::Instance()->AddSharedObj(27);
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2fblock_2eproto::scc_info_BlockMessage.base);
   SharedCtor();
@@ -13007,7 +13003,6 @@ BlockMessage::BlockMessage(const BlockMessage& from)
   : ::google::protobuf::Message(),
       _internal_metadata_(NULL),
       _has_bits_(from._has_bits_) {
-    common::GlobalInfo::Instance()->AddSharedObj(27);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   if (from.has_block_req()) {
     block_req_ = new ::seth::block::protobuf::GetTxBlockRequest(*from.block_req_);
@@ -13109,7 +13104,6 @@ void BlockMessage::SharedCtor() {
 }
 
 BlockMessage::~BlockMessage() {
-    common::GlobalInfo::Instance()->DecSharedObj(27);
   // @@protoc_insertion_point(destructor:seth.block.protobuf.BlockMessage)
   SharedDtor();
 }

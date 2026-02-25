@@ -74,7 +74,7 @@ init() {
     fi
 
     if [ "$TARGET" == "" ]; then
-        TARGET=Release
+        TARGET=Debug
     fi
 
     killall -9 seth
@@ -145,8 +145,8 @@ make_package() {
         cp -rf /root/seth/gdb/* /root/nodes/seth/pkg
         cp -rf /root/seth/init_accounts* /root/nodes/seth/pkg
         cp -rf /root/nodes/seth/pkg /root/seth/pkgs/$node_hash
-    fi 
-    
+    fi
+
     cd /root/nodes/seth/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
 }
 

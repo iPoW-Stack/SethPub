@@ -4,7 +4,6 @@
 #ifndef PROTOBUF_INCLUDED_protos_2fview_5fblock_2eproto
 #define PROTOBUF_INCLUDED_protos_2fview_5fblock_2eproto
 
-#include "common/global_info.h"
 #include <string>
 
 #include <google/protobuf/stubs/common.h>
@@ -253,18 +252,6 @@ class QcItem : public ::google::protobuf::Message /* @@protoc_insertion_point(cl
   ::std::string* release_view_block_hash();
   void set_allocated_view_block_hash(::std::string* view_block_hash);
 
-  // optional .seth.view_block.protobuf.AggregateSig agg_sig = 10;
-  bool has_agg_sig() const;
-  void clear_agg_sig();
-  static const int kAggSigFieldNumber = 10;
-  private:
-  const ::seth::view_block::protobuf::AggregateSig& _internal_agg_sig() const;
-  public:
-  const ::seth::view_block::protobuf::AggregateSig& agg_sig() const;
-  ::seth::view_block::protobuf::AggregateSig* release_agg_sig();
-  ::seth::view_block::protobuf::AggregateSig* mutable_agg_sig();
-  void set_allocated_agg_sig(::seth::view_block::protobuf::AggregateSig* agg_sig);
-
   // optional uint64 view = 4;
   bool has_view() const;
   void clear_view();
@@ -320,8 +307,6 @@ class QcItem : public ::google::protobuf::Message /* @@protoc_insertion_point(cl
   void clear_has_network_id();
   void set_has_pool_index();
   void clear_has_pool_index();
-  void set_has_agg_sig();
-  void clear_has_agg_sig();
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
@@ -330,7 +315,6 @@ class QcItem : public ::google::protobuf::Message /* @@protoc_insertion_point(cl
   ::google::protobuf::internal::ArenaStringPtr sign_y_;
   ::google::protobuf::internal::ArenaStringPtr sign_z_;
   ::google::protobuf::internal::ArenaStringPtr view_block_hash_;
-  ::seth::view_block::protobuf::AggregateSig* agg_sig_;
   ::google::protobuf::uint64 view_;
   ::google::protobuf::uint64 elect_height_;
   ::google::protobuf::uint32 leader_idx_;
@@ -2019,13 +2003,13 @@ inline void QcItem::set_allocated_sign_z(::std::string* sign_z) {
 
 // optional uint64 view = 4;
 inline bool QcItem::has_view() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
 inline void QcItem::set_has_view() {
-  _has_bits_[0] |= 0x00000020u;
+  _has_bits_[0] |= 0x00000010u;
 }
 inline void QcItem::clear_has_view() {
-  _has_bits_[0] &= ~0x00000020u;
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline void QcItem::clear_view() {
   view_ = GOOGLE_ULONGLONG(0);
@@ -2109,13 +2093,13 @@ inline void QcItem::set_allocated_view_block_hash(::std::string* view_block_hash
 
 // optional uint64 elect_height = 6;
 inline bool QcItem::has_elect_height() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
+  return (_has_bits_[0] & 0x00000020u) != 0;
 }
 inline void QcItem::set_has_elect_height() {
-  _has_bits_[0] |= 0x00000040u;
+  _has_bits_[0] |= 0x00000020u;
 }
 inline void QcItem::clear_has_elect_height() {
-  _has_bits_[0] &= ~0x00000040u;
+  _has_bits_[0] &= ~0x00000020u;
 }
 inline void QcItem::clear_elect_height() {
   elect_height_ = GOOGLE_ULONGLONG(0);
@@ -2133,13 +2117,13 @@ inline void QcItem::set_elect_height(::google::protobuf::uint64 value) {
 
 // optional uint32 leader_idx = 7;
 inline bool QcItem::has_leader_idx() const {
-  return (_has_bits_[0] & 0x00000080u) != 0;
+  return (_has_bits_[0] & 0x00000040u) != 0;
 }
 inline void QcItem::set_has_leader_idx() {
-  _has_bits_[0] |= 0x00000080u;
+  _has_bits_[0] |= 0x00000040u;
 }
 inline void QcItem::clear_has_leader_idx() {
-  _has_bits_[0] &= ~0x00000080u;
+  _has_bits_[0] &= ~0x00000040u;
 }
 inline void QcItem::clear_leader_idx() {
   leader_idx_ = 0u;
@@ -2157,13 +2141,13 @@ inline void QcItem::set_leader_idx(::google::protobuf::uint32 value) {
 
 // optional uint32 network_id = 8;
 inline bool QcItem::has_network_id() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
+  return (_has_bits_[0] & 0x00000080u) != 0;
 }
 inline void QcItem::set_has_network_id() {
-  _has_bits_[0] |= 0x00000100u;
+  _has_bits_[0] |= 0x00000080u;
 }
 inline void QcItem::clear_has_network_id() {
-  _has_bits_[0] &= ~0x00000100u;
+  _has_bits_[0] &= ~0x00000080u;
 }
 inline void QcItem::clear_network_id() {
   network_id_ = 0u;
@@ -2181,13 +2165,13 @@ inline void QcItem::set_network_id(::google::protobuf::uint32 value) {
 
 // optional uint32 pool_index = 9;
 inline bool QcItem::has_pool_index() const {
-  return (_has_bits_[0] & 0x00000200u) != 0;
+  return (_has_bits_[0] & 0x00000100u) != 0;
 }
 inline void QcItem::set_has_pool_index() {
-  _has_bits_[0] |= 0x00000200u;
+  _has_bits_[0] |= 0x00000100u;
 }
 inline void QcItem::clear_has_pool_index() {
-  _has_bits_[0] &= ~0x00000200u;
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline void QcItem::clear_pool_index() {
   pool_index_ = 0u;
@@ -2201,64 +2185,6 @@ inline void QcItem::set_pool_index(::google::protobuf::uint32 value) {
   set_has_pool_index();
   pool_index_ = value;
   // @@protoc_insertion_point(field_set:seth.view_block.protobuf.QcItem.pool_index)
-}
-
-// optional .seth.view_block.protobuf.AggregateSig agg_sig = 10;
-inline bool QcItem::has_agg_sig() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
-}
-inline void QcItem::set_has_agg_sig() {
-  _has_bits_[0] |= 0x00000010u;
-}
-inline void QcItem::clear_has_agg_sig() {
-  _has_bits_[0] &= ~0x00000010u;
-}
-inline void QcItem::clear_agg_sig() {
-  if (agg_sig_ != NULL) agg_sig_->Clear();
-  clear_has_agg_sig();
-}
-inline const ::seth::view_block::protobuf::AggregateSig& QcItem::_internal_agg_sig() const {
-  return *agg_sig_;
-}
-inline const ::seth::view_block::protobuf::AggregateSig& QcItem::agg_sig() const {
-  const ::seth::view_block::protobuf::AggregateSig* p = agg_sig_;
-  // @@protoc_insertion_point(field_get:seth.view_block.protobuf.QcItem.agg_sig)
-  return p != NULL ? *p : *reinterpret_cast<const ::seth::view_block::protobuf::AggregateSig*>(
-      &::seth::view_block::protobuf::_AggregateSig_default_instance_);
-}
-inline ::seth::view_block::protobuf::AggregateSig* QcItem::release_agg_sig() {
-  // @@protoc_insertion_point(field_release:seth.view_block.protobuf.QcItem.agg_sig)
-  clear_has_agg_sig();
-  ::seth::view_block::protobuf::AggregateSig* temp = agg_sig_;
-  agg_sig_ = NULL;
-  return temp;
-}
-inline ::seth::view_block::protobuf::AggregateSig* QcItem::mutable_agg_sig() {
-  set_has_agg_sig();
-  if (agg_sig_ == NULL) {
-    auto* p = CreateMaybeMessage<::seth::view_block::protobuf::AggregateSig>(GetArenaNoVirtual());
-    agg_sig_ = p;
-  }
-  // @@protoc_insertion_point(field_mutable:seth.view_block.protobuf.QcItem.agg_sig)
-  return agg_sig_;
-}
-inline void QcItem::set_allocated_agg_sig(::seth::view_block::protobuf::AggregateSig* agg_sig) {
-  ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
-  if (message_arena == NULL) {
-    delete agg_sig_;
-  }
-  if (agg_sig) {
-    ::google::protobuf::Arena* submessage_arena = NULL;
-    if (message_arena != submessage_arena) {
-      agg_sig = ::google::protobuf::internal::GetOwnedMessage(
-          message_arena, agg_sig, submessage_arena);
-    }
-    set_has_agg_sig();
-  } else {
-    clear_has_agg_sig();
-  }
-  agg_sig_ = agg_sig;
-  // @@protoc_insertion_point(field_set_allocated:seth.view_block.protobuf.QcItem.agg_sig)
 }
 
 // -------------------------------------------------------------------

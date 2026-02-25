@@ -3,7 +3,6 @@
 
 #include "protos/zbft.pb.h"
 
-#include "common/global_info.h"
 #include <algorithm>
 
 #include <google/protobuf/stubs/common.h>
@@ -1123,7 +1122,6 @@ const int ZbftMessage::kBftTimeoutFieldNumber;
 
 ZbftMessage::ZbftMessage()
   : ::google::protobuf::Message(), _internal_metadata_(NULL) {
-common::GlobalInfo::Instance()->AddSharedObj(19);
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2fzbft_2eproto::scc_info_ZbftMessage.base);
   SharedCtor();
@@ -1135,7 +1133,6 @@ ZbftMessage::ZbftMessage(const ZbftMessage& from)
       _has_bits_(from._has_bits_),
       ips_(from.ips_),
       invaid_txs_(from.invaid_txs_) {
-common::GlobalInfo::Instance()->AddSharedObj(19);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   prepare_gid_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (from.has_prepare_gid()) {
@@ -1202,7 +1199,6 @@ void ZbftMessage::SharedCtor() {
 }
 
 ZbftMessage::~ZbftMessage() {
-common::GlobalInfo::Instance()->DecSharedObj(19);
   // @@protoc_insertion_point(destructor:seth.zbft.protobuf.ZbftMessage)
   SharedDtor();
 }

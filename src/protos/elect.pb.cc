@@ -20,7 +20,6 @@
 // @@protoc_insertion_point(includes)
 
 namespace protobuf_protos_2felect_2eproto {
-extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2felect_2eproto ::google::protobuf::internal::SCCInfo<0> scc_info_BlsPopProof;
 extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2felect_2eproto ::google::protobuf::internal::SCCInfo<0> scc_info_BlsPublicKey;
 extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2felect_2eproto ::google::protobuf::internal::SCCInfo<0> scc_info_LeaderRotationMessage;
 extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2felect_2eproto ::google::protobuf::internal::SCCInfo<0> scc_info_PrevMemberInfo;
@@ -28,11 +27,11 @@ extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2felect_2eproto ::google::protob
 extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2felect_2eproto ::google::protobuf::internal::SCCInfo<0> scc_info_SyncNodeStokeResItem;
 extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2felect_2eproto ::google::protobuf::internal::SCCInfo<0> scc_info_WaitingNodeHeartbeat;
 extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2felect_2eproto ::google::protobuf::internal::SCCInfo<0> scc_info_WaitingNodesMessage;
+extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2felect_2eproto ::google::protobuf::internal::SCCInfo<0> scc_info_member;
 extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2felect_2eproto ::google::protobuf::internal::SCCInfo<1> scc_info_SyncNodeStokeRequest;
 extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2felect_2eproto ::google::protobuf::internal::SCCInfo<1> scc_info_SyncNodeStokeResponse;
 extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2felect_2eproto ::google::protobuf::internal::SCCInfo<2> scc_info_ElectBlock;
 extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2felect_2eproto ::google::protobuf::internal::SCCInfo<2> scc_info_PrevMembers;
-extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2felect_2eproto ::google::protobuf::internal::SCCInfo<2> scc_info_member;
 }  // namespace protobuf_protos_2felect_2eproto
 namespace seth {
 namespace elect {
@@ -199,10 +198,8 @@ static void InitDefaultsmember() {
   ::seth::elect::protobuf::member::InitAsDefaultInstance();
 }
 
-::google::protobuf::internal::SCCInfo<2> scc_info_member =
-    {{ATOMIC_VAR_INIT(::google::protobuf::internal::SCCInfoBase::kUninitialized), 2, InitDefaultsmember}, {
-      &protobuf_protos_2felect_2eproto::scc_info_BlsPublicKey.base,
-      &protobuf_protos_2felect_2eproto::scc_info_BlsPopProof.base,}};
+::google::protobuf::internal::SCCInfo<0> scc_info_member =
+    {{ATOMIC_VAR_INIT(::google::protobuf::internal::SCCInfoBase::kUninitialized), 0, InitDefaultsmember}, {}};
 
 static void InitDefaultsElectBlock() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -440,15 +437,11 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::elect::protobuf::member, mining_amount_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::elect::protobuf::member, fts_value_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::elect::protobuf::member, consensus_gap_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::elect::protobuf::member, agg_bls_pk_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::elect::protobuf::member, agg_bls_pk_proof_),
   0,
-  6,
-  3,
   4,
-  5,
   1,
   2,
+  3,
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::elect::protobuf::ElectBlock, _has_bits_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::elect::protobuf::ElectBlock, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -567,16 +560,16 @@ static const ::google::protobuf::internal::MigrationSchema schemas[] GOOGLE_PROT
   { 32, 40, sizeof(::seth::elect::protobuf::BlsPopProof)},
   { 43, 53, sizeof(::seth::elect::protobuf::PrevMemberInfo)},
   { 58, 66, sizeof(::seth::elect::protobuf::PrevMembers)},
-  { 69, 81, sizeof(::seth::elect::protobuf::member)},
-  { 88, 99, sizeof(::seth::elect::protobuf::ElectBlock)},
-  { 105, 113, sizeof(::seth::elect::protobuf::WaitingNodesMessage)},
-  { 116, 125, sizeof(::seth::elect::protobuf::WaitingNodeHeartbeat)},
-  { 129, 136, sizeof(::seth::elect::protobuf::LeaderRotationMessage)},
-  { 138, 145, sizeof(::seth::elect::protobuf::SyncNodeStokeItem)},
-  { 147, 154, sizeof(::seth::elect::protobuf::SyncNodeStokeRequest)},
-  { 156, 163, sizeof(::seth::elect::protobuf::SyncNodeStokeResItem)},
-  { 165, 172, sizeof(::seth::elect::protobuf::SyncNodeStokeResponse)},
-  { 174, 189, sizeof(::seth::elect::protobuf::ElectMessage)},
+  { 69, 79, sizeof(::seth::elect::protobuf::member)},
+  { 84, 95, sizeof(::seth::elect::protobuf::ElectBlock)},
+  { 101, 109, sizeof(::seth::elect::protobuf::WaitingNodesMessage)},
+  { 112, 121, sizeof(::seth::elect::protobuf::WaitingNodeHeartbeat)},
+  { 125, 132, sizeof(::seth::elect::protobuf::LeaderRotationMessage)},
+  { 134, 141, sizeof(::seth::elect::protobuf::SyncNodeStokeItem)},
+  { 143, 150, sizeof(::seth::elect::protobuf::SyncNodeStokeRequest)},
+  { 152, 159, sizeof(::seth::elect::protobuf::SyncNodeStokeResItem)},
+  { 161, 168, sizeof(::seth::elect::protobuf::SyncNodeStokeResponse)},
+  { 170, 185, sizeof(::seth::elect::protobuf::ElectMessage)},
 };
 
 static ::google::protobuf::Message const * const file_default_instances[] = {
@@ -631,49 +624,46 @@ void AddDescriptorsImpl() {
       "\233\001\n\013PrevMembers\0227\n\nbls_pubkey\030\001 \003(\0132#.se"
       "th.elect.protobuf.PrevMemberInfo\022\031\n\021prev"
       "_elect_height\030\002 \001(\004\0228\n\rcommon_pubkey\030\003 \001"
-      "(\0132!.seth.elect.protobuf.BlsPublicKey\"\346\001"
-      "\n\006member\022\016\n\006pubkey\030\001 \001(\014\022\030\n\020pool_idx_mod"
-      "_num\030\002 \001(\005\022\025\n\rmining_amount\030\003 \001(\004\022\021\n\tfts"
-      "_value\030\004 \001(\004\022\025\n\rconsensus_gap\030\005 \001(\004\0225\n\na"
-      "gg_bls_pk\030\006 \001(\0132!.seth.elect.protobuf.Bl"
-      "sPublicKey\022:\n\020agg_bls_pk_proof\030\007 \001(\0132 .s"
-      "eth.elect.protobuf.BlsPopProof\"\313\001\n\nElect"
-      "Block\022\'\n\002in\030\001 \003(\0132\033.seth.elect.protobuf."
-      "member\0226\n\014prev_members\030\002 \001(\0132 .seth.elec"
-      "t.protobuf.PrevMembers\022\030\n\020shard_network_"
-      "id\030\003 \001(\r\022\024\n\014elect_height\030\004 \001(\004\022\026\n\016all_ga"
-      "s_amount\030\005 \001(\004\022\024\n\014gas_for_root\030\006 \001(\004\"Y\n\023"
-      "WaitingNodesMessage\022\024\n\014nodes_filter\030\001 \003("
-      "\004\022\030\n\020waiting_shard_id\030\002 \001(\r\022\022\n\nstoke_has"
-      "h\030\003 \001(\014\"i\n\024WaitingNodeHeartbeat\022\021\n\tpubli"
-      "c_ip\030\001 \001(\014\022\023\n\013public_port\030\002 \001(\r\022\022\n\nnetwo"
-      "rk_id\030\003 \001(\r\022\025\n\rtimestamp_sec\030\004 \001(\004\"@\n\025Le"
-      "aderRotationMessage\022\021\n\tleader_id\030\001 \001(\014\022\024"
-      "\n\014pool_mod_num\030\002 \001(\r\"9\n\021SyncNodeStokeIte"
-      "m\022\n\n\002id\030\001 \001(\014\022\030\n\020synced_tm_height\030\002 \001(\004\""
-      "h\n\024SyncNodeStokeRequest\0229\n\tsync_item\030\001 \003"
-      "(\0132&.seth.elect.protobuf.SyncNodeStokeIt"
-      "em\022\025\n\rnow_tm_height\030\002 \001(\004\"3\n\024SyncNodeSto"
-      "keResItem\022\n\n\002id\030\001 \001(\014\022\017\n\007balance\030\002 \001(\004\"h"
-      "\n\025SyncNodeStokeResponse\0228\n\005items\030\001 \003(\0132)"
-      ".seth.elect.protobuf.SyncNodeStokeResIte"
-      "m\022\025\n\rnow_tm_height\030\002 \001(\004\"\213\004\n\014ElectMessag"
-      "e\0224\n\013elect_block\030\001 \001(\0132\037.seth.elect.prot"
-      "obuf.ElectBlock\0229\n\020prev_elect_block\030\002 \001("
-      "\0132\037.seth.elect.protobuf.ElectBlock\022\?\n\rwa"
-      "iting_nodes\030\003 \001(\0132(.seth.elect.protobuf."
-      "WaitingNodesMessage\022\024\n\014member_index\030\004 \001("
-      "\005\022\017\n\007sign_ch\030\005 \001(\014\022\020\n\010sign_res\030\006 \001(\014\022D\n\021"
-      "waiting_heartbeat\030\007 \001(\0132).seth.elect.pro"
-      "tobuf.WaitingNodeHeartbeat\022C\n\017leader_rot"
-      "ation\030\010 \001(\0132*.seth.elect.protobuf.Leader"
-      "RotationMessage\022A\n\016sync_stoke_req\030\t \001(\0132"
-      ").seth.elect.protobuf.SyncNodeStokeReque"
-      "st\022B\n\016sync_stoke_res\030\n \001(\0132*.seth.elect."
-      "protobuf.SyncNodeStokeResponse"
+      "(\0132!.seth.elect.protobuf.BlsPublicKey\"s\n"
+      "\006member\022\016\n\006pubkey\030\001 \001(\014\022\030\n\020pool_idx_mod_"
+      "num\030\002 \001(\005\022\025\n\rmining_amount\030\003 \001(\004\022\021\n\tfts_"
+      "value\030\004 \001(\004\022\025\n\rconsensus_gap\030\005 \001(\004\"\313\001\n\nE"
+      "lectBlock\022\'\n\002in\030\001 \003(\0132\033.seth.elect.proto"
+      "buf.member\0226\n\014prev_members\030\002 \001(\0132 .seth."
+      "elect.protobuf.PrevMembers\022\030\n\020shard_netw"
+      "ork_id\030\003 \001(\r\022\024\n\014elect_height\030\004 \001(\004\022\026\n\016al"
+      "l_gas_amount\030\005 \001(\004\022\024\n\014gas_for_root\030\006 \001(\004"
+      "\"Y\n\023WaitingNodesMessage\022\024\n\014nodes_filter\030"
+      "\001 \003(\004\022\030\n\020waiting_shard_id\030\002 \001(\r\022\022\n\nstoke"
+      "_hash\030\003 \001(\014\"i\n\024WaitingNodeHeartbeat\022\021\n\tp"
+      "ublic_ip\030\001 \001(\014\022\023\n\013public_port\030\002 \001(\r\022\022\n\nn"
+      "etwork_id\030\003 \001(\r\022\025\n\rtimestamp_sec\030\004 \001(\004\"@"
+      "\n\025LeaderRotationMessage\022\021\n\tleader_id\030\001 \001"
+      "(\014\022\024\n\014pool_mod_num\030\002 \001(\r\"9\n\021SyncNodeStok"
+      "eItem\022\n\n\002id\030\001 \001(\014\022\030\n\020synced_tm_height\030\002 "
+      "\001(\004\"h\n\024SyncNodeStokeRequest\0229\n\tsync_item"
+      "\030\001 \003(\0132&.seth.elect.protobuf.SyncNodeSto"
+      "keItem\022\025\n\rnow_tm_height\030\002 \001(\004\"3\n\024SyncNod"
+      "eStokeResItem\022\n\n\002id\030\001 \001(\014\022\017\n\007balance\030\002 \001"
+      "(\004\"h\n\025SyncNodeStokeResponse\0228\n\005items\030\001 \003"
+      "(\0132).seth.elect.protobuf.SyncNodeStokeRe"
+      "sItem\022\025\n\rnow_tm_height\030\002 \001(\004\"\213\004\n\014ElectMe"
+      "ssage\0224\n\013elect_block\030\001 \001(\0132\037.seth.elect."
+      "protobuf.ElectBlock\0229\n\020prev_elect_block\030"
+      "\002 \001(\0132\037.seth.elect.protobuf.ElectBlock\022\?"
+      "\n\rwaiting_nodes\030\003 \001(\0132(.seth.elect.proto"
+      "buf.WaitingNodesMessage\022\024\n\014member_index\030"
+      "\004 \001(\005\022\017\n\007sign_ch\030\005 \001(\014\022\020\n\010sign_res\030\006 \001(\014"
+      "\022D\n\021waiting_heartbeat\030\007 \001(\0132).seth.elect"
+      ".protobuf.WaitingNodeHeartbeat\022C\n\017leader"
+      "_rotation\030\010 \001(\0132*.seth.elect.protobuf.Le"
+      "aderRotationMessage\022A\n\016sync_stoke_req\030\t "
+      "\001(\0132).seth.elect.protobuf.SyncNodeStokeR"
+      "equest\022B\n\016sync_stoke_res\030\n \001(\0132*.seth.el"
+      "ect.protobuf.SyncNodeStokeResponse"
   };
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-      descriptor, 2110);
+      descriptor, 1994);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "protos/elect.proto", &protobuf_RegisterTypes);
 }
@@ -2711,10 +2701,6 @@ void PrevMembers::InternalSwap(PrevMembers* other) {
 // ===================================================================
 
 void member::InitAsDefaultInstance() {
-  ::seth::elect::protobuf::_member_default_instance_._instance.get_mutable()->agg_bls_pk_ = const_cast< ::seth::elect::protobuf::BlsPublicKey*>(
-      ::seth::elect::protobuf::BlsPublicKey::internal_default_instance());
-  ::seth::elect::protobuf::_member_default_instance_._instance.get_mutable()->agg_bls_pk_proof_ = const_cast< ::seth::elect::protobuf::BlsPopProof*>(
-      ::seth::elect::protobuf::BlsPopProof::internal_default_instance());
 }
 #if !defined(_MSC_VER) || _MSC_VER >= 1900
 const int member::kPubkeyFieldNumber;
@@ -2722,8 +2708,6 @@ const int member::kPoolIdxModNumFieldNumber;
 const int member::kMiningAmountFieldNumber;
 const int member::kFtsValueFieldNumber;
 const int member::kConsensusGapFieldNumber;
-const int member::kAggBlsPkFieldNumber;
-const int member::kAggBlsPkProofFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
 member::member()
@@ -2742,16 +2726,6 @@ member::member(const member& from)
   if (from.has_pubkey()) {
     pubkey_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.pubkey_);
   }
-  if (from.has_agg_bls_pk()) {
-    agg_bls_pk_ = new ::seth::elect::protobuf::BlsPublicKey(*from.agg_bls_pk_);
-  } else {
-    agg_bls_pk_ = NULL;
-  }
-  if (from.has_agg_bls_pk_proof()) {
-    agg_bls_pk_proof_ = new ::seth::elect::protobuf::BlsPopProof(*from.agg_bls_pk_proof_);
-  } else {
-    agg_bls_pk_proof_ = NULL;
-  }
   ::memcpy(&mining_amount_, &from.mining_amount_,
     static_cast<size_t>(reinterpret_cast<char*>(&pool_idx_mod_num_) -
     reinterpret_cast<char*>(&mining_amount_)) + sizeof(pool_idx_mod_num_));
@@ -2760,9 +2734,9 @@ member::member(const member& from)
 
 void member::SharedCtor() {
   pubkey_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  ::memset(&agg_bls_pk_, 0, static_cast<size_t>(
+  ::memset(&mining_amount_, 0, static_cast<size_t>(
       reinterpret_cast<char*>(&pool_idx_mod_num_) -
-      reinterpret_cast<char*>(&agg_bls_pk_)) + sizeof(pool_idx_mod_num_));
+      reinterpret_cast<char*>(&mining_amount_)) + sizeof(pool_idx_mod_num_));
 }
 
 member::~member() {
@@ -2772,8 +2746,6 @@ member::~member() {
 
 void member::SharedDtor() {
   pubkey_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  if (this != internal_default_instance()) delete agg_bls_pk_;
-  if (this != internal_default_instance()) delete agg_bls_pk_proof_;
 }
 
 void member::SetCachedSize(int size) const {
@@ -2797,20 +2769,10 @@ void member::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _has_bits_[0];
-  if (cached_has_bits & 7u) {
-    if (cached_has_bits & 0x00000001u) {
-      pubkey_.ClearNonDefaultToEmptyNoArena();
-    }
-    if (cached_has_bits & 0x00000002u) {
-      GOOGLE_DCHECK(agg_bls_pk_ != NULL);
-      agg_bls_pk_->Clear();
-    }
-    if (cached_has_bits & 0x00000004u) {
-      GOOGLE_DCHECK(agg_bls_pk_proof_ != NULL);
-      agg_bls_pk_proof_->Clear();
-    }
+  if (cached_has_bits & 0x00000001u) {
+    pubkey_.ClearNonDefaultToEmptyNoArena();
   }
-  if (cached_has_bits & 120u) {
+  if (cached_has_bits & 30u) {
     ::memset(&mining_amount_, 0, static_cast<size_t>(
         reinterpret_cast<char*>(&pool_idx_mod_num_) -
         reinterpret_cast<char*>(&mining_amount_)) + sizeof(pool_idx_mod_num_));
@@ -2897,30 +2859,6 @@ bool member::MergePartialFromCodedStream(
         break;
       }
 
-      // optional .seth.elect.protobuf.BlsPublicKey agg_bls_pk = 6;
-      case 6: {
-        if (static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(50u /* 50 & 0xFF */)) {
-          DO_(::google::protobuf::internal::WireFormatLite::ReadMessage(
-               input, mutable_agg_bls_pk()));
-        } else {
-          goto handle_unusual;
-        }
-        break;
-      }
-
-      // optional .seth.elect.protobuf.BlsPopProof agg_bls_pk_proof = 7;
-      case 7: {
-        if (static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(58u /* 58 & 0xFF */)) {
-          DO_(::google::protobuf::internal::WireFormatLite::ReadMessage(
-               input, mutable_agg_bls_pk_proof()));
-        } else {
-          goto handle_unusual;
-        }
-        break;
-      }
-
       default: {
       handle_unusual:
         if (tag == 0) {
@@ -2955,35 +2893,23 @@ void member::SerializeWithCachedSizes(
   }
 
   // optional int32 pool_idx_mod_num = 2;
-  if (cached_has_bits & 0x00000040u) {
+  if (cached_has_bits & 0x00000010u) {
     ::google::protobuf::internal::WireFormatLite::WriteInt32(2, this->pool_idx_mod_num(), output);
   }
 
   // optional uint64 mining_amount = 3;
-  if (cached_has_bits & 0x00000008u) {
+  if (cached_has_bits & 0x00000002u) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(3, this->mining_amount(), output);
   }
 
   // optional uint64 fts_value = 4;
-  if (cached_has_bits & 0x00000010u) {
+  if (cached_has_bits & 0x00000004u) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(4, this->fts_value(), output);
   }
 
   // optional uint64 consensus_gap = 5;
-  if (cached_has_bits & 0x00000020u) {
+  if (cached_has_bits & 0x00000008u) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(5, this->consensus_gap(), output);
-  }
-
-  // optional .seth.elect.protobuf.BlsPublicKey agg_bls_pk = 6;
-  if (cached_has_bits & 0x00000002u) {
-    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      6, this->_internal_agg_bls_pk(), output);
-  }
-
-  // optional .seth.elect.protobuf.BlsPopProof agg_bls_pk_proof = 7;
-  if (cached_has_bits & 0x00000004u) {
-    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      7, this->_internal_agg_bls_pk_proof(), output);
   }
 
   if (_internal_metadata_.have_unknown_fields()) {
@@ -3009,37 +2935,23 @@ void member::SerializeWithCachedSizes(
   }
 
   // optional int32 pool_idx_mod_num = 2;
-  if (cached_has_bits & 0x00000040u) {
+  if (cached_has_bits & 0x00000010u) {
     target = ::google::protobuf::internal::WireFormatLite::WriteInt32ToArray(2, this->pool_idx_mod_num(), target);
   }
 
   // optional uint64 mining_amount = 3;
-  if (cached_has_bits & 0x00000008u) {
+  if (cached_has_bits & 0x00000002u) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(3, this->mining_amount(), target);
   }
 
   // optional uint64 fts_value = 4;
-  if (cached_has_bits & 0x00000010u) {
+  if (cached_has_bits & 0x00000004u) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(4, this->fts_value(), target);
   }
 
   // optional uint64 consensus_gap = 5;
-  if (cached_has_bits & 0x00000020u) {
+  if (cached_has_bits & 0x00000008u) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(5, this->consensus_gap(), target);
-  }
-
-  // optional .seth.elect.protobuf.BlsPublicKey agg_bls_pk = 6;
-  if (cached_has_bits & 0x00000002u) {
-    target = ::google::protobuf::internal::WireFormatLite::
-      InternalWriteMessageToArray(
-        6, this->_internal_agg_bls_pk(), deterministic, target);
-  }
-
-  // optional .seth.elect.protobuf.BlsPopProof agg_bls_pk_proof = 7;
-  if (cached_has_bits & 0x00000004u) {
-    target = ::google::protobuf::internal::WireFormatLite::
-      InternalWriteMessageToArray(
-        7, this->_internal_agg_bls_pk_proof(), deterministic, target);
   }
 
   if (_internal_metadata_.have_unknown_fields()) {
@@ -3059,26 +2971,12 @@ size_t member::ByteSizeLong() const {
       ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
         _internal_metadata_.unknown_fields());
   }
-  if (_has_bits_[0 / 32] & 127u) {
+  if (_has_bits_[0 / 32] & 31u) {
     // optional bytes pubkey = 1;
     if (has_pubkey()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::BytesSize(
           this->pubkey());
-    }
-
-    // optional .seth.elect.protobuf.BlsPublicKey agg_bls_pk = 6;
-    if (has_agg_bls_pk()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::MessageSize(
-          *agg_bls_pk_);
-    }
-
-    // optional .seth.elect.protobuf.BlsPopProof agg_bls_pk_proof = 7;
-    if (has_agg_bls_pk_proof()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::MessageSize(
-          *agg_bls_pk_proof_);
     }
 
     // optional uint64 mining_amount = 3;
@@ -3138,27 +3036,21 @@ void member::MergeFrom(const member& from) {
   (void) cached_has_bits;
 
   cached_has_bits = from._has_bits_[0];
-  if (cached_has_bits & 127u) {
+  if (cached_has_bits & 31u) {
     if (cached_has_bits & 0x00000001u) {
       set_has_pubkey();
       pubkey_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.pubkey_);
     }
     if (cached_has_bits & 0x00000002u) {
-      mutable_agg_bls_pk()->::seth::elect::protobuf::BlsPublicKey::MergeFrom(from.agg_bls_pk());
-    }
-    if (cached_has_bits & 0x00000004u) {
-      mutable_agg_bls_pk_proof()->::seth::elect::protobuf::BlsPopProof::MergeFrom(from.agg_bls_pk_proof());
-    }
-    if (cached_has_bits & 0x00000008u) {
       mining_amount_ = from.mining_amount_;
     }
-    if (cached_has_bits & 0x00000010u) {
+    if (cached_has_bits & 0x00000004u) {
       fts_value_ = from.fts_value_;
     }
-    if (cached_has_bits & 0x00000020u) {
+    if (cached_has_bits & 0x00000008u) {
       consensus_gap_ = from.consensus_gap_;
     }
-    if (cached_has_bits & 0x00000040u) {
+    if (cached_has_bits & 0x00000010u) {
       pool_idx_mod_num_ = from.pool_idx_mod_num_;
     }
     _has_bits_[0] |= cached_has_bits;
@@ -3191,8 +3083,6 @@ void member::InternalSwap(member* other) {
   using std::swap;
   pubkey_.Swap(&other->pubkey_, &::google::protobuf::internal::GetEmptyStringAlreadyInited(),
     GetArenaNoVirtual());
-  swap(agg_bls_pk_, other->agg_bls_pk_);
-  swap(agg_bls_pk_proof_, other->agg_bls_pk_proof_);
   swap(mining_amount_, other->mining_amount_);
   swap(fts_value_, other->fts_value_);
   swap(consensus_gap_, other->consensus_gap_);

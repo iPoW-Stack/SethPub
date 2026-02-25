@@ -1,3 +1,6 @@
+pkgs/
+seth
+setup_coredump.sh
 init_accounts*
 extract_sks.py
 gen_genesis_script.py

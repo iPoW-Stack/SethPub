@@ -29,10 +29,6 @@ extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2fbls_2eproto ::google::protobuf
 extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2fbls_2eproto ::google::protobuf::internal::SCCInfo<1> scc_info_SwapSecKeyReq;
 extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2fbls_2eproto ::google::protobuf::internal::SCCInfo<1> scc_info_VerifyVecBrdReq;
 }  // namespace protobuf_protos_2fbls_2eproto
-namespace protobuf_protos_2felect_2eproto {
-extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2felect_2eproto ::google::protobuf::internal::SCCInfo<0> scc_info_BlsPopProof;
-extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2felect_2eproto ::google::protobuf::internal::SCCInfo<0> scc_info_BlsPublicKey;
-}  // namespace protobuf_protos_2felect_2eproto
 namespace seth {
 namespace bls {
 namespace protobuf {
@@ -194,11 +190,9 @@ static void InitDefaultsJoinElectInfo() {
   ::seth::bls::protobuf::JoinElectInfo::InitAsDefaultInstance();
 }
 
-::google::protobuf::internal::SCCInfo<3> scc_info_JoinElectInfo =
-    {{ATOMIC_VAR_INIT(::google::protobuf::internal::SCCInfoBase::kUninitialized), 3, InitDefaultsJoinElectInfo}, {
-      &protobuf_protos_2fbls_2eproto::scc_info_VerifyVecBrdReq.base,
-      &protobuf_protos_2felect_2eproto::scc_info_BlsPublicKey.base,
-      &protobuf_protos_2felect_2eproto::scc_info_BlsPopProof.base,}};
+::google::protobuf::internal::SCCInfo<1> scc_info_JoinElectInfo =
+    {{ATOMIC_VAR_INIT(::google::protobuf::internal::SCCInfoBase::kUninitialized), 1, InitDefaultsJoinElectInfo}, {
+      &protobuf_protos_2fbls_2eproto::scc_info_VerifyVecBrdReq.base,}};
 
 static void InitDefaultsLocalPolynomial() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -460,17 +454,13 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::bls::protobuf::JoinElectInfo, addr_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::bls::protobuf::JoinElectInfo, stoke_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::bls::protobuf::JoinElectInfo, public_key_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::bls::protobuf::JoinElectInfo, bls_pk_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::bls::protobuf::JoinElectInfo, bls_proof_),
-  5,
-  6,
-  8,
-  2,
-  0,
-  7,
-  1,
   3,
   4,
+  6,
+  2,
+  0,
+  5,
+  1,
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::bls::protobuf::LocalPolynomial, _has_bits_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::bls::protobuf::LocalPolynomial, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -607,19 +597,19 @@ static const ::google::protobuf::internal::MigrationSchema schemas[] GOOGLE_PROT
   { 17, 26, sizeof(::seth::bls::protobuf::BlsPublicKey)},
   { 30, 37, sizeof(::seth::bls::protobuf::VerifyVecBrdReq)},
   { 39, 45, sizeof(::seth::bls::protobuf::JoinElectBlsInfo)},
-  { 46, 60, sizeof(::seth::bls::protobuf::JoinElectInfo)},
-  { 69, 76, sizeof(::seth::bls::protobuf::LocalPolynomial)},
-  { 78, 90, sizeof(::seth::bls::protobuf::LocalBlsItem)},
-  { 97, 103, sizeof(::seth::bls::protobuf::BlsVerifyValue)},
-  { 104, 111, sizeof(::seth::bls::protobuf::VerifyVecBrdRes)},
-  { 113, 121, sizeof(::seth::bls::protobuf::SwapSecKeyItem)},
-  { 124, 130, sizeof(::seth::bls::protobuf::SwapSecKeyReq)},
-  { 131, 139, sizeof(::seth::bls::protobuf::SwapSecKeyRes)},
-  { 142, 148, sizeof(::seth::bls::protobuf::AgainstParticipant)},
-  { 149, 160, sizeof(::seth::bls::protobuf::FinishBroadcast)},
-  { 166, 172, sizeof(::seth::bls::protobuf::CheckVerfiyReq)},
-  { 173, 179, sizeof(::seth::bls::protobuf::CheckSwapKeyReq)},
-  { 180, 192, sizeof(::seth::bls::protobuf::BlsMessage)},
+  { 46, 58, sizeof(::seth::bls::protobuf::JoinElectInfo)},
+  { 65, 72, sizeof(::seth::bls::protobuf::LocalPolynomial)},
+  { 74, 86, sizeof(::seth::bls::protobuf::LocalBlsItem)},
+  { 93, 99, sizeof(::seth::bls::protobuf::BlsVerifyValue)},
+  { 100, 107, sizeof(::seth::bls::protobuf::VerifyVecBrdRes)},
+  { 109, 117, sizeof(::seth::bls::protobuf::SwapSecKeyItem)},
+  { 120, 126, sizeof(::seth::bls::protobuf::SwapSecKeyReq)},
+  { 127, 135, sizeof(::seth::bls::protobuf::SwapSecKeyRes)},
+  { 138, 144, sizeof(::seth::bls::protobuf::AgainstParticipant)},
+  { 145, 156, sizeof(::seth::bls::protobuf::FinishBroadcast)},
+  { 162, 168, sizeof(::seth::bls::protobuf::CheckVerfiyReq)},
+  { 169, 175, sizeof(::seth::bls::protobuf::CheckSwapKeyReq)},
+  { 176, 188, sizeof(::seth::bls::protobuf::BlsMessage)},
 };
 
 static ::google::protobuf::Message const * const file_default_instances[] = {
@@ -672,51 +662,48 @@ void AddDescriptorsImpl() {
       "VecBrdReq\0224\n\nverify_vec\030\001 \003(\0132 .seth.bls"
       ".protobuf.VerifyVecItem\022\022\n\nchange_idx\030\002 "
       "\001(\r\"I\n\020JoinElectBlsInfo\0225\n\013verified_g2\030\001"
-      " \001(\0132 .seth.bls.protobuf.VerifyVecItem\"\226"
-      "\002\n\rJoinElectInfo\022\020\n\010shard_id\030\001 \001(\r\022\022\n\nme"
+      " \001(\0132 .seth.bls.protobuf.VerifyVecItem\"\256"
+      "\001\n\rJoinElectInfo\022\020\n\010shard_id\030\001 \001(\r\022\022\n\nme"
       "mber_idx\030\002 \001(\r\022\022\n\nchange_idx\030\003 \001(\r\0222\n\006g2"
       "_req\030\004 \001(\0132\".seth.bls.protobuf.VerifyVec"
       "BrdReq\022\014\n\004addr\030\005 \001(\014\022\r\n\005stoke\030\006 \001(\004\022\022\n\np"
-      "ublic_key\030\007 \001(\014\0221\n\006bls_pk\030\010 \001(\0132!.seth.e"
-      "lect.protobuf.BlsPublicKey\0223\n\tbls_proof\030"
-      "\t \001(\0132 .seth.elect.protobuf.BlsPopProof\""
-      "<\n\017LocalPolynomial\022\022\n\npolynomial\030\001 \003(\014\022\025"
-      "\n\nchange_idx\030\002 \001(\r:\0010\"\351\001\n\014LocalBlsItem\022\022"
-      "\n\npolynomial\030\001 \003(\014\022\031\n\021local_private_key\030"
-      "\002 \001(\014\0224\n\nverify_vec\030\003 \003(\0132 .seth.bls.pro"
-      "tobuf.VerifyVecItem\022\032\n\022local_secrity_key"
-      "s\030\004 \003(\014\0226\n\rcommon_pubkey\030\005 \003(\0132\037.seth.bl"
-      "s.protobuf.BlsPublicKey\022\017\n\007valid_t\030\006 \001(\r"
-      "\022\017\n\007valid_n\030\007 \001(\r\"F\n\016BlsVerifyValue\0224\n\nv"
-      "erify_vec\030\001 \003(\0132 .seth.bls.protobuf.Veri"
-      "fyVecItem\"9\n\017VerifyVecBrdRes\022\021\n\tpublic_i"
-      "p\030\001 \001(\014\022\023\n\013public_port\030\002 \001(\r\"g\n\016SwapSecK"
-      "eyItem\022\017\n\007sec_key\030\001 \001(\014\022\023\n\013sec_key_len\030\002"
-      " \001(\r\022/\n\006old_g2\030\003 \001(\0132\037.seth.bls.protobuf"
-      ".BlsPublicKey\"@\n\rSwapSecKeyReq\022/\n\004keys\030\001"
-      " \003(\0132!.seth.bls.protobuf.SwapSecKeyItem\""
-      "D\n\rSwapSecKeyRes\022\r\n\005index\030\001 \001(\r\022\017\n\007sec_k"
-      "ey\030\002 \001(\014\022\023\n\013sec_key_len\030\003 \001(\r\"+\n\022Against"
-      "Participant\022\025\n\ragainst_index\030\001 \001(\r\"\306\001\n\017F"
-      "inishBroadcast\022\016\n\006bitmap\030\001 \003(\004\022/\n\006pubkey"
-      "\030\002 \001(\0132\037.seth.bls.protobuf.BlsPublicKey\022"
-      "6\n\rcommon_pubkey\030\003 \001(\0132\037.seth.bls.protob"
-      "uf.BlsPublicKey\022\022\n\nnetwork_id\030\004 \001(\r\022\022\n\nb"
-      "ls_sign_x\030\005 \001(\014\022\022\n\nbls_sign_y\030\006 \001(\014\"\037\n\016C"
-      "heckVerfiyReq\022\r\n\005index\030\001 \001(\r\" \n\017CheckSwa"
-      "pKeyReq\022\r\n\005index\030\001 \001(\r\"\321\002\n\nBlsMessage\0226\n"
-      "\nverify_brd\030\001 \001(\0132\".seth.bls.protobuf.Ve"
-      "rifyVecBrdReq\0222\n\010swap_req\030\002 \001(\0132 .seth.b"
-      "ls.protobuf.SwapSecKeyReq\0226\n\nfinish_req\030"
-      "\003 \001(\0132\".seth.bls.protobuf.FinishBroadcas"
-      "t\022;\n\020check_verify_req\030\004 \001(\0132!.seth.bls.p"
-      "rotobuf.CheckVerfiyReq\022=\n\021check_swapkey_"
-      "req\030\005 \001(\0132\".seth.bls.protobuf.CheckSwapK"
-      "eyReq\022\r\n\005index\030\006 \001(\r\022\024\n\014elect_height\030\007 \001"
-      "(\004"
+      "ublic_key\030\007 \001(\014\"<\n\017LocalPolynomial\022\022\n\npo"
+      "lynomial\030\001 \003(\014\022\025\n\nchange_idx\030\002 \001(\r:\0010\"\351\001"
+      "\n\014LocalBlsItem\022\022\n\npolynomial\030\001 \003(\014\022\031\n\021lo"
+      "cal_private_key\030\002 \001(\014\0224\n\nverify_vec\030\003 \003("
+      "\0132 .seth.bls.protobuf.VerifyVecItem\022\032\n\022l"
+      "ocal_secrity_keys\030\004 \003(\014\0226\n\rcommon_pubkey"
+      "\030\005 \003(\0132\037.seth.bls.protobuf.BlsPublicKey\022"
+      "\017\n\007valid_t\030\006 \001(\r\022\017\n\007valid_n\030\007 \001(\r\"F\n\016Bls"
+      "VerifyValue\0224\n\nverify_vec\030\001 \003(\0132 .seth.b"
+      "ls.protobuf.VerifyVecItem\"9\n\017VerifyVecBr"
+      "dRes\022\021\n\tpublic_ip\030\001 \001(\014\022\023\n\013public_port\030\002"
+      " \001(\r\"g\n\016SwapSecKeyItem\022\017\n\007sec_key\030\001 \001(\014\022"
+      "\023\n\013sec_key_len\030\002 \001(\r\022/\n\006old_g2\030\003 \001(\0132\037.s"
+      "eth.bls.protobuf.BlsPublicKey\"@\n\rSwapSec"
+      "KeyReq\022/\n\004keys\030\001 \003(\0132!.seth.bls.protobuf"
+      ".SwapSecKeyItem\"D\n\rSwapSecKeyRes\022\r\n\005inde"
+      "x\030\001 \001(\r\022\017\n\007sec_key\030\002 \001(\014\022\023\n\013sec_key_len\030"
+      "\003 \001(\r\"+\n\022AgainstParticipant\022\025\n\ragainst_i"
+      "ndex\030\001 \001(\r\"\306\001\n\017FinishBroadcast\022\016\n\006bitmap"
+      "\030\001 \003(\004\022/\n\006pubkey\030\002 \001(\0132\037.seth.bls.protob"
+      "uf.BlsPublicKey\0226\n\rcommon_pubkey\030\003 \001(\0132\037"
+      ".seth.bls.protobuf.BlsPublicKey\022\022\n\nnetwo"
+      "rk_id\030\004 \001(\r\022\022\n\nbls_sign_x\030\005 \001(\014\022\022\n\nbls_s"
+      "ign_y\030\006 \001(\014\"\037\n\016CheckVerfiyReq\022\r\n\005index\030\001"
+      " \001(\r\" \n\017CheckSwapKeyReq\022\r\n\005index\030\001 \001(\r\"\321"
+      "\002\n\nBlsMessage\0226\n\nverify_brd\030\001 \001(\0132\".seth"
+      ".bls.protobuf.VerifyVecBrdReq\0222\n\010swap_re"
+      "q\030\002 \001(\0132 .seth.bls.protobuf.SwapSecKeyRe"
+      "q\0226\n\nfinish_req\030\003 \001(\0132\".seth.bls.protobu"
+      "f.FinishBroadcast\022;\n\020check_verify_req\030\004 "
+      "\001(\0132!.seth.bls.protobuf.CheckVerfiyReq\022="
+      "\n\021check_swapkey_req\030\005 \001(\0132\".seth.bls.pro"
+      "tobuf.CheckSwapKeyReq\022\r\n\005index\030\006 \001(\r\022\024\n\014"
+      "elect_height\030\007 \001(\004"
   };
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-      descriptor, 2002);
+      descriptor, 1898);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "protos/bls.proto", &protobuf_RegisterTypes);
   ::protobuf_protos_2felect_2eproto::AddDescriptors();
@@ -2129,18 +2116,6 @@ void JoinElectBlsInfo::InternalSwap(JoinElectBlsInfo* other) {
 void JoinElectInfo::InitAsDefaultInstance() {
   ::seth::bls::protobuf::_JoinElectInfo_default_instance_._instance.get_mutable()->g2_req_ = const_cast< ::seth::bls::protobuf::VerifyVecBrdReq*>(
       ::seth::bls::protobuf::VerifyVecBrdReq::internal_default_instance());
-  ::seth::bls::protobuf::_JoinElectInfo_default_instance_._instance.get_mutable()->bls_pk_ = const_cast< ::seth::elect::protobuf::BlsPublicKey*>(
-      ::seth::elect::protobuf::BlsPublicKey::internal_default_instance());
-  ::seth::bls::protobuf::_JoinElectInfo_default_instance_._instance.get_mutable()->bls_proof_ = const_cast< ::seth::elect::protobuf::BlsPopProof*>(
-      ::seth::elect::protobuf::BlsPopProof::internal_default_instance());
-}
-void JoinElectInfo::clear_bls_pk() {
-  if (bls_pk_ != NULL) bls_pk_->Clear();
-  clear_has_bls_pk();
-}
-void JoinElectInfo::clear_bls_proof() {
-  if (bls_proof_ != NULL) bls_proof_->Clear();
-  clear_has_bls_proof();
 }
 #if !defined(_MSC_VER) || _MSC_VER >= 1900
 const int JoinElectInfo::kShardIdFieldNumber;
@@ -2150,8 +2125,6 @@ const int JoinElectInfo::kG2ReqFieldNumber;
 const int JoinElectInfo::kAddrFieldNumber;
 const int JoinElectInfo::kStokeFieldNumber;
 const int JoinElectInfo::kPublicKeyFieldNumber;
-const int JoinElectInfo::kBlsPkFieldNumber;
-const int JoinElectInfo::kBlsProofFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
 JoinElectInfo::JoinElectInfo()
@@ -2179,16 +2152,6 @@ JoinElectInfo::JoinElectInfo(const JoinElectInfo& from)
   } else {
     g2_req_ = NULL;
   }
-  if (from.has_bls_pk()) {
-    bls_pk_ = new ::seth::elect::protobuf::BlsPublicKey(*from.bls_pk_);
-  } else {
-    bls_pk_ = NULL;
-  }
-  if (from.has_bls_proof()) {
-    bls_proof_ = new ::seth::elect::protobuf::BlsPopProof(*from.bls_proof_);
-  } else {
-    bls_proof_ = NULL;
-  }
   ::memcpy(&shard_id_, &from.shard_id_,
     static_cast<size_t>(reinterpret_cast<char*>(&change_idx_) -
     reinterpret_cast<char*>(&shard_id_)) + sizeof(change_idx_));
@@ -2212,8 +2175,6 @@ void JoinElectInfo::SharedDtor() {
   addr_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   public_key_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (this != internal_default_instance()) delete g2_req_;
-  if (this != internal_default_instance()) delete bls_pk_;
-  if (this != internal_default_instance()) delete bls_proof_;
 }
 
 void JoinElectInfo::SetCachedSize(int size) const {
@@ -2237,7 +2198,7 @@ void JoinElectInfo::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _has_bits_[0];
-  if (cached_has_bits & 31u) {
+  if (cached_has_bits & 7u) {
     if (cached_has_bits & 0x00000001u) {
       addr_.ClearNonDefaultToEmptyNoArena();
     }
@@ -2248,21 +2209,12 @@ void JoinElectInfo::Clear() {
       GOOGLE_DCHECK(g2_req_ != NULL);
       g2_req_->Clear();
     }
-    if (cached_has_bits & 0x00000008u) {
-      GOOGLE_DCHECK(bls_pk_ != NULL);
-      bls_pk_->Clear();
-    }
-    if (cached_has_bits & 0x00000010u) {
-      GOOGLE_DCHECK(bls_proof_ != NULL);
-      bls_proof_->Clear();
-    }
   }
-  if (cached_has_bits & 224u) {
+  if (cached_has_bits & 120u) {
     ::memset(&shard_id_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&stoke_) -
-        reinterpret_cast<char*>(&shard_id_)) + sizeof(stoke_));
+        reinterpret_cast<char*>(&change_idx_) -
+        reinterpret_cast<char*>(&shard_id_)) + sizeof(change_idx_));
   }
-  change_idx_ = 0u;
   _has_bits_.Clear();
   _internal_metadata_.Clear();
 }
@@ -2369,30 +2321,6 @@ bool JoinElectInfo::MergePartialFromCodedStream(
         break;
       }
 
-      // optional .seth.elect.protobuf.BlsPublicKey bls_pk = 8;
-      case 8: {
-        if (static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(66u /* 66 & 0xFF */)) {
-          DO_(::google::protobuf::internal::WireFormatLite::ReadMessage(
-               input, mutable_bls_pk()));
-        } else {
-          goto handle_unusual;
-        }
-        break;
-      }
-
-      // optional .seth.elect.protobuf.BlsPopProof bls_proof = 9;
-      case 9: {
-        if (static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(74u /* 74 & 0xFF */)) {
-          DO_(::google::protobuf::internal::WireFormatLite::ReadMessage(
-               input, mutable_bls_proof()));
-        } else {
-          goto handle_unusual;
-        }
-        break;
-      }
-
       default: {
       handle_unusual:
         if (tag == 0) {
@@ -2421,17 +2349,17 @@ void JoinElectInfo::SerializeWithCachedSizes(
 
   cached_has_bits = _has_bits_[0];
   // optional uint32 shard_id = 1;
-  if (cached_has_bits & 0x00000020u) {
+  if (cached_has_bits & 0x00000008u) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(1, this->shard_id(), output);
   }
 
   // optional uint32 member_idx = 2;
-  if (cached_has_bits & 0x00000040u) {
+  if (cached_has_bits & 0x00000010u) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(2, this->member_idx(), output);
   }
 
   // optional uint32 change_idx = 3;
-  if (cached_has_bits & 0x00000100u) {
+  if (cached_has_bits & 0x00000040u) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(3, this->change_idx(), output);
   }
 
@@ -2448,7 +2376,7 @@ void JoinElectInfo::SerializeWithCachedSizes(
   }
 
   // optional uint64 stoke = 6;
-  if (cached_has_bits & 0x00000080u) {
+  if (cached_has_bits & 0x00000020u) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(6, this->stoke(), output);
   }
 
@@ -2456,18 +2384,6 @@ void JoinElectInfo::SerializeWithCachedSizes(
   if (cached_has_bits & 0x00000002u) {
     ::google::protobuf::internal::WireFormatLite::WriteBytesMaybeAliased(
       7, this->public_key(), output);
-  }
-
-  // optional .seth.elect.protobuf.BlsPublicKey bls_pk = 8;
-  if (cached_has_bits & 0x00000008u) {
-    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      8, this->_internal_bls_pk(), output);
-  }
-
-  // optional .seth.elect.protobuf.BlsPopProof bls_proof = 9;
-  if (cached_has_bits & 0x00000010u) {
-    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      9, this->_internal_bls_proof(), output);
   }
 
   if (_internal_metadata_.have_unknown_fields()) {
@@ -2486,17 +2402,17 @@ void JoinElectInfo::SerializeWithCachedSizes(
 
   cached_has_bits = _has_bits_[0];
   // optional uint32 shard_id = 1;
-  if (cached_has_bits & 0x00000020u) {
+  if (cached_has_bits & 0x00000008u) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(1, this->shard_id(), target);
   }
 
   // optional uint32 member_idx = 2;
-  if (cached_has_bits & 0x00000040u) {
+  if (cached_has_bits & 0x00000010u) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(2, this->member_idx(), target);
   }
 
   // optional uint32 change_idx = 3;
-  if (cached_has_bits & 0x00000100u) {
+  if (cached_has_bits & 0x00000040u) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(3, this->change_idx(), target);
   }
 
@@ -2515,7 +2431,7 @@ void JoinElectInfo::SerializeWithCachedSizes(
   }
 
   // optional uint64 stoke = 6;
-  if (cached_has_bits & 0x00000080u) {
+  if (cached_has_bits & 0x00000020u) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(6, this->stoke(), target);
   }
 
@@ -2524,20 +2440,6 @@ void JoinElectInfo::SerializeWithCachedSizes(
     target =
       ::google::protobuf::internal::WireFormatLite::WriteBytesToArray(
         7, this->public_key(), target);
-  }
-
-  // optional .seth.elect.protobuf.BlsPublicKey bls_pk = 8;
-  if (cached_has_bits & 0x00000008u) {
-    target = ::google::protobuf::internal::WireFormatLite::
-      InternalWriteMessageToArray(
-        8, this->_internal_bls_pk(), deterministic, target);
-  }
-
-  // optional .seth.elect.protobuf.BlsPopProof bls_proof = 9;
-  if (cached_has_bits & 0x00000010u) {
-    target = ::google::protobuf::internal::WireFormatLite::
-      InternalWriteMessageToArray(
-        9, this->_internal_bls_proof(), deterministic, target);
   }
 
   if (_internal_metadata_.have_unknown_fields()) {
@@ -2557,7 +2459,7 @@ size_t JoinElectInfo::ByteSizeLong() const {
       ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
         _internal_metadata_.unknown_fields());
   }
-  if (_has_bits_[0 / 32] & 255u) {
+  if (_has_bits_[0 / 32] & 127u) {
     // optional bytes addr = 5;
     if (has_addr()) {
       total_size += 1 +
@@ -2577,20 +2479,6 @@ size_t JoinElectInfo::ByteSizeLong() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSize(
           *g2_req_);
-    }
-
-    // optional .seth.elect.protobuf.BlsPublicKey bls_pk = 8;
-    if (has_bls_pk()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::MessageSize(
-          *bls_pk_);
-    }
-
-    // optional .seth.elect.protobuf.BlsPopProof bls_proof = 9;
-    if (has_bls_proof()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::MessageSize(
-          *bls_proof_);
     }
 
     // optional uint32 shard_id = 1;
@@ -2614,14 +2502,14 @@ size_t JoinElectInfo::ByteSizeLong() const {
           this->stoke());
     }
 
-  }
-  // optional uint32 change_idx = 3;
-  if (has_change_idx()) {
-    total_size += 1 +
-      ::google::protobuf::internal::WireFormatLite::UInt32Size(
-        this->change_idx());
-  }
+    // optional uint32 change_idx = 3;
+    if (has_change_idx()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->change_idx());
+    }
 
+  }
   int cached_size = ::google::protobuf::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
@@ -2650,7 +2538,7 @@ void JoinElectInfo::MergeFrom(const JoinElectInfo& from) {
   (void) cached_has_bits;
 
   cached_has_bits = from._has_bits_[0];
-  if (cached_has_bits & 255u) {
+  if (cached_has_bits & 127u) {
     if (cached_has_bits & 0x00000001u) {
       set_has_addr();
       addr_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.addr_);
@@ -2663,24 +2551,18 @@ void JoinElectInfo::MergeFrom(const JoinElectInfo& from) {
       mutable_g2_req()->::seth::bls::protobuf::VerifyVecBrdReq::MergeFrom(from.g2_req());
     }
     if (cached_has_bits & 0x00000008u) {
-      mutable_bls_pk()->::seth::elect::protobuf::BlsPublicKey::MergeFrom(from.bls_pk());
-    }
-    if (cached_has_bits & 0x00000010u) {
-      mutable_bls_proof()->::seth::elect::protobuf::BlsPopProof::MergeFrom(from.bls_proof());
-    }
-    if (cached_has_bits & 0x00000020u) {
       shard_id_ = from.shard_id_;
     }
-    if (cached_has_bits & 0x00000040u) {
+    if (cached_has_bits & 0x00000010u) {
       member_idx_ = from.member_idx_;
     }
-    if (cached_has_bits & 0x00000080u) {
+    if (cached_has_bits & 0x00000020u) {
       stoke_ = from.stoke_;
     }
+    if (cached_has_bits & 0x00000040u) {
+      change_idx_ = from.change_idx_;
+    }
     _has_bits_[0] |= cached_has_bits;
-  }
-  if (cached_has_bits & 0x00000100u) {
-    set_change_idx(from.change_idx());
   }
 }
 
@@ -2713,8 +2595,6 @@ void JoinElectInfo::InternalSwap(JoinElectInfo* other) {
   public_key_.Swap(&other->public_key_, &::google::protobuf::internal::GetEmptyStringAlreadyInited(),
     GetArenaNoVirtual());
   swap(g2_req_, other->g2_req_);
-  swap(bls_pk_, other->bls_pk_);
-  swap(bls_proof_, other->bls_proof_);
   swap(shard_id_, other->shard_id_);
   swap(member_idx_, other->member_idx_);
   swap(stoke_, other->stoke_);
