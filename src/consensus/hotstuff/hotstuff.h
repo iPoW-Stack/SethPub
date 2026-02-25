@@ -300,26 +300,22 @@ private:
             return nullptr;
         }
 
-        if (leader_latest_qc.leader_idx() == new_leader_idx) {
-            if (leader_latest_qc.view() != high_view_block->qc().view()) {
-                SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is not equal with high view block qc view: %lu",
-                    pool_idx_, leader_latest_qc.view(), high_view_block->qc().view());
-                return nullptr;
-            }
+        if (last_stable_leader_member_index_ == new_leader_idx) {
+            do {
+                if (leader_latest_qc.view() != high_view_block->qc().view()) {
+                    SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is not equal with high view block qc view: %lu",
+                        pool_idx_, leader_latest_qc.view(), high_view_block->qc().view());
+                    break;
+                }
 
-            if (last_stable_leader_member_index_ != new_leader_idx) {
-                SETH_DEBUG("pool: %u, leader_latest_qc view: %lu, last_stable_leader_member_index_: %d is not equal with new_leader_idx: %d",
-                    pool_idx_, leader_latest_qc.view(), last_stable_leader_member_index_, new_leader_idx);
-                return nullptr;
-            }
+                if (high_view_block->qc().elect_height() < latest_elect_height_) {
+                    *out_view = high_view_block->qc().view() + latest_elect_height_ + 1;
+                } else {
+                    *out_view = high_view_block->qc().view() + 1;
+                }
 
-            if (high_view_block->qc().elect_height() < latest_elect_height_) {
-                *out_view = high_view_block->qc().view() + latest_elect_height_ + 1;
-            } else {
-                *out_view = high_view_block->qc().view() + 1;
-            }
-
-            return (*members)[last_stable_leader_member_index_ % members->size()];
+                return (*members)[last_stable_leader_member_index_ % members->size()];
+            } while (0);
         }
 
         if (last_vote_view_ > view_block_chain_->LatestCommittedBlock()->qc().view() &&
@@ -353,7 +349,7 @@ private:
             return (*members)[last_stable_leader_member_index_ % members->size()];
         }
 
-        auto k = prev_qc_timestamp_sec / common::kLeaderRoatationBaseTimeoutSec;
+        auto k = elapsed / common::kLeaderRoatationBaseTimeoutSec;
         auto leader_idx = (
             last_stable_leader_member_index_ + 
             static_cast<int>(k) + 
@@ -361,7 +357,8 @@ private:
         // ++consecutive_failures_;
         SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
             "consecutive_failures: %d, now: %u, block tm: %lu, "
-            "last_stable_leader_member_index: %d, latest_elect_height: %lu, out view: %lu", 
+            "last_stable_leader_member_index: %d, latest_elect_height: %lu, out view: %lu, "
+            "prev_qc_timestamp_sec: %lu, block_info timestamp: %lu", 
             pool_idx_, 
             high_view_block->qc().view(), 
             elapsed, 
@@ -372,7 +369,9 @@ private:
             high_view_block->block_info().timestamp(),
             leader_idx,
             latest_elect_height_,
-            (high_view_block->qc().view() + latest_elect_height_ + 1));
+            (high_view_block->qc().view() + latest_elect_height_ + 1),
+            prev_qc_timestamp_sec,
+            high_view_block->block_info().timestamp());
        
         // 切换模式：强制跳过一个视图号 (V + k + 1)
         // 当超时刚刚发生(k=1)时，out_view = last_qc.view + 2
