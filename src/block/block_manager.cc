@@ -317,13 +317,15 @@ void BlockManager::RootHandleNormalToTx(
         // }
         
         auto pool_index = common::GetAddressPoolIndex(tos_item.des().substr(0, common::kUnicastAddressLength));
-        msg_ptr->address_info = account_mgr_->pools_address_info(pool_index);
+        msg_ptr->address_info = account_mgr_->pools_address_info(
+            pools::protobuf::kRootCreateAddress, 
+            pool_index);
         tx->set_pubkey("");
         tx->set_to(msg_ptr->address_info->addr());
         tx->set_gas_limit(0);
         tx->set_amount(0);
         tx->set_gas_price(common::kBuildinTransactionGasPrice);
-        tx->set_nonce(++step_with_nonce_[tx->step()]);
+        tx->set_nonce(msg_ptr->address_info->nonce() + 1);
         tx->set_value(SerializeDeterministic(tos_item));
         auto unique_hash = common::Hash::keccak256(
             tx->to() + "_" +
@@ -481,7 +483,9 @@ void BlockManager::CreateLocalToTx(
     }
 
     auto msg_ptr = std::make_shared<transport::TransportMessage>();
-    msg_ptr->address_info = account_mgr_->pools_address_info(pool_index);
+    msg_ptr->address_info = account_mgr_->pools_address_info(
+        pools::protobuf::kConsensusLocalTos, 
+        pool_index);
     auto tx = msg_ptr->header.mutable_tx_proto();
     std::string uinique_tx_str = common::Hash::keccak256(
         view_block.qc().view_block_hash() +
@@ -835,7 +839,9 @@ void BlockManager::HandleStatisticBlock(
 #endif
     // create elect transaction now for block.network_id
     auto new_msg_ptr = std::make_shared<transport::TransportMessage>();
-    new_msg_ptr->address_info = account_mgr_->pools_address_info(elect_statistic.sharding_id());
+    new_msg_ptr->address_info = account_mgr_->pools_address_info(
+        pools::protobuf::kConsensusRootElectShard, 
+        elect_statistic.sharding_id());
     auto* tx = new_msg_ptr->header.mutable_tx_proto();
     std::string unique_hash = common::Hash::keccak256(
         std::string("root_create_elect_tx_") + 
@@ -849,7 +855,7 @@ void BlockManager::HandleStatisticBlock(
     tx->set_gas_limit(0);
     tx->set_amount(0);
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
-    tx->set_nonce(++step_with_nonce_[tx->step()]);
+    tx->set_nonce(new_msg_ptr->address_info->nonce() + 1);
     auto shard_elect_tx = std::make_shared<BlockTxsItem>();
     shard_elect_tx->tx_ptr = create_elect_tx_cb_(new_msg_ptr);
     shard_elect_tx->tx_ptr->time_valid += kElectValidTimeout;
@@ -949,7 +955,9 @@ pools::TxItemPtr BlockManager::HandleToTxsMessage(
     
     *all_to_txs.mutable_to_heights() = heights;
     auto new_msg_ptr = std::make_shared<transport::TransportMessage>();
-    new_msg_ptr->address_info = account_mgr_->pools_address_info(common::kImmutablePoolSize);
+    new_msg_ptr->address_info = account_mgr_->pools_address_info(
+        pools::protobuf::kNormalTo, 
+        common::kImmutablePoolSize);
     auto* tx = new_msg_ptr->header.mutable_tx_proto();
     std::string unique_str;
     for (int32_t i = 0; i < prev_heights.heights_size(); ++i) {
@@ -964,7 +972,7 @@ pools::TxItemPtr BlockManager::HandleToTxsMessage(
     tx->set_gas_limit(0);
     tx->set_amount(0);
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
-    tx->set_nonce(++step_with_nonce_[tx->step()]);
+    tx->set_nonce(new_msg_ptr->address_info->nonce() + 1);
     auto tx_ptr = create_to_tx_cb_(new_msg_ptr);
     tx_ptr->time_valid += kToValidTimeout;
     SETH_INFO("success get to tx unique hash: %s, heights: %s",
@@ -1190,9 +1198,10 @@ pools::TxItemPtr BlockManager::GetStatisticTx(
         }
 
         shard_statistic_tx->tx_ptr->address_info =
-            account_mgr_->pools_address_info(pool_index);
+            account_mgr_->pools_address_info(tx->step(), pool_index);
         auto& tx = shard_statistic_tx->tx_ptr->tx_info;
         tx->set_to(shard_statistic_tx->tx_ptr->address_info->addr());
+        tx->set_nonce(shard_statistic_tx->tx_ptr->address_info->nonce() + 1);
         SETH_INFO("success get statistic tx hash: %s, prev_timeblock_tm_sec_: %lu, "
             "height: %lu, latest time block height: %lu, is leader: %d",
             common::Encode::HexEncode(shard_statistic_tx->tx_hash).c_str(),

@@ -42,7 +42,7 @@ int AccountManager::Init(
     for (uint32_t step = pools::protobuf::kNormalFrom; step <= pools::protobuf::kPoolStatisticTag; ++step) {
         std::unordered_set<uint32_t> pool_idx_set;
         for (uint32_t i = 0; i < common::kInvalidUint32; ++i) {
-            auto hash = common::Hash::keccak256(std::to_string(i) + std::to_string(network_id));
+            auto hash = common::Hash::keccak256(std::to_string(i) + std::to_string(network_id) + std::to_string(step));
             auto addr = hash.substr(
                 hash.size() - common::kUnicastAddressLength, 
                 common::kUnicastAddressLength);

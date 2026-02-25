@@ -163,7 +163,7 @@ void GenesisBlockInit::CreatePoolsAddressInfo(uint16_t network_id) {
                 continue;
             }
 
-            pool_address_info_[step][pool_idx] = CreateAddress("", 0, network_id, pool_idx, addr, 0, 0);
+            pool_address_info_[network_id][step][pool_idx] = CreateAddress("", 0, network_id, pool_idx, addr, 0, 0);
             pool_idx_set.insert(pool_idx);
             SETH_DEBUG("network_id: %u, init pool index: %u, base address: %s", 
                 network_id, pool_idx, common::Encode::HexEncode(addr).c_str());
@@ -979,33 +979,35 @@ int GenesisBlockInit::CreateRootGenesisBlocks(
 
         for (uint32_t step = pools::protobuf::kNormalFrom; step <= pools::protobuf::kPoolStatisticTag; ++step) {
             auto tx_info = tx_list->Add();
-            tx_info->set_to(pool_address_info_[step][i]->addr());
-            tx_info->set_nonce(pool_address_info_[step][i]->nonce());
-            pool_address_info_[step][i]->set_nonce(pool_address_info_[step][i]->nonce() + 1);
-            pool_address_info_[step][i]->set_tx_index(pool_address_info_[step][i]->nonce() + 1);
+            auto pool_address_info = pool_address_info_[network::kRootCongressNetworkId][step][i];
+            tx_info->set_to(pool_address_info->addr());
+            tx_info->set_nonce(pool_address_info->nonce());
+            pool_address_info->set_nonce(pool_address_info->nonce() + 1);
+            pool_address_info->set_tx_index(pool_address_info->nonce() + 1);
             tx_info->set_from("");
             tx_info->set_amount(0);
             tx_info->set_balance(0);
             tx_info->set_gas_limit(0);
             tx_info->set_step(pools::protobuf::kConsensusCreateGenesisAcount);
-            address_info_map[pool_address_info_[step][i]->addr()] = CreateAddress(
+            address_info_map[pool_address_info->addr()] = CreateAddress(
                 "", 0, network::kConsensusShardBeginNetworkId, i, 
-                pool_address_info_[step][i]->addr(), 0, tx_info->nonce());
+                pool_address_info->addr(), 0, tx_info->nonce());
 
             if (i == common::kImmutablePoolSize) {
                 auto tx_info = tx_list->Add();
-                tx_info->set_to(pool_address_info_[step][i + 1]->addr());
-                tx_info->set_nonce(pool_address_info_[step][i + 1]->nonce());
-                pool_address_info_[step][i + 1]->set_nonce(pool_address_info_[step][i + 1]->nonce() + 1);
-                pool_address_info_[step][i + 1]->set_tx_index(pool_address_info_[step][i + 1]->nonce() + 1);
+                auto pool_address_info = pool_address_info_[network::kRootCongressNetworkId][step][i + 1];
+                tx_info->set_to(pool_address_info->addr());
+                tx_info->set_nonce(pool_address_info->nonce());
+                pool_address_info->set_nonce(pool_address_info->nonce() + 1);
+                pool_address_info->set_tx_index(pool_address_info->nonce() + 1);
                 tx_info->set_from("");
                 tx_info->set_amount(0);
                 tx_info->set_balance(0);
                 tx_info->set_gas_limit(0);
                 tx_info->set_step(pools::protobuf::kConsensusCreateGenesisAcount);
-                address_info_map[pool_address_info_[step][i + 1]->addr()] = CreateAddress(
+                address_info_map[pool_address_info->addr()] = CreateAddress(
                     "", 0, network::kConsensusShardBeginNetworkId, i + 1, 
-                    pool_address_info_[step][i + 1]->addr(), 0, tx_info->nonce());
+                    pool_address_info->addr(), 0, tx_info->nonce());
             }
         }
 
@@ -1683,18 +1685,19 @@ int GenesisBlockInit::CreateShardGenesisBlocks(
         
         for (uint32_t step = pools::protobuf::kNormalFrom; step <= pools::protobuf::kPoolStatisticTag; ++step) {
             auto tx_info = tx_list->Add();
-            tx_info->set_to(pool_address_info_[step][i]->addr());
-            tx_info->set_nonce(pool_address_info_[step][i]->nonce());
-            pool_address_info_[step][i]->set_nonce(pool_address_info_[step][i]->nonce() + 1);
-            pool_address_info_[step][i]->set_tx_index(pool_address_info_[step][i]->nonce() + 1);
+            auto pool_address_info = pool_address_info_[net_id][step][i];
+            tx_info->set_to(pool_address_info->addr());
+            tx_info->set_nonce(pool_address_info->nonce());
+            pool_address_info->set_nonce(pool_address_info->nonce() + 1);
+            pool_address_info->set_tx_index(pool_address_info->nonce() + 1);
             tx_info->set_from("");
             tx_info->set_amount(0);
             tx_info->set_balance(0);
             tx_info->set_gas_limit(0);
             tx_info->set_step(pools::protobuf::kConsensusCreateGenesisAcount);
-            address_info_map[pool_address_info_[step][i]->addr()] = CreateAddress(
+            address_info_map[pool_address_info->addr()] = CreateAddress(
                 "", tx_info->balance(), net_id, i, 
-                pool_address_info_[step][i]->addr(), 0, tx_info->nonce());
+                pool_address_info->addr(), 0, tx_info->nonce());
         }
         
         auto& pool_map = net_pool_index_map_[net_id];

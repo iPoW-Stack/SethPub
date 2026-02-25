@@ -21,7 +21,6 @@ public:
         prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
     }
 
-
     virtual ~ToTxLocalItem() {}
     virtual int HandleTx(
         uint32_t tx_index,
