@@ -85,7 +85,6 @@ public:
     void UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_item);
     // void SaveBlockCheckedParentHash(const std::string& hash, uint64_t view);
     protos::AddressInfoPtr ChainGetAccountInfo(const std::string& acc_id);
-    protos::AddressInfoPtr ChainGetPoolAccountInfo(uint32_t pool_index);
     void Commit(const std::shared_ptr<ViewBlockInfo>& queue_item_ptr);
     void CommitSynced(std::shared_ptr<view_block::protobuf::ViewBlockItem>& vblock);
     void OnTimeBlock(

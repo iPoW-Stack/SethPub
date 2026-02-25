@@ -1298,11 +1298,6 @@ protos::AddressInfoPtr ViewBlockChain::ChainGetAccountInfo(const std::string& ad
     return addr_info;
 }
 
-protos::AddressInfoPtr ViewBlockChain::ChainGetPoolAccountInfo(uint32_t pool_index) {
-    auto& addr = account_mgr_->pool_base_addrs(pool_index);
-    return ChainGetAccountInfo(addr);
-}
-
 void ViewBlockChain::AddPoolStatisticTag(uint64_t height, uint64_t timeblock_addr_nonce) {
     auto msg_ptr = std::make_shared<transport::TransportMessage>();
     auto tx = msg_ptr->header.mutable_tx_proto();
@@ -1321,7 +1316,8 @@ void ViewBlockChain::AddPoolStatisticTag(uint64_t height, uint64_t timeblock_add
     tx->set_amount(0);
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
     tx->set_nonce(timeblock_addr_nonce);
-    msg_ptr->address_info = ChainGetPoolAccountInfo(pool_index_);
+    msg_ptr->address_info = account_mgr_->GetPoolAccountInfo(
+        pools::protobuf::kPoolStatisticTag, pool_index_);
     tx->set_to(msg_ptr->address_info->addr());
     assert(msg_ptr->address_info != nullptr);
     pools_mgr_->AddPoolMessage(msg_ptr);
