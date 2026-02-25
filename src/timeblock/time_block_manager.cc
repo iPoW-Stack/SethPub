@@ -54,7 +54,6 @@ void TimeBlockManager::CreateTimeBlockTx() {
     tx_info.set_step(pools::protobuf::kConsensusRootTimeBlock);
     tx_info.set_pubkey("");
     tx_info.set_to(msg_ptr->address_info->addr());
-    tx_info.set_nonce(msg_ptr->address_info->nonce() + 1);
     tx_info.set_gas_limit(0llu);
     tx_info.set_amount(0);
     tx_info.set_gas_price(common::kBuildinTransactionGasPrice);
@@ -124,9 +123,9 @@ pools::TxItemPtr TimeBlockManager::tmblock_tx_ptr(
         timeblock::protobuf::TimeBlock timer_block;
         timer_block.set_timestamp(new_time_block_tm);
         timer_block.set_vss_random(vss_mgr_->GetConsensusFinalRandom());
-        timer_block.set_nonce(tx_info->nonce());
-        tx_info->set_value(SerializeDeterministic(timer_block));
         auto account_info = account_mgr_->GetAccountInfo(common::kTimeBlockAddress);
+        timer_block.set_nonce(account_info->nonce() + 1);
+        tx_info->set_value(SerializeDeterministic(timer_block));
         tx_info->set_to(account_info->addr());
         tx_info->set_key(common::Hash::keccak256(tx_info->value()));
         uint64_t now_nonce = 0ll;
