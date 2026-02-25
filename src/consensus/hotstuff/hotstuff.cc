@@ -194,19 +194,19 @@ Status Hotstuff::Propose(
     //     pool_idx_, 
     //     readobly_dht->size());
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    if (tc != nullptr) {
-        if (latest_qc_item_ptr_ == nullptr || tc->view() >= latest_qc_item_ptr_->view()) {
-            assert(tc->pool_index() == pool_idx_);
-            assert(tc->network_id() == common::GlobalInfo::Instance()->network_id());
-            assert(IsQcTcValid(*tc));
-            latest_qc_item_ptr_ = tc;
-        }
+    // if (tc != nullptr) {
+    //     if (latest_qc_item_ptr_ == nullptr || tc->view() >= latest_qc_item_ptr_->view()) {
+    //         assert(tc->pool_index() == pool_idx_);
+    //         assert(tc->network_id() == common::GlobalInfo::Instance()->network_id());
+    //         assert(IsQcTcValid(*tc));
+    //         latest_qc_item_ptr_ = tc;
+    //     }
 
-        // if (latest_leader_propose_message_ && 
-        //         latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view() <= tc->view()) {
-        //     latest_leader_propose_message_ = nullptr;
-        // }
-    }
+    //     // if (latest_leader_propose_message_ && 
+    //     //         latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view() <= tc->view()) {
+    //     //     latest_leader_propose_message_ = nullptr;
+    //     // }
+    // }
 
     if (latest_leader_propose_message_ &&
             latest_leader_propose_message_->latest_qc_view < latest_qc_item_ptr_->view()) {
@@ -1523,6 +1523,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
     latest_propose_msg_tm_ms_ = 0;
     View out_view = 0;
+    latest_qc_item_ptr_ = qc_item_ptr;
     auto leader = GetLeader(last_stable_leader_member_index_, *latest_qc_item_ptr_, &out_view);
     if (!leader) {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
