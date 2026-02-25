@@ -17,14 +17,9 @@
 #include "protos/elect.pb.h"
 #include "protos/pools.pb.h"
 #include "protos/tx_storage_key.h"
+#include "security/ecdsa/secp256k1.h"
 #include "transport/processor.h"
-
 #include "zjcvm/execution.h"
-#include <common/log.h>
-#include <common/utils.h>
-#include <protos/pools.pb.h>
-#include <protos/tx_storage_key.h>
-#include "db/db_utils.h"
 
 namespace seth {
 
@@ -756,14 +751,14 @@ void BlockManager::CreateStatisticTx() {
             tx->set_gas_limit(0);
             tx->set_amount(0);
             tx->set_gas_price(common::kBuildinTransactionGasPrice);
-            std::string statistic_addr = Secp256k1::Instance()->UnicastAddress(
+            std::string statistic_addr = security::Secp256k1::Instance()->UnicastAddress(
                     common::Hash::keccak256(
                         common::kStatisticBlockBashAddress + std::to_string(elect_statistic.sharding_id())));
             new_msg_ptr->address_info = account_mgr_->pools_address_info(statistic_addr);
             tx->set_nonce(timeblock_height_with_nonce_[elect_statistic.statistic_height()]);
             auto tx_ptr = std::make_shared<BlockTxsItem>();
             if (tx->nonce() == 1llu && new_msg_ptr->address_info == nullptr) {
-                auto addr_info = std::make_shared<protos::AddressInfo>();
+                auto addr_info = std::make_shared<address::protobuf::AddressInfo>();
                 addr_info->set_addr(statistic_addr);
                 addr_info->set_pool_index(common::kImmutablePoolSize);
                 addr_info->set_sharding_id(elect_statistic.sharding_id());
