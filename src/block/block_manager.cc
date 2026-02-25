@@ -734,10 +734,11 @@ void BlockManager::CreateStatisticTx() {
         std::to_string(elect_statistic.sharding_id()) + "_" +
         std::to_string(elect_statistic.statistic_height()));
     SETH_DEBUG("success create statistic message hash: %s, timeblock_height: %lu, "
-        "statistic: %s, timeblock nonce: %lu", 
+        "statistic: %s, timeblock nonce: %lu, des nonce: %lu", 
         common::Encode::HexEncode(unique_hash).c_str(), 
         timeblock_height, ProtobufToJson(elect_statistic).c_str(),
-        timeblock_height_with_nonce_[timeblock_height]);
+        timeblock_height_with_nonce_[timeblock_height],
+        timeblock_height_with_nonce_[elect_statistic.statistic_height()]);
     if (!unique_hash.empty()) {
         if (elect_statistic.statistic_height() != des_timeblock_height) {
             return;
@@ -755,8 +756,21 @@ void BlockManager::CreateStatisticTx() {
             tx->set_gas_limit(0);
             tx->set_amount(0);
             tx->set_gas_price(common::kBuildinTransactionGasPrice);
-            tx->set_nonce(timeblock_height_with_nonce_[timeblock_height]);
+            std::string statistic_addr = Secp256k1::Instance()->UnicastAddress(
+                    common::Hash::keccak256(
+                        common::kStatisticBlockBashAddress + std::to_string(elect_statistic.sharding_id())));
+            new_msg_ptr->address_info = account_mgr_->pools_address_info(statistic_addr);
+            tx->set_nonce(timeblock_height_with_nonce_[elect_statistic.statistic_height()]);
             auto tx_ptr = std::make_shared<BlockTxsItem>();
+            if (tx->nonce() == 1llu && new_msg_ptr->address_info == nullptr) {
+                auto addr_info = std::make_shared<protos::AddressInfo>();
+                addr_info->set_addr(statistic_addr);
+                addr_info->set_pool_index(common::kImmutablePoolSize);
+                addr_info->set_sharding_id(elect_statistic.sharding_id());
+                addr_info->set_nonce(0llu);
+                new_msg_ptr->address_info = addr_info;
+            }
+
             tx_ptr->tx_ptr = create_statistic_tx_cb_(new_msg_ptr);
             tx_ptr->tx_ptr->time_valid += kStatisticValidTimeout;
             tx_ptr->tx_hash = unique_hash;
