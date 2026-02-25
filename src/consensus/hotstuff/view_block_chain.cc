@@ -1333,7 +1333,7 @@ void ViewBlockChain::AddPoolStatisticTag(uint64_t height, uint64_t timeblock_add
         auto addr_info = std::make_shared<address::protobuf::AddressInfo>();
         addr_info->set_addr(pool_tag_addr);
         addr_info->set_pool_index(common::kImmutablePoolSize);
-        addr_info->set_sharding_id(elect_statistic.sharding_id());
+        addr_info->set_sharding_id(network::GetLocalConsensusNetworkId());
         addr_info->set_nonce(tx->nonce() - 1llu);
         msg_ptr->address_info = addr_info;
     }
