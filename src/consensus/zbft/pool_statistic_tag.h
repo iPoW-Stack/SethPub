@@ -47,8 +47,12 @@ public:
                 acc_balance_map, 
                 &to_balance, 
                 &to_nonce) != consensus::kConsensusSuccess) {
-            SETH_INFO("GetTempAccountBalance unique hash has consensus: %s", common::Encode::HexEncode(tx_info->key()).c_str());
-            return consensus::kConsensusError;
+            SETH_INFO("get account balance failed, addr: %s, unique hash: %s", 
+                common::Encode::HexEncode(block_tx.to()).c_str(), 
+                common::Encode::HexEncode(tx_info->key()).c_str());
+            // return consensus::kConsensusError;
+            assert(block_tx.to() == address_info->addr());
+            acc_balance_map[block_tx.to()] = address_info;
         }
 
         std::string val;

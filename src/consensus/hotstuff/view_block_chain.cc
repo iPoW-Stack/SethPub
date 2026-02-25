@@ -1347,7 +1347,6 @@ void ViewBlockChain::AddPoolStatisticTag(uint64_t height, uint64_t timeblock_add
     }
     
     assert(msg_ptr->address_info != nullptr);
-   
     pools_mgr_->AddPoolMessage(msg_ptr);
     SETH_DEBUG("success create kPoolStatisticTag nonce: %lu, pool idx: %u, "
         "pool addr: %s, addr get pool: %u, height: %lu, unique_hash: %s",
