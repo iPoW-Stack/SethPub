@@ -405,6 +405,7 @@ void NetworkInit::HandleMessage(const transport::MessagePtr& msg_ptr) {
     if (msg_ptr->header.type() == common::kPoolTimerMessage) {
         HandleNewBlock();
         bls_mgr_->PoolTimerMessage();
+        pools_mgr_->PoolTimerMessage();
     }
     ADD_DEBUG_PROCESS_TIMESTAMP();
 }

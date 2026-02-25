@@ -779,6 +779,7 @@ void BlockManager::CreateStatisticTx() {
             tx_ptr->tx_hash = unique_hash;
             tx_ptr->timeout = common::TimeUtils::TimestampMs() + kStatisticTimeoutMs;
             tx_ptr->stop_consensus_timeout = tx_ptr->timeout + kStopConsensusTimeoutMs;
+            // pools_mgr_->AddPoolMessage(msg_ptr);
             SETH_DEBUG("success add statistic tx: %s, statistic elect height: %lu, "
                 "heights: %s, timeout: %lu, kStatisticTimeoutMs: %lu, now: %lu, "
                 "nonce: %lu, timeblock_height: %lu, statistic_addr: %s",

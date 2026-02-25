@@ -1323,7 +1323,7 @@ void ViewBlockChain::AddPoolStatisticTag(uint64_t height, uint64_t timeblock_add
     tx->set_amount(0);
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
     tx->set_nonce(timeblock_addr_nonce);
-    pools_mgr_->HandleMessage(msg_ptr);
+    pools_mgr_->AddPoolMessage(msg_ptr);
     SETH_DEBUG("success create kPoolStatisticTag nonce: %lu, pool idx: %u, "
         "pool addr: %s, addr get pool: %u, height: %lu, unique_hash: %s",
         tx->nonce(), 
