@@ -1528,7 +1528,10 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
         return;
     }
 
-    auto s = Propose(out_view, leader, qc_item_ptr, nullptr, msg_ptr);
+    if (last_vote_view_ < out_view) {
+        Propose(out_view, leader, qc_item_ptr, nullptr, msg_ptr);
+    }
+
     ADD_DEBUG_PROCESS_TIMESTAMP();
 }
 
@@ -1576,7 +1579,10 @@ void Hotstuff::HandlePreResetTimerMsg(const transport::MessagePtr& msg_ptr) {
         return;
     }
 
-    Propose(out_view, leader, nullptr, nullptr, msg_ptr);
+    if (last_vote_view_ < out_view) {
+        Propose(out_view, leader, nullptr, nullptr, msg_ptr);
+    }
+
     ADD_DEBUG_PROCESS_TIMESTAMP();
     SETH_DEBUG("reset timer success!");
 }
@@ -2119,19 +2125,15 @@ Status Hotstuff::ConstructViewBlock(
     }
 
     SETH_DEBUG("success check is empty block allowd: %d, %u_%u_%lu, "
-        "tx size: %u, cur view: %lu, pre view: %lu, last_vote_view_: %lu",
+        "tx size: %u, cur view: %lu, pre view: %lu, last_vote_view_: %lu, "
+        "pacemaker()->CurView(): %lu",
         pool_idx_, view_block->qc().network_id(), 
         view_block->qc().pool_index(), view_block->qc().view(),
         tx_propose->txs_size(),
         qc->view(),
         pre_v_block->qc().view(),
-        last_vote_view_);
-    if (last_vote_view_ > pacemaker()->CurView()) {
-        // assert(last_vote_view_ <= pacemaker()->CurView());
-        view_block->release_qc();
-        return Status::kError;
-    }
-
+        last_vote_view_,
+        pacemaker()->CurView());
     auto elect_item = elect_info_->GetElectItem(
         common::GlobalInfo::Instance()->network_id(),
         view_block->qc().elect_height());
@@ -2374,7 +2376,9 @@ void Hotstuff::TryRecoverFromStuck(
     if (leader && leader->index == local_idx) {
         assert(leader->pubkey == crypto_->security()->GetPublicKey());
         ADD_DEBUG_PROCESS_TIMESTAMP();
-        Propose(out_view, leader, nullptr, nullptr, msg_ptr);
+        if (last_vote_view_ < out_view) {
+            Propose(out_view, leader, nullptr, nullptr, msg_ptr);
+        }
         ADD_DEBUG_PROCESS_TIMESTAMP();
         if (latest_qc_item_ptr_) {
             SETH_DEBUG("leader do propose message: %d, pool index: %u, %u_%u_%lu, "
