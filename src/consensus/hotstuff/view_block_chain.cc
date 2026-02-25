@@ -1316,7 +1316,7 @@ void ViewBlockChain::AddPoolStatisticTag(uint64_t height, uint64_t timeblock_add
     tx->set_amount(0);
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
     tx->set_nonce(timeblock_addr_nonce);
-    msg_ptr->address_info = account_mgr_->GetPoolAccountInfo(
+    msg_ptr->address_info = account_mgr_->pools_address_info(
         pools::protobuf::kPoolStatisticTag, pool_index_);
     tx->set_to(msg_ptr->address_info->addr());
     assert(msg_ptr->address_info != nullptr);

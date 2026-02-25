@@ -470,7 +470,7 @@ Status BlockAcceptor::addTxsToPool(
             if (pools::IsUserTransaction(tx->step())) {
                 address_info = view_block_chain_->ChainGetAccountInfo(from_id);
             } else {
-                address_info = account_mgr_->GetPoolAddressInfo(tx->step(), pool_idx());
+                address_info = account_mgr_->pools_address_info(tx->step(), pool_idx());
             }
         }
 
