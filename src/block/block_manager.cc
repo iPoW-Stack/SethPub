@@ -757,12 +757,12 @@ void BlockManager::CreateStatisticTx() {
             new_msg_ptr->address_info = account_mgr_->GetAccountInfo(statistic_addr);
             tx->set_nonce(timeblock_height_with_nonce_[elect_statistic.statistic_height()]);
             auto tx_ptr = std::make_shared<BlockTxsItem>();
-            if (tx->nonce() == 1llu && new_msg_ptr->address_info == nullptr) {
+            if (new_msg_ptr->address_info == nullptr) {
                 auto addr_info = std::make_shared<address::protobuf::AddressInfo>();
                 addr_info->set_addr(statistic_addr);
                 addr_info->set_pool_index(common::kImmutablePoolSize);
                 addr_info->set_sharding_id(elect_statistic.sharding_id());
-                addr_info->set_nonce(0llu);
+                addr_info->set_nonce(tx->nonce() - 1llu);
                 new_msg_ptr->address_info = addr_info;
             }
 
