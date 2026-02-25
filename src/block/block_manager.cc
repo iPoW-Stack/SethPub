@@ -786,6 +786,7 @@ void BlockManager::HandleStatisticBlock(
     }
 
     if (elect_statistic.statistics_size() <= 0) {
+        SETH_DEBUG("elect_statistic.statistics_size() <= 0");
         return;
     }
 
