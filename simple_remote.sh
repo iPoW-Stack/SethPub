@@ -6,7 +6,11 @@ PASSWORD=$4
 TARGET=$5
 FIRST_NODE_COUNT=$1
 
-node_hash=$(printf "%s" "$str" | md5sum | cut -d ' ' -f1)
+node_hash=$(printf "%s" "$node_ips" | md5sum | cut -d ' ' -f1)
+
+if (($each_nodes_count > 1)); then
+    node_hash=$(printf "%s%d" "$node_ips" "$each_nodes_count" | md5sum | cut -d ' ' -f1)
+fi
 
 bash cmd.sh $2 "systemctl list-units --state=active --no-legend | grep seth@ | awk '{print \$1}' | xargs -r systemctl stop; killall -9 seth"
 init() {
