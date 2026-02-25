@@ -259,7 +259,8 @@ Status Hotstuff::Propose(
         }
 
         transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
-        SETH_DEBUG("0 success add local message: %lu", tmp_msg_ptr->header.hash64());
+        SETH_DEBUG("0 success add local message: %lu, leader_view: %lu", 
+            tmp_msg_ptr->header.hash64(), leader_view);
         network::Route::Instance()->Send(tmp_msg_ptr);
 #ifndef NDEBUG
         ++sendout_bft_message_count_;
