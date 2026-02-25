@@ -135,7 +135,7 @@ private:
     nlohmann::json bls_pk_json_;
     std::shared_ptr<address::protobuf::AddressInfo> immutable_pool_address_info_;
     std::shared_ptr<address::protobuf::AddressInfo> timeblock_address_info_;
-    std::shared_ptr<address::protobuf::AddressInfo> pool_address_info_[common::kImmutablePoolSize];
+    std::shared_ptr<address::protobuf::AddressInfo> pool_address_info_[pools::protobuf::kPoolStatisticTag + 1][common::kInvalidPoolIndex];
     std::unordered_map<std::string, uint64_t> genesis_acount_balance_map_;
     
     DISALLOW_COPY_AND_ASSIGN(GenesisBlockInit);

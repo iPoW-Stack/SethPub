@@ -39,28 +39,29 @@ int AccountManager::Init(
     immutable_pool_addr_ = immutable_pool_addr;
     SETH_DEBUG("init pool immutable index net: %u, base address: %s", 
         network_id, common::Encode::HexEncode(immutable_pool_addr_).c_str());
-    std::unordered_set<uint32_t> pool_idx_set;
-    for (uint32_t i = 0; i < common::kInvalidUint32; ++i) {
-        auto hash = common::Hash::keccak256(std::to_string(i) + std::to_string(network_id));
-        auto addr = hash.substr(
-            hash.size() - common::kUnicastAddressLength, 
-            common::kUnicastAddressLength);
-        auto pool_idx = common::GetAddressPoolIndex(addr);
-        if (pool_idx_set.size() >= common::kImmutablePoolSize) {
-            break;
-        }
+    for (uint32_t step = pools::protobuf::kNormalFrom; step <= pools::protobuf::kPoolStatisticTag; ++step) {
+        std::unordered_set<uint32_t> pool_idx_set;
+        for (uint32_t i = 0; i < common::kInvalidUint32; ++i) {
+            auto hash = common::Hash::keccak256(std::to_string(i) + std::to_string(network_id));
+            auto addr = hash.substr(
+                hash.size() - common::kUnicastAddressLength, 
+                common::kUnicastAddressLength);
+            auto pool_idx = common::GetAddressPoolIndex(addr);
+            if (pool_idx_set.size() > common::kImmutablePoolSize) {
+                break;
+            }
 
-        auto iter = pool_idx_set.find(pool_idx);
-        if (iter != pool_idx_set.end()) {
-            continue;
-        }
+            auto iter = pool_idx_set.find(pool_idx);
+            if (iter != pool_idx_set.end()) {
+                continue;
+            }
 
-        pool_base_addrs_[pool_idx] = addr;
-        pool_idx_set.insert(pool_idx);
-        SETH_DEBUG("network_id: %u, init pool index: %u, base address: %s", 
-            network_id, pool_idx, common::Encode::HexEncode(addr).c_str());
+            pool_base_addrs_[step][pool_idx] = addr;
+            pool_idx_set.insert(pool_idx);
+            SETH_DEBUG("network_id: %u, init pool index: %u, base address: %s", 
+                network_id, pool_idx, common::Encode::HexEncode(addr).c_str());
+        }
     }
-
     return kBlockSuccess;
 }
 

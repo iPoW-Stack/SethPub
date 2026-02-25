@@ -20,7 +20,7 @@ enum StepType {
     kCreateLibrary = 14; // Transaction for creating public contract libraries
     kCross = 15;  // Transaction to prevent missing cross-shard blocks
     kRootCross = 16;  // Root transaction to prevent missing cross-shard blocks
-    kPoolStatisticTag = 18;  // Final marker block for this round of transaction pool statistics
+    kPoolStatisticTag = 17;  // Final marker block for this round of transaction pool statistics
 }
 
 message ToTxHeights {
