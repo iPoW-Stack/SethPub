@@ -805,7 +805,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::CheckCommit(const QC& qc) {
 
     assert(!qc.view_block_hash().empty());
     auto v_block1_info = Get(qc.view_block_hash());
-    if (!v_block1_info || v_block1_info->view_block->qc().view() <= 0llu>){
+    if (!v_block1_info || v_block1_info->view_block->qc().view() <= 0llu){
         SETH_DEBUG("pool: %d, Failed get v block 1: %s, %u_%u_%lu",
             pool_index_,
             common::Encode::HexEncode(qc.view_block_hash()).c_str(),
