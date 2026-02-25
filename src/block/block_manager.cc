@@ -1198,7 +1198,7 @@ pools::TxItemPtr BlockManager::GetStatisticTx(
         }
 
         shard_statistic_tx->tx_ptr->address_info =
-            account_mgr_->pools_address_info(tx->step(), pool_index);
+            account_mgr_->pools_address_info(shard_statistic_tx->tx_ptr->tx_info->step(), pool_index);
         auto& tx = shard_statistic_tx->tx_ptr->tx_info;
         tx->set_to(shard_statistic_tx->tx_ptr->address_info->addr());
         tx->set_nonce(shard_statistic_tx->tx_ptr->address_info->nonce() + 1);
