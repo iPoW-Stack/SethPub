@@ -7,16 +7,11 @@
 #include "bls/bls_manager.h"
 #include "consensus/consensus.h"
 #include "consensus/hotstuff/elect_info.h"
-#ifdef USE_AGG_BLS
-#include "consensus/hotstuff/agg_crypto.h"
-#else
 #include "consensus/hotstuff/crypto.h"
-#endif
 #include "consensus/hotstuff/pacemaker.h"
 #include "consensus/hotstuff/block_acceptor.h"
 #include "consensus/hotstuff/block_wrapper.h"
 #include <consensus/hotstuff/hotstuff.h>
-#include <consensus/hotstuff/leader_rotation.h>
 #include <consensus/hotstuff/types.h>
 #include <consensus/hotstuff/view_block_chain.h>
 #include <consensus/zbft/contract_call.h>
@@ -86,9 +81,10 @@ public:
     void OnTimeBlock(
             uint64_t lastest_time_block_tm,
             uint64_t latest_time_block_height,
-            uint64_t vss_random) {
+            uint64_t vss_random,
+            uint64_t timeblock_addr_nonce) {
         for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
-            chain(i)->OnTimeBlock(lastest_time_block_tm, latest_time_block_height, vss_random);
+            chain(i)->OnTimeBlock(lastest_time_block_tm, latest_time_block_height, vss_random, timeblock_addr_nonce);
         }
     }
     
@@ -142,15 +138,6 @@ public:
         return hf->acceptor();
     }
 
-#ifdef USE_AGG_BLS
-    inline std::shared_ptr<AggCrypto> crypto(uint32_t pool_idx) const {
-        auto hf = hotstuff(pool_idx);
-        if (!hf) {
-            return nullptr;
-        }
-        return hf->crypto();        
-    }    
-#else
     inline std::shared_ptr<Crypto> crypto(uint32_t pool_idx) const {
         auto hf = hotstuff(pool_idx);
         if (!hf) {
@@ -158,7 +145,6 @@ public:
         }
         return hf->crypto();        
     }
-#endif
     
     inline std::shared_ptr<ElectInfo> elect_info() const {
         return elect_info_;
@@ -249,11 +235,6 @@ private:
     }
 
     pools::TxItemPtr CreateJoinElectTx(const transport::MessagePtr& msg_ptr) {
-        auto keypair = bls::AggBls::Instance()->GetKeyPair();
-        if (keypair == nullptr || !keypair->IsValid()) {
-            return nullptr;
-        }
-
         return std::make_shared<JoinElectTxItem>(
                 msg_ptr, -1, 
                 account_mgr_, 
@@ -261,9 +242,7 @@ private:
                 prefix_db_, 
                 elect_mgr_, 
                 msg_ptr->address_info,
-                msg_ptr->header.tx_proto().pubkey(),
-                keypair->pk(),
-                keypair->proof());
+                msg_ptr->header.tx_proto().pubkey());
     }
 
     pools::TxItemPtr CreateCrossTx(const transport::MessagePtr& msg_ptr) {

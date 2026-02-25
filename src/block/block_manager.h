@@ -1,10 +1,11 @@
 #pragma once
 
+#include <condition_variable>
 #include <deque>
-#include <thread>
 #include <memory>
 #include <mutex>
-#include <condition_variable>
+#include <queue>
+#include <thread>
 
 #include "block/block_utils.h"
 #include "ck/ck_client.h"
@@ -13,6 +14,7 @@
 #include "common/node_members.h"
 #include "common/thread_safe_queue.h"
 #include "common/tick.h"
+#include "common/unique_min_priority_queue.h"
 #include "contract/contract_manager.h"
 #include "db/db.h"
 #include "network/network_utils.h"
@@ -171,7 +173,7 @@ private:
     uint64_t latest_timeblock_height_ = 0;
     uint64_t prev_timeblock_tm_sec_ = 0;
     uint64_t latest_timeblock_tm_sec_ = 0;
-    uint64_t prev_timeblock_height_ = 0;
+    common::UniqueMinPriorityQueue<uint64_t> timeblock_height_pq_;
     std::shared_ptr<pools::protobuf::ToTxHeights> statistic_heights_ptr_ = nullptr;
 //     std::shared_ptr<pools::protobuf::ToTxHeights> to_tx_heights_ptr_ = nullptr;
     int32_t leader_create_to_heights_index_ = 0;

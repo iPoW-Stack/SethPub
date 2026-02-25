@@ -3,14 +3,9 @@
 #include <common/tick.h>
 #include <common/time_utils.h>
 #include <protos/view_block.pb.h>
-#ifdef USE_AGG_BLS
-#include <consensus/hotstuff/agg_crypto.h>
-#else
 #include <consensus/hotstuff/crypto.h>
-#endif
 #include <functional>
 
-#include <consensus/hotstuff/leader_rotation.h>
 #include <consensus/hotstuff/types.h>
 #include <consensus/hotstuff/view_duration.h>
 #include <libff/algebra/curves/alt_bn128/alt_bn128_g1.hpp>
@@ -39,7 +34,6 @@ public:
 #else
             const std::shared_ptr<Crypto>& crypto,
 #endif
-            std::shared_ptr<LeaderRotation>& leader_rotation,
             const std::shared_ptr<ViewDuration>& duration,
             GetHighQCFn get_high_qc_fn,
             UpdateHighQCFn update_high_qc_fn,
@@ -48,14 +42,6 @@ public:
 
     Pacemaker(const Pacemaker&) = delete;
     Pacemaker& operator=(const Pacemaker&) = delete;
-
-    void SetNewProposalFn(NewProposalFn fn) {
-        new_proposal_fn_ = fn;
-    }
-
-    void SetStopVotingFn(StopVotingFn fn) {
-        stop_voting_fn_ = fn;
-    }
 
     void SetSyncPoolFn(SyncPoolFn fn) {
         sync_pool_fn_ = fn;
@@ -136,13 +122,10 @@ private:
 #else
     std::shared_ptr<Crypto> crypto_;
 #endif
-    std::shared_ptr<LeaderRotation> leader_rotation_ = nullptr;
     std::shared_ptr<ViewDuration> duration_;
     std::shared_ptr<TC> high_tc_ = nullptr;
     GetHighQCFn get_high_qc_fn_ = nullptr;
     UpdateHighQCFn update_high_qc_fn_ = nullptr;
-    NewProposalFn new_proposal_fn_ = nullptr;
-    StopVotingFn stop_voting_fn_ = nullptr;
     SyncPoolFn sync_pool_fn_ = nullptr;
     uint64_t last_time_us_ = 0;
     uint64_t duration_us_ = 0;

@@ -99,16 +99,12 @@ void BlsManager::OnNewElectBlock(
     auto& in = elect_block->in();
     for (int32_t i = 0; i < in.size(); ++i) {
         auto id = security_->GetAddress(in[i].pubkey());
-        auto agg_bls_pk = bls::Proto2BlsPublicKey(in[i].agg_bls_pk());
-        auto agg_bls_pk_proof = bls::Proto2BlsPopProof(in[i].agg_bls_pk_proof());
         members->push_back(std::make_shared<common::BftMember>(
             elect_block->shard_network_id(),
             id,
             in[i].pubkey(),
             i,
-            in[i].pool_idx_mod_num(),
-            *agg_bls_pk,
-            *agg_bls_pk_proof));
+            in[i].pool_idx_mod_num()));
         SETH_INFO("new elect set elect item index: %u, net: %u, pk: %s", i, elect_block->shard_network_id(),
             common::Encode::HexEncode(in[i].pubkey()).c_str());
     }
@@ -280,7 +276,7 @@ void BlsManager::OnTimeBlock(
     }
 
     auto timeblock_info = std::make_shared<TimeBlockItem>();
-    timeblock_info->lastest_time_block_tm = lastest_time_block_tm;
+    timeblock_info->lastest_time_block_tm = lastest_time_block_tm / 1000lu;
     timeblock_info->latest_time_block_height = latest_time_block_height;
     timeblock_info->vss_random = vss_random;
     latest_timeblock_info_.store(timeblock_info);

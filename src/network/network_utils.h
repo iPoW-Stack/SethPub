@@ -88,6 +88,10 @@ inline static uint16_t GetLocalConsensusNetworkId() {
     return common::GlobalInfo::Instance()->network_id() - network::kConsensusWaitingShardOffset;
 }
 
+inline static bool IsWaitingForElect() {
+    return common::GlobalInfo::Instance()->network_id() >= network::kConsensusWaitingShardBeginNetworkId;
+}
+
 }  // namespace network
 
 }  // namespace seth

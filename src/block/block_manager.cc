@@ -98,10 +98,11 @@ void BlockManager::ConsensusAddBlock(
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     auto block_item = block_item_info->view_block;
     consensus_block_queues_[thread_idx].push(block_item_info);
-    SETH_DEBUG("success add view block add new block thread: %d, size: %u, %u_%u_%lu", 
+    SETH_DEBUG("success add view block add new block thread: %d, size: %u, %u_%u_%lu_%lu", 
         thread_idx, consensus_block_queues_[thread_idx].size(),
         block_item->qc().network_id(),
         block_item->qc().pool_index(),
+        block_item->block_info().height(),
         block_item->qc().view());
 }
 
@@ -185,6 +186,14 @@ void BlockManager::HandleStatisticTx(const view_block::protobuf::ViewBlockItem& 
 
     auto& elect_statistic = view_block.block_info().elect_statistic();
     if (elect_statistic.sharding_id() == net_id) {
+        while (!timeblock_height_pq_.empty() && 
+                timeblock_height_pq_.top() < elect_statistic.height_info().tm_height()) {
+            SETH_DEBUG("success pop tm height: %lu, statistic tm height: %lu, "
+                "statistic height: %lu", timeblock_height_pq_.top(), elect_statistic.height_info().tm_height(),
+                elect_statistic.statistic_height());
+            timeblock_height_pq_.pop();
+        }
+
         auto iter = shard_statistics_map_.find(elect_statistic.height_info().tm_height());
         if (iter != shard_statistics_map_.end()) {
             SETH_DEBUG("success remove shard statistic block tm height: %lu", iter->first);
@@ -242,18 +251,20 @@ void BlockManager::ConsensusShardHandleRootCreateAddress(
 void BlockManager::HandleNormalToTx(const std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block_ptr) {
     auto& view_block = *view_block_ptr;
     if (view_block.block_info().normal_to().to_tx_arr_size() <= 0) {
-        SETH_DEBUG("0 handle normale to message coming: %u_%u_%lu, des: %u, %s", 
+        SETH_DEBUG("0 handle normale to message coming: %u_%u_%lu_%lu, des: %u, %s", 
             view_block.qc().network_id(), 
             view_block.qc().pool_index(), 
             view_block.qc().view(), 
+            view_block.block_info().height(), 
             0, 
             ProtobufToJson(view_block).c_str());
         return;
     }
 
-    SETH_DEBUG("handle normale to message coming: %u_%u_%lu, des: %u, %s", 
+    SETH_DEBUG("handle normale to message coming: %u_%u_%lu_%lu, des: %u, %s", 
         view_block.qc().network_id(), 
         view_block.qc().pool_index(), 
+        view_block.block_info().height(), 
         view_block.qc().view(), 
         view_block.block_info().normal_to().to_tx_arr(0).des_shard(), 
         ProtobufToJson(view_block).c_str());
@@ -318,7 +329,7 @@ void BlockManager::RootHandleNormalToTx(
         tx->set_amount(0);
         tx->set_gas_price(common::kBuildinTransactionGasPrice);
         tx->set_nonce(++step_with_nonce_[tx->step()]);
-        tx->set_value(tos_item.SerializeAsString());
+        tx->set_value(SerializeDeterministic(tos_item));
         auto unique_hash = common::Hash::keccak256(
             tx->to() + "_" +
             std::to_string(block.height()) + "_" +
@@ -359,11 +370,12 @@ void BlockManager::AddNewBlock(
     assert(!view_block_item->qc().sign_x().empty());
     auto* block_item = &view_block_item->block_info();
     auto btime = common::TimeUtils::TimestampMs();
-    SETH_DEBUG("new block coming sharding id: %u_%d_%lu, view: %u_%u_%lu,"
+    SETH_DEBUG("new block coming sharding id: %u_%d_%lu, view: %u_%u_%lu_%lu,"
         "tx size: %u, hash: %s, prehash: %s, elect height: %lu, tm height: %lu, %s, ck_client_: %d",
         view_block_item->qc().network_id(),
         view_block_item->qc().pool_index(),
         block_item->height(),
+        view_block_item->qc().view(),
         view_block_item->qc().network_id(),
         view_block_item->qc().pool_index(),
         view_block_item->qc().view(),
@@ -416,9 +428,10 @@ void BlockManager::AddNewBlock(
     }
 
     if (block_item->cross_shard_to_array_size() > 0) {
-        SETH_DEBUG("now handle root cross %u_%u_%lu, local net: %d,  block: %s",
+        SETH_DEBUG("now handle root cross %u_%u_%lu_%lu, local net: %d,  block: %s",
             view_block_item->qc().network_id(),
             view_block_item->qc().pool_index(),
+            view_block_item->block_info().height(),
             view_block_item->qc().view(),
             common::GlobalInfo::Instance()->network_id(),
             ProtobufToJson(*block_item).c_str());
@@ -477,7 +490,7 @@ void BlockManager::CreateLocalToTx(
         view_block.qc().sign_y() +
         to_tx_item.des());
     tx->set_key(uinique_tx_str);
-    tx->set_value(to_tx_item.SerializeAsString());
+    tx->set_value(SerializeDeterministic(to_tx_item));
     tx->set_pubkey("");
     tx->set_to(msg_ptr->address_info->addr());
     tx->set_step(pools::protobuf::kConsensusLocalTos);
@@ -690,7 +703,10 @@ void BlockManager::CreateStatisticTx() {
     }
 
     pools::protobuf::ElectStatistic elect_statistic;
-    uint64_t timeblock_height = prev_timeblock_height_;
+    uint64_t timeblock_height = timeblock_height_pq_.top();
+    timeblock_height_pq_.pop();
+    uint64_t des_timeblock_height = timeblock_height_pq_.top();
+    timeblock_height_pq_.push(timeblock_height);
     SETH_DEBUG("StatisticWithHeights called!");
 
     // Some nodes will receive statistic block ahead of timeblock.
@@ -709,8 +725,6 @@ void BlockManager::CreateStatisticTx() {
         return;
     }
 
-    // 对应 timeblock_height 的 elect_statistic 已经收集，不会进行重复收集
-    MarkDoneTimeblockHeightStatistic(timeblock_height);
     auto unique_hash = common::Hash::keccak256(
         std::string("create_statistic_tx_") + 
         std::to_string(elect_statistic.sharding_id()) + "_" +
@@ -719,12 +733,17 @@ void BlockManager::CreateStatisticTx() {
         common::Encode::HexEncode(unique_hash).c_str(), 
         timeblock_height, ProtobufToJson(elect_statistic).c_str());
     if (!unique_hash.empty()) {
+        if (elect_statistic.statistic_height() != des_timeblock_height) {
+            return;
+        }
+
+        MarkDoneTimeblockHeightStatistic(timeblock_height);
         auto tm_statistic_iter = shard_statistics_map_.find(timeblock_height);
         if (tm_statistic_iter == shard_statistics_map_.end()) {
             auto new_msg_ptr = std::make_shared<transport::TransportMessage>();
             auto* tx = new_msg_ptr->header.mutable_tx_proto();
             tx->set_key(unique_hash);
-            tx->set_value(elect_statistic.SerializeAsString());
+            tx->set_value(SerializeDeterministic(elect_statistic));
             tx->set_pubkey("");
             tx->set_step(pools::protobuf::kStatistic);
             tx->set_gas_limit(0);
@@ -767,13 +786,14 @@ void BlockManager::HandleStatisticBlock(
     }
 
     if (elect_statistic.statistics_size() <= 0) {
+        SETH_DEBUG("elect_statistic.statistics_size() <= 0");
         return;
     }
 
     if (common::GlobalInfo::Instance()->network_id() != network::kRootCongressNetworkId) {
         return;
     }
-#ifdef NDEBUG
+#ifndef NDEBUG
     for (int32_t i = 0; i < elect_statistic.join_elect_nodes_size(); ++i) {
         SETH_DEBUG("sharding: %u, new elect node: %s, balance: %lu, shard: %u, pos: %u", 
             elect_statistic.sharding_id(), 
@@ -798,7 +818,7 @@ void BlockManager::HandleStatisticBlock(
         std::to_string(elect_statistic.sharding_id()) + "_" +
         std::to_string(block.timeblock_height()));
     tx->set_key(unique_hash);
-    tx->set_value(elect_statistic.SerializeAsString());
+    tx->set_value(SerializeDeterministic(elect_statistic));
     tx->set_pubkey("");
     tx->set_to(new_msg_ptr->address_info->addr());
     tx->set_step(pools::protobuf::kConsensusRootElectShard);
@@ -913,7 +933,7 @@ pools::TxItemPtr BlockManager::HandleToTxsMessage(
     }
 
     tx->set_key(common::Hash::keccak256(unique_str));
-    tx->set_value(all_to_txs.SerializeAsString());
+    tx->set_value(SerializeDeterministic(all_to_txs));
     tx->set_pubkey("");
     tx->set_to(new_msg_ptr->address_info->addr());
     tx->set_step(pools::protobuf::kNormalTo);
@@ -1110,12 +1130,6 @@ pools::TxItemPtr BlockManager::GetStatisticTx(
         return nullptr;
     }
 
-    static uint64_t prev_get_tx_tm = common::TimeUtils::TimestampMs();
-    auto now_tx_tm = common::TimeUtils::TimestampMs();
-    if (now_tx_tm > prev_get_tx_tm + 10000) {
-        prev_get_tx_tm = now_tx_tm;
-    }
-
     if (shard_statistic_tx != nullptr) {
         auto now_tm = common::TimeUtils::TimestampUs();
         if (leader && shard_statistic_tx->tx_ptr->time_valid > now_tm) {
@@ -1134,6 +1148,7 @@ pools::TxItemPtr BlockManager::GetStatisticTx(
 
         if (prev_timeblock_tm_sec_ + (common::kRotationPeriod / (1000lu * 1000lu)) > (now_tm / 1000000lu)) {
             static uint64_t prev_get_tx_tm1 = common::TimeUtils::TimestampMs();
+            auto now_tx_tm = common::TimeUtils::TimestampMs();
             if (now_tx_tm > prev_get_tx_tm1 + 10000) {
                 SETH_DEBUG("failed get statistic tx: %lu, %lu, %lu", 
                     prev_timeblock_tm_sec_, 
@@ -1217,18 +1232,18 @@ void BlockManager::CallTimeBlock(
         uint64_t lastest_time_block_tm,
         uint64_t latest_time_block_height,
         uint64_t vss_random) {
+    timeblock_height_pq_.push(latest_time_block_height);
+    lastest_time_block_tm = lastest_time_block_tm / 1000llu;  // use sec
     SETH_DEBUG("new timeblock coming: %lu, %lu, lastest_time_block_tm: %lu",
         latest_timeblock_height_, latest_time_block_height, lastest_time_block_tm);
     if (latest_timeblock_height_ >= latest_time_block_height) {
         return;
     }
 
-    prev_timeblock_height_ = latest_timeblock_height_;
     latest_timeblock_height_ = latest_time_block_height;
     prev_timeblock_tm_sec_ = latest_timeblock_tm_sec_;
     latest_timeblock_tm_sec_ = lastest_time_block_tm;
-    SETH_DEBUG("success update timeblock height: %lu, %lu, tm: %lu, %lu",
-        prev_timeblock_height_, latest_timeblock_height_,
+    SETH_DEBUG("success update timeblock height: %lu, tm: %lu, %lu", latest_timeblock_height_,
         prev_timeblock_tm_sec_, latest_timeblock_tm_sec_);
 
     if (statistic_mgr_) {

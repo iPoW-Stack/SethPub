@@ -271,6 +271,7 @@ static const uint32_t kNodeModIndexMaxCount = 64u;
 static const uint32_t kNodePublicIpMaskLen = 22u;  // node public ip just Mask length to protect security
 static const int32_t kInitNodeCredit = 30;
 static const double kMiningTokenMultiplicationFactor = 1.0;
+static const int32_t kLeaderRoatationBaseTimeoutSec = 30;
 
 static const uint64_t kToPeriodMs = 10000lu;
 
@@ -312,6 +313,8 @@ static const uint32_t kDefaultBroadcastNeighborCount = 7u;
 static const uint64_t kBuildinTransactionGasPrice = 999999999lu;
 static const std::string kRootPoolsAddressPrefix = common::Encode::HexDecode(
     "000000000000000000000000000000000000");
+static const std::string kTimeBlockAddress = common::Encode::HexDecode(
+    "9392e6249d97275822e16f562b847492c3a50993");
 
 #pragma pack(push)
 #pragma pack(1)

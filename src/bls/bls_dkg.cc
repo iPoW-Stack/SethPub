@@ -59,9 +59,6 @@ void BlsDkg::Destroy() {
 }
 
 void BlsDkg::TimerMessage() {
-#ifdef USE_AGG_BLS
-    return;
-#endif
     auto now_tm_us = common::TimeUtils::TimestampUs();
     PopBlsMessage();
     if (!has_broadcast_verify_ &&
@@ -886,7 +883,7 @@ void BlsDkg::FinishBroadcast() try {
             common_public_key_ = common_public_key_ + libff::alt_bn128_G2::zero();
             SETH_WARN("elect_height: %d, invalid secret_key_contribution_ index: %d",
                 elect_hegiht_, i);
-            assert(false);
+            // assert(false);
             continue;
         }
 

@@ -221,16 +221,12 @@ bool ElectManager::ProcessPrevElectMembers(
             ++leader_count;
         }
 
-        auto agg_bls_pk = bls::Proto2BlsPublicKey(in[i].agg_bls_pk());
-        auto agg_bls_pk_proof = bls::Proto2BlsPopProof(in[i].agg_bls_pk_proof());
         shard_members_ptr->push_back(std::make_shared<common::BftMember>(
             prev_elect_block.shard_network_id(),
             id,
             in[i].pubkey(),
             i,
-            pool_idx_mod_num,
-            *agg_bls_pk,
-            *agg_bls_pk_proof));
+            pool_idx_mod_num));
         now_elected_ids_.insert(id);
     }
 
@@ -242,7 +238,7 @@ bool ElectManager::ProcessPrevElectMembers(
         auto pval = libBLS::ThresholdUtils::fieldElementToString((*iter)->bls_publick_key.X.c0);
         ELECT_WARN("DDDDDDDDDD now height: %lu, now elect height: %lu, "
             "elect height: %lu, network: %d,"
-            "leader: %s, pool_index_mod_num: %d, valid pk: %s, pval: %s",
+            "leader: %s, pool_index_mod_num: %d, valid pk: %s, pval: %s, ecdsa pk: %s",
             height,
             elect_block.elect_height(),
             elect_block.prev_members().prev_elect_height(),
@@ -250,7 +246,8 @@ bool ElectManager::ProcessPrevElectMembers(
             common::Encode::HexEncode((*iter)->id).c_str(),
             static_cast<int>((*iter)->pool_index_mod_num),
             val.c_str(),
-            pval.c_str());
+            pval.c_str(),
+            common::Encode::HexEncode((*iter)->pubkey).c_str());
     }
 
     if (*elected) {
@@ -309,16 +306,12 @@ void ElectManager::ProcessNewElectBlock(
     auto shard_members_ptr = std::make_shared<common::Members>();
     for (int32_t i = 0; i < in.size(); ++i) {
         auto id = security_->GetAddress(in[i].pubkey());
-        auto agg_bls_pk = bls::Proto2BlsPublicKey(in[i].agg_bls_pk());
-        auto agg_bls_pk_proof = bls::Proto2BlsPopProof(in[i].agg_bls_pk_proof());
         shard_members_ptr->push_back(std::make_shared<common::BftMember>(
             elect_block.shard_network_id(),
             id,
             in[i].pubkey(),
             i,
-            in[i].pool_idx_mod_num(),
-            *agg_bls_pk,
-            *agg_bls_pk_proof));
+            in[i].pool_idx_mod_num()));
         if (id == security_->GetAddress()) {
             *elected = true;
         }

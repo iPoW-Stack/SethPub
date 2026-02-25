@@ -134,6 +134,7 @@ private:
     libff::alt_bn128_G2 common_pk_[16] = { libff::alt_bn128_G2::zero() };
     nlohmann::json bls_pk_json_;
     std::shared_ptr<address::protobuf::AddressInfo> immutable_pool_address_info_;
+    std::shared_ptr<address::protobuf::AddressInfo> timeblock_address_info_;
     std::shared_ptr<address::protobuf::AddressInfo> pool_address_info_[common::kImmutablePoolSize];
     std::unordered_map<std::string, uint64_t> genesis_acount_balance_map_;
     

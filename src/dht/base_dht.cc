@@ -131,11 +131,12 @@ int BaseDht::Join(NodePtr& node) {
     auto invalid_idx = (valid_dht_idx + 1) % 2;
     readonly_hash_sort_dht_[invalid_idx] = tmp_dht_ptr;
     valid_dht_idx = invalid_idx;
-    SETH_DEBUG("sharding: %u, join new node: %s:%d",
+    valid_count_ = member_dht.size() + 1;
+    SETH_DEBUG("sharding: %u, join new node: %s:%d, valid_count_: %u",
         local_node_->sharding_id,
         node->public_ip.c_str(),
-        node->public_port);
-    valid_count_ = member_dht.size() + 1;
+        node->public_port,
+        valid_count_);
     return kDhtSuccess;
 }
 
@@ -484,10 +485,11 @@ void BaseDht::ProcessBootstrapRequest(const transport::MessagePtr& msg_ptr) {
     }
 
     msg.set_sign(sign);
-    SETH_DEBUG("bootstrap response to: %s:%d, node: %s:%d",
+    SETH_DEBUG("bootstrap response to: %s:%d, node: %s:%d, hash: %lu",
         msg_ptr->conn->PeerIp().c_str(), msg_ptr->conn->PeerPort(),
         dht_msg.bootstrap_req().public_ip().c_str(),
-        dht_msg.bootstrap_req().public_port());
+        dht_msg.bootstrap_req().public_port(),
+        msg.hash64());
     transport::TcpTransport::Instance()->Send(msg_ptr->conn->PeerIp(), msg_ptr->conn->PeerPort(), msg);
     NodePtr node = std::make_shared<Node>(
         msg.src_sharding_id(),
@@ -504,7 +506,7 @@ void BaseDht::ProcessBootstrapRequest(const transport::MessagePtr& msg_ptr) {
 void BaseDht::ProcessBootstrapResponse(const transport::MessagePtr& msg_ptr) {
     auto& header = msg_ptr->header;
     auto& dht_msg = header.dht_proto();
-    SETH_DEBUG("boot response coming.");
+    SETH_DEBUG("boot response coming: %lu", msg_ptr->header.hash64());
     if (!CheckDestination(header.des_dht_key(), false)) {
         DHT_WARN("bootstrap request destination error[%s][%s]!",
             common::Encode::HexEncode(header.des_dht_key()).c_str(),

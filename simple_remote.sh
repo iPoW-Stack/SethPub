@@ -6,6 +6,8 @@ PASSWORD=$4
 TARGET=$5
 FIRST_NODE_COUNT=$1
 
+node_hash=$(printf "%s" "$str" | md5sum | cut -d ' ' -f1)
+
 bash cmd.sh $2 "systemctl list-units --state=active --no-legend | grep seth@ | awk '{print \$1}' | xargs -r systemctl stop; killall -9 seth"
 init() {
     tmp_ips=(${node_ips//-/ })
@@ -75,7 +77,6 @@ init() {
         TARGET=Release
     fi
 
-    killall -9 shardora
     killall -9 seth
     killall -9 txcli
 
@@ -111,30 +112,41 @@ init() {
     cp -rf /root/seth/root_nodes /root/seth/shards2
     echo "node count: " $nodes_count
     rm -rf /root/nodes/seth/latest_blocks
-    cd /root/nodes/seth && ./seth -U -N $nodes_count -E 4
-    cd /root/nodes/seth && ./seth -S 3 -N $nodes_count -E 4
-    cd /root/nodes/seth && ./seth -C
-    cd /root/seth/cbuild_$TARGET && make txcli
-    sudo cp -rf /root/seth/cbuild_$TARGET/txcli /root/nodes/txcli
 }
 
 make_package() {
+    mkdir -p /root/seth/pkgs
     rm -rf /root/nodes/seth/pkg
-    mkdir /root/nodes/seth/pkg
-    cp /root/nodes/seth/seth /root/nodes/seth/pkg
-    cp /root/nodes/txcli /root/nodes/seth/pkg
-    cp /root/nodes/seth/conf/GeoLite2-City.mmdb /root/nodes/seth/pkg
-    cp /root/nodes/seth/conf/log4cpp.properties /root/nodes/seth/pkg
-    cp /root/seth/shards3 /root/nodes/seth/pkg
-    cp /root/seth/root_nodes /root/nodes/seth/pkg/shards2
-    cp /root/seth/temp_cmd.sh /root/nodes/seth/pkg
-    cp /root/seth/start_cmd.sh /root/nodes/seth/pkg
-    cp /root/seth/wondershaper /root/nodes/seth/pkg
-    cp -rf /root/nodes/seth/shard_db_2 /root/nodes/seth/pkg/shard_db_2
-    cp -rf /root/nodes/seth/shard_db_3 /root/nodes/seth/pkg
-    cp -rf /root/nodes/temp /root/nodes/seth/pkg
-    cp -rf /root/seth/gdb/* /root/nodes/seth/pkg
-    cp -rf /root/seth/init_accounts* /root/nodes/seth/pkg
+    if [ -d "/root/seth/pkgs/$node_hash" ]; then
+        cd /root/seth/ && bash build.sh a $TARGET
+        cd /root/seth/cbuild_$TARGET && make txcli
+        cp -rf /root/seth/cbuild_$TARGET/seth /root/seth/pkgs/$node_hash/seth
+        cp -rf /root/seth/cbuild_$TARGET/txcli /root/seth/pkgs/$node_hash/txcli
+        cp -rf /root/seth/pkgs/$node_hash /root/nodes/seth/pkg
+    else
+        cd /root/nodes/seth && ./seth -U -N $nodes_count -E 4
+        cd /root/nodes/seth && ./seth -S 3 -N $nodes_count -E 4
+        cd /root/nodes/seth && ./seth -C
+        cd /root/seth/cbuild_$TARGET && make txcli
+        sudo cp -rf /root/seth/cbuild_$TARGET/txcli /root/nodes/txcli
+
+        mkdir /root/nodes/seth/pkg
+        cp /root/nodes/seth/seth /root/nodes/seth/pkg
+        cp /root/nodes/txcli /root/nodes/seth/pkg
+        cp /root/nodes/seth/conf/GeoLite2-City.mmdb /root/nodes/seth/pkg
+        cp /root/nodes/seth/conf/log4cpp.properties /root/nodes/seth/pkg
+        cp /root/seth/shards3 /root/nodes/seth/pkg
+        cp /root/seth/root_nodes /root/nodes/seth/pkg/shards2
+        cp /root/seth/temp_cmd.sh /root/nodes/seth/pkg
+        cp /root/seth/start_cmd.sh /root/nodes/seth/pkg
+        cp -rf /root/nodes/seth/shard_db_2 /root/nodes/seth/pkg/shard_db_2
+        cp -rf /root/nodes/seth/shard_db_3 /root/nodes/seth/pkg
+        cp -rf /root/nodes/temp /root/nodes/seth/pkg
+        cp -rf /root/seth/gdb/* /root/nodes/seth/pkg
+        cp -rf /root/seth/init_accounts* /root/nodes/seth/pkg
+        cp -rf /root/nodes/seth/pkg /root/seth/pkgs/$node_hash
+    fi 
+    
     cd /root/nodes/seth/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
 }
 
@@ -178,7 +190,7 @@ clear_command() {
     run_cmd_count=0
     start_pos=1
     for ip in "${node_ips_array[@]}"; do
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "cd /root && rm -rf pkg*; killall -9 shardora; killall -9 seth" &
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "cd /root && rm -rf pkg*; killall -9 seth" &
         run_cmd_count=$((run_cmd_count + 1))
         if ((start_pos==1)); then
             sleep 3

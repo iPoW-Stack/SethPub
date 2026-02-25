@@ -29,10 +29,10 @@ int ShardStatistic::Init() {
     if (common::GlobalInfo::Instance()->network_id() < network::kRootCongressNetworkId ||
             common::GlobalInfo::Instance()->network_id() >= network::kConsensusShardEndNetworkId) {
         SETH_ERROR("invalid network id: %u", common::GlobalInfo::Instance()->network_id());
-        assert(false);
         return kPoolsError;
     }
 
+    inited_ = true;
     pools::protobuf::PoolStatisticTxInfo statistic_info;
     if (prefix_db_->GetLatestPoolStatisticTag(
             common::GlobalInfo::Instance()->network_id(), 
@@ -93,6 +93,13 @@ void ShardStatistic::OnNewBlock(
 #ifdef TEST_NO_CROSS
     return;
 #endif
+    if (!inited_) {
+        Init();
+        if (!inited_) {
+            return;
+        }
+    }
+
     ThreadToStatistic(view_block_ptr);
     // view_block_queue_.push(view_block_ptr);
     // thread_wait_conn_.notify_one();
@@ -178,33 +185,36 @@ bool ShardStatistic::HandleStatistic(
                 latest_timeblock_height_, block.pool_statistic_height());
             StatisticInfoItem statistic_item;
             std::map<uint32_t, StatisticInfoItem> pool_map;
-            for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
-                pool_map[i] = statistic_item;
-            }
-
+            pool_map[pool_idx] = statistic_item;
             statistic_pool_info_[block.pool_statistic_height()] = pool_map;
             exist_iter = statistic_pool_info_.find(block.pool_statistic_height());
-        } 
+        }
+
+        if (exist_iter->second.find(pool_idx) == exist_iter->second.end()) {
+            exist_iter->second[pool_idx] = StatisticInfoItem();
+        }
         
         if (statistic_pool_info_.size() >= 2) {
             auto iter = statistic_pool_info_.rbegin();
             while (iter->first >= block.pool_statistic_height()) {
                 ++iter;
             }
-            
-            iter->second[pool_idx].statistic_max_height = block.height() - 1;
-            if (iter->second[pool_idx].statistic_max_height < iter->second[pool_idx].statistic_min_height) {
-                iter->second[pool_idx].statistic_max_height = iter->second[pool_idx].statistic_min_height;
+
+            if (iter != statistic_pool_info_.rend()) {
+                iter->second[pool_idx].statistic_max_height = block.height() - 1;
+                if (iter->second[pool_idx].statistic_max_height < iter->second[pool_idx].statistic_min_height) {
+                    iter->second[pool_idx].statistic_max_height = iter->second[pool_idx].statistic_min_height;
+                }
+                
+                SETH_DEBUG(
+                    "prev exists success handle kPoolStatisticTag tx statistic_height: %lu, "
+                    "pool: %u, height: %lu, statistic_min_height: %lu, statistic_max_height: %lu", 
+                    iter->first, 
+                    pool_idx, 
+                    block.height(), 
+                    iter->second[pool_idx].statistic_min_height,
+                    iter->second[pool_idx].statistic_max_height);
             }
-            
-            SETH_DEBUG(
-                "prev exists success handle kPoolStatisticTag tx statistic_height: %lu, "
-                "pool: %u, height: %lu, statistic_min_height: %lu, statistic_max_height: %lu", 
-                iter->first, 
-                pool_idx, 
-                block.height(), 
-                iter->second[pool_idx].statistic_min_height,
-                iter->second[pool_idx].statistic_max_height);
         }
 
         exist_iter->second[pool_idx].statistic_min_height = block.height();
@@ -310,16 +320,6 @@ bool ShardStatistic::HandleStatistic(
                 block.timeblock_height());
         }
 
-        if (join_info.has_bls_pk()) {
-            auto agg_bls_pk_proto = std::make_shared<elect::protobuf::BlsPublicKey>(join_info.bls_pk());
-            id_agg_bls_pk_map[join_addr] = agg_bls_pk_proto;
-        }
-
-        if (join_info.has_bls_proof()) {
-            auto proof_proto = std::make_shared<elect::protobuf::BlsPopProof>(join_info.bls_proof());
-            id_agg_bls_pk_proof_map[join_addr] = proof_proto;
-        }                    
-
         {
             auto shard_iter = join_elect_shard_map.find(view_block_ptr->qc().elect_height());
             if (shard_iter == join_elect_shard_map.end()) {
@@ -399,7 +399,7 @@ bool ShardStatistic::HandleStatistic(
                     join_elect_stoke_map[view_block_ptr->qc().elect_height()] =
                         std::map<std::string, uint64_t>();
                 }
-
+  
                 auto& elect_stoke_map = join_elect_stoke_map[view_block_ptr->qc().elect_height()];
                 elect_stoke_map[elect_statistic.join_elect_nodes(node_idx).pubkey()] =
                     elect_statistic.join_elect_nodes(node_idx).stoke();
@@ -489,6 +489,7 @@ void ShardStatistic::CallNewElectBlock(
         uint32_t sharding_id,
         uint64_t prepare_elect_height) {
     if (sharding_id != common::GlobalInfo::Instance()->network_id()) {
+        
         return;
     }
 
@@ -527,6 +528,10 @@ void ShardStatistic::CallTimeBlock(
 int ShardStatistic::StatisticWithHeights(
         pools::protobuf::ElectStatistic& elect_statistic,
         uint64_t statisticed_timeblock_height) {
+    if (!inited_) {
+        return kPoolsError;
+    }
+
 #ifdef TEST_NO_CROSS
         return kPoolsError;
 #endif
@@ -853,16 +858,6 @@ void ShardStatistic::addPrepareMembers2JoinStastics(
             join_elect_node->set_consensus_gap(0);
             join_elect_node->set_credit(0);
             join_elect_node->set_pubkey((*prepare_members)[i]->pubkey);
-            // agg bls pk
-            auto agg_bls_pk_proto = bls::BlsPublicKey2Proto((*prepare_members)[i]->agg_bls_pk);
-            if (agg_bls_pk_proto) {
-                join_elect_node->mutable_agg_bls_pk()->CopyFrom(*agg_bls_pk_proto);
-            }
-            auto proof_proto = bls::BlsPopProof2Proto((*prepare_members)[i]->agg_bls_pk_proof);
-            if (proof_proto) {
-                join_elect_node->mutable_agg_bls_pk_proof()->CopyFrom(*proof_proto);
-            }            
-
             join_elect_node->set_elect_pos(0);
             join_elect_node->set_stoke(stoke);
             join_elect_node->set_shard(shard);
@@ -942,8 +937,6 @@ void ShardStatistic::addNewNode2JoinStatics(
     for (uint32_t i = 0; i < elect_nodes.size() && i < kWaitingElectNodesMaxCount; ++i) {
         std::string node_id = elect_nodes[i];
         std::string pubkey;
-        std::shared_ptr<elect::protobuf::BlsPublicKey> agg_bls_pk;
-        std::shared_ptr<elect::protobuf::BlsPopProof> agg_bls_pk_proof;
         if (node_id.size() == common::kUnicastAddressLength) {
             auto iter = id_pk_map.find(node_id);
             if (iter == id_pk_map.end()) {
@@ -951,21 +944,7 @@ void ShardStatistic::addNewNode2JoinStatics(
                 continue;
             }
 
-            auto iter2 = id_agg_bls_pk_map.find(node_id);
-            if (iter2 == id_agg_bls_pk_map.end()) {
-                assert(false);
-                continue;
-            }
-
-            auto iter3 = id_agg_bls_pk_proof_map.find(node_id);
-            if (iter3 == id_agg_bls_pk_proof_map.end()) {
-                assert(false);
-                continue;
-            }            
-
             pubkey = iter->second;
-            agg_bls_pk = iter2->second;
-            agg_bls_pk_proof = iter3->second; 
         }
 
         auto shard_iter = r_siter->second.find(elect_nodes[i]);
@@ -976,14 +955,6 @@ void ShardStatistic::addNewNode2JoinStatics(
         join_elect_node->set_consensus_gap(0);
         join_elect_node->set_credit(0);
         join_elect_node->set_pubkey(pubkey);
-        if (agg_bls_pk) {
-            join_elect_node->mutable_agg_bls_pk()->CopyFrom(*agg_bls_pk);
-        }
-        
-        if (agg_bls_pk_proof) {
-            join_elect_node->mutable_agg_bls_pk_proof()->CopyFrom(*agg_bls_pk_proof);
-        }
-
         join_elect_node->set_stoke(stoke);
         join_elect_node->set_shard(shard_id);
         join_elect_node->set_elect_pos(0);
@@ -1002,14 +973,14 @@ void ShardStatistic::setElectStatistics(
         seth::common::MembersPtr &now_elect_members,
         seth::pools::protobuf::ElectStatistic &elect_statistic,
         bool is_root) {
-    auto now_elect_height = elect_mgr_->latest_height(common::GlobalInfo::Instance()->network_id());
-    if (height_node_collect_info_map.empty() || height_node_collect_info_map.rbegin()->first < now_elect_height) {
-        height_node_collect_info_map[now_elect_height] = std::map<std::string, StatisticMemberInfoItem>();
-        auto &node_info_map = height_node_collect_info_map[now_elect_height];
-        for (uint32_t i = 0; i < now_elect_members->size(); ++i) {
-            node_info_map[(*now_elect_members)[i]->id] = StatisticMemberInfoItem();
-        }
-    }
+    // auto now_elect_height = elect_mgr_->latest_height(common::GlobalInfo::Instance()->network_id());
+    // if (height_node_collect_info_map.empty() || height_node_collect_info_map.rbegin()->first < now_elect_height) {
+    //     height_node_collect_info_map[now_elect_height] = std::map<std::string, StatisticMemberInfoItem>();
+    //     auto &node_info_map = height_node_collect_info_map[now_elect_height];
+    //     for (uint32_t i = 0; i < now_elect_members->size(); ++i) {
+    //         node_info_map[(*now_elect_members)[i]->id] = StatisticMemberInfoItem();
+    //     }
+    // }
 
     for (auto hiter = height_node_collect_info_map.begin();
             hiter != height_node_collect_info_map.end(); ++hiter) {
@@ -1048,15 +1019,15 @@ void ShardStatistic::setElectStatistics(
             auto ip_int = (*members)[midx]->public_ip;
             area_point->set_x(0);
             area_point->set_y(0);
-            if (ip_int != 0) {
-                auto ip = common::Uint32ToIp(ip_int);
-                float x = 0.0;
-                float y = 0.0;
-                if (common::Ip::Instance()->GetIpLocation(ip, &x, &y) == 0) {
-                    area_point->set_x(static_cast<int32_t>(x * 100));
-                    area_point->set_y(static_cast<int32_t>(y * 100));
-                }
-            }
+            // if (ip_int != 0) {
+            //     auto ip = common::Uint32ToIp(ip_int);
+            //     float x = 0.0;
+            //     float y = 0.0;
+            //     if (common::Ip::Instance()->GetIpLocation(ip, &x, &y) == 0) {
+            //         area_point->set_x(static_cast<int32_t>(x * 100));
+            //         area_point->set_y(static_cast<int32_t>(y * 100));
+            //     }
+            // }
 
             int32_t x1 = area_point->x();
             int32_t y1 = area_point->y();

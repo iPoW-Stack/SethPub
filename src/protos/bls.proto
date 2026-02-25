@@ -36,8 +36,6 @@ message JoinElectInfo {
     optional bytes addr = 5;
     optional uint64 stoke = 6;
     optional bytes public_key = 7;
-    optional elect.protobuf.BlsPublicKey bls_pk = 8;
-    optional elect.protobuf.BlsPopProof bls_proof = 9;
 }
 
 message LocalPolynomial {

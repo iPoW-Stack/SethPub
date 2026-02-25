@@ -163,20 +163,6 @@ using ViewBlock = view_block::protobuf::ViewBlockItem;
 using QC = view_block::protobuf::QcItem;
 using TC = QC;
 
-inline static void CreateTc(
-        uint32_t network_id, 
-        uint32_t pool_index, 
-        uint64_t view, 
-        uint64_t elect_height, 
-        uint32_t leader_idx, 
-        TC* tc) {
-    tc->set_network_id(network_id);
-    tc->set_pool_index(pool_index);
-    tc->set_view(view);
-    tc->set_elect_height(elect_height);
-    tc->set_leader_idx(leader_idx);
-}
-
 // For Fast HotStuff.
 struct AggregateQC {
     std::unordered_map<uint32_t, std::shared_ptr<QC>> qcs_;

@@ -37,8 +37,14 @@ public:
 
     uint64_t LatestTimestampHeight() {
         SETH_DEBUG("latest_time_block_height_ get: %lu",
-            static_cast<int>(latest_time_block_height_));
+            static_cast<uint64_t>(latest_time_block_height_));
         return latest_time_block_height_;
+    }
+
+    uint64_t LatestPrevTimestampHeight() {
+        SETH_DEBUG("prev_time_block_height_ get: %lu",
+            static_cast<uint64_t>(prev_time_block_height_));
+        return prev_time_block_height_;
     }
 
     void OnTimeBlock(
@@ -83,6 +89,7 @@ private:
 
 
     std::atomic<uint64_t> latest_time_block_height_ = common::kInvalidUint64;
+    std::atomic<uint64_t> prev_time_block_height_ = common::kInvalidUint64;
     std::atomic<uint64_t> latest_time_block_tm_{ 0 };
     std::atomic<uint64_t> latest_tm_block_local_sec_{ 0 };
 

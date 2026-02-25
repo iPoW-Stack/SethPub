@@ -50,6 +50,7 @@ public:
     // Get Block by hash value, fetch from neighbor nodes if necessary
     std::shared_ptr<ViewBlockInfo> Get(const HashStr& hash);
     std::shared_ptr<ViewBlockInfo> GetViewBlockWithHash(const HashStr& hash, bool remove);
+    std::shared_ptr<ViewBlock> GetViewBlockWithView(uint32_t network_id, uint64_t height);
     std::shared_ptr<ViewBlock> GetViewBlockWithHeight(uint32_t network_id, uint64_t height);
     // std::shared_ptr<ViewBlock> Get(uint64_t view);
     // If has block
@@ -90,7 +91,8 @@ public:
     void OnTimeBlock(
         uint64_t lastest_time_block_tm,
         uint64_t latest_time_block_height,
-        uint64_t vss_random);
+        uint64_t vss_random,
+        uint64_t timeblock_addr_nonce);
     void HandleTimerMessage();
     std::shared_ptr<ViewBlockInfo> CheckCommit(const QC& qc);
     
@@ -188,7 +190,7 @@ public:
 #endif
 
 private:
-    void AddPoolStatisticTag(uint64_t height);
+    void AddPoolStatisticTag(uint64_t height, uint64_t timeblock_addr_nonce);
     void SetViewBlockToMap(const std::shared_ptr<ViewBlockInfo>& view_block_info) {
         assert(!view_block_info->view_block->qc().view_block_hash().empty());
         auto it = view_blocks_info_.find(view_block_info->view_block->qc().view_block_hash());
@@ -269,6 +271,7 @@ private:
     std::map<uint64_t, std::vector<std::shared_ptr<ViewBlockInfo>>> view_with_blocks_;
     common::LRUMap<BlockViewKey, std::shared_ptr<ViewBlockInfo>> latest_commited_view_lru_map_{ 16 };
     common::LRUMap<std::string, std::shared_ptr<ViewBlockInfo>> latest_commited_hash_lru_map_{ 16 };
+    common::LRUMap<BlockViewKey, std::shared_ptr<ViewBlockInfo>> latest_commited_height_lru_map_{ 16 };
     std::thread::id local_thread_id_;
     uint64_t local_thread_id_count_ = 0;
 

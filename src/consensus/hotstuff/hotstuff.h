@@ -1,14 +1,9 @@
 #pragma once
-#ifdef USE_AGG_BLS
-#include <consensus/hotstuff/agg_crypto.h>
-#else
 #include <consensus/hotstuff/crypto.h>
-#endif
 #include "consensus/consensus_utils.h"
 #include <consensus/hotstuff/block_acceptor.h>
 #include <consensus/hotstuff/block_wrapper.h>
 #include <consensus/hotstuff/elect_info.h>
-#include <consensus/hotstuff/leader_rotation.h>
 #include <consensus/hotstuff/pacemaker.h>
 #include <consensus/hotstuff/types.h>
 #include <consensus/hotstuff/view_block_chain.h>
@@ -61,16 +56,11 @@ public:
             consensus::HotstuffManager& hotstuff_mgr,
             std::shared_ptr<sync::KeyValueSync>& kv_sync,
             const uint32_t& pool_idx,
-            const std::shared_ptr<LeaderRotation>& lr,
             const std::shared_ptr<ViewBlockChain>& chain,
             const std::shared_ptr<IBlockAcceptor>& acceptor,
             const std::shared_ptr<IBlockWrapper>& wrapper,
             const std::shared_ptr<Pacemaker>& pm,
-#ifdef USE_AGG_BLS
-            const std::shared_ptr<AggCrypto>& crypto,
-#else
             const std::shared_ptr<Crypto>& crypto,
-#endif
             const std::shared_ptr<ElectInfo>& elect_info,
             std::shared_ptr<db::Db>& db,
             std::shared_ptr<timeblock::TimeBlockManager> tm_block_mgr,
@@ -84,15 +74,11 @@ public:
         block_acceptor_(acceptor),
         block_wrapper_(wrapper),
         view_block_chain_(chain),
-        leader_rotation_(lr),
         elect_info_(elect_info),
         db_(db),
         tm_block_mgr_(tm_block_mgr),
         new_block_cache_callback_(new_block_cache_callback) {
         prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
-        pacemaker_->SetNewProposalFn(std::bind(&Hotstuff::Propose, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-        pacemaker_->SetStopVotingFn(std::bind(&Hotstuff::StopVoting, this, std::placeholders::_1));
-
     }
     ~Hotstuff() {};
 
@@ -106,11 +92,35 @@ public:
         sync_pool_fn_ = sync_fn;
     }
 
+    void OnNewElectBlock(
+            uint32_t sharding_id,
+            uint64_t elect_height,
+            common::MembersPtr& members,
+            const libff::alt_bn128_G2& common_pk,
+            const libff::alt_bn128_Fr& sec_key) {
+        if (sharding_id != common::GlobalInfo::Instance()->network_id()) {
+            return;
+        }
+
+        if (latest_elect_height_ >= elect_height) {
+            return;
+        }
+
+        latest_elect_height_ = elect_height;
+        consecutive_failures_ = 0;
+        last_stable_leader_member_index_ = GetEpochLeaderIndex();
+        SETH_DEBUG("pool: %d, success set last_stable_leader_member_index_: %d, "
+            "latest_elect_height_: %lu",
+            pool_idx_, last_stable_leader_member_index_, latest_elect_height_);
+    }
+
     Status Start();
     void HandleProposeMsg(const transport::MessagePtr& msg_ptr);
     void HandlePreResetTimerMsg(const transport::MessagePtr& msg_ptr);
     void HandleVoteMsg(const transport::MessagePtr& msg_ptr);
     Status Propose(
+        View leader_view,
+        common::BftMemberPtr leader,
         std::shared_ptr<TC> tc,
         std::shared_ptr<AggregateQC> agg_qc,
         const transport::MessagePtr& msg_ptr);
@@ -139,15 +149,9 @@ public:
         return block_wrapper_;
     }
 
-#ifdef USE_AGG_BLS
-    inline std::shared_ptr<AggCrypto> crypto() const {
-        return crypto_;
-    }
-#else
     inline std::shared_ptr<Crypto> crypto() const {
         return crypto_;
     }
-#endif
 
     inline std::shared_ptr<IBlockAcceptor> acceptor() const {
         return block_acceptor_;
@@ -159,10 +163,6 @@ public:
 
     inline std::shared_ptr<Pacemaker> pacemaker() const {
         return pacemaker_;
-    }
-
-    inline std::shared_ptr<LeaderRotation> leader_rotation() const {
-        return leader_rotation_;
     }
 
     inline std::shared_ptr<ElectInfo> elect_info() const {
@@ -201,7 +201,7 @@ private:
         std::shared_ptr<ViewBlock>& view_block);
     Status HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
     Status HandleProposeMsgStep_VerifyLeader(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
-    Status HandleProposeMsgStep_VerifyQC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
+    // Status HandleProposeMsgStep_VerifyQC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
     Status HandleProposeMsgStep_VerifyViewBlock(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
     Status HandleProposeMsgStep_TxAccept(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
     Status HandleProposeMsgStep_ChainStore(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap);
@@ -235,13 +235,19 @@ private:
             const std::shared_ptr<ViewBlockChain>& view_block_chain,
             const TC* tc,
             const uint32_t& elect_height);
-    Status ConstructProposeMsg(const transport::MessagePtr& msg_ptr, hotstuff::protobuf::ProposeMsg* pro_msg);
+    Status ConstructProposeMsg(
+        View leader_view,
+        common::BftMemberPtr leader,
+        const transport::MessagePtr& msg_ptr, 
+        hotstuff::protobuf::ProposeMsg* pro_msg);
     Status ConstructVoteMsg(
         const transport::MessagePtr& msg_ptr,
         hotstuff::protobuf::VoteMsg* vote_msg,
         uint64_t elect_height,
         const std::shared_ptr<ViewBlock>& v_block);
     Status ConstructViewBlock(
+        View leader_view,
+        common::BftMemberPtr leader,
         const transport::MessagePtr& msg_ptr,
         ViewBlock* view_block,
         hotstuff::protobuf::TxPropose* tx_propose);
@@ -271,29 +277,179 @@ private:
         uint32_t pool_index,
         View view);
 
+    common::BftMemberPtr GetLeader(
+            uint32_t new_leader_idx, 
+            const view_block::protobuf::QcItem& leader_latest_qc, 
+            View* out_view) {
+        auto sharding_id = common::GlobalInfo::Instance()->network_id();
+        assert(elect_info_ != nullptr);
+        auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
+        if (elect_item == nullptr) {
+            // assert(false);
+            return nullptr;
+        }
+
+        auto members = elect_item->valid_leaders();
+        // auto members = Members(common::GlobalInfo::Instance()->network_id());
+        // if (members == nullptr) {
+        //     return nullptr;
+        // }
+
+        auto high_view_block = view_block_chain_->HighViewBlock();
+        if (!high_view_block) {
+            return nullptr;
+        }
+
+        // if (leader_latest_qc.leader_idx() == new_leader_idx) {
+        //     if (leader_latest_qc.view() != high_view_block->qc().view()) {
+        //         SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is not equal with high view block qc view: %lu",
+        //             pool_idx_, leader_latest_qc.view(), high_view_block->qc().view());
+        //         return nullptr;
+        //     }
+
+        //     if (last_stable_leader_member_index_ != new_leader_idx) {
+        //         SETH_DEBUG("pool: %u, leader_latest_qc view: %lu, last_stable_leader_member_index_: %d is not equal with new_leader_idx: %d",
+        //             pool_idx_, leader_latest_qc.view(), last_stable_leader_member_index_, new_leader_idx);
+        //         return nullptr;
+        //     }
+
+            if (high_view_block->qc().elect_height() < latest_elect_height_) {
+                *out_view = high_view_block->qc().view() + latest_elect_height_ + 1;
+            } else {
+                *out_view = high_view_block->qc().view() + 1;
+            }
+
+            return (*members)[last_stable_leader_member_index_ % members->size()];
+        // }
+
+        // if (leader_latest_qc.view() <= view_block_chain_->LatestCommittedBlock()->qc().view()) {
+        //     SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is too old, latest committed block view: %lu",
+        //         pool_idx_, leader_latest_qc.view(), view_block_chain_->LatestCommittedBlock()->qc().view());
+        //     return nullptr;
+        // }
+
+        auto high_view_block_info = view_block_chain_->Get(leader_latest_qc.view_block_hash());
+        if (high_view_block_info == nullptr || high_view_block_info->view_block == nullptr) {
+            SETH_DEBUG("pool: %u, leader_latest_qc view: %lu, view_block_hash: %s "
+                "not found in view block chain", 
+                pool_idx_, leader_latest_qc.view(), leader_latest_qc.view_block_hash().c_str());
+            return nullptr;
+        }
+
+        high_view_block = high_view_block_info->view_block;
+        if (high_view_block->qc().elect_height() < latest_elect_height_) {
+            *out_view = high_view_block->qc().view() + latest_elect_height_ + 1;
+        } else {
+            *out_view = high_view_block->qc().view() + 1;
+        }
+        
+        auto prev_qc_timestamp_sec = (high_view_block->block_info().timestamp() / 1000lu);
+        auto now = common::TimeUtils::TimestampSeconds();
+        auto timeout = static_cast<uint64_t>(
+            common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
+        auto elapsed = now - prev_qc_timestamp_sec;
+        if (elapsed < timeout) {
+            return (*members)[last_stable_leader_member_index_ % members->size()];
+        }
+
+        auto k = prev_qc_timestamp_sec / common::kLeaderRoatationBaseTimeoutSec;
+        auto leader_idx = (
+            last_stable_leader_member_index_ + 
+            static_cast<int>(k) + 
+            common::kImmutablePoolSize) % members->size();
+        // ++consecutive_failures_;
+        SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
+            "consecutive_failures: %d, now: %u, block tm: %lu, "
+            "last_stable_leader_member_index: %d, latest_elect_height: %lu, out view: %lu", 
+            pool_idx_, 
+            high_view_block->qc().view(), 
+            elapsed, 
+            timeout, 
+            k, 
+            consecutive_failures_,
+            now, 
+            high_view_block->block_info().timestamp(),
+            leader_idx,
+            latest_elect_height_,
+            (high_view_block->qc().view() + latest_elect_height_ + 1));
+       
+        // 切换模式：强制跳过一个视图号 (V + k + 1)
+        // 当超时刚刚发生(k=1)时，out_view = last_qc.view + 2
+        if (high_view_block->qc().elect_height() < latest_elect_height_) {
+            *out_view = high_view_block->qc().view() + latest_elect_height_ + k + 1;
+        } else {
+            *out_view = high_view_block->qc().view() + k + 1;
+        }
+
+        return (*members)[leader_idx % members->size()];
+    }
+
+    inline common::BftMemberPtr GetMember(uint32_t member_index) const {
+        auto members = Members(common::GlobalInfo::Instance()->network_id());
+        if (member_index >= members->size()) {
+            return nullptr;
+        }
+
+        return (*members)[member_index];
+    }
+
+    inline uint32_t GetEpochLeaderIndex() const {
+        auto sharding_id = common::GlobalInfo::Instance()->network_id();
+        assert(elect_info_ != nullptr);
+        auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
+        if (elect_item == nullptr) {
+            // assert(false);
+            return common::kInvalidUint32;
+        }
+
+        auto index = (elect_item->ElectHeight() + pool_idx_) % elect_item->valid_leaders()->size();
+        return elect_item->valid_leaders()->at(index)->index;
+    }
+
+    inline uint32_t GetLocalMemberIdx() const {
+        auto sharding_id = common::GlobalInfo::Instance()->network_id();
+        assert(elect_info_ != nullptr);
+        auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
+        if (elect_item == nullptr) {
+            // assert(false);
+            return common::kInvalidUint32;
+        }
+
+        auto local_mem_ptr = elect_info_->GetElectItemWithShardingId(sharding_id)->LocalMember();
+        if (local_mem_ptr == nullptr) {
+            // assert(false);
+            return common::kInvalidUint32;
+        }
+
+        return local_mem_ptr->index;
+    }
+
+    inline common::MembersPtr Members(uint32_t sharding_id) const {
+        auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
+        if (!elect_item) {
+            return std::make_shared<common::Members>();
+        }
+        return elect_item->Members();
+    }
+
     static const uint64_t kLatestPoposeSendTxToLeaderPeriodMs = 10000lu;
 
     std::shared_ptr<block::BlockManager> block_mgr_;
     uint32_t pool_idx_;
-#ifdef USE_AGG_BLS
-    std::shared_ptr<AggCrypto> crypto_;
-#else
     std::shared_ptr<Crypto> crypto_;
-#endif
     std::shared_ptr<Pacemaker> pacemaker_;
     std::shared_ptr<IBlockAcceptor> block_acceptor_;
     std::shared_ptr<IBlockWrapper> block_wrapper_;
     std::shared_ptr<ViewBlockChain> view_block_chain_;
     std::shared_ptr<ViewBlockChain> root_view_block_chain_;
     std::unordered_map<uint32_t, std::shared_ptr<ViewBlockChain>> cross_shard_view_block_chain_;
-    std::shared_ptr<LeaderRotation> leader_rotation_;
     std::shared_ptr<ElectInfo> elect_info_;
     std::shared_ptr<db::Db> db_ = nullptr;
     std::shared_ptr<protos::PrefixDb> prefix_db_ = nullptr;
     View last_vote_view_ = 0;
     View last_leader_propose_view_ = 0;
     SyncPoolFn sync_pool_fn_ = nullptr;
-    std::map<View, transport::MessagePtr> voted_msgs_;
+    std::unordered_map<uint32_t, std::map<View, transport::MessagePtr>> voted_msgs_;
     uint64_t latest_propose_msg_tm_ms_ = 0;
     std::shared_ptr<view_block::protobuf::QcItem> latest_qc_item_ptr_;
     uint64_t propose_debug_index_ = 0;
@@ -307,6 +463,11 @@ private:
     std::shared_ptr<timeblock::TimeBlockManager> tm_block_mgr_ = nullptr;
     consensus::BlockCacheCallback new_block_cache_callback_ = nullptr;
     common::Tick layter_sync_tick_;
+    std::string leader_view_block_hash_;
+
+    uint32_t consecutive_failures_ = 0u;
+    uint32_t last_stable_leader_member_index_ = 0u;
+    uint64_t latest_elect_height_ = 0llu;
 
 // #ifndef NDEBUG
     static std::atomic<uint32_t> sendout_bft_message_count_;

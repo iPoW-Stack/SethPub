@@ -85,7 +85,8 @@ static const uint32_t kEachMessagePoolMaxCount = 2048u;
 class TransportMessage {
 public:
     // static std::atomic<int32_t> testTransportMessageCount;
-    TransportMessage() : conn(nullptr), retry(false), handled(false), is_leader(false) {
+    TransportMessage() : conn(nullptr), retry(false), 
+            handled(false), is_leader(false), latest_qc_view(0llu) {
         timeout = common::TimeUtils::TimestampUs() + kConsensusMessageTimeoutUs;
         handle_timeout = common::kInvalidUint64;
         prev_timestamp = common::TimeUtils::TimestampUs() + kMessagePeriodUs;
@@ -122,6 +123,7 @@ public:
     bool handled;
     bool is_leader;
     int32_t thread_index;
+    uint64_t latest_qc_view;
 };
 
 typedef std::shared_ptr<TransportMessage> MessagePtr;

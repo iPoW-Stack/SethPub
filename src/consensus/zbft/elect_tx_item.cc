@@ -37,8 +37,6 @@ int ElectTxItem::TxToBlockTx(
         return consensus::kConsensusError;
     }
 
-    
-
     return consensus::kConsensusSuccess;
 }
 
@@ -52,6 +50,7 @@ int ElectTxItem::HandleTx(
     view_block_chain_ = pre_zjc_host.view_block_chain_;
     g2_ = std::make_shared<std::mt19937_64>(vss_mgr_->EpochRandom());
     zjcvm::ZjchainHost zjc_host;
+    zjc_host.view_block_chain_ = pre_zjc_host.view_block_chain_;
     zjc_host.pre_zjc_host_ = &pre_zjc_host;
     InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
     auto& unique_hash = tx_info->key();
@@ -159,6 +158,7 @@ int ElectTxItem::processElect(
 
     assert(expect_leader_count > 0);
     std::set<uint32_t> leader_nodes;
+#ifndef NDEBUG
     {
         std::string ids;
         for (uint32_t i = 0; i < src_elect_nodes_to_choose.size(); ++i) {
@@ -168,6 +168,7 @@ int ElectTxItem::processElect(
 
         SETH_DEBUG("befor get leader: %s", ids.c_str());
     }
+#endif
 
     FtsGetNodes(src_elect_nodes_to_choose, false, expect_leader_count, leader_nodes);
     SETH_DEBUG("net: %u, elect use height to random order: %lu, leader size: %d, "
@@ -186,6 +187,7 @@ int ElectTxItem::processElect(
         }
     }
 
+#ifndef NDEBUG
     {
         std::string ids;
         int count = 0;
@@ -199,6 +201,7 @@ int ElectTxItem::processElect(
 
         SETH_DEBUG("LLLLLL before CreateNewElect: count %d, %s", count, ids.c_str());
     }
+#endif
 
     CreateNewElect(
         zjc_host,
@@ -207,6 +210,7 @@ int ElectTxItem::processElect(
         gas_for_root,
         block_tx);
 
+#ifndef NDEBUG
     {
         std::string ids;
         int count = 0;
@@ -220,6 +224,7 @@ int ElectTxItem::processElect(
 
         SETH_DEBUG("LLLLL after CreateNewElect: count: %d ,%s", count, ids.c_str());
     }
+#endif
     SETH_DEBUG("consensus elect tx success: %u, proto: %s",
         elect_statistic_.sharding_id(), 
         ProtobufToJson(elect_statistic_).c_str());
@@ -390,7 +395,7 @@ void ElectTxItem::JoinNewNodes2ElectNodes(
     }
 }
 
-void ElectTxItem::ChooseNodeForEachIndex(
+void ElectTxItem::          ChooseNodeForEachIndex(
         bool hold_pos,
         uint32_t min_area_weight,
         uint32_t min_tx_count,
@@ -488,12 +493,6 @@ void ElectTxItem::GetIndexNodes(
         node_info->tx_count = min_tx_count;
         node_info->credit = elect_statistic_.join_elect_nodes(i).credit();
         node_info->pubkey = elect_statistic_.join_elect_nodes(i).pubkey();
-        // xufeisofly 新增节点的 bls_agg_pk
-        auto agg_bls_pk_proto = elect_statistic_.join_elect_nodes(i).agg_bls_pk();
-        node_info->agg_bls_pk = *bls::Proto2BlsPublicKey(agg_bls_pk_proto);
-        auto proof_proto = elect_statistic_.join_elect_nodes(i).agg_bls_pk_proof();
-        node_info->agg_bls_pk_proof = *bls::Proto2BlsPopProof(proof_proto);
-        
         node_info->index = index;
         node_info->consensus_gap = elect_statistic_.join_elect_nodes(i).consensus_gap(); 
         elect_nodes_to_choose->push_back(node_info);
@@ -634,33 +633,30 @@ int ElectTxItem::CreateNewElect(
 
             auto in = elect_block.add_in();
             in->set_pubkey((*elect_members_)[i]->pubkey);
-            // xufeisofly
-            auto agg_bls_pk_proto = bls::BlsPublicKey2Proto((*elect_members_)[i]->agg_bls_pk);
-            if (agg_bls_pk_proto) {
-                in->mutable_agg_bls_pk()->CopyFrom(*agg_bls_pk_proto);
-            }
-            auto proof_proto = bls::BlsPopProof2Proto((*elect_members_)[i]->agg_bls_pk_proof);
-            if (proof_proto) {
-                in->mutable_agg_bls_pk_proof()->CopyFrom(*proof_proto);
-            }
-            
             in->set_pool_idx_mod_num(-1);
             in->set_mining_amount(0);
+            SETH_DEBUG("elect_nodes[i] == nullptr: %s, i: %d, id: %s, member size: %d, "
+                "pool_idx_mod_num: %d, mining_amount: %lu",
+                common::Encode::HexEncode((*elect_members_)[i]->pubkey).c_str(), 
+                i,
+                common::Encode::HexEncode((*elect_members_)[i]->id).c_str(),
+                elect_members_->size(),
+                -1,
+                0);
         } else {
             auto in = elect_block.add_in();
             in->set_pubkey(elect_nodes[i]->pubkey);
-            auto agg_bls_pk_proto = bls::BlsPublicKey2Proto(elect_nodes[i]->agg_bls_pk);
-            if (agg_bls_pk_proto) {
-                in->mutable_agg_bls_pk()->CopyFrom(*agg_bls_pk_proto);
-            }
-            auto proof_proto = bls::BlsPopProof2Proto(elect_nodes[i]->agg_bls_pk_proof);
-            if (proof_proto) {
-                in->mutable_agg_bls_pk_proof()->CopyFrom(*proof_proto);
-            }
-            
             in->set_pool_idx_mod_num(elect_nodes[i]->leader_mod_index);
             in->set_mining_amount(elect_nodes[i]->mining_token);
             in->set_fts_value(elect_nodes[i]->fts_value);
+            SETH_DEBUG("elect_nodes[i] == nullptr: %s, i: %d, id: %s, member size: %d, "
+                "pool_idx_mod_num: %d, mining_amount: %lu",
+                common::Encode::HexEncode((*elect_members_)[i]->pubkey).c_str(), 
+                i,
+                common::Encode::HexEncode((*elect_members_)[i]->id).c_str(),
+                elect_members_->size(),
+                elect_nodes[i]->leader_mod_index,
+                elect_nodes[i]->mining_token);
         }
     }
 
@@ -770,13 +766,8 @@ int ElectTxItem::CheckWeedout(
         node_info->stoke = statistic_item.stokes(member_idx);
         node_info->credit = statistic_item.credit(member_idx);
         node_info->index = member_idx;
-        // 此处增加上一轮已有节点的 bls_agg_pk
-        node_info->pubkey = (*members)[member_idx]->pubkey;
-        node_info->agg_bls_pk = (*members)[member_idx]->agg_bls_pk;
-        node_info->agg_bls_pk_proof = (*members)[member_idx]->agg_bls_pk_proof;
         node_info->pubkey = (*members)[member_idx]->pubkey;
         node_info->consensus_gap = statistic_item.consensus_gap(member_idx); 
-
         if (*min_area_weight > min_dis) {
             *min_area_weight = min_dis;
         }

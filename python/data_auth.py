@@ -16,7 +16,7 @@ class DataMarketFullClient:
         self.query_url = f"{self.base_url}/query_account"
         self.contract_addr = contract_addr.replace('0x', '').lower()
         self.priv_key = priv_key
-        
+
         # 预计算身份
         self.sk = SigningKey.from_string(bytes.fromhex(priv_key), curve=SECP256k1)
         self.pubkey_hex = self.sk.verifying_key.to_string("uncompressed").hex()
@@ -31,13 +31,13 @@ class DataMarketFullClient:
         """处理 View 查询 (abi_query_contract)"""
         selector = keccak.new(digest_bits=256, data=f"{func_name}({','.join(p_types)})".encode()).digest()[:4].hex()
         encoded = selector + encode(p_types, params).hex()
-        
+
         resp = requests.post(f"{self.base_url}/abi_query_contract", data={
             "input": encoded, "address": self.contract_addr, "from": self.my_address
         })
         raw_hex = resp.text.strip().replace("0x", "")
         return decode(o_types, bytes.fromhex(raw_hex))
-    
+
     def get_account_info(self, address_hex):
         """查询账户信息"""
         try:
@@ -55,7 +55,7 @@ class DataMarketFullClient:
 
     def _hex_to_bytes(self, hex_str):
         return bytes.fromhex(hex_str.replace('0x', ''))
-    
+
     def compute_hash(self, nonce, pubkey_hex, to_hex, amount, gas_limit, gas_price, step, input_hex=''):
         """计算交易哈希 (RLP-like serialization for Seth)"""
         msg = bytearray()
@@ -68,7 +68,7 @@ class DataMarketFullClient:
         msg.extend(self._uint64_to_bytes(step))
         if input_hex:
             msg.extend(self._hex_to_bytes(input_hex))
-        
+
         k = keccak.new(digest_bits=256)
         k.update(msg)
         return k.digest()
@@ -78,7 +78,7 @@ class DataMarketFullClient:
         pub_raw = sk.verifying_key.to_string("uncompressed")[1:]
         k = keccak.new(digest_bits=256).update(pub_raw)
         return k.digest()[-20:].hex()
-    
+
     def send_contract_call(self, func_name, params, p_types):
         selector = keccak.new(digest_bits=256, data=f"{func_name}({','.join(p_types)})".encode()).digest()[:4].hex()
         input_hex = selector + encode(p_types, params).hex()
@@ -94,11 +94,11 @@ class DataMarketFullClient:
         # 2. 获取 Nonce
         acc_info = self.get_account_info(my_addr)
         nonce = (int(acc_info.get("nonce", 0)) if acc_info else 0) + 1
-        
+
         # 3. 签名
         tx_hash = self.compute_hash(nonce, pubkey_hex, self.contract_addr, 0, 500000, 1, 8, input_hex)
         signature = sk.sign_digest_deterministic(tx_hash, hashfunc=hashlib.sha256, sigencode=sigencode_string_canonize)
-        
+
         # 4. 构造参数
         data = {
             "nonce": str(nonce),
@@ -117,12 +117,12 @@ class DataMarketFullClient:
 
         print(f"[*] Dispatching transaction from {my_addr} to contract...")
         resp = requests.post(self.tx_url, data=data, timeout=5)
-        
+
         # 自动重试 V=1
         if "verify signature failed" in resp.text:
             data["sign_v"] = "1"
             resp = requests.post(self.tx_url, data=data, timeout=5)
-        
+
         return resp.status_code, resp.text
 
     # --- 1. View 接口 ---
@@ -175,7 +175,7 @@ class DataMarketFullClient:
         if isinstance(data, dict):
             return {k: self.hexify(v) for k, v in data.items()}
         return data
-    
+
 # --- 演示执行 ---
 if __name__ == "__main__":
     conf = {
@@ -183,7 +183,7 @@ if __name__ == "__main__":
         "contract": "f5c35074b7583ec006300e9f47d93cb45c486309",
         "priv": "c75f8d9b2a6bc0fe68eac7fef67c6b6f7c4f85163d58829b59110ff9e9210848"
     }
-    
+
     client = DataMarketFullClient(conf["host"], conf["port"], conf["contract"], conf["priv"])
     test_id = hashlib.sha256(b"my_unique_data_id_2").digest()
     print(f"1. 正在发起创建交易...")

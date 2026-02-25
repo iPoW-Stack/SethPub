@@ -5,22 +5,22 @@ import "protos/elect.proto";
 package seth.pools.protobuf;
 
 enum StepType {
-    kNormalFrom = 0;  // 用户直接转账
-    kNormalTo = 1;  // 统计后的跨分片确认交易（from方统计交易）
-    kConsensusRootElectShard = 2;  // shard consensus network election，ROOT网络选举交易
-    kConsensusRootTimeBlock = 3;  // create time block，时间块交易
-    kConsensusCreateGenesisAcount = 4;  //  床上账号交易
-    kConsensusLocalTos = 5;  // 跨分片确认交易（to方累计交易）
-    kContractCreate = 6;  // 创建合约交易
-    kContractGasPrepayment = 7;  // 为调用合约设置预付费
-    kContractExcute = 8;  // 执行合约
-    kRootCreateAddress = 9;  // root网络创建新地址
-    kStatistic = 12;  // 统计交易
-    kJoinElect = 13;  // 新节点参与选举的交易
-    kCreateLibrary = 14; // 创建合约公共库的交易
-    kCross = 15;  // 避免跨分片块缺失的交易
-    kRootCross = 16;  // root避免跨分片块缺失的交易
-    kPoolStatisticTag = 18;  // 此轮交易池统计结束标记块
+    kNormalFrom = 0;  // User direct transfer
+    kNormalTo = 1;  // Post-statistical cross-shard confirmation transaction (statistical transaction from the 'from' side)
+    kConsensusRootElectShard = 2;  // shard consensus network election, ROOT network election transaction
+    kConsensusRootTimeBlock = 3;  // create time block, time block transaction
+    kConsensusCreateGenesisAcount = 4;  // Genesis account transaction
+    kConsensusLocalTos = 5;  // Cross-shard confirmation transaction (cumulative transaction from the 'to' side)
+    kContractCreate = 6;  // Contract creation transaction
+    kContractGasPrepayment = 7;  // Set prepayment for contract calls
+    kContractExcute = 8;  // Execute contract
+    kRootCreateAddress = 9;  // Create new address in root network
+    kStatistic = 12;  // Statistical transaction
+    kJoinElect = 13;  // Transaction for new nodes participating in elections
+    kCreateLibrary = 14; // Transaction for creating public contract libraries
+    kCross = 15;  // Transaction to prevent missing cross-shard blocks
+    kRootCross = 16;  // Root transaction to prevent missing cross-shard blocks
+    kPoolStatisticTag = 18;  // Final marker block for this round of transaction pool statistics
 }
 
 message ToTxHeights {
@@ -133,8 +133,6 @@ message JoinElectNode {
     optional AreaInfo area_point = 5;
     optional uint64 credit =6;
     optional uint64 consensus_gap = 7;
-    optional elect.protobuf.BlsPublicKey agg_bls_pk = 8;
-    optional elect.protobuf.BlsPopProof agg_bls_pk_proof = 9;
 }
 
 message ElectStatistic {

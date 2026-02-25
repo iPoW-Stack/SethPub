@@ -48,9 +48,8 @@ void TimeBlockManager::CreateTimeBlockTx() {
     }
 
     auto msg_ptr = std::make_shared<transport::TransportMessage>();
-    msg_ptr->address_info = account_mgr_->pools_address_info(common::kImmutablePoolSize);
+    msg_ptr->address_info = account_mgr_->GetAccountInfo(common::kTimeBlockAddress);
     assert(msg_ptr->address_info != nullptr);
-    assert(!msg_ptr->address_info->addr().empty());
     pools::protobuf::TxMessage& tx_info = *msg_ptr->header.mutable_tx_proto();
     tx_info.set_step(pools::protobuf::kConsensusRootTimeBlock);
     tx_info.set_pubkey("");
@@ -125,8 +124,8 @@ pools::TxItemPtr TimeBlockManager::tmblock_tx_ptr(
         timeblock::protobuf::TimeBlock timer_block;
         timer_block.set_timestamp(new_time_block_tm);
         timer_block.set_vss_random(vss_mgr_->GetConsensusFinalRandom());
-        tx_info->set_value(timer_block.SerializeAsString());
-        auto account_info = account_mgr_->pools_address_info(pool_index);
+        tx_info->set_value(SerializeDeterministic(timer_block));
+        auto account_info = account_mgr_->GetAccountInfo(common::kTimeBlockAddress);
         tx_info->set_to(account_info->addr());
         tx_info->set_key(common::Hash::keccak256(tx_info->value()));
         uint64_t now_nonce = 0ll;
@@ -150,6 +149,10 @@ void TimeBlockManager::OnTimeBlock(
         uint64_t vss_random) {
     if (latest_time_block_height_ != common::kInvalidUint64 &&
             latest_time_block_height_ >= latest_time_block_height) {
+        if (latest_time_block_height > prev_time_block_height_) {
+            prev_time_block_height_ = latest_time_block_height;
+        }
+        
         return;
     }
 
@@ -160,6 +163,7 @@ void TimeBlockManager::OnTimeBlock(
         static_cast<int>(latest_time_block_tm_),
         vss_random);
     assert(vss_random != 0);
+    prev_time_block_height_ = latest_time_block_height;
     latest_time_block_height_ = latest_time_block_height;
     latest_time_block_tm_ = latest_time_block_tm;
     latest_tm_block_local_sec_ = common::TimeUtils::TimestampSeconds();

@@ -6,7 +6,6 @@
 #include <consensus/hotstuff/crypto.h>
 #include <consensus/hotstuff/elect_info.h>
 #include <consensus/hotstuff/hotstuff_manager.h>
-#include <consensus/hotstuff/leader_rotation.h>
 #include <consensus/hotstuff/pacemaker.h>
 #include <consensus/hotstuff/types.h>
 #include <consensus/hotstuff/view_block_chain.h>
@@ -264,7 +263,6 @@ int NetworkInit::Init(int argc, char** argv) {
     RegisterFirewallCheck();
     if (shard_statistic_->Init() != pools::kPoolsSuccess) {
         INIT_ERROR("init shard statistic failed!");
-        return kInitError;
     }
 
     hotstuff_mgr_->Start(); // The above should be placed in the hotstuff instance initialization and receive the genesis block
@@ -277,6 +275,7 @@ int NetworkInit::Init(int argc, char** argv) {
         INIT_ERROR("InitHttpServer failed!");
         return kInitError;
     }
+
     SETH_INFO("init 7");
     if (InitCommand() != kInitSuccess) {
         INIT_ERROR("InitCommand failed!");
@@ -1039,10 +1038,6 @@ void NetworkInit::GetNetworkNodesFromConf(
         node_ptr->prikey = sk;
         node_ptr->pubkey = secptr->GetPublicKey();
         node_ptr->id = secptr->GetAddress(node_ptr->pubkey);
-        InitAggBlsForGenesis(node_ptr->id, secptr, prefix_db);
-        auto keypair = bls::AggBls::Instance()->GetKeyPair();
-        node_ptr->agg_bls_pk = keypair->pk();
-        node_ptr->agg_bls_pk_proof = keypair->proof();
         node_ptr->nonce = 0;
         root_genesis_nodes.push_back(node_ptr);
         SETH_DEBUG("root private key: %s, id: %s", 
@@ -1073,10 +1068,6 @@ void NetworkInit::GetNetworkNodesFromConf(
             node_ptr->prikey = sk;
             node_ptr->pubkey = secptr->GetPublicKey();
             node_ptr->id = secptr->GetAddress(node_ptr->pubkey);
-            InitAggBlsForGenesis(node_ptr->id, secptr, prefix_db);
-            auto keypair = bls::AggBls::Instance()->GetKeyPair();
-            node_ptr->agg_bls_pk = keypair->pk();
-            node_ptr->agg_bls_pk_proof = keypair->proof();
             node_ptr->nonce = 0;
             cons_genesis_nodes.push_back(node_ptr);   
             SETH_DEBUG("shard: %d private key: %s, id: %s", 
@@ -1221,7 +1212,7 @@ void NetworkInit::HandleTimeBlock(
     auto& block = view_block->block_info();
     if (block.has_timer_block()) {
         auto vss_random = block.timer_block().vss_random();
-        hotstuff_mgr_->OnTimeBlock(block.timer_block().timestamp(), block.height(), vss_random);
+        hotstuff_mgr_->OnTimeBlock(block.timer_block().timestamp(), block.height(), vss_random, tx.nonce());
         bls_mgr_->OnTimeBlock(block.timer_block().timestamp(), block.height(), vss_random);
         tm_block_mgr_->OnTimeBlock(block.timer_block().timestamp(), block.height(), vss_random);
         vss_mgr_->OnTimeBlock(view_block);
@@ -1268,7 +1259,6 @@ void NetworkInit::HandleElectionBlock(
         return;
     }
 
-    // TODO log members
     auto sharding_id = elect_block->shard_network_id();
     auto elect_height = elect_mgr_->latest_height(sharding_id);
     libff::alt_bn128_G2 common_pk;
@@ -1300,9 +1290,10 @@ void NetworkInit::HandleElectionBlock(
         elect_height,
         members,
         elect_block);
-    SETH_DEBUG("1 success called election block. height: %lu, "
+    SETH_DEBUG("%s success called election block. height: %lu, "
         "elect height: %lu, latest_valid_elect_height_: %lu, used elect height: %lu, net: %u, "
         "local net id: %u, prev elect height: %lu",
+        common::Encode::HexEncode(security_->GetAddress()).c_str(),
         block->height(), elect_height,
         latest_valid_elect_height_,
         view_block->qc().elect_height(),
@@ -1376,7 +1367,7 @@ void NetworkInit::SendJoinElectTransaction() {
         }
     }
 
-    new_tx->set_value(join_info.SerializeAsString());
+    new_tx->set_value(SerializeDeterministic(join_info));
     transport::TcpTransport::Instance()->SetMessageHash(msg);
     auto tx_hash = pools::GetTxMessageHash(*new_tx);
     std::string sign;
@@ -1398,7 +1389,6 @@ void NetworkInit::SendJoinElectTransaction() {
         common::Encode::HexEncode(new_tx->pubkey()).c_str(),
         common::Encode::HexEncode(new_tx->sign()).c_str());
 }
-
 
 void NetworkInit::CreateContribution(bls::protobuf::VerifyVecBrdReq* bls_verify_req) {
     auto n = common::GlobalInfo::Instance()->each_shard_max_members();
