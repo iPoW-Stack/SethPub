@@ -766,6 +766,14 @@ void BlockManager::CreateStatisticTx() {
                 new_msg_ptr->address_info = addr_info;
             }
 
+            if (new_msg_ptr->address_info->nonce() >= tx->nonce()) {
+                SETH_WARN("statistic tx already exist, hash: %s, nonce: %lu, addr: %s",
+                    common::Encode::HexEncode(unique_hash).c_str(),
+                    new_msg_ptr->address_info->nonce(),
+                    common::Encode::HexEncode(statistic_addr).c_str());
+                return;
+            }
+
             tx_ptr->tx_ptr = create_statistic_tx_cb_(new_msg_ptr);
             tx_ptr->tx_ptr->time_valid += kStatisticValidTimeout;
             tx_ptr->tx_hash = unique_hash;
