@@ -781,13 +781,14 @@ void BlockManager::CreateStatisticTx() {
             tx_ptr->stop_consensus_timeout = tx_ptr->timeout + kStopConsensusTimeoutMs;
             SETH_DEBUG("success add statistic tx: %s, statistic elect height: %lu, "
                 "heights: %s, timeout: %lu, kStatisticTimeoutMs: %lu, now: %lu, "
-                "nonce: %lu, timeblock_height: %lu",
+                "nonce: %lu, timeblock_height: %lu, statistic_addr: %s",
                 common::Encode::HexEncode(unique_hash).c_str(),
                 0,
                 "", tx_ptr->timeout,
                 0, common::TimeUtils::TimestampMs(),
                 tx->nonce(),
-                timeblock_height);
+                timeblock_height,
+                common::Encode::HexEncode(statistic_addr).c_str());
             shard_statistics_map_[timeblock_height] = tx_ptr;
             CHECK_MEMORY_SIZE(shard_statistics_map_);
 
