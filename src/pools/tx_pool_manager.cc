@@ -569,7 +569,7 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
             break;
         }
         case pools::protobuf::kPoolStatisticTag: {
-            pool_index = common::GetAddressPoolIndex(tx_msg.to());
+            pool_index = msg_ptr->address_info->pool_index();
             break;
         }
         default:

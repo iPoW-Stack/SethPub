@@ -1321,31 +1321,8 @@ void ViewBlockChain::AddPoolStatisticTag(uint64_t height, uint64_t timeblock_add
     tx->set_amount(0);
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
     tx->set_nonce(timeblock_addr_nonce);
-    // msg_ptr->address_info = ChainGetPoolAccountInfo(pool_index_);
-    std::string pool_tag_addr = security::Secp256k1::Instance()->UnicastAddress(
-        common::Hash::keccak256(
-            common::kStatisticPoolTagBlockBashAddress + "_" +
-            std::to_string(network::GetLocalConsensusNetworkId()) + "_" +
-            std::to_string(pool_index_)));
-    tx->set_to(pool_tag_addr);
-    msg_ptr->address_info = account_mgr_->GetAccountInfo(pool_tag_addr);
-    if (msg_ptr->address_info == nullptr) {
-        auto addr_info = std::make_shared<address::protobuf::AddressInfo>();
-        addr_info->set_addr(pool_tag_addr);
-        addr_info->set_pool_index(common::kImmutablePoolSize);
-        addr_info->set_sharding_id(network::GetLocalConsensusNetworkId());
-        addr_info->set_nonce(tx->nonce() - 1llu);
-        msg_ptr->address_info = addr_info;
-    }
-
-    if (msg_ptr->address_info->nonce() >= tx->nonce()) {
-        SETH_WARN("statistic tx already exist, hash: %s, nonce: %lu, addr: %s",
-            common::Encode::HexEncode(unique_hash).c_str(),
-            msg_ptr->address_info->nonce(),
-            common::Encode::HexEncode(pool_tag_addr).c_str());
-        return;
-    }
-    
+    msg_ptr->address_info = ChainGetPoolAccountInfo(pool_index_);
+    tx->set_to(msg_ptr->address_info->addr());
     assert(msg_ptr->address_info != nullptr);
     pools_mgr_->AddPoolMessage(msg_ptr);
     SETH_DEBUG("success create kPoolStatisticTag nonce: %lu, pool idx: %u, "

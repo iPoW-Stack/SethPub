@@ -51,8 +51,7 @@ public:
                 common::Encode::HexEncode(block_tx.to()).c_str(), 
                 common::Encode::HexEncode(tx_info->key()).c_str());
             // return consensus::kConsensusError;
-            assert(block_tx.to() == address_info->addr());
-            acc_balance_map[block_tx.to()] = address_info;
+            return consensus::kConsensusError;
         }
 
         std::string val;
