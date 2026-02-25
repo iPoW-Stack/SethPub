@@ -93,7 +93,8 @@ private:
     void CallTimeBlock(
         uint64_t lastest_time_block_tm,
         uint64_t latest_time_block_height,
-        uint64_t vss_random);
+        uint64_t vss_random,
+        uint64_t nonce);
     void CallNewElectBlock(uint32_t sharding_id);
     typedef std::map<uint64_t, std::shared_ptr<BlockTxsItem>, std::greater<uint64_t>> StatisticMap;
     bool HasToTx(uint32_t pool_index, pools::CheckAddrNonceValidFunction tx_valid_func);
@@ -197,6 +198,7 @@ private:
     uint64_t latest_statistic_timeblock_height_ = 0; // memorize the latest timeblock height that has gathered statistic
     std::atomic<bool> destroy_ = false;
     uint64_t step_with_nonce_[128] = { 0llu };
+    std::unordered_map<uint64_t, uint64_t> timeblock_height_with_nonce_;
     DISALLOW_COPY_AND_ASSIGN(BlockManager);
 };
 

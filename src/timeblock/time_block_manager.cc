@@ -124,6 +124,7 @@ pools::TxItemPtr TimeBlockManager::tmblock_tx_ptr(
         timeblock::protobuf::TimeBlock timer_block;
         timer_block.set_timestamp(new_time_block_tm);
         timer_block.set_vss_random(vss_mgr_->GetConsensusFinalRandom());
+        timer_block.set_nonce(tx_info->nonce());
         tx_info->set_value(SerializeDeterministic(timer_block));
         auto account_info = account_mgr_->GetAccountInfo(common::kTimeBlockAddress);
         tx_info->set_to(account_info->addr());

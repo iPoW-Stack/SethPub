@@ -849,6 +849,7 @@ int GenesisBlockInit::GenerateRootSingleBlock(
         tm_block.set_height(tenon_block->height());
         tm_block.set_timestamp(common::TimeUtils::TimestampMs());
         tm_block.set_vss_random(common::Random::RandomUint64());
+        tm_block.set_nonce(timeblock_address_info_->nonce());
         tenon_block->set_version(common::kTransactionVersion);
         view_block_ptr->set_parent_hash(root_pre_vb_hash);
         if (CreateAllQc(

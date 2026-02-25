@@ -423,7 +423,11 @@ void BlockManager::AddNewBlock(
 
     if (block_item->has_timer_block()) {
         auto vss_random = block_item->timer_block().vss_random();
-        CallTimeBlock(block_item->timer_block().timestamp(), block_item->height(), vss_random);
+        CallTimeBlock(
+            block_item->timer_block().timestamp(), 
+            block_item->height(), 
+            vss_random, 
+            block_item->timer_block().nonce());
         SETH_INFO("new time block called height: %lu, tm: %lu", block_item->height(), vss_random);
     }
 
@@ -616,7 +620,7 @@ void BlockManager::LoadLatestBlocks() {
                 new_block_callback_(tmblock_ptr);
             }
 
-            CallTimeBlock(tmblock.timestamp(), tmblock.height(), tmblock.vss_random());
+            CallTimeBlock(tmblock.timestamp(), tmblock.height(), tmblock.vss_random(), tmblock.nonce());
         } else {
             SETH_FATAL("load latest timeblock failed!");
         }
@@ -729,9 +733,11 @@ void BlockManager::CreateStatisticTx() {
         std::string("create_statistic_tx_") + 
         std::to_string(elect_statistic.sharding_id()) + "_" +
         std::to_string(elect_statistic.statistic_height()));
-    SETH_DEBUG("success create statistic message hash: %s, timeblock_height: %lu, statistic: %s", 
+    SETH_DEBUG("success create statistic message hash: %s, timeblock_height: %lu, "
+        "statistic: %s, timeblock nonce: %lu", 
         common::Encode::HexEncode(unique_hash).c_str(), 
-        timeblock_height, ProtobufToJson(elect_statistic).c_str());
+        timeblock_height, ProtobufToJson(elect_statistic).c_str(),
+        timeblock_height_with_nonce_[timeblock_height]);
     if (!unique_hash.empty()) {
         if (elect_statistic.statistic_height() != des_timeblock_height) {
             return;
@@ -1231,11 +1237,13 @@ bool BlockManager::ShouldStopConsensus() {
 void BlockManager::CallTimeBlock(
         uint64_t lastest_time_block_tm,
         uint64_t latest_time_block_height,
-        uint64_t vss_random) {
+        uint64_t vss_random,
+        uint64_t nonce) {
     timeblock_height_pq_.push(latest_time_block_height);
     lastest_time_block_tm = lastest_time_block_tm / 1000llu;  // use sec
-    SETH_DEBUG("new timeblock coming: %lu, %lu, lastest_time_block_tm: %lu",
-        latest_timeblock_height_, latest_time_block_height, lastest_time_block_tm);
+    SETH_DEBUG("new timeblock coming: %lu, %lu, lastest_time_block_tm: %lu, nonce: %lu",
+        latest_timeblock_height_, latest_time_block_height, lastest_time_block_tm, nonce);
+    timeblock_height_with_nonce_[latest_time_block_height] = nonce;
     if (latest_timeblock_height_ >= latest_time_block_height) {
         return;
     }
