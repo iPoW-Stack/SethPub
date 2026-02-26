@@ -69,7 +69,9 @@ public:
                 const address::protobuf::AddressInfo& addr_info, 
                 pools::protobuf::TxMessage& tx_info,
                 uint64_t* now_nonce) -> int {
-            return CheckTransactionValid(parent_hash, view_block_chain, addr_info, tx_info, now_nonce);
+            return CheckTransactionValid(parent_hash, view_block_chain,
+                pools_mgr_,
+                addr_info, tx_info, now_nonce);
         };
 
         txs_pools_->GetTxSyncToLeader(

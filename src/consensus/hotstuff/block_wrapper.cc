@@ -63,6 +63,7 @@ Status BlockWrapper::Wrap(
         return CheckTransactionValid(
             prev_view_block->qc().view_block_hash(), 
             view_block_chain, 
+            pools_mgr_,
             addr_info, 
             tx_info,
             now_nonce);

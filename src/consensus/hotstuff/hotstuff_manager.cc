@@ -359,6 +359,7 @@ void HotstuffManager::HandleTimerMessage(const transport::MessagePtr& msg_ptr) {
                 return CheckTransactionValid(
                     latest_block->qc().view_block_hash(), 
                     pool_hotstuff_[pool_idx]->view_block_chain(), 
+                    pools_mgr_,
                     addr_info, 
                     tx_info,
                     now_nonce);
