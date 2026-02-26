@@ -48,7 +48,9 @@ void TimeBlockManager::CreateTimeBlockTx() {
     }
 
     auto msg_ptr = std::make_shared<transport::TransportMessage>();
-    msg_ptr->address_info = account_mgr_->GetAccountInfo(common::kTimeBlockAddress);
+    msg_ptr->address_info = account_mgr_->pool_base_addrs(
+        pools::protobuf::kConsensusRootTimeBlock, 
+        common::kGlobalPoolIndex);
     assert(msg_ptr->address_info != nullptr);
     pools::protobuf::TxMessage& tx_info = *msg_ptr->header.mutable_tx_proto();
     tx_info.set_step(pools::protobuf::kConsensusRootTimeBlock);
@@ -123,7 +125,9 @@ pools::TxItemPtr TimeBlockManager::tmblock_tx_ptr(
         timeblock::protobuf::TimeBlock timer_block;
         timer_block.set_timestamp(new_time_block_tm);
         timer_block.set_vss_random(vss_mgr_->GetConsensusFinalRandom());
-        auto account_info = account_mgr_->GetAccountInfo(common::kTimeBlockAddress);
+        auto account_info = account_mgr_->GetAccountInfo(
+            pools::protobuf::kConsensusRootTimeBlock, 
+            common::kGlobalPoolIndex);
         timer_block.set_nonce(account_info->nonce() + 1);
         tx_info->set_value(SerializeDeterministic(timer_block));
         tx_info->set_to(account_info->addr());

@@ -757,21 +757,11 @@ void BlockManager::CreateStatisticTx() {
             tx->set_gas_limit(0);
             tx->set_amount(0);
             tx->set_gas_price(common::kBuildinTransactionGasPrice);
-            std::string statistic_addr = security::Secp256k1::Instance()->UnicastAddress(
-                    common::Hash::keccak256(
-                        common::kStatisticBlockBashAddress + std::to_string(elect_statistic.sharding_id())));
             tx->set_nonce(timeblock_height_with_nonce_[elect_statistic.statistic_height()]);
             auto tx_ptr = std::make_shared<BlockTxsItem>();
-            new_msg_ptr->address_info = account_mgr_->GetAccountInfo(statistic_addr);
-            if (new_msg_ptr->address_info == nullptr) {
-                auto addr_info = std::make_shared<address::protobuf::AddressInfo>();
-                addr_info->set_addr(statistic_addr);
-                addr_info->set_pool_index(common::kImmutablePoolSize);
-                addr_info->set_sharding_id(elect_statistic.sharding_id());
-                addr_info->set_nonce(tx->nonce() - 1llu);
-                new_msg_ptr->address_info = addr_info;
-            }
-
+            new_msg_ptr->address_info = account_mgr_->pool_base_addrs(
+                pools::protobuf::kStatistic, 
+                common::kGlobalPoolIndex);
             if (new_msg_ptr->address_info->nonce() >= tx->nonce()) {
                 SETH_WARN("statistic tx already exist, hash: %s, nonce: %lu, addr: %s",
                     common::Encode::HexEncode(unique_hash).c_str(),
