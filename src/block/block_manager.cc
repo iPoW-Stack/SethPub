@@ -757,8 +757,8 @@ void BlockManager::CreateStatisticTx() {
             tx->set_gas_limit(0);
             tx->set_amount(0);
             tx->set_gas_price(common::kBuildinTransactionGasPrice);
-            tx->set_nonce(timeblock_height_with_nonce_[elect_statistic.statistic_height()]);
-            auto tx_ptr = std::make_shared<BlockTxsItem>();
+            tx->set_nonce(timeblock_height_with_nonce_[elect_statistic.statistic_height()] + 1);
+            // auto tx_ptr = std::make_shared<BlockTxsItem>();
             new_msg_ptr->address_info = account_mgr_->pools_address_info(
                 pools::protobuf::kStatistic, 
                 common::kGlobalPoolIndex);
@@ -770,12 +770,12 @@ void BlockManager::CreateStatisticTx() {
                 return;
             }
 
-            tx_ptr->tx_ptr = create_statistic_tx_cb_(new_msg_ptr);
-            tx_ptr->tx_ptr->time_valid += kStatisticValidTimeout;
-            tx_ptr->tx_hash = unique_hash;
-            tx_ptr->timeout = common::TimeUtils::TimestampMs() + kStatisticTimeoutMs;
-            tx_ptr->stop_consensus_timeout = tx_ptr->timeout + kStopConsensusTimeoutMs;
-            // pools_mgr_->AddPoolMessage(msg_ptr);
+            // tx_ptr->tx_ptr = create_statistic_tx_cb_(new_msg_ptr);
+            // tx_ptr->tx_ptr->time_valid += kStatisticValidTimeout;
+            // tx_ptr->tx_hash = unique_hash;
+            // tx_ptr->timeout = common::TimeUtils::TimestampMs() + kStatisticTimeoutMs;
+            // tx_ptr->stop_consensus_timeout = tx_ptr->timeout + kStopConsensusTimeoutMs;
+            pools_mgr_->AddPoolMessage(new_msg_ptr);
             SETH_DEBUG("success add statistic tx: %s, statistic elect height: %lu, "
                 "heights: %s, timeout: %lu, kStatisticTimeoutMs: %lu, now: %lu, "
                 "nonce: %lu, timeblock_height: %lu, statistic_addr: %s",
@@ -786,11 +786,11 @@ void BlockManager::CreateStatisticTx() {
                 tx->nonce(),
                 timeblock_height,
                 common::Encode::HexEncode(new_msg_ptr->address_info->addr()).c_str());
-            shard_statistics_map_[timeblock_height] = tx_ptr;
-            CHECK_MEMORY_SIZE(shard_statistics_map_);
+            // shard_statistics_map_[timeblock_height] = tx_ptr;
+            // CHECK_MEMORY_SIZE(shard_statistics_map_);
 
-            auto tmp_ptr = std::make_shared<StatisticMap>(shard_statistics_map_);
-            shard_statistics_map_ptr_queue_.push(tmp_ptr);
+            // auto tmp_ptr = std::make_shared<StatisticMap>(shard_statistics_map_);
+            // shard_statistics_map_ptr_queue_.push(tmp_ptr);
         }
     }
 }
