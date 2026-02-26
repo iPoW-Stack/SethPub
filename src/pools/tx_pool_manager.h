@@ -220,6 +220,10 @@ public:
         pools_msg_queue_[thread_idx].push(msg_ptr);
     }
 
+    bool TxKeyExists(uint32_t pool_index, const std::string& addr, uint64_t nonce, const std::string& key) {
+        return tx_pool_[pool_index].TxKeyExists(addr, nonce, key);
+    }
+
 private:
     int TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr);
     void DispatchTx(uint32_t pool_index, const transport::MessagePtr& msg_ptr);

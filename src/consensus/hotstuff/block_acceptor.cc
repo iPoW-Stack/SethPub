@@ -403,7 +403,7 @@ Status BlockAcceptor::addTxsToPool(
                         // assert(false); // Avoid assert in multi-threaded environment, use logging if needed
                     }
                 }
-                
+
                 // Write result (Lock-free, exclusive idx access)
                 verify_results[idx] = valid ? 1 : -1;
             }
@@ -433,7 +433,13 @@ Status BlockAcceptor::addTxsToPool(
             const address::protobuf::AddressInfo& addr_info, 
             pools::protobuf::TxMessage& tx_info,
             uint64_t* now_nonce) -> int {
-        return CheckTransactionValid(parent_hash, view_block_chain_, addr_info, tx_info, now_nonce);
+        return CheckTransactionValid(
+            parent_hash, 
+            view_block_chain_, 
+            pools_mgr_, 
+            addr_info, 
+            tx_info, 
+            now_nonce);
     };
 
     for (int i = 0; i < txs.size(); i++) {
@@ -588,17 +594,8 @@ Status BlockAcceptor::addTxsToPool(
             break;
         }
         case pools::protobuf::kStatistic: {
-            if (directly_user_leader_txs) {
-                tx_ptr = std::make_shared<consensus::StatisticTxItem>(
-                    msg_ptr, i, account_mgr_, security_ptr_, address_info);
-            } else {
-                auto tx_item = tx_pools_->GetStatisticTx(pool_idx(), tx->key());
-                if (tx_item != nullptr && !tx_item->txs.empty()) {
-                    tx_ptr = *(tx_item->txs.begin());
-                } else {
-                    SETH_WARN("failed get statistic nonce: %lu, pool: %u", tx->nonce(), pool_idx_);
-                }
-            }
+            tx_ptr = std::make_shared<consensus::StatisticTxItem>(
+                msg_ptr, i, account_mgr_, security_ptr_, address_info);
             break;
         }
         case pools::protobuf::kCross: {

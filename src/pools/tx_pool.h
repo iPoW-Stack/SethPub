@@ -68,6 +68,21 @@ public:
             const uint64_t timestamp);
     void SyncBlock();
     void TxOver(view_block::protobuf::ViewBlockItem& view_block);
+
+    bool TxKeyExists(const std::string& addr, uint64_t nonce, const std::string& key) {
+        auto iter = tx_map_.find(addr);
+        if (iter != tx_map_.end()) {
+            auto nonce_iter = iter->second.find(nonce);
+            if (nonce_iter != iter->second.end()) {
+                if (nonce_iter->second->tx_info->key() == key) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     bool NewTxValid(const std::string& addr, uint64_t nonce) {
         std::shared_ptr<std::unordered_map<std::string, uint64_t>> over_map_ptr;
         while (over_addr_map_queue_.pop(&over_map_ptr) && over_map_ptr != nullptr) {
@@ -187,7 +202,6 @@ private:
     common::LRUMap<std::string, uint64_t> add_addr_nonce_map_{102400};
     std::map<std::string, std::map<uint64_t, TxItemPtr>> tx_map_;
     std::map<std::string, std::map<uint64_t, TxItemPtr>> consensus_tx_map_;
-    std::map<std::string, std::map<uint64_t, TxItemPtr>> system_tx_map_;
     uint32_t consensus_tx_map_count_ = 0;
 
 // TODO: just test

@@ -180,11 +180,6 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
         auto addr = IsTxUseFromAddress(tx_info.step()) ? 
             tx_info.from() : 
             tx_info.to();
-        if (!IsUserTransaction(tx_info.step()) && 
-                !tx_info.unique_hash().empty()) {
-            addr = std::to_string(tx_info.step());
-        }
-
         if (tx_info.step() == pools::protobuf::kContractExcute) {
             addr = tx_info.to() + tx_info.from();
         }
@@ -260,7 +255,6 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
             }
         };
         
-        remove_tx_func(system_tx_map_);
         remove_tx_func(tx_map_);
         remove_tx_func(consensus_tx_map_);
         SETH_DEBUG("trace tx pool: %d, step: %d, to: %s, unique hash: %s, over tx addr: %s, nonce: %lu", 
@@ -313,7 +307,7 @@ void TxPool::GetTxSyncToLeader(
                 continue;
             }
 
-            system_tx_map_[std::to_string(tx_ptr->tx_info->step())][tx_ptr->tx_info->nonce()] = tx_ptr;
+            tx_map_[tx_ptr->tx_info->to()][tx_ptr->tx_info->nonce()] = tx_ptr;
             SETH_DEBUG("pool: %u, success add system tx nonce addr: %s, "
                 "addr nonce: %lu, tx nonce: %lu, unique hash: %s, step: %u",
                 pool_index_,
@@ -460,7 +454,7 @@ void TxPool::TempGetTxIdempotently(
                 continue;
             }
 
-            system_tx_map_[std::to_string(tx_ptr->tx_info->step())][tx_ptr->tx_info->nonce()] = tx_ptr;
+            tx_map_[tx_ptr->tx_info->to()][tx_ptr->tx_info->nonce()] = tx_ptr;
             SETH_DEBUG("pool: %d, success add system tx nonce addr: %s, "
                 "addr nonce: %lu, tx nonce: %lu, unique hash: %s, step: %u",
                 pool_index_,
@@ -691,12 +685,11 @@ void TxPool::TempGetTxIdempotently(
         }
     };
 
-    get_tx_func(system_tx_map_);
     get_tx_func(consensus_tx_map_);
     SETH_DEBUG("pool: %d, now get tx by leader all: %u, added tx size: %u, "
-        "system_tx_map_ size: %u, get: %u, count: %u", 
+        "get: %u, count: %u", 
         pool_index_, all_tx_size(), added_txs_.size(),
-        system_tx_map_.size(), res_map.size(), count);
+        res_map.size(), count);
 }
 
 void TxPool::InitLatestInfo() {

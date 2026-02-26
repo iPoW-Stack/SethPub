@@ -3,6 +3,7 @@
 #include <consensus/hotstuff/types.h>
 #include "consensus/hotstuff/view_block_chain.h"
 #include "pools/tx_utils.h"
+#include "pools/tx_pool_manager.h
 #include "protos/prefix_db.h"
 #include "zjcvm/zjc_host.h"
 
@@ -43,6 +44,7 @@ std::string GetBlockHash(const view_block::protobuf::ViewBlockItem &view_block) 
 int CheckTransactionValid(
         const std::string& parent_hash, 
         std::shared_ptr<ViewBlockChain> view_block_chain,
+        std::shared_ptr<pools::TxPoolManager> pool_mgr,
         const address::protobuf::AddressInfo& addr_info, 
         pools::protobuf::TxMessage& tx_info,
         uint64_t* now_nonce) {
@@ -54,6 +56,26 @@ int CheckTransactionValid(
             now_nonce);
     }
     
+    if (tx_info.step() == pools::protobuf::kPoolStatisticTag ||
+            tx_info.step() == pools::protobuf::kStatistic) {
+        auto check_nonce = view_block_chain->CheckTxNonceValid(
+            addr_info.addr(), 
+            tx_info.nonce(), 
+            parent_hash,
+            now_nonce);
+        if (check_nonce != 0) {
+            return check_nonce;
+        }
+
+        if (!pool_mgr->TxKeyExists(
+                addr_info.pool_index(), 
+                addr_info.addr(), 
+                tx_info.nonce(), 
+                tx_info.key())) {
+            return -1;
+        }
+    }
+
     zjcvm::ZjchainHost zjc_host;
     zjc_host.parent_hash_ = parent_hash;
     zjc_host.view_block_chain_ = view_block_chain;
