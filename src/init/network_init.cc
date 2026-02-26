@@ -1178,7 +1178,6 @@ void NetworkInit::HandleNewBlock() {
     }
 }
 
-// TODO: check thread thafe
 bool NetworkInit::DbNewBlockCallback(
         const std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block) {
     auto* block = &view_block->block_info();

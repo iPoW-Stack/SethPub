@@ -775,56 +775,6 @@ int GenesisBlockInit::GenerateRootSingleBlock(
         auto tx_list = tenon_block->mutable_tx_list();
         auto tx_info = tx_list->Add();
         tx_info->set_from("");
-        auto& account_info = pool_address_info_[network::kRootCongressNetworkId][pools::protobuf::kConsensusCreateGenesisAcount][common::kGlobalPoolIndex];
-        tx_info->set_to(account_info->addr());
-        tx_info->set_amount(0);
-        tx_info->set_balance(0);
-        tx_info->set_gas_limit(0);
-        tx_info->set_nonce(account_info->nonce());
-        std::map<std::string, std::shared_ptr<address::protobuf::AddressInfo>> address_info_map;
-        address_info_map[account_info->addr()] = CreateAddress(
-            "", tx_info->balance(), network::kConsensusShardBeginNetworkId, 
-            account_info->pool_index(), 
-            account_info->addr(), 0, tx_info->nonce());
-        account_info->set_nonce(account_info->nonce() + 1);
-        account_info->set_tx_index(account_info->nonce() + 1);
-        tx_info->set_step(pools::protobuf::kConsensusCreateGenesisAcount);
-        tenon_block->set_version(common::kTransactionVersion);
-        tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
-        tenon_block->set_height(root_pool_height[common::kImmutablePoolSize]++);
-        view_block_ptr->set_parent_hash(root_pre_vb_hash);
-        if (CreateAllQc(
-                common::GlobalInfo::Instance()->network_id(),
-                common::kImmutablePoolSize,
-                root_pool_view[common::kImmutablePoolSize], 
-                genesis_nodes, 
-                view_block_ptr) != kInitSuccess) {
-            assert(false);
-            return kInitError;
-        }
-        
-        root_pool_view[common::kImmutablePoolSize]++;
-        fputs((common::Encode::HexEncode(view_block_ptr->SerializeAsString()) + "\n").c_str(),
-            root_gens_init_block_file);
-        auto db_batch_ptr = std::make_shared<db::DbWriteBatch>();
-        auto& db_batch = *db_batch_ptr;
-        auto tenon_block_ptr = std::make_shared<block::protobuf::Block>(*tenon_block);
-        AddBlockItemToCache(view_block_ptr, address_info_map, db_batch);
-        std::string pool_hash;
-        uint64_t pool_height = 0;
-        uint64_t tm_height;
-        uint64_t tm_with_block_height;
-        root_pre_hash = hotstuff::GetQCMsgHash(view_block_ptr->qc());
-        root_pre_vb_hash = view_block_ptr->qc().view_block_hash();
-        db_->Put(db_batch);
-    }
-
-    {
-        auto view_block_ptr = std::make_shared<view_block::protobuf::ViewBlockItem>();
-        auto* tenon_block = view_block_ptr->mutable_block_info();
-        auto tx_list = tenon_block->mutable_tx_list();
-        auto tx_info = tx_list->Add();
-        tx_info->set_from("");
         auto& account_info = pool_address_info_[network::kRootCongressNetworkId][pools::protobuf::kConsensusRootTimeBlock][common::kGlobalPoolIndex];
         tx_info->set_to(account_info->addr());
         tx_info->set_nonce(account_info->nonce());
@@ -942,22 +892,9 @@ int GenesisBlockInit::CreateRootGenesisBlocks(
     FILE* root_gens_init_block_file = fopen("./root_blocks", "w");
     uint64_t pool_with_heights[common::kInvalidPoolIndex] = { 0llu };
     for (uint32_t i = 0; i < common::kImmutablePoolSize; ++i) {
-        std::map<std::string, std::shared_ptr<address::protobuf::AddressInfo>> address_info_map;
-        std::string address = common::Encode::HexDecode("0000000000000000000000000000000000000000");
-        while (true) {
-            auto private_key = common::Random::RandomString(32);
-            security::Ecdsa ecdsa;
-            ecdsa.SetPrivateKey(private_key);
-            address = ecdsa.GetAddress();
-            if (common::GetAddressPoolIndex(address) == i) {
-                break;
-            }
-        }
-
         auto view_block_ptr = std::make_shared<view_block::protobuf::ViewBlockItem>();
         auto* tenon_block = view_block_ptr->mutable_block_info();
         auto tx_list = tenon_block->mutable_tx_list();
-
         for (uint32_t step = pools::protobuf::kNormalFrom; step <= pools::protobuf::kPoolStatisticTag; ++step) {
             auto tx_info = tx_list->Add();
             auto pool_address_info = pool_address_info_[network::kRootCongressNetworkId][step][i];
