@@ -81,9 +81,9 @@ public:
         create_to_tx_cb_ = func;
     }
 
-    void SetCreateStatisticTxFunction(pools::CreateConsensusItemFunction func) {
-        create_statistic_tx_cb_ = func;
-    }
+    // void SetCreateStatisticTxFunction(pools::CreateConsensusItemFunction func) {
+    //     create_statistic_tx_cb_ = func;
+    // }
 
     void SetCreateElectTxFunction(pools::CreateConsensusItemFunction func) {
         create_elect_tx_cb_ = func;
@@ -138,7 +138,7 @@ private:
         if (latest_statistic_timeblock_height_ == common::kInvalidUint64) {
             return false;
         }
-        
+
         return latest_statistic_timeblock_height_ >= timeblock_height;
     }
 
@@ -168,7 +168,7 @@ private:
     std::atomic<uint32_t> max_consensus_sharding_id_ = 3;
     std::atomic<std::shared_ptr<BlockTxsItem>> shard_elect_tx_[network::kConsensusShardEndNetworkId];
     pools::CreateConsensusItemFunction create_to_tx_cb_ = nullptr;
-    pools::CreateConsensusItemFunction create_statistic_tx_cb_ = nullptr;
+    // pools::CreateConsensusItemFunction create_statistic_tx_cb_ = nullptr;
     pools::CreateConsensusItemFunction create_elect_tx_cb_ = nullptr;
     uint32_t prev_pool_index_ = network::kRootCongressNetworkId;
     transport::MultiThreadHandler& net_handler_;

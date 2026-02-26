@@ -702,10 +702,10 @@ int BlockManager::GetBlockWithHeight(
 }
 
 void BlockManager::CreateStatisticTx() {
-    if (create_statistic_tx_cb_ == nullptr) {
-        SETH_DEBUG("create_statistic_tx_cb_ == nullptr");
-        return;
-    }
+    // if (create_statistic_tx_cb_ == nullptr) {
+    //     SETH_DEBUG("create_statistic_tx_cb_ == nullptr");
+    //     return;
+    // }
 
     pools::protobuf::ElectStatistic elect_statistic;
     uint64_t timeblock_height = timeblock_height_pq_.top();
