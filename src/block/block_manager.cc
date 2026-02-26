@@ -623,6 +623,8 @@ void BlockManager::LoadLatestBlocks() {
         } else {
             SETH_FATAL("load latest timeblock failed!");
         }
+    } else {
+        assert(false);
     }
 
     for (uint32_t load_idx = 0; load_idx < 2; ++load_idx) {

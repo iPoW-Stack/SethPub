@@ -58,6 +58,11 @@ int GenesisBlockInit::CreateGenesisBlocks(
     int res = kInitSuccess;    
     if (network_id == network::kRootCongressNetworkId) {
         CreatePoolsAddressInfo(network::kRootCongressNetworkId);
+        for (auto iter = cons_genesis_nodes_of_shards.begin();
+                iter != cons_genesis_nodes_of_shards.end(); ++iter) {
+            CreatePoolsAddressInfo(iter->first);
+        }
+        
         std::vector<std::string> prikeys;
         CreateNodePrivateInfo(network::kRootCongressNetworkId, 1llu, root_genesis_nodes);
         for (auto iter = cons_genesis_nodes_of_shards.begin();
@@ -1594,7 +1599,7 @@ int GenesisBlockInit::CreateShardGenesisBlocks(
             if (step == pools::protobuf::kConsensusRootTimeBlock || step == pools::protobuf::kConsensusRootElectShard) {
                 continue;
             }
-            
+
             auto tx_info = tx_list->Add();
             auto pool_address_info = pool_address_info_[net_id][step][i];
             tx_info->set_to(pool_address_info->addr());
