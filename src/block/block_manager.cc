@@ -182,7 +182,7 @@ void BlockManager::HandleStatisticTx(const view_block::protobuf::ViewBlockItem& 
     auto& elect_statistic = view_block.block_info().elect_statistic();
     if (elect_statistic.sharding_id() == net_id) {
         while (!timeblock_height_pq_.empty() && 
-                timeblock_height_pq_.top() < elect_statistic.height_info().tm_height()) {
+                timeblock_height_pq_.top() <= elect_statistic.height_info().tm_height()) {
             SETH_DEBUG("success pop tm height: %lu, statistic tm height: %lu, "
                 "statistic height: %lu", timeblock_height_pq_.top(), elect_statistic.height_info().tm_height(),
                 elect_statistic.statistic_height());
