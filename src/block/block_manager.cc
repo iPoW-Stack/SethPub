@@ -784,11 +784,6 @@ void BlockManager::HandleStatisticBlock(
         const view_block::protobuf::ViewBlockItem& view_block,
         const pools::protobuf::ElectStatistic& elect_statistic) {
     auto& block = view_block.block_info();
-    if (create_elect_tx_cb_ == nullptr) {
-        SETH_DEBUG("create_elect_tx_cb_ == nullptr");
-        return;
-    }
-
     if (elect_statistic.statistics_size() <= 0) {
         SETH_DEBUG("elect_statistic.statistics_size() <= 0");
         return;
@@ -833,18 +828,11 @@ void BlockManager::HandleStatisticBlock(
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
     tx->set_nonce(elect_statistic.nonce());
     pools_mgr_->AddPoolMessage(new_msg_ptr);
-
-    // auto shard_elect_tx = std::make_shared<BlockTxsItem>();
-    // shard_elect_tx->tx_ptr = create_elect_tx_cb_(new_msg_ptr);
-    // shard_elect_tx->tx_ptr->time_valid += kElectValidTimeout;
-    // shard_elect_tx->timeout = common::TimeUtils::TimestampMs() + kElectTimeout;
-    // shard_elect_tx->stop_consensus_timeout = shard_elect_tx->timeout + kStopConsensusTimeoutMs;
-    // shard_elect_tx_[view_block.qc().network_id()].store(shard_elect_tx);
     SETH_DEBUG("success add elect tx: %u, %lu, nonce: %lu, tx key: %s, "
         "statistic elect height: %lu, unique hash: %s",
         view_block.qc().network_id(), block.timeblock_height(),
         tx->nonce(),
-        common::Encode::HexEncode(shard_elect_tx->tx_ptr->tx_key).c_str(),
+        common::Encode::HexEncode(tx->key()).c_str(),
         0,
         common::Encode::HexEncode(unique_hash).c_str());
 }
@@ -1008,75 +996,6 @@ bool BlockManager::HasToTx(uint32_t pool_index, pools::CheckAddrNonceValidFuncti
     }
 
     return true;
-}
-
-bool BlockManager::HasElectTx(uint32_t pool_index, pools::CheckAddrNonceValidFunction tx_valid_func) {
-    for (uint32_t i = network::kRootCongressNetworkId; i <= max_consensus_sharding_id_; ++i) {
-        if (i % common::kImmutablePoolSize != pool_index) {
-            continue;
-        }
-
-        auto shard_elect_tx = shard_elect_tx_[i].load();
-        if (shard_elect_tx == nullptr) {
-            continue;
-        }
-
-        uint64_t now_nonce = 0ll;
-        if (tx_valid_func(
-                *shard_elect_tx->tx_ptr->address_info, 
-                *shard_elect_tx->tx_ptr->tx_info,
-                &now_nonce) != 0) {
-            return false;
-        }
-        
-        SETH_DEBUG("has elect %u, tx nonce: %lu", 
-            pool_index, 
-            shard_elect_tx->tx_ptr->tx_info->nonce());
-        return true;
-    }
-
-    return false;
-}
-
-pools::TxItemPtr BlockManager::GetElectTx(uint32_t pool_index, const std::string& tx_hash) {
-    for (uint32_t i = network::kRootCongressNetworkId; i <= max_consensus_sharding_id_; ++i) {
-        if (i % common::kImmutablePoolSize != pool_index) {
-            continue;
-        }
-
-        auto shard_elect_tx = shard_elect_tx_[i].load();
-        if (shard_elect_tx == nullptr) {
-            SETH_DEBUG("0 failed get elect tx pool index: %u, tx hash: %s",
-                pool_index, common::Encode::HexEncode(tx_hash).c_str());
-            continue;
-        }
-
-        if (!tx_hash.empty()) {
-            if (shard_elect_tx->tx_ptr->tx_info->key() == tx_hash) {
-                SETH_DEBUG("0 success get elect tx pool index: %u, tx hash: %s",
-                    pool_index, common::Encode::HexEncode(tx_hash).c_str());
-                return shard_elect_tx->tx_ptr;
-            }
-
-            SETH_DEBUG("1 failed get elect tx pool index: %u, tx hash: %s",
-                pool_index, common::Encode::HexEncode(tx_hash).c_str());
-            continue;
-        }
-
-        auto now_tm = common::TimeUtils::TimestampUs();
-        if (shard_elect_tx->tx_ptr->time_valid > now_tm) {
-            SETH_DEBUG("2 failed get elect tx pool index: %u, tx hash: %s",
-                pool_index, common::Encode::HexEncode(tx_hash).c_str());
-            continue;
-        }
-
-        SETH_DEBUG("1 success get elect tx pool index: %u, unique hash: %s",
-            pool_index, 
-            common::Encode::HexEncode(shard_elect_tx->tx_ptr->tx_info->key()).c_str());
-        return shard_elect_tx->tx_ptr;
-    }
-
-    return nullptr;
 }
 
 bool BlockManager::ShouldStopConsensus() {

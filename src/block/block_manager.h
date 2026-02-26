@@ -50,7 +50,6 @@ public:
         const transport::MessagePtr& msg_ptr,
         uint32_t pool_index, 
         pools::CheckAddrNonceValidFunction tx_valid_func);
-    pools::TxItemPtr GetElectTx(uint32_t pool_index, const std::string& tx_hash);
     pools::TxItemPtr GetToTx(uint32_t pool_index, const std::string& tx_hash);
     int Init(
         std::shared_ptr<AccountManager>& account_mgr,
@@ -80,14 +79,6 @@ public:
         create_to_tx_cb_ = func;
     }
 
-    // void SetCreateStatisticTxFunction(pools::CreateConsensusItemFunction func) {
-    //     create_statistic_tx_cb_ = func;
-    // }
-
-    void SetCreateElectTxFunction(pools::CreateConsensusItemFunction func) {
-        create_elect_tx_cb_ = func;
-    }
-
 private:
     void CallTimeBlock(
         uint64_t lastest_time_block_tm,
@@ -97,7 +88,6 @@ private:
     void CallNewElectBlock(uint32_t sharding_id);
     typedef std::map<uint64_t, std::shared_ptr<BlockTxsItem>, std::greater<uint64_t>> StatisticMap;
     bool HasToTx(uint32_t pool_index, pools::CheckAddrNonceValidFunction tx_valid_func);
-    bool HasElectTx(uint32_t pool_index, pools::CheckAddrNonceValidFunction tx_valid_func);
     void HandleAllNewBlock();
     void HandleMessage(const transport::MessagePtr& msg_ptr);
     pools::TxItemPtr HandleToTxsMessage(
@@ -164,10 +154,7 @@ private:
     uint64_t prev_create_to_tx_ms_ = 0;
     uint64_t prev_retry_create_statistic_tx_ms_ = 0;
     std::atomic<uint32_t> max_consensus_sharding_id_ = 3;
-    std::atomic<std::shared_ptr<BlockTxsItem>> shard_elect_tx_[network::kConsensusShardEndNetworkId];
     pools::CreateConsensusItemFunction create_to_tx_cb_ = nullptr;
-    // pools::CreateConsensusItemFunction create_statistic_tx_cb_ = nullptr;
-    pools::CreateConsensusItemFunction create_elect_tx_cb_ = nullptr;
     uint32_t prev_pool_index_ = network::kRootCongressNetworkId;
     transport::MultiThreadHandler& net_handler_;
     std::shared_ptr<ck::ClickHouseClient> ck_client_ = nullptr;
