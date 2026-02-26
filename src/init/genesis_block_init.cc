@@ -610,7 +610,7 @@ int GenesisBlockInit::CreateElectBlock(
         return kInitSuccess;
     }
     
-    auto& account_info = pool_address_info_[shard_netid][pools::protobuf::kConsensusRootElectShard][common::kGlobalPoolIndex];
+    auto& account_info = pool_address_info_[network::kRootCongressNetworkId][pools::protobuf::kConsensusRootElectShard][shard_netid];
     auto view_block_ptr = std::make_shared<view_block::protobuf::ViewBlockItem>();
     auto* tenon_block = view_block_ptr->mutable_block_info();
     auto tx_list = tenon_block->mutable_tx_list();
