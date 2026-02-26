@@ -762,7 +762,7 @@ void BlockManager::CreateStatisticTx() {
             tx->set_gas_limit(0);
             tx->set_amount(0);
             tx->set_gas_price(common::kBuildinTransactionGasPrice);
-            tx->set_nonce(timeblock_height_with_nonce_[elect_statistic.statistic_height()] + 1);
+            tx->set_nonce(timeblock_height_with_nonce_[elect_statistic.statistic_height()]);
             // auto tx_ptr = std::make_shared<BlockTxsItem>();
             new_msg_ptr->address_info = account_mgr_->pools_address_info(
                 pools::protobuf::kStatistic, 
