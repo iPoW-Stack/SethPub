@@ -784,11 +784,6 @@ void BlockManager::HandleStatisticBlock(
         const view_block::protobuf::ViewBlockItem& view_block,
         const pools::protobuf::ElectStatistic& elect_statistic) {
     auto& block = view_block.block_info();
-    // if (elect_statistic.statistics_size() <= 0) {
-    //     SETH_DEBUG("elect_statistic.statistics_size() <= 0");
-    //     return;
-    // }
-
     if (common::GlobalInfo::Instance()->network_id() != network::kRootCongressNetworkId) {
         return;
     }

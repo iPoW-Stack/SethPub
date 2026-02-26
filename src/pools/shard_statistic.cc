@@ -973,14 +973,14 @@ void ShardStatistic::setElectStatistics(
         seth::common::MembersPtr &now_elect_members,
         seth::pools::protobuf::ElectStatistic &elect_statistic,
         bool is_root) {
-    // auto now_elect_height = elect_mgr_->latest_height(common::GlobalInfo::Instance()->network_id());
-    // if (height_node_collect_info_map.empty() || height_node_collect_info_map.rbegin()->first < now_elect_height) {
-    //     height_node_collect_info_map[now_elect_height] = std::map<std::string, StatisticMemberInfoItem>();
-    //     auto &node_info_map = height_node_collect_info_map[now_elect_height];
-    //     for (uint32_t i = 0; i < now_elect_members->size(); ++i) {
-    //         node_info_map[(*now_elect_members)[i]->id] = StatisticMemberInfoItem();
-    //     }
-    // }
+    auto now_elect_height = elect_mgr_->latest_height(common::GlobalInfo::Instance()->network_id());
+    if (height_node_collect_info_map.empty()) {
+        height_node_collect_info_map[now_elect_height] = std::map<std::string, StatisticMemberInfoItem>();
+        auto &node_info_map = height_node_collect_info_map[now_elect_height];
+        for (uint32_t i = 0; i < now_elect_members->size(); ++i) {
+            node_info_map[(*now_elect_members)[i]->id] = StatisticMemberInfoItem();
+        }
+    }
 
     for (auto hiter = height_node_collect_info_map.begin();
             hiter != height_node_collect_info_map.end(); ++hiter) {
