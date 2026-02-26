@@ -922,7 +922,7 @@ int GenesisBlockInit::CreateRootGenesisBlocks(
                 "", 0, network::kConsensusShardBeginNetworkId, i, 
                 pool_address_info->addr(), 0, tx_info->nonce());
 
-            if (i == common::kImmutablePoolSize) {
+            if (i == common::kImmutablePoolSize - 1) {
                 auto tx_info = tx_list->Add();
                 auto pool_address_info = pool_address_info_[network::kRootCongressNetworkId][step][i + 1];
                 tx_info->set_to(pool_address_info->addr());
