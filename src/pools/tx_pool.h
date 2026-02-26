@@ -74,10 +74,35 @@ public:
         if (iter != tx_map_.end()) {
             auto nonce_iter = iter->second.find(nonce);
             if (nonce_iter != iter->second.end()) {
+                SETH_DEBUG("pool: %d, check tx key exists addr: %s, nonce: %lu, key: %s, exist key: %s", 
+                    pool_index_,
+                    common::Encode::HexEncode(addr).c_str(),
+                    nonce,
+                    common::Encode::HexEncode(key).c_str(),
+                    common::Encode::HexEncode(nonce_iter->second->tx_info->key()).c_str());
                 if (nonce_iter->second->tx_info->key() == key) {
                     return true;
+                } else {
+                    SETH_DEBUG("pool: %d, check tx key not exist addr: %s, nonce: %lu, key: %s, exist key: %s", 
+                        pool_index_,
+                        common::Encode::HexEncode(addr).c_str(),
+                        nonce,
+                        common::Encode::HexEncode(key).c_str(),
+                        common::Encode::HexEncode(nonce_iter->second->tx_info->key()).c_str());
                 }
+            } else {
+                SETH_DEBUG("pool: %d, check tx key not exist addr: %s, nonce: %lu, key: %s", 
+                    pool_index_,
+                    common::Encode::HexEncode(addr).c_str(),
+                    nonce,
+                    common::Encode::HexEncode(key).c_str());
             }
+        } else {
+            SETH_DEBUG("pool: %d, check tx key not exist addr: %s, nonce: %lu, key: %s", 
+                    pool_index_,
+                    common::Encode::HexEncode(addr).c_str(),
+                    nonce,
+                    common::Encode::HexEncode(key).c_str());
         }
 
         return false;

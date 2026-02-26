@@ -554,13 +554,14 @@ void TxPool::TempGetTxIdempotently(
                         &now_nonce);
                     SETH_DEBUG("begin nonce, trace tx pool: %d, tx_key invalid addr: %s, "
                         "nonce: %lu, unique hash: %s, "
-                        "now_nonce: %u, tx_ptr->tx_info->nonce() + iter->second.size(): %u", 
+                        "now_nonce: %u, tx_ptr->tx_info->nonce() + iter->second.size(): %u, res: %d", 
                         pool_index_,
                         common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
                         tx_ptr->tx_info->nonce(),
                         common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(),
                         now_nonce,
-                        (tx_ptr->tx_info->nonce() + iter->second.size()));
+                        (tx_ptr->tx_info->nonce() + iter->second.size()),
+                        res);
                     if (res != 0) {
                         if (!IsUserTransaction(tx_ptr->tx_info->step())) {
                             if (nonce_iter == iter->second.end()) {

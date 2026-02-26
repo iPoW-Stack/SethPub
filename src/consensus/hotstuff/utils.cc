@@ -72,6 +72,10 @@ int CheckTransactionValid(
                 addr_info.addr(), 
                 tx_info.nonce(), 
                 tx_info.key())) {
+            SETH_DEBUG("pool statistic tag or statistic tx unique hash not exists to: %s, unique hash: %s, step: %d",
+                common::Encode::HexEncode(addr_info.addr()).c_str(),
+                common::Encode::HexEncode(tx_info.key()).c_str(),
+                (int32_t)tx_info.step());
             return -1;
         }
     }
