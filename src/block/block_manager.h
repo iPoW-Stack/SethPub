@@ -135,6 +135,10 @@ private:
         const pools::protobuf::ToTxMessageItem& to_tx);
 
     inline bool IsTimeblockHeightStatisticDone(uint64_t timeblock_height) {
+        if (latest_statistic_timeblock_height_ == common::kInvalidUint64) {
+            return false;
+        }
+        
         return latest_statistic_timeblock_height_ >= timeblock_height;
     }
 
@@ -195,7 +199,7 @@ private:
     std::shared_ptr<std::thread> handle_consensus_block_thread_;
     std::mutex wait_mutex_;
     std::condition_variable wait_con_;
-    uint64_t latest_statistic_timeblock_height_ = 0; // memorize the latest timeblock height that has gathered statistic
+    uint64_t latest_statistic_timeblock_height_ = common::kInvalidUint64; // memorize the latest timeblock height that has gathered statistic
     std::atomic<bool> destroy_ = false;
     uint64_t step_with_nonce_[128] = { 0llu };
     std::unordered_map<uint64_t, uint64_t> timeblock_height_with_nonce_;
