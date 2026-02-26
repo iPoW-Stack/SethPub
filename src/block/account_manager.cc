@@ -70,8 +70,10 @@ int AccountManager::Init(
             &tmp_step, 
             sizeof(tmp_step));
         pool_base_addrs_[step][common::kGlobalPoolIndex] = immutable_pool_addr;
-        SETH_DEBUG("init pool immutable index net: %u, base address: %s", 
-            network_id, common::Encode::HexEncode(immutable_pool_addr).c_str());
+        SETH_DEBUG("init pool immutable index net: %u, init pool index: %u, base address: %s", 
+            network_id, 
+            common::kGlobalPoolIndex, 
+            common::Encode::HexEncode(immutable_pool_addr).c_str());
     }
 
     return kBlockSuccess;

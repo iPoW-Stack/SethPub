@@ -62,7 +62,7 @@ int GenesisBlockInit::CreateGenesisBlocks(
                 iter != cons_genesis_nodes_of_shards.end(); ++iter) {
             CreatePoolsAddressInfo(iter->first);
         }
-        
+
         std::vector<std::string> prikeys;
         CreateNodePrivateInfo(network::kRootCongressNetworkId, 1llu, root_genesis_nodes);
         for (auto iter = cons_genesis_nodes_of_shards.begin();
@@ -129,8 +129,6 @@ void GenesisBlockInit::CreatePoolsAddressInfo(uint16_t network_id) {
                 hash.size() - common::kUnicastAddressLength, 
                 common::kUnicastAddressLength);
             auto pool_idx = common::GetAddressPoolIndex(addr);
-            SETH_DEBUG("now check network_id: %u, init pool index: %u, base address: %s", 
-                network_id, pool_idx, common::Encode::HexEncode(addr).c_str());
             if (pool_idx == common::kGlobalPoolIndex) {
                 continue;
             }
@@ -163,8 +161,10 @@ void GenesisBlockInit::CreatePoolsAddressInfo(uint16_t network_id) {
             sizeof(tmp_step));
         pool_address_info_[network_id][step][common::kGlobalPoolIndex] = CreateAddress(
             "", 0, network_id, common::kGlobalPoolIndex, immutable_pool_addr, 0, 0);;
-        SETH_DEBUG("init pool immutable index net: %u, base address: %s", 
-            network_id, common::Encode::HexEncode(immutable_pool_addr).c_str());
+        SETH_DEBUG("init pool immutable index net: %u, init pool index: %u, base address: %s", 
+            network_id, 
+            common::kGlobalPoolIndex, 
+            common::Encode::HexEncode(immutable_pool_addr).c_str());
     }
 }
 

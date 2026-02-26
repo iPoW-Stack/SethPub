@@ -1318,8 +1318,16 @@ void ViewBlockChain::AddPoolStatisticTag(uint64_t height, uint64_t timeblock_add
     tx->set_nonce(timeblock_addr_nonce);
     msg_ptr->address_info = account_mgr_->pools_address_info(
         pools::protobuf::kPoolStatisticTag, pool_index_);
-    tx->set_to(msg_ptr->address_info->addr());
+    SETH_DEBUG("check create kPoolStatisticTag nonce: %lu, pool idx: %u, "
+        "pool addr: %s, addr get pool: %u, height: %lu, unique_hash: %s",
+        tx->nonce(), 
+        pool_index_,
+        common::Encode::HexEncode(account_mgr_->pool_base_addrs(pools::protobuf::kPoolStatisticTag, pool_index_)).c_str(),
+        common::GetAddressPoolIndex(account_mgr_->pool_base_addrs(pools::protobuf::kPoolStatisticTag, pool_index_)),
+        height,
+        common::Encode::HexEncode(unique_hash).c_str());
     assert(msg_ptr->address_info != nullptr);
+    tx->set_to(msg_ptr->address_info->addr());
     pools_mgr_->AddPoolMessage(msg_ptr);
     SETH_DEBUG("success create kPoolStatisticTag nonce: %lu, pool idx: %u, "
         "pool addr: %s, addr get pool: %u, height: %lu, unique_hash: %s",
