@@ -1216,7 +1216,6 @@ Status Hotstuff::HandleProposeMsgStep_Vote(std::shared_ptr<ProposeMsgWrapper>& p
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
-
     // NOTICE: pipeline 重试时，protobuf 结构体被析构，因此 pro_msg_wrap->header.hash64() 是 0
     SETH_DEBUG("pacemaker pool: %d, highQC: %lu, highTC: %lu, chainSize: %lu, "
         "curView: %lu, vblock: %lu, txs: %lu, hash64: %lu, propose_debug: %s",

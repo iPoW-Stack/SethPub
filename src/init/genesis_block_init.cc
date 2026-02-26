@@ -124,6 +124,12 @@ void GenesisBlockInit::CreatePoolsAddressInfo(uint16_t network_id) {
                 hash.size() - common::kUnicastAddressLength, 
                 common::kUnicastAddressLength);
             auto pool_idx = common::GetAddressPoolIndex(addr);
+            SETH_DEBUG("now check network_id: %u, init pool index: %u, base address: %s", 
+                network_id, pool_idx, common::Encode::HexEncode(addr).c_str());
+            if (pool_idx == common::kGlobalPoolIndex) {
+                continue;
+            }
+
             if (pool_idx_set.size() >= common::kImmutablePoolSize) {
                 break;
             }
@@ -154,7 +160,6 @@ void GenesisBlockInit::CreatePoolsAddressInfo(uint16_t network_id) {
             "", 0, network_id, common::kGlobalPoolIndex, immutable_pool_addr, 0, 0);;
         SETH_DEBUG("init pool immutable index net: %u, base address: %s", 
             network_id, common::Encode::HexEncode(immutable_pool_addr).c_str());
-
     }
 }
 

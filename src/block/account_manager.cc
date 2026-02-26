@@ -40,6 +40,10 @@ int AccountManager::Init(
                 hash.size() - common::kUnicastAddressLength, 
                 common::kUnicastAddressLength);
             auto pool_idx = common::GetAddressPoolIndex(addr);
+            if (pool_idx == common::kGlobalPoolIndex) {
+                continue;
+            }
+
             if (pool_idx_set.size() >= common::kImmutablePoolSize) {
                 break;
             }
