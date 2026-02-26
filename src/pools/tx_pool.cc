@@ -685,6 +685,7 @@ void TxPool::TempGetTxIdempotently(
         }
     };
 
+    get_tx_func(tx_map_);
     get_tx_func(consensus_tx_map_);
     SETH_DEBUG("pool: %d, now get tx by leader all: %u, added tx size: %u, "
         "get: %u, count: %u", 
