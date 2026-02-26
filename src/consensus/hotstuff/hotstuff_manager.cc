@@ -101,7 +101,7 @@ int HotstuffManager::Init(
         acceptor->Init(
             pool_idx, security_ptr, account_mgr, elect_info_, vss_mgr,
             contract_mgr, db, pool_mgr, block_mgr,
-            tm_block_mgr, elect_mgr, chain);
+            tm_block_mgr, elect_mgr, chain, bls_mgr_);
         auto wrapper = std::make_shared<BlockWrapper>(
                 pool_idx, pool_mgr, tm_block_mgr, block_mgr, elect_info_);
         pool_hotstuff_[pool_idx] = std::make_shared<Hotstuff>(

@@ -47,7 +47,8 @@ void BlockAcceptor::Init(
         std::shared_ptr<block::BlockManager>& block_mgr,
         std::shared_ptr<timeblock::TimeBlockManager>& tm_block_mgr,
         std::shared_ptr<elect::ElectManager> elect_mgr,
-        std::shared_ptr<ViewBlockChain> view_block_chain) {
+        std::shared_ptr<ViewBlockChain> view_block_chain,
+        std::shared_ptr<bls::BlsManager> bls_mgr) {
     pool_idx_ = pool_idx;
     elect_mgr_ = elect_mgr;
     security_ptr_ = security;
@@ -60,6 +61,7 @@ void BlockAcceptor::Init(
     block_mgr_ = block_mgr;
     tm_block_mgr_ = tm_block_mgr;
     view_block_chain_ = view_block_chain;
+    bls_mgr_ = bls_mgr;
     tx_pools_ = std::make_shared<consensus::WaitingTxsPools>(pools_mgr_, block_mgr_, tm_block_mgr_);
     prefix_db_ = std::make_shared<protos::PrefixDb>(db_);    
 }
@@ -602,10 +604,10 @@ Status BlockAcceptor::addTxsToPool(
             assert(false); break;
         }
         case pools::protobuf::kConsensusRootElectShard: {
-            std::shared_ptr<bls::BlsManager> bls_mgr;
             tx_ptr = std::make_shared<consensus::ElectTxItem>(
                 msg_ptr, i, account_mgr_, security_ptr_, prefix_db_, elect_mgr_, 
-                vss_mgr_, bls_mgr, false, false, elect_info_->max_consensus_sharding_id() - 1, address_info);
+                vss_mgr_, bls_mgr_, false, false, 
+                elect_info_->max_consensus_sharding_id() - 1, address_info);
             break;
         }
         case pools::protobuf::kConsensusRootTimeBlock: {
