@@ -31,12 +31,6 @@ int AccountManager::Init(
         std::shared_ptr<pools::TxPoolManager>& pools_mgr) {
     db_ = db;
     prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
-    std::string immutable_pool_addr;
-    immutable_pool_addr.reserve(common::kUnicastAddressLength);
-    immutable_pool_addr.append(common::kRootPoolsAddressPrefix);
-    uint16_t network_id = network::GetLocalConsensusNetworkId();
-    immutable_pool_addr.append(std::string((char*)&network_id, sizeof(network_id)));
-    immutable_pool_addr_ = immutable_pool_addr;
     SETH_DEBUG("init pool immutable index net: %u, base address: %s", 
         network_id, common::Encode::HexEncode(immutable_pool_addr_).c_str());
     for (uint32_t step = pools::protobuf::kNormalFrom; step <= pools::protobuf::kPoolStatisticTag; ++step) {
@@ -47,7 +41,7 @@ int AccountManager::Init(
                 hash.size() - common::kUnicastAddressLength, 
                 common::kUnicastAddressLength);
             auto pool_idx = common::GetAddressPoolIndex(addr);
-            if (pool_idx_set.size() > common::kImmutablePoolSize) {
+            if (pool_idx_set.size() >= common::kImmutablePoolSize) {
                 break;
             }
 
@@ -61,7 +55,21 @@ int AccountManager::Init(
             SETH_DEBUG("network_id: %u, init pool index: %u, base address: %s", 
                 network_id, pool_idx, common::Encode::HexEncode(addr).c_str());
         }
+
+        std::string immutable_pool_addr(common::kUnicastAddressLength, '0');
+        uint16_t network_id = network::GetLocalConsensusNetworkId();
+        uint16_t tmp_step = static_cast<uint16_t>(step);
+        std::memcpy(
+            &immutable_pool_addr[common::kUnicastAddressLength - sizeof(network_id) - sizeof(tmp_step)], 
+            &network_id, 
+            sizeof(network_id));
+        std::memcpy(
+            &immutable_pool_addr[common::kUnicastAddressLength - sizeof(tmp_step)], 
+            &tmp_step, 
+            sizeof(tmp_step));
+        pool_base_addrs_[step][common::kGlobalPoolIndex] = immutable_pool_addr;
     }
+
     return kBlockSuccess;
 }
 
