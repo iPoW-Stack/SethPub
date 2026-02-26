@@ -3,7 +3,7 @@
 #include <consensus/hotstuff/types.h>
 #include "consensus/hotstuff/view_block_chain.h"
 #include "pools/tx_utils.h"
-#include "pools/tx_pool_manager.h
+#include "pools/tx_pool_manager.h"
 #include "protos/prefix_db.h"
 #include "zjcvm/zjc_host.h"
 
