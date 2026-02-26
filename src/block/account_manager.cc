@@ -31,8 +31,6 @@ int AccountManager::Init(
         std::shared_ptr<pools::TxPoolManager>& pools_mgr) {
     db_ = db;
     prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
-    SETH_DEBUG("init pool immutable index net: %u, base address: %s", 
-        network_id, common::Encode::HexEncode(immutable_pool_addr_).c_str());
     for (uint32_t step = pools::protobuf::kNormalFrom; step <= pools::protobuf::kPoolStatisticTag; ++step) {
         std::unordered_set<uint32_t> pool_idx_set;
         for (uint32_t i = 0; i < common::kInvalidUint32; ++i) {
@@ -68,6 +66,8 @@ int AccountManager::Init(
             &tmp_step, 
             sizeof(tmp_step));
         pool_base_addrs_[step][common::kGlobalPoolIndex] = immutable_pool_addr;
+        SETH_DEBUG("init pool immutable index net: %u, base address: %s", 
+            network_id, common::Encode::HexEncode(immutable_pool_addr).c_str());
     }
 
     return kBlockSuccess;

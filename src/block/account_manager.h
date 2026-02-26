@@ -43,10 +43,6 @@ public:
     std::shared_ptr<address::protobuf::AddressInfo> pools_address_info(uint32_t step, uint32_t pool_idx) {
         assert(step <= pools::protobuf::kPoolStatisticTag);
         assert(pool_idx < common::kInvalidPoolIndex);
-        if (pool_idx == common::kImmutablePoolSize) {
-            return GetAccountInfo(immutable_pool_addr_);
-        }
-
         return GetAccountInfo(pool_base_addrs_[step][pool_idx]);
     }
 
@@ -55,10 +51,6 @@ public:
     const std::string& pool_base_addrs(uint32_t step, uint32_t pool_idx) const {
         assert(step <= pools::protobuf::kPoolStatisticTag);
         assert(pool_idx < common::kInvalidPoolIndex);
-        if (pool_idx >= common::kImmutablePoolSize) {
-            return immutable_pool_addr_;
-        }
-
         return pool_base_addrs_[step][pool_idx];
     }
 
@@ -72,7 +64,6 @@ private:
     std::shared_ptr<db::Db> db_ = nullptr;
     std::shared_ptr<protos::PrefixDb> prefix_db_ = nullptr;
     AccountLruMap<102400> account_lru_map_;
-    std::string immutable_pool_addr_;
     std::string pool_base_addrs_[pools::protobuf::kPoolStatisticTag + 1][common::kInvalidPoolIndex];
 
     DISALLOW_COPY_AND_ASSIGN(AccountManager);
