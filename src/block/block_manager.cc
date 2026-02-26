@@ -766,7 +766,7 @@ void BlockManager::CreateStatisticTx() {
                 SETH_WARN("statistic tx already exist, hash: %s, nonce: %lu, addr: %s",
                     common::Encode::HexEncode(unique_hash).c_str(),
                     new_msg_ptr->address_info->nonce(),
-                    common::Encode::HexEncode(statistic_addr).c_str());
+                    common::Encode::HexEncode(new_msg_ptr->address_info->addr()).c_str());
                 return;
             }
 
@@ -785,7 +785,7 @@ void BlockManager::CreateStatisticTx() {
                 0, common::TimeUtils::TimestampMs(),
                 tx->nonce(),
                 timeblock_height,
-                common::Encode::HexEncode(statistic_addr).c_str());
+                common::Encode::HexEncode(new_msg_ptr->address_info->addr()).c_str());
             shard_statistics_map_[timeblock_height] = tx_ptr;
             CHECK_MEMORY_SIZE(shard_statistics_map_);
 
