@@ -826,7 +826,7 @@ void BlockManager::HandleStatisticBlock(
     tx->set_gas_limit(0);
     tx->set_amount(0);
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
-    tx->set_nonce(elect_statistic.nonce());
+    tx->set_nonce(elect_statistic.nonce() + 1);
     pools_mgr_->AddPoolMessage(new_msg_ptr);
     SETH_DEBUG("success add elect tx: %u, %lu, nonce: %lu, tx key: %s, "
         "statistic elect height: %lu, unique hash: %s",
