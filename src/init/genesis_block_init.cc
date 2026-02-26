@@ -133,7 +133,8 @@ void GenesisBlockInit::CreatePoolsAddressInfo(uint16_t network_id) {
                 continue;
             }
 
-            pool_address_info_[network_id][step][pool_idx] = CreateAddress("", 0, network_id, pool_idx, addr, 0, 0);
+            pool_address_info_[network_id][step][pool_idx] = CreateAddress(
+                "", 0, network_id, pool_idx, addr, 0, 0);
             pool_idx_set.insert(pool_idx);
             SETH_DEBUG("network_id: %u, init pool index: %u, base address: %s", 
                 network_id, pool_idx, common::Encode::HexEncode(addr).c_str());
@@ -149,7 +150,8 @@ void GenesisBlockInit::CreatePoolsAddressInfo(uint16_t network_id) {
             &immutable_pool_addr[common::kUnicastAddressLength - sizeof(tmp_step)], 
             &tmp_step, 
             sizeof(tmp_step));
-        pool_address_info_[network_id][step][common::kGlobalPoolIndex] = immutable_pool_addr;
+        pool_address_info_[network_id][step][common::kGlobalPoolIndex] = CreateAddress(
+            "", 0, network_id, common::kGlobalPoolIndex, immutable_pool_addr, 0, 0);;
         SETH_DEBUG("init pool immutable index net: %u, base address: %s", 
             network_id, common::Encode::HexEncode(immutable_pool_addr).c_str());
 
