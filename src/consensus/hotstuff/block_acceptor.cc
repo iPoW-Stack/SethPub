@@ -602,18 +602,10 @@ Status BlockAcceptor::addTxsToPool(
             assert(false); break;
         }
         case pools::protobuf::kConsensusRootElectShard: {
-            SETH_WARN("now root elect shard coming: tx size: %u", txs.size());
-            if (directly_user_leader_txs) {
-                std::shared_ptr<bls::BlsManager> bls_mgr;
-                tx_ptr = std::make_shared<consensus::ElectTxItem>(
-                    msg_ptr, i, account_mgr_, security_ptr_, prefix_db_, elect_mgr_, 
-                    vss_mgr_, bls_mgr, false, false, elect_info_->max_consensus_sharding_id() - 1, address_info);
-            } else {
-                auto tx_item = tx_pools_->GetElectTx(pool_idx(), tx->key());          
-                if (tx_item != nullptr && !tx_item->txs.empty()) {
-                    tx_ptr = *(tx_item->txs.begin());
-                }
-            }
+            std::shared_ptr<bls::BlsManager> bls_mgr;
+            tx_ptr = std::make_shared<consensus::ElectTxItem>(
+                msg_ptr, i, account_mgr_, security_ptr_, prefix_db_, elect_mgr_, 
+                vss_mgr_, bls_mgr, false, false, elect_info_->max_consensus_sharding_id() - 1, address_info);
             break;
         }
         case pools::protobuf::kConsensusRootTimeBlock: {

@@ -576,6 +576,10 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
             pool_index = msg_ptr->address_info->pool_index();
             break;
         }
+        case pools::protobuf::kConsensusRootElectShard: {
+            pool_index = msg_ptr->address_info->pool_index();
+            break;
+        }
         default:
             SETH_DEBUG("invalid tx step: %d", (int32_t)tx_msg.step());
             assert(false);

@@ -75,10 +75,10 @@ public:
             return consensus::kConsensusError;
         }
 
+        elect_statistic.set_nonce(block_tx.nonce());
         InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
         zjc_host.SaveKeyValue(block_tx.to(), unique_hash, tx_info->value());
         block_tx.set_unique_hash(unique_hash);
-        block_tx.set_nonce(to_nonce + 1);
         SETH_WARN("success call statistic tx pool: %d, view: %lu, "
             "to_nonce: %lu. tx nonce: %lu, to: %s, unique hash: %s", 
             view_block.qc().pool_index(), view_block.qc().view(),
@@ -86,7 +86,7 @@ public:
             common::Encode::HexEncode(block_tx.to()).c_str(),
             common::Encode::HexEncode(unique_hash).c_str());
         acc_balance_map[block_tx.to()]->set_balance(to_balance);
-        acc_balance_map[block_tx.to()]->set_nonce(to_nonce + 1);
+        acc_balance_map[block_tx.to()]->set_nonce(block_tx.nonce());
         acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
         acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
         SETH_DEBUG("success add addr: %s, value: %s, unique hash: %s, elect_statistic: %s", 

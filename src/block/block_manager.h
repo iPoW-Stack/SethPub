@@ -181,7 +181,6 @@ private:
 //     std::shared_ptr<pools::protobuf::ToTxHeights> to_tx_heights_ptr_ = nullptr;
     int32_t leader_create_to_heights_index_ = 0;
     int32_t leader_create_statistic_heights_index_ = 0;
-    StatisticMap shard_statistics_map_;
     common::ThreadSafeQueue<std::shared_ptr<StatisticMap>> shard_statistics_map_ptr_queue_;
     std::atomic<std::shared_ptr<StatisticMap>> got_latest_statistic_map_ptr_[2] = { nullptr };
     uint32_t valid_got_latest_statistic_map_ptr_index_ = 0;

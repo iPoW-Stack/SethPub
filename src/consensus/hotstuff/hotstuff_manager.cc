@@ -625,12 +625,16 @@ void HotstuffManager::RegisterCreateTxCallbacks() {
     pools_mgr_->RegisterCreateTxFunction(
         pools::protobuf::kStatistic,
         std::bind(&HotstuffManager::CreateStatisticTx, this, std::placeholders::_1));
+    pools_mgr_->RegisterCreateTxFunction(
+        pools::protobuf::kConsensusRootElectShard,
+        std::bind(&HotstuffManager::CreateElectTx, this, std::placeholders::_1));
     block_mgr_->SetCreateToTxFunction(
         std::bind(&HotstuffManager::CreateToTx, this, std::placeholders::_1));
+        
     // block_mgr_->SetCreateStatisticTxFunction(
     //     std::bind(&HotstuffManager::CreateStatisticTx, this, std::placeholders::_1));
-    block_mgr_->SetCreateElectTxFunction(
-        std::bind(&HotstuffManager::CreateElectTx, this, std::placeholders::_1));
+    // block_mgr_->SetCreateElectTxFunction(
+    //     std::bind(&HotstuffManager::CreateElectTx, this, std::placeholders::_1));
     tm_block_mgr_->SetCreateTmTxFunction(
         std::bind(&HotstuffManager::CreateTimeblockTx, this, std::placeholders::_1));
 }

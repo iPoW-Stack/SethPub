@@ -188,15 +188,6 @@ void BlockManager::HandleStatisticTx(const view_block::protobuf::ViewBlockItem& 
                 elect_statistic.statistic_height());
             timeblock_height_pq_.pop();
         }
-
-        auto iter = shard_statistics_map_.find(elect_statistic.height_info().tm_height());
-        if (iter != shard_statistics_map_.end()) {
-            SETH_DEBUG("success remove shard statistic block tm height: %lu", iter->first);
-            shard_statistics_map_.erase(iter);
-            CHECK_MEMORY_SIZE(shard_statistics_map_);
-            auto tmp_ptr = std::make_shared<StatisticMap>(shard_statistics_map_);
-            shard_statistics_map_ptr_queue_.push(tmp_ptr);
-        }
     }
 
     HandleStatisticBlock(view_block, elect_statistic);
@@ -751,53 +742,40 @@ void BlockManager::CreateStatisticTx() {
         }
 
         MarkDoneTimeblockHeightStatistic(timeblock_height);
-        auto tm_statistic_iter = shard_statistics_map_.find(timeblock_height);
-        if (tm_statistic_iter == shard_statistics_map_.end()) {
-            auto new_msg_ptr = std::make_shared<transport::TransportMessage>();
-            auto* tx = new_msg_ptr->header.mutable_tx_proto();
-            tx->set_key(unique_hash);
-            tx->set_value(SerializeDeterministic(elect_statistic));
-            tx->set_pubkey("");
-            tx->set_step(pools::protobuf::kStatistic);
-            tx->set_gas_limit(0);
-            tx->set_amount(0);
-            tx->set_gas_price(common::kBuildinTransactionGasPrice);
-            tx->set_nonce(timeblock_height_with_nonce_[elect_statistic.statistic_height()]);
-            // auto tx_ptr = std::make_shared<BlockTxsItem>();
-            new_msg_ptr->address_info = account_mgr_->pools_address_info(
-                pools::protobuf::kStatistic, 
-                common::kGlobalPoolIndex);
-            if (new_msg_ptr->address_info->nonce() >= tx->nonce()) {
-                SETH_WARN("statistic tx already exist, hash: %s, nonce: %lu, addr: %s",
-                    common::Encode::HexEncode(unique_hash).c_str(),
-                    new_msg_ptr->address_info->nonce(),
-                    common::Encode::HexEncode(new_msg_ptr->address_info->addr()).c_str());
-                return;
-            }
-
-            tx->set_to(new_msg_ptr->address_info->addr());
-            // tx_ptr->tx_ptr = create_statistic_tx_cb_(new_msg_ptr);
-            // tx_ptr->tx_ptr->time_valid += kStatisticValidTimeout;
-            // tx_ptr->tx_hash = unique_hash;
-            // tx_ptr->timeout = common::TimeUtils::TimestampMs() + kStatisticTimeoutMs;
-            // tx_ptr->stop_consensus_timeout = tx_ptr->timeout + kStopConsensusTimeoutMs;
-            pools_mgr_->AddPoolMessage(new_msg_ptr);
-            SETH_DEBUG("success add statistic tx: %s, statistic elect height: %lu, "
-                "heights: %s, timeout: %lu, kStatisticTimeoutMs: %lu, now: %lu, "
-                "nonce: %lu, timeblock_height: %lu, statistic_addr: %s",
+        auto new_msg_ptr = std::make_shared<transport::TransportMessage>();
+        auto* tx = new_msg_ptr->header.mutable_tx_proto();
+        tx->set_key(unique_hash);
+        tx->set_value(SerializeDeterministic(elect_statistic));
+        tx->set_pubkey("");
+        tx->set_step(pools::protobuf::kStatistic);
+        tx->set_gas_limit(0);
+        tx->set_amount(0);
+        tx->set_gas_price(common::kBuildinTransactionGasPrice);
+        tx->set_nonce(timeblock_height_with_nonce_[elect_statistic.statistic_height()]);
+        // auto tx_ptr = std::make_shared<BlockTxsItem>();
+        new_msg_ptr->address_info = account_mgr_->pools_address_info(
+            pools::protobuf::kStatistic, 
+            common::kGlobalPoolIndex);
+        if (new_msg_ptr->address_info->nonce() >= tx->nonce()) {
+            SETH_WARN("statistic tx already exist, hash: %s, nonce: %lu, addr: %s",
                 common::Encode::HexEncode(unique_hash).c_str(),
-                0,
-                "", (common::TimeUtils::TimestampMs() + kStatisticTimeoutMs),
-                0, common::TimeUtils::TimestampMs(),
-                tx->nonce(),
-                timeblock_height,
+                new_msg_ptr->address_info->nonce(),
                 common::Encode::HexEncode(new_msg_ptr->address_info->addr()).c_str());
-            // shard_statistics_map_[timeblock_height] = tx_ptr;
-            // CHECK_MEMORY_SIZE(shard_statistics_map_);
-
-            // auto tmp_ptr = std::make_shared<StatisticMap>(shard_statistics_map_);
-            // shard_statistics_map_ptr_queue_.push(tmp_ptr);
+            return;
         }
+
+        tx->set_to(new_msg_ptr->address_info->addr());
+        pools_mgr_->AddPoolMessage(new_msg_ptr);
+        SETH_DEBUG("success add statistic tx: %s, statistic elect height: %lu, "
+            "heights: %s, timeout: %lu, kStatisticTimeoutMs: %lu, now: %lu, "
+            "nonce: %lu, timeblock_height: %lu, statistic_addr: %s",
+            common::Encode::HexEncode(unique_hash).c_str(),
+            0,
+            "", (common::TimeUtils::TimestampMs() + kStatisticTimeoutMs),
+            0, common::TimeUtils::TimestampMs(),
+            tx->nonce(),
+            timeblock_height,
+            common::Encode::HexEncode(new_msg_ptr->address_info->addr()).c_str());
     }
 }
 
@@ -853,13 +831,15 @@ void BlockManager::HandleStatisticBlock(
     tx->set_gas_limit(0);
     tx->set_amount(0);
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
-    tx->set_nonce(new_msg_ptr->address_info->nonce() + 1);
-    auto shard_elect_tx = std::make_shared<BlockTxsItem>();
-    shard_elect_tx->tx_ptr = create_elect_tx_cb_(new_msg_ptr);
-    shard_elect_tx->tx_ptr->time_valid += kElectValidTimeout;
-    shard_elect_tx->timeout = common::TimeUtils::TimestampMs() + kElectTimeout;
-    shard_elect_tx->stop_consensus_timeout = shard_elect_tx->timeout + kStopConsensusTimeoutMs;
-    shard_elect_tx_[view_block.qc().network_id()].store(shard_elect_tx);
+    tx->set_nonce(elect_statistic.nonce());
+    pools_mgr_->AddPoolMessage(new_msg_ptr);
+
+    // auto shard_elect_tx = std::make_shared<BlockTxsItem>();
+    // shard_elect_tx->tx_ptr = create_elect_tx_cb_(new_msg_ptr);
+    // shard_elect_tx->tx_ptr->time_valid += kElectValidTimeout;
+    // shard_elect_tx->timeout = common::TimeUtils::TimestampMs() + kElectTimeout;
+    // shard_elect_tx->stop_consensus_timeout = shard_elect_tx->timeout + kStopConsensusTimeoutMs;
+    // shard_elect_tx_[view_block.qc().network_id()].store(shard_elect_tx);
     SETH_DEBUG("success add elect tx: %u, %lu, nonce: %lu, tx key: %s, "
         "statistic elect height: %lu, unique hash: %s",
         view_block.qc().network_id(), block.timeblock_height(),

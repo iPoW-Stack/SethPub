@@ -57,7 +57,8 @@ int CheckTransactionValid(
     }
     
     if (tx_info.step() == pools::protobuf::kPoolStatisticTag ||
-            tx_info.step() == pools::protobuf::kStatistic) {
+            tx_info.step() == pools::protobuf::kStatistic || 
+            tx_info.step() == pools::protobuf::kConsensusRootElectShard) {
         auto check_nonce = view_block_chain->CheckTxNonceValid(
             addr_info.addr(), 
             tx_info.nonce(), 
