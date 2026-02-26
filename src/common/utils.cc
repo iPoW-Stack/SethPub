@@ -134,9 +134,10 @@ uint8_t RandomCountry() {
 
 uint32_t GetAddressPoolIndex(const std::string& addr) {
     if (memcmp(addr.c_str(), kRootPoolsAddressPrefix.c_str(), kRootPoolsAddressPrefix.size()) == 0) {
-        SETH_DEBUG("success get common::kGlobalPoolIndex: %s, %s", 
+        SETH_DEBUG("success get common::kGlobalPoolIndex: %s, %s, size: %u", 
             common::Encode::HexEncode(addr).c_str(), 
-            common::Encode::HexEncode(kRootPoolsAddressPrefix).c_str());
+            common::Encode::HexEncode(kRootPoolsAddressPrefix).c_str(),
+            kRootPoolsAddressPrefix.size());
         return common::kGlobalPoolIndex;
     }
 
