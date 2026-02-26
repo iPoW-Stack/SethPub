@@ -162,9 +162,9 @@ void TimeBlockManager::OnTimeBlock(
 
     SETH_INFO("LeaderNewTimeBlockValid height[%lu:%lu], tm[%lu:%lu], vss[%lu]",
         latest_time_block_height,
-        static_cast<int>(latest_time_block_height_),
+        static_cast<uint64_t>(latest_time_block_height_),
         latest_time_block_tm,
-        static_cast<int>(latest_time_block_tm_),
+        static_cast<uint64_t>(latest_time_block_tm_),
         vss_random);
     assert(vss_random != 0);
     prev_time_block_height_ = latest_time_block_height;
