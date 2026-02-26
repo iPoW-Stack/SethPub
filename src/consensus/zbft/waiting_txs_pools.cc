@@ -88,21 +88,6 @@ std::shared_ptr<WaitingTxsItem> WaitingTxsPools::GetSingleTx(
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    if (txs_item == nullptr) {
-        txs_item = GetElectTx(pool_index, "");
-        if (txs_item) {
-            auto iter = txs_item->txs.begin();
-            uint64_t now_nonce = 0llu;
-            if (iter == txs_item->txs.end() || addr_nonce_valid_func(
-                    *(*iter)->address_info, 
-                    *(*iter)->tx_info,
-                    &now_nonce) != 0) {
-                txs_item = nullptr;
-            }
-        }
-    }
-
-    ADD_DEBUG_PROCESS_TIMESTAMP();
     return txs_item;
 }
 
@@ -119,42 +104,6 @@ bool WaitingTxsPools::HasSingleTx(
     }
 
     return false;
-}
-
-std::shared_ptr<WaitingTxsItem> WaitingTxsPools::GetElectTx(
-        uint32_t pool_index,
-        const std::string& tx_hash) {
-    if (common::GlobalInfo::Instance()->network_id() != network::kRootCongressNetworkId) {
-        return nullptr;
-    }
-
-    if (pool_index == common::kImmutablePoolSize) {
-        return nullptr;
-    }
-
-    auto tx_ptr = block_mgr_->GetElectTx(pool_index, tx_hash);
-    if (tx_ptr != nullptr) {
-        if (tx_hash.empty()) {
-            auto now_tm = common::TimeUtils::TimestampUs();
-            if (tx_ptr->prev_consensus_tm_us + 300000lu > now_tm) {
-                return nullptr;
-            }
-
-            tx_ptr->prev_consensus_tm_us = now_tm;
-        }
-
-        auto txs_item = std::make_shared<WaitingTxsItem>();
-        txs_item->pool_index = pool_index;
-        txs_item->txs.push_back(tx_ptr);
-        txs_item->tx_type = pools::protobuf::kConsensusRootElectShard;
-        SETH_DEBUG("single tx success to get elect tx: tx key: %s, nonce: %lu, unique hash: %s",
-            common::Encode::HexEncode(tx_ptr->tx_key).c_str(),
-            tx_ptr->tx_info->nonce(),
-            common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
-        return txs_item;
-    }
-
-    return nullptr;
 }
 
 std::shared_ptr<WaitingTxsItem> WaitingTxsPools::GetTimeblockTx(
