@@ -31,6 +31,7 @@ int AccountManager::Init(
         std::shared_ptr<pools::TxPoolManager>& pools_mgr) {
     db_ = db;
     prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
+    uint16_t network_id = network::GetLocalConsensusNetworkId();
     for (uint32_t step = pools::protobuf::kNormalFrom; step <= pools::protobuf::kPoolStatisticTag; ++step) {
         std::unordered_set<uint32_t> pool_idx_set;
         for (uint32_t i = 0; i < common::kInvalidUint32; ++i) {
@@ -55,7 +56,6 @@ int AccountManager::Init(
         }
 
         std::string immutable_pool_addr(common::kUnicastAddressLength, '0');
-        uint16_t network_id = network::GetLocalConsensusNetworkId();
         uint16_t tmp_step = static_cast<uint16_t>(step);
         std::memcpy(
             &immutable_pool_addr[common::kUnicastAddressLength - sizeof(network_id) - sizeof(tmp_step)], 
