@@ -781,7 +781,7 @@ void BlockManager::CreateStatisticTx() {
                 "nonce: %lu, timeblock_height: %lu, statistic_addr: %s",
                 common::Encode::HexEncode(unique_hash).c_str(),
                 0,
-                "", tx_ptr->timeout,
+                "", (common::TimeUtils::TimestampMs() + kStatisticTimeoutMs),
                 0, common::TimeUtils::TimestampMs(),
                 tx->nonce(),
                 timeblock_height,
