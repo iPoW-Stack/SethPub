@@ -761,7 +761,6 @@ void BlockManager::CreateStatisticTx() {
             tx->set_step(pools::protobuf::kStatistic);
             tx->set_gas_limit(0);
             tx->set_amount(0);
-            tx->set_to(new_msg_ptr->address_info->addr());
             tx->set_gas_price(common::kBuildinTransactionGasPrice);
             tx->set_nonce(timeblock_height_with_nonce_[elect_statistic.statistic_height()]);
             // auto tx_ptr = std::make_shared<BlockTxsItem>();
@@ -776,6 +775,7 @@ void BlockManager::CreateStatisticTx() {
                 return;
             }
 
+            tx->set_to(new_msg_ptr->address_info->addr());
             // tx_ptr->tx_ptr = create_statistic_tx_cb_(new_msg_ptr);
             // tx_ptr->tx_ptr->time_valid += kStatisticValidTimeout;
             // tx_ptr->tx_hash = unique_hash;
