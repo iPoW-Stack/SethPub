@@ -892,10 +892,16 @@ int GenesisBlockInit::CreateRootGenesisBlocks(
     FILE* root_gens_init_block_file = fopen("./root_blocks", "w");
     uint64_t pool_with_heights[common::kInvalidPoolIndex] = { 0llu };
     for (uint32_t i = 0; i < common::kImmutablePoolSize; ++i) {
+        std::map<std::string, std::shared_ptr<address::protobuf::AddressInfo>> address_info_map;
         auto view_block_ptr = std::make_shared<view_block::protobuf::ViewBlockItem>();
         auto* tenon_block = view_block_ptr->mutable_block_info();
         auto tx_list = tenon_block->mutable_tx_list();
+
         for (uint32_t step = pools::protobuf::kNormalFrom; step <= pools::protobuf::kPoolStatisticTag; ++step) {
+            if (step == pools::protobuf::kConsensusRootTimeBlock || step == pools::protobuf::kConsensusRootElectShard) {
+                continue;
+            }
+
             auto tx_info = tx_list->Add();
             auto pool_address_info = pool_address_info_[network::kRootCongressNetworkId][step][i];
             tx_info->set_to(pool_address_info->addr());
@@ -1585,6 +1591,10 @@ int GenesisBlockInit::CreateShardGenesisBlocks(
         auto* tenon_block = view_block_ptr->mutable_block_info();
         auto tx_list = tenon_block->mutable_tx_list();
         for (uint32_t step = pools::protobuf::kNormalFrom; step <= pools::protobuf::kPoolStatisticTag; ++step) {
+            if (step == pools::protobuf::kConsensusRootTimeBlock || step == pools::protobuf::kConsensusRootElectShard) {
+                continue;
+            }
+            
             auto tx_info = tx_list->Add();
             auto pool_address_info = pool_address_info_[net_id][step][i];
             tx_info->set_to(pool_address_info->addr());
