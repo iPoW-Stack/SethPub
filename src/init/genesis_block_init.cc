@@ -115,8 +115,6 @@ int GenesisBlockInit::CreateGenesisBlocks(
 }
 
 void GenesisBlockInit::CreatePoolsAddressInfo(uint16_t network_id) {
-    SETH_DEBUG("init pool immutable index net: %u, base address: %s", 
-        network_id, common::Encode::HexEncode(immutable_pool_addr).c_str());
     uint32_t i = 0;
     for (uint32_t step = pools::protobuf::kNormalFrom; step <= pools::protobuf::kPoolStatisticTag; ++step) {
         std::unordered_set<uint32_t> pool_idx_set;
@@ -142,7 +140,6 @@ void GenesisBlockInit::CreatePoolsAddressInfo(uint16_t network_id) {
         }
 
         std::string immutable_pool_addr(common::kUnicastAddressLength, '0');
-        uint16_t network_id = network::GetLocalConsensusNetworkId();
         uint16_t tmp_step = static_cast<uint16_t>(step);
         std::memcpy(
             &immutable_pool_addr[common::kUnicastAddressLength - sizeof(network_id) - sizeof(tmp_step)], 
@@ -153,6 +150,9 @@ void GenesisBlockInit::CreatePoolsAddressInfo(uint16_t network_id) {
             &tmp_step, 
             sizeof(tmp_step));
         pool_address_info_[network_id][step][common::kGlobalPoolIndex] = immutable_pool_addr;
+        SETH_DEBUG("init pool immutable index net: %u, base address: %s", 
+            network_id, common::Encode::HexEncode(immutable_pool_addr).c_str());
+
     }
 }
 
@@ -915,7 +915,7 @@ int GenesisBlockInit::GenerateShardSingleBlock(uint32_t sharding_id) {
         std::map<std::string, std::shared_ptr<address::protobuf::AddressInfo>> address_info_map;
         AddBlockItemToCache(pb_v_block, address_info_map, db_batch);
     }
-    
+
     fclose(root_gens_init_block_file);
     db_->Put(db_batch);
     return kInitSuccess;
