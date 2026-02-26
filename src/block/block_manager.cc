@@ -759,7 +759,7 @@ void BlockManager::CreateStatisticTx() {
             tx->set_gas_price(common::kBuildinTransactionGasPrice);
             tx->set_nonce(timeblock_height_with_nonce_[elect_statistic.statistic_height()]);
             auto tx_ptr = std::make_shared<BlockTxsItem>();
-            new_msg_ptr->address_info = account_mgr_->pool_base_addrs(
+            new_msg_ptr->address_info = account_mgr_->pools_address_info(
                 pools::protobuf::kStatistic, 
                 common::kGlobalPoolIndex);
             if (new_msg_ptr->address_info->nonce() >= tx->nonce()) {
