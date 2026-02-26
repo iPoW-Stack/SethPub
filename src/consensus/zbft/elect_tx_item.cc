@@ -233,6 +233,10 @@ int ElectTxItem::processElect(
 int ElectTxItem::getMaxElectHeightInfo(
         const seth::pools::protobuf::PoolStatisticItem *&statistic, 
         seth::common::MembersPtr &members) {
+    if (elect_statistic_.statistics_size() == 0) {
+        return kConsensusSuccess;
+    }
+    
     uint64_t max_elect_height = 0;
     auto &max_stat = *std::max_element(
         elect_statistic_.statistics().begin(), 

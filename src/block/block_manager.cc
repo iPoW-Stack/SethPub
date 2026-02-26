@@ -784,30 +784,15 @@ void BlockManager::HandleStatisticBlock(
         const view_block::protobuf::ViewBlockItem& view_block,
         const pools::protobuf::ElectStatistic& elect_statistic) {
     auto& block = view_block.block_info();
-    if (elect_statistic.statistics_size() <= 0) {
-        SETH_DEBUG("elect_statistic.statistics_size() <= 0");
-        return;
-    }
+    // if (elect_statistic.statistics_size() <= 0) {
+    //     SETH_DEBUG("elect_statistic.statistics_size() <= 0");
+    //     return;
+    // }
 
     if (common::GlobalInfo::Instance()->network_id() != network::kRootCongressNetworkId) {
         return;
     }
-#ifndef NDEBUG
-    for (int32_t i = 0; i < elect_statistic.join_elect_nodes_size(); ++i) {
-        SETH_DEBUG("sharding: %u, new elect node: %s, balance: %lu, shard: %u, pos: %u", 
-            elect_statistic.sharding_id(), 
-            common::Encode::HexEncode(elect_statistic.join_elect_nodes(i).pubkey()).c_str(),
-            elect_statistic.join_elect_nodes(i).stoke(),
-            elect_statistic.join_elect_nodes(i).shard(),
-            elect_statistic.join_elect_nodes(i).elect_pos());
-    }
 
-    assert(view_block.qc().network_id() == elect_statistic.sharding_id());
-    SETH_DEBUG("success handle statistic block net: %u, sharding: %u, "
-        "pool: %u, height: %lu, elect height: %lu",
-        view_block.qc().network_id(), elect_statistic.sharding_id(), view_block.qc().pool_index(), 
-        block.timeblock_height(), elect_statistic.statistics(elect_statistic.statistics_size() - 1).elect_height());
-#endif
     // create elect transaction now for block.network_id
     auto new_msg_ptr = std::make_shared<transport::TransportMessage>();
     new_msg_ptr->address_info = account_mgr_->pools_address_info(
