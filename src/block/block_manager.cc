@@ -1263,7 +1263,7 @@ void BlockManager::CallTimeBlock(
     SETH_DEBUG("new timeblock coming: %lu, %lu, lastest_time_block_tm: %lu, nonce: %lu",
         latest_timeblock_height_, latest_time_block_height, lastest_time_block_tm, nonce);
     timeblock_height_with_nonce_[latest_time_block_height] = nonce;
-    if (latest_timeblock_height_ >= latest_time_block_height) {
+    if (prev_timeblock_tm_sec_ >= lastest_time_block_tm) {
         return;
     }
 
