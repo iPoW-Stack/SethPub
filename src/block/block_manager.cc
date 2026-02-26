@@ -707,6 +707,11 @@ void BlockManager::CreateStatisticTx() {
     //     return;
     // }
 
+    if (timeblock_height_pq_.size() < 2) {
+        SETH_DEBUG("timeblock_height_pq_.size() < 2");
+        return;
+    }
+
     pools::protobuf::ElectStatistic elect_statistic;
     uint64_t timeblock_height = timeblock_height_pq_.top();
     timeblock_height_pq_.pop();
