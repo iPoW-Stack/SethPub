@@ -989,19 +989,6 @@ bool BlockManager::HasSingleTx(
         return true;
     }
 
-    // ADD_DEBUG_PROCESS_TIMESTAMP();
-    // if (HasStatisticTx(pool_index, tx_valid_func)) {
-    //     // SETH_DEBUG("success check has statistic tx.");
-    //     return true;
-    // }
-
-    // ADD_DEBUG_PROCESS_TIMESTAMP();
-    // if (HasElectTx(pool_index, tx_valid_func)) {
-    //     // SETH_DEBUG("success check has elect tx.");
-    //     return true;
-    // }
-
-    // ADD_DEBUG_PROCESS_TIMESTAMP();
     return false;
 }
 
@@ -1043,54 +1030,6 @@ bool BlockManager::HasToTx(uint32_t pool_index, pools::CheckAddrNonceValidFuncti
     return true;
 }
 
-bool BlockManager::HasStatisticTx(uint32_t pool_index, pools::CheckAddrNonceValidFunction tx_valid_func) {
-    if (pool_index != common::kImmutablePoolSize) {
-        return false;
-    }
-
-    auto statistic_map_ptr = got_latest_statistic_map_ptr_[valid_got_latest_statistic_map_ptr_index_].load();
-    if (statistic_map_ptr == nullptr) {
-        return false;
-    }
-
-    if (statistic_map_ptr->empty()) {
-        return false;
-    }
-
-    auto iter = statistic_map_ptr->begin();
-    auto shard_statistic_tx = iter->second;
-    if (shard_statistic_tx == nullptr) {
-        SETH_DEBUG("shard_statistic_tx == nullptr");
-        return false;
-    }
-
-    if (shard_statistic_tx != nullptr) {
-        auto now_tm = common::TimeUtils::TimestampUs();
-        if (iter->first >= latest_timeblock_height_) {
-            return false;
-        }
-
-        if (prev_timeblock_tm_sec_ + (common::kRotationPeriod / (1000lu * 1000lu)) > (now_tm / 1000000lu)) {
-            return false;
-        }
-
-        uint64_t now_nonce = 0ll;
-        if (tx_valid_func(
-                *iter->second->tx_ptr->address_info, 
-                *iter->second->tx_ptr->tx_info,
-                &now_nonce) != 0) {
-            return false;
-        }
-
-        // SETH_DEBUG("has statistic %u, tx nonce: %lu", 
-        //     pool_index, 
-        //     common::Encode::HexEncode(iter->second->tx_ptr->tx_info.gid()).c_str());
-        return true;
-    }
-
-    return false;
-}
-
 bool BlockManager::HasElectTx(uint32_t pool_index, pools::CheckAddrNonceValidFunction tx_valid_func) {
     for (uint32_t i = network::kRootCongressNetworkId; i <= max_consensus_sharding_id_; ++i) {
         if (i % common::kImmutablePoolSize != pool_index) {
@@ -1117,101 +1056,6 @@ bool BlockManager::HasElectTx(uint32_t pool_index, pools::CheckAddrNonceValidFun
     }
 
     return false;
-}
-
-pools::TxItemPtr BlockManager::GetStatisticTx(
-        uint32_t pool_index, 
-        const std::string& unqiue_hash) {
-    bool leader = unqiue_hash.empty();
-    while (shard_statistics_map_ptr_queue_.size() > 0) {
-        std::this_thread::sleep_for(std::chrono::microseconds(50000ull));
-    }
-
-    auto statistic_map_ptr = got_latest_statistic_map_ptr_[valid_got_latest_statistic_map_ptr_index_].load(
-        std::memory_order_acquire);;
-    if (statistic_map_ptr == nullptr) {
-        SETH_DEBUG("statistic_map_ptr == nullptr");
-        return nullptr;
-    }
-
-    if (statistic_map_ptr->empty()) {
-        SETH_DEBUG("statistic_map_ptr->empty()");
-        return nullptr;
-    }
-
-    std::shared_ptr<BlockTxsItem> shard_statistic_tx = nullptr;
-    auto iter = statistic_map_ptr->begin();
-    for (; iter != statistic_map_ptr->end(); ++iter) {
-        if (leader) {
-            shard_statistic_tx = iter->second;
-            break;
-        }
-
-        if (iter->second->tx_ptr->tx_info->key() == unqiue_hash) {
-            shard_statistic_tx = iter->second;
-            break;
-        }
-    }
-
-    if (shard_statistic_tx == nullptr) {
-        SETH_DEBUG("shard_statistic_tx == nullptr, unqiue_hash: %s, is leader: %d",
-            common::Encode::HexEncode(unqiue_hash).c_str(),
-            leader);
-        return nullptr;
-    }
-
-    if (shard_statistic_tx != nullptr) {
-        auto now_tm = common::TimeUtils::TimestampUs();
-        if (leader && shard_statistic_tx->tx_ptr->time_valid > now_tm) {
-            SETH_DEBUG("leader get tx failed: %lu, %lu", shard_statistic_tx->tx_ptr->time_valid, now_tm);
-            return nullptr;
-        }
-
-        if (iter->first >= latest_timeblock_height_) {
-            if (leader) {
-                SETH_DEBUG("iter->first >= latest_timeblock_height_: %lu, %lu",
-                    iter->first, latest_timeblock_height_);
-            }
-
-            return nullptr;
-        }
-
-        if (prev_timeblock_tm_sec_ + (common::kRotationPeriod / (1000lu * 1000lu)) > (now_tm / 1000000lu)) {
-            static uint64_t prev_get_tx_tm1 = common::TimeUtils::TimestampMs();
-            auto now_tx_tm = common::TimeUtils::TimestampMs();
-            if (now_tx_tm > prev_get_tx_tm1 + 10000) {
-                SETH_DEBUG("failed get statistic tx: %lu, %lu, %lu", 
-                    prev_timeblock_tm_sec_, 
-                    (common::kRotationPeriod / 1000000lu), 
-                    (now_tm / 1000000lu));
-                prev_get_tx_tm1 = now_tx_tm;
-            }
-            
-            return nullptr;
-        }
-
-        if (leader && shard_statistic_tx->tx_ptr->time_valid > now_tm) {
-            SETH_DEBUG("time_valid invalid!");
-            return nullptr;
-        }
-
-        shard_statistic_tx->tx_ptr->address_info =
-            account_mgr_->pools_address_info(shard_statistic_tx->tx_ptr->tx_info->step(), pool_index);
-        auto& tx = shard_statistic_tx->tx_ptr->tx_info;
-        tx->set_to(shard_statistic_tx->tx_ptr->address_info->addr());
-        tx->set_nonce(shard_statistic_tx->tx_ptr->address_info->nonce() + 1);
-        SETH_INFO("success get statistic tx hash: %s, prev_timeblock_tm_sec_: %lu, "
-            "height: %lu, latest time block height: %lu, is leader: %d",
-            common::Encode::HexEncode(shard_statistic_tx->tx_hash).c_str(),
-            prev_timeblock_tm_sec_, iter->first, latest_timeblock_height_,
-            leader);
-        return shard_statistic_tx->tx_ptr;
-    }
-
-    if (leader) {
-        SETH_DEBUG("failed get statistic tx");
-    }
-    return nullptr;
 }
 
 pools::TxItemPtr BlockManager::GetElectTx(uint32_t pool_index, const std::string& tx_hash) {

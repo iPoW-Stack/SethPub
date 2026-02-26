@@ -50,7 +50,6 @@ public:
         const transport::MessagePtr& msg_ptr,
         uint32_t pool_index, 
         pools::CheckAddrNonceValidFunction tx_valid_func);
-    pools::TxItemPtr GetStatisticTx(uint32_t pool_index, const std::string&);
     pools::TxItemPtr GetElectTx(uint32_t pool_index, const std::string& tx_hash);
     pools::TxItemPtr GetToTx(uint32_t pool_index, const std::string& tx_hash);
     int Init(
@@ -98,7 +97,6 @@ private:
     void CallNewElectBlock(uint32_t sharding_id);
     typedef std::map<uint64_t, std::shared_ptr<BlockTxsItem>, std::greater<uint64_t>> StatisticMap;
     bool HasToTx(uint32_t pool_index, pools::CheckAddrNonceValidFunction tx_valid_func);
-    bool HasStatisticTx(uint32_t pool_index, pools::CheckAddrNonceValidFunction tx_valid_func);
     bool HasElectTx(uint32_t pool_index, pools::CheckAddrNonceValidFunction tx_valid_func);
     void HandleAllNewBlock();
     void HandleMessage(const transport::MessagePtr& msg_ptr);
