@@ -1473,7 +1473,7 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
         if (ret == Status::kBlsVerifyWaiting) {
             SETH_DEBUG("kBlsWaiting pool: %d, view: %lu, hash64: %lu",
                 pool_idx_, vote_msg.view(), msg_ptr->header.hash64());
-            return;
+            return Status::kSuccess;
         }
 
         SETH_DEBUG("kBlsWaiting pool: %d, view: %lu, hash64: %lu",
