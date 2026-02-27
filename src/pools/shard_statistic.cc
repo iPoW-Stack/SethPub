@@ -575,18 +575,26 @@ int ShardStatistic::StatisticWithHeights(
 
     if (piter->second.size() != common::kInvalidPoolIndex ||
             iter->second.size() != common::kInvalidPoolIndex) {
+        std::string invalid_pools = "";
         std::string valid_pools = "";
+        for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
+            if (piter->second.find(i) == piter->second.end()) {
+                invalid_pools += std::to_string(i) + ",";
+            }
+        }
+
         for (auto titer = piter->second.begin(); titer != piter->second.end(); ++titer) {
             valid_pools += std::to_string(titer->first) + ":" + 
                 std::to_string(titer->second.statistic_min_height) + ":" + 
                 std::to_string(titer->second.statistic_max_height) + ",";
         }
         SETH_DEBUG("pool not full statistic height: %lu, now: %u, all: %u, "
-            "now_size: %u, %s, latest_statisticed_height_: %lu", 
+            "now_size: %u, invalid_pools: %s, valid pools: %s, latest_statisticed_height_: %lu", 
             piter->first,
             piter->second.size(), 
             common::kInvalidPoolIndex, 
             iter->second.size(),
+            invalid_pools.c_str(),
             valid_pools.c_str(),
             latest_statisticed_height_);
         return kPoolsError;
