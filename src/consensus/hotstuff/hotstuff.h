@@ -303,6 +303,12 @@ private:
 
         auto now_tm = common::TimeUtils::TimestampSeconds();
         if (now_tm <= common::GlobalInfo::Instance()->leader_change_init_tm()) {
+            if (high_view_block->qc().elect_height() < latest_elect_height_) {
+                *out_view = high_view_block->qc().view() + latest_elect_height_ + 1;
+            } else {
+                *out_view = high_view_block->qc().view() + 1;
+            }
+            
             return (*members)[last_stable_leader_member_index_ % members->size()];
         }
 
