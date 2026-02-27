@@ -170,7 +170,6 @@ void BlockManager::HandleAllConsensusBlocks() {
             CreateStatisticTx();
         }
 
-        SETH_DEBUG("end call 0 prev_create_statistic_tx_tm_us_: %lu, now_tm: %lu", prev_create_statistic_tx_tm_us_, now_tm);
         std::unique_lock<std::mutex> lock(wait_mutex_);
         wait_con_.wait_for(lock, std::chrono::milliseconds(10));
     }
@@ -703,7 +702,7 @@ void BlockManager::CreateStatisticTx() {
     // }
 
     if (timeblock_height_pq_.size() < 2) {
-        SETH_DEBUG("timeblock_height_pq_.size() < 2");
+        SETH_DEBUG("timeblock_height_pq_ size less than 2");
         return;
     }
 
@@ -992,9 +991,8 @@ void BlockManager::CallTimeBlock(
         uint64_t vss_random,
         uint64_t nonce) {
     timeblock_height_pq_.push(latest_time_block_height);
-    lastest_time_block_tm = lastest_time_block_tm / 1000llu;  // use sec
-    SETH_DEBUG("new timeblock coming: %lu, %lu, lastest_time_block_tm: %lu, nonce: %lu",
-        latest_timeblock_height_, latest_time_block_height, lastest_time_block_tm, nonce);
+    SETH_DEBUG("new timeblock coming: %lu, %lu, lastest_time_block_tm: %lu, nonce: %lu, latest_timeblock_tm_sec_: %lu",
+        latest_timeblock_height_, latest_time_block_height, lastest_time_block_tm, nonce, latest_timeblock_tm_sec_);
     timeblock_height_with_nonce_[latest_time_block_height] = nonce;
     if (latest_timeblock_tm_sec_ >= lastest_time_block_tm) {
         return;
