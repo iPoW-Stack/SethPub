@@ -300,7 +300,8 @@ private:
             return nullptr;
         }
 
-        if (last_stable_leader_member_index_ == new_leader_idx) {
+        if (last_stable_leader_member_index_ == new_leader_idx ||
+                leader_latest_qc.leader_idx() == new_leader_idx) {
             do {
                 if (leader_latest_qc.view() != high_view_block->qc().view()) {
                     SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is not equal with high view block qc view: %lu",

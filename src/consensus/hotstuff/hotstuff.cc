@@ -1530,10 +1530,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
         return;
     }
 
-    if (last_vote_view_ < out_view) {
-        Propose(out_view, leader, qc_item_ptr, nullptr, msg_ptr);
-    }
-
+    Propose(out_view, leader, qc_item_ptr, nullptr, msg_ptr);
     ADD_DEBUG_PROCESS_TIMESTAMP();
 }
 
