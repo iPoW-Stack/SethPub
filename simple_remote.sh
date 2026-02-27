@@ -108,8 +108,6 @@ init() {
         rm -rf /root/seth/shards*
     fi
 
-    rm -rf /root/seth/shards2
-    cp -rf /root/seth/root_nodes /root/seth/shards2
     echo "node count: " $nodes_count
     rm -rf /root/nodes/seth/latest_blocks
 }
@@ -135,8 +133,7 @@ make_package() {
         cp /root/nodes/txcli /root/nodes/seth/pkg
         cp /root/nodes/seth/conf/GeoLite2-City.mmdb /root/nodes/seth/pkg
         cp /root/nodes/seth/conf/log4cpp.properties /root/nodes/seth/pkg
-        cp /root/seth/shards3 /root/nodes/seth/pkg
-        cp /root/seth/root_nodes /root/nodes/seth/pkg/shards2
+        cp /root/seth/shards* /root/nodes/seth/pkg/
         cp /root/seth/temp_cmd.sh /root/nodes/seth/pkg
         cp /root/seth/start_cmd.sh /root/nodes/seth/pkg
         cp -rf /root/nodes/seth/shard_db_2 /root/nodes/seth/pkg/shard_db_2
