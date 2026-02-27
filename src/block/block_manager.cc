@@ -797,7 +797,7 @@ void BlockManager::HandleStatisticBlock(
     std::string unique_hash = common::Hash::keccak256(
         std::string("root_create_elect_tx_") + 
         std::to_string(elect_statistic.sharding_id()) + "_" +
-        std::to_string(block.timeblock_height()));
+        std::to_string(elect_statistic.nonce() + 1));
     tx->set_key(unique_hash);
     tx->set_value(SerializeDeterministic(elect_statistic));
     tx->set_pubkey("");
