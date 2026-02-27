@@ -362,7 +362,8 @@ private:
         // ++consecutive_failures_;
         SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
             "consecutive_failures: %d, now: %u, block tm: %lu, "
-            "last_stable_leader_member_index: %d, latest_elect_height: %lu, out view: %lu, "
+            "last_stable_leader_member_index: %d, get leader index: %u, "
+            "atest_elect_height: %lu, out view: %lu, "
             "prev_qc_timestamp_sec: %lu, block_info timestamp: %lu", 
             pool_idx_, 
             high_view_block->qc().view(), 
@@ -372,6 +373,7 @@ private:
             consecutive_failures_,
             now, 
             high_view_block->block_info().timestamp(),
+            last_stable_leader_member_index_,
             leader_idx,
             latest_elect_height_,
             (high_view_block->qc().view() + latest_elect_height_ + 1),

@@ -338,8 +338,11 @@ public:
             uint32_t pool_index,
             uint64_t height,
             std::string* block_hash) {
-        assert(sharding_id >= network::kRootCongressNetworkId &&
-            sharding_id <= network::kConsensusShardEndNetworkId);
+        if (sharding_id < network::kRootCongressNetworkId ||
+                sharding_id >= network::kConsensusShardEndNetworkId) {
+            return false;
+        }
+        
         std::string key;
         key.reserve(32);
         key.append(kBlockHeightPrefix);
