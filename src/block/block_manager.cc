@@ -166,11 +166,11 @@ void BlockManager::HandleAllConsensusBlocks() {
         }
         
         if (prev_create_statistic_tx_tm_us_ < now_tm) {
-            prev_create_statistic_tx_tm_us_ = now_tm + 10000000lu;
+            prev_create_statistic_tx_tm_us_ = now_tm + 10000000llu;
             CreateStatisticTx();
         }
 
-        SETH_DEBUG("end call 0.");
+        SETH_DEBUG("end call 0 prev_create_statistic_tx_tm_us_: %lu, now_tm: %lu", prev_create_statistic_tx_tm_us_, now_tm);
         std::unique_lock<std::mutex> lock(wait_mutex_);
         wait_con_.wait_for(lock, std::chrono::milliseconds(10));
     }
