@@ -1336,7 +1336,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
         return;
     }
     
-    int res = HandleVoteMsgImpl(msg_ptr);
+    auto res = HandleVoteMsgImpl(msg_ptr);
     if (res != Status::kSuccess) {
         auto& vote_msg = msg_ptr->header.hotstuff().vote_msg();
         if (vote_msg.leader_idx() == GetLocalMemberIdx()) {
@@ -1345,7 +1345,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     }
 }
 
-int Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
+Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto b = common::TimeUtils::TimestampMs();
    
