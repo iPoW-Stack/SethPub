@@ -609,8 +609,11 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         msg_ptr->header.hotstuff().pro_msg().tc(), 
         &out_view);
     if (!leader) {
-        SETH_ERROR("pool: %d, Send vote message is error.",
-            pool_idx_, pro_msg_wrap->msg_ptr->header.hash64());
+        SETH_INFO("pool: %d, propose message no leader info, leader idx: %u, tc view: %lu, "
+            "propose_debug: %s",
+            pool_idx_, view_item.qc().leader_idx(), 
+            msg_ptr->header.hotstuff().pro_msg().tc().view(),
+            ProtobufToJson(cons_debug).c_str());
         return;
     }
 

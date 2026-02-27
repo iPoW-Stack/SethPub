@@ -324,12 +324,12 @@ private:
             } while (0);
         }
 
-        if (last_vote_view_ > view_block_chain_->LatestCommittedBlock()->qc().view() &&
-                leader_latest_qc.view() <= view_block_chain_->LatestCommittedBlock()->qc().view()) {
-            SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is too old, latest committed block view: %lu",
-                pool_idx_, leader_latest_qc.view(), view_block_chain_->LatestCommittedBlock()->qc().view());
-            return nullptr;
-        }
+        // if (last_vote_view_ > view_block_chain_->LatestCommittedBlock()->qc().view() &&
+        //         leader_latest_qc.view() <= view_block_chain_->LatestCommittedBlock()->qc().view()) {
+        //     SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is too old, latest committed block view: %lu",
+        //         pool_idx_, leader_latest_qc.view(), view_block_chain_->LatestCommittedBlock()->qc().view());
+        //     return nullptr;
+        // }
 
         auto high_view_block_info = view_block_chain_->Get(leader_latest_qc.view_block_hash());
         if (high_view_block_info == nullptr || high_view_block_info->view_block == nullptr) {
