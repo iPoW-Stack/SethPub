@@ -106,8 +106,10 @@ void BlockManager::HandleAllConsensusBlocks() {
     while (!destroy_) {
         auto now_tm = common::TimeUtils::TimestampUs();
         bool no_sleep = true;
+        SETH_DEBUG("begin call 0.");
         while (no_sleep) {
             no_sleep = false;
+            SETH_DEBUG("begin call 1.");
             for (int32_t i = 0; i < common::kMaxThreadCount; ++i) {
                 uint32_t count = 0;
                 while (count++ < kEachTimeHandleBlocksCount) {
@@ -160,6 +162,7 @@ void BlockManager::HandleAllConsensusBlocks() {
             // SETH_DEBUG("write to db use time: %lu, size: %u", 
             //     (common::TimeUtils::TimestampMs() - btime), 
             //     db_batch.ApproximateSize());
+            SETH_DEBUG("end call 1.");
         }
         
         if (prev_create_statistic_tx_tm_us_ < now_tm) {
@@ -167,6 +170,7 @@ void BlockManager::HandleAllConsensusBlocks() {
             CreateStatisticTx();
         }
 
+        SETH_DEBUG("end call 0.");
         std::unique_lock<std::mutex> lock(wait_mutex_);
         wait_con_.wait_for(lock, std::chrono::milliseconds(10));
     }
