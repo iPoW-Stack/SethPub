@@ -1026,11 +1026,12 @@ void NetworkInit::GetNetworkNodesFromConf(
         }
     };
         
+    uint32_t n = cons_shard_node_count;
     bool reuse_root = common::isFileExist("/root/seth/root_nodes");
     auto rfd = fopen("/root/seth/root_nodes", (reuse_root ? "r" : "w"));
     assert(rfd != nullptr);
     std::vector<std::string> root_sks;
-    get_sks_func(rfd, root_sks, 3, reuse_root);
+    get_sks_func(rfd, root_sks, n, reuse_root);
     for (uint32_t i = 0; i < root_sks.size(); i++) {
         std::string& sk = root_sks[i];
         std::shared_ptr<security::Security> secptr = std::make_shared<security::Ecdsa>();
@@ -1046,7 +1047,6 @@ void NetworkInit::GetNetworkNodesFromConf(
             common::Encode::HexEncode(node_ptr->id).c_str());
     }
     fclose(rfd);
-    uint32_t n = cons_shard_node_count;
     uint32_t t = common::GetSignerCount(n);
     for (uint32_t net_i = network::kConsensusShardBeginNetworkId; net_i < end_shard_id; net_i++) {
         auto filename = std::string("/root/seth/shards") + std::to_string(net_i);

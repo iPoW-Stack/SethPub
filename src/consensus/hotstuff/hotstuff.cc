@@ -217,6 +217,7 @@ Status Hotstuff::Propose(
     auto t1 = common::TimeUtils::TimestampMs();
 #endif
     if (!leader) {
+        SETH_DEBUG("no leader");
         return Status::kError;
     }
 
