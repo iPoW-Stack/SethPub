@@ -324,7 +324,7 @@ private:
                     last_stable_leader_member_index_,
                     new_leader_idx,
                     leader_latest_qc.leader_idx());
-                return (*members)[last_stable_leader_member_index_ % members->size()];
+                return (*members)[new_leader_idx % members->size()];
             } while (0);
         }
 
@@ -418,6 +418,18 @@ private:
         return elect_item->valid_leaders()->at(index)->index;
     }
 
+    inline common::BftMemberPtr LocalMember() const {
+        auto sharding_id = common::GlobalInfo::Instance()->network_id();
+        assert(elect_info_ != nullptr);
+        auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
+        if (elect_item == nullptr) {
+            // assert(false);
+            return nullptr;
+        }
+
+        return elect_item->LocalMember();
+    }
+
     inline uint32_t GetLocalMemberIdx() const {
         auto sharding_id = common::GlobalInfo::Instance()->network_id();
         assert(elect_info_ != nullptr);
@@ -427,7 +439,7 @@ private:
             return common::kInvalidUint32;
         }
 
-        auto local_mem_ptr = elect_info_->GetElectItemWithShardingId(sharding_id)->LocalMember();
+        auto local_mem_ptr = elect_item->LocalMember();
         if (local_mem_ptr == nullptr) {
             // assert(false);
             return common::kInvalidUint32;

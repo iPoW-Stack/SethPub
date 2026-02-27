@@ -1527,8 +1527,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     latest_propose_msg_tm_ms_ = 0;
     View out_view = 0;
     latest_qc_item_ptr_ = qc_item_ptr;
-    auto local_idx = GetLocalMemberIdx();
-    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view);
+    auto leader = LocalMember();
     if (!leader) {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
         return;
