@@ -1545,7 +1545,7 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    return Status::kSuccess
+    return Status::kSuccess;
 }
 
 void Hotstuff::HandlePreResetTimerMsg(const transport::MessagePtr& msg_ptr) {
