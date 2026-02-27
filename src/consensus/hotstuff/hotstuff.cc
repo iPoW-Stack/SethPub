@@ -1794,6 +1794,8 @@ Status Hotstuff::VerifyQC(const QC& qc) {
     }
 
     if (qc.view() < view_block_chain()->HighViewBlock()->qc().view()) {        
+        SETH_DEBUG("qc view is smaller than high qc view, pool: %d, qc view: %lu, high qc view: %lu",
+            pool_idx_, qc.view(), view_block_chain()->HighViewBlock()->qc().view());
         return Status::kError;
     }
 

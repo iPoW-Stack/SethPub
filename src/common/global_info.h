@@ -221,6 +221,10 @@ public:
         return hotstuff_thread_count_;
     }
 
+    uint64_t leader_change_init_tm() const {
+        return leader_change_init_tm_;
+    }
+
 private:
     GlobalInfo();
     ~GlobalInfo();
@@ -274,6 +278,7 @@ private:
     uint32_t test_tx_tps_ = 1000;
     std::atomic<uint64_t> global_latency_ = 0;
     uint8_t hotstuff_thread_count_ = 8;
+    uint64_t leader_change_init_tm_ = 0;
 
     DISALLOW_COPY_AND_ASSIGN(GlobalInfo);
 };

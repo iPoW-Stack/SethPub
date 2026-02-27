@@ -301,6 +301,11 @@ private:
             return nullptr;
         }
 
+        auto now_tm = common::TimeUtils::TimestampSeconds();
+        if (now_tm <= common::GlobalInfo::Instance()->leader_change_init_tm()) {
+            return (*members)[last_stable_leader_member_index_ % members->size()];
+        }
+
         if (last_stable_leader_member_index_ == new_leader_idx ||
                 leader_latest_qc.leader_idx() == new_leader_idx) {
             do {
@@ -366,10 +371,19 @@ private:
             static_cast<int>(k) + 
             common::kImmutablePoolSize) % members->size();
         // ++consecutive_failures_;
+       
+        // 切换模式：强制跳过一个视图号 (V + k + 1)
+        // 当超时刚刚发生(k=1)时，out_view = last_qc.view + 2
+        if (high_view_block->qc().elect_height() < latest_elect_height_) {
+            *out_view = high_view_block->qc().view() + latest_elect_height_ + k + 1;
+        } else {
+            *out_view = high_view_block->qc().view() + k + 1;
+        }
+
         SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
             "consecutive_failures: %d, now: %u, block tm: %lu, "
             "last_stable_leader_member_index: %d, get leader index: %u, "
-            "atest_elect_height: %lu, out view: %lu, "
+            "latest_elect_height: %lu, out view: %lu, "
             "prev_qc_timestamp_sec: %lu, block_info timestamp: %lu", 
             pool_idx_, 
             high_view_block->qc().view(), 
@@ -385,14 +399,6 @@ private:
             (high_view_block->qc().view() + latest_elect_height_ + 1),
             prev_qc_timestamp_sec,
             high_view_block->block_info().timestamp());
-       
-        // 切换模式：强制跳过一个视图号 (V + k + 1)
-        // 当超时刚刚发生(k=1)时，out_view = last_qc.view + 2
-        if (high_view_block->qc().elect_height() < latest_elect_height_) {
-            *out_view = high_view_block->qc().view() + latest_elect_height_ + k + 1;
-        } else {
-            *out_view = high_view_block->qc().view() + k + 1;
-        }
 
         return (*members)[leader_idx % members->size()];
     }
