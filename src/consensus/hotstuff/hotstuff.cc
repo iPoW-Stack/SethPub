@@ -1525,7 +1525,6 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
         (common::TimeUtils::TimestampMs() - view_block_info_ptr->b_tm_ms));
     ADD_DEBUG_PROCESS_TIMESTAMP();
     latest_propose_msg_tm_ms_ = 0;
-    View out_view = 0;
     latest_qc_item_ptr_ = qc_item_ptr;
     auto leader = LocalMember();
     if (!leader) {
@@ -1533,7 +1532,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
         return;
     }
 
-    Propose(out_view, leader, qc_item_ptr, nullptr, msg_ptr);
+    Propose(qc_item_ptr->view() + 1, leader, qc_item_ptr, nullptr, msg_ptr);
     ADD_DEBUG_PROCESS_TIMESTAMP();
 }
 
