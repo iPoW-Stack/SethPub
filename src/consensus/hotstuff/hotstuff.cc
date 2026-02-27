@@ -1332,12 +1332,23 @@ Status Hotstuff::VerifyFollower(const transport::MessagePtr& msg_ptr) {
 }
 
 void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
-    ADD_DEBUG_PROCESS_TIMESTAMP();
-    auto b = common::TimeUtils::TimestampMs();
     if (VerifyFollower(msg_ptr) != Status::kSuccess) {
         return;
     }
     
+    int res = HandleVoteMsgImpl(msg_ptr);
+    if (res != Status::kSuccess) {
+        auto& vote_msg = msg_ptr->header.hotstuff().vote_msg();
+        if (vote_msg.leader_idx() == GetLocalMemberIdx()) {
+            latest_leader_propose_message_ = nullptr;
+        }
+    }
+}
+
+int Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
+    ADD_DEBUG_PROCESS_TIMESTAMP();
+    auto b = common::TimeUtils::TimestampMs();
+   
     auto& vote_msg = msg_ptr->header.hotstuff().vote_msg();
     // acceptor()->AddTxs(msg_ptr, vote_msg.txs());
     if (vote_msg.txs_size() > 0) {
@@ -1346,7 +1357,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     }
 
     if (prefix_db_->BlockExists(vote_msg.view_block_hash())) {
-        return;
+        return Status::kError;
     }
 
     std::string followers_gids;
@@ -1362,7 +1373,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
             msg_ptr->header.hash64(),
             "",
             followers_gids.c_str());
-        return;
+        return Status::kError;
     }
 
 // #ifndef NDEBUG
@@ -1388,7 +1399,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
 #endif
     if (VerifyVoteMsg(vote_msg) != Status::kSuccess) {
         SETH_DEBUG("vote message is error: hash64: %lu", msg_ptr->header.hash64());
-        return;
+        return Status::kError;
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -1434,7 +1445,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     if (latest_leader_propose_message_ && 
             latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().leader_idx() != vote_msg.leader_idx()) {
         // assert(false);
-        return;
+        return Status::kError;
     }
 
     Status ret = crypto()->ReconstructAndVerifyThresSign(
@@ -1467,7 +1478,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
 
         SETH_DEBUG("kBlsWaiting pool: %d, view: %lu, hash64: %lu",
             pool_idx_, vote_msg.view(), msg_ptr->header.hash64());
-        return;
+        return Status::kError;
     }
 
 #ifndef NDEBUG
@@ -1527,13 +1538,14 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     latest_propose_msg_tm_ms_ = 0;
     latest_qc_item_ptr_ = qc_item_ptr;
     auto leader = LocalMember();
-    if (!leader) {
+    if (leader) {
+        Propose(qc_item_ptr->view() + 1, leader, qc_item_ptr, nullptr, msg_ptr);
+    } else {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
-        return;
     }
 
-    Propose(qc_item_ptr->view() + 1, leader, qc_item_ptr, nullptr, msg_ptr);
     ADD_DEBUG_PROCESS_TIMESTAMP();
+    return Status::kSuccess
 }
 
 void Hotstuff::HandlePreResetTimerMsg(const transport::MessagePtr& msg_ptr) {

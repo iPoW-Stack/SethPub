@@ -210,6 +210,7 @@ private:
         std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap,
         const std::string& expect_view_block_hash);
     void StartInit();
+    int HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr);
 
     bool HandleProposeMsgCondition(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
         // 仅新 v_block 才能允许执行
