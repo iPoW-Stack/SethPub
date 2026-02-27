@@ -196,7 +196,8 @@ bool ShardStatistic::HandleStatistic(
         
         if (statistic_pool_info_.size() >= 2) {
             auto iter = statistic_pool_info_.rbegin();
-            while (iter->first >= block.pool_statistic_height()) {
+            while (iter != statistic_pool_info_.rend() && 
+                    iter->first >= block.pool_statistic_height()) {
                 ++iter;
             }
 
