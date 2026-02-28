@@ -115,6 +115,7 @@ static int CreateTransactionWithAttr(
 
     auto contract_bytes = req.get_param_value("bytes_code");
     if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kContractCreate) {
+        contract_bytes = common::Encode::HexDecode(contract_bytes);
         if (contract_bytes.size() <= 128 || memcmp(
                 contract_bytes.c_str(),
                 protos::kContractBytesStartCode.c_str(),
@@ -142,7 +143,7 @@ static int CreateTransactionWithAttr(
     }
 
     if (!contract_bytes.empty()) {
-        new_tx->set_contract_code(common::Encode::HexDecode(contract_bytes));
+        new_tx->set_contract_code(contract_bytes);
     }
 
     auto input = req.get_param_value("input");
