@@ -895,6 +895,10 @@ void ViewBlockChain::AddNewBlock(
         view_block_item->qc().view(),
         db_batch);
 
+    if (block_item->has_elect_block()) {
+        prefix_db_->SaveLatestElectBlock(block_item->elect_block(), db_batch);
+    }
+
     if (block_item->has_prev_elect_block()) {
         prefix_db_->SaveElectHeightWithBlock(
             block_item->prev_elect_block().shard_network_id(), 
