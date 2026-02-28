@@ -1140,7 +1140,6 @@ int GenesisBlockInit::CreateRootGenesisBlocks(
         tenon_block->set_height(pool_with_heights[pool_index]++);
         tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         tenon_block->set_timeblock_height(0);
-        tenon_block->set_pool_statistic_height(0);
         view_block_ptr->set_parent_hash(pool_prev_vb_hash_map[pool_index]);
         if (CreateAllQc(
                 net_id,
@@ -1673,7 +1672,6 @@ int GenesisBlockInit::CreateShardGenesisBlocks(
         tenon_block->set_height(pool_with_heights[pool_index]++);
         tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         tenon_block->set_timeblock_height(0);
-        tenon_block->set_pool_statistic_height(0);
         view_block_ptr->set_parent_hash(pool_prev_vb_hash_map[pool_index]);
         if (CreateAllQc(
                 net_id,

@@ -260,7 +260,8 @@ bool ShardStatistic::HandleStatistic(
 
     if (pool_statistic_riter == statistic_pool_info_.rend()) {
         // assert(false);
-        return false;
+        // return false;
+        pool_statistic_riter = statistic_pool_info_.rbegin();
     }
 
     auto pool_iter = pool_statistic_riter->second.find(pool_idx);
