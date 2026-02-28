@@ -114,7 +114,7 @@ static int CreateTransactionWithAttr(
     }
 
     auto contract_bytes = req.get_param_value("bytes_code");
-    if (step == pools::protobuf::kCreateLibrary || pools::protobuf::kContractCreate) {
+    if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kContractCreate) {
         if (contract_bytes.size() <= 128 || memcmp(
                 contract_bytes.c_str(),
                 protos::kContractBytesStartCode.c_str(),
