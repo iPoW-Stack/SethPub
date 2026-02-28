@@ -297,7 +297,9 @@ public:
     void SaveLatestTimeBlock(const timeblock::protobuf::TimeBlock& tmblock, db::DbWriteBatch& db_batch) {
         std::string key(kLatestTimeBlockPrefix);
         db_batch.Put(key, tmblock.SerializeAsString());
-        SETH_DEBUG("dddddd success latest time block: %lu", tmblock.height());
+        SETH_DEBUG("dddddd success latest time block: %lu, %s", 
+            tmblock.height(), 
+            ProtobufToJson(tmblock).c_str());
     }
 
     bool GetLatestTimeBlock(timeblock::protobuf::TimeBlock* tmblock) {

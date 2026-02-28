@@ -53,6 +53,7 @@ public:
             return consensus::kConsensusError;
         }
 
+        timer_block.set_height(view_block.block_info().height());
         InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
         zjc_host.SaveKeyValue(block_tx.to(), unique_hash, tx_info->value());
         block_tx.set_unique_hash(unique_hash);
