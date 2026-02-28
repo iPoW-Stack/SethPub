@@ -105,7 +105,7 @@ pools::TxItemPtr TimeBlockManager::tmblock_tx_ptr(
     if (tmblock_tx_ptr != nullptr) {
         auto now_tm_us = common::TimeUtils::TimestampUs();
         if (leader && tmblock_tx_ptr->prev_consensus_tm_us + 3000000lu > now_tm_us) {
-            // SETH_DEBUG("tmblock_tx_ptr->prev_consensus_tm_us + 3000000lu > now_tm_us, is leader: %d", leader);
+            SETH_DEBUG("tmblock_tx_ptr->prev_consensus_tm_us + 3000000lu > now_tm_us, is leader: %d", leader);
             return nullptr;
         }
 
@@ -134,6 +134,9 @@ pools::TxItemPtr TimeBlockManager::tmblock_tx_ptr(
         tx_info->set_key(common::Hash::keccak256(tx_info->value()));
         uint64_t now_nonce = 0ll;
         if (tx_valid_func(*account_info, *tx_info, &now_nonce) != 0) {
+            SETH_DEBUG("tx_valid_func failed, now_nonce: %lu, account_info nonce: %lu", 
+                now_nonce, 
+                account_info->nonce());
             return nullptr;
         }
 
