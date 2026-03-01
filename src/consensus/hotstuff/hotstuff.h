@@ -282,19 +282,19 @@ private:
             uint32_t new_leader_idx, 
             const view_block::protobuf::QcItem& leader_latest_qc, 
             View* out_view) {
-        auto sharding_id = common::GlobalInfo::Instance()->network_id();
-        assert(elect_info_ != nullptr);
-        auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
-        if (elect_item == nullptr) {
-            // assert(false);
-            return nullptr;
-        }
-
-        auto members = elect_item->valid_leaders();
-        // auto members = Members(common::GlobalInfo::Instance()->network_id());
-        // if (members == nullptr) {
+        // auto sharding_id = common::GlobalInfo::Instance()->network_id();
+        // assert(elect_info_ != nullptr);
+        // auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
+        // if (elect_item == nullptr) {
+        //     // assert(false);
         //     return nullptr;
         // }
+
+        // auto members = elect_item->valid_leaders();
+        auto members = Members(common::GlobalInfo::Instance()->network_id());
+        if (members == nullptr) {
+            return nullptr;
+        }
 
         auto high_view_block = view_block_chain_->HighViewBlock();
         if (!high_view_block) {
