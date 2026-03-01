@@ -2389,7 +2389,14 @@ void Hotstuff::TryRecoverFromStuck(
     }
     
     if (leader && leader->index == local_idx) {
-        assert(leader->pubkey == crypto_->security()->GetPublicKey());
+        if (leader->pubkey != crypto_->security()->GetPublicKey()) {
+            SETH_ERROR("leader pubkey: %s != local pubkey: %s, pool index: %d",
+                common::Encode::HexEncode(leader->pubkey).c_str(),
+                common::Encode::HexEncode(crypto_->security()->GetPublicKey()).c_str(),
+                pool_idx_);
+            return;
+        }
+        
         ADD_DEBUG_PROCESS_TIMESTAMP();
         if (last_vote_view_ < out_view) {
             Propose(out_view, leader, nullptr, nullptr, msg_ptr);
