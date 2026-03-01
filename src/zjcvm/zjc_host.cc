@@ -332,7 +332,7 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
     SETH_DEBUG("called 8");
     contract::CallParameters params;
     params.zjc_host = this;
-    params.gas = host.msg_.gas;
+    params.gas = msg_.gas;
     params.apparent_value = zjcvm::EvmcBytes32ToUint64(msg.value);
     params.value = msg.kind == EVMC_DELEGATECALL ? 0 : params.apparent_value;
     params.from = std::string((char*)msg.sender.bytes, sizeof(msg.sender.bytes));
