@@ -71,7 +71,7 @@ protected:
         SETH_DEBUG("init host, block number: %lu, timestamp: %lu, gas limit: %lu, "
             "gas price: %lu, from: %s, to: %s",
             zjc_host.tx_context_.block_number, zjc_host.tx_context_.block_timestamp,
-            zjc_host.tx_context_.block_gas_limit, zjc_host.tx_context_.tx_gas_price,
+            zjc_host.tx_context_.block_gas_limit, gas_price,
             common::Encode::HexEncode(tx.from()).c_str(),
             common::Encode::HexEncode(tx.to()).c_str());
     }
