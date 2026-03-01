@@ -162,7 +162,7 @@ int Execution::execute(
     }
 
     int64_t gas = gas_limit;
-    auto rev = EVMC_LATEST_STABLE_REVISION;
+    auto rev = EVMC_CANCUN;
     auto create_gas = gas_limit;
     evmc_message msg{};
     msg.gas = gas;
