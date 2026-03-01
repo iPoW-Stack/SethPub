@@ -1024,7 +1024,6 @@ Status Hotstuff::HandleProposeMsgStep_Directly(
     auto& balance_map = *balance_map_ptr;
     auto zjc_host_ptr = std::make_shared<zjcvm::ZjchainHost>();
     auto btime = common::TimeUtils::TimestampMs();
-    zjcvm::ZjchainHost prev_zjc_host;
     zjcvm::ZjchainHost& zjc_host = *zjc_host_ptr;
     if (acceptor()->Accept(
             pro_msg_wrap, 
@@ -1121,7 +1120,6 @@ Status Hotstuff::HandleProposeMsgStep_TxAccept(std::shared_ptr<ProposeMsgWrapper
     auto& balance_and_nonce_map = *pro_msg_wrap->acc_balance_and_nonce_map_ptr;
     pro_msg_wrap->zjc_host_ptr = std::make_shared<zjcvm::ZjchainHost>();
     auto btime = common::TimeUtils::TimestampMs();
-    zjcvm::ZjchainHost prev_zjc_host;
     zjcvm::ZjchainHost& zjc_host = *pro_msg_wrap->zjc_host_ptr;
     Status s = acceptor()->Accept(
         pro_msg_wrap, 
@@ -2396,7 +2394,7 @@ void Hotstuff::TryRecoverFromStuck(
                 pool_idx_);
             return;
         }
-        
+
         ADD_DEBUG_PROCESS_TIMESTAMP();
         if (last_vote_view_ < out_view) {
             Propose(out_view, leader, nullptr, nullptr, msg_ptr);
