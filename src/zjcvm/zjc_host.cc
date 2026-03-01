@@ -434,7 +434,10 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
 
 evmc_tx_context ZjchainHost::get_tx_context() const noexcept {
     // assert(false);
-    SETH_DEBUG("emit called block number: %lu, block timestamp: %lu", tx_context_.block_number, tx_context_.block_timestamp);
+    SETH_DEBUG("emit called block number: %lu, block timestamp: %lu, gas: %lu",
+        tx_context_.block_number,
+        tx_context_.block_timestamp, 
+        tx_context_.block_gas_limit);
     return tx_context_;
 }
 
