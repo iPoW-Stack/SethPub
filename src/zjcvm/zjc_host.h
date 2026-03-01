@@ -181,6 +181,8 @@ public:
         for (auto iter = cross_to_map_.begin(); iter != cross_to_map_.end(); ++iter) {
             pre_zjc_host_->cross_to_map_[iter->first] = iter->second;
         }
+
+        pre_zjc_host_->tx_context_ = tx_context_;
     }
     // void SavePrevStorages(const std::string& key, const std::string& val, bool cover) {
         // if (!cover) {
