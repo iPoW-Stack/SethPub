@@ -154,7 +154,7 @@ enum StepType {
   kCreateLibrary = 14,
   kCross = 15,
   kRootCross = 16,
-  kPoolStatisticTag = 18
+  kPoolStatisticTag = 17
 };
 bool StepType_IsValid(int value);
 const StepType StepType_MIN = kNormalFrom;
@@ -2694,6 +2694,13 @@ class ElectStatistic : public ::google::protobuf::Message /* @@protoc_insertion_
   ::google::protobuf::uint64 statistic_height() const;
   void set_statistic_height(::google::protobuf::uint64 value);
 
+  // optional uint64 nonce = 8;
+  bool has_nonce() const;
+  void clear_nonce();
+  static const int kNonceFieldNumber = 8;
+  ::google::protobuf::uint64 nonce() const;
+  void set_nonce(::google::protobuf::uint64 value);
+
   // optional uint32 sharding_id = 4;
   bool has_sharding_id() const;
   void clear_sharding_id();
@@ -2711,6 +2718,8 @@ class ElectStatistic : public ::google::protobuf::Message /* @@protoc_insertion_
   void clear_has_gas_amount();
   void set_has_statistic_height();
   void clear_has_statistic_height();
+  void set_has_nonce();
+  void clear_has_nonce();
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
@@ -2721,6 +2730,7 @@ class ElectStatistic : public ::google::protobuf::Message /* @@protoc_insertion_
   ::seth::pools::protobuf::StatisticTxItem* height_info_;
   ::google::protobuf::uint64 gas_amount_;
   ::google::protobuf::uint64 statistic_height_;
+  ::google::protobuf::uint64 nonce_;
   ::google::protobuf::uint32 sharding_id_;
   friend struct ::protobuf_protos_2fpools_2eproto::TableStruct;
 };
@@ -5696,13 +5706,13 @@ ElectStatistic::join_elect_nodes() const {
 
 // optional uint32 sharding_id = 4;
 inline bool ElectStatistic::has_sharding_id() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
 inline void ElectStatistic::set_has_sharding_id() {
-  _has_bits_[0] |= 0x00000008u;
+  _has_bits_[0] |= 0x00000010u;
 }
 inline void ElectStatistic::clear_has_sharding_id() {
-  _has_bits_[0] &= ~0x00000008u;
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline void ElectStatistic::clear_sharding_id() {
   sharding_id_ = 0u;
@@ -5794,6 +5804,30 @@ inline void ElectStatistic::set_statistic_height(::google::protobuf::uint64 valu
   set_has_statistic_height();
   statistic_height_ = value;
   // @@protoc_insertion_point(field_set:seth.pools.protobuf.ElectStatistic.statistic_height)
+}
+
+// optional uint64 nonce = 8;
+inline bool ElectStatistic::has_nonce() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void ElectStatistic::set_has_nonce() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void ElectStatistic::clear_has_nonce() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void ElectStatistic::clear_nonce() {
+  nonce_ = GOOGLE_ULONGLONG(0);
+  clear_has_nonce();
+}
+inline ::google::protobuf::uint64 ElectStatistic::nonce() const {
+  // @@protoc_insertion_point(field_get:seth.pools.protobuf.ElectStatistic.nonce)
+  return nonce_;
+}
+inline void ElectStatistic::set_nonce(::google::protobuf::uint64 value) {
+  set_has_nonce();
+  nonce_ = value;
+  // @@protoc_insertion_point(field_set:seth.pools.protobuf.ElectStatistic.nonce)
 }
 
 // -------------------------------------------------------------------

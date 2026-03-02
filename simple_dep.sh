@@ -27,9 +27,9 @@ fi
 
 echo "node count: " $nodes_count
 rm -rf /root/nodes/seth/latest_blocks
-cd /root/nodes/seth && ./seth -U -N $nodes_count -E $SHARD_END_NETWORK_ID
-cd /root/nodes/seth && ./seth -S 3 -N $nodes_count -E $SHARD_END_NETWORK_ID
-cd /root/nodes/seth && ./seth -C
+#cd /root/nodes/seth && ./seth -U -N $nodes_count -E $SHARD_END_NETWORK_ID
+#cd /root/nodes/seth && ./seth -S 3 -N $nodes_count -E $SHARD_END_NETWORK_ID
+#cd /root/nodes/seth && ./seth -C
 
 bootstrap=""
 root_node_count=`wc -l /root/seth/root_nodes | awk -F' ' '{print $1}'`

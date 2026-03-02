@@ -11,16 +11,27 @@ dnf install -y xz-devel
 #ubuntu
 apt update
 sudo apt install autoconf automake libtool -y
-apt install -y libprocps-dev 
+apt install -y libprocps-dev
 apt install -y texinfo
-apt install -y libgnutls28-dev 
+apt install -y libgnutls28-dev
 apt install -y liblzma-dev
 apt install -y pkg-config
 apt install -y yasm
-apt install -y libgnutls28-dev 
-apt install -y zlib1g-dev 
+apt install -y libgnutls28-dev
+apt install -y zlib1g-dev
 apt install -y libssh2-1-dev
 SRC_PATH=`pwd`
+cd $SRC_PATH
+cd third_party/evmone && git checkout master &&  git submodule update --init && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && make install
+cd $SRC_PATH
+cd third_party/evmone/evmc &&  git submodule update --init && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && make install
+
+cd $SRC_PATH
+cd third_party/maxmind/ && git submodule init && git submodule update && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc}
+cp -rnf libmaxminddb.a $SRC_PATH/third_party/lib/
+mkdir -p $SRC_PATH/third_party/include/maxmind && cd .. && cp -rnf ./include/* $SRC_PATH/third_party/include/maxmind && cp -rnf build_release/generated/maxminddb_config.h $SRC_PATH/third_party/include/maxmind/
+mkdir -p $SRC_PATH/third_party/include/maxmind/include && cp -rnf ./include/* $SRC_PATH/third_party/include/maxmind/include && cp -rnf build_release/generated/maxminddb_config.h $SRC_PATH/third_party/include/maxmind/include
+exit 0
 if [ ! -d "$SRC_PATH/third_party/include/libuv" ]; then
     cd $SRC_PATH
     cd third_party/libuv && rm -rf build_release && git checkout 5152db2 && git submodule init && git submodule update && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=$TARGET -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j8 && make install
@@ -51,9 +62,6 @@ cd third_party/log4cpp && git checkout . && sed -i 's/SHARED/STATIC/g' ./CMakeLi
 cd $SRC_PATH
 cd third_party/gmssl && git checkout d655c06 && sed -i "s/-march=native//g" ./CMakeLists.txt && sed -i '19i\#include <gmssl/sm2.h>' ./include/gmssl/sm2_recover.h && cmake -S . -B build_release -DBUILD_SHARED_LIBS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DENABLE_SM2_EXTS=on -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && make install
 objcopy --localize-symbol=OPENSSL_hexchar2int        --localize-symbol=OPENSSL_hexstr2buf        $SRC_PATH/third_party/lib/libgmssl.a
-cd $SRC_PATH
-cd third_party/evmone &&  git submodule update --init && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && make install
-
 cd $SRC_PATH
 cd third_party/gperftools/ && git checkout d9a5d38 && ./autogen.sh && ./configure --prefix=$SRC_PATH/third_party/ && make -j${nproc} && make install
 cd $SRC_PATH
@@ -87,14 +95,6 @@ cp -rnf ../contrib/absl/absl $SRC_PATH/third_party/include/
 cp -rnf ../contrib/lz4/lz4 $SRC_PATH/third_party/include/
 cp -rnf ../contrib/zstd/zstd $SRC_PATH/third_party/include/
 
-cd $SRC_PATH
-cd third_party/evmone/evmc &&  git submodule update --init && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && make install
-
-cd $SRC_PATH
-cd third_party/maxmind/ && git submodule init && git submodule update && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc}
-cp -rnf libmaxminddb.a $SRC_PATH/third_party/lib/
-mkdir -p $SRC_PATH/third_party/include/maxmind && cd .. && cp -rnf ./include/* $SRC_PATH/third_party/include/maxmind && cp -rnf build_release/generated/maxminddb_config.h $SRC_PATH/third_party/include/maxmind/
-mkdir -p $SRC_PATH/third_party/include/maxmind/include && cp -rnf ./include/* $SRC_PATH/third_party/include/maxmind/include && cp -rnf build_release/generated/maxminddb_config.h $SRC_PATH/third_party/include/maxmind/include
 
 cd $SRC_PATH
 cd third_party/geolite2pp && git checkout . && sed -i 's/const auto iter/const auto\& iter/g' ./src-main/main.cpp &&  sed -i '11i\include_directories(SYSTEM '$SRC_PATH'/third_party/include/maxmind/)' CMakeLists.txt && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/  -DCMAKE_PREFIX_PATH=$SRC_PATH/third_party/ -DCMAKE_INCLUDE_PATH=$SRC_PATH/third_party/include/maxmind/ && cd build_release && make -j${nproc} && make install
