@@ -61,13 +61,13 @@ class ZjchainHost : public evmc::Host {
 public:
     ZjchainHost() {
         common::GlobalInfo::Instance()->AddSharedObj(6);
-        
+
     }
 
     ~ZjchainHost() {
         common::GlobalInfo::Instance()->DecSharedObj(6);
     }
-    
+
     struct log_record {
         evmc::address creator;
         std::string data;
@@ -182,7 +182,7 @@ public:
             pre_zjc_host_->cross_to_map_[iter->first] = iter->second;
         }
 
-        // pre_zjc_host_->tx_context_ = tx_context_;
+        pre_zjc_host_->tx_context_ = tx_context_;
     }
     // void SavePrevStorages(const std::string& key, const std::string& val, bool cover) {
         // if (!cover) {
@@ -193,7 +193,7 @@ public:
         // }
         // // if (key.size() > 40)
         // // SETH_DEBUG("success add prev storage key: %s, value: %s",
-        // //     common::Encode::HexEncode(key).c_str(), 
+        // //     common::Encode::HexEncode(key).c_str(),
         // //     common::Encode::HexEncode(val).c_str());
         // prev_storages_map_[key] = val;
         // CHECK_MEMORY_SIZE(prev_storages_map_);
