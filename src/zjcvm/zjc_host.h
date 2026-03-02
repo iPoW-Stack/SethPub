@@ -223,7 +223,6 @@ public:
     std::shared_ptr<contract::ContractManager> contract_mgr_ = nullptr;
     std::shared_ptr<hotstuff::ViewBlockChain> view_block_chain_ = nullptr;
     db::DbWriteBatch db_batch_;
-    evmc_message msg_;
     ZjchainHost* pre_zjc_host_ = nullptr;
 };
 

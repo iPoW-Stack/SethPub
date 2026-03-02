@@ -164,7 +164,7 @@ int Execution::execute(
     int64_t gas = gas_limit;
     auto rev = EVMC_CANCUN;
     auto create_gas = gas_limit;
-    evmc_message& msg = host.msg_;
+    evmc_message msg;
     msg.gas = gas;
     msg.input_data = (uint8_t*)str_input.c_str();
     msg.input_size = str_input.size();
