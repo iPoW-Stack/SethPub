@@ -75,7 +75,7 @@ public:
             return false;
         }
 
-        return has_missing_height_;
+        return !has_missing_height_ ;
     }
 
     bool TxKeyExists(const std::string& addr, uint64_t nonce, const std::string& key) {
