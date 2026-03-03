@@ -67,6 +67,8 @@ void TxPool::InitHeightTree() {
         }
     }
 
+    SETH_DEBUG("init height tree success, net_id: %u, pool_index_: %u, latest_height_: %lu, synced_height_: %lu", 
+        net_id, pool_index_, latest_height_, synced_height_);
     height_tree_ptr_ = height_tree_ptr;
 }
 
