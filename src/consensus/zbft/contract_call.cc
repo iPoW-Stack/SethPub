@@ -40,6 +40,20 @@ int ContractCall::HandleTx(
     zjc_host.view_block_chain_ = pre_zjc_host.view_block_chain_;
     zjc_host.tx_context_ = pre_zjc_host.tx_context_;
     zjc_host.pre_zjc_host_ = &pre_zjc_host;
+    auto& evmc_message msg = zjc_host.msg_;
+    msg.gas = gas;
+    msg.input_data = (uint8_t*)str_input.c_str();
+    msg.input_size = str_input.size();
+    Uint64ToEvmcBytes32(msg.value, value);
+    memcpy(
+        msg.sender.bytes,
+        from_address.c_str(),
+        sizeof(msg.sender.bytes));
+    memcpy(
+        msg.recipient.bytes,
+        to_address.c_str(),
+        sizeof(msg.recipient.bytes));
+        
     do {
         if (from_balance <= kCallContractDefaultUseGas * block_tx.gas_price() + block_tx.amount()) {
             block_tx.set_status(kConsensusOutOfGas);

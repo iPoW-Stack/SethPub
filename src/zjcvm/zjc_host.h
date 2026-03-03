@@ -201,6 +201,7 @@ public:
 
     evmc_tx_context tx_context_ = {};
     std::string parent_hash_;
+    evmc_message msg_ = {};
 
     // each tx must reset
     std::vector<log_record> recorded_logs_;

@@ -269,7 +269,8 @@ Status Hotstuff::Propose(
         cons_debug.ParseFromString(header.debug());
         SETH_DEBUG("pool: %d, header pool: %d, propose, txs size: %lu, view: %lu, "
             "hash: %s, qc_view: %lu, hash64: %lu, propose_debug: %s, "
-            "msg view: %lu, cur view: %lu, propose msg: %s, sendout_bft_message_count_: %u",
+            "msg view: %lu, cur view: %lu, propose msg: %s, sendout_bft_message_count_: %u, "
+            "latest_leader_propose_message_->latest_qc_view: %lu, latest_qc_item_ptr_->view(): %lu",
             pool_idx_,
             header.hotstuff().pool_index(),
             hotstuff_msg->pro_msg().tx_propose().txs_size(),
@@ -281,7 +282,9 @@ Status Hotstuff::Propose(
             tmp_msg_ptr->header.hotstuff().pro_msg().view_item().qc().view(),
             pacemaker_->CurView(),
             ProtobufToJson(header.hotstuff().pro_msg()).c_str(),
-            sendout_bft_message_count_.fetch_add(0));
+            sendout_bft_message_count_.fetch_add(0),
+            latest_leader_propose_message_->latest_qc_view,
+            latest_qc_item_ptr_->view());
 #endif
         // HandleProposeMsg(latest_leader_propose_message_);
         latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
@@ -774,8 +777,10 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
     SETH_DEBUG("HandleProposeMsgStep_HasVote called hash: %lu, "
-        "last_vote_view_: %lu, view_item.qc().view(): %lu, propose_debug: %s",
-        pro_msg_wrap->msg_ptr->header.hash64(), latest_qc_item_ptr_->view(), view_item.qc().view(),
+        "last_vote_view_: %lu, last qc view: %lu, "
+        "view_item.qc().view(): %lu, propose_debug: %s",
+        pro_msg_wrap->msg_ptr->header.hash64(), last_vote_view_, 
+        latest_qc_item_ptr_->view(), view_item.qc().view(),
         ProtobufToJson(cons_debug).c_str());
 #endif
     if (latest_qc_item_ptr_->view() >= view_item.qc().view()) {
@@ -1640,6 +1645,10 @@ Status Hotstuff::Commit(
         const std::shared_ptr<ViewBlockInfo>& v_block_info,
         const QC& commit_qc) {
     view_block_chain->Commit(v_block_info);
+    if (latest_leader_propose_message_) {
+        latest_leader_propose_message_ = nullptr;
+    }
+
     return Status::kSuccess;
 }
 
@@ -1702,6 +1711,7 @@ void Hotstuff::HandleSyncedViewBlock(
                 vblock->qc().view() >= latest_qc_item_ptr_->view()) {
             if (IsQcTcValid(vblock->qc())) {
                 latest_qc_item_ptr_ = std::make_shared<view_block::protobuf::QcItem>(vblock->qc());
+                
             }
         }
         TryCommit(view_block_chain(), msg_ptr, *latest_qc_item_ptr_);
