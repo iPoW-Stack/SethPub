@@ -203,18 +203,17 @@ public:
                 high_view_block_->block_info().height());
         }
 
-        if (pools_mgr_->PoolChainIsFull(
-                pool_index_, 
-                high_view_block_->block_info().height())) {
-            return true;
+        auto tmp_block = high_view_block_;
+        while (true) {
+            auto pre_block = Get(tmp_block->parent_hash());
+            if (pre_block && pre_block->view_block && IsQcTcValid(pre_block->view_block->qc())) {
+                tmp_block = pre_block->view_block;
+            }
         }
 
-        SETH_DEBUG("pool: %d, check pool chain is full, high view block height: %lu, latest committed block height: %lu", 
-            pool_index_, high_view_block_->block_info().height(), 
-            latest_committed_block ? latest_committed_block->block_info().height() : 0);
         return pools_mgr_->PoolChainIsFull(
             pool_index_, 
-            high_view_block_->block_info().height() - 1);
+            tmp_block->block_info().height() - 1);
     }
 
 #ifdef TEST_FORKING_ATTACK
