@@ -190,6 +190,7 @@ Status Hotstuff::Propose(
     }
 
     if (!view_block_chain_->ChainIsFull()) {
+        SETH_DEBUG("pool %u chain is not full, waiting for syncing.", pool_idx_);
         if (latest_leader_propose_message_) {
             latest_leader_propose_message_ = nullptr;
         }
