@@ -192,6 +192,7 @@ Status Hotstuff::Propose(
     if (!view_block_chain_->ChainIsFull()) {
         SETH_DEBUG("pool %u chain is not full, waiting for syncing.", pool_idx_);
         if (latest_leader_propose_message_) {
+            SETH_DEBUG("set latest_leader_propose_message_ = nullptr");
             latest_leader_propose_message_ = nullptr;
         }
 
@@ -218,6 +219,7 @@ Status Hotstuff::Propose(
 
     if (latest_leader_propose_message_ &&
             latest_leader_propose_message_->latest_qc_view < latest_qc_item_ptr_->view()) {
+        SETH_DEBUG("set latest_leader_propose_message_ = nullptr");
         latest_leader_propose_message_ = nullptr;
         last_leader_propose_view_ = 0llu;
     }
@@ -243,12 +245,14 @@ Status Hotstuff::Propose(
         }
 
         if (leader->index != leader_qc->leader_idx()) {
+            SETH_DEBUG("set latest_leader_propose_message_ = nullptr");
             latest_leader_propose_message_ = nullptr;
             last_leader_propose_view_ = 0llu;
             return Status::kError;
         }
 
         if (leader_view > leader_qc->view()) {
+            SETH_DEBUG("set latest_leader_propose_message_ = nullptr");
             latest_leader_propose_message_ = nullptr;
             last_leader_propose_view_ = 0llu;
             return Status::kError;
@@ -1354,7 +1358,8 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     if (res != Status::kSuccess) {
         auto& vote_msg = msg_ptr->header.hotstuff().vote_msg();
         if (vote_msg.leader_idx() == GetLocalMemberIdx()) {
-            latest_leader_propose_message_ = nullptr;
+            SETH_DEBUG("set latest_leader_propose_message_ = nullptr");
+            // latest_leader_propose_message_ = nullptr;
         }
     }
 }
@@ -1649,6 +1654,7 @@ std::shared_ptr<ViewBlockInfo> Hotstuff::CheckCommit(
         const QC& qc) {
     return view_block_chain->CheckCommit(qc);
 }
+
 
 Status Hotstuff::Commit(
         const std::shared_ptr<ViewBlockChain>& view_block_chain,
