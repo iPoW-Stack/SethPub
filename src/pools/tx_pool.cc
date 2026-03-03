@@ -38,6 +38,8 @@ void TxPool::Init(
 void TxPool::InitHeightTree() {
     // // CheckThreadIdValid();
     if (common::GlobalInfo::Instance()->network_id() == common::kInvalidUint32) {
+        SETH_DEBUG("get invalid network id: %u, latest_height_: %lu", 
+            common::GlobalInfo::Instance()->network_id(), latest_height_);
         return;
     }
 
@@ -48,6 +50,8 @@ void TxPool::InitHeightTree() {
     }
 
     if (net_id < network::kRootCongressNetworkId || net_id >= network::kConsensusShardEndNetworkId) {
+        SETH_DEBUG("get invalid network id: %u, latest_height_: %lu", 
+            common::GlobalInfo::Instance()->network_id(), latest_height_);
         return;
     }
 
