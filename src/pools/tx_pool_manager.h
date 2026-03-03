@@ -224,6 +224,10 @@ public:
         return tx_pool_[pool_index].TxKeyExists(addr, nonce, key);
     }
 
+    bool PoolChainIsFull(uint32_t pool_index, uint64_t height) const {
+        return tx_pool_[pool_index].PoolChainIsFull(height);
+    }
+    
 private:
     int TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr);
     void DispatchTx(uint32_t pool_index, const transport::MessagePtr& msg_ptr);

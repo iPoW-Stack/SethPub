@@ -98,6 +98,7 @@ uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
             return 0;
         }
 
+        has_missing_height_ = true;
         uint64_t min_height = invalid_heights[0];
         uint32_t synced_count = 0;
         for (uint64_t i = min_height; i < latest_height_; ++i) {
@@ -124,6 +125,8 @@ uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
                 break;
             }
         }
+    } else {
+        has_missing_height_ = false;
     }
 
     return invalid_heights.size();

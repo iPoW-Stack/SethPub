@@ -176,6 +176,24 @@ public:
         return pool_index_;
     }
 
+    bool ChainIsFull() const {
+        if (!IsQcTcValid(high_view_block_->qc())) {
+            return false;
+        }
+
+        if (!high_view_block_->has_block_info()) {
+            return false;
+        }
+
+        if (high_view_block_->has_block_info()->height() == 0) {
+            return pools_mgr_->PoolChainIsFull(pool_index_, 0);
+        }
+
+        return pools_mgr_->PoolChainIsFull(
+            pool_index_, 
+            high_view_block_->has_block_info()->height() - 1);
+    }
+
 #ifdef TEST_FORKING_ATTACK
     std::shared_ptr<ViewBlockInfo> GetViewBlockVithView(uint64_t view) {
         auto iter = view_with_blocks_.find(view);

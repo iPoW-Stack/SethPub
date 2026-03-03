@@ -68,6 +68,9 @@ public:
             const uint64_t timestamp);
     void SyncBlock();
     void TxOver(view_block::protobuf::ViewBlockItem& view_block);
+    bool PoolChainIsFull(uint64_t height) const {
+        return has_missing_height_;
+    }
 
     bool TxKeyExists(const std::string& addr, uint64_t nonce, const std::string& key) {
         auto iter = tx_map_.find(addr);
@@ -228,6 +231,7 @@ private:
     std::map<std::string, std::map<uint64_t, TxItemPtr>> tx_map_;
     std::map<std::string, std::map<uint64_t, TxItemPtr>> consensus_tx_map_;
     uint32_t consensus_tx_map_count_ = 0;
+    std::atomic<bool> has_missing_height_ = true;
 
 // TODO: just test
     db::DbWriteBatch added_gids_batch_;

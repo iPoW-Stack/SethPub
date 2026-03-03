@@ -189,6 +189,13 @@ Status Hotstuff::Propose(
         return Status::kError;
     }
 
+    if (!view_block_chain_->ChainIsFull()) {
+        if (latest_leader_propose_message_) {
+            latest_leader_propose_message_ = nullptr;
+        }
+
+        return Status::kError;
+    }
     // SETH_DEBUG("net: %d, pool %u has dht ptr size: %d.", 
     //     common::GlobalInfo::Instance()->network_id(), 
     //     pool_idx_, 
