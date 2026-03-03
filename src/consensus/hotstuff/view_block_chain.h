@@ -196,9 +196,20 @@ public:
         auto latest_committed_block = LatestCommittedBlock();
         if (latest_committed_block && 
                 latest_committed_block->block_info().height() == high_view_block_->block_info().height()) {
+            SETH_DEBUG("pool: %d, check pool chain is full, latest committed block height: %lu, high view block height: %lu", 
+                pool_index_, latest_committed_block->block_info().height(), high_view_block_->block_info().height());
             return pools_mgr_->PoolChainIsFull(
                 pool_index_, 
                 high_view_block_->block_info().height());
+        }
+
+        auto pre_block = Get(high_view_block_->parent_hash());
+        if (pre_block) {
+            SETH_DEBUG("pool: %d, check pool chain is full, pre block height: %lu, high view block height: %lu", 
+                pool_index_, pre_block->block_info().height(), high_view_block_->block_info().height());
+            return pools_mgr_->PoolChainIsFull(
+                pool_index_, 
+                pre_block->block_info().height() - 1);
         }
 
         return pools_mgr_->PoolChainIsFull(
