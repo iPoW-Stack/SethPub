@@ -69,6 +69,15 @@ void TxPool::InitHeightTree() {
 
     SETH_DEBUG("init height tree success, net_id: %u, pool_index_: %u, latest_height_: %lu, synced_height_: %lu", 
         net_id, pool_index_, latest_height_, synced_height_);
+    height_tree_ptr->GetMissingHeights(&invalid_heights, latest_height_);
+    SETH_DEBUG("%u get invalid heights size: %u, latest_height_: %lu", 
+        pool_index_, invalid_heights.size(), latest_height_);
+    if (invalid_heights.size() > 0 && invalid_heights[0] <= latest_height_) {
+        has_missing_height_ = true;
+    } else {
+        has_missing_height_ = false;
+    }
+
     height_tree_ptr_ = height_tree_ptr;
 }
 
@@ -94,6 +103,12 @@ uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
     height_tree_ptr_->GetMissingHeights(&invalid_heights, latest_height_);
     SETH_DEBUG("%u get invalid heights size: %u, latest_height_: %lu", 
         pool_index_, invalid_heights.size(), latest_height_);
+    if (invalid_heights.size() > 0 && invalid_heights[0] <= latest_height_) {
+        has_missing_height_ = true;
+    } else {
+        has_missing_height_ = false;
+    }
+
     if (invalid_heights.size() > 0) {
         auto net_id = common::GlobalInfo::Instance()->network_id();
         if (net_id >= network::kConsensusWaitingShardBeginNetworkId &&
@@ -105,7 +120,6 @@ uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
             return 0;
         }
 
-        has_missing_height_ = true;
         uint64_t min_height = invalid_heights[0];
         uint32_t synced_count = 0;
         for (uint64_t i = min_height; i < latest_height_; ++i) {
@@ -132,8 +146,6 @@ uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
                 break;
             }
         }
-    } else {
-        has_missing_height_ = false;
     }
 
     return invalid_heights.size();
