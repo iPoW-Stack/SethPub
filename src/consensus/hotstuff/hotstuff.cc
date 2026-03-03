@@ -429,6 +429,18 @@ Status Hotstuff::Propose(
     if (tmp_msg_ptr->header.hotstuff().pro_msg().has_view_item()) {
         latest_leader_propose_message_ = tmp_msg_ptr;
         latest_leader_propose_message_->latest_qc_view = latest_qc_item_ptr_->view();
+        uint64_t tm = 0;
+        if (view_with_block_tm_map_.Get(pb_pro_msg->view_item().qc().view(), tm)) {
+            pb_pro_msg->mutable_view_item()->mutable_block_info()->set_timestamp(tm);
+        } else {
+            view_with_block_tm_map_.Put(
+                pb_pro_msg->view_item().qc().view(), 
+                pb_pro_msg->view_item().block_info().timestamp());
+        }
+
+        SETH_DEBUG("set latest_leader_propose_message_, view: %lu, block tm: %lu", 
+            pb_pro_msg->view_item().qc().view(), 
+            pb_pro_msg->view_item().block_info().timestamp());
     }
 
 #ifndef NDEBUG
@@ -444,14 +456,6 @@ Status Hotstuff::Propose(
         latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
     }
 
-    auto iter = view_with_block_tm_map_.find(pb_pro_msg->view_item().qc().view());
-    if (iter != view_with_block_tm_map_.end()) {
-        pb_pro_msg->mutable_view_item()->mutable_block_info()->set_timestamp(iter->second);
-    } else {
-        view_with_block_tm_map_[pb_pro_msg->view_item().qc().view()] = 
-            pb_pro_msg->view_item().block_info().timestamp();
-    }
-    
     // ADD_DEBUG_PROCESS_TIMESTAMP();
     // HandleProposeMsg(tmp_msg_ptr);
     ADD_DEBUG_PROCESS_TIMESTAMP();
