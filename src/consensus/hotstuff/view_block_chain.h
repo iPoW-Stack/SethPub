@@ -193,6 +193,14 @@ public:
             return pools_mgr_->PoolChainIsFull(pool_index_, 0);
         }
 
+        auto latest_committed_block = LatestCommittedBlock();
+        if (latest_committed_block && 
+                latest_committed_block->qc().view() == high_view_block_->block_info().height()) {
+            return pools_mgr_->PoolChainIsFull(
+                pool_index_, 
+                high_view_block_->block_info().height());
+        }
+
         return pools_mgr_->PoolChainIsFull(
             pool_index_, 
             high_view_block_->block_info().height() - 1);
