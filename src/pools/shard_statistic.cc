@@ -266,10 +266,10 @@ bool ShardStatistic::HandleStatistic(
 
     auto pool_iter = pool_statistic_riter->second.find(pool_idx);
     if (pool_iter == pool_statistic_riter->second.end()) {
-        assert(false);
-        return false;
-        // pool_statistic_riter->second[pool_idx] = StatisticInfoItem();
-        // pool_iter = pool_statistic_riter->second.find(pool_idx);
+        // assert(false);
+        // return false;
+        pool_statistic_riter->second[pool_idx] = StatisticInfoItem();
+        pool_iter = pool_statistic_riter->second.find(pool_idx);
     }
 
     auto& pool_statistic_info = pool_iter->second;
