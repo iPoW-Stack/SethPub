@@ -214,6 +214,10 @@ public:
             break;
         }
 
+        if (tmp_block->block_info().height() <= 0) {
+            return pools_mgr_->PoolChainIsFull(pool_index_, 0);
+        }
+
         return pools_mgr_->PoolChainIsFull(
             pool_index_, 
             tmp_block->block_info().height() - 1);
