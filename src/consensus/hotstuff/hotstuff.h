@@ -514,6 +514,8 @@ private:
     uint32_t consecutive_failures_ = 0u;
     uint32_t last_stable_leader_member_index_ = 0u;
     uint64_t latest_elect_height_ = 0llu;
+    common::LRUMap<uint64_t, uint64_t> view_with_block_tm_map_{16};
+
 
 // #ifndef NDEBUG
     static std::atomic<uint32_t> sendout_bft_message_count_;
