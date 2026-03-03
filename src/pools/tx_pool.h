@@ -69,7 +69,7 @@ public:
     void SyncBlock();
     void TxOver(view_block::protobuf::ViewBlockItem& view_block);
     bool PoolChainIsFull(uint64_t height) const {
-        if (latest_height_ != height) {
+        if (latest_height_ < height) {
             SETH_DEBUG("pool: %d, check pool chain is full height: %lu, latest_height_: %lu", 
                 pool_index_, height, latest_height_);
             return false;
