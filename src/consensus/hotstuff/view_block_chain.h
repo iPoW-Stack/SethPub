@@ -179,7 +179,7 @@ public:
     bool ChainIsFull() const {
         if (!IsQcTcValid(high_view_block_->qc())) {
             SETH_DEBUG("pool: %d, check pool chain is full failed, invalid qc: %s", 
-                pool_index_, StringUtils::FormatQC(high_view_block_->qc()).c_str());
+                pool_index_, ProtobufToJson(high_view_block_->qc()).c_str());
             return false;
         }
 
@@ -189,13 +189,13 @@ public:
             return false;
         }
 
-        if (high_view_block_->has_block_info().height() == 0) {
+        if (high_view_block_->block_info().height() == 0) {
             return pools_mgr_->PoolChainIsFull(pool_index_, 0);
         }
 
         return pools_mgr_->PoolChainIsFull(
             pool_index_, 
-            high_view_block_->has_block_info().height() - 1);
+            high_view_block_->block_info().height() - 1);
     }
 
 #ifdef TEST_FORKING_ATTACK
