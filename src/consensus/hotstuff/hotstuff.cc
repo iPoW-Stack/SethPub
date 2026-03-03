@@ -219,6 +219,7 @@ Status Hotstuff::Propose(
     if (latest_leader_propose_message_ &&
             latest_leader_propose_message_->latest_qc_view < latest_qc_item_ptr_->view()) {
         latest_leader_propose_message_ = nullptr;
+        last_leader_propose_view_ = 0llu;
     }
 
 #ifndef NDEBUG
@@ -243,11 +244,13 @@ Status Hotstuff::Propose(
 
         if (leader->index != leader_qc->leader_idx()) {
             latest_leader_propose_message_ = nullptr;
+            last_leader_propose_view_ = 0llu;
             return Status::kError;
         }
 
         if (leader_view > leader_qc->view()) {
             latest_leader_propose_message_ = nullptr;
+            last_leader_propose_view_ = 0llu;
             return Status::kError;
         }
 
@@ -1655,6 +1658,7 @@ Status Hotstuff::Commit(
     view_block_chain->Commit(v_block_info);
     if (latest_leader_propose_message_) {
         latest_leader_propose_message_ = nullptr;
+        last_leader_propose_view_ = 0llu;
     }
 
     return Status::kSuccess;
