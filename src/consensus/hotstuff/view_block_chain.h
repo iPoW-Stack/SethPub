@@ -208,7 +208,10 @@ public:
             auto pre_block = Get(tmp_block->parent_hash());
             if (pre_block && pre_block->view_block && IsQcTcValid(pre_block->view_block->qc())) {
                 tmp_block = pre_block->view_block;
+                continue;
             }
+
+            break;
         }
 
         return pools_mgr_->PoolChainIsFull(
