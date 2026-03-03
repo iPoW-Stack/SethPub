@@ -372,7 +372,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashSt
     return nullptr;    
 }
 
-std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) {
+std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) const {
     // CheckThreadIdValid();
     auto it = view_blocks_info_.find(hash);
     if (it != view_blocks_info_.end()) {
