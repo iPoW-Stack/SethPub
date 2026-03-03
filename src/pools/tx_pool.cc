@@ -69,6 +69,7 @@ void TxPool::InitHeightTree() {
 
     SETH_DEBUG("init height tree success, net_id: %u, pool_index_: %u, latest_height_: %lu, synced_height_: %lu", 
         net_id, pool_index_, latest_height_, synced_height_);
+    std::vector<uint64_t> invalid_heights;
     height_tree_ptr->GetMissingHeights(&invalid_heights, latest_height_);
     SETH_DEBUG("%u get invalid heights size: %u, latest_height_: %lu", 
         pool_index_, invalid_heights.size(), latest_height_);
