@@ -2680,6 +2680,18 @@ class ElectStatistic : public ::google::protobuf::Message /* @@protoc_insertion_
   ::seth::pools::protobuf::StatisticTxItem* mutable_height_info();
   void set_allocated_height_info(::seth::pools::protobuf::StatisticTxItem* height_info);
 
+  // optional .seth.elect.protobuf.ElectBlock elect_block = 9;
+  bool has_elect_block() const;
+  void clear_elect_block();
+  static const int kElectBlockFieldNumber = 9;
+  private:
+  const ::seth::elect::protobuf::ElectBlock& _internal_elect_block() const;
+  public:
+  const ::seth::elect::protobuf::ElectBlock& elect_block() const;
+  ::seth::elect::protobuf::ElectBlock* release_elect_block();
+  ::seth::elect::protobuf::ElectBlock* mutable_elect_block();
+  void set_allocated_elect_block(::seth::elect::protobuf::ElectBlock* elect_block);
+
   // optional uint64 gas_amount = 5;
   bool has_gas_amount() const;
   void clear_gas_amount();
@@ -2720,6 +2732,8 @@ class ElectStatistic : public ::google::protobuf::Message /* @@protoc_insertion_
   void clear_has_statistic_height();
   void set_has_nonce();
   void clear_has_nonce();
+  void set_has_elect_block();
+  void clear_has_elect_block();
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
@@ -2728,6 +2742,7 @@ class ElectStatistic : public ::google::protobuf::Message /* @@protoc_insertion_
   ::google::protobuf::RepeatedPtrField< ::seth::pools::protobuf::JoinElectNode > join_elect_nodes_;
   ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > lof_leaders_;
   ::seth::pools::protobuf::StatisticTxItem* height_info_;
+  ::seth::elect::protobuf::ElectBlock* elect_block_;
   ::google::protobuf::uint64 gas_amount_;
   ::google::protobuf::uint64 statistic_height_;
   ::google::protobuf::uint64 nonce_;
@@ -5706,13 +5721,13 @@ ElectStatistic::join_elect_nodes() const {
 
 // optional uint32 sharding_id = 4;
 inline bool ElectStatistic::has_sharding_id() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
+  return (_has_bits_[0] & 0x00000020u) != 0;
 }
 inline void ElectStatistic::set_has_sharding_id() {
-  _has_bits_[0] |= 0x00000010u;
+  _has_bits_[0] |= 0x00000020u;
 }
 inline void ElectStatistic::clear_has_sharding_id() {
-  _has_bits_[0] &= ~0x00000010u;
+  _has_bits_[0] &= ~0x00000020u;
 }
 inline void ElectStatistic::clear_sharding_id() {
   sharding_id_ = 0u;
@@ -5730,13 +5745,13 @@ inline void ElectStatistic::set_sharding_id(::google::protobuf::uint32 value) {
 
 // optional uint64 gas_amount = 5;
 inline bool ElectStatistic::has_gas_amount() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
+  return (_has_bits_[0] & 0x00000004u) != 0;
 }
 inline void ElectStatistic::set_has_gas_amount() {
-  _has_bits_[0] |= 0x00000002u;
+  _has_bits_[0] |= 0x00000004u;
 }
 inline void ElectStatistic::clear_has_gas_amount() {
-  _has_bits_[0] &= ~0x00000002u;
+  _has_bits_[0] &= ~0x00000004u;
 }
 inline void ElectStatistic::clear_gas_amount() {
   gas_amount_ = GOOGLE_ULONGLONG(0);
@@ -5784,13 +5799,13 @@ ElectStatistic::mutable_lof_leaders() {
 
 // optional uint64 statistic_height = 7;
 inline bool ElectStatistic::has_statistic_height() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
+  return (_has_bits_[0] & 0x00000008u) != 0;
 }
 inline void ElectStatistic::set_has_statistic_height() {
-  _has_bits_[0] |= 0x00000004u;
+  _has_bits_[0] |= 0x00000008u;
 }
 inline void ElectStatistic::clear_has_statistic_height() {
-  _has_bits_[0] &= ~0x00000004u;
+  _has_bits_[0] &= ~0x00000008u;
 }
 inline void ElectStatistic::clear_statistic_height() {
   statistic_height_ = GOOGLE_ULONGLONG(0);
@@ -5808,13 +5823,13 @@ inline void ElectStatistic::set_statistic_height(::google::protobuf::uint64 valu
 
 // optional uint64 nonce = 8;
 inline bool ElectStatistic::has_nonce() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
 inline void ElectStatistic::set_has_nonce() {
-  _has_bits_[0] |= 0x00000008u;
+  _has_bits_[0] |= 0x00000010u;
 }
 inline void ElectStatistic::clear_has_nonce() {
-  _has_bits_[0] &= ~0x00000008u;
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline void ElectStatistic::clear_nonce() {
   nonce_ = GOOGLE_ULONGLONG(0);
@@ -5828,6 +5843,60 @@ inline void ElectStatistic::set_nonce(::google::protobuf::uint64 value) {
   set_has_nonce();
   nonce_ = value;
   // @@protoc_insertion_point(field_set:seth.pools.protobuf.ElectStatistic.nonce)
+}
+
+// optional .seth.elect.protobuf.ElectBlock elect_block = 9;
+inline bool ElectStatistic::has_elect_block() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void ElectStatistic::set_has_elect_block() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void ElectStatistic::clear_has_elect_block() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline const ::seth::elect::protobuf::ElectBlock& ElectStatistic::_internal_elect_block() const {
+  return *elect_block_;
+}
+inline const ::seth::elect::protobuf::ElectBlock& ElectStatistic::elect_block() const {
+  const ::seth::elect::protobuf::ElectBlock* p = elect_block_;
+  // @@protoc_insertion_point(field_get:seth.pools.protobuf.ElectStatistic.elect_block)
+  return p != NULL ? *p : *reinterpret_cast<const ::seth::elect::protobuf::ElectBlock*>(
+      &::seth::elect::protobuf::_ElectBlock_default_instance_);
+}
+inline ::seth::elect::protobuf::ElectBlock* ElectStatistic::release_elect_block() {
+  // @@protoc_insertion_point(field_release:seth.pools.protobuf.ElectStatistic.elect_block)
+  clear_has_elect_block();
+  ::seth::elect::protobuf::ElectBlock* temp = elect_block_;
+  elect_block_ = NULL;
+  return temp;
+}
+inline ::seth::elect::protobuf::ElectBlock* ElectStatistic::mutable_elect_block() {
+  set_has_elect_block();
+  if (elect_block_ == NULL) {
+    auto* p = CreateMaybeMessage<::seth::elect::protobuf::ElectBlock>(GetArenaNoVirtual());
+    elect_block_ = p;
+  }
+  // @@protoc_insertion_point(field_mutable:seth.pools.protobuf.ElectStatistic.elect_block)
+  return elect_block_;
+}
+inline void ElectStatistic::set_allocated_elect_block(::seth::elect::protobuf::ElectBlock* elect_block) {
+  ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
+  if (message_arena == NULL) {
+    delete reinterpret_cast< ::google::protobuf::MessageLite*>(elect_block_);
+  }
+  if (elect_block) {
+    ::google::protobuf::Arena* submessage_arena = NULL;
+    if (message_arena != submessage_arena) {
+      elect_block = ::google::protobuf::internal::GetOwnedMessage(
+          message_arena, elect_block, submessage_arena);
+    }
+    set_has_elect_block();
+  } else {
+    clear_has_elect_block();
+  }
+  elect_block_ = elect_block;
+  // @@protoc_insertion_point(field_set_allocated:seth.pools.protobuf.ElectStatistic.elect_block)
 }
 
 // -------------------------------------------------------------------
