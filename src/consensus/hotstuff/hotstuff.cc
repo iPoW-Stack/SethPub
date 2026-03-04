@@ -825,29 +825,17 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
 
             auto iter = leader_iter->second.find(view_item.qc().view());
             if (iter != leader_iter->second.end()) {
-                if (iter->second->header.hotstuff().vote_msg().view_block_hash() == view_item.qc().view_block_hash()) {
-                    SETH_DEBUG("pool: %d has voted: %lu, last_vote_view_: %u, "
-                        "hash64: %lu and resend vote: hash: %s",
-                        pool_idx_, view_item.qc().view(),
-                        last_vote_view_, pro_msg_wrap->msg_ptr->header.hash64(),
-                        common::Encode::HexEncode(iter->second->header.hotstuff().vote_msg().view_block_hash()).c_str());
-                    auto tmp_msg_ptr = std::make_shared<transport::TransportMessage>();
-                    tmp_msg_ptr->header.CopyFrom(iter->second->header);
-                    auto leader = pro_msg_wrap->leader;
-                    if (!leader || SendMsgToLeader(leader, tmp_msg_ptr, VOTE) != Status::kSuccess) {
-                        SETH_ERROR("pool: %d, Send vote message is error.",
-                            pool_idx_, pro_msg_wrap->msg_ptr->header.hash64());
-                    }
-                } else {
-                    SETH_DEBUG("not eq hash: %s, %s, leader: %d, pool: %d has voted view: %lu, last_locked_view_: %u, "
-                        "last_vote_view_: %lu, hash64: %lu, pacemaker()->CurView(): %lu",
-                        common::Encode::HexEncode(iter->second->header.hotstuff().vote_msg().view_block_hash()).c_str(),
-                        common::Encode::HexEncode(view_item.qc().view_block_hash()).c_str(),
-                        view_item.qc().leader_idx(),
-                        pool_idx_, view_item.qc().view(),
-                        latest_qc_item_ptr_->view(), last_vote_view_,
-                        pro_msg_wrap->msg_ptr->header.hash64(),
-                        pacemaker()->CurView());
+                SETH_DEBUG("pool: %d has voted: %lu, last_vote_view_: %u, "
+                    "hash64: %lu and resend vote: hash: %s",
+                    pool_idx_, view_item.qc().view(),
+                    last_vote_view_, pro_msg_wrap->msg_ptr->header.hash64(),
+                    common::Encode::HexEncode(iter->second->header.hotstuff().vote_msg().view_block_hash()).c_str());
+                auto tmp_msg_ptr = std::make_shared<transport::TransportMessage>();
+                tmp_msg_ptr->header.CopyFrom(iter->second->header);
+                auto leader = pro_msg_wrap->leader;
+                if (!leader || SendMsgToLeader(leader, tmp_msg_ptr, VOTE) != Status::kSuccess) {
+                    SETH_ERROR("pool: %d, Send vote message is error.",
+                        pool_idx_, pro_msg_wrap->msg_ptr->header.hash64());
                 }
             } else {
                 SETH_DEBUG("not find view leader: %d, pool: %d has voted view: %lu, last_locked_view_: %u, "
@@ -1363,6 +1351,9 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
         }
     }
 }
+get block hash: cd28999d7d4191e8ba27ab4805112236b6bc7d6e74c0200458d0da072c9b2288, sharding_id: 2, pool_index: 3, phash: f6ec0280426591cdf85db71bcff00142d17f89e121e1e4bac28ee3ebf563b007, vss_random: 0, height: 98, timeblock_height: 1294, timestamp: 1772554979165, msg: {"parentHash":"9uwCgEJlkc34Xbcbz/ABQtF/ieEh4eS6wo7j6/VjsAc=","blockInfo":{"version":1,"height":"98","consistencyRandom":"0","timeblockHeight":"1294","txList":[{"nonce":"25","to":"NJTn5k7yPjn8nG+LdRI1rpgI4HA=","amount":"0","gasLimit":"0","gasPrice":"999999999","step":"kPoolStatisticTag","status":0,"uniqueHash":"OmCJs2/0OChBAXoYAyOxy+envt2Rt6C/w+W88SICc74="}],"timestamp":"1772554979165","keyValueArray":[{"addr":"NJTn5k7yPjn8nG+LdRI1rpgI4HA=","key":"OmCJs2/0OChBAXoYAyOxy+envt2Rt6C/w+W88SICc74=","value":"kgAAAAAAAAA=","height":"98"}],"addressArray":[{"pubkey":"","balance":"0","shardingId":3,"poolIndex":3,"addr":"NJTn5k7yPjn8nG+LdRI1rpgI4HA=","type":"kNormal","latestHeight":"98","txIndex":0,"nonce":"25"}],"poolStatisticHeight":"146","uniqueHashs":["OmCJs2/0OChBAXoYAyOxy+envt2Rt6C/w+W88SICc74="]},"qc":{"view":"1388","electHeight":"100","leaderIdx":23,"networkId":2,"poolIndex":3},"debug":"MTMzMzA5MDE4MzQ4NTA0"}
+
+
 
 Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
