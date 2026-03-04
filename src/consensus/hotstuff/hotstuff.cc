@@ -912,6 +912,13 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
         pro_msg.tc().has_view_block_hash());
 #endif
     if (pro_msg.has_tc() && pro_msg.tc().has_view_block_hash()) {
+        if (pro_msg.tc().view() <= latest_qc_item_ptr_->view()) {
+            SETH_WARN("pool: %d verify tc old view: %lu, latest qc view: %lu, hash: %lu, propose_debug: %s",
+                pool_idx_, pro_msg.tc().view(), latest_qc_item_ptr_->view(), pro_msg_wrap->msg_ptr->header.hash64(),
+                ProtobufToJson(pro_msg).c_str());
+            return Status::kError;
+        }
+        
         auto btime = common::TimeUtils::TimestampMs();
         if (VerifyQC(pro_msg.tc()) != Status::kSuccess) {
             SETH_ERROR("pool: %d verify tc failed: %lu", pool_idx_, pro_msg.tc().view());
