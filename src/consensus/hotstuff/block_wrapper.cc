@@ -100,6 +100,7 @@ Status BlockWrapper::Wrap(
                 pools::protobuf::ElectStatistic elect_statistic;
                 if (elect_statistic.ParseFromString(tx_info->value())) {
                     auto* elect_block = elect_statistic.mutable_elect_block();
+                    elect_block->set_shard_network_id(elect_statistic.sharding_id());
                     bls_mgr_->AddBlsConsensusInfo(*elect_block);
                     tx_info->set_value(SerializeDeterministic(elect_statistic));
                 }

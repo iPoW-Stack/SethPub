@@ -669,6 +669,10 @@ int ElectTxItem::CreateNewElect(
                   elect_statistic_.sharding_id(),
                   elect_block.prev_members().prev_elect_height());
         SetPrevElectInfo(elect_block, block);
+    } else {
+        SETH_WARN("no prev members, maybe first elect: %u, %lu",
+                  elect_statistic_.sharding_id(),
+                  elect_block.elect_height());
     }
     
     return kConsensusSuccess;
