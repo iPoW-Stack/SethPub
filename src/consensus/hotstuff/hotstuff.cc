@@ -660,7 +660,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
             "propose_debug: %s",
             pool_idx_, view_item.qc().leader_idx(), 
             msg_ptr->header.hotstuff().pro_msg().tc().view(),
-            ProtobufToJson(cons_debug).c_str());
+            "");
         return;
     }
 
@@ -668,7 +668,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         SETH_INFO("pool: %d, propose message view not match leader view, "
             "leader view: %lu, propose view: %lu, hash: %lu, propose_debug: %s",
             pool_idx_, out_view, view_item.qc().view(), pro_msg_wrap->msg_ptr->header.hash64(),
-            ProtobufToJson(cons_debug).c_str());
+            "");
         return;
     }
 
