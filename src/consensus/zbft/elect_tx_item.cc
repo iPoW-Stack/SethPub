@@ -665,9 +665,6 @@ int ElectTxItem::CreateNewElect(
     elect_block.set_elect_height(block.height());
     elect_block.set_all_gas_amount(elect_statistic_.gas_amount());
     if (elect_block.has_prev_members()) {
-        SETH_WARN("add prev elect bls consensus info failed sharding id: %u",
-                 elect_statistic_.sharding_id());
-    } else {
         SETH_WARN("success add bls consensus info: %u, %lu",
                   elect_statistic_.sharding_id(),
                   elect_block.prev_members().prev_elect_height());
