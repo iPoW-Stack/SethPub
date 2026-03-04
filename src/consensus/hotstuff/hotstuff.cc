@@ -232,6 +232,15 @@ Status Hotstuff::Propose(
         return Status::kError;
     }
 
+    if (latest_leader_propose_message_) {
+        SETH_DEBUG("pool: %d, latest_leader_propose_message_ view: %lu, leader_view: %lu, "
+            "latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view(): %lu >= "
+            "pacemaker_->CurView(): %lu",
+            pool_idx_, latest_leader_propose_message_->latest_qc_view, leader_view,
+            latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view(),
+            pacemaker_->CurView());
+    }
+
     if (latest_leader_propose_message_ &&
             latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view() >= 
             pacemaker_->CurView()) {
@@ -420,6 +429,18 @@ Status Hotstuff::Propose(
     if (tmp_msg_ptr->header.hotstuff().pro_msg().has_view_item()) {
         latest_leader_propose_message_ = tmp_msg_ptr;
         latest_leader_propose_message_->latest_qc_view = latest_qc_item_ptr_->view();
+        uint64_t tm = 0;
+        if (view_with_block_tm_map_.Get(pb_pro_msg->view_item().qc().view(), tm)) {
+            pb_pro_msg->mutable_view_item()->mutable_block_info()->set_timestamp(tm);
+        } else {
+            view_with_block_tm_map_.Put(
+                pb_pro_msg->view_item().qc().view(), 
+                pb_pro_msg->view_item().block_info().timestamp());
+        }
+
+        SETH_DEBUG("set latest_leader_propose_message_, view: %lu, block tm: %lu", 
+            pb_pro_msg->view_item().qc().view(), 
+            pb_pro_msg->view_item().block_info().timestamp());
     }
 
 #ifndef NDEBUG
@@ -434,6 +455,7 @@ Status Hotstuff::Propose(
     if (hotstuff_msg->pro_msg().tx_propose().txs_size() > 0) {
         latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
     }
+
     // ADD_DEBUG_PROCESS_TIMESTAMP();
     // HandleProposeMsg(tmp_msg_ptr);
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -1654,6 +1676,7 @@ Status Hotstuff::Commit(
         const QC& commit_qc) {
     view_block_chain->Commit(v_block_info);
     if (latest_leader_propose_message_) {
+        SETH_DEBUG("set latest_leader_propose_message_ = nullptr");
         latest_leader_propose_message_ = nullptr;
         last_leader_propose_view_ = 0llu;
     }
