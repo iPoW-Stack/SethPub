@@ -624,7 +624,6 @@ int ElectTxItem::CreateNewElect(
         uint64_t gas_for_root,
         block::protobuf::BlockTx &block_tx) {
     auto& elect_block = *elect_block_;
-    assert(elect_block.prev_members().bls_pubkey_size() == 0);
     for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
         if (elect_nodes[i] == nullptr) {
             if (i >= elect_members_->size()) {
