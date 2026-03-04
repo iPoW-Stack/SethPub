@@ -144,7 +144,7 @@ message ElectStatistic {
     repeated uint32 lof_leaders = 6;
     optional uint64 statistic_height = 7;
     optional uint64 nonce = 8;
-    optional elect.ElectBlock elect_block = 9;
+    optional elect.protobuf.ElectBlock elect_block = 9;
 }
 
 message SyncPoolsMaxHeight {
