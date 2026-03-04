@@ -46,7 +46,6 @@ int ElectTxItem::HandleTx(
         zjcvm::ZjchainHost& pre_zjc_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
-    elect_block_ = elect::protobuf::ElectBlock();
     view_block_chain_ = pre_zjc_host.view_block_chain_;
     g2_ = std::make_shared<std::mt19937_64>(vss_mgr_->EpochRandom());
     zjcvm::ZjchainHost zjc_host;
@@ -60,6 +59,7 @@ int ElectTxItem::HandleTx(
         return consensus::kConsensusError;
     }
 
+    elect_block_ = elect_statistic_.mutable_elect_block();
     SETH_DEBUG("get sharding statistic info sharding: %u, statistic_height: %lu, "
         "new node size: %u, %s, unique_hash: %s",
         elect_statistic_.sharding_id(), 
@@ -95,7 +95,7 @@ int ElectTxItem::HandleTx(
         ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str(),
         common::Encode::HexEncode(unique_hash).c_str());
     // *view_block.mutable_block_info()->mutable_elect_statistic() = elect_statistic_;
-    *view_block.mutable_block_info()->mutable_elect_block() = elect_block_;
+    *view_block.mutable_block_info()->mutable_elect_block() = *elect_block_;
     view_block.mutable_block_info()->add_unique_hashs(block_tx.unique_hash());
     zjc_host.MergeToPrev();
     return consensus::kConsensusSuccess;
@@ -623,7 +623,7 @@ int ElectTxItem::CreateNewElect(
         const std::vector<NodeDetailPtr> &elect_nodes,
         uint64_t gas_for_root,
         block::protobuf::BlockTx &block_tx) {
-    auto& elect_block = elect_block_;
+    auto& elect_block = *elect_block_;
     assert(elect_block.prev_members().bls_pubkey_size() == 0);
     for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
         if (elect_nodes[i] == nullptr) {
@@ -664,8 +664,7 @@ int ElectTxItem::CreateNewElect(
     elect_block.set_shard_network_id(elect_statistic_.sharding_id());
     elect_block.set_elect_height(block.height());
     elect_block.set_all_gas_amount(elect_statistic_.gas_amount());
-    assert(elect_block.prev_members().bls_pubkey_size() == 0);
-    if (bls_mgr_->AddBlsConsensusInfo(elect_block) != bls::kBlsSuccess) {
+    if (elect_block.has_prev_members()) {
         SETH_WARN("add prev elect bls consensus info failed sharding id: %u",
                  elect_statistic_.sharding_id());
     } else {

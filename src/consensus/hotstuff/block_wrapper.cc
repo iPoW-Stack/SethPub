@@ -14,9 +14,10 @@ BlockWrapper::BlockWrapper(
         std::shared_ptr<pools::TxPoolManager>& pools_mgr,
         std::shared_ptr<timeblock::TimeBlockManager>& tm_block_mgr,
         std::shared_ptr<block::BlockManager>& block_mgr,
+        std::shared_ptr<bls::BlsManager> bls_mgr,
         const std::shared_ptr<ElectInfo>& elect_info) :
     pool_idx_(pool_idx), pools_mgr_(pools_mgr), tm_block_mgr_(tm_block_mgr),
-    block_mgr_(block_mgr), elect_info_(elect_info) {
+    block_mgr_(block_mgr), bls_mgr_(bls_mgr), elect_info_(elect_info) {
     txs_pools_ = std::make_shared<consensus::WaitingTxsPools>(pools_mgr, block_mgr, tm_block_mgr);
 }
 
@@ -95,6 +96,14 @@ Status BlockWrapper::Wrap(
         for (auto it = txs_ptr->txs.begin(); it != txs_ptr->txs.end(); it++) {
             auto* tx_info = tx_propose->add_txs();
             *tx_info = *((*it)->tx_info);
+            if (tx_info->step() == pools::protobuf::kConsensusRootElectShard) {
+                pools::protobuf::ElectStatistic elect_statistic;
+                if (elect_statistic.ParseFromString(tx_info->value())) {
+                    auto* elect_block = elect_statistic.mutable_elect_block();
+                    bls_mgr_->AddBlsConsensusInfo(*elect_block);
+                    tx_info->set_value(SerializeDeterministic(elect_statistic));
+                }
+            }
             // ADD_TX_DEBUG_INFO(tx_info);
             // SETH_DEBUG("add tx pool: %d, prehash: %s, height: %lu, "
             //     "step: %d, to: %s, nonce: %lu, tx info: %s",

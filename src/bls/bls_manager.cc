@@ -911,6 +911,10 @@ bool BlsManager::VerifyAggSignValid(
     return false;
 }
 
+int BlsManager::CheckBlsConsensusInfo(elect::protobuf::ElectBlock& ec_block) {
+    return kBlsSuccess;
+}
+
 int BlsManager::AddBlsConsensusInfo(elect::protobuf::ElectBlock& ec_block) {
     auto iter = finish_networks_map_.find(ec_block.shard_network_id());
     if (iter == finish_networks_map_.end()) {

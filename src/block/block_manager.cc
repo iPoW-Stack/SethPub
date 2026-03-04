@@ -57,6 +57,7 @@ int BlockManager::Init(
         std::shared_ptr<consensus::HotstuffManager> hotstuff_mgr,
         const std::string& local_id,
         DbBlockCallback new_block_callback) {
+    bls_mgr_ = bls_mgr;
     account_mgr_ = account_mgr;
     db_ = db;
     pools_mgr_ = pools_mgr;

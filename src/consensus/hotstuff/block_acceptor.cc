@@ -604,6 +604,17 @@ Status BlockAcceptor::addTxsToPool(
             assert(false); break;
         }
         case pools::protobuf::kConsensusRootElectShard: {
+            pools::protobuf::ElectStatistic elect_statistic;
+            if (!elect_statistic.ParseFromString(tx->value())) {
+                SETH_DEBUG("parse elect_statistic error!");
+                return Status::kError;
+            }
+
+            if (bls_mgr_->CheckBlsConsensusInfo(elect_statistic.elect_block()) != bls::kBlsSuccess) {
+                SETH_DEBUG("check bls consensus info failed!");
+                return Status::kError;
+            }
+
             tx_ptr = std::make_shared<consensus::ElectTxItem>(
                 msg_ptr, i, account_mgr_, security_ptr_, prefix_db_, elect_mgr_, 
                 vss_mgr_, bls_mgr_, false, false, 

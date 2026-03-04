@@ -9,6 +9,10 @@
 
 namespace seth {
 
+namespace bls {
+    class BlsManager;
+}
+
 namespace hotstuff {
 
 class ViewBlockChain;
@@ -41,6 +45,7 @@ public:
             std::shared_ptr<pools::TxPoolManager>& pools_mgr,
             std::shared_ptr<timeblock::TimeBlockManager>& tm_block_mgr,
             std::shared_ptr<block::BlockManager>& block_mgr,
+            std::shared_ptr<bls::BlsManager> bls_mgr,
             const std::shared_ptr<ElectInfo>& elect_info);
     ~BlockWrapper();
 
@@ -91,6 +96,7 @@ private:
 
   
     uint32_t pool_idx_;
+    std::shared_ptr<bls::BlsManager> bls_mgr_ = nullptr;
     std::shared_ptr<pools::TxPoolManager> pools_mgr_ = nullptr;
     std::shared_ptr<timeblock::TimeBlockManager> tm_block_mgr_ = nullptr;
     std::shared_ptr<block::BlockManager> block_mgr_ = nullptr;
