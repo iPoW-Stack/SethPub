@@ -335,6 +335,7 @@ Status Hotstuff::Propose(
     //         pacemaker_->CurView()) {
     // }
 
+    leader_view_block_hash_ = "";
     auto tmp_msg_ptr = std::make_shared<transport::TransportMessage>();
     tmp_msg_ptr->is_leader = true;
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -1373,9 +1374,6 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
         }
     }
 }
-get block hash: cd28999d7d4191e8ba27ab4805112236b6bc7d6e74c0200458d0da072c9b2288, sharding_id: 2, pool_index: 3, phash: f6ec0280426591cdf85db71bcff00142d17f89e121e1e4bac28ee3ebf563b007, vss_random: 0, height: 98, timeblock_height: 1294, timestamp: 1772554979165, msg: {"parentHash":"9uwCgEJlkc34Xbcbz/ABQtF/ieEh4eS6wo7j6/VjsAc=","blockInfo":{"version":1,"height":"98","consistencyRandom":"0","timeblockHeight":"1294","txList":[{"nonce":"25","to":"NJTn5k7yPjn8nG+LdRI1rpgI4HA=","amount":"0","gasLimit":"0","gasPrice":"999999999","step":"kPoolStatisticTag","status":0,"uniqueHash":"OmCJs2/0OChBAXoYAyOxy+envt2Rt6C/w+W88SICc74="}],"timestamp":"1772554979165","keyValueArray":[{"addr":"NJTn5k7yPjn8nG+LdRI1rpgI4HA=","key":"OmCJs2/0OChBAXoYAyOxy+envt2Rt6C/w+W88SICc74=","value":"kgAAAAAAAAA=","height":"98"}],"addressArray":[{"pubkey":"","balance":"0","shardingId":3,"poolIndex":3,"addr":"NJTn5k7yPjn8nG+LdRI1rpgI4HA=","type":"kNormal","latestHeight":"98","txIndex":0,"nonce":"25"}],"poolStatisticHeight":"146","uniqueHashs":["OmCJs2/0OChBAXoYAyOxy+envt2Rt6C/w+W88SICc74="]},"qc":{"view":"1388","electHeight":"100","leaderIdx":23,"networkId":2,"poolIndex":3},"debug":"MTMzMzA5MDE4MzQ4NTA0"}
-
-
 
 Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
