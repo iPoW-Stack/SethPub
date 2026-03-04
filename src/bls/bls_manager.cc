@@ -911,7 +911,7 @@ bool BlsManager::VerifyAggSignValid(
     return false;
 }
 
-int BlsManager::CheckBlsConsensusInfo(elect::protobuf::ElectBlock& ec_block) {
+int BlsManager::CheckBlsConsensusInfo(const elect::protobuf::ElectBlock& ec_block) {
     return kBlsSuccess;
 }
 
