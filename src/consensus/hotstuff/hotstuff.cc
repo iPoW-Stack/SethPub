@@ -594,7 +594,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         if (latest_view_block_ptr->block_info().tx_list_size() == 0) {
             // keep leader alive
             auto now_tm = common::TimeUtils::TimestampMs();
-            if (latest_view_block_ptr->block_info()->timestamp() + 10000llu > now_tm) {
+            if (latest_view_block_ptr->block_info().timestamp() + 10000llu > now_tm) {
                 ADD_DEBUG_PROCESS_TIMESTAMP();
                 SETH_INFO("pool: %d, high view block tx size is 0, and not timeout "
                     "and propose tx size is 0, ignore.", pool_idx_);
@@ -2225,7 +2225,7 @@ bool Hotstuff::IsEmptyBlockAllowed(const ViewBlock& v_block) {
 
     // keep leader alive
     auto now_tm = common::TimeUtils::TimestampMs();
-    if (v_block1->block_info()->timestamp() + 10000llu < now_tm) {
+    if (v_block1->block_info().timestamp() + 10000llu < now_tm) {
         return true;
     }
 
