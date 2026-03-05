@@ -399,7 +399,7 @@ private:
             "consecutive_failures: %d, now: %u, block tm: %lu, "
             "last_stable_leader_member_index: %d, get leader index: %u, "
             "latest_elect_height: %lu, out view: %lu, "
-            "prev_qc_timestamp_sec: %lu, block_info timestamp: %lu", 
+            "prev_qc_timestamp_sec: %lu, block_info timestamp: %lu, outview: %lu", 
             pool_idx_, 
             high_view_block->qc().view(), 
             elapsed, 
@@ -413,7 +413,8 @@ private:
             latest_elect_height_,
             (high_view_block->qc().view() + latest_elect_height_ + 1),
             prev_qc_timestamp_sec,
-            high_view_block->block_info().timestamp());
+            high_view_block->block_info().timestamp(),
+            *out_view);
 
         return (*members)[leader_idx % members->size()];
     }

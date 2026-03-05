@@ -848,11 +848,15 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
 
             auto iter = leader_iter->second.find(view_item.qc().view());
             if (iter != leader_iter->second.end()) {
+#ifndef NDEBUG
+                auto block_hash = GetBlockHash(view_item);
                 SETH_DEBUG("pool: %d has voted: %lu, last_vote_view_: %u, "
-                    "hash64: %lu and resend vote: hash: %s",
+                    "hash64: %lu and resend vote: hash: %s, local block hash: %s",
                     pool_idx_, view_item.qc().view(),
                     last_vote_view_, pro_msg_wrap->msg_ptr->header.hash64(),
-                    common::Encode::HexEncode(iter->second->header.hotstuff().vote_msg().view_block_hash()).c_str());
+                    common::Encode::HexEncode(iter->second->header.hotstuff().vote_msg().view_block_hash()).c_str(),
+                    common::Encode::HexEncode(block_hash).c_str());
+#endif
                 auto tmp_msg_ptr = std::make_shared<transport::TransportMessage>();
                 tmp_msg_ptr->header.CopyFrom(iter->second->header);
                 auto leader = pro_msg_wrap->leader;
