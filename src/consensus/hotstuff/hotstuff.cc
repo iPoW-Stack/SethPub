@@ -592,9 +592,14 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     auto latest_view_block_ptr = view_block_chain()->HighViewBlock();
     if (msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size() == 0) {
         if (latest_view_block_ptr->block_info().tx_list_size() == 0) {
-            ADD_DEBUG_PROCESS_TIMESTAMP();
-            SETH_INFO("pool: %d, high view block tx size is 0, and propose tx size is 0, ignore.", pool_idx_);
-            return;
+            // keep leader alive
+            auto now_tm = common::TimeUtils::TimestampMs();
+            if (latest_view_block_ptr->block_info().timestamp() + 10000llu > now_tm) {
+                ADD_DEBUG_PROCESS_TIMESTAMP();
+                SETH_INFO("pool: %d, high view block tx size is 0, and not timeout "
+                    "and propose tx size is 0, ignore.", pool_idx_);
+                return;
+            }
         }
     }
 
@@ -655,7 +660,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
             "propose_debug: %s",
             pool_idx_, view_item.qc().leader_idx(), 
             msg_ptr->header.hotstuff().pro_msg().tc().view(),
-            ProtobufToJson(cons_debug).c_str());
+            "");
         return;
     }
 
@@ -663,7 +668,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         SETH_INFO("pool: %d, propose message view not match leader view, "
             "leader view: %lu, propose view: %lu, hash: %lu, propose_debug: %s",
             pool_idx_, out_view, view_item.qc().view(), pro_msg_wrap->msg_ptr->header.hash64(),
-            ProtobufToJson(cons_debug).c_str());
+            "");
         return;
     }
 
@@ -2219,6 +2224,12 @@ bool Hotstuff::IsEmptyBlockAllowed(const ViewBlock& v_block) {
     auto* v_block1 = &v_block;
     if (!v_block1 || v_block1->block_info().tx_list_size() > 0) {
         SETH_DEBUG("!v_block1 || v_block1->block_info().tx_list_size() > 0");
+        return true;
+    }
+
+    // keep leader alive
+    auto now_tm = common::TimeUtils::TimestampMs();
+    if (v_block1->block_info().timestamp() + 10000llu < now_tm) {
         return true;
     }
 
