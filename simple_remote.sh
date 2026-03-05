@@ -152,7 +152,7 @@ get_bootstrap() {
     for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
         i=1
         for ip in "${node_ips_array[@]}"; do
-            tmppubkey=`sed -n "$i""p" /root/seth/shards$shard_id| awk -F'\t' '{print $2}'`
+            tmppubkey=`sed -n "$i""p" /root/seth/pkgs/$node_hash/shards$shard_id| awk -F'\t' '{print $2}'`
             node_info=$tmppubkey":"$ip":1"$shard_id"00"$i
             bootstrap=$node_info","$bootstrap
             i=$((i+1))
