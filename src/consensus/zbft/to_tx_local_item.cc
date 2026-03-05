@@ -33,7 +33,7 @@ int ToTxLocalItem::HandleTx(
     InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
     zjc_host.SaveKeyValue(block_tx.to(), unique_hash, "1");
     block_tx.set_unique_hash(unique_hash);
-    block_tx.set_nonce(src_to_nonce + 1);
+    block_tx.set_nonce(0);
     auto& block_to_txs = *view_block.mutable_block_info()->mutable_local_to();
     CreateLocalToTx(tx_index, view_block, zjc_host, acc_balance_map, to_tx_item, block_to_txs);
     SETH_WARN("success call to tx local block pool: %d, view: %lu, to_nonce: %lu. tx nonce: %lu", 

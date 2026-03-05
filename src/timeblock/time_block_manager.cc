@@ -132,6 +132,7 @@ pools::TxItemPtr TimeBlockManager::tmblock_tx_ptr(
         tx_info->set_value(SerializeDeterministic(timer_block));
         tx_info->set_to(account_info->addr());
         tx_info->set_key(common::Hash::keccak256(tx_info->value()));
+        tx_info->set_nonce(account_info->nonce() + 1);
         uint64_t now_nonce = 0ll;
         if (tx_valid_func(*account_info, *tx_info, &now_nonce) != 0) {
             SETH_DEBUG("tx_valid_func failed, now_nonce: %lu, account_info nonce: %lu", 

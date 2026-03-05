@@ -53,7 +53,7 @@ int RootToTxItem::HandleTx(
     InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
     zjc_host.SaveKeyValue(block_tx.to(), unique_hash, tx_info->value());
     block_tx.set_unique_hash(unique_hash);
-    block_tx.set_nonce(to_nonce + 1);
+    block_tx.set_nonce(0);
     protos::AddressInfoPtr to_account_info = nullptr;
     auto to_addr = to_item.des().substr(0, common::kUnicastAddressLength);
     to_account_info = zjc_host.view_block_chain_->ChainGetAccountInfo(to_addr);
@@ -91,7 +91,7 @@ int RootToTxItem::HandleTx(
     }
 
     acc_balance_map[block_tx.to()]->set_balance(to_balance);
-    acc_balance_map[block_tx.to()]->set_nonce(to_nonce + 1);
+    acc_balance_map[block_tx.to()]->set_nonce(block_tx.nonce());
     acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
     acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
     if (block_tx.status() == kConsensusSuccess) {

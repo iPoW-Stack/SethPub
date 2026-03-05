@@ -56,10 +56,6 @@ public:
 
         SETH_WARN("call to tx item pool: %d, view: %lu, to_nonce: %lu. tx nonce: %lu", 
             view_block.qc().pool_index(), view_block.qc().view(), to_nonce, block_tx.nonce());
-        acc_balance_map[block_tx.to()]->set_balance(to_balance);
-        acc_balance_map[block_tx.to()]->set_nonce(block_tx.nonce());
-        acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
-        acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
         auto& unique_hash = tx_info->key();
         std::string val;
         if (zjc_host.GetKeyValue(block_tx.to(), unique_hash, &val) == zjcvm::kZjcvmSuccess) {
@@ -70,7 +66,8 @@ public:
         InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
         zjc_host.SaveKeyValue(block_tx.to(), unique_hash, "1");
         block_tx.set_unique_hash(unique_hash);
-        block_tx.set_nonce(to_nonce + 1);
+        // TODO: nonce to 0 is valid?
+        block_tx.set_nonce(0);
         auto& all_to_txs = *view_block.mutable_block_info()->mutable_normal_to();
         if (!all_to_txs.ParseFromString(tx_info->value()) || all_to_txs.to_tx_arr_size() == 0) {
             return consensus::kConsensusError;
