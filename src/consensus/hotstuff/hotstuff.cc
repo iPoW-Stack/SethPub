@@ -81,6 +81,18 @@ void Hotstuff::StartInit() {
         SETH_DEBUG("now init cross consensus shard: %u end.", network_id);
     }
 
+    auto tmp_msg_ptr = std::make_shared<transport::TransportMessage>();
+    tmp_msg_ptr->is_leader = true;
+    ADD_DEBUG_PROCESS_TIMESTAMP();
+    auto& header = tmp_msg_ptr->header;
+    if (prefix_db_->GetLatestLeaderProposeMessage(
+            common::GlobalInfo::Instance()->network_id(), 
+            pool_idx_, 
+            &header, 
+            &tmp_msg_ptr->latest_qc_view)) {
+        latest_leader_propose_message_ = tmp_msg_ptr;
+    }
+
     SETH_DEBUG("success start init network: %d, pool index: %d, root_view_block_chain_: %d", 
         common::GlobalInfo::Instance()->network_id(), 
         pool_idx_, 
@@ -443,6 +455,7 @@ Status Hotstuff::Propose(
         SETH_DEBUG("set latest_leader_propose_message_, view: %lu, block tm: %lu", 
             pb_pro_msg->view_item().qc().view(), 
             pb_pro_msg->view_item().block_info().timestamp());
+        prefix_db_->SaveLatestLeaderProposeMessage(tmp_msg_ptr->header, latest_qc_view);
     // }
 
 #ifndef NDEBUG
