@@ -1545,7 +1545,7 @@ public:
             return false;
         }
         
-        uint64_t* udata = (uint64_t*)data;
+        uint64_t* udata = (uint64_t*)data.c_str();
         *latest_qc_view = udata[0];
         return msg->ParseFromArray(data.data() + sizeof(*latest_qc_view), data.size() - sizeof(*latest_qc_view));
     }
