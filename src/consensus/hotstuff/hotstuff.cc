@@ -83,7 +83,6 @@ void Hotstuff::StartInit() {
 
     auto tmp_msg_ptr = std::make_shared<transport::TransportMessage>();
     tmp_msg_ptr->is_leader = true;
-    ADD_DEBUG_PROCESS_TIMESTAMP();
     auto& header = tmp_msg_ptr->header;
     if (prefix_db_->GetLatestLeaderProposeMessage(
             common::GlobalInfo::Instance()->network_id(), 
@@ -455,7 +454,9 @@ Status Hotstuff::Propose(
         SETH_DEBUG("set latest_leader_propose_message_, view: %lu, block tm: %lu", 
             pb_pro_msg->view_item().qc().view(), 
             pb_pro_msg->view_item().block_info().timestamp());
-        prefix_db_->SaveLatestLeaderProposeMessage(tmp_msg_ptr->header, latest_qc_view);
+        prefix_db_->SaveLatestLeaderProposeMessage(
+            latest_leader_propose_message_->header, 
+            latest_leader_propose_message_->latest_qc_view);
     // }
 
 #ifndef NDEBUG
