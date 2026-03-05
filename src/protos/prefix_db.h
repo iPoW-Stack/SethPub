@@ -1515,8 +1515,8 @@ public:
         key.reserve(48);
         key.append(kLeaderLatestProposeMessage);
         auto& view_item = msg.hotstuff().pro_msg().view_item();
-        uint32_t sharding_id = view_item.network_id();
-        uint32_t pool_index = view_item.pool_index();
+        uint32_t sharding_id = view_item.qc().network_id();
+        uint32_t pool_index = view_item.qc().pool_index();
         key.append((char*)&sharding_id, sizeof(sharding_id));
         key.append((char*)&pool_index, sizeof(pool_index));
         auto val = msg.SerializeAsString();
@@ -1537,9 +1537,6 @@ public:
         std::string key;
         key.reserve(48);
         key.append(kLeaderLatestProposeMessage);
-        auto& view_item = msg.hotstuff().pro_msg().view_item();
-        uint32_t sharding_id = view_item.network_id();
-        uint32_t pool_index = view_item.pool_index();
         key.append((char*)&sharding_id, sizeof(sharding_id));
         key.append((char*)&pool_index, sizeof(pool_index));
         std::string data;
