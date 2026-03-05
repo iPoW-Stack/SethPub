@@ -854,7 +854,7 @@ Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>
             auto iter = leader_iter->second.find(view_item.qc().view());
             if (iter != leader_iter->second.end()) {
 #ifndef NDEBUG
-                auto block_hash = GetBlockHash(view_item);
+                auto block_hash = GetBlockHash(*latest_voted_view_block_);
                 SETH_DEBUG("pool: %d has voted: %lu, last_vote_view_: %u, "
                     "hash64: %lu and resend vote: hash: %s, local block hash: %s",
                     pool_idx_, view_item.qc().view(),
@@ -1308,6 +1308,7 @@ Status Hotstuff::HandleProposeMsgStep_Vote(std::shared_ptr<ProposeMsgWrapper>& p
             pool_idx_, pro_msg_wrap->msg_ptr->header.hash64());
     }
 
+    latest_voted_view_block_ = pro_msg_wrap->view_block_ptr;
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (!pro_msg_wrap->msg_ptr->is_leader) {
         // Avoid repeated voting on the view
@@ -2069,10 +2070,10 @@ Status Hotstuff::ConstructVoteMsg(
     if (!elect_item || !elect_item->IsValid()) {
         return Status::kError;
     }
+
     uint32_t replica_idx = elect_item->LocalMember()->index;
     vote_msg->set_replica_idx(replica_idx);
     vote_msg->set_view_block_hash(v_block->qc().view_block_hash());
-
     SETH_DEBUG("success set view block hash: %s, %u_%u_%lu",
         common::Encode::HexEncode(v_block->qc().view_block_hash()).c_str(),
         common::GlobalInfo::Instance()->network_id(),
@@ -2101,11 +2102,11 @@ Status Hotstuff::ConstructVoteMsg(
     std::string sign_x, sign_y;
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (crypto()->PartialSign(
-                common::GlobalInfo::Instance()->network_id(),
-                elect_height,
-                qc_hash,
-                &sign_x,
-                &sign_y) != Status::kSuccess) {
+            common::GlobalInfo::Instance()->network_id(),
+            elect_height,
+            qc_hash,
+            &sign_x,
+            &sign_y) != Status::kSuccess) {
         SETH_ERROR("Sign message is error.");
         return Status::kError;
     }

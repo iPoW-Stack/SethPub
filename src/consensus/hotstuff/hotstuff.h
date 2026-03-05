@@ -511,6 +511,7 @@ private:
     consensus::BlockCacheCallback new_block_cache_callback_ = nullptr;
     common::Tick layter_sync_tick_;
     std::string leader_view_block_hash_;
+    std::shared_ptr<ViewBlock> latest_voted_view_block_ = nullptr;
 
     uint32_t consecutive_failures_ = 0u;
     uint32_t last_stable_leader_member_index_ = 0u;
