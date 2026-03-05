@@ -1690,12 +1690,6 @@ Status Hotstuff::Commit(
         const std::shared_ptr<ViewBlockInfo>& v_block_info,
         const QC& commit_qc) {
     view_block_chain->Commit(v_block_info);
-    if (latest_leader_propose_message_) {
-        SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
-        latest_leader_propose_message_ = nullptr;
-        last_leader_propose_view_ = 0llu;
-    }
-
     return Status::kSuccess;
 }
 
