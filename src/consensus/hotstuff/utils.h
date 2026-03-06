@@ -61,7 +61,7 @@ int CheckTransactionValid(
     std::shared_ptr<ViewBlockChain> view_block_chain,
     std::shared_ptr<pools::TxPoolManager> pool_mgr,
     const address::protobuf::AddressInfo& addr_info, 
-    pools::protobuf::TxMessage& tx_info,
+    const pools::protobuf::TxMessage& tx_info,
     uint64_t* now_nonce);
 bool BlockViewCommited(
     std::shared_ptr<protos::PrefixDb> prefix_db, 
