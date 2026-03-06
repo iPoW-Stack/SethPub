@@ -622,7 +622,7 @@ Status BlockAcceptor::addTxsToPool(
             break;
         }
         case pools::protobuf::kConsensusRootTimeBlock: {
-            if (!tm_block_mgr_->CheckLeaderTimeblockTxValid(tx, tx_valid_func)) {
+            if (!tm_block_mgr_->CheckLeaderTimeblockTxValid(*tx, tx_valid_func)) {
                 SETH_ERROR("check leader timeblock tx valid failed!");
                 return Status::kError;
 
