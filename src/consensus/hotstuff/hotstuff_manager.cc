@@ -349,7 +349,7 @@ void HotstuffManager::HandleTimerMessage(const transport::MessagePtr& msg_ptr) {
             ADD_DEBUG_PROCESS_TIMESTAMP();
             auto tx_valid_func = [&](
                     const address::protobuf::AddressInfo& addr_info, 
-                    pools::protobuf::TxMessage& tx_info,
+                    const pools::protobuf::TxMessage& tx_info,
                     uint64_t* now_nonce) -> int {
                 auto latest_block = pool_hotstuff_[pool_idx]->view_block_chain()->HighViewBlock();
                 if (!latest_block) {

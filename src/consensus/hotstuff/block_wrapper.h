@@ -72,7 +72,7 @@ public:
             ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs) override {
         auto tx_valid_func = [&](
                 const address::protobuf::AddressInfo& addr_info, 
-                pools::protobuf::TxMessage& tx_info,
+                const pools::protobuf::TxMessage& tx_info,
                 uint64_t* now_nonce) -> int {
             return CheckTransactionValid(parent_hash, view_block_chain,
                 pools_mgr_,
