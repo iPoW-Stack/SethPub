@@ -11,6 +11,7 @@
 #include "dht/dht_utils.h"
 #include "pools/tx_pool_manager.h"
 #include "protos/zbft.pb.h"
+#include "protos/pools.pb.h"
 #include "protos/prefix_db.h"
 #include "protos/timeblock.pb.h"
 #include "protos/transport.pb.h"
