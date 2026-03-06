@@ -426,6 +426,13 @@ Status BlockAcceptor::addTxsToPool(
         }
     }
 
+    defer({
+        for (auto& thread : threads) {
+            if (thread) {
+                thread->join();
+            }
+        }
+    });
     // ========================================================================
     // 2. Main Loop (Producer) - Single traversal of txs
     // ========================================================================
@@ -625,7 +632,6 @@ Status BlockAcceptor::addTxsToPool(
             if (!tm_block_mgr_->CheckLeaderTimeblockTxValid(*tx, tx_valid_func)) {
                 SETH_ERROR("check leader timeblock tx valid failed!");
                 return Status::kError;
-
             }
 
             tx_ptr = std::make_shared<consensus::TimeBlockTx>(
