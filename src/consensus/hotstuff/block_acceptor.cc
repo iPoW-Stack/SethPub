@@ -720,8 +720,9 @@ Status BlockAcceptor::addTxsToPool(
     }
 
     if (!create_success) {
-        return Status::kError
+        return Status::kError;
     }
+    
     // 4. Collect valid results in order
     // verify_results[i] == 1 means: (Leader passed directly) OR (Follower verification passed)
     auto& final_txs = txs_ptr->txs;
