@@ -122,7 +122,7 @@ bool TimeBlockManager::CheckLeaderTimeblockTxValid(
     auto account_info = account_mgr_->pools_address_info(
         pools::protobuf::kConsensusRootTimeBlock, 
         common::kGlobalPoolIndex);
-    if (account_info->nonce() != timer_block.nonce()) {
+    if (account_info->nonce() + 1 != timer_block.nonce()) {
         SETH_WARN("TimeBlock nonce mismatch, expected: %lu, actual: %lu",
             account_info->nonce(), timer_block.nonce());
         return false;
