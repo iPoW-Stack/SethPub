@@ -622,15 +622,14 @@ Status BlockAcceptor::addTxsToPool(
             break;
         }
         case pools::protobuf::kConsensusRootTimeBlock: {
-            if (directly_user_leader_txs) {
-                tx_ptr = std::make_shared<consensus::TimeBlockTx>(
-                    msg_ptr, i, account_mgr_, security_ptr_, address_info);
-            } else {
-                auto tx_item = tx_pools_->GetTimeblockTx(pool_idx(), false, tx_valid_func);
-                if (tx_item != nullptr && !tx_item->txs.empty()) {
-                    tx_ptr = *(tx_item->txs.begin());
-                }
+            if (!tm_block_mgr_->CheckLeaderTimeblockTxValid(tx, tx_valid_func)) {
+                SETH_ERROR("check leader timeblock tx valid failed!");
+                return Status::kError;
+
             }
+
+            tx_ptr = std::make_shared<consensus::TimeBlockTx>(
+                msg_ptr, i, account_mgr_, security_ptr_, address_info);
             break;
         }
         case pools::protobuf::kRootCross: {

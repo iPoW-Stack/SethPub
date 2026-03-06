@@ -97,6 +97,48 @@ bool TimeBlockManager::HasTimeblockTx(
     return false;
 }
 
+bool TimeBlockManager::CheckLeaderTimeblockTxValid(
+        const pools::protobuf::TxItem& tx_item, 
+        pools::CheckAddrNonceValidFunction tx_valid_func) const {
+    timeblock::protobuf::TimeBlock timer_block;
+    if (!timer_block.ParseFromString(tx_item.value())) {
+        SETH_WARN("Failed to parse TimeBlock from tx value");
+        return false;
+    }
+
+    uint64_t new_time_block_tm = latest_time_block_tm_ + common::kTimeBlockCreatePeriodSeconds;
+    if (timer_block.timestamp() != new_time_block_tm) {
+        SETH_WARN("TimeBlock timestamp mismatch, expected: %lu, actual: %lu",
+            new_time_block_tm, timer_block.timestamp());
+        return false;
+    }
+
+    if (vss_mgr_->GetConsensusFinalRandom() != timer_block.vss_random()) {
+        SETH_WARN("TimeBlock vss_random mismatch, expected: %lu, actual: %lu",
+            vss_mgr_->GetConsensusFinalRandom(), timer_block.vss_random());
+        return false;
+    }
+
+    auto account_info = account_mgr_->pools_address_info(
+        pools::protobuf::kConsensusRootTimeBlock, 
+        common::kGlobalPoolIndex);
+    if (account_info->nonce() != timer_block.nonce()) {
+        SETH_WARN("TimeBlock nonce mismatch, expected: %lu, actual: %lu",
+            account_info->nonce(), timer_block.nonce());
+        return false;
+    }
+
+    uint64_t now_nonce = 0ll;
+    if (tx_valid_func(*account_info, tx_item, &now_nonce) != 0) {
+        SETH_DEBUG("tx_valid_func failed, now_nonce: %lu, account_info nonce: %lu", 
+            now_nonce, 
+            account_info->nonce());
+        return false;
+    }
+
+    return true;
+}
+
 pools::TxItemPtr TimeBlockManager::tmblock_tx_ptr(
         bool leader, 
         uint32_t pool_index, 
@@ -113,7 +155,6 @@ pools::TxItemPtr TimeBlockManager::tmblock_tx_ptr(
             SETH_DEBUG("CanCallTimeBlockTx leader: %d", leader);
             return nullptr;
         }
-
 
         auto& tx_info = tmblock_tx_ptr->tx_info;
         uint64_t now_tm_sec = now_tm_us / 1000000lu;
