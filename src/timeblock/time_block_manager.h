@@ -57,7 +57,7 @@ public:
         uint32_t pool_index, 
         pools::CheckAddrNonceValidFunction tx_valid_func);
     bool CheckLeaderTimeblockTxValid(
-        pools::protobuf::TxMessage& tx_item, 
+        const pools::protobuf::TxMessage& tx_item, 
         pools::CheckAddrNonceValidFunction tx_valid_func) const;
     bool HasTimeblockTx(
         uint32_t pool_index, 

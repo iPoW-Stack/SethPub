@@ -98,7 +98,7 @@ bool TimeBlockManager::HasTimeblockTx(
 }
 
 bool TimeBlockManager::CheckLeaderTimeblockTxValid(
-        pools::protobuf::TxMessage& tx_item, 
+        const pools::protobuf::TxMessage& tx_item, 
         pools::CheckAddrNonceValidFunction tx_valid_func) const {
     timeblock::protobuf::TimeBlock timer_block;
     if (!timer_block.ParseFromString(tx_item.value())) {

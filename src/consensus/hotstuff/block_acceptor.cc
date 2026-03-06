@@ -433,7 +433,7 @@ Status BlockAcceptor::addTxsToPool(
     // Helper Lambda: Used by TimeBlockTx
     auto tx_valid_func = [&](
             const address::protobuf::AddressInfo& addr_info, 
-            pools::protobuf::TxMessage& tx_info,
+            const pools::protobuf::TxMessage& tx_info,
             uint64_t* now_nonce) -> int {
         return CheckTransactionValid(
             parent_hash, 
