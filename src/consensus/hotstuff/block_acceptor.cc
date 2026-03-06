@@ -426,13 +426,6 @@ Status BlockAcceptor::addTxsToPool(
         }
     }
 
-    defer({
-        for (auto& thread : threads) {
-            if (thread) {
-                thread->join();
-            }
-        }
-    });
     // ========================================================================
     // 2. Main Loop (Producer) - Single traversal of txs
     // ========================================================================
@@ -451,6 +444,7 @@ Status BlockAcceptor::addTxsToPool(
             now_nonce);
     };
 
+    bool create_success = true;
     for (int i = 0; i < txs.size(); i++) {
         auto* tx = &txs[i];
         
@@ -537,7 +531,6 @@ Status BlockAcceptor::addTxsToPool(
         // --- Serial Logic: Object Factory Creation ---
         std::string contract_prepayment_id;
         pools::TxItemPtr tx_ptr = nullptr;
-        bool create_success = true;
 
         switch (tx->step()) {
         case pools::protobuf::kNormalFrom:
@@ -614,12 +607,14 @@ Status BlockAcceptor::addTxsToPool(
             pools::protobuf::ElectStatistic elect_statistic;
             if (!elect_statistic.ParseFromString(tx->value())) {
                 SETH_DEBUG("parse elect_statistic error!");
-                return Status::kError;
+                create_success = false;
+                break;            
             }
 
             if (bls_mgr_->CheckBlsConsensusInfo(elect_statistic.elect_block()) != bls::kBlsSuccess) {
                 SETH_DEBUG("check bls consensus info failed!");
-                return Status::kError;
+                create_success = false;
+                break;
             }
 
             tx_ptr = std::make_shared<consensus::ElectTxItem>(
@@ -631,7 +626,8 @@ Status BlockAcceptor::addTxsToPool(
         case pools::protobuf::kConsensusRootTimeBlock: {
             if (!tm_block_mgr_->CheckLeaderTimeblockTxValid(*tx, tx_valid_func)) {
                 SETH_ERROR("check leader timeblock tx valid failed!");
-                return Status::kError;
+                create_success = false;
+                break;
             }
 
             tx_ptr = std::make_shared<consensus::TimeBlockTx>(
@@ -662,6 +658,10 @@ Status BlockAcceptor::addTxsToPool(
         default:
             SETH_FATAL("invalid tx step: %d", (int32_t)tx->step());
             create_success = false;
+        }
+
+        if (!create_success) {
+            break;
         }
 
         // Handle prepayment
@@ -697,7 +697,6 @@ Status BlockAcceptor::addTxsToPool(
         } else {
             verify_results[i] = -1; // Creation failed
         }
-
     } // End of loop
 
     // ========================================================================
@@ -720,6 +719,9 @@ Status BlockAcceptor::addTxsToPool(
         }
     }
 
+    if (!create_success) {
+        return Status::kError
+    }
     // 4. Collect valid results in order
     // verify_results[i] == 1 means: (Leader passed directly) OR (Follower verification passed)
     auto& final_txs = txs_ptr->txs;
