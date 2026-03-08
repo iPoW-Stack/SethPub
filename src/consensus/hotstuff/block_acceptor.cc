@@ -240,8 +240,6 @@ Status BlockAcceptor::Accept(
         auto* cross_to_item = view_block.mutable_block_info()->add_cross_shard_to_array();
         *cross_to_item = *iter->second;
         UpdateDesShardingId(cross_to_item, zjc_host);
-        assert(cross_to_item->des_sharding_id() >= network::kRootCongressNetworkId && 
-            cross_to_item->des_sharding_id() < network::kConsensusShardEndNetworkId);
         SETH_DEBUG("success add cross to item: %s, amount: %lu, prepayment: %lu",
             common::Encode::HexEncode(cross_to_item->des()).c_str(),
             cross_to_item->amount(), cross_to_item->prepayment());
