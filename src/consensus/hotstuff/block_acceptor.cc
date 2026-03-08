@@ -290,14 +290,7 @@ void BlockAcceptor::UpdateDesShardingId(
         return;
     }
 
-    auto addr_info = zjc_host.view_block_chain_->ChainGetAccountInfo(to_addr_info->des().substr(0, common::kUnicastAddressLength));
-    if (addr_info) {
-        to_addr_info->set_des_sharding_id(addr_info->sharding_id());
-        assert(to_addr_info->des_sharding_id() >= network::kRootCongressNetworkId && 
-        to_addr_info->des_sharding_id() < network::kConsensusShardEndNetworkId);
-    } else {
-        to_addr_info->set_des_sharding_id(network::kRootCongressNetworkId);
-    }
+    to_addr_info->set_des_sharding_id(network::kUniversalNetworkId);
 }
 
 // AcceptSync verifies the synchronized block information and updates the transaction pool
