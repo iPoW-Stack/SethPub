@@ -386,7 +386,7 @@ int ToTxsPools::CreateToTxWithHeights(
                     to_iter != hiter->second.end(); ++to_iter) {
                 auto des_sharding_id = to_iter->second.des_sharding_id();
                 if (des_sharding_id == network::kUniversalNetworkId) {
-                    auto addr_info = acc_mgr_->GetAddressInfo(to_iter->second.des().substr(0, common::kUnicastAddressLength));
+                    auto addr_info = acc_mgr_->GetAccountInfo(to_iter->second.des().substr(0, common::kUnicastAddressLength));
                     if (addr_info) {
                         des_sharding_id = addr_info->sharding_id();
                     } else {
