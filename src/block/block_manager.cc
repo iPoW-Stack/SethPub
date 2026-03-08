@@ -492,7 +492,7 @@ void BlockManager::CreateLocalToTx(
     tx->set_amount(0); // 具体 amount 在 kv 中
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
     tx->set_nonce(++step_with_nonce_[tx->step()]);
-    pools_mgr_->AddPoolMessage(sg_ptr);
+    pools_mgr_->AddPoolMessage(msg_ptr);
     SETH_DEBUG("pool_index: %d, success add local transfer tx "
         "tos hash: %s, nonce: %lu, src to tx nonce: %lu, val: %s",
         pool_index,
