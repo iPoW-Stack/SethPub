@@ -903,7 +903,6 @@ bool ViewBlockChain::IsValid() {
 }
 
 std::string ViewBlockChain::String() const {
-    return "";
 #ifdef NDEBUG
     return "";
 #endif
