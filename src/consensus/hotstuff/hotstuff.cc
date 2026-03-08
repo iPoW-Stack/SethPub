@@ -1935,7 +1935,7 @@ Status Hotstuff::VerifyViewBlock(
                 prefix_db_,
                 v_block.qc().network_id(), 
                 v_block.qc().pool_index(), 
-                v_block.qc().block_info() - 1)) {
+                v_block.block_info().height() - 1)) {
             SETH_DEBUG("now add sync height 0, %u_%u_%lu", 
                 v_block.qc().network_id(), 
                 v_block.qc().pool_index(), 
