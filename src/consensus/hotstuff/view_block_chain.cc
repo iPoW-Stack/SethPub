@@ -730,7 +730,7 @@ void ViewBlockChain::HandleTimerMessage() {
     }
 
     prev_check_timeout_blocks_ms_ = now_tm_ms;
-    SETH_DEBUG("now check view_with_blocks_ size: %d", view_with_blocks_.size());      
+    SETH_DEBUG("pool: %d, now check view_with_blocks_ size: %d", pool_index_, view_with_blocks_.size());      
     if (view_with_blocks_.size() <= 2) {
         return;
     }
