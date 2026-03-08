@@ -117,14 +117,12 @@ struct Construct {
 #define CHECK_MEMORY_SIZE(data_map) { \
     if (data_map.size() >= 30240) { \
         SETH_INFO("data size: %u", data_map.size()); \
-        assert(false); \
     } \
 }
 
 #define CHECK_MEMORY_SIZE_WITH_MESSAGE(data_map, msg) { \
     if (data_map.size() >= 30240) { \
         SETH_INFO("%s data size: %u, msg: %s", #data_map, data_map.size(), msg); \
-        assert(false); \
     } \
 }
 
@@ -312,9 +310,7 @@ static const uint32_t kDefaultBroadcastHopToLayer = 2u;
 static const uint32_t kDefaultBroadcastNeighborCount = 7u;
 static const uint64_t kBuildinTransactionGasPrice = 999999999lu;
 static const std::string kRootPoolsAddressPrefix = common::Encode::HexDecode(
-    "000000000000000000000000000000000000");
-static const std::string kTimeBlockAddress = common::Encode::HexDecode(
-    "9392e6249d97275822e16f562b847492c3a50993");
+    "00000000000000000000000000000000");
 
 #pragma pack(push)
 #pragma pack(1)

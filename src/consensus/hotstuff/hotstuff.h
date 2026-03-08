@@ -210,6 +210,7 @@ private:
         std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap,
         const std::string& expect_view_block_hash);
     void StartInit();
+    Status HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr);
 
     bool HandleProposeMsgCondition(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
         // 仅新 v_block 才能允许执行
@@ -281,48 +282,75 @@ private:
             uint32_t new_leader_idx, 
             const view_block::protobuf::QcItem& leader_latest_qc, 
             View* out_view) {
-        auto sharding_id = common::GlobalInfo::Instance()->network_id();
-        assert(elect_info_ != nullptr);
-        auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
-        if (elect_item == nullptr) {
-            // assert(false);
-            return nullptr;
-        }
-
-        auto members = elect_item->valid_leaders();
-        // auto members = Members(common::GlobalInfo::Instance()->network_id());
-        // if (members == nullptr) {
+        // auto sharding_id = common::GlobalInfo::Instance()->network_id();
+        // assert(elect_info_ != nullptr);
+        // auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
+        // if (elect_item == nullptr) {
+        //     // assert(false);
         //     return nullptr;
         // }
+
+        // auto members = elect_item->valid_leaders();
+        auto members = Members(common::GlobalInfo::Instance()->network_id());
+        if (members == nullptr) {
+            return nullptr;
+        }
 
         auto high_view_block = view_block_chain_->HighViewBlock();
         if (!high_view_block) {
             return nullptr;
         }
 
-        // if (leader_latest_qc.leader_idx() == new_leader_idx) {
-        //     if (leader_latest_qc.view() != high_view_block->qc().view()) {
-        //         SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is not equal with high view block qc view: %lu",
-        //             pool_idx_, leader_latest_qc.view(), high_view_block->qc().view());
-        //         return nullptr;
-        //     }
-
-        //     if (last_stable_leader_member_index_ != new_leader_idx) {
-        //         SETH_DEBUG("pool: %u, leader_latest_qc view: %lu, last_stable_leader_member_index_: %d is not equal with new_leader_idx: %d",
-        //             pool_idx_, leader_latest_qc.view(), last_stable_leader_member_index_, new_leader_idx);
-        //         return nullptr;
-        //     }
-
+        auto now_tm = common::TimeUtils::TimestampSeconds();
+        if (now_tm <= common::GlobalInfo::Instance()->leader_change_init_tm()) {
             if (high_view_block->qc().elect_height() < latest_elect_height_) {
                 *out_view = high_view_block->qc().view() + latest_elect_height_ + 1;
             } else {
                 *out_view = high_view_block->qc().view() + 1;
             }
-
+            
+            SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is equal with high view block qc view: %lu, "
+                "high_view_block->qc().elect_height(): %lu, latest_elect_height_: %lu, out view: %lu, "
+                "last_stable_leader_member_index_: %u, new_leader_idx: %u, leader_latest_qc.leader_idx(): %u",
+                pool_idx_, leader_latest_qc.view(), high_view_block->qc().view(),
+                high_view_block->qc().elect_height(),
+                latest_elect_height_, *out_view,
+                last_stable_leader_member_index_,
+                new_leader_idx,
+                leader_latest_qc.leader_idx());
             return (*members)[last_stable_leader_member_index_ % members->size()];
-        // }
+        }
 
-        // if (leader_latest_qc.view() <= view_block_chain_->LatestCommittedBlock()->qc().view()) {
+        if (last_stable_leader_member_index_ == new_leader_idx ||
+                leader_latest_qc.leader_idx() == new_leader_idx) {
+            do {
+                if (leader_latest_qc.view() != high_view_block->qc().view()) {
+                    SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is not equal with high view block qc view: %lu",
+                        pool_idx_, leader_latest_qc.view(), high_view_block->qc().view());
+                    break;
+                }
+
+                if (high_view_block->qc().elect_height() < latest_elect_height_) {
+                    *out_view = high_view_block->qc().view() + latest_elect_height_ + 1;
+                } else {
+                    *out_view = high_view_block->qc().view() + 1;
+                }
+
+                SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is equal with high view block qc view: %lu, "
+                    "high_view_block->qc().elect_height(): %lu, latest_elect_height_: %lu, out view: %lu, "
+                    "last_stable_leader_member_index_: %u, new_leader_idx: %u, leader_latest_qc.leader_idx(): %u",
+                    pool_idx_, leader_latest_qc.view(), high_view_block->qc().view(),
+                    high_view_block->qc().elect_height(),
+                    latest_elect_height_, *out_view,
+                    last_stable_leader_member_index_,
+                    new_leader_idx,
+                    leader_latest_qc.leader_idx());
+                return (*members)[new_leader_idx % members->size()];
+            } while (0);
+        }
+
+        // if (last_vote_view_ > view_block_chain_->LatestCommittedBlock()->qc().view() &&
+        //         leader_latest_qc.view() <= view_block_chain_->LatestCommittedBlock()->qc().view()) {
         //     SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is too old, latest committed block view: %lu",
         //         pool_idx_, leader_latest_qc.view(), view_block_chain_->LatestCommittedBlock()->qc().view());
         //     return nullptr;
@@ -352,26 +380,12 @@ private:
             return (*members)[last_stable_leader_member_index_ % members->size()];
         }
 
-        auto k = prev_qc_timestamp_sec / common::kLeaderRoatationBaseTimeoutSec;
+        auto k = elapsed / common::kLeaderRoatationBaseTimeoutSec;
         auto leader_idx = (
             last_stable_leader_member_index_ + 
             static_cast<int>(k) + 
             common::kImmutablePoolSize) % members->size();
         // ++consecutive_failures_;
-        SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
-            "consecutive_failures: %d, now: %u, block tm: %lu, "
-            "last_stable_leader_member_index: %d, latest_elect_height: %lu, out view: %lu", 
-            pool_idx_, 
-            high_view_block->qc().view(), 
-            elapsed, 
-            timeout, 
-            k, 
-            consecutive_failures_,
-            now, 
-            high_view_block->block_info().timestamp(),
-            leader_idx,
-            latest_elect_height_,
-            (high_view_block->qc().view() + latest_elect_height_ + 1));
        
         // 切换模式：强制跳过一个视图号 (V + k + 1)
         // 当超时刚刚发生(k=1)时，out_view = last_qc.view + 2
@@ -380,6 +394,27 @@ private:
         } else {
             *out_view = high_view_block->qc().view() + k + 1;
         }
+
+        SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
+            "consecutive_failures: %d, now: %u, block tm: %lu, "
+            "last_stable_leader_member_index: %d, get leader index: %u, "
+            "latest_elect_height: %lu, out view: %lu, "
+            "prev_qc_timestamp_sec: %lu, block_info timestamp: %lu, outview: %lu", 
+            pool_idx_, 
+            high_view_block->qc().view(), 
+            elapsed, 
+            timeout, 
+            k, 
+            consecutive_failures_,
+            now, 
+            high_view_block->block_info().timestamp(),
+            last_stable_leader_member_index_,
+            leader_idx,
+            latest_elect_height_,
+            (high_view_block->qc().view() + latest_elect_height_ + 1),
+            prev_qc_timestamp_sec,
+            high_view_block->block_info().timestamp(),
+            *out_view);
 
         return (*members)[leader_idx % members->size()];
     }
@@ -406,6 +441,18 @@ private:
         return elect_item->valid_leaders()->at(index)->index;
     }
 
+    inline common::BftMemberPtr LocalMember() const {
+        auto sharding_id = common::GlobalInfo::Instance()->network_id();
+        assert(elect_info_ != nullptr);
+        auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
+        if (elect_item == nullptr) {
+            // assert(false);
+            return nullptr;
+        }
+
+        return elect_item->LocalMember();
+    }
+
     inline uint32_t GetLocalMemberIdx() const {
         auto sharding_id = common::GlobalInfo::Instance()->network_id();
         assert(elect_info_ != nullptr);
@@ -415,7 +462,7 @@ private:
             return common::kInvalidUint32;
         }
 
-        auto local_mem_ptr = elect_info_->GetElectItemWithShardingId(sharding_id)->LocalMember();
+        auto local_mem_ptr = elect_item->LocalMember();
         if (local_mem_ptr == nullptr) {
             // assert(false);
             return common::kInvalidUint32;
@@ -464,10 +511,13 @@ private:
     consensus::BlockCacheCallback new_block_cache_callback_ = nullptr;
     common::Tick layter_sync_tick_;
     std::string leader_view_block_hash_;
+    std::shared_ptr<ViewBlock> latest_voted_view_block_ = nullptr;
 
     uint32_t consecutive_failures_ = 0u;
     uint32_t last_stable_leader_member_index_ = 0u;
     uint64_t latest_elect_height_ = 0llu;
+    common::LRUMap<uint64_t, uint64_t> view_with_block_tm_map_{16};
+
 
 // #ifndef NDEBUG
     static std::atomic<uint32_t> sendout_bft_message_count_;

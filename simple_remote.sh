@@ -6,7 +6,7 @@ PASSWORD=$4
 TARGET=$5
 FIRST_NODE_COUNT=$1
 
-node_hash=$(printf "%s" "$str" | md5sum | cut -d ' ' -f1)
+node_hash=$(printf "%s%d" "$node_ips" "$each_nodes_count" | md5sum | cut -d ' ' -f1)
 
 bash cmd.sh $2 "systemctl list-units --state=active --no-legend | grep seth@ | awk '{print \$1}' | xargs -r systemctl stop; killall -9 seth"
 init() {
@@ -74,7 +74,7 @@ init() {
     fi
 
     if [ "$TARGET" == "" ]; then
-        TARGET=Release
+        TARGET=Debug
     fi
 
     killall -9 seth
@@ -108,8 +108,6 @@ init() {
         rm -rf /root/seth/shards*
     fi
 
-    rm -rf /root/seth/shards2
-    cp -rf /root/seth/root_nodes /root/seth/shards2
     echo "node count: " $nodes_count
     rm -rf /root/nodes/seth/latest_blocks
 }
@@ -135,8 +133,7 @@ make_package() {
         cp /root/nodes/txcli /root/nodes/seth/pkg
         cp /root/nodes/seth/conf/GeoLite2-City.mmdb /root/nodes/seth/pkg
         cp /root/nodes/seth/conf/log4cpp.properties /root/nodes/seth/pkg
-        cp /root/seth/shards3 /root/nodes/seth/pkg
-        cp /root/seth/root_nodes /root/nodes/seth/pkg/shards2
+        cp /root/seth/shards* /root/nodes/seth/pkg/
         cp /root/seth/temp_cmd.sh /root/nodes/seth/pkg
         cp /root/seth/start_cmd.sh /root/nodes/seth/pkg
         cp -rf /root/nodes/seth/shard_db_2 /root/nodes/seth/pkg/shard_db_2
@@ -145,8 +142,8 @@ make_package() {
         cp -rf /root/seth/gdb/* /root/nodes/seth/pkg
         cp -rf /root/seth/init_accounts* /root/nodes/seth/pkg
         cp -rf /root/nodes/seth/pkg /root/seth/pkgs/$node_hash
-    fi 
-    
+    fi
+
     cd /root/nodes/seth/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
 }
 
@@ -155,7 +152,7 @@ get_bootstrap() {
     for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
         i=1
         for ip in "${node_ips_array[@]}"; do
-            tmppubkey=`sed -n "$i""p" /root/seth/shards$shard_id| awk -F'\t' '{print $2}'`
+            tmppubkey=`sed -n "$i""p" /root/nodes/seth/pkg/shards${shard_id} | awk -F'\t' '{print $2}'`
             node_info=$tmppubkey":"$ip":1"$shard_id"00"$i
             bootstrap=$node_info","$bootstrap
             i=$((i+1))
@@ -190,7 +187,7 @@ clear_command() {
     run_cmd_count=0
     start_pos=1
     for ip in "${node_ips_array[@]}"; do
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "cd /root && rm -rf pkg*; killall -9 seth" &
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 2221 "cd /root && rm -rf pkg*; killall -9 seth" &
         run_cmd_count=$((run_cmd_count + 1))
         if ((start_pos==1)); then
             sleep 3
@@ -212,7 +209,7 @@ scp_package() {
     node_ips_array=(${node_ips//,/ })
     run_cmd_count=0
     for ip in "${node_ips_array[@]}"; do
-        sshpass -p $PASSWORD scp -o ConnectTimeout=10  -o StrictHostKeyChecking=no /root/nodes/seth/pkg.tar.gz root@$ip:/root &
+        sshpass -p $PASSWORD scp -P 2221 -o ConnectTimeout=10  -o StrictHostKeyChecking=no /root/nodes/seth/pkg.tar.gz root@$ip:/root &
         run_cmd_count=$((run_cmd_count + 1))
         if (($run_cmd_count >= 100)); then
             check_cmd_finished
@@ -236,7 +233,8 @@ run_command() {
             start_nodes_count=$FIRST_NODE_COUNT
         fi
 
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count $bootstrap 2 $end_shard"  > /dev/null 2>&1 &
+        leader_init_tm=$(date -u -d "+240 seconds" +%s)
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 2221 "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count $bootstrap 2 $end_shard $leader_init_tm"  > /dev/null 2>&1 &
         if ((start_pos==1)); then
             sleep 3
         fi
@@ -264,7 +262,7 @@ start_all_nodes() {
             start_nodes_count=$FIRST_NODE_COUNT
         fi
 
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "cd /root/pkg && bash start_cmd.sh $ip $start_pos $start_nodes_count $bootstrap 2 $end_shard "  &
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 2221 "cd /root/pkg && bash start_cmd.sh $ip $start_pos $start_nodes_count $bootstrap 2 $end_shard "  &
         if ((start_pos==1)); then
             sleep 3
         fi

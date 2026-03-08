@@ -62,6 +62,7 @@ public:
         uint32_t pool_index, 
         const pools::TxItemPtr& valid_tx);
     std::shared_ptr<address::protobuf::AddressInfo> GetAddressInfo(const std::string& address);
+    void PoolTimerMessage();
     bool NewTxValid(uint32_t pool_index, const std::string& addr, uint64_t nonce) {
         return tx_pool_[pool_index].NewTxValid(addr, nonce);
     }
@@ -214,6 +215,19 @@ public:
         prefix_db_->SaveLatestPoolInfo(sharding_id, pool_index, pool_info, db_batch);
     }
 
+    void AddPoolMessage(const transport::MessagePtr& msg_ptr) {
+        auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
+        pools_msg_queue_[thread_idx].push(msg_ptr);
+    }
+
+    bool TxKeyExists(uint32_t pool_index, const std::string& addr, uint64_t nonce, const std::string& key) {
+        return tx_pool_[pool_index].TxKeyExists(addr, nonce, key);
+    }
+
+    bool PoolChainIsFull(uint32_t pool_index, uint64_t height) const {
+        return tx_pool_[pool_index].PoolChainIsFull(height);
+    }
+    
 private:
     int TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr);
     void DispatchTx(uint32_t pool_index, const transport::MessagePtr& msg_ptr);
@@ -277,7 +291,7 @@ private:
     uint32_t prev_cross_sync_index_ = 0;
     std::shared_ptr<CrossBlockManager> cross_block_mgr_ = nullptr;
     common::Tick tools_tick_;
-    common::ThreadSafeQueue<std::shared_ptr<transport::TransportMessage>> pools_msg_queue_;
+    common::ThreadSafeQueue<std::shared_ptr<transport::TransportMessage>> pools_msg_queue_[common::kMaxThreadCount];
     uint64_t prev_elect_height_ = common::kInvalidUint64;
     std::atomic<bool> destroy_ = false;
     common::ThreadSafeQueue<std::shared_ptr<InvalidGidItem>> invalid_gid_queues_[common::kInvalidPoolIndex];

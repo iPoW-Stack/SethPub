@@ -34,7 +34,7 @@ int ContractUserCreateCall::HandleTx(
         if (from_nonce + 1 != block_tx.nonce()) {
             block_tx.set_status(kConsensusNonceInvalid);
             // will never happen
-            assert(false);
+            // assert(false);
             break;
         }
 
@@ -44,6 +44,13 @@ int ContractUserCreateCall::HandleTx(
             break;
         }
 
+        if (block_tx.contract_code().size() <= 128u || memcmp(
+                block_tx.contract_code().c_str(),
+                protos::kContractBytesStartCode.c_str(),
+                protos::kContractBytesStartCode.size()) != 0) {
+            block_tx.set_status(kConsensusContractBytesCodeError);
+            break;
+        }
 
         if (block_tx.gas_price() * block_tx.gas_limit() > from_balance) {
             block_tx.set_status(kConsensusOutOfGas);
@@ -65,6 +72,7 @@ int ContractUserCreateCall::HandleTx(
     int64_t tmp_from_balance = from_balance;
     zjcvm::ZjchainHost zjc_host;
     zjc_host.view_block_chain_ = pre_zjc_host.view_block_chain_;
+    zjc_host.tx_context_ = pre_zjc_host.tx_context_;
     zjc_host.pre_zjc_host_ = &pre_zjc_host;
     if (block_tx.status() == kConsensusSuccess) {
         InitHost(

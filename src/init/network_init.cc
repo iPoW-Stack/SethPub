@@ -405,6 +405,7 @@ void NetworkInit::HandleMessage(const transport::MessagePtr& msg_ptr) {
     if (msg_ptr->header.type() == common::kPoolTimerMessage) {
         HandleNewBlock();
         bls_mgr_->PoolTimerMessage();
+        pools_mgr_->PoolTimerMessage();
     }
     ADD_DEBUG_PROCESS_TIMESTAMP();
 }
@@ -1025,29 +1026,29 @@ void NetworkInit::GetNetworkNodesFromConf(
         }
     };
         
-    bool reuse_root = common::isFileExist("/root/seth/root_nodes");
-    auto rfd = fopen("/root/seth/root_nodes", (reuse_root ? "r" : "w"));
-    assert(rfd != nullptr);
-    std::vector<std::string> root_sks;
-    get_sks_func(rfd, root_sks, 3, reuse_root);
-    for (uint32_t i = 0; i < root_sks.size(); i++) {
-        std::string& sk = root_sks[i];
-        std::shared_ptr<security::Security> secptr = std::make_shared<security::Ecdsa>();
-        secptr->SetPrivateKey(sk);
-        auto node_ptr = std::make_shared<GenisisNodeInfo>();
-        node_ptr->prikey = sk;
-        node_ptr->pubkey = secptr->GetPublicKey();
-        node_ptr->id = secptr->GetAddress(node_ptr->pubkey);
-        node_ptr->nonce = 0;
-        root_genesis_nodes.push_back(node_ptr);
-        SETH_DEBUG("root private key: %s, id: %s", 
-            common::Encode::HexEncode(sk).c_str(), 
-            common::Encode::HexEncode(node_ptr->id).c_str());
-    }
-    fclose(rfd);
     uint32_t n = cons_shard_node_count;
+    // bool reuse_root = common::isFileExist("/root/seth/shards2");
+    // auto rfd = fopen("/root/seth/shards2", (reuse_root ? "r" : "w"));
+    // assert(rfd != nullptr);
+    // std::vector<std::string> root_sks;
+    // get_sks_func(rfd, root_sks, n, reuse_root);
+    // for (uint32_t i = 0; i < root_sks.size(); i++) {
+    //     std::string& sk = root_sks[i];
+    //     std::shared_ptr<security::Security> secptr = std::make_shared<security::Ecdsa>();
+    //     secptr->SetPrivateKey(sk);
+    //     auto node_ptr = std::make_shared<GenisisNodeInfo>();
+    //     node_ptr->prikey = sk;
+    //     node_ptr->pubkey = secptr->GetPublicKey();
+    //     node_ptr->id = secptr->GetAddress(node_ptr->pubkey);
+    //     node_ptr->nonce = 0;
+    //     root_genesis_nodes.push_back(node_ptr);
+    //     SETH_DEBUG("root private key: %s, id: %s", 
+    //         common::Encode::HexEncode(sk).c_str(), 
+    //         common::Encode::HexEncode(node_ptr->id).c_str());
+    // }
+    // fclose(rfd);
     uint32_t t = common::GetSignerCount(n);
-    for (uint32_t net_i = network::kConsensusShardBeginNetworkId; net_i < end_shard_id; net_i++) {
+    for (uint32_t net_i = network::kRootCongressNetworkId; net_i < end_shard_id; net_i++) {
         auto filename = std::string("/root/seth/shards") + std::to_string(net_i);
         bool reuse_shard = common::isFileExist(filename);
         auto sfd = fopen(filename.c_str(), (reuse_shard ? "r" : "w"));
@@ -1076,7 +1077,12 @@ void NetworkInit::GetNetworkNodesFromConf(
                 common::Encode::HexEncode(node_ptr->id).c_str());     
         }
         
-        cons_genesis_nodes_of_shards[net_i] = cons_genesis_nodes;
+        if (net_i == network::kRootCongressNetworkId) {
+            root_genesis_nodes = cons_genesis_nodes;
+        } else {
+            cons_genesis_nodes_of_shards[net_i] = cons_genesis_nodes;
+        }
+        
         fclose(sfd);
     }
     // }
@@ -1177,7 +1183,6 @@ void NetworkInit::HandleNewBlock() {
     }
 }
 
-// TODO: check thread thafe
 bool NetworkInit::DbNewBlockCallback(
         const std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block) {
     auto* block = &view_block->block_info();

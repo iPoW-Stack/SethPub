@@ -2,7 +2,7 @@
 // source: protos/hotstuff.proto
 
 #include "protos/hotstuff.pb.h"
-#include "common/global_info.h"
+
 #include <algorithm>
 
 #include <google/protobuf/stubs/common.h>
@@ -32,7 +32,7 @@ extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2fpools_2eproto ::google::protob
 }  // namespace protobuf_protos_2fpools_2eproto
 namespace protobuf_protos_2fview_5fblock_2eproto {
 extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2fview_5fblock_2eproto ::google::protobuf::internal::SCCInfo<0> scc_info_AggregateSig;
-extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2fview_5fblock_2eproto ::google::protobuf::internal::SCCInfo<1> scc_info_QcItem;
+extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2fview_5fblock_2eproto ::google::protobuf::internal::SCCInfo<0> scc_info_QcItem;
 extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2fview_5fblock_2eproto ::google::protobuf::internal::SCCInfo<3> scc_info_ViewBlockItem;
 }  // namespace protobuf_protos_2fview_5fblock_2eproto
 namespace seth {
@@ -707,7 +707,6 @@ const int HotstuffMessage::kPoolIndexFieldNumber;
 
 HotstuffMessage::HotstuffMessage()
   : ::google::protobuf::Message(), _internal_metadata_(NULL) {
-    common::GlobalInfo::Instance()->AddSharedObj(24);
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2fhotstuff_2eproto::scc_info_HotstuffMessage.base);
   SharedCtor();
@@ -717,7 +716,6 @@ HotstuffMessage::HotstuffMessage(const HotstuffMessage& from)
   : ::google::protobuf::Message(),
       _internal_metadata_(NULL),
       _has_bits_(from._has_bits_) {
-    common::GlobalInfo::Instance()->AddSharedObj(24);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   if (from.has_pro_msg()) {
     pro_msg_ = new ::seth::hotstuff::protobuf::ProposeMsg(*from.pro_msg_);
@@ -758,7 +756,6 @@ void HotstuffMessage::SharedCtor() {
 }
 
 HotstuffMessage::~HotstuffMessage() {
-    common::GlobalInfo::Instance()->DecSharedObj(24);
   // @@protoc_insertion_point(destructor:seth.hotstuff.protobuf.HotstuffMessage)
   SharedDtor();
 }

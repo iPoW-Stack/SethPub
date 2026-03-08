@@ -53,12 +53,12 @@ public:
             return consensus::kConsensusError;
         }
 
+        timer_block.set_height(view_block.block_info().height());
         InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
         zjc_host.SaveKeyValue(block_tx.to(), unique_hash, tx_info->value());
         block_tx.set_unique_hash(unique_hash);
-        block_tx.set_nonce(to_nonce + 1);
         SETH_WARN("success call time block pool: %d, view: %lu, to_nonce: %lu. tx nonce: %lu", 
-            view_block.qc().pool_index(), view_block.qc().view(), to_nonce, block_tx.nonce());
+            view_block.qc().pool_index(), view_block.qc().view(), block_tx.nonce(), block_tx.nonce());
         acc_balance_map[block_tx.to()]->set_balance(to_balance);
         acc_balance_map[block_tx.to()]->set_nonce(block_tx.nonce());
         acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());

@@ -5,17 +5,18 @@
 #include <unordered_map>
 #include <vector>
 
-#include <dkg/dkg.h>
 #include <nlohmann/json.hpp>
 
 #include "common/bitmap.h"
 #include "common/utils.h"
 #include "db/db.h"
 #include "dht/dht_utils.h"
-#include "init/init_utils.h"
+#include "dkg/dkg.h"
+#include "network/network_utils.h"
 #include "protos/block.pb.h"
 #include "protos/prefix_db.h"
 #include "protos/init.pb.h"
+#include "init/init_utils.h"
 
 namespace seth {
 
@@ -133,9 +134,7 @@ private:
     std::shared_ptr<pools::TxPoolManager> pools_mgr_ = nullptr;
     libff::alt_bn128_G2 common_pk_[16] = { libff::alt_bn128_G2::zero() };
     nlohmann::json bls_pk_json_;
-    std::shared_ptr<address::protobuf::AddressInfo> immutable_pool_address_info_;
-    std::shared_ptr<address::protobuf::AddressInfo> timeblock_address_info_;
-    std::shared_ptr<address::protobuf::AddressInfo> pool_address_info_[common::kImmutablePoolSize];
+    std::shared_ptr<address::protobuf::AddressInfo> pool_address_info_[network::kConsensusShardEndNetworkId][pools::protobuf::kPoolStatisticTag + 1][common::kInvalidPoolIndex];
     std::unordered_map<std::string, uint64_t> genesis_acount_balance_map_;
     
     DISALLOW_COPY_AND_ASSIGN(GenesisBlockInit);

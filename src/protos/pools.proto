@@ -20,7 +20,7 @@ enum StepType {
     kCreateLibrary = 14; // Transaction for creating public contract libraries
     kCross = 15;  // Transaction to prevent missing cross-shard blocks
     kRootCross = 16;  // Root transaction to prevent missing cross-shard blocks
-    kPoolStatisticTag = 18;  // Final marker block for this round of transaction pool statistics
+    kPoolStatisticTag = 17;  // Final marker block for this round of transaction pool statistics
 }
 
 message ToTxHeights {
@@ -143,6 +143,8 @@ message ElectStatistic {
     optional uint64 gas_amount = 5;
     repeated uint32 lof_leaders = 6;
     optional uint64 statistic_height = 7;
+    optional uint64 nonce = 8;
+    optional elect.protobuf.ElectBlock elect_block = 9;
 }
 
 message SyncPoolsMaxHeight {

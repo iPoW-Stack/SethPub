@@ -104,6 +104,7 @@ public:
         std::string* verify_hash);
     int GetLibffHash(const std::string& str_hash, libff::alt_bn128_G1* g1_hash);
     int AddBlsConsensusInfo(elect::protobuf::ElectBlock& ec_block);
+    int CheckBlsConsensusInfo(const elect::protobuf::ElectBlock& ec_block);
     void HandleMessage(const transport::MessagePtr& msg_ptr);
     int FirewallCheckMessage(transport::MessagePtr& msg_ptr);
     std::shared_ptr<security::Security> security() {

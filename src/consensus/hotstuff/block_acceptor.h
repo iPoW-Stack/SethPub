@@ -33,6 +33,10 @@ class BlockManager;
 class AccountManager;
 }
 
+namespace bls {
+    class BlsManager;
+}
+
 namespace hotstuff {
 // One BlockAcceptor Per Pool
 // IBlockAcceptor is for block verification, block committion and block_txs' rollback
@@ -82,7 +86,8 @@ public:
         std::shared_ptr<block::BlockManager>& block_mgr,
         std::shared_ptr<timeblock::TimeBlockManager>& tm_block_mgr,
         std::shared_ptr<elect::ElectManager> elect_mgr,
-        std::shared_ptr<ViewBlockChain> view_block_chain);
+        std::shared_ptr<ViewBlockChain> view_block_chain,
+        std::shared_ptr<bls::BlsManager> bls_mgr);
 
     bool TxHashVerified(const std::string& tx_hash) {
         return checked_tx_hash_.Push(tx_hash);
@@ -159,6 +164,7 @@ public:
     std::shared_ptr<consensus::WaitingTxsPools> tx_pools_ = nullptr;
     std::shared_ptr<security::Security> security_ptr_ = nullptr;
     std::shared_ptr<block::AccountManager> account_mgr_ = nullptr;
+    std::shared_ptr<bls::BlsManager> bls_mgr_ = nullptr;
     std::shared_ptr<ElectInfo> elect_info_ = nullptr;
     std::shared_ptr<vss::VssManager> vss_mgr_ = nullptr;
     std::shared_ptr<contract::ContractManager> contract_mgr_ = nullptr;

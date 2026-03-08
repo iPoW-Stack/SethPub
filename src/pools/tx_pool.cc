@@ -38,6 +38,8 @@ void TxPool::Init(
 void TxPool::InitHeightTree() {
     // // CheckThreadIdValid();
     if (common::GlobalInfo::Instance()->network_id() == common::kInvalidUint32) {
+        SETH_DEBUG("get invalid network id: %u, latest_height_: %lu", 
+            common::GlobalInfo::Instance()->network_id(), latest_height_);
         return;
     }
 
@@ -48,6 +50,8 @@ void TxPool::InitHeightTree() {
     }
 
     if (net_id < network::kRootCongressNetworkId || net_id >= network::kConsensusShardEndNetworkId) {
+        SETH_DEBUG("get invalid network id: %u, latest_height_: %lu", 
+            common::GlobalInfo::Instance()->network_id(), latest_height_);
         return;
     }
 
@@ -63,12 +67,25 @@ void TxPool::InitHeightTree() {
         }
     }
 
+    SETH_DEBUG("init height tree success, net_id: %u, pool_index_: %u, latest_height_: %lu, synced_height_: %lu", 
+        net_id, pool_index_, latest_height_, synced_height_);
+    std::vector<uint64_t> invalid_heights;
+    height_tree_ptr->GetMissingHeights(&invalid_heights, latest_height_);
+    SETH_DEBUG("%u get invalid heights size: %u, latest_height_: %lu", 
+        pool_index_, invalid_heights.size(), latest_height_);
+    if (invalid_heights.size() > 0 && invalid_heights[0] <= latest_height_) {
+        has_missing_height_ = true;
+    } else {
+        has_missing_height_ = false;
+    }
+
     height_tree_ptr_ = height_tree_ptr;
 }
 
 uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
     if (!height_tree_ptr_) {
-        SETH_DEBUG("get invalid height_tree_ptr_ size: %u, latest_height_: %lu", 0, latest_height_);
+        SETH_DEBUG("pool: %u, get invalid height_tree_ptr_ size: %u, latest_height_: %lu", 
+            pool_index_, 0, latest_height_);
         return 0;
     }
 
@@ -87,6 +104,12 @@ uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
     height_tree_ptr_->GetMissingHeights(&invalid_heights, latest_height_);
     SETH_DEBUG("%u get invalid heights size: %u, latest_height_: %lu", 
         pool_index_, invalid_heights.size(), latest_height_);
+    if (invalid_heights.size() > 0 && invalid_heights[0] <= latest_height_) {
+        has_missing_height_ = true;
+    } else {
+        has_missing_height_ = false;
+    }
+
     if (invalid_heights.size() > 0) {
         auto net_id = common::GlobalInfo::Instance()->network_id();
         if (net_id >= network::kConsensusWaitingShardBeginNetworkId &&
@@ -180,11 +203,6 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
         auto addr = IsTxUseFromAddress(tx_info.step()) ? 
             tx_info.from() : 
             tx_info.to();
-        if (!IsUserTransaction(tx_info.step()) && 
-                !tx_info.unique_hash().empty()) {
-            addr = std::to_string(tx_info.step());
-        }
-
         if (tx_info.step() == pools::protobuf::kContractExcute) {
             addr = tx_info.to() + tx_info.from();
         }
@@ -260,7 +278,6 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
             }
         };
         
-        remove_tx_func(system_tx_map_);
         remove_tx_func(tx_map_);
         remove_tx_func(consensus_tx_map_);
         SETH_DEBUG("trace tx pool: %d, step: %d, to: %s, unique hash: %s, over tx addr: %s, nonce: %lu", 
@@ -313,11 +330,13 @@ void TxPool::GetTxSyncToLeader(
                 continue;
             }
 
-            system_tx_map_[std::to_string(tx_ptr->tx_info->step())][tx_ptr->tx_info->nonce()] = tx_ptr;
-            SETH_DEBUG("pool: %u, success add system tx nonce addr: %s, "
+            assert(tx_ptr->tx_info->to() == tx_ptr->address_info->addr());
+            tx_map_[tx_ptr->tx_info->to()][tx_ptr->tx_info->nonce()] = tx_ptr;
+            SETH_DEBUG("pool: %u, success add system tx nonce addr: %s, to: %s, "
                 "addr nonce: %lu, tx nonce: %lu, unique hash: %s, step: %u",
                 pool_index_,
                 common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
+                common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
                 tx_ptr->address_info->nonce(), 
                 tx_ptr->tx_info->nonce(),
                 common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(),
@@ -460,11 +479,13 @@ void TxPool::TempGetTxIdempotently(
                 continue;
             }
 
-            system_tx_map_[std::to_string(tx_ptr->tx_info->step())][tx_ptr->tx_info->nonce()] = tx_ptr;
-            SETH_DEBUG("pool: %d, success add system tx nonce addr: %s, "
+            assert(tx_ptr->tx_info->to() == tx_ptr->address_info->addr());
+            tx_map_[tx_ptr->tx_info->to()][tx_ptr->tx_info->nonce()] = tx_ptr;
+            SETH_DEBUG("pool: %d, success add system tx nonce addr: %s, to: %s, "
                 "addr nonce: %lu, tx nonce: %lu, unique hash: %s, step: %u",
                 pool_index_,
                 common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
+                common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
                 tx_ptr->address_info->nonce(), 
                 tx_ptr->tx_info->nonce(),
                 common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(),
@@ -560,13 +581,14 @@ void TxPool::TempGetTxIdempotently(
                         &now_nonce);
                     SETH_DEBUG("begin nonce, trace tx pool: %d, tx_key invalid addr: %s, "
                         "nonce: %lu, unique hash: %s, "
-                        "now_nonce: %u, tx_ptr->tx_info->nonce() + iter->second.size(): %u", 
+                        "now_nonce: %u, tx_ptr->tx_info->nonce() + iter->second.size(): %u, res: %d", 
                         pool_index_,
                         common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
                         tx_ptr->tx_info->nonce(),
                         common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(),
                         now_nonce,
-                        (tx_ptr->tx_info->nonce() + iter->second.size()));
+                        (tx_ptr->tx_info->nonce() + iter->second.size()),
+                        res);
                     if (res != 0) {
                         if (!IsUserTransaction(tx_ptr->tx_info->step())) {
                             if (nonce_iter == iter->second.end()) {
@@ -691,12 +713,12 @@ void TxPool::TempGetTxIdempotently(
         }
     };
 
-    get_tx_func(system_tx_map_);
+    get_tx_func(tx_map_);
     get_tx_func(consensus_tx_map_);
     SETH_DEBUG("pool: %d, now get tx by leader all: %u, added tx size: %u, "
-        "system_tx_map_ size: %u, get: %u, count: %u", 
+        "get: %u, count: %u", 
         pool_index_, all_tx_size(), added_txs_.size(),
-        system_tx_map_.size(), res_map.size(), count);
+        res_map.size(), count);
 }
 
 void TxPool::InitLatestInfo() {

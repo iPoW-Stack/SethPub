@@ -38,6 +38,7 @@ int ContractCall::HandleTx(
     auto gas_limit = block_tx.gas_limit();
     zjcvm::ZjchainHost zjc_host;
     zjc_host.view_block_chain_ = pre_zjc_host.view_block_chain_;
+    zjc_host.tx_context_ = pre_zjc_host.tx_context_;
     zjc_host.pre_zjc_host_ = &pre_zjc_host;
     do {
         if (from_balance <= kCallContractDefaultUseGas * block_tx.gas_price() + block_tx.amount()) {

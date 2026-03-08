@@ -900,30 +900,6 @@ class JoinElectInfo : public ::google::protobuf::Message /* @@protoc_insertion_p
   ::seth::bls::protobuf::VerifyVecBrdReq* mutable_g2_req();
   void set_allocated_g2_req(::seth::bls::protobuf::VerifyVecBrdReq* g2_req);
 
-  // optional .seth.elect.protobuf.BlsPublicKey bls_pk = 8;
-  bool has_bls_pk() const;
-  void clear_bls_pk();
-  static const int kBlsPkFieldNumber = 8;
-  private:
-  const ::seth::elect::protobuf::BlsPublicKey& _internal_bls_pk() const;
-  public:
-  const ::seth::elect::protobuf::BlsPublicKey& bls_pk() const;
-  ::seth::elect::protobuf::BlsPublicKey* release_bls_pk();
-  ::seth::elect::protobuf::BlsPublicKey* mutable_bls_pk();
-  void set_allocated_bls_pk(::seth::elect::protobuf::BlsPublicKey* bls_pk);
-
-  // optional .seth.elect.protobuf.BlsPopProof bls_proof = 9;
-  bool has_bls_proof() const;
-  void clear_bls_proof();
-  static const int kBlsProofFieldNumber = 9;
-  private:
-  const ::seth::elect::protobuf::BlsPopProof& _internal_bls_proof() const;
-  public:
-  const ::seth::elect::protobuf::BlsPopProof& bls_proof() const;
-  ::seth::elect::protobuf::BlsPopProof* release_bls_proof();
-  ::seth::elect::protobuf::BlsPopProof* mutable_bls_proof();
-  void set_allocated_bls_proof(::seth::elect::protobuf::BlsPopProof* bls_proof);
-
   // optional uint32 shard_id = 1;
   bool has_shard_id() const;
   void clear_shard_id();
@@ -968,10 +944,6 @@ class JoinElectInfo : public ::google::protobuf::Message /* @@protoc_insertion_p
   void clear_has_stoke();
   void set_has_public_key();
   void clear_has_public_key();
-  void set_has_bls_pk();
-  void clear_has_bls_pk();
-  void set_has_bls_proof();
-  void clear_has_bls_proof();
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
@@ -979,8 +951,6 @@ class JoinElectInfo : public ::google::protobuf::Message /* @@protoc_insertion_p
   ::google::protobuf::internal::ArenaStringPtr addr_;
   ::google::protobuf::internal::ArenaStringPtr public_key_;
   ::seth::bls::protobuf::VerifyVecBrdReq* g2_req_;
-  ::seth::elect::protobuf::BlsPublicKey* bls_pk_;
-  ::seth::elect::protobuf::BlsPopProof* bls_proof_;
   ::google::protobuf::uint32 shard_id_;
   ::google::protobuf::uint32 member_idx_;
   ::google::protobuf::uint64 stoke_;
@@ -3528,13 +3498,13 @@ inline void JoinElectBlsInfo::set_allocated_verified_g2(::seth::bls::protobuf::V
 
 // optional uint32 shard_id = 1;
 inline bool JoinElectInfo::has_shard_id() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
+  return (_has_bits_[0] & 0x00000008u) != 0;
 }
 inline void JoinElectInfo::set_has_shard_id() {
-  _has_bits_[0] |= 0x00000020u;
+  _has_bits_[0] |= 0x00000008u;
 }
 inline void JoinElectInfo::clear_has_shard_id() {
-  _has_bits_[0] &= ~0x00000020u;
+  _has_bits_[0] &= ~0x00000008u;
 }
 inline void JoinElectInfo::clear_shard_id() {
   shard_id_ = 0u;
@@ -3552,13 +3522,13 @@ inline void JoinElectInfo::set_shard_id(::google::protobuf::uint32 value) {
 
 // optional uint32 member_idx = 2;
 inline bool JoinElectInfo::has_member_idx() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
 inline void JoinElectInfo::set_has_member_idx() {
-  _has_bits_[0] |= 0x00000040u;
+  _has_bits_[0] |= 0x00000010u;
 }
 inline void JoinElectInfo::clear_has_member_idx() {
-  _has_bits_[0] &= ~0x00000040u;
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline void JoinElectInfo::clear_member_idx() {
   member_idx_ = 0u;
@@ -3576,13 +3546,13 @@ inline void JoinElectInfo::set_member_idx(::google::protobuf::uint32 value) {
 
 // optional uint32 change_idx = 3;
 inline bool JoinElectInfo::has_change_idx() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
+  return (_has_bits_[0] & 0x00000040u) != 0;
 }
 inline void JoinElectInfo::set_has_change_idx() {
-  _has_bits_[0] |= 0x00000100u;
+  _has_bits_[0] |= 0x00000040u;
 }
 inline void JoinElectInfo::clear_has_change_idx() {
-  _has_bits_[0] &= ~0x00000100u;
+  _has_bits_[0] &= ~0x00000040u;
 }
 inline void JoinElectInfo::clear_change_idx() {
   change_idx_ = 0u;
@@ -3724,13 +3694,13 @@ inline void JoinElectInfo::set_allocated_addr(::std::string* addr) {
 
 // optional uint64 stoke = 6;
 inline bool JoinElectInfo::has_stoke() const {
-  return (_has_bits_[0] & 0x00000080u) != 0;
+  return (_has_bits_[0] & 0x00000020u) != 0;
 }
 inline void JoinElectInfo::set_has_stoke() {
-  _has_bits_[0] |= 0x00000080u;
+  _has_bits_[0] |= 0x00000020u;
 }
 inline void JoinElectInfo::clear_has_stoke() {
-  _has_bits_[0] &= ~0x00000080u;
+  _has_bits_[0] &= ~0x00000020u;
 }
 inline void JoinElectInfo::clear_stoke() {
   stoke_ = GOOGLE_ULONGLONG(0);
@@ -3810,114 +3780,6 @@ inline void JoinElectInfo::set_allocated_public_key(::std::string* public_key) {
   }
   public_key_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), public_key);
   // @@protoc_insertion_point(field_set_allocated:seth.bls.protobuf.JoinElectInfo.public_key)
-}
-
-// optional .seth.elect.protobuf.BlsPublicKey bls_pk = 8;
-inline bool JoinElectInfo::has_bls_pk() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
-}
-inline void JoinElectInfo::set_has_bls_pk() {
-  _has_bits_[0] |= 0x00000008u;
-}
-inline void JoinElectInfo::clear_has_bls_pk() {
-  _has_bits_[0] &= ~0x00000008u;
-}
-inline const ::seth::elect::protobuf::BlsPublicKey& JoinElectInfo::_internal_bls_pk() const {
-  return *bls_pk_;
-}
-inline const ::seth::elect::protobuf::BlsPublicKey& JoinElectInfo::bls_pk() const {
-  const ::seth::elect::protobuf::BlsPublicKey* p = bls_pk_;
-  // @@protoc_insertion_point(field_get:seth.bls.protobuf.JoinElectInfo.bls_pk)
-  return p != NULL ? *p : *reinterpret_cast<const ::seth::elect::protobuf::BlsPublicKey*>(
-      &::seth::elect::protobuf::_BlsPublicKey_default_instance_);
-}
-inline ::seth::elect::protobuf::BlsPublicKey* JoinElectInfo::release_bls_pk() {
-  // @@protoc_insertion_point(field_release:seth.bls.protobuf.JoinElectInfo.bls_pk)
-  clear_has_bls_pk();
-  ::seth::elect::protobuf::BlsPublicKey* temp = bls_pk_;
-  bls_pk_ = NULL;
-  return temp;
-}
-inline ::seth::elect::protobuf::BlsPublicKey* JoinElectInfo::mutable_bls_pk() {
-  set_has_bls_pk();
-  if (bls_pk_ == NULL) {
-    auto* p = CreateMaybeMessage<::seth::elect::protobuf::BlsPublicKey>(GetArenaNoVirtual());
-    bls_pk_ = p;
-  }
-  // @@protoc_insertion_point(field_mutable:seth.bls.protobuf.JoinElectInfo.bls_pk)
-  return bls_pk_;
-}
-inline void JoinElectInfo::set_allocated_bls_pk(::seth::elect::protobuf::BlsPublicKey* bls_pk) {
-  ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
-  if (message_arena == NULL) {
-    delete reinterpret_cast< ::google::protobuf::MessageLite*>(bls_pk_);
-  }
-  if (bls_pk) {
-    ::google::protobuf::Arena* submessage_arena = NULL;
-    if (message_arena != submessage_arena) {
-      bls_pk = ::google::protobuf::internal::GetOwnedMessage(
-          message_arena, bls_pk, submessage_arena);
-    }
-    set_has_bls_pk();
-  } else {
-    clear_has_bls_pk();
-  }
-  bls_pk_ = bls_pk;
-  // @@protoc_insertion_point(field_set_allocated:seth.bls.protobuf.JoinElectInfo.bls_pk)
-}
-
-// optional .seth.elect.protobuf.BlsPopProof bls_proof = 9;
-inline bool JoinElectInfo::has_bls_proof() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
-}
-inline void JoinElectInfo::set_has_bls_proof() {
-  _has_bits_[0] |= 0x00000010u;
-}
-inline void JoinElectInfo::clear_has_bls_proof() {
-  _has_bits_[0] &= ~0x00000010u;
-}
-inline const ::seth::elect::protobuf::BlsPopProof& JoinElectInfo::_internal_bls_proof() const {
-  return *bls_proof_;
-}
-inline const ::seth::elect::protobuf::BlsPopProof& JoinElectInfo::bls_proof() const {
-  const ::seth::elect::protobuf::BlsPopProof* p = bls_proof_;
-  // @@protoc_insertion_point(field_get:seth.bls.protobuf.JoinElectInfo.bls_proof)
-  return p != NULL ? *p : *reinterpret_cast<const ::seth::elect::protobuf::BlsPopProof*>(
-      &::seth::elect::protobuf::_BlsPopProof_default_instance_);
-}
-inline ::seth::elect::protobuf::BlsPopProof* JoinElectInfo::release_bls_proof() {
-  // @@protoc_insertion_point(field_release:seth.bls.protobuf.JoinElectInfo.bls_proof)
-  clear_has_bls_proof();
-  ::seth::elect::protobuf::BlsPopProof* temp = bls_proof_;
-  bls_proof_ = NULL;
-  return temp;
-}
-inline ::seth::elect::protobuf::BlsPopProof* JoinElectInfo::mutable_bls_proof() {
-  set_has_bls_proof();
-  if (bls_proof_ == NULL) {
-    auto* p = CreateMaybeMessage<::seth::elect::protobuf::BlsPopProof>(GetArenaNoVirtual());
-    bls_proof_ = p;
-  }
-  // @@protoc_insertion_point(field_mutable:seth.bls.protobuf.JoinElectInfo.bls_proof)
-  return bls_proof_;
-}
-inline void JoinElectInfo::set_allocated_bls_proof(::seth::elect::protobuf::BlsPopProof* bls_proof) {
-  ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
-  if (message_arena == NULL) {
-    delete reinterpret_cast< ::google::protobuf::MessageLite*>(bls_proof_);
-  }
-  if (bls_proof) {
-    ::google::protobuf::Arena* submessage_arena = NULL;
-    if (message_arena != submessage_arena) {
-      bls_proof = ::google::protobuf::internal::GetOwnedMessage(
-          message_arena, bls_proof, submessage_arena);
-    }
-    set_has_bls_proof();
-  } else {
-    clear_has_bls_proof();
-  }
-  bls_proof_ = bls_proof;
-  // @@protoc_insertion_point(field_set_allocated:seth.bls.protobuf.JoinElectInfo.bls_proof)
 }
 
 // -------------------------------------------------------------------

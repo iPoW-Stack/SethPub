@@ -395,6 +395,15 @@ void TxPoolManager::SyncBlockWithMaxHeights(uint32_t pool_idx, uint64_t height) 
         sync::kSyncHigh);
 }
 
+void TxPoolManager::PoolTimerMessage() {
+    for (uint32_t i = 0; i < common::kMaxThreadCount; ++i) {
+        transport::MessagePtr msg_ptr;
+        while (pools_msg_queue_[i].pop(&msg_ptr)) {
+            HandleMessage(msg_ptr);
+        }
+    }
+}
+
 void TxPoolManager::HandleMessage(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
     TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -451,8 +460,8 @@ void TxPoolManager::HandleMessage(const transport::MessagePtr& msg_ptr) {
             ++prev_tps_count_;
             uint64_t dur = 1000lu;
             if (now_tm > prev_show_tm_ms_ + dur) {
-                SETH_DEBUG("pools stored message size: %d, %d, pool index: %d, tx all size: %u, tps: %lu", 
-                        -1, pools_msg_queue_.size(),
+                SETH_DEBUG("pools stored message size: %d, pool index: %d, tx all size: %u, tps: %lu", 
+                        -1,
                         address_info->pool_index(),
                         tx_pool_[address_info->pool_index()].all_tx_size(),
                         (prev_tps_count_/(dur / 1000)));
@@ -474,7 +483,6 @@ void TxPoolManager::HandleMessage(const transport::MessagePtr& msg_ptr) {
     TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
     ADD_DEBUG_PROCESS_TIMESTAMP();
     HandlePoolsMessage(msg_ptr);
-    // pools_msg_queue_.push(msg_ptr);
     // pop_tx_con_.notify_one();
     TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -561,7 +569,15 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
             break;
         }
         case pools::protobuf::kPoolStatisticTag: {
-            pool_index = common::GetAddressPoolIndex(tx_msg.to());
+            pool_index = msg_ptr->address_info->pool_index();
+            break;
+        }
+        case pools::protobuf::kStatistic: {
+            pool_index = msg_ptr->address_info->pool_index();
+            break;
+        }
+        case pools::protobuf::kConsensusRootElectShard: {
+            pool_index = msg_ptr->address_info->pool_index();
             break;
         }
         default:
@@ -991,7 +1007,7 @@ void TxPoolManager::HandleNormalFromTx(const transport::MessagePtr& msg_ptr) {
 
 void TxPoolManager::HandleCreateContractTx(const transport::MessagePtr& msg_ptr) {
     auto& tx_msg = msg_ptr->header.tx_proto();
-    if (!tx_msg.has_contract_code()) {
+    if (!tx_msg.has_contract_code() || tx_msg.contract_code().size() <= 128u) {
         SETH_DEBUG("create contract not has valid contract code: %s",
             common::Encode::HexEncode(tx_msg.contract_code()).c_str());
         return;

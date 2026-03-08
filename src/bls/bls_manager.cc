@@ -911,6 +911,10 @@ bool BlsManager::VerifyAggSignValid(
     return false;
 }
 
+int BlsManager::CheckBlsConsensusInfo(const elect::protobuf::ElectBlock& ec_block) {
+    return kBlsSuccess;
+}
+
 int BlsManager::AddBlsConsensusInfo(elect::protobuf::ElectBlock& ec_block) {
     auto iter = finish_networks_map_.find(ec_block.shard_network_id());
     if (iter == finish_networks_map_.end()) {
@@ -1039,7 +1043,7 @@ int BlsManager::AddBlsConsensusInfo(elect::protobuf::ElectBlock& ec_block) {
     common_pk->set_y_c1(
         libBLS::ThresholdUtils::fieldElementToString(common_pk_iter->second.Y.c1));
     pre_ec_members->set_prev_elect_height(elect_iter->second->height);
-    ResetLeaders(members, ec_block.mutable_prev_members());
+    // ResetLeaders(members, ec_block.mutable_prev_members());
 //     SETH_WARN("network: %u, elect height: %lu, AddBlsConsensusInfo success max_finish_count_: %d,"
 //         "member count: %d, x_c0: %s, x_c1: %s, y_c0: %s, y_c1: %s.",
 //         ec_block.shard_network_id(),

@@ -87,6 +87,7 @@ static const std::string kUserTxPrefix = "bc\x01";
 static const std::string kUserTxGidPrefix = "bd\x01";
 static const std::string kElectHeightWithElectBlock = "bd\x02";
 static const std::string kOverUniqueHash = "be\x02";
+static const std::string kLeaderLatestProposeMessage = "bf\x02";
 
 class PrefixDb {
 public:
@@ -297,7 +298,9 @@ public:
     void SaveLatestTimeBlock(const timeblock::protobuf::TimeBlock& tmblock, db::DbWriteBatch& db_batch) {
         std::string key(kLatestTimeBlockPrefix);
         db_batch.Put(key, tmblock.SerializeAsString());
-        SETH_DEBUG("dddddd success latest time block: %lu", tmblock.height());
+        SETH_DEBUG("dddddd success latest time block: %lu, %s", 
+            tmblock.height(), 
+            ProtobufToJson(tmblock).c_str());
     }
 
     bool GetLatestTimeBlock(timeblock::protobuf::TimeBlock* tmblock) {
@@ -338,8 +341,11 @@ public:
             uint32_t pool_index,
             uint64_t height,
             std::string* block_hash) {
-        assert(sharding_id >= network::kRootCongressNetworkId &&
-            sharding_id <= network::kConsensusShardEndNetworkId);
+        if (sharding_id < network::kRootCongressNetworkId ||
+                sharding_id >= network::kConsensusShardEndNetworkId) {
+            return false;
+        }
+        
         std::string key;
         key.reserve(32);
         key.append(kBlockHeightPrefix);
@@ -1502,6 +1508,46 @@ public:
         }
         
         return GetBlock(block_hash, block);
+    }
+
+    bool SaveLatestLeaderProposeMessage(const transport::protobuf::Header& msg, uint64_t latest_qc_view) {
+        std::string key;
+        key.reserve(48);
+        key.append(kLeaderLatestProposeMessage);
+        auto& view_item = msg.hotstuff().pro_msg().view_item();
+        uint32_t sharding_id = view_item.qc().network_id();
+        uint32_t pool_index = view_item.qc().pool_index();
+        key.append((char*)&sharding_id, sizeof(sharding_id));
+        key.append((char*)&pool_index, sizeof(pool_index));
+        auto val = msg.SerializeAsString();
+        char data[val.size() + sizeof(latest_qc_view)];
+        uint64_t* udata = (uint64_t*)data;
+        udata[0] = latest_qc_view;
+        memcpy(data + sizeof(latest_qc_view), val.data(), val.size());
+        std::string value(data, sizeof(data));
+        auto st = db_->Put(key, value);
+        return st.ok();
+    }
+
+    bool GetLatestLeaderProposeMessage(
+            uint32_t sharding_id, 
+            uint32_t pool_index, 
+            transport::protobuf::Header* msg, 
+            uint64_t* latest_qc_view) {
+        std::string key;
+        key.reserve(48);
+        key.append(kLeaderLatestProposeMessage);
+        key.append((char*)&sharding_id, sizeof(sharding_id));
+        key.append((char*)&pool_index, sizeof(pool_index));
+        std::string data;
+        auto st = db_->Get(key, &data);
+        if (!st.ok()) {
+            return false;
+        }
+        
+        uint64_t* udata = (uint64_t*)data.c_str();
+        *latest_qc_view = udata[0];
+        return msg->ParseFromArray(data.data() + sizeof(*latest_qc_view), data.size() - sizeof(*latest_qc_view));
     }
 
 private:

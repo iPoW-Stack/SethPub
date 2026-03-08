@@ -113,6 +113,19 @@ static int CreateTransactionWithAttr(
         return kHttpError;
     }
 
+    auto contract_bytes = req.get_param_value("bytes_code");
+    if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kContractCreate) {
+        contract_bytes = common::Encode::HexDecode(contract_bytes);
+        if (contract_bytes.size() <= 128 || memcmp(
+                contract_bytes.c_str(),
+                protos::kContractBytesStartCode.c_str(),
+                protos::kContractBytesStartCode.size()) != 0) {
+            SETH_DEBUG("create contract not has valid contract code: %s",
+                common::Encode::HexEncode(contract_bytes).c_str());
+            return kHttpError;
+        }
+    }
+
     new_tx->set_step(static_cast<pools::protobuf::StepType>(step_val));
     new_tx->set_to(to);
     new_tx->set_amount(amount);
@@ -129,9 +142,8 @@ static int CreateTransactionWithAttr(
         }
     }
 
-    auto contract_bytes = req.get_param_value("bytes_code");
     if (!contract_bytes.empty()) {
-        new_tx->set_contract_code(common::Encode::HexDecode(contract_bytes));
+        new_tx->set_contract_code(contract_bytes);
     }
 
     auto input = req.get_param_value("input");

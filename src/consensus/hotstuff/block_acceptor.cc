@@ -47,7 +47,8 @@ void BlockAcceptor::Init(
         std::shared_ptr<block::BlockManager>& block_mgr,
         std::shared_ptr<timeblock::TimeBlockManager>& tm_block_mgr,
         std::shared_ptr<elect::ElectManager> elect_mgr,
-        std::shared_ptr<ViewBlockChain> view_block_chain) {
+        std::shared_ptr<ViewBlockChain> view_block_chain,
+        std::shared_ptr<bls::BlsManager> bls_mgr) {
     pool_idx_ = pool_idx;
     elect_mgr_ = elect_mgr;
     security_ptr_ = security;
@@ -60,6 +61,7 @@ void BlockAcceptor::Init(
     block_mgr_ = block_mgr;
     tm_block_mgr_ = tm_block_mgr;
     view_block_chain_ = view_block_chain;
+    bls_mgr_ = bls_mgr;
     tx_pools_ = std::make_shared<consensus::WaitingTxsPools>(pools_mgr_, block_mgr_, tm_block_mgr_);
     prefix_db_ = std::make_shared<protos::PrefixDb>(db_);    
 }
@@ -403,7 +405,7 @@ Status BlockAcceptor::addTxsToPool(
                         // assert(false); // Avoid assert in multi-threaded environment, use logging if needed
                     }
                 }
-                
+
                 // Write result (Lock-free, exclusive idx access)
                 verify_results[idx] = valid ? 1 : -1;
             }
@@ -431,11 +433,18 @@ Status BlockAcceptor::addTxsToPool(
     // Helper Lambda: Used by TimeBlockTx
     auto tx_valid_func = [&](
             const address::protobuf::AddressInfo& addr_info, 
-            pools::protobuf::TxMessage& tx_info,
+            const pools::protobuf::TxMessage& tx_info,
             uint64_t* now_nonce) -> int {
-        return CheckTransactionValid(parent_hash, view_block_chain_, addr_info, tx_info, now_nonce);
+        return CheckTransactionValid(
+            parent_hash, 
+            view_block_chain_, 
+            pools_mgr_, 
+            addr_info, 
+            tx_info, 
+            now_nonce);
     };
 
+    bool create_success = true;
     for (int i = 0; i < txs.size(); i++) {
         auto* tx = &txs[i];
         
@@ -470,7 +479,7 @@ Status BlockAcceptor::addTxsToPool(
             if (pools::IsUserTransaction(tx->step())) {
                 address_info = view_block_chain_->ChainGetAccountInfo(from_id);
             } else {
-                address_info = view_block_chain_->ChainGetPoolAccountInfo(pool_idx());
+                address_info = account_mgr_->pools_address_info(tx->step(), pool_idx());
             }
         }
 
@@ -522,7 +531,6 @@ Status BlockAcceptor::addTxsToPool(
         // --- Serial Logic: Object Factory Creation ---
         std::string contract_prepayment_id;
         pools::TxItemPtr tx_ptr = nullptr;
-        bool create_success = true;
 
         switch (tx->step()) {
         case pools::protobuf::kNormalFrom:
@@ -588,47 +596,42 @@ Status BlockAcceptor::addTxsToPool(
             break;
         }
         case pools::protobuf::kStatistic: {
-            if (directly_user_leader_txs) {
-                tx_ptr = std::make_shared<consensus::StatisticTxItem>(
-                    msg_ptr, i, account_mgr_, security_ptr_, address_info);
-            } else {
-                auto tx_item = tx_pools_->GetStatisticTx(pool_idx(), tx->key());
-                if (tx_item != nullptr && !tx_item->txs.empty()) {
-                    tx_ptr = *(tx_item->txs.begin());
-                } else {
-                    SETH_WARN("failed get statistic nonce: %lu, pool: %u", tx->nonce(), pool_idx_);
-                }
-            }
+            tx_ptr = std::make_shared<consensus::StatisticTxItem>(
+                msg_ptr, i, account_mgr_, security_ptr_, address_info);
             break;
         }
         case pools::protobuf::kCross: {
             assert(false); break;
         }
         case pools::protobuf::kConsensusRootElectShard: {
-            SETH_WARN("now root elect shard coming: tx size: %u", txs.size());
-            if (directly_user_leader_txs) {
-                std::shared_ptr<bls::BlsManager> bls_mgr;
-                tx_ptr = std::make_shared<consensus::ElectTxItem>(
-                    msg_ptr, i, account_mgr_, security_ptr_, prefix_db_, elect_mgr_, 
-                    vss_mgr_, bls_mgr, false, false, elect_info_->max_consensus_sharding_id() - 1, address_info);
-            } else {
-                auto tx_item = tx_pools_->GetElectTx(pool_idx(), tx->key());          
-                if (tx_item != nullptr && !tx_item->txs.empty()) {
-                    tx_ptr = *(tx_item->txs.begin());
-                }
+            pools::protobuf::ElectStatistic elect_statistic;
+            if (!elect_statistic.ParseFromString(tx->value())) {
+                SETH_DEBUG("parse elect_statistic error!");
+                create_success = false;
+                break;            
             }
+
+            if (bls_mgr_->CheckBlsConsensusInfo(elect_statistic.elect_block()) != bls::kBlsSuccess) {
+                SETH_DEBUG("check bls consensus info failed!");
+                create_success = false;
+                break;
+            }
+
+            tx_ptr = std::make_shared<consensus::ElectTxItem>(
+                msg_ptr, i, account_mgr_, security_ptr_, prefix_db_, elect_mgr_, 
+                vss_mgr_, bls_mgr_, false, false, 
+                elect_info_->max_consensus_sharding_id() - 1, address_info);
             break;
         }
         case pools::protobuf::kConsensusRootTimeBlock: {
-            if (directly_user_leader_txs) {
-                tx_ptr = std::make_shared<consensus::TimeBlockTx>(
-                    msg_ptr, i, account_mgr_, security_ptr_, address_info);
-            } else {
-                auto tx_item = tx_pools_->GetTimeblockTx(pool_idx(), false, tx_valid_func);
-                if (tx_item != nullptr && !tx_item->txs.empty()) {
-                    tx_ptr = *(tx_item->txs.begin());
-                }
+            if (!tm_block_mgr_->CheckLeaderTimeblockTxValid(*tx, tx_valid_func)) {
+                SETH_ERROR("check leader timeblock tx valid failed!");
+                create_success = false;
+                break;
             }
+
+            tx_ptr = std::make_shared<consensus::TimeBlockTx>(
+                msg_ptr, i, account_mgr_, security_ptr_, address_info);
             break;
         }
         case pools::protobuf::kRootCross: {
@@ -655,6 +658,10 @@ Status BlockAcceptor::addTxsToPool(
         default:
             SETH_FATAL("invalid tx step: %d", (int32_t)tx->step());
             create_success = false;
+        }
+
+        if (!create_success) {
+            break;
         }
 
         // Handle prepayment
@@ -690,7 +697,6 @@ Status BlockAcceptor::addTxsToPool(
         } else {
             verify_results[i] = -1; // Creation failed
         }
-
     } // End of loop
 
     // ========================================================================
@@ -713,6 +719,10 @@ Status BlockAcceptor::addTxsToPool(
         }
     }
 
+    if (!create_success) {
+        return Status::kError;
+    }
+    
     // 4. Collect valid results in order
     // verify_results[i] == 1 means: (Leader passed directly) OR (Follower verification passed)
     auto& final_txs = txs_ptr->txs;

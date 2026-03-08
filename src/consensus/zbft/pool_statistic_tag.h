@@ -47,7 +47,10 @@ public:
                 acc_balance_map, 
                 &to_balance, 
                 &to_nonce) != consensus::kConsensusSuccess) {
-            SETH_INFO("GetTempAccountBalance unique hash has consensus: %s", common::Encode::HexEncode(tx_info->key()).c_str());
+            SETH_INFO("get account balance failed, addr: %s, unique hash: %s", 
+                common::Encode::HexEncode(block_tx.to()).c_str(), 
+                common::Encode::HexEncode(tx_info->key()).c_str());
+            // return consensus::kConsensusError;
             return consensus::kConsensusError;
         }
 
@@ -62,7 +65,6 @@ public:
         block_tx.set_unique_hash(tx_info->key());
         uint64_t* udata = (uint64_t*)tx_info->value().c_str();
         uint64_t statistic_height = udata[0];
-        block_tx.set_nonce(to_nonce + 1);
         SETH_WARN("success call pool statistic height: %lu, pool: %d, view: %lu, "
             "to_nonce: %lu. tx nonce: %lu, to: %s, unique hash: %s, parent hash: %s", 
             statistic_height,
@@ -72,7 +74,7 @@ public:
             common::Encode::HexEncode(tx_info->key()).c_str(),
             common::Encode::HexEncode(view_block.parent_hash()).c_str());
         acc_balance_map[block_tx.to()]->set_balance(to_balance);
-        acc_balance_map[block_tx.to()]->set_nonce(to_nonce + 1);
+        acc_balance_map[block_tx.to()]->set_nonce(block_tx.nonce());
         acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
         acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
         SETH_DEBUG("success add addr: %s, value: %s, unique hash: %s", 

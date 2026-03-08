@@ -8,6 +8,7 @@
 #include "consensus/hotstuff/view_block_chain.h"
 #include "consensus/hotstuff/types.h"
 #include "protos/block.pb.h"
+#include "security/ecdsa/secp256k1.h"
 
 namespace seth {
 
@@ -371,7 +372,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashSt
     return nullptr;    
 }
 
-std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) {
+std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) const {
     // CheckThreadIdValid();
     auto it = view_blocks_info_.find(hash);
     if (it != view_blocks_info_.end()) {
@@ -805,7 +806,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::CheckCommit(const QC& qc) {
 
     assert(!qc.view_block_hash().empty());
     auto v_block1_info = Get(qc.view_block_hash());
-    if (!v_block1_info) {
+    if (!v_block1_info || v_block1_info->view_block->qc().view() <= 0llu){
         SETH_DEBUG("pool: %d, Failed get v block 1: %s, %u_%u_%lu",
             pool_index_,
             common::Encode::HexEncode(qc.view_block_hash()).c_str(),
@@ -893,6 +894,10 @@ void ViewBlockChain::AddNewBlock(
         view_block_item->qc().pool_index(),
         view_block_item->qc().view(),
         db_batch);
+
+    if (block_item->has_elect_block()) {
+        prefix_db_->SaveLatestElectBlock(block_item->elect_block(), db_batch);
+    }
 
     if (block_item->has_prev_elect_block()) {
         prefix_db_->SaveElectHeightWithBlock(
@@ -1297,15 +1302,8 @@ protos::AddressInfoPtr ViewBlockChain::ChainGetAccountInfo(const std::string& ad
     return addr_info;
 }
 
-protos::AddressInfoPtr ViewBlockChain::ChainGetPoolAccountInfo(uint32_t pool_index) {
-    auto& addr = account_mgr_->pool_base_addrs(pool_index);
-    return ChainGetAccountInfo(addr);
-}
-
 void ViewBlockChain::AddPoolStatisticTag(uint64_t height, uint64_t timeblock_addr_nonce) {
     auto msg_ptr = std::make_shared<transport::TransportMessage>();
-    msg_ptr->address_info = ChainGetPoolAccountInfo(pool_index_);
-    assert(msg_ptr->address_info != nullptr);
     auto tx = msg_ptr->header.mutable_tx_proto();
     auto unique_hash = common::Hash::keccak256("pool_statistic_tag_" + 
         std::to_string(network::GetLocalConsensusNetworkId()) + "_" + 
@@ -1317,13 +1315,24 @@ void ViewBlockChain::AddPoolStatisticTag(uint64_t height, uint64_t timeblock_add
     udata[0] = height;
     tx->set_value(std::string(data, sizeof(data)));
     tx->set_pubkey("");
-    tx->set_to(msg_ptr->address_info->addr());
     tx->set_step(pools::protobuf::kPoolStatisticTag);
     tx->set_gas_limit(0);
     tx->set_amount(0);
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
     tx->set_nonce(timeblock_addr_nonce);
-    pools_mgr_->HandleMessage(msg_ptr);
+    msg_ptr->address_info = account_mgr_->pools_address_info(
+        pools::protobuf::kPoolStatisticTag, pool_index_);
+    SETH_DEBUG("check create kPoolStatisticTag nonce: %lu, pool idx: %u, "
+        "pool addr: %s, addr get pool: %u, height: %lu, unique_hash: %s",
+        tx->nonce(), 
+        pool_index_,
+        common::Encode::HexEncode(account_mgr_->pool_base_addrs(pools::protobuf::kPoolStatisticTag, pool_index_)).c_str(),
+        common::GetAddressPoolIndex(account_mgr_->pool_base_addrs(pools::protobuf::kPoolStatisticTag, pool_index_)),
+        height,
+        common::Encode::HexEncode(unique_hash).c_str());
+    assert(msg_ptr->address_info != nullptr);
+    tx->set_to(msg_ptr->address_info->addr());
+    pools_mgr_->AddPoolMessage(msg_ptr);
     SETH_DEBUG("success create kPoolStatisticTag nonce: %lu, pool idx: %u, "
         "pool addr: %s, addr get pool: %u, height: %lu, unique_hash: %s",
         tx->nonce(), 

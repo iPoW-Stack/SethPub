@@ -9,6 +9,10 @@
 
 namespace seth {
 
+namespace bls {
+    class BlsManager;
+}
+
 namespace hotstuff {
 
 class ViewBlockChain;
@@ -41,6 +45,7 @@ public:
             std::shared_ptr<pools::TxPoolManager>& pools_mgr,
             std::shared_ptr<timeblock::TimeBlockManager>& tm_block_mgr,
             std::shared_ptr<block::BlockManager>& block_mgr,
+            std::shared_ptr<bls::BlsManager> bls_mgr,
             const std::shared_ptr<ElectInfo>& elect_info);
     ~BlockWrapper();
 
@@ -67,9 +72,11 @@ public:
             ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs) override {
         auto tx_valid_func = [&](
                 const address::protobuf::AddressInfo& addr_info, 
-                pools::protobuf::TxMessage& tx_info,
+                const pools::protobuf::TxMessage& tx_info,
                 uint64_t* now_nonce) -> int {
-            return CheckTransactionValid(parent_hash, view_block_chain, addr_info, tx_info, now_nonce);
+            return CheckTransactionValid(parent_hash, view_block_chain,
+                pools_mgr_,
+                addr_info, tx_info, now_nonce);
         };
 
         txs_pools_->GetTxSyncToLeader(
@@ -89,6 +96,7 @@ private:
 
   
     uint32_t pool_idx_;
+    std::shared_ptr<bls::BlsManager> bls_mgr_ = nullptr;
     std::shared_ptr<pools::TxPoolManager> pools_mgr_ = nullptr;
     std::shared_ptr<timeblock::TimeBlockManager> tm_block_mgr_ = nullptr;
     std::shared_ptr<block::BlockManager> block_mgr_ = nullptr;

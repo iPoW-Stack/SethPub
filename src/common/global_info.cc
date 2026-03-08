@@ -89,6 +89,7 @@ int GlobalInfo::Init(const common::Config& config) {
     config.Get("seth", "each_tx_pool_max_txs", each_tx_pool_max_txs_);
     config.Get("seth", "test_pool_index", test_pool_index_);
     config.Get("seth", "test_tx_tps", test_tx_tps_);
+    config.Get("seth", "leader_change_init_tm", leader_change_init_tm_);
 
     if (each_tx_pool_max_txs_ < 10240) {
         each_tx_pool_max_txs_ = 10240;

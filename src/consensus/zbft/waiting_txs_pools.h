@@ -44,12 +44,10 @@ public:
         uint32_t pool_index, 
         pools::CheckAddrNonceValidFunction tx_valid_func);
     std::shared_ptr<WaitingTxsItem> GetToTxs(uint32_t pool_index, const std::string& tx_hash);
-    std::shared_ptr<WaitingTxsItem> GetStatisticTx(uint32_t pool_index, const std::string& tx_hash);
     std::shared_ptr<WaitingTxsItem> GetTimeblockTx(
         uint32_t pool_index, 
         bool leader,
         pools::CheckAddrNonceValidFunction addr_nonce_valid_func);
-    std::shared_ptr<WaitingTxsItem> GetElectTx(uint32_t pool_index, const std::string& tx_hash);
     bool HasSingleTx(
         const transport::MessagePtr& msg_ptr,
         uint32_t pool_index, 

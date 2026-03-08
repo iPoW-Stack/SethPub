@@ -101,9 +101,9 @@ int HotstuffManager::Init(
         acceptor->Init(
             pool_idx, security_ptr, account_mgr, elect_info_, vss_mgr,
             contract_mgr, db, pool_mgr, block_mgr,
-            tm_block_mgr, elect_mgr, chain);
+            tm_block_mgr, elect_mgr, chain, bls_mgr_);
         auto wrapper = std::make_shared<BlockWrapper>(
-                pool_idx, pool_mgr, tm_block_mgr, block_mgr, elect_info_);
+                pool_idx, pool_mgr, tm_block_mgr, block_mgr, bls_mgr, elect_info_);
         pool_hotstuff_[pool_idx] = std::make_shared<Hotstuff>(
             block_mgr_,
             *this,
@@ -349,7 +349,7 @@ void HotstuffManager::HandleTimerMessage(const transport::MessagePtr& msg_ptr) {
             ADD_DEBUG_PROCESS_TIMESTAMP();
             auto tx_valid_func = [&](
                     const address::protobuf::AddressInfo& addr_info, 
-                    pools::protobuf::TxMessage& tx_info,
+                    const pools::protobuf::TxMessage& tx_info,
                     uint64_t* now_nonce) -> int {
                 auto latest_block = pool_hotstuff_[pool_idx]->view_block_chain()->HighViewBlock();
                 if (!latest_block) {
@@ -359,6 +359,7 @@ void HotstuffManager::HandleTimerMessage(const transport::MessagePtr& msg_ptr) {
                 return CheckTransactionValid(
                     latest_block->qc().view_block_hash(), 
                     pool_hotstuff_[pool_idx]->view_block_chain(), 
+                    pools_mgr_,
                     addr_info, 
                     tx_info,
                     now_nonce);
@@ -621,12 +622,14 @@ void HotstuffManager::RegisterCreateTxCallbacks() {
     pools_mgr_->RegisterCreateTxFunction(
         pools::protobuf::kPoolStatisticTag,
         std::bind(&HotstuffManager::CreatePoolStatisticTagTx, this, std::placeholders::_1));
+    pools_mgr_->RegisterCreateTxFunction(
+        pools::protobuf::kStatistic,
+        std::bind(&HotstuffManager::CreateStatisticTx, this, std::placeholders::_1));
+    pools_mgr_->RegisterCreateTxFunction(
+        pools::protobuf::kConsensusRootElectShard,
+        std::bind(&HotstuffManager::CreateElectTx, this, std::placeholders::_1));
     block_mgr_->SetCreateToTxFunction(
         std::bind(&HotstuffManager::CreateToTx, this, std::placeholders::_1));
-    block_mgr_->SetCreateStatisticTxFunction(
-        std::bind(&HotstuffManager::CreateStatisticTx, this, std::placeholders::_1));
-    block_mgr_->SetCreateElectTxFunction(
-        std::bind(&HotstuffManager::CreateElectTx, this, std::placeholders::_1));
     tm_block_mgr_->SetCreateTmTxFunction(
         std::bind(&HotstuffManager::CreateTimeblockTx, this, std::placeholders::_1));
 }

@@ -196,7 +196,8 @@ bool ShardStatistic::HandleStatistic(
         
         if (statistic_pool_info_.size() >= 2) {
             auto iter = statistic_pool_info_.rbegin();
-            while (iter->first >= block.pool_statistic_height()) {
+            while (iter != statistic_pool_info_.rend() && 
+                    iter->first >= block.pool_statistic_height()) {
                 ++iter;
             }
 
@@ -259,15 +260,16 @@ bool ShardStatistic::HandleStatistic(
 
     if (pool_statistic_riter == statistic_pool_info_.rend()) {
         // assert(false);
-        return false;
+        // return false;
+        pool_statistic_riter = statistic_pool_info_.rbegin();
     }
 
     auto pool_iter = pool_statistic_riter->second.find(pool_idx);
     if (pool_iter == pool_statistic_riter->second.end()) {
-        assert(false);
-        return false;
-        // pool_statistic_riter->second[pool_idx] = StatisticInfoItem();
-        // pool_iter = pool_statistic_riter->second.find(pool_idx);
+        // assert(false);
+        // return false;
+        pool_statistic_riter->second[pool_idx] = StatisticInfoItem();
+        pool_iter = pool_statistic_riter->second.find(pool_idx);
     }
 
     auto& pool_statistic_info = pool_iter->second;
@@ -575,18 +577,26 @@ int ShardStatistic::StatisticWithHeights(
 
     if (piter->second.size() != common::kInvalidPoolIndex ||
             iter->second.size() != common::kInvalidPoolIndex) {
+        std::string invalid_pools = "";
         std::string valid_pools = "";
+        for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
+            if (piter->second.find(i) == piter->second.end()) {
+                invalid_pools += std::to_string(i) + ",";
+            }
+        }
+
         for (auto titer = piter->second.begin(); titer != piter->second.end(); ++titer) {
             valid_pools += std::to_string(titer->first) + ":" + 
                 std::to_string(titer->second.statistic_min_height) + ":" + 
                 std::to_string(titer->second.statistic_max_height) + ",";
         }
         SETH_DEBUG("pool not full statistic height: %lu, now: %u, all: %u, "
-            "now_size: %u, %s, latest_statisticed_height_: %lu", 
+            "now_size: %u, invalid_pools: %s, valid pools: %s, latest_statisticed_height_: %lu", 
             piter->first,
             piter->second.size(), 
             common::kInvalidPoolIndex, 
             iter->second.size(),
+            invalid_pools.c_str(),
             valid_pools.c_str(),
             latest_statisticed_height_);
         return kPoolsError;
@@ -973,14 +983,14 @@ void ShardStatistic::setElectStatistics(
         seth::common::MembersPtr &now_elect_members,
         seth::pools::protobuf::ElectStatistic &elect_statistic,
         bool is_root) {
-    // auto now_elect_height = elect_mgr_->latest_height(common::GlobalInfo::Instance()->network_id());
-    // if (height_node_collect_info_map.empty() || height_node_collect_info_map.rbegin()->first < now_elect_height) {
-    //     height_node_collect_info_map[now_elect_height] = std::map<std::string, StatisticMemberInfoItem>();
-    //     auto &node_info_map = height_node_collect_info_map[now_elect_height];
-    //     for (uint32_t i = 0; i < now_elect_members->size(); ++i) {
-    //         node_info_map[(*now_elect_members)[i]->id] = StatisticMemberInfoItem();
-    //     }
-    // }
+    auto now_elect_height = elect_mgr_->latest_height(common::GlobalInfo::Instance()->network_id());
+    if (height_node_collect_info_map.empty()) {
+        height_node_collect_info_map[now_elect_height] = std::map<std::string, StatisticMemberInfoItem>();
+        auto &node_info_map = height_node_collect_info_map[now_elect_height];
+        for (uint32_t i = 0; i < now_elect_members->size(); ++i) {
+            node_info_map[(*now_elect_members)[i]->id] = StatisticMemberInfoItem();
+        }
+    }
 
     for (auto hiter = height_node_collect_info_map.begin();
             hiter != height_node_collect_info_map.end(); ++hiter) {

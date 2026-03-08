@@ -42,7 +42,7 @@ void Execution::Init(std::shared_ptr<db::Db>& db) {
 //         SETH_FATAL("evm.set_option error.");
 //         return;
 // 	}
-// 
+//
 //     if (evm_.set_option("trace", "0") != EVMC_SET_OPTION_SUCCESS) {
 //         SETH_FATAL("evm.set_option error.");
 //         return;
@@ -83,7 +83,7 @@ bool Execution::GetStorage(
     std::string val;
     auto res = prefix_db_->GetTemporaryKv(str_key, &val);
     SETH_DEBUG("get storage: %s, %s, valid: %d",
-        common::Encode::HexEncode(str_key).c_str(), 
+        common::Encode::HexEncode(str_key).c_str(),
         common::Encode::HexEncode(val).c_str(),
         !val.empty());
     if (!res) {
@@ -121,17 +121,17 @@ bool Execution::GetStorage(
     auto str_key = str_id + key;
     auto res = prefix_db_->GetTemporaryKv(str_key, val);
     if (!res) {
-        SETH_DEBUG("failed get storage: %s", 
+        SETH_DEBUG("failed get storage: %s",
             common::Encode::HexEncode(str_key).c_str());
         return false;
     }
 
-    SETH_DEBUG("get storage: %s, %s", 
-        common::Encode::HexEncode(str_key).c_str(), 
+    SETH_DEBUG("get storage: %s, %s",
+        common::Encode::HexEncode(str_key).c_str(),
         "common::Encode::HexEncode(*val).c_str()");
     return res;
 }
-        
+
 int Execution::execute(
         const std::string& bytes_code,
         const std::string& str_input,
@@ -179,12 +179,14 @@ int Execution::execute(
         sizeof(msg.recipient.bytes));
     const uint8_t* exec_code_data = nullptr;
     size_t exec_code_size = 0;
-    SETH_DEBUG("now call contract, msg sender: %s, mode: %d, from: %s, to: %s, value: %lu, bytes_code.size: %ld, input: %s",
+    SETH_DEBUG("now call contract, msg sender: %s, mode: %d, from: %s, "
+        "to: %s, value: %lu, gas limit: %lu, bytes_code.size: %ld, input: %s",
         common::Encode::HexEncode(std::string((char*)msg.sender.bytes, 20)).c_str(),
         call_mode,
         common::Encode::HexEncode(from_address).c_str(),
         common::Encode::HexEncode(to_address).c_str(),
         value,
+        msg.gas,
         bytes_code.size(),
         common::Encode::HexEncode(str_input).c_str());
     if (call_mode == kJustCreate || call_mode == kCreateAndCall) {
@@ -230,12 +232,12 @@ int Execution::execute(
     auto etime = common::TimeUtils::TimestampMs();
     SETH_DEBUG("execute res: %d, from: %s, to: %s, gas_limit: %lu, "
         "src_gas_left: %lu, gas_left: %lu, gas_refund: %lu, use time: %lu, output: %s",
-        (int32_t)out_res->status_code, 
+        (int32_t)out_res->status_code,
         common::Encode::HexEncode(from_address).c_str(),
         common::Encode::HexEncode(to_address).c_str(),
-        gas, 
+        gas,
         src_gas_left,
-        out_res->gas_left, 
+        out_res->gas_left,
         out_res->gas_refund,
         (etime - btime),
         common::Encode::HexEncode(std::string((char*)out_res->output_data, out_res->output_size)).c_str());

@@ -48,7 +48,7 @@ public:
         std::shared_ptr<zjcvm::ZjchainHost> zjc_host_ptr,
         bool init);
     // Get Block by hash value, fetch from neighbor nodes if necessary
-    std::shared_ptr<ViewBlockInfo> Get(const HashStr& hash);
+    std::shared_ptr<ViewBlockInfo> Get(const HashStr& hash) const;
     std::shared_ptr<ViewBlockInfo> GetViewBlockWithHash(const HashStr& hash, bool remove);
     std::shared_ptr<ViewBlock> GetViewBlockWithView(uint32_t network_id, uint64_t height);
     std::shared_ptr<ViewBlock> GetViewBlockWithHeight(uint32_t network_id, uint64_t height);
@@ -85,7 +85,6 @@ public:
     void UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_item);
     // void SaveBlockCheckedParentHash(const std::string& hash, uint64_t view);
     protos::AddressInfoPtr ChainGetAccountInfo(const std::string& acc_id);
-    protos::AddressInfoPtr ChainGetPoolAccountInfo(uint32_t pool_index);
     void Commit(const std::shared_ptr<ViewBlockInfo>& queue_item_ptr);
     void CommitSynced(std::shared_ptr<view_block::protobuf::ViewBlockItem>& vblock);
     void OnTimeBlock(
@@ -175,6 +174,53 @@ public:
 
     uint32_t pool_index() const {
         return pool_index_;
+    }
+
+    bool ChainIsFull() const {
+        if (!IsQcTcValid(high_view_block_->qc())) {
+            SETH_DEBUG("pool: %d, check pool chain is full failed, invalid qc: %s", 
+                pool_index_, ProtobufToJson(high_view_block_->qc()).c_str());
+            return false;
+        }
+
+        if (!high_view_block_->has_block_info()) {
+            SETH_DEBUG("pool: %d, check pool chain is full failed, high view block has no block info, view: %lu", 
+                pool_index_, high_view_block_->qc().view());
+            return false;
+        }
+
+        if (high_view_block_->block_info().height() == 0) {
+            return pools_mgr_->PoolChainIsFull(pool_index_, 0);
+        }
+
+        auto latest_committed_block = LatestCommittedBlock();
+        if (latest_committed_block && 
+                latest_committed_block->block_info().height() == high_view_block_->block_info().height()) {
+            SETH_DEBUG("pool: %d, check pool chain is full, latest committed block height: %lu, high view block height: %lu", 
+                pool_index_, latest_committed_block->block_info().height(), high_view_block_->block_info().height());
+            return pools_mgr_->PoolChainIsFull(
+                pool_index_, 
+                high_view_block_->block_info().height());
+        }
+
+        auto tmp_block = high_view_block_;
+        while (true) {
+            auto pre_block = Get(tmp_block->parent_hash());
+            if (pre_block && pre_block->view_block && IsQcTcValid(pre_block->view_block->qc())) {
+                tmp_block = pre_block->view_block;
+                continue;
+            }
+
+            break;
+        }
+
+        if (tmp_block->block_info().height() <= 0) {
+            return pools_mgr_->PoolChainIsFull(pool_index_, 0);
+        }
+
+        return pools_mgr_->PoolChainIsFull(
+            pool_index_, 
+            tmp_block->block_info().height() - 1);
     }
 
 #ifdef TEST_FORKING_ATTACK

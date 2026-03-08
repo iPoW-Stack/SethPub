@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='seth.timeblock.protobuf',
   syntax='proto2',
   serialized_options=None,
-  serialized_pb=_b('\n\x16protos/timeblock.proto\x12\x17seth.timeblock.protobuf\"B\n\tTimeBlock\x12\x0e\n\x06height\x18\x01 \x01(\x04\x12\x11\n\ttimestamp\x18\x02 \x01(\x04\x12\x12\n\nvss_random\x18\x03 \x01(\x04')
+  serialized_pb=_b('\n\x16protos/timeblock.proto\x12\x17seth.timeblock.protobuf\"Q\n\tTimeBlock\x12\x0e\n\x06height\x18\x01 \x01(\x04\x12\x11\n\ttimestamp\x18\x02 \x01(\x04\x12\x12\n\nvss_random\x18\x03 \x01(\x04\x12\r\n\x05nonce\x18\x04 \x01(\x04')
 )
 
 
@@ -53,6 +53,13 @@ _TIMEBLOCK = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='nonce', full_name='seth.timeblock.protobuf.TimeBlock.nonce', index=3,
+      number=4, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -66,7 +73,7 @@ _TIMEBLOCK = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=51,
-  serialized_end=117,
+  serialized_end=132,
 )
 
 DESCRIPTOR.message_types_by_name['TimeBlock'] = _TIMEBLOCK

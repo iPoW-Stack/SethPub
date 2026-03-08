@@ -154,7 +154,7 @@ enum StepType {
   kCreateLibrary = 14,
   kCross = 15,
   kRootCross = 16,
-  kPoolStatisticTag = 18
+  kPoolStatisticTag = 17
 };
 bool StepType_IsValid(int value);
 const StepType StepType_MIN = kNormalFrom;
@@ -2472,30 +2472,6 @@ class JoinElectNode : public ::google::protobuf::Message /* @@protoc_insertion_p
   ::seth::pools::protobuf::AreaInfo* mutable_area_point();
   void set_allocated_area_point(::seth::pools::protobuf::AreaInfo* area_point);
 
-  // optional .seth.elect.protobuf.BlsPublicKey agg_bls_pk = 8;
-  bool has_agg_bls_pk() const;
-  void clear_agg_bls_pk();
-  static const int kAggBlsPkFieldNumber = 8;
-  private:
-  const ::seth::elect::protobuf::BlsPublicKey& _internal_agg_bls_pk() const;
-  public:
-  const ::seth::elect::protobuf::BlsPublicKey& agg_bls_pk() const;
-  ::seth::elect::protobuf::BlsPublicKey* release_agg_bls_pk();
-  ::seth::elect::protobuf::BlsPublicKey* mutable_agg_bls_pk();
-  void set_allocated_agg_bls_pk(::seth::elect::protobuf::BlsPublicKey* agg_bls_pk);
-
-  // optional .seth.elect.protobuf.BlsPopProof agg_bls_pk_proof = 9;
-  bool has_agg_bls_pk_proof() const;
-  void clear_agg_bls_pk_proof();
-  static const int kAggBlsPkProofFieldNumber = 9;
-  private:
-  const ::seth::elect::protobuf::BlsPopProof& _internal_agg_bls_pk_proof() const;
-  public:
-  const ::seth::elect::protobuf::BlsPopProof& agg_bls_pk_proof() const;
-  ::seth::elect::protobuf::BlsPopProof* release_agg_bls_pk_proof();
-  ::seth::elect::protobuf::BlsPopProof* mutable_agg_bls_pk_proof();
-  void set_allocated_agg_bls_pk_proof(::seth::elect::protobuf::BlsPopProof* agg_bls_pk_proof);
-
   // optional uint64 stoke = 2;
   bool has_stoke() const;
   void clear_stoke();
@@ -2547,18 +2523,12 @@ class JoinElectNode : public ::google::protobuf::Message /* @@protoc_insertion_p
   void clear_has_credit();
   void set_has_consensus_gap();
   void clear_has_consensus_gap();
-  void set_has_agg_bls_pk();
-  void clear_has_agg_bls_pk();
-  void set_has_agg_bls_pk_proof();
-  void clear_has_agg_bls_pk_proof();
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
   mutable ::google::protobuf::internal::CachedSize _cached_size_;
   ::google::protobuf::internal::ArenaStringPtr pubkey_;
   ::seth::pools::protobuf::AreaInfo* area_point_;
-  ::seth::elect::protobuf::BlsPublicKey* agg_bls_pk_;
-  ::seth::elect::protobuf::BlsPopProof* agg_bls_pk_proof_;
   ::google::protobuf::uint64 stoke_;
   ::google::protobuf::uint32 shard_;
   ::google::protobuf::int32 elect_pos_;
@@ -2710,6 +2680,18 @@ class ElectStatistic : public ::google::protobuf::Message /* @@protoc_insertion_
   ::seth::pools::protobuf::StatisticTxItem* mutable_height_info();
   void set_allocated_height_info(::seth::pools::protobuf::StatisticTxItem* height_info);
 
+  // optional .seth.elect.protobuf.ElectBlock elect_block = 9;
+  bool has_elect_block() const;
+  void clear_elect_block();
+  static const int kElectBlockFieldNumber = 9;
+  private:
+  const ::seth::elect::protobuf::ElectBlock& _internal_elect_block() const;
+  public:
+  const ::seth::elect::protobuf::ElectBlock& elect_block() const;
+  ::seth::elect::protobuf::ElectBlock* release_elect_block();
+  ::seth::elect::protobuf::ElectBlock* mutable_elect_block();
+  void set_allocated_elect_block(::seth::elect::protobuf::ElectBlock* elect_block);
+
   // optional uint64 gas_amount = 5;
   bool has_gas_amount() const;
   void clear_gas_amount();
@@ -2723,6 +2705,13 @@ class ElectStatistic : public ::google::protobuf::Message /* @@protoc_insertion_
   static const int kStatisticHeightFieldNumber = 7;
   ::google::protobuf::uint64 statistic_height() const;
   void set_statistic_height(::google::protobuf::uint64 value);
+
+  // optional uint64 nonce = 8;
+  bool has_nonce() const;
+  void clear_nonce();
+  static const int kNonceFieldNumber = 8;
+  ::google::protobuf::uint64 nonce() const;
+  void set_nonce(::google::protobuf::uint64 value);
 
   // optional uint32 sharding_id = 4;
   bool has_sharding_id() const;
@@ -2741,6 +2730,10 @@ class ElectStatistic : public ::google::protobuf::Message /* @@protoc_insertion_
   void clear_has_gas_amount();
   void set_has_statistic_height();
   void clear_has_statistic_height();
+  void set_has_nonce();
+  void clear_has_nonce();
+  void set_has_elect_block();
+  void clear_has_elect_block();
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
@@ -2749,8 +2742,10 @@ class ElectStatistic : public ::google::protobuf::Message /* @@protoc_insertion_
   ::google::protobuf::RepeatedPtrField< ::seth::pools::protobuf::JoinElectNode > join_elect_nodes_;
   ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > lof_leaders_;
   ::seth::pools::protobuf::StatisticTxItem* height_info_;
+  ::seth::elect::protobuf::ElectBlock* elect_block_;
   ::google::protobuf::uint64 gas_amount_;
   ::google::protobuf::uint64 statistic_height_;
+  ::google::protobuf::uint64 nonce_;
   ::google::protobuf::uint32 sharding_id_;
   friend struct ::protobuf_protos_2fpools_2eproto::TableStruct;
 };
@@ -5426,13 +5421,13 @@ inline void JoinElectNode::set_allocated_pubkey(::std::string* pubkey) {
 
 // optional uint64 stoke = 2;
 inline bool JoinElectNode::has_stoke() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
+  return (_has_bits_[0] & 0x00000004u) != 0;
 }
 inline void JoinElectNode::set_has_stoke() {
-  _has_bits_[0] |= 0x00000010u;
+  _has_bits_[0] |= 0x00000004u;
 }
 inline void JoinElectNode::clear_has_stoke() {
-  _has_bits_[0] &= ~0x00000010u;
+  _has_bits_[0] &= ~0x00000004u;
 }
 inline void JoinElectNode::clear_stoke() {
   stoke_ = GOOGLE_ULONGLONG(0);
@@ -5450,13 +5445,13 @@ inline void JoinElectNode::set_stoke(::google::protobuf::uint64 value) {
 
 // optional uint32 shard = 3;
 inline bool JoinElectNode::has_shard() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
+  return (_has_bits_[0] & 0x00000008u) != 0;
 }
 inline void JoinElectNode::set_has_shard() {
-  _has_bits_[0] |= 0x00000020u;
+  _has_bits_[0] |= 0x00000008u;
 }
 inline void JoinElectNode::clear_has_shard() {
-  _has_bits_[0] &= ~0x00000020u;
+  _has_bits_[0] &= ~0x00000008u;
 }
 inline void JoinElectNode::clear_shard() {
   shard_ = 0u;
@@ -5474,13 +5469,13 @@ inline void JoinElectNode::set_shard(::google::protobuf::uint32 value) {
 
 // optional int32 elect_pos = 4;
 inline bool JoinElectNode::has_elect_pos() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
 inline void JoinElectNode::set_has_elect_pos() {
-  _has_bits_[0] |= 0x00000040u;
+  _has_bits_[0] |= 0x00000010u;
 }
 inline void JoinElectNode::clear_has_elect_pos() {
-  _has_bits_[0] &= ~0x00000040u;
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline void JoinElectNode::clear_elect_pos() {
   elect_pos_ = 0;
@@ -5556,13 +5551,13 @@ inline void JoinElectNode::set_allocated_area_point(::seth::pools::protobuf::Are
 
 // optional uint64 credit = 6;
 inline bool JoinElectNode::has_credit() const {
-  return (_has_bits_[0] & 0x00000080u) != 0;
+  return (_has_bits_[0] & 0x00000020u) != 0;
 }
 inline void JoinElectNode::set_has_credit() {
-  _has_bits_[0] |= 0x00000080u;
+  _has_bits_[0] |= 0x00000020u;
 }
 inline void JoinElectNode::clear_has_credit() {
-  _has_bits_[0] &= ~0x00000080u;
+  _has_bits_[0] &= ~0x00000020u;
 }
 inline void JoinElectNode::clear_credit() {
   credit_ = GOOGLE_ULONGLONG(0);
@@ -5580,13 +5575,13 @@ inline void JoinElectNode::set_credit(::google::protobuf::uint64 value) {
 
 // optional uint64 consensus_gap = 7;
 inline bool JoinElectNode::has_consensus_gap() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
+  return (_has_bits_[0] & 0x00000040u) != 0;
 }
 inline void JoinElectNode::set_has_consensus_gap() {
-  _has_bits_[0] |= 0x00000100u;
+  _has_bits_[0] |= 0x00000040u;
 }
 inline void JoinElectNode::clear_has_consensus_gap() {
-  _has_bits_[0] &= ~0x00000100u;
+  _has_bits_[0] &= ~0x00000040u;
 }
 inline void JoinElectNode::clear_consensus_gap() {
   consensus_gap_ = GOOGLE_ULONGLONG(0);
@@ -5600,114 +5595,6 @@ inline void JoinElectNode::set_consensus_gap(::google::protobuf::uint64 value) {
   set_has_consensus_gap();
   consensus_gap_ = value;
   // @@protoc_insertion_point(field_set:seth.pools.protobuf.JoinElectNode.consensus_gap)
-}
-
-// optional .seth.elect.protobuf.BlsPublicKey agg_bls_pk = 8;
-inline bool JoinElectNode::has_agg_bls_pk() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
-}
-inline void JoinElectNode::set_has_agg_bls_pk() {
-  _has_bits_[0] |= 0x00000004u;
-}
-inline void JoinElectNode::clear_has_agg_bls_pk() {
-  _has_bits_[0] &= ~0x00000004u;
-}
-inline const ::seth::elect::protobuf::BlsPublicKey& JoinElectNode::_internal_agg_bls_pk() const {
-  return *agg_bls_pk_;
-}
-inline const ::seth::elect::protobuf::BlsPublicKey& JoinElectNode::agg_bls_pk() const {
-  const ::seth::elect::protobuf::BlsPublicKey* p = agg_bls_pk_;
-  // @@protoc_insertion_point(field_get:seth.pools.protobuf.JoinElectNode.agg_bls_pk)
-  return p != NULL ? *p : *reinterpret_cast<const ::seth::elect::protobuf::BlsPublicKey*>(
-      &::seth::elect::protobuf::_BlsPublicKey_default_instance_);
-}
-inline ::seth::elect::protobuf::BlsPublicKey* JoinElectNode::release_agg_bls_pk() {
-  // @@protoc_insertion_point(field_release:seth.pools.protobuf.JoinElectNode.agg_bls_pk)
-  clear_has_agg_bls_pk();
-  ::seth::elect::protobuf::BlsPublicKey* temp = agg_bls_pk_;
-  agg_bls_pk_ = NULL;
-  return temp;
-}
-inline ::seth::elect::protobuf::BlsPublicKey* JoinElectNode::mutable_agg_bls_pk() {
-  set_has_agg_bls_pk();
-  if (agg_bls_pk_ == NULL) {
-    auto* p = CreateMaybeMessage<::seth::elect::protobuf::BlsPublicKey>(GetArenaNoVirtual());
-    agg_bls_pk_ = p;
-  }
-  // @@protoc_insertion_point(field_mutable:seth.pools.protobuf.JoinElectNode.agg_bls_pk)
-  return agg_bls_pk_;
-}
-inline void JoinElectNode::set_allocated_agg_bls_pk(::seth::elect::protobuf::BlsPublicKey* agg_bls_pk) {
-  ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
-  if (message_arena == NULL) {
-    delete reinterpret_cast< ::google::protobuf::MessageLite*>(agg_bls_pk_);
-  }
-  if (agg_bls_pk) {
-    ::google::protobuf::Arena* submessage_arena = NULL;
-    if (message_arena != submessage_arena) {
-      agg_bls_pk = ::google::protobuf::internal::GetOwnedMessage(
-          message_arena, agg_bls_pk, submessage_arena);
-    }
-    set_has_agg_bls_pk();
-  } else {
-    clear_has_agg_bls_pk();
-  }
-  agg_bls_pk_ = agg_bls_pk;
-  // @@protoc_insertion_point(field_set_allocated:seth.pools.protobuf.JoinElectNode.agg_bls_pk)
-}
-
-// optional .seth.elect.protobuf.BlsPopProof agg_bls_pk_proof = 9;
-inline bool JoinElectNode::has_agg_bls_pk_proof() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
-}
-inline void JoinElectNode::set_has_agg_bls_pk_proof() {
-  _has_bits_[0] |= 0x00000008u;
-}
-inline void JoinElectNode::clear_has_agg_bls_pk_proof() {
-  _has_bits_[0] &= ~0x00000008u;
-}
-inline const ::seth::elect::protobuf::BlsPopProof& JoinElectNode::_internal_agg_bls_pk_proof() const {
-  return *agg_bls_pk_proof_;
-}
-inline const ::seth::elect::protobuf::BlsPopProof& JoinElectNode::agg_bls_pk_proof() const {
-  const ::seth::elect::protobuf::BlsPopProof* p = agg_bls_pk_proof_;
-  // @@protoc_insertion_point(field_get:seth.pools.protobuf.JoinElectNode.agg_bls_pk_proof)
-  return p != NULL ? *p : *reinterpret_cast<const ::seth::elect::protobuf::BlsPopProof*>(
-      &::seth::elect::protobuf::_BlsPopProof_default_instance_);
-}
-inline ::seth::elect::protobuf::BlsPopProof* JoinElectNode::release_agg_bls_pk_proof() {
-  // @@protoc_insertion_point(field_release:seth.pools.protobuf.JoinElectNode.agg_bls_pk_proof)
-  clear_has_agg_bls_pk_proof();
-  ::seth::elect::protobuf::BlsPopProof* temp = agg_bls_pk_proof_;
-  agg_bls_pk_proof_ = NULL;
-  return temp;
-}
-inline ::seth::elect::protobuf::BlsPopProof* JoinElectNode::mutable_agg_bls_pk_proof() {
-  set_has_agg_bls_pk_proof();
-  if (agg_bls_pk_proof_ == NULL) {
-    auto* p = CreateMaybeMessage<::seth::elect::protobuf::BlsPopProof>(GetArenaNoVirtual());
-    agg_bls_pk_proof_ = p;
-  }
-  // @@protoc_insertion_point(field_mutable:seth.pools.protobuf.JoinElectNode.agg_bls_pk_proof)
-  return agg_bls_pk_proof_;
-}
-inline void JoinElectNode::set_allocated_agg_bls_pk_proof(::seth::elect::protobuf::BlsPopProof* agg_bls_pk_proof) {
-  ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
-  if (message_arena == NULL) {
-    delete reinterpret_cast< ::google::protobuf::MessageLite*>(agg_bls_pk_proof_);
-  }
-  if (agg_bls_pk_proof) {
-    ::google::protobuf::Arena* submessage_arena = NULL;
-    if (message_arena != submessage_arena) {
-      agg_bls_pk_proof = ::google::protobuf::internal::GetOwnedMessage(
-          message_arena, agg_bls_pk_proof, submessage_arena);
-    }
-    set_has_agg_bls_pk_proof();
-  } else {
-    clear_has_agg_bls_pk_proof();
-  }
-  agg_bls_pk_proof_ = agg_bls_pk_proof;
-  // @@protoc_insertion_point(field_set_allocated:seth.pools.protobuf.JoinElectNode.agg_bls_pk_proof)
 }
 
 // -------------------------------------------------------------------
@@ -5834,13 +5721,13 @@ ElectStatistic::join_elect_nodes() const {
 
 // optional uint32 sharding_id = 4;
 inline bool ElectStatistic::has_sharding_id() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
+  return (_has_bits_[0] & 0x00000020u) != 0;
 }
 inline void ElectStatistic::set_has_sharding_id() {
-  _has_bits_[0] |= 0x00000008u;
+  _has_bits_[0] |= 0x00000020u;
 }
 inline void ElectStatistic::clear_has_sharding_id() {
-  _has_bits_[0] &= ~0x00000008u;
+  _has_bits_[0] &= ~0x00000020u;
 }
 inline void ElectStatistic::clear_sharding_id() {
   sharding_id_ = 0u;
@@ -5858,13 +5745,13 @@ inline void ElectStatistic::set_sharding_id(::google::protobuf::uint32 value) {
 
 // optional uint64 gas_amount = 5;
 inline bool ElectStatistic::has_gas_amount() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
+  return (_has_bits_[0] & 0x00000004u) != 0;
 }
 inline void ElectStatistic::set_has_gas_amount() {
-  _has_bits_[0] |= 0x00000002u;
+  _has_bits_[0] |= 0x00000004u;
 }
 inline void ElectStatistic::clear_has_gas_amount() {
-  _has_bits_[0] &= ~0x00000002u;
+  _has_bits_[0] &= ~0x00000004u;
 }
 inline void ElectStatistic::clear_gas_amount() {
   gas_amount_ = GOOGLE_ULONGLONG(0);
@@ -5912,13 +5799,13 @@ ElectStatistic::mutable_lof_leaders() {
 
 // optional uint64 statistic_height = 7;
 inline bool ElectStatistic::has_statistic_height() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
+  return (_has_bits_[0] & 0x00000008u) != 0;
 }
 inline void ElectStatistic::set_has_statistic_height() {
-  _has_bits_[0] |= 0x00000004u;
+  _has_bits_[0] |= 0x00000008u;
 }
 inline void ElectStatistic::clear_has_statistic_height() {
-  _has_bits_[0] &= ~0x00000004u;
+  _has_bits_[0] &= ~0x00000008u;
 }
 inline void ElectStatistic::clear_statistic_height() {
   statistic_height_ = GOOGLE_ULONGLONG(0);
@@ -5932,6 +5819,84 @@ inline void ElectStatistic::set_statistic_height(::google::protobuf::uint64 valu
   set_has_statistic_height();
   statistic_height_ = value;
   // @@protoc_insertion_point(field_set:seth.pools.protobuf.ElectStatistic.statistic_height)
+}
+
+// optional uint64 nonce = 8;
+inline bool ElectStatistic::has_nonce() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void ElectStatistic::set_has_nonce() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void ElectStatistic::clear_has_nonce() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void ElectStatistic::clear_nonce() {
+  nonce_ = GOOGLE_ULONGLONG(0);
+  clear_has_nonce();
+}
+inline ::google::protobuf::uint64 ElectStatistic::nonce() const {
+  // @@protoc_insertion_point(field_get:seth.pools.protobuf.ElectStatistic.nonce)
+  return nonce_;
+}
+inline void ElectStatistic::set_nonce(::google::protobuf::uint64 value) {
+  set_has_nonce();
+  nonce_ = value;
+  // @@protoc_insertion_point(field_set:seth.pools.protobuf.ElectStatistic.nonce)
+}
+
+// optional .seth.elect.protobuf.ElectBlock elect_block = 9;
+inline bool ElectStatistic::has_elect_block() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void ElectStatistic::set_has_elect_block() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void ElectStatistic::clear_has_elect_block() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline const ::seth::elect::protobuf::ElectBlock& ElectStatistic::_internal_elect_block() const {
+  return *elect_block_;
+}
+inline const ::seth::elect::protobuf::ElectBlock& ElectStatistic::elect_block() const {
+  const ::seth::elect::protobuf::ElectBlock* p = elect_block_;
+  // @@protoc_insertion_point(field_get:seth.pools.protobuf.ElectStatistic.elect_block)
+  return p != NULL ? *p : *reinterpret_cast<const ::seth::elect::protobuf::ElectBlock*>(
+      &::seth::elect::protobuf::_ElectBlock_default_instance_);
+}
+inline ::seth::elect::protobuf::ElectBlock* ElectStatistic::release_elect_block() {
+  // @@protoc_insertion_point(field_release:seth.pools.protobuf.ElectStatistic.elect_block)
+  clear_has_elect_block();
+  ::seth::elect::protobuf::ElectBlock* temp = elect_block_;
+  elect_block_ = NULL;
+  return temp;
+}
+inline ::seth::elect::protobuf::ElectBlock* ElectStatistic::mutable_elect_block() {
+  set_has_elect_block();
+  if (elect_block_ == NULL) {
+    auto* p = CreateMaybeMessage<::seth::elect::protobuf::ElectBlock>(GetArenaNoVirtual());
+    elect_block_ = p;
+  }
+  // @@protoc_insertion_point(field_mutable:seth.pools.protobuf.ElectStatistic.elect_block)
+  return elect_block_;
+}
+inline void ElectStatistic::set_allocated_elect_block(::seth::elect::protobuf::ElectBlock* elect_block) {
+  ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
+  if (message_arena == NULL) {
+    delete reinterpret_cast< ::google::protobuf::MessageLite*>(elect_block_);
+  }
+  if (elect_block) {
+    ::google::protobuf::Arena* submessage_arena = NULL;
+    if (message_arena != submessage_arena) {
+      elect_block = ::google::protobuf::internal::GetOwnedMessage(
+          message_arena, elect_block, submessage_arena);
+    }
+    set_has_elect_block();
+  } else {
+    clear_has_elect_block();
+  }
+  elect_block_ = elect_block;
+  // @@protoc_insertion_point(field_set_allocated:seth.pools.protobuf.ElectStatistic.elect_block)
 }
 
 // -------------------------------------------------------------------

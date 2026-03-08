@@ -48,13 +48,14 @@ void TimeBlockManager::CreateTimeBlockTx() {
     }
 
     auto msg_ptr = std::make_shared<transport::TransportMessage>();
-    msg_ptr->address_info = account_mgr_->GetAccountInfo(common::kTimeBlockAddress);
+    msg_ptr->address_info = account_mgr_->pools_address_info(
+        pools::protobuf::kConsensusRootTimeBlock, 
+        common::kGlobalPoolIndex);
     assert(msg_ptr->address_info != nullptr);
     pools::protobuf::TxMessage& tx_info = *msg_ptr->header.mutable_tx_proto();
     tx_info.set_step(pools::protobuf::kConsensusRootTimeBlock);
     tx_info.set_pubkey("");
     tx_info.set_to(msg_ptr->address_info->addr());
-    tx_info.set_nonce(msg_ptr->address_info->nonce() + 1);
     tx_info.set_gas_limit(0llu);
     tx_info.set_amount(0);
     tx_info.set_gas_price(common::kBuildinTransactionGasPrice);
@@ -96,6 +97,48 @@ bool TimeBlockManager::HasTimeblockTx(
     return false;
 }
 
+bool TimeBlockManager::CheckLeaderTimeblockTxValid(
+        const pools::protobuf::TxMessage& tx_item, 
+        pools::CheckAddrNonceValidFunction tx_valid_func) const {
+    timeblock::protobuf::TimeBlock timer_block;
+    if (!timer_block.ParseFromString(tx_item.value())) {
+        SETH_WARN("Failed to parse TimeBlock from tx value");
+        return false;
+    }
+
+    uint64_t new_time_block_tm = latest_time_block_tm_ + common::kTimeBlockCreatePeriodSeconds;
+    if (timer_block.timestamp() != new_time_block_tm) {
+        SETH_WARN("TimeBlock timestamp mismatch, expected: %lu, actual: %lu",
+            new_time_block_tm, timer_block.timestamp());
+        return false;
+    }
+
+    if (vss_mgr_->GetConsensusFinalRandom() != timer_block.vss_random()) {
+        SETH_WARN("TimeBlock vss_random mismatch, expected: %lu, actual: %lu",
+            vss_mgr_->GetConsensusFinalRandom(), timer_block.vss_random());
+        return false;
+    }
+
+    auto account_info = account_mgr_->pools_address_info(
+        pools::protobuf::kConsensusRootTimeBlock, 
+        common::kGlobalPoolIndex);
+    if (account_info->nonce() + 1 != timer_block.nonce()) {
+        SETH_WARN("TimeBlock nonce mismatch, expected: %lu, actual: %lu",
+            account_info->nonce(), timer_block.nonce());
+        return false;
+    }
+
+    uint64_t now_nonce = 0ll;
+    if (tx_valid_func(*account_info, tx_item, &now_nonce) != 0) {
+        SETH_DEBUG("tx_valid_func failed, now_nonce: %lu, account_info nonce: %lu", 
+            now_nonce, 
+            account_info->nonce());
+        return false;
+    }
+
+    return true;
+}
+
 pools::TxItemPtr TimeBlockManager::tmblock_tx_ptr(
         bool leader, 
         uint32_t pool_index, 
@@ -104,7 +147,7 @@ pools::TxItemPtr TimeBlockManager::tmblock_tx_ptr(
     if (tmblock_tx_ptr != nullptr) {
         auto now_tm_us = common::TimeUtils::TimestampUs();
         if (leader && tmblock_tx_ptr->prev_consensus_tm_us + 3000000lu > now_tm_us) {
-            // SETH_DEBUG("tmblock_tx_ptr->prev_consensus_tm_us + 3000000lu > now_tm_us, is leader: %d", leader);
+            SETH_DEBUG("tmblock_tx_ptr->prev_consensus_tm_us + 3000000lu > now_tm_us, is leader: %d", leader);
             return nullptr;
         }
 
@@ -112,7 +155,6 @@ pools::TxItemPtr TimeBlockManager::tmblock_tx_ptr(
             SETH_DEBUG("CanCallTimeBlockTx leader: %d", leader);
             return nullptr;
         }
-
 
         auto& tx_info = tmblock_tx_ptr->tx_info;
         uint64_t now_tm_sec = now_tm_us / 1000000lu;
@@ -124,12 +166,19 @@ pools::TxItemPtr TimeBlockManager::tmblock_tx_ptr(
         timeblock::protobuf::TimeBlock timer_block;
         timer_block.set_timestamp(new_time_block_tm);
         timer_block.set_vss_random(vss_mgr_->GetConsensusFinalRandom());
+        auto account_info = account_mgr_->pools_address_info(
+            pools::protobuf::kConsensusRootTimeBlock, 
+            common::kGlobalPoolIndex);
+        timer_block.set_nonce(account_info->nonce() + 1);
         tx_info->set_value(SerializeDeterministic(timer_block));
-        auto account_info = account_mgr_->GetAccountInfo(common::kTimeBlockAddress);
         tx_info->set_to(account_info->addr());
         tx_info->set_key(common::Hash::keccak256(tx_info->value()));
+        tx_info->set_nonce(account_info->nonce() + 1);
         uint64_t now_nonce = 0ll;
         if (tx_valid_func(*account_info, *tx_info, &now_nonce) != 0) {
+            SETH_DEBUG("tx_valid_func failed, now_nonce: %lu, account_info nonce: %lu", 
+                now_nonce, 
+                account_info->nonce());
             return nullptr;
         }
 
@@ -158,9 +207,9 @@ void TimeBlockManager::OnTimeBlock(
 
     SETH_INFO("LeaderNewTimeBlockValid height[%lu:%lu], tm[%lu:%lu], vss[%lu]",
         latest_time_block_height,
-        static_cast<int>(latest_time_block_height_),
+        static_cast<uint64_t>(latest_time_block_height_),
         latest_time_block_tm,
-        static_cast<int>(latest_time_block_tm_),
+        static_cast<uint64_t>(latest_time_block_tm_),
         vss_random);
     assert(vss_random != 0);
     prev_time_block_height_ = latest_time_block_height;
