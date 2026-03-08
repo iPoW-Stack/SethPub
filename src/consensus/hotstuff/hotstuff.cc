@@ -2453,7 +2453,7 @@ void Hotstuff::TryRecoverFromStuck(
     View out_view = 0;
     auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view);
     if (!leader) {
-        SETH_DEBUG("pool index: %d, no leader", pool_idx_);
+        // SETH_DEBUG("pool index: %d, no leader", pool_idx_);
         return;
     }
     

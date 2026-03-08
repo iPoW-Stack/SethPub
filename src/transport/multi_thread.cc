@@ -355,6 +355,7 @@ uint8_t MultiThreadHandler::GetThreadIndex(MessagePtr& msg_ptr) {
     case common::kBlsMessage:
     case common::kInitMessage:
     case common::kPoolsMessage:
+    case common::kPoolTimerMessage:
         return thread_vec_[all_thread_count_ - 1]->thread_idx();
     case common::kConsensusMessage:
         assert(false);

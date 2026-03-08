@@ -49,7 +49,7 @@ TxPoolManager::TxPoolManager(
     // Register the callback function of kPoolsMessage
     network::Route::Instance()->RegisterMessage(
         common::kPoolsMessage,
-        std::bind(&TxPoolManager::HandleMessage, this, std::placeholders::_1));
+        std::bind(&TxPoolManager::TxPoolHandleMessage, this, std::placeholders::_1));
 #ifdef USE_SERVER_TEST_TRANSACTION
     if (common::GlobalInfo::Instance()->test_pool_index() >= 0) {
         test_tx_thread_ = std::make_shared<std::thread>(
@@ -399,12 +399,12 @@ void TxPoolManager::PoolTimerMessage() {
     for (uint32_t i = 0; i < common::kMaxThreadCount; ++i) {
         transport::MessagePtr msg_ptr;
         while (pools_msg_queue_[i].pop(&msg_ptr)) {
-            HandleMessage(msg_ptr);
+            TxPoolHandleMessage(msg_ptr);
         }
     }
 }
 
-void TxPoolManager::HandleMessage(const transport::MessagePtr& msg_ptr) {
+void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
     TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
     // auto thread_idx = common::GlobalInfo::Instance()->get_thread_index(msg_ptr);

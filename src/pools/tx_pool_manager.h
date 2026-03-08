@@ -39,7 +39,7 @@ public:
         std::shared_ptr<sync::KeyValueSync>& kv_sync,
         std::shared_ptr<block::AccountManager>& acc_mgr);
     ~TxPoolManager();
-    void HandleMessage(const transport::MessagePtr& msg);
+    void TxPoolHandleMessage(const transport::MessagePtr& msg);
     void GetTxIdempotently(
         transport::MessagePtr msg_ptr, 
         uint32_t pool_index,
