@@ -1709,19 +1709,19 @@ Status Hotstuff::Commit(
 
 void Hotstuff::HandleSyncedViewBlock(
         std::shared_ptr<view_block::protobuf::ViewBlockItem>& vblock) {
-    if (BlockViewCommited(
+    if (BlockHeightCommited(
             prefix_db_, 
             vblock->qc().network_id(), 
             vblock->qc().pool_index(), 
-            vblock->qc().view())) {
+            vblock->block_info().height())) {
         return;
     }
     
-    if (BlockViewCommited(
+    if (BlockHeightCommited(
             prefix_db_, 
             vblock->qc().network_id(), 
             vblock->qc().pool_index(), 
-            vblock->qc().view() + 1)) {
+            vblock->block_info().height() + 1)) {
         if (!ViewBlockIsCheckedParentHash(prefix_db_, vblock->qc().view_block_hash())) {
             return;
         }
@@ -1921,21 +1921,21 @@ Status Hotstuff::VerifyViewBlock(
             v_block.qc().view() - 1);
         if (view_block_chain->HighQC().view() < (v_block.qc().view() + db_stored_view_) && 
                 v_block.qc().view() > 0 && 
-                !BlockViewCommited(
+                !BlockHeightCommited(
                     prefix_db_,
                     v_block.qc().network_id(), 
                     v_block.qc().pool_index(), 
-                    v_block.qc().view() - 1)) {
+                    v_block.block_info().height() - 1)) {
             kv_sync_->AddSyncViewHash(
                 v_block.qc().network_id(), 
                 v_block.qc().pool_index(), 
                 v_block.parent_hash(),
                 0);
-        } else if (!BlockViewCommited(
+        } else if (!BlockHeightCommited(
                 prefix_db_,
                 v_block.qc().network_id(), 
                 v_block.qc().pool_index(), 
-                v_block.qc().view() - 1)) {
+                v_block.qc().block_info() - 1)) {
             SETH_DEBUG("now add sync height 0, %u_%u_%lu", 
                 v_block.qc().network_id(), 
                 v_block.qc().pool_index(), 

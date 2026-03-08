@@ -82,7 +82,7 @@ static const std::string kViewBlockParentHashKeyPrefix = "av\x01";
 static const std::string kAggBlsPrivateKeyPrefix = "ax\x01";
 static const std::string kCommitedGidPrefix = "ay\x01";
 static const std::string kViewBlockVaildParentHash = "ba\x01";
-static const std::string kViewBlockVaildView = "bb\x01";
+static const std::string kBlockVaildHeight = "bb\x01";
 static const std::string kUserTxPrefix = "bc\x01";
 static const std::string kUserTxGidPrefix = "bd\x01";
 static const std::string kElectHeightWithElectBlock = "bd\x02";
@@ -407,7 +407,7 @@ public:
         batch.Put(key, block_str);
         std::string view_key;
         view_key.reserve(48);
-        view_key.append(kViewBlockVaildView);
+        view_key.append(kBlockVaildHeight);
         char key_data[16];
         uint32_t *u32_arr = (uint32_t*)key_data;
         u32_arr[0] = view_block.qc().network_id();
@@ -418,17 +418,13 @@ public:
         batch.Put(view_key, "1");
     }
 
-    bool ViewBlockIsValidView(uint32_t network_id, uint32_t pool_index, uint64_t view) {
-        std::string view_key;
-        view_key.reserve(48);
-        view_key.append(kViewBlockVaildView);
-        char key_data[16];
-        uint32_t *u32_arr = (uint32_t*)key_data;
-        u32_arr[0] = network_id;
-        u32_arr[1] = pool_index;
-        uint64_t* u64_arr = (uint64_t*)(key_data + 8);
-        u64_arr[0] = view;
-        view_key.append(std::string(key_data, sizeof(key_data)));
+    bool BlockHeightExits(uint32_t sharding_id, uint32_t pool_index, uint64_t height) {
+        std::string key;
+        key.reserve(32);
+        key.append(kBlockHeightPrefix);
+        key.append((char*)&sharding_id, sizeof(sharding_id));
+        key.append((char*)&pool_index, sizeof(pool_index));
+        key.append((char*)&height, sizeof(height));
         return db_->Exist(view_key);
     }
 

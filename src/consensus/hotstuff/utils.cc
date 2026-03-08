@@ -101,12 +101,12 @@ int CheckTransactionValid(
     return 0;
 }
 
-bool BlockViewCommited(
+bool BlockHeightCommited(
         std::shared_ptr<protos::PrefixDb> prefix_db, 
         uint32_t network_id, 
         uint32_t pool_index, 
-        uint64_t view) {
-    return prefix_db->ViewBlockIsValidView(network_id, pool_index, view);
+        uint64_t height) {
+    return prefix_db->BlockHeightExits(network_id, pool_index, height);
 }
 
 bool ViewBlockIsCheckedParentHash(
