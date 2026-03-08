@@ -720,40 +720,47 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
 void ViewBlockChain::HandleTimerMessage() {
     // CheckThreadIdValid();
     auto now_tm_ms = common::TimeUtils::TimestampMs();
-    if (prev_check_timeout_blocks_ms_ + 3000u < now_tm_ms) {  
-        prev_check_timeout_blocks_ms_ = now_tm_ms;
-        SETH_DEBUG("now check view_with_blocks_ size: %d", view_with_blocks_.size());      
-        if (view_with_blocks_.size() > 2) {
-            for (auto iter = view_with_blocks_.rbegin(); iter != view_with_blocks_.rend();) {
-                bool commited = false;
-                auto view_block = iter->second->view_block;
-                if (view_block) {
-                    if (BlockHeightCommited(
-                        prefix_db_,
-                        common::GlobalInfo::Instance()->network_id(), 
-                        pool_index_,
-                        view_block->block_info().height())) {
-                    if (!ViewBlockIsCheckedParentHash(
-                            prefix_db_, 
-                            view_block->qc().view_block_hash())) {
-                        iter = view_with_blocks_.erase(iter);
-                        continue;
-                    }
-                }
+    if (prev_check_timeout_blocks_ms_ + 3000u > now_tm_ms) { 
+        return;
+    }
 
-                auto view_block_ptr = CheckCommit(view_block->qc());
-                if (view_block_ptr) {
-                    Commit(view_block_ptr);
+    prev_check_timeout_blocks_ms_ = now_tm_ms;
+    SETH_DEBUG("now check view_with_blocks_ size: %d", view_with_blocks_.size());      
+    if (view_with_blocks_.size() <= 2) {
+        return;
+    }
+
+    for (auto iter = view_with_blocks_.rbegin(); iter != view_with_blocks_.rend();) {
+        bool commited = false;
+        auto view_block = iter->second->view_block;
+        if (view_block) {
+            if (BlockHeightCommited(
+                    prefix_db_,
+                    common::GlobalInfo::Instance()->network_id(), 
+                    pool_index_,
+                    view_block->block_info().height())) {
+                if (!ViewBlockIsCheckedParentHash(
+                        prefix_db_, 
+                        view_block->qc().view_block_hash())) {
                     auto it_to_erase = std::next(iter).base();
                     auto next_valid_forward = view_with_blocks_.erase(it_to_erase);
                     iter = std::make_reverse_iterator(next_valid_forward);
-                    commited = true;
-                    break;
+                    continue;
                 }
+            }
 
-                ++iter;
+            auto view_block_ptr = CheckCommit(view_block->qc());
+            if (view_block_ptr) {
+                Commit(view_block_ptr);
+                auto it_to_erase = std::next(iter).base();
+                auto next_valid_forward = view_with_blocks_.erase(it_to_erase);
+                iter = std::make_reverse_iterator(next_valid_forward);
+                commited = true;
+                break;
             }
         }
+
+        ++iter;
     }
 }
 
