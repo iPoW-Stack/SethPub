@@ -778,13 +778,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::CheckCommit(const QC& qc) {
             pool_index_,
             common::Encode::HexEncode(qc.view_block_hash()).c_str(),
             qc.network_id(), qc.pool_index(), qc.view());
-        if (!BlockHeightCommited(
-                prefix_db_, 
-                qc.network_id(), 
-                qc.pool_index(), 
-                v_block1_info->view_block->block_info().height())) {
-            kv_sync_->AddSyncViewHash(qc.network_id(), qc.pool_index(), qc.view_block_hash(), 0);
-        }
+        kv_sync_->AddSyncViewHash(qc.network_id(), qc.pool_index(), qc.view_block_hash(), 0);
         // assert(false);
         return nullptr;
     }
