@@ -730,11 +730,13 @@ void ViewBlockChain::HandleTimerMessage() {
     }
 
     prev_check_timeout_blocks_ms_ = now_tm_ms;
-    SETH_DEBUG("pool: %d, now check view_with_blocks_ size: %d", pool_index_, view_with_blocks_.size());      
     if (view_with_blocks_.size() <= 2) {
         return;
     }
 
+    SETH_DEBUG("network: %d, pool: %d, now check view_with_blocks_ size: %d", 
+        view_with_blocks_.begin()->second->view_block->qc().network_id(),
+        pool_index_, view_with_blocks_.size());      
     for (auto iter = view_with_blocks_.rbegin(); iter != view_with_blocks_.rend();) {
         bool commited = false;
         auto view_block = iter->second->view_block;
