@@ -425,7 +425,7 @@ public:
         key.append((char*)&sharding_id, sizeof(sharding_id));
         key.append((char*)&pool_index, sizeof(pool_index));
         key.append((char*)&height, sizeof(height));
-        return db_->Exist(view_key);
+        return db_->Exist(key);
     }
 
     bool GetBlock(const std::string& block_hash, view_block::protobuf::ViewBlockItem* block) {
