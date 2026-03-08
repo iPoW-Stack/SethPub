@@ -417,6 +417,12 @@ bool ViewBlockChain::ReplaceWithSyncedBlock(std::shared_ptr<ViewBlock>& view_blo
     if (it != view_blocks_info_.end()) {
         view_blocks_info_.erase(it);
     }
+
+    auto view_iter = view_blocks_info_.find(view_block->qc().view()) {
+        if (view_iter != view_blocks_info_.end()) {
+            view_blocks_info_.erase(view_iter);
+        }
+    }
     
     auto st = Store(view_block, true, nullptr, nullptr, false);
     if (st != Status::kSuccess) {
