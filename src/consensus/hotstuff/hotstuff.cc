@@ -1717,16 +1717,6 @@ void Hotstuff::HandleSyncedViewBlock(
         return;
     }
     
-    if (BlockHeightCommited(
-            prefix_db_, 
-            vblock->qc().network_id(), 
-            vblock->qc().pool_index(), 
-            vblock->block_info().height() + 1)) {
-        if (!ViewBlockIsCheckedParentHash(prefix_db_, vblock->qc().view_block_hash())) {
-            return;
-        }
-    }
-
     if (prefix_db_->BlockExists(vblock->qc().view_block_hash())) {
         SETH_DEBUG("block db exists %u_%u_%lu, height: %lu",
             vblock->qc().network_id(), 

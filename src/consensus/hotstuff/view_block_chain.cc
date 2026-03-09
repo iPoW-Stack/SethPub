@@ -741,19 +741,36 @@ void ViewBlockChain::HandleTimerMessage() {
         bool commited = false;
         auto view_block = iter->second->view_block;
         if (view_block) {
-            if (BlockHeightCommited(
-                    prefix_db_,
-                    common::GlobalInfo::Instance()->network_id(), 
-                    pool_index_,
-                    view_block->block_info().height())) {
-                if (!ViewBlockIsCheckedParentHash(
-                        prefix_db_, 
-                        view_block->qc().view_block_hash())) {
+            bool height_commited = BlockHeightCommited(
+                prefix_db_,
+                common::GlobalInfo::Instance()->network_id(), 
+                pool_index_,
+                view_block->block_info().height());
+            SETH_DEBUG("network: %d, pool: %d, height: %lu, height_commited: %d, "
+                "now check view_with_blocks_ size: %d", 
+                view_with_blocks_.begin()->second->view_block->qc().network_id(),
+                pool_index_, 
+                view_block->block_info().height(),
+                height_commited,
+                view_with_blocks_.size());      
+            if (height_commited) {
+                // bool phash_commited = ViewBlockIsCheckedParentHash(
+                //     prefix_db_, 
+                //     view_block->qc().view_block_hash());
+                // SETH_DEBUG("network: %d, pool: %d, height: %lu, height_commited: %d, "
+                //     "phash_commited: %d, now check view_with_blocks_ size: %d", 
+                //     view_with_blocks_.begin()->second->view_block->qc().network_id(),
+                //     pool_index_, 
+                //     view_block->block_info().height(),
+                //     height_commited,
+                //     phash_commited,
+                //     view_with_blocks_.size());
+                // if (!phash_commited) {
                     auto it_to_erase = std::next(iter).base();
                     auto next_valid_forward = view_with_blocks_.erase(it_to_erase);
                     iter = std::make_reverse_iterator(next_valid_forward);
                     continue;
-                }
+                // }
             }
 
             auto view_block_ptr = CheckCommit(view_block->qc());
