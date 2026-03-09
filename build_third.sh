@@ -31,7 +31,6 @@ cd third_party/maxmind/ && git submodule init && git submodule update && cmake -
 cp -rnf libmaxminddb.a $SRC_PATH/third_party/lib/
 mkdir -p $SRC_PATH/third_party/include/maxmind && cd .. && cp -rnf ./include/* $SRC_PATH/third_party/include/maxmind && cp -rnf build_release/generated/maxminddb_config.h $SRC_PATH/third_party/include/maxmind/
 mkdir -p $SRC_PATH/third_party/include/maxmind/include && cp -rnf ./include/* $SRC_PATH/third_party/include/maxmind/include && cp -rnf build_release/generated/maxminddb_config.h $SRC_PATH/third_party/include/maxmind/include
-exit 0
 if [ ! -d "$SRC_PATH/third_party/include/libuv" ]; then
     cd $SRC_PATH
     cd third_party/libuv && rm -rf build_release && git checkout 5152db2 && git submodule init && git submodule update && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=$TARGET -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j8 && make install
