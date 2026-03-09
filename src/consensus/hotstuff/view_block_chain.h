@@ -223,18 +223,6 @@ public:
             tmp_block->block_info().height() - 1);
     }
 
-#ifdef TEST_FORKING_ATTACK
-    std::shared_ptr<ViewBlockInfo> GetViewBlockVithView(uint64_t view) {
-        auto iter = view_with_blocks_.find(view);
-        if (iter == view_with_blocks_.end()) {
-            return nullptr;
-        }
-
-        auto rand_idx = rand() % iter->second.size();
-        return iter->second[rand_idx];
-    }
-#endif
-
 private:
     void AddPoolStatisticTag(uint64_t height, uint64_t timeblock_addr_nonce);
     void SetViewBlockToMap(const std::shared_ptr<ViewBlockInfo>& view_block_info) {
@@ -255,13 +243,19 @@ private:
         }
         
         view_blocks_info_[view_block_info->view_block->qc().view_block_hash()] = view_block_info;
-        view_with_blocks_[view_block_info->view_block->qc().view()].push_back(view_block_info);
+        SETH_DEBUG("store now add view block: %s, %u_%u_%lu, height: %lu, "
+            "parent hash: %s, tx size: %u, strings: %s",
+            common::Encode::HexEncode(view_block_info->view_block->qc().view_block_hash()).c_str(),
+            view_block_info->view_block->qc().network_id(),
+            view_block_info->view_block->qc().pool_index(),
+            view_block_info->view_block->qc().view(),
+            view_block_info->view_block->block_info().height(),
+            common::Encode::HexEncode(view_block_info->view_block->parent_hash()).c_str(),
+            view_block_info->view_block->block_info().tx_list_size(),
+            String().c_str());
+        // assert(view_with_blocks_.find(view_block_info->view_block->qc().view()) == view_with_blocks_.end());
+        view_with_blocks_[view_block_info->view_block->qc().view()] = view_block_info;
         SETH_DEBUG("success add view block info now size: %u", view_blocks_info_.size());
-#ifndef NDEBUG
-        for (auto iter = view_with_blocks_.begin(); iter != view_with_blocks_.end(); ++iter) {
-            SETH_DEBUG("success add view block info now size: %u, %u", iter->first, iter->second.size());
-        }
-#endif
     }
 
     std::shared_ptr<ViewBlockInfo> GetViewBlockInfo(
@@ -314,7 +308,7 @@ private:
     std::set<uint64_t> commited_view_;
     uint64_t prev_check_timeout_blocks_ms_ = 0;
     ChainType chain_type_ = kInvalidChain;
-    std::map<uint64_t, std::vector<std::shared_ptr<ViewBlockInfo>>> view_with_blocks_;
+    std::map<uint64_t, std::shared_ptr<ViewBlockInfo>> view_with_blocks_;
     common::LRUMap<BlockViewKey, std::shared_ptr<ViewBlockInfo>> latest_commited_view_lru_map_{ 16 };
     common::LRUMap<std::string, std::shared_ptr<ViewBlockInfo>> latest_commited_hash_lru_map_{ 16 };
     common::LRUMap<BlockViewKey, std::shared_ptr<ViewBlockInfo>> latest_commited_height_lru_map_{ 16 };

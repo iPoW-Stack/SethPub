@@ -240,8 +240,6 @@ Status BlockAcceptor::Accept(
         auto* cross_to_item = view_block.mutable_block_info()->add_cross_shard_to_array();
         *cross_to_item = *iter->second;
         UpdateDesShardingId(cross_to_item, zjc_host);
-        assert(cross_to_item->des_sharding_id() >= network::kRootCongressNetworkId && 
-            cross_to_item->des_sharding_id() < network::kConsensusShardEndNetworkId);
         SETH_DEBUG("success add cross to item: %s, amount: %lu, prepayment: %lu",
             common::Encode::HexEncode(cross_to_item->des()).c_str(),
             cross_to_item->amount(), cross_to_item->prepayment());
@@ -290,14 +288,7 @@ void BlockAcceptor::UpdateDesShardingId(
         return;
     }
 
-    auto addr_info = zjc_host.view_block_chain_->ChainGetAccountInfo(to_addr_info->des().substr(0, common::kUnicastAddressLength));
-    if (addr_info) {
-        to_addr_info->set_des_sharding_id(addr_info->sharding_id());
-        assert(to_addr_info->des_sharding_id() >= network::kRootCongressNetworkId && 
-        to_addr_info->des_sharding_id() < network::kConsensusShardEndNetworkId);
-    } else {
-        to_addr_info->set_des_sharding_id(network::kRootCongressNetworkId);
-    }
+    to_addr_info->set_des_sharding_id(network::kUniversalNetworkId);
 }
 
 // AcceptSync verifies the synchronized block information and updates the transaction pool

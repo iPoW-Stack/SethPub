@@ -106,10 +106,8 @@ void BlockManager::HandleAllConsensusBlocks() {
     while (!destroy_) {
         auto now_tm = common::TimeUtils::TimestampUs();
         bool no_sleep = true;
-        SETH_DEBUG("begin call 0.");
         while (no_sleep) {
             no_sleep = false;
-            SETH_DEBUG("begin call 1.");
             for (int32_t i = 0; i < common::kMaxThreadCount; ++i) {
                 uint32_t count = 0;
                 while (count++ < kEachTimeHandleBlocksCount) {
@@ -162,7 +160,6 @@ void BlockManager::HandleAllConsensusBlocks() {
             // SETH_DEBUG("write to db use time: %lu, size: %u", 
             //     (common::TimeUtils::TimestampMs() - btime), 
             //     db_batch.ApproximateSize());
-            SETH_DEBUG("end call 1.");
         }
         
         if (prev_create_statistic_tx_tm_us_ < now_tm) {
@@ -332,7 +329,7 @@ void BlockManager::RootHandleNormalToTx(
             0,
             common::Encode::HexEncode(unique_hash).c_str(),
             common::Encode::HexEncode(tx->contract_code()).c_str());
-        pools_mgr_->HandleMessage(msg_ptr);
+        pools_mgr_->AddPoolMessage(msg_ptr);
     }
 }
 
@@ -495,7 +492,7 @@ void BlockManager::CreateLocalToTx(
     tx->set_amount(0); // 具体 amount 在 kv 中
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
     tx->set_nonce(++step_with_nonce_[tx->step()]);
-    pools_mgr_->HandleMessage(msg_ptr);
+    pools_mgr_->AddPoolMessage(msg_ptr);
     SETH_DEBUG("pool_index: %d, success add local transfer tx "
         "tos hash: %s, nonce: %lu, src to tx nonce: %lu, val: %s",
         pool_index,

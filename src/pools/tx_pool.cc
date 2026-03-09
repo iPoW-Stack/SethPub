@@ -166,14 +166,6 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
         }
     }
 
-    // TODO: remove invalid addr
-    // if (IsUserTransaction(tx_ptr->tx_info->step()) && 
-    //         added_txs_.size() >= common::GlobalInfo::Instance()->each_tx_pool_max_txs()) {
-    //     SETH_INFO("add failed extend %u, %u, all valid: %u", 
-    //         added_txs_.size(), common::GlobalInfo::Instance()->each_tx_pool_max_txs(), all_tx_size());
-    //     return kPoolsError;
-    // }
-
     if (tx_ptr->tx_key.empty()) {
         SETH_DEBUG("add failed unique hash empty: %d", (int32_t)tx_ptr->tx_info->step());
         tx_ptr->tx_key = pools::GetTxMessageHash(*tx_ptr->tx_info);

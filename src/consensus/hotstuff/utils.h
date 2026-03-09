@@ -63,7 +63,7 @@ int CheckTransactionValid(
     const address::protobuf::AddressInfo& addr_info, 
     const pools::protobuf::TxMessage& tx_info,
     uint64_t* now_nonce);
-bool BlockViewCommited(
+bool BlockHeightCommited(
     std::shared_ptr<protos::PrefixDb> prefix_db, 
     uint32_t network_id,
     uint32_t pool_index, 

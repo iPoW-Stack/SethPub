@@ -385,6 +385,15 @@ int ToTxsPools::CreateToTxWithHeights(
             for (auto to_iter = hiter->second.begin();
                     to_iter != hiter->second.end(); ++to_iter) {
                 auto des_sharding_id = to_iter->second.des_sharding_id();
+                if (des_sharding_id == network::kUniversalNetworkId) {
+                    auto addr_info = acc_mgr_->GetAccountInfo(to_iter->second.des().substr(0, common::kUnicastAddressLength));
+                    if (addr_info) {
+                        des_sharding_id = addr_info->sharding_id();
+                    } else {
+                        des_sharding_id = network::kRootCongressNetworkId;
+                    }
+                }
+
                 if (des_sharding_id != sharding_id) {
                     SETH_DEBUG("statistic des shard: %u, %u_%u_%lu, find pool index: %u "
                         "height: %lu sharding: %u, %u failed id: %s, amount: %lu",
