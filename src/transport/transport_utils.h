@@ -76,17 +76,58 @@ enum FirewallCheckStatus {
     kFirewallCheckError = 1,
 };
 
+enum MessageHandleStatus : int32_t {
+    kConsensusSuccess = 0,
+    kMessageHandle = 1,
+    kMessageHandleError = 2,
+    kTxAccept = 3,
+    kTxInvalidSignature = 4,
+    kTxInvalidAddress = 5,
+    kTxPoolFullReject = 6,
+    kTxUserNonceInvalid = 7,
+    kUnkonwn = 8,
+    kRequestInvalid = 9,
+    kNotExists = 10,
+};
+
 static const uint64_t kConsensusMessageTimeoutUs = 5000000lu;
 static const uint64_t kHandledTimeoutMs = 10000lu;
 static const uint64_t kMessagePeriodUs = 1500000lu;
 static const uint32_t kEachMessagePoolMaxCount = 2048u;
+
+static inline std::string MessageStatusToString(MessageHandleStatus status) {
+    switch (status) {
+        case kConsensusSuccess:
+            return "kConsensusSuccess";
+        case kMessageHandle:
+            return "kMessageHandle";
+        case kMessageHandleError:
+            return "kMessageHandleError";
+        case kTxAccept:
+            return "kTxAccept";
+        case kTxInvalidSignature:
+            return "kTxInvalidSignature";
+        case kTxInvalidAddress:
+            return "kTxInvalidAddress";
+        case kTxPoolFullReject:
+            return "kTxPoolFullReject";
+        case kTxUserNonceInvalid:
+            return "kTxUserNonceInvalid";
+        case kUnkonwn:
+            return "kUnkonwn";
+        case kRequestInvalid:
+            return "kRequestInvalid";
+        default:
+            return "unknown";
+    }
+}
 
 // TODO: check memory
 class TransportMessage {
 public:
     // static std::atomic<int32_t> testTransportMessageCount;
     TransportMessage() : conn(nullptr), retry(false), 
-            handled(false), is_leader(false), latest_qc_view(0llu) {
+            handled(false), is_leader(false), latest_qc_view(0llu), system_message(false) {
         timeout = common::TimeUtils::TimestampUs() + kConsensusMessageTimeoutUs;
         handle_timeout = common::kInvalidUint64;
         prev_timestamp = common::TimeUtils::TimestampUs() + kMessagePeriodUs;
@@ -124,6 +165,8 @@ public:
     bool is_leader;
     int32_t thread_index;
     uint64_t latest_qc_view;
+    bool system_message;
+    std::atomic<MessageHandleStatus> handle_status;
 };
 
 typedef std::shared_ptr<TransportMessage> MessagePtr;

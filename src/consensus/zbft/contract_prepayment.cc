@@ -101,6 +101,7 @@ int ContractPrepayment::HandleTx(
         block_tx.contract_prepayment(),
         from_balance);
     if (block_tx.status() == kConsensusSuccess) {
+        pre_zjc_host.SaveKeyValue(block_tx.from(), block_tx.tx_hash(), "1");
         auto preypayment_id = block_tx.to() + block_tx.from();
         auto iter = pre_zjc_host.cross_to_map_.find(preypayment_id);
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;

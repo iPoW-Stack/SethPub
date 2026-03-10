@@ -217,6 +217,7 @@ public:
 
     void AddPoolMessage(const transport::MessagePtr& msg_ptr) {
         auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
+        msg_ptr->system_message = true;
         pools_msg_queue_[thread_idx].push(msg_ptr);
     }
 

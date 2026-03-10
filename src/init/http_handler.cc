@@ -337,6 +337,8 @@ static void HttpTransaction(const httplib::Request& req, httplib::Response& http
     http_handler->net_handler()->NewHttpServer(msg_ptr);
     std::string res = std::string("ok");
     http_res.set_content(res, "text/plain");
+    msg_ptr->handle_status = transport::kMessageHandle;
+    http_handler->tx_msg_map().Put(msg_ptr->msg_hash, msg_ptr);
     SETH_WARN("http transaction success %s, %s, nonce: %lu", common::Encode::HexEncode(
             http_handler->security_ptr()->GetAddress(common::Encode::HexDecode(frompk))).c_str(), to, nonce);
 }
@@ -1138,6 +1140,37 @@ static void GetBlockWithHash(const httplib::Request& req, httplib::Response& htt
     http_res.set_content(res_json.dump(), "application/json");
 }
 
+static void TransactionReceipt(const httplib::Request& req, httplib::Response& http_res) {
+    nlohmann::json res_json;
+    res_json["status"] = transport::kUnkonwn;
+    res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
+
+    if (!req.has_param("tx_hash")) {
+        res_json["status"] = transport::kRequestInvalid;
+        res_json["msg"] = std::string("not has tx hash param");
+        http_res.set_content(res_json.dump(), "application/json");
+        return;
+    }
+
+    auto tx_hash = req.get_param_value("tx_hash");
+    std::string res;
+    if (prefix_db->GetTemporaryKv(std::string("tx") + tx_hash, &res)) {
+        res_json["status"] = transport::kConsensusSuccess;
+        res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
+    } else {
+        transport::MessagePtr msg_ptr = nullptr;
+        if (http_handler->tx_msg_map().Get(tx_hash, msg_ptr)) {
+            res_json["status"] = (int32_t)msg_ptr->handle_status.load();
+            res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
+        } else {
+            res_json["status"] = transport::kNotExists;
+            res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
+        }
+    }
+    
+    http_res.set_content(res_json.dump(), "application/json");
+}
+
 HttpHandler::HttpHandler() {
     http_handler = this;
 }
@@ -1187,6 +1220,7 @@ void HttpHandler::Init(
     svr.Post("/get_blocks", GetBlocks);
     svr.Post("/get_latest_pool_info", GetLatestPoolHeights);
     svr.Post("/get_block_with_hash", GetBlockWithHash);
+    svr.Post("/transaction_receipt", TransactionReceipt);
     http_ip_ = ip;
     http_port_ = port;
     if (!svr.is_valid()) {
