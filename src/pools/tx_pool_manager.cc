@@ -113,10 +113,11 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
     auto& tx_msg = header.tx_proto();
     if (!IsUserTransaction(tx_msg.step())) {
         if (!msg_ptr->system_message) {
+            auto addr = security_->GetAddress(tx_msg.pubkey());
             SETH_DEBUG("pools message fierwall coming is system message, "
                 "step: %u, from: %s, to: %s", tx_msg.step(),
-                common::Encode::HexEncode(header.from()).c_str(), 
-                common::Encode::HexEncode(header.to()).c_str());
+                common::Encode::HexEncode(addr).c_str(), 
+                common::Encode::HexEncode(tx_msg.to()).c_str());
             return transport::kFirewallCheckError;
         }
 
