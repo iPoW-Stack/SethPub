@@ -1143,11 +1143,11 @@ static void GetBlockWithHash(const httplib::Request& req, httplib::Response& htt
 static void TransactionReceipt(const httplib::Request& req, httplib::Response& http_res) {
     nlohmann::json res_json;
     res_json["status"] = transport::kUnkonwn;
-    res_json["error"] = transport::MessageStatusToString(res_json["status"]);
+    res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
 
     if (!req.has_param("tx_hash")) {
         res_json["status"] = transport::kRequestInvalid;
-        res_json["error"] = std::string("not has tx hash param");
+        res_json["msg"] = std::string("not has tx hash param");
         http_res.set_content(res_json.dump(), "application/json");
         return;
     }
@@ -1156,15 +1156,15 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
     std::string res;
     if (prefix_db->GetTemporaryKv(std::string("tx") + tx_hash, &res)) {
         res_json["status"] = transport::kConsensusSuccess;
-        res_json["error"] = transport::MessageStatusToString(res_json["status"]);
+        res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
     } else {
         transport::MessagePtr msg_ptr = nullptr;
         if (http_handler->tx_msg_map().Get(tx_hash, msg_ptr)) {
             res_json["status"] = (int32_t)msg_ptr->handle_status.load();
-            res_json["error"] = transport::MessageStatusToString(res_json["status"]);
+            res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
         } else {
             res_json["status"] = transport::kNotExists;
-            res_json["error"] = transport::MessageStatusToString(res_json["status"]);
+            res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
         }
     }
     
