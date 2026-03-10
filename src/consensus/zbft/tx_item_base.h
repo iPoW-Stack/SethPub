@@ -90,7 +90,7 @@ protected:
         if (tx_info.has_tx_hash()) {
             block_tx->set_tx_hash(tx_info.tx_hash());
         } else {
-            block_tx->set_tx_hash(pools::GetTxMessageHash());
+            block_tx->set_tx_hash(pools::GetTxMessageHash(tx_info));
         }
 
         if (tx_info.step() == pools::protobuf::kContractCreate ||
