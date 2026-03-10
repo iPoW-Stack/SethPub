@@ -65,7 +65,7 @@ void BlsDkg::TimerMessage() {
             now_tm_us < (begin_time_us_ + kDkgPeriodUs * 4) &&
             now_tm_us > (begin_time_us_ + ver_offset_)) {
         SETH_WARN("now call send verify g2.");
-        // BroadcastVerfify();
+        BroadcastVerfify();
         has_broadcast_verify_ = true;
     }
 
@@ -692,44 +692,44 @@ void BlsDkg::BroadcastVerfify() try {
         return;
     }
 
-    if (!should_change_verfication_g2_) {
-        // std::string sec_key;
-        // if (!prefix_db_->GetSwapKey(
-        //         common::GlobalInfo::Instance()->network_id(),
-        //         local_member_index_,
-        //         prev_elect_height_,
-        //         local_member_index_,
-        //         local_member_index_,
-        //         &sec_key)) {
-        //     BLS_ERROR("get prev swap key failed: %d, %d, %d, %d, %lu",
-        //         local_member_index_, prev_elect_height_,
-        //         local_member_index_, local_member_index_, prev_elect_height_);
-        //     return;
-        // }
+    // if (!should_change_verfication_g2_) {
+    //     // std::string sec_key;
+    //     // if (!prefix_db_->GetSwapKey(
+    //     //         common::GlobalInfo::Instance()->network_id(),
+    //     //         local_member_index_,
+    //     //         prev_elect_height_,
+    //     //         local_member_index_,
+    //     //         local_member_index_,
+    //     //         &sec_key)) {
+    //     //     BLS_ERROR("get prev swap key failed: %d, %d, %d, %d, %lu",
+    //     //         local_member_index_, prev_elect_height_,
+    //     //         local_member_index_, local_member_index_, prev_elect_height_);
+    //     //     return;
+    //     // }
 
-        // bls::protobuf::LocalPolynomial local_poly;
-        // if (!prefix_db_->GetLocalPolynomial(security_, security_->GetAddress(), &local_poly)) {
-        //     SETH_ERROR("failed GetLocalPolynomial: %s",
-        //         common::Encode::HexEncode(security_->GetAddress()).c_str());
-        //     // assert(false);
-        //     return;
-        // }
+    //     // bls::protobuf::LocalPolynomial local_poly;
+    //     // if (!prefix_db_->GetLocalPolynomial(security_, security_->GetAddress(), &local_poly)) {
+    //     //     SETH_ERROR("failed GetLocalPolynomial: %s",
+    //     //         common::Encode::HexEncode(security_->GetAddress()).c_str());
+    //     //     // assert(false);
+    //     //     return;
+    //     // }
 
-        // if (local_poly.polynomial_size() == 0) {
-        //     assert(false);
-        //     return;
-        // }
+    //     // if (local_poly.polynomial_size() == 0) {
+    //     //     assert(false);
+    //     //     return;
+    //     // }
 
-        // auto local_polynomial = libff::alt_bn128_Fr(common::Encode::HexEncode(local_poly.polynomial(0)).c_str());
-        // for_common_pk_g2s_[local_member_index_] = local_polynomial * libff::alt_bn128_G2::one();
-        // prefix_db_->SaveSwapKey(
-        //     common::GlobalInfo::Instance()->network_id(),
-        //     local_member_index_, security_->GetAddress(), local_member_index_, sec_key);
-        valid_swapkey_set_.insert(local_member_index_);
-        ++valid_sec_key_count_;
-        has_swaped_keys_[local_member_index_] = true;
-        return;
-    }
+    //     // auto local_polynomial = libff::alt_bn128_Fr(common::Encode::HexEncode(local_poly.polynomial(0)).c_str());
+    //     // for_common_pk_g2s_[local_member_index_] = local_polynomial * libff::alt_bn128_G2::one();
+    //     // prefix_db_->SaveSwapKey(
+    //     //     common::GlobalInfo::Instance()->network_id(),
+    //     //     local_member_index_, security_->GetAddress(), local_member_index_, sec_key);
+    //     valid_swapkey_set_.insert(local_member_index_);
+    //     ++valid_sec_key_count_;
+    //     has_swaped_keys_[local_member_index_] = true;
+    //     return;
+    // }
 
     auto msg_ptr = std::make_shared<transport::TransportMessage>();
     auto& msg = msg_ptr->header;
@@ -742,18 +742,18 @@ void BlsDkg::BroadcastVerfify() try {
         return;
     }
 
-    CreateDkgMessage(msg_ptr);
-    SETH_WARN("brd verify g2 success local net: %u, local: %d,  %s, %s, hash64: %lu",
-        common::GlobalInfo::Instance()->network_id(),
-        local_member_index_,
-        common::Encode::HexEncode((*members_)[local_member_index_]->id).c_str(),
-        common::Encode::HexEncode(bls_msg.verify_brd().verify_vec(0).x_c0()).c_str(),
-        msg_ptr->header.hash64());
-#ifdef SETH_UNITTEST
-    ver_brd_msg_ = msg_ptr;
-#else
-    network::Route::Instance()->Send(msg_ptr);
-#endif
+//     CreateDkgMessage(msg_ptr);
+//     SETH_WARN("brd verify g2 success local net: %u, local: %d,  %s, %s, hash64: %lu",
+//         common::GlobalInfo::Instance()->network_id(),
+//         local_member_index_,
+//         common::Encode::HexEncode((*members_)[local_member_index_]->id).c_str(),
+//         common::Encode::HexEncode(bls_msg.verify_brd().verify_vec(0).x_c0()).c_str(),
+//         msg_ptr->header.hash64());
+// #ifdef SETH_UNITTEST
+//     ver_brd_msg_ = msg_ptr;
+// #else
+//     network::Route::Instance()->Send(msg_ptr);
+// #endif
 } catch (std::exception& e) {
     BLS_ERROR("catch error: %s", e.what());
 }
@@ -1093,25 +1093,25 @@ void BlsDkg::CreateContribution(uint32_t valid_n, uint32_t valid_t) {
     }
 
     std::vector<libff::alt_bn128_Fr> polynomial(valid_t);
-    int32_t change_idx = common::Random::RandomInt32() % valid_t;
+    // int32_t change_idx = common::Random::RandomInt32() % valid_t;
     libff::alt_bn128_G2 old_g2 = libff::alt_bn128_G2::zero();
     for (uint32_t i = 0; i < valid_t; ++i) {
         polynomial[i] = libff::alt_bn128_Fr(common::Encode::HexEncode(local_poly.polynomial(i)).c_str());
-        if (change_idx == (int32_t)i) {
-            old_g2 = polynomial[i] * libff::alt_bn128_G2::one();
-            polynomial[i] = libff::alt_bn128_Fr::random_element();
-            while (polynomial[i] == libff::alt_bn128_Fr::zero()) {
-                polynomial[i] = libff::alt_bn128_Fr::random_element();
-            }
-        }
+        // if (change_idx == (int32_t)i) {
+        //     old_g2 = polynomial[i] * libff::alt_bn128_G2::one();
+        //     polynomial[i] = libff::alt_bn128_Fr::random_element();
+        //     while (polynomial[i] == libff::alt_bn128_Fr::zero()) {
+        //         polynomial[i] = libff::alt_bn128_Fr::random_element();
+        //     }
+        // }
     }
 
-    auto new_g2 = polynomial[change_idx] * libff::alt_bn128_G2::one();
-    if (change_idx == 0) {
-        for_common_pk_g2s_[local_member_index_] = new_g2;
-    } else {
+    // auto new_g2 = polynomial[change_idx] * libff::alt_bn128_G2::one();
+    // if (change_idx == 0) {
+    //     for_common_pk_g2s_[local_member_index_] = new_g2;
+    // } else {
         for_common_pk_g2s_[local_member_index_] = polynomial[0] * libff::alt_bn128_G2::one();
-    }
+    // }
 
     auto dkg_instance = std::make_shared<libBLS::Dkg>(valid_t, valid_n);
     local_src_secret_key_contribution_ = dkg_instance->SecretKeyContribution(
@@ -1127,24 +1127,24 @@ void BlsDkg::CreateContribution(uint32_t valid_n, uint32_t valid_t) {
     g2_vec_.push_back(polynomial[0] * libff::alt_bn128_G2::one());
 #endif // SETH_UNITTEST
 
-    bls::protobuf::VerifyVecBrdReq bls_verify_req;
-    bls_verify_req.set_change_idx(change_idx);
-    bls::protobuf::VerifyVecItem& verify_item = *bls_verify_req.add_verify_vec();
-    verify_item.set_x_c0(common::Encode::HexDecode(
-        libBLS::ThresholdUtils::fieldElementToString(new_g2.X.c0)));
-    verify_item.set_x_c1(common::Encode::HexDecode(
-        libBLS::ThresholdUtils::fieldElementToString(new_g2.X.c1)));
-    verify_item.set_y_c0(common::Encode::HexDecode(
-        libBLS::ThresholdUtils::fieldElementToString(new_g2.Y.c0)));
-    verify_item.set_y_c1(common::Encode::HexDecode(
-        libBLS::ThresholdUtils::fieldElementToString(new_g2.Y.c1)));
-    verify_item.set_z_c0(common::Encode::HexDecode(
-        libBLS::ThresholdUtils::fieldElementToString(new_g2.Z.c0)));
-    verify_item.set_z_c1(common::Encode::HexDecode(
-        libBLS::ThresholdUtils::fieldElementToString(new_g2.Z.c1)));
+    // bls::protobuf::VerifyVecBrdReq bls_verify_req;
+    // bls_verify_req.set_change_idx(change_idx);
+    // bls::protobuf::VerifyVecItem& verify_item = *bls_verify_req.add_verify_vec();
+    // verify_item.set_x_c0(common::Encode::HexDecode(
+    //     libBLS::ThresholdUtils::fieldElementToString(new_g2.X.c0)));
+    // verify_item.set_x_c1(common::Encode::HexDecode(
+    //     libBLS::ThresholdUtils::fieldElementToString(new_g2.X.c1)));
+    // verify_item.set_y_c0(common::Encode::HexDecode(
+    //     libBLS::ThresholdUtils::fieldElementToString(new_g2.Y.c0)));
+    // verify_item.set_y_c1(common::Encode::HexDecode(
+    //     libBLS::ThresholdUtils::fieldElementToString(new_g2.Y.c1)));
+    // verify_item.set_z_c0(common::Encode::HexDecode(
+    //     libBLS::ThresholdUtils::fieldElementToString(new_g2.Z.c0)));
+    // verify_item.set_z_c1(common::Encode::HexDecode(
+    //     libBLS::ThresholdUtils::fieldElementToString(new_g2.Z.c1)));
     
-    auto str = bls_verify_req.SerializeAsString();
-    prefix_db_->AddBlsVerifyG2(security_->GetAddress(), bls_verify_req);
+    // auto str = bls_verify_req.SerializeAsString();
+    // prefix_db_->AddBlsVerifyG2(security_->GetAddress(), bls_verify_req);
     valid_swapkey_set_.insert(local_member_index_);
     ++valid_sec_key_count_;
 }
