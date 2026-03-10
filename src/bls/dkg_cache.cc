@@ -88,8 +88,9 @@ bool DkgCache::GetSwapKey(
     }
 
     if (secret_key_str != nullptr) {
-        *secret_key_str = iter->second;
+        *secret_key_str = tmp_secret_key_str;
     }
+    
     swap_keys_cache_[key] = tmp_secret_key_str;
     return true;
 }
