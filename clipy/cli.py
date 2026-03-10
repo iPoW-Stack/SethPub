@@ -3,16 +3,32 @@ import requests
 import hashlib
 import json
 import time
+from enum import IntEnum
+
 from Crypto.Hash import keccak
 # Using pure Python ecdsa library
 from ecdsa import SigningKey, SECP256k1, VerifyingKey
 from ecdsa.util import sigencode_string_canonize
+
+class MessageHandleStatus(IntEnum):
+    kConsensusSuccess = 0
+    kMessageHandle = 1
+    kMessageHandleError = 2
+    kTxAccept = 3
+    kTxInvalidSignature = 4
+    kTxInvalidAddress = 5
+    kTxPoolFullReject = 6
+    kTxUserNonceInvalid = 7
+    kUnknown = 8  # Fixed typo: Unkonwn -> Unknown
+    kRequestInvalid = 9
+    kNotExists = 10
 
 class SethClient:
     def __init__(self, host, port):
         self.base_url = f"http://{host}:{port}"
         self.tx_url = f"{self.base_url}/transaction"
         self.query_url = f"{self.base_url}/query_account"
+        self.transaction_receipt_url = f"{self.base_url}/transaction_receipt"
 
     def _uint64_to_bytes(self, val):
         return struct.pack('<Q', val)
@@ -86,6 +102,24 @@ class SethClient:
         k = keccak.new(digest_bits=256)
         k.update(msg)
         return k.digest()
+    
+    def transaction_receipt(self, tx_hash):
+        data = {
+            "tx_hash": tx_hash
+        }
+
+        print("[Client] Sending transaction_receipt...")
+        try:
+            resp = requests.post(self.transaction_receipt_url, data=data, timeout=5)
+            print(f"[Server Response] {resp.status_code}: {resp.text}")
+            if resp.status_code == 200:
+                res_json = json.loads(resp.text)
+                if res_json["status"] != MessageHandleStatus.kMessageHandle or res_json["status"] != MessageHandleStatus.kTxAccept:
+                    return True
+        except Exception as e:
+            print(f"[Error] Network error: {e}")
+
+        return False
 
     def send_transaction_auto(self, private_key_hex, to_hex, amount=0,
                               gas_limit=50000, gas_price=1, step=0, shard_id=0,
@@ -174,6 +208,10 @@ class SethClient:
 
         except Exception as e:
             print(f"[Error] Network error: {e}")
+            return None
+
+        return tx_hash
+
 
 # ==========================================
 # Run Test
@@ -191,8 +229,17 @@ if __name__ == "__main__":
     client = SethClient(HOST, PORT)
 
     # Call automatic Nonce interface
-    client.send_transaction_auto(
+    tx_hash = client.send_transaction_auto(
         private_key_hex=MY_PRIVATE_KEY,
         to_hex=TO_ADDR,
         amount=5000
     )
+
+    if tx_hash is not None:
+        while True:
+            if client.transaction_receipt(tx_hash):
+                break
+
+            time.sleep(1)
+        
+
