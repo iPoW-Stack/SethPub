@@ -237,7 +237,7 @@ if __name__ == "__main__":
 
     if tx_hash is not None:
         while True:
-            if client.transaction_receipt(tx_hash):
+            if not client.transaction_receipt(tx_hash):
                 break
 
             time.sleep(1)
