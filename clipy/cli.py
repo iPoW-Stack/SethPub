@@ -114,12 +114,12 @@ class SethClient:
             print(f"[Server Response] {resp.status_code}: {resp.text}")
             if resp.status_code == 200:
                 res_json = json.loads(resp.text)
-                if res_json["status"] != MessageHandleStatus.kMessageHandle and res_json["status"] != MessageHandleStatus.kTxAccept:
-                    return True
+                if res_json["status"] == MessageHandleStatus.kMessageHandle or res_json["status"] != MessageHandleStatus.kTxAccept:
+                    return False
         except Exception as e:
             print(f"[Error] Network error: {e}")
 
-        return False
+        return True
 
     def send_transaction_auto(self, private_key_hex, to_hex, amount=0,
                               gas_limit=50000, gas_price=1, step=0, shard_id=0,
