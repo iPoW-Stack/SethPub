@@ -28,14 +28,6 @@ enum InitErrorCode {
     kInitError = 1,
 };
 
-enum TxStatus : int32_t {
-    kConsensusSucess = 0,
-    kPending = 1,
-    kInvalid = 2,
-    kInvalidParam = 3,
-    kUnknownError = 4,
-};
-
 struct RotatitionVersionInfo {
     std::set<uint32_t> handled_set;
     std::map<uint32_t, uint32_t> count_map;

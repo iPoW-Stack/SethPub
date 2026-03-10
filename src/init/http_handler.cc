@@ -208,7 +208,6 @@ static int CreateTransactionWithAttr(
         }
 
         new_tx->set_sign(sign);
-        new_tx->set_tx_hash(tx_hash);
     } catch (const std::exception& e) {
         SETH_ERROR("exception when create transaction: %s", e.what());
         return kSignatureInvalid;
@@ -338,6 +337,7 @@ static void HttpTransaction(const httplib::Request& req, httplib::Response& http
     http_handler->net_handler()->NewHttpServer(msg_ptr);
     std::string res = std::string("ok");
     http_res.set_content(res, "text/plain");
+    http_handler->tx_msg_map().Push(msg_ptr->msg_hash, msg_ptr);
     SETH_WARN("http transaction success %s, %s, nonce: %lu", common::Encode::HexEncode(
             http_handler->security_ptr()->GetAddress(common::Encode::HexDecode(frompk))).c_str(), to, nonce);
 }
@@ -1146,20 +1146,34 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
     try {
         req_json = nlohmann::json::parse(req.body);
     } catch (const std::exception& e) {
-        res_json["status"] = kInvalidParam;
-        res_json["error"] = "kInvalidParam";
+        res_json["status"] = transport::kRequestInvalid;
+        res_json["error"] = transport::MessageStatusToString(res_json["status"]);
         http_res.set_content(res_json.dump(), "application/json");
         return;
     }
 
     if (!req_json.contains("tx_hash")) {
-        res_json["status"] = kInvalidParam;
-        res_json["error"] = "kInvalidParam";
+        res_json["status"] = transport::kRequestInvalid;
+        res_json["error"] = transport::MessageStatusToString(res_json["status"]);
         http_res.set_content(res_json.dump(), "application/json");
         return;
     }
 
-    auto tx_hash = req_json["tx_hash"].get<std::string>();
+    std::string res;
+    if (prefix_db->GetTemporaryKv(std:;string("tx") + req_json["tx_hash"].get<std::string>(), &res)) {
+        res_json["status"] = transport::kConsensusSuccess;
+        res_json["error"] = transport::MessageStatusToString(res_json["status"]);
+    } else {
+        transport::MessagePtr msg_ptr = nullptr;
+        if (http_handler->tx_msg_map().Get(req_json["tx_hash"].get<std::string>(), &msg_ptr)) {
+            res_json["status"] = msg_ptr->handle_status;
+            res_json["error"] = transport::MessageStatusToString(res_json["status"]);
+        } else {
+            res_json["status"] = transport::kNotExists;
+            res_json["error"] = transport::MessageStatusToString(res_json["status"]);
+        }
+    }
+    
     http_res.set_content(res_json.dump(), "application/json");
 }
 

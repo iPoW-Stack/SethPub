@@ -95,7 +95,7 @@ int RootToTxItem::HandleTx(
     acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
     acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
     if (block_tx.status() == kConsensusSuccess) {
-        zjc_host.SaveKeyValue(block_tx.from(), block_tx.tx_hash(), "1");
+        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "1");
         auto iter = zjc_host.cross_to_map_.find(to_item.des());
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
         if (iter == zjc_host.cross_to_map_.end()) {
