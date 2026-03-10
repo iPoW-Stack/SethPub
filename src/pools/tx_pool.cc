@@ -323,7 +323,7 @@ void TxPool::GetTxSyncToLeader(
             }
 
             if (tx_ptr->tx_info->to() != tx_ptr->address_info->addr()) {
-                SETH_FATAL("invalid address pool: %u, success add system tx nonce addr: %s, to: %s, "
+                SETH_WARN("invalid address pool: %u, success add system tx nonce addr: %s, to: %s, "
                     "addr nonce: %lu, tx nonce: %lu, unique hash: %s, step: %u",
                     pool_index_,
                     common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
