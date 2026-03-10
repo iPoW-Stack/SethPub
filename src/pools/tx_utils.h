@@ -234,17 +234,6 @@ struct StatisticInfoItem {
 };
 
 static inline std::string GetTxMessageHash(const pools::protobuf::TxMessage& tx_info) {
-    // std::string serialized;
-    // google::protobuf::io::StringOutputStream string_stream(&serialized);
-    // google::protobuf::io::CodedOutputStream coded_output(&string_stream);
-    // coded_output.SetSerializationDeterministic(true); 
-
-    // if (!tx_info.SerializePartialToCodedStream(&coded_output)) {
-    //     return "";
-    // }
-
-    // coded_output.Trim();
-
     std::string message;
     message.reserve(tx_info.ByteSizeLong());
     uint64_t nonce = tx_info.nonce();
@@ -282,22 +271,6 @@ static inline std::string GetTxMessageHash(const pools::protobuf::TxMessage& tx_
         }
     }
 
-    // SETH_DEBUG("nonce: %lu, pk: %s, to: %s, amount: %lu, gas limit: %lu, gas price: %lu, "
-    //     "step: %d, contract code: %s, input: %s, prepayment: %lu, key: %s, value: %s", 
-    //     tx_info.nonce(),
-    //     common::Encode::HexEncode(tx_info.pubkey()).c_str(),
-    //     common::Encode::HexEncode(tx_info.to()).c_str(),
-    //     tx_info.amount(),
-    //     tx_info.gas_limit(),
-    //     tx_info.gas_price(),
-    //     (int32_t)tx_info.step(),
-    //     common::Encode::HexEncode(tx_info.contract_code()).c_str(),
-    //     common::Encode::HexEncode(tx_info.contract_input()).c_str(),
-    //     tx_info.contract_prepayment(),
-    //     common::Encode::HexEncode(tx_info.key()).c_str(),
-    //     common::Encode::HexEncode(tx_info.value()).c_str());
-
-    // SETH_DEBUG("message: %s", common::Encode::HexEncode(message).c_str());
     return common::Hash::keccak256(message);
 }
 

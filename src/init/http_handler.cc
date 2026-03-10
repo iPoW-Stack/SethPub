@@ -208,6 +208,7 @@ static int CreateTransactionWithAttr(
         }
 
         new_tx->set_sign(sign);
+        new_tx->set_tx_hash(tx_hash);
     } catch (const std::exception& e) {
         SETH_ERROR("exception when create transaction: %s", e.what());
         return kSignatureInvalid;
@@ -1138,6 +1139,32 @@ static void GetBlockWithHash(const httplib::Request& req, httplib::Response& htt
     http_res.set_content(res_json.dump(), "application/json");
 }
 
+static void TransactionReceipt(const httplib::Request& req, httplib::Response& http_res) {
+    nlohmann::json res_json;
+    res_json["status"] = kUnknownError;
+    nlohmann::json req_json;
+    try {
+        req_json = nlohmann::json::parse(req.body);
+    } catch (const std::exception& e) {
+        res_json["status"] = kInvalidParam;
+        res_json["error"] = "kInvalidParam";
+        http_res.set_content(res_json.dump(), "application/json");
+        return;
+    }
+
+    if (!req_json.contains("addr") || !req_json.contains["nonce"]) {
+        res_json["status"] = kInvalidParam;
+        res_json["error"] = "kInvalidParam";
+        http_res.set_content(res_json.dump(), "application/json");
+        return;
+    }
+
+    auto addr = req_json["addr"].get<std::string>();
+    auto nonce = req_json["nonce"].get<uint64_t>();
+
+    http_res.set_content(res_json.dump(), "application/json");
+}
+
 HttpHandler::HttpHandler() {
     http_handler = this;
 }
@@ -1187,6 +1214,7 @@ void HttpHandler::Init(
     svr.Post("/get_blocks", GetBlocks);
     svr.Post("/get_latest_pool_info", GetLatestPoolHeights);
     svr.Post("/get_block_with_hash", GetBlockWithHash);
+    svr.Post("/transaction_receipt", TransactionReceipt);
     http_ip_ = ip;
     http_port_ = port;
     if (!svr.is_valid()) {
