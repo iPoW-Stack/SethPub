@@ -73,7 +73,7 @@ void BlsDkg::TimerMessage() {
             now_tm_us < (begin_time_us_ + kDkgPeriodUs * 7) &&
             now_tm_us >(begin_time_us_ + swap_offset_)) {
         SETH_WARN("now call send swap sec key.");
-        // SwapSecKey();
+        SwapSecKey();
         has_broadcast_swapkey_ = true;
     }
 
@@ -768,7 +768,7 @@ void BlsDkg::SwapSecKey() try {
     auto& msg = msg_ptr->header;
     auto& bls_msg = *msg.mutable_bls_proto();
     auto swap_req = bls_msg.mutable_swap_req();
-    if (should_change_verfication_g2_) {
+    // if (should_change_verfication_g2_) {
         for (uint32_t i = 0; i < member_count_; ++i) {
             auto swap_item = swap_req->add_keys();
             swap_item->set_sec_key("");
@@ -792,7 +792,7 @@ void BlsDkg::SwapSecKey() try {
             swap_item->set_sec_key(seckey);
             swap_item->set_sec_key_len(seckey_len);
         }
-    }
+    // }
 
     CreateDkgMessage(msg_ptr);
     SETH_WARN("success send swap seckey request local member index: %d, local net: %u, hash64: %lu",
