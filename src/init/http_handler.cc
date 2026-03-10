@@ -1141,7 +1141,8 @@ static void GetBlockWithHash(const httplib::Request& req, httplib::Response& htt
 
 static void TransactionReceipt(const httplib::Request& req, httplib::Response& http_res) {
     nlohmann::json res_json;
-    res_json["status"] = kUnknownError;
+    res_json["status"] = transport::kUnkonwn;
+    res_json["error"] = transport::MessageStatusToString(res_json["status"]);
     nlohmann::json req_json;
     try {
         req_json = nlohmann::json::parse(req.body);
@@ -1165,7 +1166,7 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
         res_json["error"] = transport::MessageStatusToString(res_json["status"]);
     } else {
         transport::MessagePtr msg_ptr = nullptr;
-        if (http_handler->tx_msg_map().Get(req_json["tx_hash"].get<std::string>(), &msg_ptr)) {
+        if (http_handler->tx_msg_map().Get(req_json["tx_hash"].get<std::string>(), msg_ptr)) {
             res_json["status"] = (int32_t)msg_ptr->handle_status.load();
             res_json["error"] = transport::MessageStatusToString(res_json["status"]);
         } else {
