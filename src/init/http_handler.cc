@@ -337,7 +337,7 @@ static void HttpTransaction(const httplib::Request& req, httplib::Response& http
     http_handler->net_handler()->NewHttpServer(msg_ptr);
     std::string res = std::string("ok");
     http_res.set_content(res, "text/plain");
-    http_handler->tx_msg_map().Push(msg_ptr->msg_hash, msg_ptr);
+    http_handler->tx_msg_map().Put(msg_ptr->msg_hash, msg_ptr);
     SETH_WARN("http transaction success %s, %s, nonce: %lu", common::Encode::HexEncode(
             http_handler->security_ptr()->GetAddress(common::Encode::HexDecode(frompk))).c_str(), to, nonce);
 }
@@ -1160,13 +1160,13 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
     }
 
     std::string res;
-    if (prefix_db->GetTemporaryKv(std:;string("tx") + req_json["tx_hash"].get<std::string>(), &res)) {
+    if (prefix_db->GetTemporaryKv(std::string("tx") + req_json["tx_hash"].get<std::string>(), &res)) {
         res_json["status"] = transport::kConsensusSuccess;
         res_json["error"] = transport::MessageStatusToString(res_json["status"]);
     } else {
         transport::MessagePtr msg_ptr = nullptr;
         if (http_handler->tx_msg_map().Get(req_json["tx_hash"].get<std::string>(), &msg_ptr)) {
-            res_json["status"] = msg_ptr->handle_status;
+            res_json["status"] = (int32_t)msg_ptr->handle_status.load();
             res_json["error"] = transport::MessageStatusToString(res_json["status"]);
         } else {
             res_json["status"] = transport::kNotExists;
