@@ -114,7 +114,7 @@ class SethClient:
             print(f"[Server Response] {resp.status_code}: {resp.text}")
             if resp.status_code == 200:
                 res_json = json.loads(resp.text)
-                if res_json["status"] != MessageHandleStatus.kMessageHandle or res_json["status"] != MessageHandleStatus.kTxAccept:
+                if res_json["status"] != MessageHandleStatus.kMessageHandle and res_json["status"] != MessageHandleStatus.kTxAccept:
                     return True
         except Exception as e:
             print(f"[Error] Network error: {e}")
