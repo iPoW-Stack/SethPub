@@ -86,6 +86,7 @@ int FromTxItem::HandleTx(
     }
 
     if (block_tx.status() == kConsensusSuccess) {
+        zjc_host.SaveKeyValue(block_tx.from(), block_tx.tx_hash(), "1");
         zjc_host.MergeToPrev();
         auto iter = pre_zjc_host.cross_to_map_.find(block_tx.to());
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;

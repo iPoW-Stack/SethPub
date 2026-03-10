@@ -34,6 +34,7 @@ protected:
             zjcvm::ZjchainHost& zjc_host,
             hotstuff::BalanceAndNonceMap& acc_balance_map,
             block::protobuf::BlockTx& block_tx) {
+        zjc_host.SaveKeyValue(block_tx.from(), block_tx.tx_hash(), "1");
         return consensus::kConsensusSuccess;
     }
 
@@ -89,9 +90,9 @@ protected:
         if (tx_info.has_tx_hash()) {
             block_tx->set_tx_hash(tx_info.tx_hash());
         } else {
-            block_tx->set_tx_hash("");
+            block_tx->set_tx_hash(pools::GetTxMessageHash());
         }
-        
+
         if (tx_info.step() == pools::protobuf::kContractCreate ||
             tx_info.step() == pools::protobuf::kCreateLibrary||
             tx_info.step() == pools::protobuf::kContractGasPrepayment ||

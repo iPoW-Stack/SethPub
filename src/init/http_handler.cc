@@ -1152,16 +1152,14 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
         return;
     }
 
-    if (!req_json.contains("addr") || !req_json.contains["nonce"]) {
+    if (!req_json.contains("tx_hash")) {
         res_json["status"] = kInvalidParam;
         res_json["error"] = "kInvalidParam";
         http_res.set_content(res_json.dump(), "application/json");
         return;
     }
 
-    auto addr = req_json["addr"].get<std::string>();
-    auto nonce = req_json["nonce"].get<uint64_t>();
-
+    auto tx_hash = req_json["tx_hash"].get<std::string>();
     http_res.set_content(res_json.dump(), "application/json");
 }
 

@@ -310,6 +310,7 @@ int ContractCall::HandleTx(
         new_contract_balance,
         (etime - btime));
     if (block_tx.status() == kConsensusSuccess) {
+        zjc_host.SaveKeyValue(block_tx.from(), block_tx.tx_hash(), "1");
         zjc_host.MergeToPrev();
         for (auto exists_iter = cross_to_map_.begin(); exists_iter != cross_to_map_.end(); ++exists_iter) {
             auto iter = pre_zjc_host.cross_to_map_.find(exists_iter->first);

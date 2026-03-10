@@ -77,6 +77,7 @@ public:
 
         elect_statistic.set_nonce(block_tx.nonce());
         InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
+        zjc_host.SaveKeyValue(block_tx.from(), block_tx.tx_hash(), "1");
         zjc_host.SaveKeyValue(block_tx.to(), unique_hash, tx_info->value());
         block_tx.set_unique_hash(unique_hash);
         SETH_WARN("success call statistic tx pool: %d, view: %lu, "
