@@ -115,7 +115,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
         if (!msg_ptr->system_message) {
             auto addr = security_->GetAddress(tx_msg.pubkey());
             SETH_DEBUG("pools message fierwall coming is system message, "
-                "step: %u, from: %s, to: %s", tx_msg.step(),
+                "step: %u, from: %s, to: %s", (uint32_t)tx_msg.step(),
                 common::Encode::HexEncode(addr).c_str(), 
                 common::Encode::HexEncode(tx_msg.to()).c_str());
             return transport::kFirewallCheckError;
