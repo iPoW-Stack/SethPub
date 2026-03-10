@@ -322,7 +322,19 @@ void TxPool::GetTxSyncToLeader(
                 continue;
             }
 
-            assert(tx_ptr->tx_info->to() == tx_ptr->address_info->addr());
+            if (tx_ptr->tx_info->to() != tx_ptr->address_info->addr()) {
+                SETH_FATAL("invalid address pool: %u, success add system tx nonce addr: %s, to: %s, "
+                    "addr nonce: %lu, tx nonce: %lu, unique hash: %s, step: %u",
+                    pool_index_,
+                    common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
+                    common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
+                    tx_ptr->address_info->nonce(), 
+                    tx_ptr->tx_info->nonce(),
+                    common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(),
+                    (int32_t)tx_ptr->tx_info->step());
+                continue;
+            }
+
             tx_map_[tx_ptr->tx_info->to()][tx_ptr->tx_info->nonce()] = tx_ptr;
             SETH_DEBUG("pool: %u, success add system tx nonce addr: %s, to: %s, "
                 "addr nonce: %lu, tx nonce: %lu, unique hash: %s, step: %u",
