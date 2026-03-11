@@ -266,7 +266,7 @@ if __name__ == "__main__":
     print("[Step 4] Querying message...")
     selector_get = get_selector("getMessage()")
     # 注意：getMessage() 没有参数，input 只有 selector
-    raw_output = client.query_contract(MY_ADDR, TARGET_CONTRACT, selector_get)
+    raw_output = client.query_contract(client.get_address(MY_PK), TARGET_CONTRACT, selector_get)
     
     if raw_output:
         # 去掉可能存在的 0x 前缀并解码
