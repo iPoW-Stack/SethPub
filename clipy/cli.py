@@ -6,7 +6,7 @@ import time
 from enum import IntEnum
 from solcx import compile_source, install_solc
 import eth_abi
-from Crypto.Hash import keccak
+from eth_utils import keccak, to_checksum_address
 from ecdsa import SigningKey, SECP256k1
 from ecdsa.util import sigencode_string_canonize
 
@@ -127,7 +127,7 @@ class SethClient:
                 resp = requests.post(self.receipt_url, data={"tx_hash": tx_hash}, timeout=2)
                 if resp.status_code == 200:
                     status = resp.json().get("status")
-                    if status in [MessageHandleStatus.kMessageHandle, MessageHandleStatus.kTxAccept]:
+                    if status not in [MessageHandleStatus.kMessageHandle, MessageHandleStatus.kTxAccept]:
                         return True
             except: pass
             time.sleep(1)
@@ -154,11 +154,20 @@ def get_selector(signature):
     k.update(signature.encode('utf-8'))
     return k.digest()[:4].hex()
 
+def calc_create2_address(sender, salt, bytecode):
+    prefix = bytes.fromhex("ff")
+    sender_bytes = bytes.fromhex(sender)
+    salt_bytes = bytes.fromhex(salt)
+    bytecode_hash = keccak(bytes.fromhex(bytecode))
+
+    raw_address = keccak(prefix + sender_bytes + salt_bytes + bytecode_hash)
+    return to_checksum_address(raw_address[12:].hex())[2:].lower()
+
 # ==========================================
 # 完整闭环测试
 # ==========================================
 if __name__ == "__main__":
-    client = SethClient("136.110.63.32", 23014)
+    client = SethClient("35.197.170.240", 23001)
     MY_PK = "c75f8d9b2a6bc0fe68eac7fef67c6b6f7c4f85163d58829b59110ff9e9210848"
     OTHER_ADDR = "1234567890abcdef1234567890abcdef12345678"
 
@@ -178,7 +187,7 @@ if __name__ == "__main__":
         function register(string calldata _did, string calldata _loc, uint8 _mod) external {
             records[_did] = Record(_did, _loc, _mod);
         }
-        
+
         function get(string calldata _did) external view returns (string memory, string memory, uint8) {
             Record memory r = records[_did];
             return (r.did, r.loc, r.mod);
@@ -188,12 +197,12 @@ if __name__ == "__main__":
     print("[Task 2] Compiling and Deploying contract...")
     interface = compile_contract(contract_source)
     
+    CONTRACT_ADDR = calc_create2_address(client.get_address(MY_PK), "00", interface['bin'])
     # 部署交易 (to 为零地址)
-    tx_deploy = client.send_transaction_auto(MY_PK, "0"*40, contract_code=interface['bin'], gas_limit=3000000)
-    client.wait_for_receipt(tx_deploy)
+    tx_deploy = client.send_transaction_auto(MY_PK, CONTRACT_ADDR, step=6, contract_code=interface['bin'], gas_limit=3000000)
+    client.wait_for_receipt(tx_deploy, timeout=60)
     
     # 注意：实际需从 receipt 中解析 contract_address，此处演示硬编码或预测
-    CONTRACT_ADDR = OTHER_ADDR # 需替换为实际部署后的合约地址
 
     # --- 3. 调用合约写入 (Execute) ---
     print("[Task 3] Writing to contract...")
@@ -201,8 +210,8 @@ if __name__ == "__main__":
     sel_reg = get_selector("register(string,string,uint8)")
     encoded_input = sel_reg + eth_abi.encode(['string', 'string', 'uint8'], [did_key, "ipfs://location", 1]).hex()
     
-    tx_reg = client.send_transaction_auto(MY_PK, CONTRACT_ADDR, input_hex=encoded_input, gas_limit=1000000)
-    if client.wait_for_receipt(tx_reg):
+    tx_reg = client.send_transaction_auto(MY_PK, CONTRACT_ADDR, step=8, input_hex=encoded_input, gas_limit=1000000)
+    if client.wait_for_receipt(tx_reg, timeout=60):
         print("✓ Data registered.")
 
     # --- 4. 调用合约查询 (Query) ---
