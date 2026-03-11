@@ -368,7 +368,7 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
     }
 
     if (bls_msg.swap_req().keys_size() == 0) {
-        use prev swap keys
+        // use prev swap keys
         std::string sec_key;
         if (!dkg_cache_->GetSwapKey(
                 common::GlobalInfo::Instance()->network_id(),
