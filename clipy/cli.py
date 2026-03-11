@@ -93,8 +93,10 @@ class SethClient:
         sk = SigningKey.from_string(bytes.fromhex(private_key_hex), curve=SECP256k1)
         pubkey_hex = sk.verifying_key.to_string("uncompressed").hex()
         my_addr = self.get_address(private_key_hex)
-        
-        nonce = self.get_nonce(my_addr) + 1
+        if step == 8:
+            my_addr = to_hex + my_addr
+            nonce = self.get_nonce(my_addr) + 1
+            
         tx_hash = self.compute_hash(nonce, pubkey_hex, to_hex, amount, gas_limit, gas_price, 
                                     step, contract_code, input_hex, prepayment, key, val)
 
@@ -215,7 +217,7 @@ if __name__ == "__main__":
     CONTRACT_ADDR = calc_create2_address(client.get_address(MY_PK), "00", interface['bin'])
     print(f"✓ Predicted Address: {CONTRACT_ADDR}")
 
-    tx_deploy = client.send_transaction_auto(MY_PK, CONTRACT_ADDR, step=6, contract_code=interface['bin'], gas_limit=3000000)
+    tx_deploy = client.send_transaction_auto(MY_PK, CONTRACT_ADDR, step=6, contract_code=interface['bin'], prepayment=10000000, gas_limit=3000000)
     if client.wait_for_receipt(tx_deploy, timeout=60):
         print("✓ Deployment success.")
 
