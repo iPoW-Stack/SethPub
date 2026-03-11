@@ -144,7 +144,7 @@ class SethClient:
         try:
             resp = requests.post(self.query_contract_url, data={"from": from_hex, "address": to_hex, "input": input_hex}, timeout=5)
             if resp.status_code == 200:
-                return resp.json().get("output", "")
+                return resp.text
         except: pass
         return None
 
