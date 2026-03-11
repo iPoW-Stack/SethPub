@@ -666,27 +666,26 @@ bool BlsDkg::CheckRecomputeG2s(
 }
 
 libff::alt_bn128_G2 BlsDkg::GetVerifyG2FromDb(uint32_t peer_mem_index, uint32_t* changed_idx) {
-    // bls::protobuf::VerifyVecBrdReq req;
-    // auto res = dkg_cache_->GetBlsVerifyG2((*members_)[peer_mem_index]->id, &req);
-    // if (!res) {
-    //     SETH_WARN("get verify g2 failed local: %d, %lu, %u",
-    //         local_member_index_, elect_hegiht_, peer_mem_index);
-    //     return libff::alt_bn128_G2::zero();
-    // }
+    bls::protobuf::VerifyVecBrdReq req;
+    auto res = dkg_cache_->GetBlsVerifyG2((*members_)[peer_mem_index]->id, &req);
+    if (!res) {
+        SETH_WARN("get verify g2 failed local: %d, %lu, %u",
+            local_member_index_, elect_hegiht_, peer_mem_index);
+        return libff::alt_bn128_G2::zero();
+    }
 
-    // auto& item = req.verify_vec(0);
-    // auto x_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c0()).c_str());
-    // auto x_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c1()).c_str());
-    // auto x_coord = libff::alt_bn128_Fq2(x_c0, x_c1);
-    // auto y_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c0()).c_str());
-    // auto y_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c1()).c_str());
-    // auto y_coord = libff::alt_bn128_Fq2(y_c0, y_c1);
-    // auto z_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c0()).c_str());
-    // auto z_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c1()).c_str());
-    // auto z_coord = libff::alt_bn128_Fq2(z_c0, z_c1);
-    // *changed_idx = req.change_idx();
-    // return libff::alt_bn128_G2(x_coord, y_coord, z_coord);
-    return libff::alt_bn128_G2::zero();
+    auto& item = req.verify_vec(0);
+    auto x_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c0()).c_str());
+    auto x_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c1()).c_str());
+    auto x_coord = libff::alt_bn128_Fq2(x_c0, x_c1);
+    auto y_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c0()).c_str());
+    auto y_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c1()).c_str());
+    auto y_coord = libff::alt_bn128_Fq2(y_c0, y_c1);
+    auto z_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c0()).c_str());
+    auto z_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c1()).c_str());
+    auto z_coord = libff::alt_bn128_Fq2(z_c0, z_c1);
+    *changed_idx = req.change_idx();
+    return libff::alt_bn128_G2(x_coord, y_coord, z_coord);
 }
 
 void BlsDkg::BroadcastVerfify() try {
