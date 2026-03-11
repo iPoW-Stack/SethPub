@@ -4,6 +4,7 @@ import hashlib
 import json
 import time
 from enum import IntEnum
+import solcx
 from solcx import compile_source, install_solc
 import eth_abi
 
@@ -147,11 +148,40 @@ class SethClient:
         except: pass
         return None
 
+def install_solc_versions():
+    """安装多个solc版本"""
+    try:
+        # 定义要安装的版本
+        versions = ["0.8.30"]
+        for version in versions:
+            try:
+                solcx.install_solc(version)
+            except Exception as e:
+                return False
+
+        # 设置默认版本
+        solcx.set_solc_version("0.8.30")
+
+    except Exception as e:
+        return False
+    
 # --- 全局编译工具 ---
-def compile_contract(source):
-    compiled = compile_source(source, output_values=['abi', 'bin'], solc_version='0.8.30', 
-                             via_ir=True, optimize=True, optimize_runs=200)
-    return compiled.popitem()[1]
+def compile_contract(source_code):
+    compiler_params = {
+        "evm_version": 'shanghai',
+        "optimize": True,
+        "optimize_runs": 200,
+        "via_ir": True,           # 如果有需要可开启
+    }
+
+    install_solc_versions()
+    compiled_sol = solcx.compile_source(
+        source_code,
+        output_values=['abi', 'bin'],
+        **compiler_params
+    )
+
+    return compiled_sol.popitem()[1]
 
 def get_selector(signature):
     k = keccak.new(digest_bits=256)
