@@ -8,13 +8,13 @@ import solcx
 from solcx import compile_source, install_solc
 import eth_abi
 
-# 修复：统一使用 Crypto.Hash 中的 keccak 逻辑，避免与 eth_utils 冲突
+# Fix: Uniformly use keccak logic from Crypto.Hash to avoid conflicts with eth_utils
 from Crypto.Hash import keccak
 from eth_utils import to_checksum_address
 from ecdsa import SigningKey, SECP256k1
 from ecdsa.util import sigencode_string_canonize
 
-# 预设环境
+# Preset environment
 install_solc('0.8.30')
 
 class MessageHandleStatus(IntEnum):
@@ -38,7 +38,7 @@ class SethClient:
         self.receipt_url = f"{self.base_url}/transaction_receipt"
         self.query_contract_url = f"{self.base_url}/query_contract"
 
-    # --- 工具函数 ---
+    # --- Utility Functions ---
     def _uint64_to_bytes(self, val):
         return struct.pack('<Q', val)
 
@@ -47,12 +47,12 @@ class SethClient:
         return bytes.fromhex(hex_str)
 
     def get_address(self, private_key_hex):
-        """从私钥推导地址"""
+        """Derive address from private key"""
         if private_key_hex.startswith('0x'): private_key_hex = private_key_hex[2:]
         sk = SigningKey.from_string(bytes.fromhex(private_key_hex), curve=SECP256k1)
-        pub_key = sk.verifying_key.to_string("uncompressed")[1:] # 去除 04 前缀
+        pub_key = sk.verifying_key.to_string("uncompressed")[1:] # Remove 04 prefix
         
-        # 修复：使用 keccak.new 替代模块直接调用
+        # Fix: Use keccak.new instead of direct module call
         k = keccak.new(digest_bits=256)
         k.update(pub_key)
         return k.digest()[-20:].hex()
@@ -81,7 +81,7 @@ class SethClient:
             msg.extend(key.encode('utf-8'))
             if val: msg.extend(val.encode('utf-8'))
         
-        # 修复：使用 keccak.new
+        # Fix: Use keccak.new
         k = keccak.new(digest_bits=256)
         k.update(msg)
         return k.digest()
@@ -116,11 +116,11 @@ class SethClient:
 
         try:
             resp = requests.post(self.tx_url, data=data, timeout=5)
-            print(f"transfer result: ${resp.text}")
+            print(f"transfer result: {resp.text}")
             if "SignatureInvalid" in resp.text:
                 data["sign_v"] = "1"
                 resp = requests.post(self.tx_url, data=data, timeout=5)
-                print(f"1 transfer result: ${resp.text}")
+                print(f"1 transfer result: {resp.text}")
             return tx_hash.hex()
         except Exception as e:
             print(f"Send TX Error: {e}")
@@ -149,9 +149,9 @@ class SethClient:
         return None
 
 def install_solc_versions():
-    """安装多个solc版本"""
+    """Install multiple solc versions"""
     try:
-        # 定义要安装的版本
+        # Define versions to install
         versions = ["0.8.30"]
         for version in versions:
             try:
@@ -159,19 +159,19 @@ def install_solc_versions():
             except Exception as e:
                 return False
 
-        # 设置默认版本
+        # Set default version
         solcx.set_solc_version("0.8.30")
 
     except Exception as e:
         return False
     
-# --- 全局编译工具 ---
+# --- Global Compilation Utilities ---
 def compile_contract(source_code):
     compiler_params = {
         "evm_version": 'shanghai',
         "optimize": True,
         "optimize_runs": 200,
-        "via_ir": True,           # 如果有需要可开启
+        "via_ir": True,           # Enable via_ir if necessary
     }
 
     install_solc_versions()
@@ -189,42 +189,42 @@ def get_selector(signature):
     return k.digest()[:4].hex()
 
 def calc_create2_address(sender, salt_hex, bytecode_hex):
-    # 修复：使用 keccak.new 规范计算过程
+    # Fix: Use keccak.new to standardize the calculation process
     prefix = bytes.fromhex("ff")
     sender_bytes = bytes.fromhex(sender.replace('0x', ''))
     
-    # 修复：salt 必须补齐为 32 字节 (64位 hex)
+    # Fix: Salt must be padded to 32 bytes (64 hex characters)
     salt_bytes = bytes.fromhex(salt_hex.replace('0x', '').zfill(64))
     bytecode_bytes = bytes.fromhex(bytecode_hex.replace('0x', ''))
 
-    # 计算 bytecode 的哈希
+    # Calculate hash of the bytecode
     k_code = keccak.new(digest_bits=256)
     k_code.update(bytecode_bytes)
     code_hash = k_code.digest()
 
-    # 计算最终地址哈希
+    # Calculate final address hash
     k_final = keccak.new(digest_bits=256)
     k_final.update(prefix + sender_bytes + salt_bytes + code_hash)
     raw_address = k_final.digest()
     
-    # 返回后 20 字节
+    # Return the last 20 bytes
     return raw_address[-20:].hex().lower()
 
 # ==========================================
-# 完整闭环测试
+# Full Lifecycle Test
 # ==========================================
 if __name__ == "__main__":
     client = SethClient("35.197.170.240", 23001)
     MY_PK = "c75f8d9b2a6bc0fe68eac7fef67c6b6f7c4f85163d58829b59110ff9e9210848"
     OTHER_ADDR = "1234567890abcdef1234567890abcdef12345678"
 
-    # --- 1. 转账 ---
+    # --- 1. Transfer ---
     print("[Task 1] Sending standard transfer...")
     tx_transfer = client.send_transaction_auto(MY_PK, OTHER_ADDR, amount=1000)
     if client.wait_for_receipt(tx_transfer):
         print("✓ Transfer success.")
 
-    # 1. 编译合约
+    # --- 2. Compile Contract ---
     contract_source = """
     // SPDX-License-Identifier: MIT
     pragma solidity ^0.8.0;
@@ -238,21 +238,22 @@ if __name__ == "__main__":
     print("[Step 1] Compiling...")
     interface = compile_contract(contract_source)
     
-    # 2. 部署合约 (带构造函数参数)
+    # --- 3. Deploy Contract (with constructor arguments) ---
     print("[Step 2] Deploying...")
-    # 构造函数参数编码：'Hello Seth!'
+    # Constructor argument encoding: 'Hello Seth!'
     constructor_args = eth_abi.encode(['string'], ["Hello Seth!"]).hex()
     deploy_code = interface['bin'] + constructor_args
     
-    # 这里的 CONTRACT_ADDR 如果是固定推导的请替换，否则部署后通常从收据获取
-    # 为演示方便，沿用你的固定地址
+    # Replace CONTRACT_ADDR if it is deterministically derived, 
+    # otherwise, it's usually obtained from the receipt after deployment.
+    # For demonstration purposes, we use your deterministic calculation function.
     TARGET_CONTRACT = calc_create2_address(client.get_address(MY_PK), "00", deploy_code)
     
     tx_deploy = client.send_transaction_auto(MY_PK, TARGET_CONTRACT, step=6, contract_code=deploy_code, prepayment=10000000)
     client.wait_for_receipt(tx_deploy, timeout=30)
     print(f"✓ Contract deployed at: {TARGET_CONTRACT}")
 
-    # 3. 修改数据 (调用 setMessage)
+    # --- 4. Update Data (Calling setMessage) ---
     print("[Step 3] Updating message...")
     new_text = "Updated at " + time.ctime()
     selector_set = get_selector("setMessage(string)")
@@ -262,10 +263,10 @@ if __name__ == "__main__":
     client.wait_for_receipt(tx_update)
     print(f"✓ Message updated to: {new_text}")
 
-    # 4. 查询数据 (调用 getMessage)
+    # --- 5. Query Data (Calling getMessage) ---
     print("[Step 4] Querying message...")
     selector_get = get_selector("getMessage()")
-    # 注意：getMessage() 没有参数，input 只有 selector
+    # Note: getMessage() has no parameters, so input contains only the selector
     raw_output = client.query_contract(client.get_address(MY_PK), TARGET_CONTRACT, selector_get)
     
     if raw_output:
