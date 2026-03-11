@@ -334,7 +334,7 @@ uint32_t Hash32(const int32_t& key) {
  * Validates raw binary bytecode stored in a std::string.
  * Each character in the string is treated as a 1-byte opcode or data.
  */
-ValidationStatus IsContractBytecodeValid(const std::string& bytecode) {
+ValidationStatus IsContractBytescodeValid(const std::string& bytecode) {
     // 1. Check if the input buffer is empty
     if (bytecode.empty()) {
         return ValidationStatus::EMPTY_BYTECODE;
