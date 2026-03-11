@@ -390,11 +390,12 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
         has_swaped_keys_[bls_msg.index()] = true;
         SETH_DEBUG("use prev swap key elect_hegiht_: %lu, peer elect height: %lu, "
             "min_aggree_member_count_: %u, "
-            "success member: %d, index: %d,  for_common_pk_g2s_: %s",
+            "success member: %d, index: %d,  for_common_pk_g2s_: %s, real data: %s",
             elect_hegiht_, bls_msg.elect_height(),
             min_aggree_member_count_,
             local_member_index_, bls_msg.index(),
-            libBLS::ThresholdUtils::fieldElementToString(for_common_pk_g2s_[bls_msg.index()].X.c0).c_str());
+            libBLS::ThresholdUtils::fieldElementToString(for_common_pk_g2s_[bls_msg.index()].X.c0).c_str(),
+            ProtobufToJson(bls_msg).c_str());
     //     return;
     // }
 
