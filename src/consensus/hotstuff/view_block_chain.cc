@@ -565,7 +565,6 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
                 tmp_block->block_info().height(),
                 tmp_block->qc().view(),
                 common::Encode::HexEncode(tmp_block->qc().view_block_hash()).c_str());
-            view_blocks_info_.erase(tmp_block->parent_hash());
         }
 
         if (tmp_block->qc().sign_x().empty()) {
@@ -937,6 +936,10 @@ std::string ViewBlockChain::String() const {
         }
     }
 
+    if (view_blocks.empty()) {
+        return "";
+    }
+
     std::sort(
             view_blocks.begin(), 
             view_blocks.end(), 
@@ -955,7 +958,8 @@ std::string ViewBlockChain::String() const {
         view_set.insert(vb->qc().view());
     }
 
-    SETH_DEBUG("get chain pool: %u, views: %s, all size: %u, block_height_str: %s",
+    SETH_DEBUG("network: %u, get chain pool: %u, views: %s, all size: %u, block_height_str: %s",
+        view_blocks[0]->qc().network_id(),
         pool_index_, ret.c_str(), view_blocks_info_.size(), block_height_str.c_str());
     assert(height_set.size() < 256);
     return ret;
