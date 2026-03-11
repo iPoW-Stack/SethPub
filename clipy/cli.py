@@ -95,8 +95,8 @@ class SethClient:
         my_addr = self.get_address(private_key_hex)
         if step == 8:
             my_addr = to_hex + my_addr
-            nonce = self.get_nonce(my_addr) + 1
             
+        nonce = self.get_nonce(my_addr) + 1
         tx_hash = self.compute_hash(nonce, pubkey_hex, to_hex, amount, gas_limit, gas_price, 
                                     step, contract_code, input_hex, prepayment, key, val)
 
@@ -132,16 +132,16 @@ class SethClient:
                 resp = requests.post(self.receipt_url, data={"tx_hash": tx_hash}, timeout=2)
                 if resp.status_code == 200:
                     status = resp.json().get("status")
+                    print(f"Transaction {tx_hash} receipt status: {MessageHandleStatus(status).name}")
                     if status not in [MessageHandleStatus.kMessageHandle, MessageHandleStatus.kTxAccept]:
-                        print(f"Transaction {tx_hash} receipt status: {MessageHandleStatus(status).name}")
                         return True
             except: pass
             time.sleep(1)
         return False
 
-    def query_contract(self, to_hex, input_hex):
+    def query_contract(self, from_hex, to_hex, input_hex):
         try:
-            resp = requests.post(self.query_contract_url, data={"to": to_hex, "input": input_hex}, timeout=5)
+            resp = requests.post(self.query_contract_url, data={"from": from_hex, "address": to_hex, "input": input_hex}, timeout=5)
             if resp.status_code == 200:
                 return resp.json().get("output", "")
         except: pass
@@ -236,7 +236,7 @@ if __name__ == "__main__":
     sel_get = get_selector("get(string)")
     query_input = sel_get + eth_abi.encode(['string'], [did_key]).hex()
     
-    raw_output = client.query_contract(CONTRACT_ADDR, query_input)
+    raw_output = client.query_contract(client.get_address(MY_PK), CONTRACT_ADDR, query_input)
     if raw_output:
         clean_hex = raw_output.replace("0x", "")
         decoded = eth_abi.decode(['string', 'string', 'uint8'], bytes.fromhex(clean_hex))
