@@ -453,7 +453,7 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
         return;
     }
 
-    SETH_DEBUG("use prev swap key elect_hegiht_: %lu, peer elect height: %lu, "
+    SETH_DEBUG("use new swap key elect_hegiht_: %lu, peer elect height: %lu, "
         "min_aggree_member_count_: %u, "
         "success member: %d, index: %d, %s, for_common_pk_g2s_: %s",
         elect_hegiht_, bls_msg.elect_height(),
