@@ -44,10 +44,7 @@ int ContractUserCreateCall::HandleTx(
             break;
         }
 
-        if (block_tx.contract_code().size() <= 128u || memcmp(
-                block_tx.contract_code().c_str(),
-                protos::kContractBytesStartCode.c_str(),
-                protos::kContractBytesStartCode.size()) != 0) {
+        if (common::IsContractBytescodeValid(block_tx.contract_code()) != common::ValidationStatus::SUCCESS) {
             block_tx.set_status(kConsensusContractBytesCodeError);
             break;
         }

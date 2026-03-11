@@ -116,10 +116,7 @@ static int CreateTransactionWithAttr(
     auto contract_bytes = req.get_param_value("bytes_code");
     if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kContractCreate) {
         contract_bytes = common::Encode::HexDecode(contract_bytes);
-        if (contract_bytes.size() <= 128 || memcmp(
-                contract_bytes.c_str(),
-                protos::kContractBytesStartCode.c_str(),
-                protos::kContractBytesStartCode.size()) != 0) {
+        if (common::IsContractBytescodeValid(contract_bytes) != common::ValidationStatus::SUCCESS) {
             SETH_DEBUG("create contract not has valid contract code: %s",
                 common::Encode::HexEncode(contract_bytes).c_str());
             return kHttpError;

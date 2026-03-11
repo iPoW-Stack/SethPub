@@ -1037,10 +1037,7 @@ void TxPoolManager::HandleCreateContractTx(const transport::MessagePtr& msg_ptr)
     uint64_t default_gas = consensus::kCallContractDefaultUseGas +
         tx_msg.value().size() * consensus::kKeyValueStorageEachBytes;
     if (tx_msg.step() == pools::protobuf::kContractCreate) {
-        if (memcmp(
-                tx_msg.contract_code().c_str(),
-                protos::kContractBytesStartCode.c_str(),
-                protos::kContractBytesStartCode.size()) != 0) {
+        if (common::IsContractBytescodeValid(tx_msg.contract_code()) != common::ValidationStatus::SUCCESS) {
             return;
         }
     } else {

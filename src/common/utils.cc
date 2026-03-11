@@ -330,6 +330,41 @@ uint32_t Hash32(const int32_t& key) {
     return key;
 }
 
+/**
+ * Validates raw binary bytecode stored in a std::string.
+ * Each character in the string is treated as a 1-byte opcode or data.
+ */
+ValidationStatus CheckBinaryStringLegality(const std::string& bytecode) {
+    // 1. Check if the string is empty
+    if (bytecode.empty()) {
+        return ValidationStatus::EMPTY_BYTECODE;
+    }
+
+    size_t length = bytecode.length();
+
+    // 2. Linear scan of the instruction stream
+    for (size_t i = 0; i < length; ++i) {
+        // Cast to unsigned char to handle values 0x80-0xFF correctly
+        unsigned char op = static_cast<unsigned char>(bytecode[i]);
+        
+        // EVM PUSH1 (0x60) through PUSH32 (0x7f)
+        if (op >= 0x60 && op <= 0x7f) {
+            // Determine the number of data bytes following the PUSH opcode
+            size_t push_size = op - 0x5f; 
+            
+            // Critical safety check: ensures the data bytes exist within the string
+            if (i + push_size >= length) {
+                return ValidationStatus::INCOMPLETE_PUSH;
+            }
+            
+            // Jump over the immediate data associated with the PUSH instruction
+            i += push_size;
+        }
+    }
+
+    return ValidationStatus::SUCCESS;
+}
+
 }  // namespace common
 
 }  // namespace seth
