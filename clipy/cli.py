@@ -269,9 +269,6 @@ if __name__ == "__main__":
     raw_output = client.query_contract(client.get_address(MY_PK), TARGET_CONTRACT, selector_get)
     
     if raw_output:
-        # 去掉可能存在的 0x 前缀并解码
-        clean_hex = raw_output.replace("0x", "")
-        decoded = eth_abi.decode(['string'], bytes.fromhex(clean_hex))
-        print(f"🔎 Current Message in Contract: {decoded[0]}")
+        print(f"🔎 Current Message in Contract: {raw_output}")
     else:
         print("✗ Query failed.")
