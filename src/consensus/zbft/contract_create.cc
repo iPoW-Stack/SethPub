@@ -242,7 +242,7 @@ int ContractUserCreateCall::HandleTx(
         block_tx.amount(),
         block_tx.status());
     if (block_tx.status() == kConsensusSuccess) {
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "1");
+        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "0");
         zjc_host.MergeToPrev();
         auto iter = pre_zjc_host.cross_to_map_.find(block_tx.to());
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
@@ -261,9 +261,7 @@ int ContractUserCreateCall::HandleTx(
                 common::Encode::HexEncode(to_item_ptr->des()).c_str(),
                 block_tx.contract_prepayment());
         } else {
-            // create contract direct set balance, not cross by root
-            // to_item_ptr = iter->second;
-            // to_item_ptr->set_amount(to_item_ptr->amount());
+            pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::to_string(block_tx.status()));
         }
 
         for (auto exists_iter = cross_to_map_.begin(); exists_iter != cross_to_map_.end(); ++exists_iter) {

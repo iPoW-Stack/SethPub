@@ -31,7 +31,7 @@ int ToTxLocalItem::HandleTx(
     }
 
     InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
-    zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "1");
+    zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "0");
     zjc_host.SaveKeyValue(block_tx.to(), unique_hash, "1");
     block_tx.set_unique_hash(unique_hash);
     block_tx.set_nonce(0);

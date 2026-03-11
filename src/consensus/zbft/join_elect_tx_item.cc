@@ -109,7 +109,7 @@ int JoinElectTxItem::HandleTx(
     block_tx.set_gas_used(gas_used);
     auto* block_join_info = view_block.mutable_block_info()->add_joins();
     *block_join_info = join_info;
-    zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "1");
+    zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "0");
     SETH_DEBUG("status: %d, success join elect: %s, pool: %u, height: %lu, des shard: %d",
         block_tx.status(), common::Encode::HexEncode(from).c_str(),
         view_block.qc().pool_index(),

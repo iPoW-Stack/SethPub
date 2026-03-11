@@ -61,7 +61,7 @@ public:
         }
 
         InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "1");
+        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "0");
         zjc_host.SaveKeyValue(block_tx.to(), tx_info->key(), tx_info->value());
         block_tx.set_unique_hash(tx_info->key());
         uint64_t* udata = (uint64_t*)tx_info->value().c_str();
