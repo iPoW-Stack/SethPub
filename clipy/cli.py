@@ -86,7 +86,7 @@ class SethClient:
         return k.digest()
 
     def send_transaction_auto(self, private_key_hex, to_hex, amount=0,
-                              gas_limit=50000, gas_price=1, step=0, shard_id=0,
+                              gas_limit=5000000, gas_price=1, step=0, shard_id=0,
                               contract_code='', input_hex='', prepayment=0,
                               key='', val=''):
         if private_key_hex.startswith('0x'): private_key_hex = private_key_hex[2:]
