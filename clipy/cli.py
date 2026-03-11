@@ -196,25 +196,154 @@ if __name__ == "__main__":
 
     # --- 2. 编译并部署 ---
     contract_source = """
-    // SPDX-License-Identifier: MIT
-    pragma solidity ^0.8.0;
-    contract DataRegistry {
-        struct Record { string did; string loc; uint8 mod; }
-        mapping(string => Record) public records;
-        function register(string calldata _did, string calldata _loc, uint8 _mod) external {
-            records[_did] = Record(_did, _loc, _mod);
-        }
-        function get(string calldata _did) external view returns (string memory, string memory, uint8) {
-            Record memory r = records[_did];
-            return (r.did, r.loc, r.mod);
-        }
+   // SPDX-License-Identifier: GPL-3.0
+pragma solidity >=0.7.0 <0.9.0;
+
+/**
+ * @title 数据市场溯源合约
+ * @dev 增加了 blockNumber 字段，记录每条记录产生的具体区块高度
+ */
+contract DataMarketProvenance {
+    
+    // 数据记录结构体
+    struct DataRecord {
+        bytes32 dataHash;     // 内容指纹
+        bytes32 previousHash; // 前序状态指纹
+        address owner;        // 该版本的持有人
+        uint256 timestamp;    // 记录时间戳
+        uint256 blockNumber;  // --- 新增：记录产生的区块高度 ---
+        string metadata;      // 原始描述信息/备注
     }
+
+    address public contractOwner;
+    bytes32[] public allDataIds;
+    
+    mapping(bytes32 => DataRecord[]) public history;
+    mapping(bytes32 => address) public dataOwner;
+    mapping(bytes32 => uint256) public dataPrice;
+    mapping(bytes32 => bytes32) public currentLatestHash;
+
+    event DataCreated(bytes32 indexed dataId, address indexed owner, uint256 price);
+    event DataPriceChanged(bytes32 indexed dataId, uint256 oldPrice, uint256 newPrice);
+    event DataSold(bytes32 indexed dataId, address indexed seller, address indexed buyer, uint256 price);
+    event DataUpdated(bytes32 indexed dataId, bytes32 newHash);
+
+    modifier onlyDataOwner(bytes32 _dataId) {
+        require(dataOwner[_dataId] == msg.sender, "Not the data owner");
+        _;
+    }
+
+    constructor() {
+        contractOwner = msg.sender;
+    }
+
+    // --- 1. 创建数据 ---
+    function createData(bytes32 _dataId, string calldata _metadata, uint256 _price) public {
+        require(_dataId != bytes32(0), "Invalid ID");
+        require(history[_dataId].length == 0, "ID already exists");
+
+        bytes32 initialHash = keccak256(abi.encodePacked(_metadata, msg.sender, block.timestamp));
+
+        DataRecord memory firstRecord = DataRecord({
+            dataHash: initialHash,
+            previousHash: bytes32(0),
+            owner: msg.sender,
+            timestamp: block.timestamp,
+            blockNumber: block.number, // 记录当前区块高度
+            metadata: _metadata
+        });
+
+        history[_dataId].push(firstRecord);
+        dataOwner[_dataId] = msg.sender;
+        dataPrice[_dataId] = _price;
+        currentLatestHash[_dataId] = initialHash;
+        allDataIds.push(_dataId);
+
+        emit DataCreated(_dataId, msg.sender, _price);
+    }
+
+    // --- 2. 交易功能 ---
+    function buyData(bytes32 _dataId, string calldata _tradeNote) public payable {
+        address seller = dataOwner[_dataId];
+        uint256 price = dataPrice[_dataId];
+
+        require(seller != address(0), "Data not found");
+        require(msg.sender != seller, "Cannot buy your own data");
+        require(price > 0, "Data not for sale");
+        require(msg.value >= price, "Insufficient payment");
+
+        bytes32 prevHash = currentLatestHash[_dataId];
+        bytes32 newHash = keccak256(abi.encodePacked(_tradeNote, msg.sender, block.timestamp));
+
+        DataRecord memory tradeRecord = DataRecord({
+            dataHash: newHash,
+            previousHash: prevHash,
+            owner: msg.sender,
+            timestamp: block.timestamp,
+            blockNumber: block.number, // 记录交易发生的区块高度
+            metadata: string(abi.encodePacked("PURCHASE: ", _tradeNote))
+        });
+
+        history[_dataId].push(tradeRecord);
+        dataOwner[_dataId] = msg.sender;
+        currentLatestHash[_dataId] = newHash;
+        dataPrice[_dataId] = 0;
+
+        (bool success, ) = payable(seller).call{value: msg.value}("");
+        require(success, "Transfer to seller failed");
+
+        emit DataSold(_dataId, seller, msg.sender, price);
+    }
+
+    // --- 3. 修改与更新 ---
+    function updateData(bytes32 _dataId, string calldata _newMetadata) public onlyDataOwner(_dataId) {
+        bytes32 prevHash = currentLatestHash[_dataId];
+        bytes32 newHash = keccak256(abi.encodePacked(_newMetadata, msg.sender, block.timestamp));
+
+        history[_dataId].push(DataRecord({
+            dataHash: newHash,
+            previousHash: prevHash,
+            owner: msg.sender,
+            timestamp: block.timestamp,
+            blockNumber: block.number, // 记录更新时的区块高度
+            metadata: _newMetadata
+        }));
+        
+        currentLatestHash[_dataId] = newHash;
+        emit DataUpdated(_dataId, newHash);
+    }
+
+    // --- 4. 查询功能 ---
+    function getAllLatestRecords(uint256 _offset, uint256 _limit) public view returns (DataRecord[] memory) {
+        uint256 total = allDataIds.length;
+        if (_offset >= total || _limit == 0) return new DataRecord[](0);
+
+        uint256 count = _limit;
+        if (_offset + _limit > total) count = total - _offset;
+
+        DataRecord[] memory results = new DataRecord[](count);
+        for (uint256 i = 0; i < count; i++) {
+            bytes32 id = allDataIds[_offset + i];
+            uint256 lastIdx = history[id].length - 1;
+            results[i] = history[id][lastIdx];
+        }
+        return results;
+    }
+
+    function getHistory(bytes32 _dataId) public view returns (DataRecord[] memory) {
+        return history[_dataId];
+    }
+
+    function getDataCount() public view returns (uint256) {
+        return allDataIds.length;
+    }
+}
     """
     print("[Task 2] Compiling and Deploying contract...")
     interface = compile_contract(contract_source)
     
     # 使用修复后的地址推导逻辑
-    CONTRACT_ADDR = calc_create2_address(client.get_address(MY_PK), "00", interface['bin'])
+    CONTRACT_ADDR = "d29cc723cc606c88b875f280d897c32f7a829d21"
     print(f"✓ Predicted Address: {CONTRACT_ADDR}")
 
     tx_deploy = client.send_transaction_auto(MY_PK, CONTRACT_ADDR, step=6, contract_code=interface['bin'], prepayment=10000000, gas_limit=3000000)
