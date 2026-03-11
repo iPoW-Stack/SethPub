@@ -565,6 +565,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
                 tmp_block->block_info().height(),
                 tmp_block->qc().view(),
                 common::Encode::HexEncode(tmp_block->qc().view_block_hash()).c_str());
+            view_blocks_info_.erase(tmp_block->parent_hash());
         }
 
         if (tmp_block->qc().sign_x().empty()) {
@@ -1212,17 +1213,24 @@ int ViewBlockChain::CheckTxNonceValid(
 void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_item) {
     auto view_block_ptr_info = Get(qc_item.view_block_hash());
     if (!view_block_ptr_info) {
-        SETH_WARN("failed get view block %u_%u_%lu, hash: %s",
-            qc_item.network_id(), 
-            qc_item.pool_index(), 
-            qc_item.view(), 
-            common::Encode::HexEncode(qc_item.view_block_hash()).c_str());
-        kv_sync_->AddSyncViewHash(
-            qc_item.network_id(), 
-            qc_item.pool_index(), 
-            qc_item.view_block_hash(), 
-            0);
-        return;
+        view_block_ptr_info = std::make_shared<ViewBlockInfo>();
+        view_block_ptr_info->view_block = std::make_shared<ViewBlock>();
+        auto& view_block = *view_block_ptr_info->view_block;
+        if (!prefix_db_->GetBlock(qc_item.view_block_hash(), &view_block)) {
+            SETH_WARN("failed get view block %u_%u_%lu, hash: %s",
+                qc_item.network_id(), 
+                qc_item.pool_index(), 
+                qc_item.view(), 
+                common::Encode::HexEncode(qc_item.view_block_hash()).c_str());
+            kv_sync_->AddSyncViewHash(
+                qc_item.network_id(), 
+                qc_item.pool_index(), 
+                qc_item.view_block_hash(), 
+                0);
+            return;
+        }
+
+        SetViewBlockToMap(view_block_ptr_info);
     }
 
     auto view_block_ptr = view_block_ptr_info->view_block;

@@ -143,7 +143,18 @@ void ShardStatistic::ThreadToStatistic(
     do {
         auto iter = pool_blocks_info->blocks.find(pool_blocks_info->latest_consensus_height_ + 1);
         if (iter == pool_blocks_info->blocks.end()) {
-            break;
+            auto tmp_ptr = std::make_shared<view_block::protobuf::ViewBlockItem>();
+            auto& tmp_view_block = *tmp_ptr;
+            if (!prefix_db_->GetBlockWithHeight(
+                view_block_ptr->qc().network_id(),
+                    view_block_ptr->qc().pool_index(),
+                    pool_blocks_info->latest_consensus_height_ + 1,
+                    &tmp_view_block)) {
+               break;
+            }
+
+            pool_blocks_info->blocks[pool_blocks_info->latest_consensus_height_ + 1] = tmp_ptr;
+            iter = pool_blocks_info->blocks.find(pool_blocks_info->latest_consensus_height_ + 1);
         }
 
         if (!HandleStatistic(iter->second)) {
