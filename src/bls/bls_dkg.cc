@@ -369,18 +369,18 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
 
     if (bls_msg.swap_req().keys_size() == 0) {
         // use prev swap keys
-        std::string sec_key;
-        if (!dkg_cache_->GetSwapKey(
-                common::GlobalInfo::Instance()->network_id(),
-                local_member_index_,
-                (*members_)[bls_msg.index()]->id,
-                bls_msg.index(),
-                sec_key)) {
-            BLS_ERROR("get prev swap key failed: %d, %d, %d, %d, %lu",
-                local_member_index_, prev_elect_height_,
-                local_member_index_, bls_msg.index(), prev_elect_height_);
-            return;
-        }
+        // std::string sec_key;
+        // if (!dkg_cache_->GetSwapKey(
+        //         common::GlobalInfo::Instance()->network_id(),
+        //         local_member_index_,
+        //         (*members_)[bls_msg.index()]->id,
+        //         bls_msg.index(),
+        //         &sec_key)) {
+        //     BLS_ERROR("get prev swap key failed: %d, %d, %d, %d, %lu",
+        //         local_member_index_, prev_elect_height_,
+        //         local_member_index_, bls_msg.index(), prev_elect_height_);
+        //     return;
+        // }
 
         uint32_t changed_idx = 0;
         for_common_pk_g2s_[bls_msg.index()] = GetVerifyG2FromDb(
@@ -464,7 +464,7 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
     // swap
     dkg_cache_->SetSwapKey(
         common::GlobalInfo::Instance()->network_id(),
-        local_member_index_, elect_hegiht_, bls_msg.index(), sec_key);
+        local_member_index_, (*members_)[bls_msg.index()]->id, bls_msg.index(), sec_key);
     valid_swapkey_set_.insert(bls_msg.index());
     ++valid_sec_key_count_;
     has_swaped_keys_[bls_msg.index()] = true;

@@ -51,7 +51,7 @@ void DkgCache::SetSwapKey(
         from_member_index,
         secret_key_str);
 
-    SwapKeyCacheKey key{elect_height, from_member_index, local_member_index, network_id};
+    SwapKeyCacheKey key{id, from_member_index, local_member_index, network_id};
     swap_keys_cache_[key] = secret_key_str;
 }
 
