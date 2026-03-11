@@ -479,6 +479,9 @@ bool BlsDkg::VerifySekkeyValid(
     uint32_t changed_idx = 0;
     libff::alt_bn128_G2 new_val = GetVerifyG2FromDb(peer_index, &changed_idx);
     if (new_val == libff::alt_bn128_G2::zero()) {
+        SETH_ERROR("failed get verify g2 from db, peer_index: %d, "
+            "min_aggree_member_count_: %d, net: %d",
+            peer_index, min_aggree_member_count_, (*members_)[0]->net_id);
 //         assert(false);
         return false;
     }
