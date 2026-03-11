@@ -1144,7 +1144,6 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
     nlohmann::json res_json;
     res_json["status"] = transport::kUnkonwn;
     res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
-
     if (!req.has_param("tx_hash")) {
         res_json["status"] = transport::kRequestInvalid;
         res_json["msg"] = std::string("not has tx hash param");
@@ -1152,11 +1151,18 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
         return;
     }
 
-    auto tx_hash = req.get_param_value("tx_hash");
+    auto tx_hash = common::Encode::HexDecode(req.get_param_value("tx_hash"));
+    SETH_DEBUG("transaction receipt query, tx hash: %s", req.get_param_value("tx_hash").c_str());
     std::string res;
     if (prefix_db->GetTemporaryKv(std::string("tx") + tx_hash, &res)) {
-        res_json["status"] = transport::kConsensusSuccess;
+        int32_t status = 0;
+        if (!common::StringUtil::ToInt32(res, &status)) {
+            status = transport::kUnkonwn;
+        }
+
+        res_json["status"] = status;
         res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
+        http_handler->tx_msg_map().Remove(tx_hash);
     } else {
         transport::MessagePtr msg_ptr = nullptr;
         if (http_handler->tx_msg_map().Get(tx_hash, msg_ptr)) {
