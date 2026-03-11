@@ -94,31 +94,7 @@ int RootToTxItem::HandleTx(
     acc_balance_map[block_tx.to()]->set_nonce(block_tx.nonce());
     acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
     acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
-    if (block_tx.status() == kConsensusSuccess) {
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "1");
-        auto iter = zjc_host.cross_to_map_.find(to_item.des());
-        std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
-        if (iter == zjc_host.cross_to_map_.end()) {
-            to_item_ptr = std::make_shared<pools::protobuf::ToTxMessageItem>(to_item);
-            to_item_ptr->set_des_sharding_id(sharding_id);
-            zjc_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
-        } else {
-            to_item_ptr = iter->second;
-            to_item_ptr->set_amount(block_tx.amount() + to_item_ptr->amount());
-            if (block_tx.has_contract_code() && !block_tx.contract_code().empty()) {
-                to_item_ptr->set_library_bytes(block_tx.contract_code());
-            }
-
-            if (block_tx.contract_prepayment() > 0) {
-                to_item_ptr->set_prepayment(block_tx.contract_prepayment() + to_item_ptr->prepayment());
-            }
-        }
-
-        SETH_DEBUG("success add addr cross to: %s, to info: %s", 
-            common::Encode::HexEncode(to_item.des()).c_str(), 
-            ProtobufToJson(*to_item_ptr).c_str());
-    }
-
+    zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "0");
     SETH_DEBUG("success add addr to: %s, value: %s, unique hash: %s", 
         common::Encode::HexEncode(block_tx.to()).c_str(), 
         ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str(),

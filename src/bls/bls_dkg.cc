@@ -65,7 +65,7 @@ void BlsDkg::TimerMessage() {
             now_tm_us < (begin_time_us_ + kDkgPeriodUs * 4) &&
             now_tm_us > (begin_time_us_ + ver_offset_)) {
         SETH_WARN("now call send verify g2.");
-        // BroadcastVerfify();
+        BroadcastVerfify();
         has_broadcast_verify_ = true;
     }
 
@@ -73,7 +73,7 @@ void BlsDkg::TimerMessage() {
             now_tm_us < (begin_time_us_ + kDkgPeriodUs * 7) &&
             now_tm_us >(begin_time_us_ + swap_offset_)) {
         SETH_WARN("now call send swap sec key.");
-        // SwapSecKey();
+        SwapSecKey();
         has_broadcast_swapkey_ = true;
     }
 
@@ -367,7 +367,7 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
         return;
     }
 
-    // if (bls_msg.swap_req().keys_size() == 0) {
+    if (bls_msg.swap_req().keys_size() == 0) {
         // use prev swap keys
         // std::string sec_key;
         // if (!dkg_cache_->GetSwapKey(
@@ -375,98 +375,99 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
         //         local_member_index_,
         //         (*members_)[bls_msg.index()]->id,
         //         bls_msg.index(),
-        //         sec_key)) {
+        //         &sec_key)) {
         //     BLS_ERROR("get prev swap key failed: %d, %d, %d, %d, %lu",
         //         local_member_index_, prev_elect_height_,
         //         local_member_index_, bls_msg.index(), prev_elect_height_);
         //     return;
         // }
 
-        // uint32_t changed_idx = 0;
-        // for_common_pk_g2s_[bls_msg.index()] = GetVerifyG2FromDb(
-        //     bls_msg.index(), &changed_idx);
+        uint32_t changed_idx = 0;
+        for_common_pk_g2s_[bls_msg.index()] = GetVerifyG2FromDb(
+            bls_msg.index(), &changed_idx);
         valid_swapkey_set_.insert(bls_msg.index());
         ++valid_sec_key_count_;
         has_swaped_keys_[bls_msg.index()] = true;
         SETH_DEBUG("use prev swap key elect_hegiht_: %lu, peer elect height: %lu, "
             "min_aggree_member_count_: %u, "
-            "success member: %d, index: %d,  for_common_pk_g2s_: %s",
+            "success member: %d, index: %d,  for_common_pk_g2s_: %s, real data: %s",
             elect_hegiht_, bls_msg.elect_height(),
             min_aggree_member_count_,
             local_member_index_, bls_msg.index(),
-            libBLS::ThresholdUtils::fieldElementToString(for_common_pk_g2s_[bls_msg.index()].X.c0).c_str());
-    //     return;
-    // }
+            libBLS::ThresholdUtils::fieldElementToString(for_common_pk_g2s_[bls_msg.index()].X.c0).c_str(),
+            ProtobufToJson(bls_msg).c_str());
+        return;
+    }
 
-//     if (bls_msg.swap_req().keys_size() <= (int32_t)local_member_index_) {
-//         SETH_WARN("swap key size error: %d, %d",
-//             bls_msg.swap_req().keys_size(), local_member_index_);
-//         return;
-//     }
+    if (bls_msg.swap_req().keys_size() <= (int32_t)local_member_index_) {
+        SETH_WARN("swap key size error: %d, %d",
+            bls_msg.swap_req().keys_size(), local_member_index_);
+        return;
+    }
 
-//     std::string msg_hash;
-//     if (!IsSignValid(msg_ptr, &msg_hash)) {
-//         BLS_ERROR("sign verify failed!");
-//         return;
-//     }
+    std::string msg_hash;
+    if (!IsSignValid(msg_ptr, &msg_hash)) {
+        BLS_ERROR("sign verify failed!");
+        return;
+    }
 
-//     std::string dec_msg;
-//     std::string encrypt_key;
-//     if (security_->GetEcdhKey(
-//             (*members_)[bls_msg.index()]->pubkey,
-//             &encrypt_key) != security::kSecuritySuccess) {
-//         BLS_WARN("invalid ecdh key.");
-//         return;
-//     }
+    std::string dec_msg;
+    std::string encrypt_key;
+    if (security_->GetEcdhKey(
+            (*members_)[bls_msg.index()]->pubkey,
+            &encrypt_key) != security::kSecuritySuccess) {
+        BLS_WARN("invalid ecdh key.");
+        return;
+    }
 
-//     int res = security_->Decrypt(
-//         bls_msg.swap_req().keys(local_member_index_).sec_key(),
-//         encrypt_key,
-//         &dec_msg);
-//     if (dec_msg.empty()) {
-//         BLS_ERROR("dec_msg.empty()");
-//         return;
-//     }
+    int res = security_->Decrypt(
+        bls_msg.swap_req().keys(local_member_index_).sec_key(),
+        encrypt_key,
+        &dec_msg);
+    if (dec_msg.empty()) {
+        BLS_ERROR("dec_msg.empty()");
+        return;
+    }
 
-//     std::string sec_key(dec_msg.substr(
-//         0,
-//         bls_msg.swap_req().keys(local_member_index_).sec_key_len()));
-//     if (!IsValidBigInt(sec_key)) {
-//         BLS_ERROR("invalid big int[%s]", sec_key.c_str());
+    std::string sec_key(dec_msg.substr(
+        0,
+        bls_msg.swap_req().keys(local_member_index_).sec_key_len()));
+    if (!IsValidBigInt(sec_key)) {
+        BLS_ERROR("invalid big int[%s]", sec_key.c_str());
+        assert(false);
+        return;
+    }
+
+    if (has_swaped_keys_[bls_msg.index()]) {
+        BLS_WARN("has_swaped_keys_  %d.", bls_msg.index());
+        return;
+    }
+
+    auto tmp_swap_key = libff::alt_bn128_Fr(sec_key.c_str());
+    if (!VerifySekkeyValid(bls_msg.index(), tmp_swap_key)) {
+        SETH_ERROR("verify error member: %d, index: %d, %s , min_aggree_member_count_: %d",
+            local_member_index_, bls_msg.index(),
+            libBLS::ThresholdUtils::fieldElementToString(tmp_swap_key).c_str(),
+            min_aggree_member_count_);
 //         assert(false);
-//         return;
-//     }
+        return;
+    }
 
-//     if (has_swaped_keys_[bls_msg.index()]) {
-//         BLS_WARN("has_swaped_keys_  %d.", bls_msg.index());
-//         return;
-//     }
-
-//     auto tmp_swap_key = libff::alt_bn128_Fr(sec_key.c_str());
-//     if (!VerifySekkeyValid(bls_msg.index(), tmp_swap_key)) {
-//         SETH_ERROR("verify error member: %d, index: %d, %s , min_aggree_member_count_: %d",
-//             local_member_index_, bls_msg.index(),
-//             libBLS::ThresholdUtils::fieldElementToString(tmp_swap_key).c_str(),
-//             min_aggree_member_count_);
-// //         assert(false);
-//         return;
-//     }
-
-//     SETH_DEBUG("use prev swap key elect_hegiht_: %lu, peer elect height: %lu, "
-//         "min_aggree_member_count_: %u, "
-//         "success member: %d, index: %d, %s, for_common_pk_g2s_: %s",
-//         elect_hegiht_, bls_msg.elect_height(),
-//         min_aggree_member_count_,
-//         local_member_index_, bls_msg.index(),
-//         common::Encode::HexEncode(sec_key).c_str(), 
-//         libBLS::ThresholdUtils::fieldElementToString(for_common_pk_g2s_[bls_msg.index()].X.c0).c_str());
-//     // swap
-//     dkg_cache_->SetSwapKey(
-//         common::GlobalInfo::Instance()->network_id(),
-//         local_member_index_, elect_hegiht_, bls_msg.index(), sec_key);
-//     valid_swapkey_set_.insert(bls_msg.index());
-//     ++valid_sec_key_count_;
-//     has_swaped_keys_[bls_msg.index()] = true;
+    SETH_DEBUG("use new swap key elect_hegiht_: %lu, peer elect height: %lu, "
+        "min_aggree_member_count_: %u, "
+        "success member: %d, index: %d, %s, for_common_pk_g2s_: %s",
+        elect_hegiht_, bls_msg.elect_height(),
+        min_aggree_member_count_,
+        local_member_index_, bls_msg.index(),
+        common::Encode::HexEncode(sec_key).c_str(), 
+        libBLS::ThresholdUtils::fieldElementToString(for_common_pk_g2s_[bls_msg.index()].X.c0).c_str());
+    // swap
+    dkg_cache_->SetSwapKey(
+        common::GlobalInfo::Instance()->network_id(),
+        local_member_index_, (*members_)[bls_msg.index()]->id, bls_msg.index(), sec_key);
+    valid_swapkey_set_.insert(bls_msg.index());
+    ++valid_sec_key_count_;
+    has_swaped_keys_[bls_msg.index()] = true;
 } catch (std::exception& e) {
     BLS_ERROR("catch error: %s", e.what());
 }
@@ -474,113 +475,116 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
 bool BlsDkg::VerifySekkeyValid(
         uint32_t peer_index,
         const libff::alt_bn128_Fr& seckey) {
-//     bls::protobuf::BlsVerifyValue verify_val;
-//     uint32_t changed_idx = 0;
-//     libff::alt_bn128_G2 new_val = GetVerifyG2FromDb(peer_index, &changed_idx);
-//     if (new_val == libff::alt_bn128_G2::zero()) {
-// //         assert(false);
-//         return false;
-//     }
-
-//     bls::protobuf::JoinElectBlsInfo verfy_final_vals;
-//     if (!prefix_db_->GetVerifiedG2s(
-//             local_member_index_,
-//             (*members_)[peer_index]->id,
-//             min_aggree_member_count_,
-//             &verfy_final_vals)) {
-//         // compute verified g2s with new index
-//         SETH_ERROR("failed get verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
-//             local_member_index_, 
-//             common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
-//             min_aggree_member_count_, 
-//             (*members_)[0]->net_id);
-//         if (!CheckRecomputeG2s((*members_)[peer_index]->id, verfy_final_vals)) {
-//             SETH_WARN("failed get verified g2: %u, %s",
-//                 local_member_index_,
-//                 common::Encode::HexEncode((*members_)[peer_index]->id).c_str());
-// //             assert(false);
-//             return false;
-//         }
-//     } else {
-//         SETH_WARN("success get verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
-//             local_member_index_, 
-//             common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
-//             min_aggree_member_count_, 
-//             (*members_)[0]->net_id);
-//     }
-
-//     bls::protobuf::JoinElectInfo join_info;
-//     if (!prefix_db_->GetNodeVerificationVector((*members_)[peer_index]->id, &join_info)) {
+    bls::protobuf::BlsVerifyValue verify_val;
+    uint32_t changed_idx = 0;
+    libff::alt_bn128_G2 new_val = GetVerifyG2FromDb(peer_index, &changed_idx);
+    if (new_val == libff::alt_bn128_G2::zero()) {
+        SETH_ERROR("failed get verify g2 from db, peer_index: %d, "
+            "min_aggree_member_count_: %d, net: %d",
+            peer_index, min_aggree_member_count_, (*members_)[0]->net_id);
 //         assert(false);
-//         return false;
-//     }
+        return false;
+    }
 
-//     if (join_info.g2_req().verify_vec_size() <= (int32_t)changed_idx) {
-//         assert(false);
-//         return false;
-//     }
+    bls::protobuf::JoinElectBlsInfo verfy_final_vals;
+    if (!prefix_db_->GetVerifiedG2s(
+            local_member_index_,
+            (*members_)[peer_index]->id,
+            min_aggree_member_count_,
+            &verfy_final_vals)) {
+        // compute verified g2s with new index
+        SETH_ERROR("failed get verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
+            local_member_index_, 
+            common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
+            min_aggree_member_count_, 
+            (*members_)[0]->net_id);
+        if (!CheckRecomputeG2s((*members_)[peer_index]->id, verfy_final_vals)) {
+            SETH_WARN("failed get verified g2: %u, %s",
+                local_member_index_,
+                common::Encode::HexEncode((*members_)[peer_index]->id).c_str());
+//             assert(false);
+            return false;
+        }
+    } else {
+        SETH_WARN("success get verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
+            local_member_index_, 
+            common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
+            min_aggree_member_count_, 
+            (*members_)[0]->net_id);
+    }
 
-//     libff::alt_bn128_G2 old_val;
-//     {
-//         auto& item = join_info.g2_req().verify_vec(changed_idx);
-//         auto x_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c0()).c_str());
-//         auto x_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c1()).c_str());
-//         auto x_coord = libff::alt_bn128_Fq2(x_c0, x_c1);
-//         auto y_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c0()).c_str());
-//         auto y_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c1()).c_str());
-//         auto y_coord = libff::alt_bn128_Fq2(y_c0, y_c1);
-//         auto z_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c0()).c_str());
-//         auto z_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c1()).c_str());
-//         auto z_coord = libff::alt_bn128_Fq2(z_c0, z_c1);
-//         old_val = libff::alt_bn128_G2(x_coord, y_coord, z_coord);
+    bls::protobuf::JoinElectInfo join_info;
+    if (!prefix_db_->GetNodeVerificationVector((*members_)[peer_index]->id, &join_info)) {
+        assert(false);
+        return false;
+    }
 
-//         if (changed_idx == 0) {
-//             for_common_pk_g2s_[peer_index] = new_val;
-//         } else {
-//             auto& item = join_info.g2_req().verify_vec(0);
-//             auto x_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c0()).c_str());
-//             auto x_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c1()).c_str());
-//             auto x_coord = libff::alt_bn128_Fq2(x_c0, x_c1);
-//             auto y_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c0()).c_str());
-//             auto y_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c1()).c_str());
-//             auto y_coord = libff::alt_bn128_Fq2(y_c0, y_c1);
-//             auto z_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c0()).c_str());
-//             auto z_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c1()).c_str());
-//             auto z_coord = libff::alt_bn128_Fq2(z_c0, z_c1);
-//             auto tmp_val = libff::alt_bn128_G2(x_coord, y_coord, z_coord);
-//             for_common_pk_g2s_[peer_index] = tmp_val;
-//         }
-//     }
+    if (join_info.g2_req().verify_vec_size() <= (int32_t)changed_idx) {
+        assert(false);
+        return false;
+    }
 
-//     auto& item = verfy_final_vals.verified_g2();
-//     auto x_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c0()).c_str());
-//     auto x_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c1()).c_str());
-//     auto x_coord = libff::alt_bn128_Fq2(x_c0, x_c1);
-//     auto y_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c0()).c_str());
-//     auto y_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c1()).c_str());
-//     auto y_coord = libff::alt_bn128_Fq2(y_c0, y_c1);
-//     auto z_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c0()).c_str());
-//     auto z_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c1()).c_str());
-//     auto z_coord = libff::alt_bn128_Fq2(z_c0, z_c1);
-//     auto all_verified_val = libff::alt_bn128_G2(x_coord, y_coord, z_coord);
-//     auto old_g2_val = power(libff::alt_bn128_Fr(local_member_index_ + 1), changed_idx) * old_val;
-//     auto new_g2_val = power(libff::alt_bn128_Fr(local_member_index_ + 1), changed_idx) * new_val;
-//     all_verified_val = all_verified_val - old_g2_val + new_g2_val;
-//     if (all_verified_val != seckey * libff::alt_bn128_G2::one()) {
-//         for_common_pk_g2s_[peer_index] = libff::alt_bn128_G2::zero();
-//         SETH_WARN("failed verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
-//             local_member_index_, 
-//             common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
-//             min_aggree_member_count_, 
-//             (*members_)[0]->net_id);
-//         return false;
-//     }
+    libff::alt_bn128_G2 old_val;
+    {
+        auto& item = join_info.g2_req().verify_vec(changed_idx);
+        auto x_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c0()).c_str());
+        auto x_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c1()).c_str());
+        auto x_coord = libff::alt_bn128_Fq2(x_c0, x_c1);
+        auto y_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c0()).c_str());
+        auto y_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c1()).c_str());
+        auto y_coord = libff::alt_bn128_Fq2(y_c0, y_c1);
+        auto z_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c0()).c_str());
+        auto z_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c1()).c_str());
+        auto z_coord = libff::alt_bn128_Fq2(z_c0, z_c1);
+        old_val = libff::alt_bn128_G2(x_coord, y_coord, z_coord);
 
-//     SETH_WARN("success verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
-//         local_member_index_, 
-//         common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
-//         min_aggree_member_count_, 
-//         (*members_)[0]->net_id);
+        if (changed_idx == 0) {
+            for_common_pk_g2s_[peer_index] = new_val;
+        } else {
+            auto& item = join_info.g2_req().verify_vec(0);
+            auto x_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c0()).c_str());
+            auto x_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c1()).c_str());
+            auto x_coord = libff::alt_bn128_Fq2(x_c0, x_c1);
+            auto y_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c0()).c_str());
+            auto y_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c1()).c_str());
+            auto y_coord = libff::alt_bn128_Fq2(y_c0, y_c1);
+            auto z_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c0()).c_str());
+            auto z_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c1()).c_str());
+            auto z_coord = libff::alt_bn128_Fq2(z_c0, z_c1);
+            auto tmp_val = libff::alt_bn128_G2(x_coord, y_coord, z_coord);
+            for_common_pk_g2s_[peer_index] = tmp_val;
+        }
+    }
+
+    auto& item = verfy_final_vals.verified_g2();
+    auto x_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c0()).c_str());
+    auto x_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c1()).c_str());
+    auto x_coord = libff::alt_bn128_Fq2(x_c0, x_c1);
+    auto y_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c0()).c_str());
+    auto y_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c1()).c_str());
+    auto y_coord = libff::alt_bn128_Fq2(y_c0, y_c1);
+    auto z_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c0()).c_str());
+    auto z_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c1()).c_str());
+    auto z_coord = libff::alt_bn128_Fq2(z_c0, z_c1);
+    auto all_verified_val = libff::alt_bn128_G2(x_coord, y_coord, z_coord);
+    auto old_g2_val = power(libff::alt_bn128_Fr(local_member_index_ + 1), changed_idx) * old_val;
+    auto new_g2_val = power(libff::alt_bn128_Fr(local_member_index_ + 1), changed_idx) * new_val;
+    all_verified_val = all_verified_val - old_g2_val + new_g2_val;
+    if (all_verified_val != seckey * libff::alt_bn128_G2::one()) {
+        for_common_pk_g2s_[peer_index] = libff::alt_bn128_G2::zero();
+        SETH_WARN("failed verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
+            local_member_index_, 
+            common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
+            min_aggree_member_count_, 
+            (*members_)[0]->net_id);
+        return false;
+    }
+
+    SETH_WARN("success verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
+        local_member_index_, 
+        common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
+        min_aggree_member_count_, 
+        (*members_)[0]->net_id);
     return true;
 }
 
@@ -662,27 +666,15 @@ bool BlsDkg::CheckRecomputeG2s(
 }
 
 libff::alt_bn128_G2 BlsDkg::GetVerifyG2FromDb(uint32_t peer_mem_index, uint32_t* changed_idx) {
-    // bls::protobuf::VerifyVecBrdReq req;
-    // auto res = dkg_cache_->GetBlsVerifyG2((*members_)[peer_mem_index]->id, &req);
-    // if (!res) {
-    //     SETH_WARN("get verify g2 failed local: %d, %lu, %u",
-    //         local_member_index_, elect_hegiht_, peer_mem_index);
-    //     return libff::alt_bn128_G2::zero();
-    // }
+    libff::alt_bn128_G2 g2;
+    auto res = dkg_cache_->GetBlsVerifyG2((*members_)[peer_mem_index]->id, &g2);
+    if (!res) {
+        SETH_WARN("get verify g2 failed local: %d, %lu, %u",
+            local_member_index_, elect_hegiht_, peer_mem_index);
+        return libff::alt_bn128_G2::zero();
+    }
 
-    // auto& item = req.verify_vec(0);
-    // auto x_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c0()).c_str());
-    // auto x_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c1()).c_str());
-    // auto x_coord = libff::alt_bn128_Fq2(x_c0, x_c1);
-    // auto y_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c0()).c_str());
-    // auto y_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c1()).c_str());
-    // auto y_coord = libff::alt_bn128_Fq2(y_c0, y_c1);
-    // auto z_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c0()).c_str());
-    // auto z_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c1()).c_str());
-    // auto z_coord = libff::alt_bn128_Fq2(z_c0, z_c1);
-    // *changed_idx = req.change_idx();
-    // return libff::alt_bn128_G2(x_coord, y_coord, z_coord);
-    return libff::alt_bn128_G2::zero();
+    return g2;
 }
 
 void BlsDkg::BroadcastVerfify() try {
@@ -692,44 +684,44 @@ void BlsDkg::BroadcastVerfify() try {
         return;
     }
 
-    if (!should_change_verfication_g2_) {
-        // std::string sec_key;
-        // if (!prefix_db_->GetSwapKey(
-        //         common::GlobalInfo::Instance()->network_id(),
-        //         local_member_index_,
-        //         prev_elect_height_,
-        //         local_member_index_,
-        //         local_member_index_,
-        //         &sec_key)) {
-        //     BLS_ERROR("get prev swap key failed: %d, %d, %d, %d, %lu",
-        //         local_member_index_, prev_elect_height_,
-        //         local_member_index_, local_member_index_, prev_elect_height_);
-        //     return;
-        // }
+    // if (!should_change_verfication_g2_) {
+    //     // std::string sec_key;
+    //     // if (!prefix_db_->GetSwapKey(
+    //     //         common::GlobalInfo::Instance()->network_id(),
+    //     //         local_member_index_,
+    //     //         prev_elect_height_,
+    //     //         local_member_index_,
+    //     //         local_member_index_,
+    //     //         &sec_key)) {
+    //     //     BLS_ERROR("get prev swap key failed: %d, %d, %d, %d, %lu",
+    //     //         local_member_index_, prev_elect_height_,
+    //     //         local_member_index_, local_member_index_, prev_elect_height_);
+    //     //     return;
+    //     // }
 
-        // bls::protobuf::LocalPolynomial local_poly;
-        // if (!prefix_db_->GetLocalPolynomial(security_, security_->GetAddress(), &local_poly)) {
-        //     SETH_ERROR("failed GetLocalPolynomial: %s",
-        //         common::Encode::HexEncode(security_->GetAddress()).c_str());
-        //     // assert(false);
-        //     return;
-        // }
+    //     // bls::protobuf::LocalPolynomial local_poly;
+    //     // if (!prefix_db_->GetLocalPolynomial(security_, security_->GetAddress(), &local_poly)) {
+    //     //     SETH_ERROR("failed GetLocalPolynomial: %s",
+    //     //         common::Encode::HexEncode(security_->GetAddress()).c_str());
+    //     //     // assert(false);
+    //     //     return;
+    //     // }
 
-        // if (local_poly.polynomial_size() == 0) {
-        //     assert(false);
-        //     return;
-        // }
+    //     // if (local_poly.polynomial_size() == 0) {
+    //     //     assert(false);
+    //     //     return;
+    //     // }
 
-        // auto local_polynomial = libff::alt_bn128_Fr(common::Encode::HexEncode(local_poly.polynomial(0)).c_str());
-        // for_common_pk_g2s_[local_member_index_] = local_polynomial * libff::alt_bn128_G2::one();
-        // prefix_db_->SaveSwapKey(
-        //     common::GlobalInfo::Instance()->network_id(),
-        //     local_member_index_, security_->GetAddress(), local_member_index_, sec_key);
-        valid_swapkey_set_.insert(local_member_index_);
-        ++valid_sec_key_count_;
-        has_swaped_keys_[local_member_index_] = true;
-        return;
-    }
+    //     // auto local_polynomial = libff::alt_bn128_Fr(common::Encode::HexEncode(local_poly.polynomial(0)).c_str());
+    //     // for_common_pk_g2s_[local_member_index_] = local_polynomial * libff::alt_bn128_G2::one();
+    //     // prefix_db_->SaveSwapKey(
+    //     //     common::GlobalInfo::Instance()->network_id(),
+    //     //     local_member_index_, security_->GetAddress(), local_member_index_, sec_key);
+    //     valid_swapkey_set_.insert(local_member_index_);
+    //     ++valid_sec_key_count_;
+    //     has_swaped_keys_[local_member_index_] = true;
+    //     return;
+    // }
 
     auto msg_ptr = std::make_shared<transport::TransportMessage>();
     auto& msg = msg_ptr->header;
@@ -742,18 +734,18 @@ void BlsDkg::BroadcastVerfify() try {
         return;
     }
 
-    CreateDkgMessage(msg_ptr);
-    SETH_WARN("brd verify g2 success local net: %u, local: %d,  %s, %s, hash64: %lu",
-        common::GlobalInfo::Instance()->network_id(),
-        local_member_index_,
-        common::Encode::HexEncode((*members_)[local_member_index_]->id).c_str(),
-        common::Encode::HexEncode(bls_msg.verify_brd().verify_vec(0).x_c0()).c_str(),
-        msg_ptr->header.hash64());
-#ifdef SETH_UNITTEST
-    ver_brd_msg_ = msg_ptr;
-#else
-    network::Route::Instance()->Send(msg_ptr);
-#endif
+//     CreateDkgMessage(msg_ptr);
+//     SETH_WARN("brd verify g2 success local net: %u, local: %d,  %s, %s, hash64: %lu",
+//         common::GlobalInfo::Instance()->network_id(),
+//         local_member_index_,
+//         common::Encode::HexEncode((*members_)[local_member_index_]->id).c_str(),
+//         common::Encode::HexEncode(bls_msg.verify_brd().verify_vec(0).x_c0()).c_str(),
+//         msg_ptr->header.hash64());
+// #ifdef SETH_UNITTEST
+//     ver_brd_msg_ = msg_ptr;
+// #else
+//     network::Route::Instance()->Send(msg_ptr);
+// #endif
 } catch (std::exception& e) {
     BLS_ERROR("catch error: %s", e.what());
 }
@@ -768,7 +760,7 @@ void BlsDkg::SwapSecKey() try {
     auto& msg = msg_ptr->header;
     auto& bls_msg = *msg.mutable_bls_proto();
     auto swap_req = bls_msg.mutable_swap_req();
-    if (should_change_verfication_g2_) {
+    // if (should_change_verfication_g2_) {
         for (uint32_t i = 0; i < member_count_; ++i) {
             auto swap_item = swap_req->add_keys();
             swap_item->set_sec_key("");
@@ -792,7 +784,7 @@ void BlsDkg::SwapSecKey() try {
             swap_item->set_sec_key(seckey);
             swap_item->set_sec_key_len(seckey_len);
         }
-    }
+    // }
 
     CreateDkgMessage(msg_ptr);
     SETH_WARN("success send swap seckey request local member index: %d, local net: %u, hash64: %lu",
@@ -1093,25 +1085,25 @@ void BlsDkg::CreateContribution(uint32_t valid_n, uint32_t valid_t) {
     }
 
     std::vector<libff::alt_bn128_Fr> polynomial(valid_t);
-    int32_t change_idx = common::Random::RandomInt32() % valid_t;
+    // int32_t change_idx = common::Random::RandomInt32() % valid_t;
     libff::alt_bn128_G2 old_g2 = libff::alt_bn128_G2::zero();
     for (uint32_t i = 0; i < valid_t; ++i) {
         polynomial[i] = libff::alt_bn128_Fr(common::Encode::HexEncode(local_poly.polynomial(i)).c_str());
-        if (change_idx == (int32_t)i) {
-            old_g2 = polynomial[i] * libff::alt_bn128_G2::one();
-            polynomial[i] = libff::alt_bn128_Fr::random_element();
-            while (polynomial[i] == libff::alt_bn128_Fr::zero()) {
-                polynomial[i] = libff::alt_bn128_Fr::random_element();
-            }
-        }
+        // if (change_idx == (int32_t)i) {
+        //     old_g2 = polynomial[i] * libff::alt_bn128_G2::one();
+        //     polynomial[i] = libff::alt_bn128_Fr::random_element();
+        //     while (polynomial[i] == libff::alt_bn128_Fr::zero()) {
+        //         polynomial[i] = libff::alt_bn128_Fr::random_element();
+        //     }
+        // }
     }
 
-    auto new_g2 = polynomial[change_idx] * libff::alt_bn128_G2::one();
-    if (change_idx == 0) {
-        for_common_pk_g2s_[local_member_index_] = new_g2;
-    } else {
+    // auto new_g2 = polynomial[change_idx] * libff::alt_bn128_G2::one();
+    // if (change_idx == 0) {
+    //     for_common_pk_g2s_[local_member_index_] = new_g2;
+    // } else {
         for_common_pk_g2s_[local_member_index_] = polynomial[0] * libff::alt_bn128_G2::one();
-    }
+    // }
 
     auto dkg_instance = std::make_shared<libBLS::Dkg>(valid_t, valid_n);
     local_src_secret_key_contribution_ = dkg_instance->SecretKeyContribution(
@@ -1127,24 +1119,24 @@ void BlsDkg::CreateContribution(uint32_t valid_n, uint32_t valid_t) {
     g2_vec_.push_back(polynomial[0] * libff::alt_bn128_G2::one());
 #endif // SETH_UNITTEST
 
-    bls::protobuf::VerifyVecBrdReq bls_verify_req;
-    bls_verify_req.set_change_idx(change_idx);
-    bls::protobuf::VerifyVecItem& verify_item = *bls_verify_req.add_verify_vec();
-    verify_item.set_x_c0(common::Encode::HexDecode(
-        libBLS::ThresholdUtils::fieldElementToString(new_g2.X.c0)));
-    verify_item.set_x_c1(common::Encode::HexDecode(
-        libBLS::ThresholdUtils::fieldElementToString(new_g2.X.c1)));
-    verify_item.set_y_c0(common::Encode::HexDecode(
-        libBLS::ThresholdUtils::fieldElementToString(new_g2.Y.c0)));
-    verify_item.set_y_c1(common::Encode::HexDecode(
-        libBLS::ThresholdUtils::fieldElementToString(new_g2.Y.c1)));
-    verify_item.set_z_c0(common::Encode::HexDecode(
-        libBLS::ThresholdUtils::fieldElementToString(new_g2.Z.c0)));
-    verify_item.set_z_c1(common::Encode::HexDecode(
-        libBLS::ThresholdUtils::fieldElementToString(new_g2.Z.c1)));
+    // bls::protobuf::VerifyVecBrdReq bls_verify_req;
+    // bls_verify_req.set_change_idx(change_idx);
+    // bls::protobuf::VerifyVecItem& verify_item = *bls_verify_req.add_verify_vec();
+    // verify_item.set_x_c0(common::Encode::HexDecode(
+    //     libBLS::ThresholdUtils::fieldElementToString(new_g2.X.c0)));
+    // verify_item.set_x_c1(common::Encode::HexDecode(
+    //     libBLS::ThresholdUtils::fieldElementToString(new_g2.X.c1)));
+    // verify_item.set_y_c0(common::Encode::HexDecode(
+    //     libBLS::ThresholdUtils::fieldElementToString(new_g2.Y.c0)));
+    // verify_item.set_y_c1(common::Encode::HexDecode(
+    //     libBLS::ThresholdUtils::fieldElementToString(new_g2.Y.c1)));
+    // verify_item.set_z_c0(common::Encode::HexDecode(
+    //     libBLS::ThresholdUtils::fieldElementToString(new_g2.Z.c0)));
+    // verify_item.set_z_c1(common::Encode::HexDecode(
+    //     libBLS::ThresholdUtils::fieldElementToString(new_g2.Z.c1)));
     
-    auto str = bls_verify_req.SerializeAsString();
-    prefix_db_->AddBlsVerifyG2(security_->GetAddress(), bls_verify_req);
+    // auto str = bls_verify_req.SerializeAsString();
+    // prefix_db_->AddBlsVerifyG2(security_->GetAddress(), bls_verify_req);
     valid_swapkey_set_.insert(local_member_index_);
     ++valid_sec_key_count_;
 }

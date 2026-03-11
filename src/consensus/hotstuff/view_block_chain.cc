@@ -936,6 +936,10 @@ std::string ViewBlockChain::String() const {
         }
     }
 
+    if (view_blocks.empty()) {
+        return "";
+    }
+
     std::sort(
             view_blocks.begin(), 
             view_blocks.end(), 
@@ -954,7 +958,8 @@ std::string ViewBlockChain::String() const {
         view_set.insert(vb->qc().view());
     }
 
-    SETH_DEBUG("get chain pool: %u, views: %s, all size: %u, block_height_str: %s",
+    SETH_DEBUG("network: %u, get chain pool: %u, views: %s, all size: %u, block_height_str: %s",
+        view_blocks[0]->qc().network_id(),
         pool_index_, ret.c_str(), view_blocks_info_.size(), block_height_str.c_str());
     assert(height_set.size() < 256);
     return ret;
@@ -1212,17 +1217,24 @@ int ViewBlockChain::CheckTxNonceValid(
 void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_item) {
     auto view_block_ptr_info = Get(qc_item.view_block_hash());
     if (!view_block_ptr_info) {
-        SETH_WARN("failed get view block %u_%u_%lu, hash: %s",
-            qc_item.network_id(), 
-            qc_item.pool_index(), 
-            qc_item.view(), 
-            common::Encode::HexEncode(qc_item.view_block_hash()).c_str());
-        kv_sync_->AddSyncViewHash(
-            qc_item.network_id(), 
-            qc_item.pool_index(), 
-            qc_item.view_block_hash(), 
-            0);
-        return;
+        view_block_ptr_info = std::make_shared<ViewBlockInfo>();
+        view_block_ptr_info->view_block = std::make_shared<ViewBlock>();
+        auto& view_block = *view_block_ptr_info->view_block;
+        if (!prefix_db_->GetBlock(qc_item.view_block_hash(), &view_block)) {
+            SETH_WARN("failed get view block %u_%u_%lu, hash: %s",
+                qc_item.network_id(), 
+                qc_item.pool_index(), 
+                qc_item.view(), 
+                common::Encode::HexEncode(qc_item.view_block_hash()).c_str());
+            kv_sync_->AddSyncViewHash(
+                qc_item.network_id(), 
+                qc_item.pool_index(), 
+                qc_item.view_block_hash(), 
+                0);
+            return;
+        }
+
+        SetViewBlockToMap(view_block_ptr_info);
     }
 
     auto view_block_ptr = view_block_ptr_info->view_block;

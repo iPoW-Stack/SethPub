@@ -310,7 +310,7 @@ int ContractCall::HandleTx(
         new_contract_balance,
         (etime - btime));
     if (block_tx.status() == kConsensusSuccess) {
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "1");
+        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "0");
         zjc_host.MergeToPrev();
         for (auto exists_iter = cross_to_map_.begin(); exists_iter != cross_to_map_.end(); ++exists_iter) {
             auto iter = pre_zjc_host.cross_to_map_.find(exists_iter->first);
@@ -322,6 +322,8 @@ int ContractCall::HandleTx(
                 to_item_ptr->set_amount(exists_iter->second->amount() + to_item_ptr->amount());
             }
         }
+    } else {
+        pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::to_string(block_tx.status()));
     }
 
     return kConsensusSuccess;

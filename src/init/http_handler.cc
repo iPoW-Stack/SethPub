@@ -116,10 +116,7 @@ static int CreateTransactionWithAttr(
     auto contract_bytes = req.get_param_value("bytes_code");
     if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kContractCreate) {
         contract_bytes = common::Encode::HexDecode(contract_bytes);
-        if (contract_bytes.size() <= 128 || memcmp(
-                contract_bytes.c_str(),
-                protos::kContractBytesStartCode.c_str(),
-                protos::kContractBytesStartCode.size()) != 0) {
+        if (common::IsContractBytescodeValid(contract_bytes) != common::ValidationStatus::SUCCESS) {
             SETH_DEBUG("create contract not has valid contract code: %s",
                 common::Encode::HexEncode(contract_bytes).c_str());
             return kHttpError;
@@ -339,8 +336,11 @@ static void HttpTransaction(const httplib::Request& req, httplib::Response& http
     http_res.set_content(res, "text/plain");
     msg_ptr->handle_status = transport::kMessageHandle;
     http_handler->tx_msg_map().Put(msg_ptr->msg_hash, msg_ptr);
-    SETH_WARN("http transaction success %s, %s, nonce: %lu", common::Encode::HexEncode(
-            http_handler->security_ptr()->GetAddress(common::Encode::HexDecode(frompk))).c_str(), to, nonce);
+    SETH_WARN("http transaction success %s, %s, nonce: %lu, txhash: %s", 
+        common::Encode::HexEncode(
+        http_handler->security_ptr()->GetAddress(common::Encode::HexDecode(frompk))).c_str(), 
+        to, nonce,
+        common::Encode::HexEncode(msg_ptr->msg_hash).c_str());
 }
 
 static void QueryContract(const httplib::Request& req, httplib::Response& http_res) {
@@ -1144,7 +1144,6 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
     nlohmann::json res_json;
     res_json["status"] = transport::kUnkonwn;
     res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
-
     if (!req.has_param("tx_hash")) {
         res_json["status"] = transport::kRequestInvalid;
         res_json["msg"] = std::string("not has tx hash param");
@@ -1152,11 +1151,18 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
         return;
     }
 
-    auto tx_hash = req.get_param_value("tx_hash");
+    auto tx_hash = common::Encode::HexDecode(req.get_param_value("tx_hash"));
+    SETH_DEBUG("transaction receipt query, tx hash: %s", req.get_param_value("tx_hash").c_str());
     std::string res;
     if (prefix_db->GetTemporaryKv(std::string("tx") + tx_hash, &res)) {
-        res_json["status"] = transport::kConsensusSuccess;
+        int32_t status = 0;
+        if (!common::StringUtil::ToInt32(res, &status)) {
+            status = transport::kUnkonwn;
+        }
+
+        res_json["status"] = status;
         res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
+        http_handler->tx_msg_map().Remove(tx_hash);
     } else {
         transport::MessagePtr msg_ptr = nullptr;
         if (http_handler->tx_msg_map().Get(tx_hash, msg_ptr)) {

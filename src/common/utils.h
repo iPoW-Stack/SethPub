@@ -237,6 +237,15 @@ enum VipLevel {
     kVipLevel5 = 5,
 };
 
+/**
+ * Validation result codes
+ */
+enum class ValidationStatus {
+    SUCCESS = 0,
+    EMPTY_BYTECODE = 1,
+    INCOMPLETE_PUSH = 2      // PUSH instruction is missing data bytes
+};
+
 static const uint32_t kUnicastAddressLength = 20u;
 static const uint32_t kPreypamentAddressLength = 40u;
 static const uint32_t kImmutablePoolSize = 32u;
@@ -479,6 +488,7 @@ static inline bool isFileExist(const std::string& path) {
     return std::filesystem::exists(path);
 }
 
+ValidationStatus IsContractBytescodeValid(const std::string& hex);
 
 }  // namespace common
 
