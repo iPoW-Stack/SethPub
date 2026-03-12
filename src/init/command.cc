@@ -7,7 +7,9 @@
 #include <termios.h> 
 #include <unistd.h>
 
-#include <iostream>
+#include <fstream>   // For ifstream and ofstream
+#include <sstream>   // For stringstream
+#include <iostream>  // For std::cout
 #include <memory>
 #include <thread>
 
