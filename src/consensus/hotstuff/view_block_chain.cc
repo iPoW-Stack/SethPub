@@ -743,8 +743,8 @@ void ViewBlockChain::HandleTimerMessage() {
         if (view_block) {
             bool height_commited = BlockHeightCommited(
                 prefix_db_,
-                common::GlobalInfo::Instance()->network_id(), 
-                pool_index_,
+                view_block->qc().network_id(), 
+                view_block->qc().pool_index(),
                 view_block->block_info().height());
             SETH_DEBUG("network: %d, pool: %d, height: %lu, height_commited: %d, "
                 "now check view_with_blocks_ size: %d", 

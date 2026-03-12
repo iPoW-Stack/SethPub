@@ -651,11 +651,12 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                 }
                 
                 vblock_queues_[thread_idx].push(pb_vblock);
-                SETH_DEBUG("1 success handle network new view block: %u_%u_%lu, height: %lu ", 
+                SETH_DEBUG("1 success handle network new view block: %u_%u_%lu, height: %lu, now size: %lu", 
                     pb_vblock->qc().network_id(),
                     pb_vblock->qc().pool_index(),
                     pb_vblock->qc().view(),
-                    pb_vblock->block_info().height());
+                    pb_vblock->block_info().height(),
+                    vblock_queues_[thread_idx].size());
             }
         }
     }

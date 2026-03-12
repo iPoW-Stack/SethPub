@@ -1714,6 +1714,11 @@ void Hotstuff::HandleSyncedViewBlock(
             vblock->qc().network_id(), 
             vblock->qc().pool_index(), 
             vblock->block_info().height())) {
+        SETH_DEBUG("block height committed, no need to store block db, %u_%u_%lu, height: %lu",
+            vblock->qc().network_id(), 
+            vblock->qc().pool_index(), 
+            vblock->qc().view(), 
+            vblock->block_info().height());
         return;
     }
     
