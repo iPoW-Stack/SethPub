@@ -65,7 +65,7 @@ bool Secp256k1::Sign(const std::string& hash, const PrivateKey& privkey, std::st
         getCtx(),
         &sig,
         (const uint8_t*)hash.c_str(),
-        (const uint8_t*)privkey.private_key().c_str(),
+        (const uint8_t*)privkey.private_key(),
         NULL,
         NULL);
     uint8_t data[kSignatureSize];

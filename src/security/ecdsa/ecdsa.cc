@@ -29,6 +29,16 @@ int Ecdsa::SetPrivateKey(const std::string& prikey) {
 int Ecdsa::SetPrivateKey(const char* prikey, uint32_t length) {
     private_key_ptr_ = prikey;
     private_key_length_ = length;
+    prikey_ = std::make_shared<PrivateKey>(private_key_ptr_, private_key_length_);
+    if (pubkey_.FromPrivateKey(curve_, *prikey_.get()) != kSecuritySuccess) {
+        return kSecurityError;
+    }
+
+    if (ecdh_key_.Init(&curve_, prikey_.get(), &pubkey_) != kSecuritySuccess) {
+        return kSecurityError;
+    }
+
+    str_addr_ = Secp256k1::Instance()->ToAddressWithPublicKey(curve_, pubkey_.str_pubkey());
     return kSecuritySuccess;
 }
 
@@ -49,7 +59,7 @@ int Ecdsa::Sign(const std::string &hash, std::string *sign) {
             return kSecurityError;
         }
     } else {
-        if (!Secp256k1::Instance()->Secp256k1Sign(hash, prikey_->private_key().c_str(), sign)) {
+        if (!Secp256k1::Instance()->Secp256k1Sign(hash, prikey_->private_key(), sign)) {
             return kSecurityError;
         }
     }
