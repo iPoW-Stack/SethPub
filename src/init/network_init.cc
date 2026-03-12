@@ -657,36 +657,27 @@ int NetworkInit::InitConfigWithArgs(int argc, char** argv) {
         uint32_t count = 0;
         while (std::getline(infile, line)) {
             if (line.empty()) continue;
-
-            // 寻找第一个制表符 \t 的位置
             size_t tab_pos = line.find('\t');
-            
             std::string first_column;
             std::string remaining_part = "";
 
             if (tab_pos != std::string::npos) {
-                // 存在多列：拆分第一列和剩余部分
                 first_column = line.substr(0, tab_pos);
-                remaining_part = line.substr(tab_pos); // 包含第一个 \t 及其后的所有内容
+                remaining_part = line.substr(tab_pos);
             } else {
-                // 只有一列
                 first_column = line;
             }
 
             if (first_column.empty()) {
-                outfile << line << "\n"; // 如果第一列为空，保留原行输出或跳过
+                outfile << line << "\n";
                 continue;
             }
 
-            // 使用 Whitebox Seal 逻辑加密第一列
-            std::string encrypted = seth::security::KeyManager::SealKey(first_column);
-            
+            std::string encrypted = seth::security::KeyManager::SealKey(common::Encode::HexDecode(first_column));
             if (!encrypted.empty()) {
-                // 输出：加密后的第一列 + 原有的剩余列数据
                 outfile << encrypted << remaining_part << "\n";
                 count++;
             } else {
-                // 如果加密失败，可以选择输出原行或报错
                 outfile << line << "\n";
             }
         }
