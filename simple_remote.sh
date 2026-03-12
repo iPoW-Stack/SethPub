@@ -121,6 +121,10 @@ make_package() {
         cp -rf /root/seth/cbuild_$TARGET/seth /root/seth/pkgs/$node_hash/seth
         cp -rf /root/seth/cbuild_$TARGET/txcli /root/seth/pkgs/$node_hash/txcli
         cp -rf /root/seth/pkgs/$node_hash /root/nodes/seth/pkg
+        for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
+            /root/seth/cbuild_$TARGET/seth -A /root/seth/shards${shard_id} -D /root/nodes/seth/pkg/shards${shard_id}
+            /root/seth/cbuild_$TARGET/seth -A  /root/seth/init_accounts${shard_id} -D /root/nodes/seth/pkg/init_accounts${shard_id}
+        done
     else
         cd /root/nodes/seth && ./seth -U -N $nodes_count -E 4
         cd /root/nodes/seth && ./seth -S 3 -N $nodes_count -E 4
