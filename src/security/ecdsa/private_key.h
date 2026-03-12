@@ -25,7 +25,7 @@ public:
         if (private_key_ptr_ != nullptr) {
             return private_key_ptr_;
         }
-        
+
         return private_key_.c_str();
     }
 
@@ -38,7 +38,7 @@ private:
     std::shared_ptr<BIGNUM> bignum_;
     std::string private_key_;
     const char* private_key_ptr_ = nullptr;
-    uint32_t private_key_length_ = 0
+    uint32_t private_key_length_ = 0;
 };
 
 }  // namespace security
