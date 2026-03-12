@@ -1374,9 +1374,10 @@ Status Hotstuff::VerifyFollower(const transport::MessagePtr& msg_ptr) {
     auto msg_hash = transport::TcpTransport::Instance()->GetHeaderHashForSign(
         msg_ptr->header);
     std::string decrypt_msg;
+    RawPrivateKey ecdh_key = std::make_pair(member->backup_ecdh_key.c_str(), member->backup_ecdh_key.size());
     if (crypto_->security()->Decrypt(
             msg_ptr->header.ecdh_encrypt(), 
-            member->backup_ecdh_key, 
+            ecdh_key, 
             &decrypt_msg) != security::kSecuritySuccess) {
         SETH_DEBUG("verify follower encrypt failed: %s", 
             common::Encode::HexEncode(member->id).c_str());
@@ -2322,9 +2323,10 @@ Status Hotstuff::SendMsgToLeader(
     auto msg_hash = transport::TcpTransport::Instance()->GetHeaderHashForSign(
         header_msg);
     std::string crypt_msg;
+    RawPrivateKey ecdh_key = std::make_pair(leader->leader_ecdh_key.c_str(), leader->leader_ecdh_key.size());
     if (crypto_->security()->Encrypt(
             msg_hash, 
-            leader->leader_ecdh_key, 
+            ecdh_key, 
             &crypt_msg)!= security::kSecuritySuccess) {
         SETH_DEBUG("send to leader encrypt failed: %s", 
             common::Encode::HexEncode(leader->id).c_str());
