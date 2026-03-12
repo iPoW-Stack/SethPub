@@ -45,6 +45,8 @@ SK_ARRAY=$(format_to_c_array "$RAW_SK")
 
 echo "Generated PK: $PK_ARRAY"
 echo "Generated SK: $SK_ARRAY"
+rm -rf ./third_party/lib/lib*.so*
+rm -rf ./third_party/lib64/lib*.so*
 
 cmake ..  -DCMAKE_BUILD_TYPE=$TARGET -DOPENSSL_ROOT_DIR=./third_party/depends/include/ -DCMAKE_INSTALL_PREFIX=~/seth -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
   -DREPLACE_WHITEBOX_PK="$PK_ARRAY" \
