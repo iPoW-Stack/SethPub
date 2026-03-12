@@ -151,7 +151,7 @@ private:
     static const uint64_t kSyncPeriodUs = 300000lu;
     static const uint64_t kSyncTimeoutPeriodUs = 3000000lu;
     static const uint32_t kEachTimerHandleCount = 64u;
-    static const uint32_t kCacheSyncKeyValueCount = 10240u;
+    static const uint32_t kCacheSyncKeyValueCount = 1024000u;
     static const uint32_t kSyncCount = 5u;
 
     common::ThreadSafeQueue<SyncItemPtr> item_queues_[common::kMaxThreadCount];
