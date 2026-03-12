@@ -1,4 +1,9 @@
 #include "init/network_init.h"
+
+#include <fstream>
+#include <functional>
+#include <memory>
+
 #include <bls/agg_bls.h>
 #include <common/encode.h>
 #include <common/log.h>
@@ -10,9 +15,7 @@
 #include <consensus/hotstuff/types.h>
 #include <consensus/hotstuff/view_block_chain.h>
 #include <consensus/consensus_utils.h>
-#include <functional>
 #include <libff/algebra/curves/alt_bn128/alt_bn128_init.hpp>
-#include <memory>
 #include <protos/pools.pb.h>
 #include <tools/utils.h>
 
@@ -631,7 +634,7 @@ int NetworkInit::InitConfigWithArgs(int argc, char** argv) {
 
     if (parser_arg.Has("A")) {
         if (!parser_arg.Has("D")) {
-            exit(0);
+            exit(1);
         }
 
         std::string src_prikey_file;
@@ -639,7 +642,7 @@ int NetworkInit::InitConfigWithArgs(int argc, char** argv) {
         std::ifstream infile(src_prikey_file);
         if (!infile.is_open()) {
             std::cout << "Error: Cannot open input file: " << src_prikey_file << std::endl;
-            return;
+            exit(1);
         }
 
         std::string des_prikey_file;
@@ -647,7 +650,7 @@ int NetworkInit::InitConfigWithArgs(int argc, char** argv) {
         std::ofstream outfile(des_prikey_file);
         if (!outfile.is_open()) {
             std::cout << "Error: Cannot open output file: " << des_prikey_file << std::endl;
-            return;
+            exit(1);
         }
 
         std::string line;
