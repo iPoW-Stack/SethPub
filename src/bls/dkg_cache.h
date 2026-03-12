@@ -37,10 +37,6 @@ public:
         return verify_g2_cache_;
     }
 
-    void set_verify_g2_cache(const std::string& id, const libff::alt_bn128_G2& g2) const {
-        verify_g2_cache_[id] = g2; 
-    }
-
 private:
     struct SwapKeyCacheKey {
         std::string id;
