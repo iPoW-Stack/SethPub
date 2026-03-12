@@ -656,7 +656,14 @@ int NetworkInit::InitConfigWithArgs(int argc, char** argv) {
         std::string line;
         uint32_t count = 0;
         while (std::getline(infile, line)) {
+            // 1. 去除行尾可能存在的 \r (处理 Windows/DOS 格式文件)
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back();
+            }
+
+            // 2. 严格空行检查：跳过完全没有任何内容的行
             if (line.empty()) continue;
+
             size_t tab_pos = line.find('\t');
             std::string first_column;
             std::string remaining_part = "";
@@ -674,6 +681,7 @@ int NetworkInit::InitConfigWithArgs(int argc, char** argv) {
             }
 
             std::string encrypted = seth::security::KeyManager::SealKey(common::Encode::HexDecode(first_column));
+            
             if (!encrypted.empty()) {
                 outfile << encrypted << remaining_part << "\n";
                 count++;
