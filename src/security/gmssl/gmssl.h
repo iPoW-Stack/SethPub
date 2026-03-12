@@ -33,14 +33,14 @@ public:
         const std::string& hash);
 
     virtual RawPrivateKey GetPrikey() const {
-        return std::make_pair(prikey_.c_str(), prikey_.size());
+        return std::make_pair(str_prikey_.c_str(), str_prikey_.size());
     }
 
     virtual const std::string& GetAddress() const;
     virtual std::string GetAddress(const std::string& pubkey);
     virtual const std::string& GetPublicKey() const;
     virtual const std::string& GetPublicKeyUnCompressed() const;
-    virtual int Encrypt(const std::string& msg, RawPrivateKeykey, std::string* out);
+    virtual int Encrypt(const std::string& msg, RawPrivateKey key, std::string* out);
     virtual int Decrypt(const std::string& msg, RawPrivateKey key, std::string* out);
 
     virtual int GetEcdhKey(const std::string& peer_pubkey, std::string* ecdh_key) {
