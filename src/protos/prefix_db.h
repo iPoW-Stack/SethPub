@@ -137,6 +137,7 @@ public:
             return nullptr;
         }
 
+        SETH_DEBUG("success get addr: %s", common::Encode::HexEncode(addr).c_str());
         return addr_info;
     }
 
