@@ -26,6 +26,11 @@ cd third_party/evmone && git checkout master &&  git submodule update --init && 
 cd $SRC_PATH
 cd third_party/evmone/evmc &&  git submodule update --init && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && make install
 
+if [ ! -d "$SRC_PATH/third_party/include/sodium" ]; then
+    cd $SRC_PATH
+    cd third_party/libsodium && git checkout 9511c98 && git submodule update --init && ./configure --prefix=$SRC_PATH/third_party/ && make -j${nproc} && make install 
+fi
+
 cd $SRC_PATH
 cd third_party/maxmind/ && git submodule init && git submodule update && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc}
 cp -rnf libmaxminddb.a $SRC_PATH/third_party/lib/
