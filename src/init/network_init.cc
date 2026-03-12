@@ -514,7 +514,7 @@ int NetworkInit::InitSecurity() {
         }
 
         if (security_->SetPrivateKey(
-                security::KeyManager::Instance().GetPrivateKey(), 
+                security::KeyManager::Instance().GetProtectedKey(), 
                 security::KeyManager::Instance().GetKeyLength()) != security::kSecuritySuccess) { 
             INIT_ERROR("init security failed!");
             return kInitError;
