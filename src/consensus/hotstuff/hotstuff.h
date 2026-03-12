@@ -46,7 +46,7 @@ using SyncViewBlockFn = std::function<void(const uint32_t&, const HashStr&)>;
 
 static const uint64_t STUCK_PACEMAKER_DURATION_MIN_US = 2000000lu; // the min duration that hotstuff can be considered stucking
 static const bool WITH_CONSENSUS_STATISTIC =
-    true; // 是否开启 leader 的共识数据统计
+    true; // Whether to enable leader consensus data statistics
 
 class Hotstuff {
 public:
@@ -140,7 +140,7 @@ public:
     void HandleSyncedViewBlock(
             std::shared_ptr<view_block::protobuf::ViewBlockItem>& vblock);
 
-    // 已经投票
+    // Voted
     inline bool HasVoted(const View& view) {
         return last_vote_view_ >= view;
     }
@@ -171,7 +171,7 @@ public:
 
     int IsStuck() {
         auto now_tm_us = common::TimeUtils::TimestampUs();
-        // 超时时间必须大于阈值
+        // Timeout must be greater than threshold
         if (recover_from_stuck_timeout_ >= now_tm_us) {
             return 1;
         }
@@ -213,7 +213,7 @@ private:
     Status HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr);
 
     bool HandleProposeMsgCondition(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
-        // 仅新 v_block 才能允许执行
+        // Only new v_block is allowed to execute
         return false;// pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().view_item().qc().view() > view_block_chain()->GetMaxHeight();
     }
 
@@ -266,9 +266,9 @@ private:
         std::shared_ptr<ViewBlockChain> view_block_chain,
         uint32_t network_id,
         uint32_t pool_index);
-    // 是否允许空交易
+    // Is empty transaction allowed
     bool IsEmptyBlockAllowed(const ViewBlock& v_block);
-    // 获取该 Leader 要增加的 consensus stat succ num
+    // Get the consensus stat succ num to be increased by the Leader
     uint32_t GetPendingSuccNumOfLeader(const std::shared_ptr<ViewBlock>& v_block);
     void BroadcastGlobalPoolBlock(const std::shared_ptr<ViewBlock>& v_block);
     void HandleTimerMessage();
@@ -387,8 +387,8 @@ private:
             common::kImmutablePoolSize) % members->size();
         // ++consecutive_failures_;
        
-        // 切换模式：强制跳过一个视图号 (V + k + 1)
-        // 当超时刚刚发生(k=1)时，out_view = last_qc.view + 2
+        // switch mode: force skip a view number (V + k + 1)
+        // when timeout just occurred (k=1), out_view = last_qc.view + 2
         if (high_view_block->qc().elect_height() < latest_elect_height_) {
             *out_view = high_view_block->qc().view() + latest_elect_height_ + k + 1;
         } else {

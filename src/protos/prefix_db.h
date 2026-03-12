@@ -1396,7 +1396,7 @@ public:
         return true;
     }
 
-    // 用于保存 agg bls 的私钥，目前私钥与 elect_height 无关
+    // Used to save the private key of agg bls, currently the private key has nothing to do with elect_height
     void SaveAggBlsPrikey(
             std::shared_ptr<security::Security>& security_ptr,
             const libff::alt_bn128_Fr& bls_prikey) {

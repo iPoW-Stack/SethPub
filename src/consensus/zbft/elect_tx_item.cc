@@ -243,7 +243,7 @@ int ElectTxItem::getMaxElectHeightInfo(
     statistic = &max_stat;
     max_elect_height = max_stat.elect_height();
     uint64_t now_elect_height = elect_mgr_->latest_height(elect_statistic_.sharding_id());
-    // 根据最新的选举块高度获取相关的 members
+    // Get related members based on the latest election block height
     members = elect_mgr_->GetNetworkMembersWithHeight(
         now_elect_height,
         elect_statistic_.sharding_id(),
@@ -346,8 +346,8 @@ void ElectTxItem::JoinNewNodes2ElectNodes(
         std::vector<seth::consensus::NodeDetailPtr> &elect_nodes,
         uint32_t min_area_weight,
         uint32_t min_tx_count) {
-    // 计算新加入节点数量
-    // 如果未到达最大节点数量，新加入的节点为当前节点数量 * 10%
+    // Calculate the number of newly added nodes
+    // If the maximum number of nodes is not reached, the newly added nodes are 10% of the current number of nodes
     uint32_t join_count = 0;
     if (members->size() < common::kEachShardMaxNodeCount) {
         if (members->size() < kFtsMinDoubleNodeCount) {
@@ -369,7 +369,7 @@ void ElectTxItem::JoinNewNodes2ElectNodes(
     for (uint32_t i = 0; i < join_count; ++i) {
         elect_nodes.push_back(nullptr);
     }
-    // 先填满有固定位置的新节点，再填满随机节点
+    // First fill in the new nodes with fixed positions, then fill in the random nodes
     ChooseNodeForEachIndex(
         true,
         min_area_weight,
@@ -396,7 +396,7 @@ void ElectTxItem::JoinNewNodes2ElectNodes(
     }
 }
 
-void ElectTxItem::          ChooseNodeForEachIndex(
+void ElectTxItem::ChooseNodeForEachIndex(
         bool hold_pos,
         uint32_t min_area_weight,
         uint32_t min_tx_count,
@@ -457,7 +457,6 @@ void ElectTxItem::GetIndexNodes(
                   elect_statistic_.join_elect_nodes(i).shard(),
                   elect_statistic_.sharding_id());
 
-        // 已经在委员会中跳过
         auto iter = added_nodes_.find(elect_statistic_.join_elect_nodes(i).pubkey());
         if (iter != added_nodes_.end()) {
             SETH_DEBUG("join new node failed: %s, already in committee", common::Encode::HexEncode(elect_statistic_.join_elect_nodes(i).pubkey()).c_str());
@@ -470,13 +469,11 @@ void ElectTxItem::GetIndexNodes(
         }
 
         if (index != common::kInvalidUint32) {
-            // 当指定了index时，只选择指定index的节点
-            // 不指定 index 时，选择所有节点
             if (elect_statistic_.join_elect_nodes(i).elect_pos() != (int32_t)index) {
                 SETH_DEBUG("join new node failed: %s, not in this index, new node index :%d, need index:%d",
-                          common::Encode::HexEncode(elect_statistic_.join_elect_nodes(i).pubkey()).c_str(),
-                          elect_statistic_.join_elect_nodes(i).elect_pos(),
-                          index);
+                    common::Encode::HexEncode(elect_statistic_.join_elect_nodes(i).pubkey()).c_str(),
+                    elect_statistic_.join_elect_nodes(i).elect_pos(),
+                    index);
                 continue;
             }
         }
@@ -560,7 +557,7 @@ void ElectTxItem::MiningToken(
             auto mining_token = now_ming_count * tx_count / max_tx_count;
             valid_nodes[i]->mining_token = mining_token;
             //            auto gas_token = tx_count * gas_for_mining / all_tx_count;
-            //          只有 leader 节点才会获得所有的 gas
+            //          Only the leader node will get all the gas
             auto gas_token = valid_nodes[i]->gas_sum;
             if (i + 1 == valid_nodes.size()) {
                 assert(gas_for_mining >= tmp_all_gas_amount);
@@ -679,10 +676,10 @@ int ElectTxItem::CreateNewElect(
 }
 /**
  * @param members
- * @param statistic_item 来自共识节点的统计信息
- * @param min_area_weight return 节点间的最小逻辑距离
- * @param min_tx_count 返回结果 最小交易量
- * @param elect_nodes 返回结果 剔除了少于 max_tx_count/2 的节点，原节点位置保持不变
+ * @param statistic_item Statistics from consensus nodes
+ * @param min_area_weight return Minimum logical distance between nodes
+ * @param min_tx_count Return result Minimum transaction count
+ * @param elect_nodes Return result Nodes with less than max_tx_count/2 are eliminated, and the original node position remains unchanged
  * @return
  */
 int ElectTxItem::CheckWeedout(
@@ -699,10 +696,10 @@ int ElectTxItem::CheckWeedout(
         SETH_DEBUG("LLLLL before WeedOut count %d : %s", statistic_item.tx_count_size(), dugstr.c_str());
     }
 
-    uint32_t weed_out_count = statistic_item.tx_count_size() * kFtsWeedoutDividRate / 100; // 旧委员会有 10% 会被淘汰
+    uint32_t weed_out_count = statistic_item.tx_count_size() * kFtsWeedoutDividRate / 100; // 10% of the old committee will be eliminated
     uint32_t direct_weed_out_count = weed_out_count / 2;
 
-    // 计算最大交易量 按交易量降序排列
+    // Calculate maximum transaction volume Sort by transaction volume in descending order
     uint32_t max_tx_count = 0;
     typedef std::pair<uint32_t, uint32_t> TxItem;
     std::vector<TxItem> member_tx_count;
@@ -718,8 +715,8 @@ int ElectTxItem::CheckWeedout(
     uint32_t direct_weedout_tx_count = max_tx_count / 2;
     std::set<uint32_t> invalid_nodes;
 
-    // 第一次淘汰
-    // 最多因为交易量少直接淘汰 direct_weedout_count 个节点
+    // First elimination
+    // Eliminate at most direct_weedout_count nodes due to low transaction volume
     for (uint32_t i = 0; i < direct_weed_out_count; ++i) {
         if (member_tx_count[i].second < direct_weedout_tx_count) {
             invalid_nodes.insert(member_tx_count[i].first);
@@ -735,7 +732,7 @@ int ElectTxItem::CheckWeedout(
             continue;
         }
 
-        // 计算当前于其他节点之间的最小距离
+        // Calculate the minimum distance between the current node and other nodes
         uint32_t min_dis = common::kInvalidUint32;
         for (int32_t idx = 0; idx < statistic_item.tx_count_size(); ++idx) {
             if (member_idx == idx) {
@@ -750,7 +747,7 @@ int ElectTxItem::CheckWeedout(
                 min_dis = dis;
             }
         }
-        // 构建节点信息，并更新全局最小节点距离
+        // Build node information and update global minimum node distance
         protos::AddressInfoPtr account_info = view_block_chain_->ChainGetAccountInfo((*members)[member_idx]->id);
         if (account_info == nullptr) {
             SETH_ERROR("get account info failed: %s",

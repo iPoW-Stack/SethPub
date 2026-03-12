@@ -25,6 +25,7 @@
 #include "network/route.h"
 #include "network/network_utils.h"
 #include "init/init_utils.h"
+#include "security/ecdsa/sodium_private_key.h"
 
 namespace seth {
 
@@ -135,6 +136,53 @@ void Command::AddBaseCommands() {
         uint32_t network_id = 0;
         common::StringUtil::ToUint32(args[0], &network_id);
         PrintDht(network_id);
+    });
+    /**
+     * Usage: encrypt_file <input_path> <output_path>
+     * Reads the first column of input_path, seals it, and writes to output_path.
+     */
+    AddCommand("encrypt_file", [this](const std::vector<std::string>& args) {
+        if (args.size() < 2) {
+            std::cout << "Usage: encrypt_file <input_path> <output_path>" << std::endl;
+            return;
+        }
+
+        std::ifstream infile(args[0]);
+        if (!infile.is_open()) {
+            std::cout << "Error: Cannot open input file: " << args[0] << std::endl;
+            return;
+        }
+
+        std::ofstream outfile(args[1]);
+        if (!outfile.is_open()) {
+            std::cout << "Error: Cannot open output file: " << args[1] << std::endl;
+            return;
+        }
+
+        std::string line;
+        uint32_t count = 0;
+        while (std::getline(infile, line)) {
+            if (line.empty()) continue;
+
+            // Get the first column (space or tab separated)
+            std::stringstream ss(line);
+            std::string first_column;
+            ss >> first_column;
+
+            if (first_column.empty()) continue;
+
+            // Encrypt using the Whitebox Seal logic
+            std::string encrypted = seth::security::KeyManager::SealKey(first_column);
+            
+            if (!encrypted.empty()) {
+                outfile << encrypted << "\n";
+                count++;
+            }
+        }
+
+        std::cout << "Successfully encrypted " << count << " keys to " << args[1] << std::endl;
+        infile.close();
+        outfile.close();
     });
 }
 

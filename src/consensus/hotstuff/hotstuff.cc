@@ -1019,7 +1019,7 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
 
 //         ADD_DEBUG_PROCESS_TIMESTAMP();
 // // #ifndef NDEBUG
-// //         auto msg_hash = GetQCMsgHash(pro_msg.tc());爱他
+// //         auto msg_hash = GetQCMsgHash(pro_msg.tc());
 // //         auto* tc_ptr = &pro_msg.tc();
 // //         SETH_WARN("HandleProposeMsgStep_VerifyQC success verify qc %u_%u_%lu, hash: %s, "
 // //             "view block hash: %s, sign x: %s called hash: %lu, propose_debug: %s",
@@ -1280,7 +1280,7 @@ Status Hotstuff::HandleProposeMsgStep_Vote(std::shared_ptr<ProposeMsgWrapper>& p
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
-    // NOTICE: pipeline 重试时，protobuf 结构体被析构，因此 pro_msg_wrap->header.hash64() 是 0
+    // NOTICE: When the pipeline is retried, the protobuf structure is destructed, so pro_msg_wrap->header.hash64() is 0
     SETH_DEBUG("pacemaker pool: %d, highQC: %lu, highTC: %lu, chainSize: %lu, "
         "curView: %lu, vblock: %lu, txs: %lu, hash64: %lu, propose_debug: %s",
         pool_idx_,
