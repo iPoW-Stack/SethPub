@@ -166,23 +166,40 @@ void Command::AddBaseCommands() {
         while (std::getline(infile, line)) {
             if (line.empty()) continue;
 
-            // Get the first column (space or tab separated)
-            std::stringstream ss(line);
+            // 寻找第一个制表符 \t 的位置
+            size_t tab_pos = line.find('\t');
+            
             std::string first_column;
-            ss >> first_column;
+            std::string remaining_part = "";
 
-            if (first_column.empty()) continue;
+            if (tab_pos != std::string::npos) {
+                // 存在多列：拆分第一列和剩余部分
+                first_column = line.substr(0, tab_pos);
+                remaining_part = line.substr(tab_pos); // 包含第一个 \t 及其后的所有内容
+            } else {
+                // 只有一列
+                first_column = line;
+            }
 
-            // Encrypt using the Whitebox Seal logic
+            if (first_column.empty()) {
+                outfile << line << "\n"; // 如果第一列为空，保留原行输出或跳过
+                continue;
+            }
+
+            // 使用 Whitebox Seal 逻辑加密第一列
             std::string encrypted = seth::security::KeyManager::SealKey(first_column);
             
             if (!encrypted.empty()) {
-                outfile << encrypted << "\n";
+                // 输出：加密后的第一列 + 原有的剩余列数据
+                outfile << encrypted << remaining_part << "\n";
                 count++;
+            } else {
+                // 如果加密失败，可以选择输出原行或报错
+                outfile << line << "\n";
             }
         }
 
-        std::cout << "Successfully encrypted " << count << " keys to " << args[1] << std::endl;
+        std::cout << "Successfully processed " << count << " lines to " << args[1] << std::endl;
         infile.close();
         outfile.close();
     });
