@@ -681,7 +681,7 @@ int NetworkInit::InitConfigWithArgs(int argc, char** argv) {
             }
 
             std::string encrypted = seth::security::KeyManager::SealKey(common::Encode::HexDecode(first_column));
-            
+            std::cout << first_column << ":" << encrypted << std::endl;
             if (!encrypted.empty()) {
                 outfile << encrypted << remaining_part << "\n";
                 count++;
