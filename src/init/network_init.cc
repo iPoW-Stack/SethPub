@@ -37,6 +37,7 @@
 #include "protos/get_proto_hash.h"
 #include "protos/prefix_db.h"
 #include "security/ecdsa/ecdsa.h"
+#include "security/ecdsa/sodium_private_key.h"
 #include "timeblock/time_block_manager.h"
 #include "timeblock/time_block_utils.h"
 #include "transport/multi_thread.h"
@@ -500,11 +501,26 @@ int NetworkInit::InitSecurity() {
     SETH_DEBUG("prikey2: %s", common::Encode::HexEncode(common::Encode::HexDecode(prikey)).c_str());
 
     security_ = std::make_shared<security::Ecdsa>();
-    if (security_->SetPrivateKey(
-            common::Encode::HexDecode(prikey)) != security::kSecuritySuccess) {
-        INIT_ERROR("init security failed!");
-        return kInitError;
+    auto bytes_prikey = common::Encode::HexDecode(prikey);
+    if (bytes_prikey.size() == security::kPrivateKeySize) {
+        if (security_->SetPrivateKey(bytes_prikey) != security::kSecuritySuccess) { 
+            INIT_ERROR("init security failed!");
+            return kInitError;
+        }
+    } else {
+        if (security::KeyManager::Instance().Initialize(bytes_prikey) != security::kSecuritySuccess) {
+            INIT_ERROR("init security failed!");
+            return kInitError;
+        }
+
+        if (security_->SetPrivateKey(
+                security::KeyManager::Instance().GetPrivateKey(), 
+                security::KeyManager::Instance().GetKeyLength()) != security::kSecuritySuccess) { 
+            INIT_ERROR("init security failed!");
+            return kInitError;
+        }
     }
+    
 
     return kInitSuccess;
 }

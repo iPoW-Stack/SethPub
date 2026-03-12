@@ -22,6 +22,10 @@ public:
     virtual ~GmSsl() {}
 
     virtual int SetPrivateKey(const std::string& prikey);
+    virtual int SetPrivateKey(const char* prikey, uint32_t length) {
+        assert(false);
+        return kSecurityError;
+    }
     virtual int Sign(const std::string& hash, std::string* sign);
     virtual int Verify(const std::string& hash, const std::string& pubkey, const std::string& sign);
     virtual std::string Recover(

@@ -30,7 +30,7 @@ public:
     bool Verify(const std::string& hash, const PublicKey& pubkey, const std::string& sign);
     bool Secp256k1Sign(
         const std::string& msg,
-        const PrivateKey& privkey,
+        const char* privkey,
         std::string* sign);
     bool Secp256k1Verify(
         const std::string& msg,

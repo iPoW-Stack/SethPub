@@ -20,6 +20,7 @@ public:
     virtual ~Ecdsa() {}
 
     virtual int SetPrivateKey(const std::string& prikey);
+    virtual int SetPrivateKey(const char* prikey, uint32_t length);
     virtual int Sign(const std::string& hash, std::string* sign);
     virtual int Verify(const std::string& hash, const std::string& pubkey, const std::string& sign);
     virtual std::string Recover(
@@ -58,6 +59,8 @@ private:
     std::string str_prikey_;
     std::string str_addr_;
     std::string str_pk_;
+    const char* private_key_ptr_;
+    uint32_t private_key_length_;
 //     common::UniqueMap<std::string, std::string, 16, 4> pk_addr_map_;
 
     DISALLOW_COPY_AND_ASSIGN(Ecdsa);

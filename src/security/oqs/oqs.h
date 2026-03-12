@@ -24,6 +24,10 @@ public:
     }
 
     virtual int SetPrivateKey(const std::string& prikey);
+    virtual int SetPrivateKey(const char* prikey, uint32_t length) {
+        assert(false);
+        return kSecurityError;
+    }
     int SetPrivateKey(const std::string& prikey, const std::string& pubkey);
     virtual int Sign(const std::string& hash, std::string* sign);
     virtual int Verify(const std::string& hash, const std::string& pubkey, const std::string& sign);

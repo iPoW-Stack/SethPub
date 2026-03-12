@@ -9,6 +9,7 @@ namespace security {
 class Security {
 public:
     virtual int SetPrivateKey(const std::string& prikey) = 0;
+    virtual int SetPrivateKey(const char* prikey, uint32_t length) = 0;
     virtual int Sign(const std::string& msg, std::string* sign) = 0;
     virtual int Verify(
         const std::string& msg,
