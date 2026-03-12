@@ -475,17 +475,6 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
 bool BlsDkg::VerifySekkeyValid(
         uint32_t peer_index,
         const libff::alt_bn128_Fr& seckey) {
-    bls::protobuf::BlsVerifyValue verify_val;
-    uint32_t changed_idx = 0;
-    libff::alt_bn128_G2 new_val = GetVerifyG2FromDb(peer_index, &changed_idx);
-    if (new_val == libff::alt_bn128_G2::zero()) {
-        SETH_ERROR("failed get verify g2 from db, peer_index: %d, "
-            "min_aggree_member_count_: %d, net: %d",
-            peer_index, min_aggree_member_count_, (*members_)[0]->net_id);
-//         assert(false);
-        return false;
-    }
-
     bls::protobuf::JoinElectBlsInfo verfy_final_vals;
     if (!prefix_db_->GetVerifiedG2s(
             local_member_index_,
@@ -511,6 +500,16 @@ bool BlsDkg::VerifySekkeyValid(
             common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
             min_aggree_member_count_, 
             (*members_)[0]->net_id);
+    }
+
+    uint32_t changed_idx = 0;
+    libff::alt_bn128_G2 new_val = GetVerifyG2FromDb(peer_index, &changed_idx);
+    if (new_val == libff::alt_bn128_G2::zero()) {
+        SETH_ERROR("failed get verify g2 from db, peer_index: %d, "
+            "min_aggree_member_count_: %d, net: %d",
+            peer_index, min_aggree_member_count_, (*members_)[0]->net_id);
+//         assert(false);
+        return false;
     }
 
     bls::protobuf::JoinElectInfo join_info;
