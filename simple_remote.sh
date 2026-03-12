@@ -133,14 +133,16 @@ make_package() {
         cp /root/nodes/txcli /root/nodes/seth/pkg
         cp /root/nodes/seth/conf/GeoLite2-City.mmdb /root/nodes/seth/pkg
         cp /root/nodes/seth/conf/log4cpp.properties /root/nodes/seth/pkg
-        cp /root/seth/shards* /root/nodes/seth/pkg/
+        for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
+            /root/seth/cbuild_$TARGET/seth -A /root/seth/shards${shard_id} -D /root/nodes/seth/pkg/shards${shard_id}
+            /root/seth/cbuild_$TARGET/seth -A  /root/seth/init_accounts${shard_id} -D /root/nodes/seth/pkg/init_accounts${shard_id}
+        done
         cp /root/seth/temp_cmd.sh /root/nodes/seth/pkg
         cp /root/seth/start_cmd.sh /root/nodes/seth/pkg
         cp -rf /root/nodes/seth/shard_db_2 /root/nodes/seth/pkg/shard_db_2
         cp -rf /root/nodes/seth/shard_db_3 /root/nodes/seth/pkg
         cp -rf /root/nodes/temp /root/nodes/seth/pkg
         cp -rf /root/seth/gdb/* /root/nodes/seth/pkg
-        cp -rf /root/seth/init_accounts* /root/nodes/seth/pkg
         cp -rf /root/nodes/seth/pkg /root/seth/pkgs/$node_hash
     fi
 
