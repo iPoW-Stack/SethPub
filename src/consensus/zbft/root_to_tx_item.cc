@@ -115,7 +115,7 @@ int RootToTxItem::HandleTx(
             }
         }
 
-        SHARDORA_DEBUG("success add addr cross to: %s, to info: %s", 
+        SETH_INFO("success add addr cross to: %s, to info: %s", 
             common::Encode::HexEncode(to_item.des()).c_str(), 
             ProtobufToJson(*to_item_ptr).c_str());
     } else {
