@@ -1374,7 +1374,9 @@ Status Hotstuff::VerifyFollower(const transport::MessagePtr& msg_ptr) {
     auto msg_hash = transport::TcpTransport::Instance()->GetHeaderHashForSign(
         msg_ptr->header);
     std::string decrypt_msg;
-    RawPrivateKey ecdh_key = std::make_pair(member->backup_ecdh_key.c_str(), member->backup_ecdh_key.size());
+    security::RawPrivateKey ecdh_key = std::make_pair(
+        member->backup_ecdh_key.c_str(), 
+        member->backup_ecdh_key.size());
     if (crypto_->security()->Decrypt(
             msg_ptr->header.ecdh_encrypt(), 
             ecdh_key, 
@@ -2323,7 +2325,9 @@ Status Hotstuff::SendMsgToLeader(
     auto msg_hash = transport::TcpTransport::Instance()->GetHeaderHashForSign(
         header_msg);
     std::string crypt_msg;
-    RawPrivateKey ecdh_key = std::make_pair(leader->leader_ecdh_key.c_str(), leader->leader_ecdh_key.size());
+    security::RawPrivateKey ecdh_key = std::make_pair(
+        leader->leader_ecdh_key.c_str(), 
+        leader->leader_ecdh_key.size());
     if (crypto_->security()->Encrypt(
             msg_hash, 
             ecdh_key, 
