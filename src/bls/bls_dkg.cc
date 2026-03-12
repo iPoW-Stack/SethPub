@@ -382,9 +382,7 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
         //     return;
         // }
 
-        uint32_t changed_idx = 0;
-        for_common_pk_g2s_[bls_msg.index()] = GetVerifyG2FromDb(
-            bls_msg.index(), &changed_idx);
+        for_common_pk_g2s_[bls_msg.index()] = GetVerifyG2FromDb(bls_msg.index());
         valid_swapkey_set_.insert(bls_msg.index());
         ++valid_sec_key_count_;
         has_swaped_keys_[bls_msg.index()] = true;
@@ -502,15 +500,14 @@ bool BlsDkg::VerifySekkeyValid(
             (*members_)[0]->net_id);
     }
 
-    // int32_t changed_idx = -1;
-    // libff::alt_bn128_G2 new_val = GetVerifyG2FromDb(peer_index, &changed_idx);
-    // if (new_val == libff::alt_bn128_G2::zero()) {
-    //     SETH_ERROR("failed get verify g2 from db, peer_index: %d, "
-    //         "min_aggree_member_count_: %d, net: %d",
-    //         peer_index, min_aggree_member_count_, (*members_)[0]->net_id);
-//         assert(false);
-    //     return false;
-    // }
+    libff::alt_bn128_G2 new_val = GetVerifyG2FromDb(peer_index);
+    if (new_val == libff::alt_bn128_G2::zero()) {
+        SETH_ERROR("failed get verify g2 from db, peer_index: %d, "
+            "min_aggree_member_count_: %d, net: %d",
+            peer_index, min_aggree_member_count_, (*members_)[0]->net_id);
+        assert(false);
+        return false;
+    }
 
     // bls::protobuf::JoinElectInfo join_info;
     // if (!prefix_db_->GetNodeVerificationVector((*members_)[peer_index]->id, &join_info)) {
@@ -664,7 +661,7 @@ bool BlsDkg::CheckRecomputeG2s(
     return true;
 }
 
-libff::alt_bn128_G2 BlsDkg::GetVerifyG2FromDb(uint32_t peer_mem_index, uint32_t* changed_idx) {
+libff::alt_bn128_G2 BlsDkg::GetVerifyG2FromDb(uint32_t peer_mem_index) {
     libff::alt_bn128_G2 g2;
     auto res = dkg_cache_->GetBlsVerifyG2((*members_)[peer_mem_index]->id, &g2);
     if (!res) {
@@ -855,13 +852,14 @@ void BlsDkg::FinishBroadcast() try {
 
         auto& id = (*members_)[i]->id;
         auto g2_iter = for_common_pk_g2s.find(id);
-        // if (g2_iter == for_common_pk_g2s.end()) {
-        //     valid_seck_keys.push_back(libff::alt_bn128_Fr::zero());
-        //     common_public_key_ = common_public_key_ + libff::alt_bn128_G2::zero();
-        //     SETH_WARN("elect_height: %d, invalid all_verification_vector index: %d",
-        //         elect_hegiht_, i);
-        //     continue;
-        // }
+        if (g2_iter == for_common_pk_g2s.end()) {
+            valid_seck_keys.push_back(libff::alt_bn128_Fr::zero());
+            common_public_key_ = common_public_key_ + libff::alt_bn128_G2::zero();
+            SETH_WARN("elect_height: %d, invalid all_verification_vector index: %d",
+                elect_hegiht_, i);
+            assert(false);
+            continue;
+        }
 
         std::string seckey;
         if (!dkg_cache_->GetSwapKey(
