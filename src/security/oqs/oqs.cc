@@ -103,12 +103,12 @@ const std::string& Oqs::GetPublicKeyUnCompressed() const {
     return str_pk_;
 }
 
-int Oqs::Encrypt(const std::string& msg, const std::string& key, std::string* out) {
+int Oqs::Encrypt(const std::string& msg, RawPrivateKey key, std::string* out) {
     SETH_FATAL("invalid!");
     return -1;
 }
 
-int Oqs::Decrypt(const std::string& msg, const std::string& key, std::string* out) {
+int Oqs::Decrypt(const std::string& msg, RawPrivateKey key, std::string* out) {
     SETH_FATAL("invalid!");
     return -1;
 }

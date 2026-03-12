@@ -1198,71 +1198,71 @@ static void LoadAllAccounts(int32_t shardnum=3) {
 }
 
 void TxPoolManager::CreateTestTxs(uint32_t pool_begin, uint32_t pool_end, uint32_t tps) {
-    LoadAllAccounts(3);
-    std::shared_ptr<address::protobuf::AddressInfo> address_[pool_end + 1];
-    std::shared_ptr<security::Security> pool_sec[pool_end + 1];
-    for (auto i = pool_begin; i <= pool_end; ++i) {
-        auto from_prikey = g_prikeys[i];
-        std::shared_ptr<security::Security> thread_security = std::make_shared<security::Ecdsa>();
-        for (uint32_t tmp_idx = 0; tmp_idx < g_prikeys.size(); ++tmp_idx) {
-            from_prikey = g_prikeys[i];
-            thread_security->SetPrivateKey(from_prikey);
-            if (common::GetAddressPoolIndex(thread_security->GetAddress()) == i) {
-                break;
-            }
-        }
+    // LoadAllAccounts(3);
+    // std::shared_ptr<address::protobuf::AddressInfo> address_[pool_end + 1];
+    // std::shared_ptr<security::Security> pool_sec[pool_end + 1];
+    // for (auto i = pool_begin; i <= pool_end; ++i) {
+    //     auto from_prikey = g_prikeys[i];
+    //     std::shared_ptr<security::Security> thread_security = std::make_shared<security::Ecdsa>();
+    //     for (uint32_t tmp_idx = 0; tmp_idx < g_prikeys.size(); ++tmp_idx) {
+    //         from_prikey = g_prikeys[i];
+    //         thread_security->SetPrivateKey(from_prikey);
+    //         if (common::GetAddressPoolIndex(thread_security->GetAddress()) == i) {
+    //             break;
+    //         }
+    //     }
 
-        pool_sec[i] = thread_security;
-        address_map[from_prikey] = prefix_db_->GetAddressInfo(thread_security->GetAddress());
-        prikey_with_nonce[from_prikey] = address_map[from_prikey]->nonce();
-        SETH_WARN("success get pool: %d, prikey: %s", i, common::Encode::HexEncode(from_prikey).c_str());
-    }
+    //     pool_sec[i] = thread_security;
+    //     address_map[from_prikey] = prefix_db_->GetAddressInfo(thread_security->GetAddress());
+    //     prikey_with_nonce[from_prikey] = address_map[from_prikey]->nonce();
+    //     SETH_WARN("success get pool: %d, prikey: %s", i, common::Encode::HexEncode(from_prikey).c_str());
+    // }
 
-    std::string to = common::Encode::HexDecode("27d4c39244f26c157b5a87898569ef4ce5807413");
-    static const uint64_t kSleepTimeMs = 100lu;
-    common::GlobalInfo::Instance()->get_thread_index();
-    usleep(120000000lu);
-    uint32_t send_out_tps = common::GlobalInfo::Instance()->test_tx_tps() / (1000lu / kSleepTimeMs);
-    while (!common::GlobalInfo::Instance()->global_stoped()) {
-        if (item_functions_[0] == nullptr) {
-            usleep(1000000lu);
-            continue;
-        }
+    // std::string to = common::Encode::HexDecode("27d4c39244f26c157b5a87898569ef4ce5807413");
+    // static const uint64_t kSleepTimeMs = 100lu;
+    // common::GlobalInfo::Instance()->get_thread_index();
+    // usleep(120000000lu);
+    // uint32_t send_out_tps = common::GlobalInfo::Instance()->test_tx_tps() / (1000lu / kSleepTimeMs);
+    // while (!common::GlobalInfo::Instance()->global_stoped()) {
+    //     if (item_functions_[0] == nullptr) {
+    //         usleep(1000000lu);
+    //         continue;
+    //     }
 
-        for (auto i = pool_begin; i <= pool_end; ++i) {
-            for (uint32_t tx_idx = 0; tx_idx < send_out_tps; ++tx_idx) {
-                if (tx_pool_[i].all_tx_size() >= common::GlobalInfo::Instance()->each_tx_pool_max_txs()) {
-                    break;
-                }
+    //     for (auto i = pool_begin; i <= pool_end; ++i) {
+    //         for (uint32_t tx_idx = 0; tx_idx < send_out_tps; ++tx_idx) {
+    //             if (tx_pool_[i].all_tx_size() >= common::GlobalInfo::Instance()->each_tx_pool_max_txs()) {
+    //                 break;
+    //             }
 
-                auto from_prikey = pool_sec[i]->GetPrikey();
-                auto tx_msg_ptr = CreateTransactionWithAttr(
-                    pool_sec[i],
-                    ++prikey_with_nonce[from_prikey],
-                    from_prikey,
-                    to,
-                    "",
-                    "",
-                    1980,
-                    10000,
-                    1,
-                    3);
-                tx_msg_ptr->address_info = address_map[from_prikey];
-                pools::TxItemPtr tx_ptr = item_functions_[0](tx_msg_ptr);
-                if (tx_ptr == nullptr) {
-                    assert(false);
-                    return;
-                }
+    //             auto from_prikey = pool_sec[i]->GetPrikey();
+    //             auto tx_msg_ptr = CreateTransactionWithAttr(
+    //                 pool_sec[i],
+    //                 ++prikey_with_nonce[from_prikey],
+    //                 from_prikey,
+    //                 to,
+    //                 "",
+    //                 "",
+    //                 1980,
+    //                 10000,
+    //                 1,
+    //                 3);
+    //             tx_msg_ptr->address_info = address_map[from_prikey];
+    //             pools::TxItemPtr tx_ptr = item_functions_[0](tx_msg_ptr);
+    //             if (tx_ptr == nullptr) {
+    //                 assert(false);
+    //                 return;
+    //             }
             
-                tx_pool_[i].AddTx(tx_ptr);
-                SETH_DEBUG("success create test tx thread: %s, nonce: %lu",
-                    common::Encode::HexEncode(pool_sec[i]->GetAddress()).c_str(), 
-                    prikey_with_nonce[from_prikey]);
-            }
-        }
+    //             tx_pool_[i].AddTx(tx_ptr);
+    //             SETH_DEBUG("success create test tx thread: %s, nonce: %lu",
+    //                 common::Encode::HexEncode(pool_sec[i]->GetAddress()).c_str(), 
+    //                 prikey_with_nonce[from_prikey]);
+    //         }
+    //     }
         
-        usleep(kSleepTimeMs * 1000lu);
-    }
+    //     usleep(kSleepTimeMs * 1000lu);
+    // }
 }
 
 void TxPoolManager::DispatchTx(uint32_t pool_index, const transport::MessagePtr& msg_ptr) {

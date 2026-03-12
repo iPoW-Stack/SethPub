@@ -85,12 +85,12 @@ const std::string& GmSsl::GetPublicKeyUnCompressed() const {
     return str_pk_;
 }
 
-int GmSsl::Encrypt(const std::string& msg, const std::string& key, std::string* out) {
+int GmSsl::Encrypt(const std::string& msg, RawPrivateKey key, std::string* out) {
     SETH_FATAL("invalid!");
     return -1;
 }
 
-int GmSsl::Decrypt(const std::string& msg, const std::string& key, std::string* out) {
+int GmSsl::Decrypt(const std::string& msg, RawPrivateKey key, std::string* out) {
     SETH_FATAL("invalid!");
     return -1;
 }

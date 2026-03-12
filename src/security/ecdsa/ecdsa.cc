@@ -114,14 +114,14 @@ const std::string& Ecdsa::GetPublicKeyUnCompressed() const {
     return pubkey_.str_pubkey_uncompressed();
 }
 
-int Ecdsa::Encrypt(const std::string& msg, const std::string& key, std::string* out) {
+int Ecdsa::Encrypt(const std::string& msg, RawPrivateKey key, std::string* out) {
     return security::Crypto::Instance()->GetEncryptData(
         key,
         msg,
         out);
 }
 
-int Ecdsa::Decrypt(const std::string& msg, const std::string& key, std::string* out) {
+int Ecdsa::Decrypt(const std::string& msg, RawPrivateKey key, std::string* out) {
     return security::Crypto::Instance()->GetDecryptData(
         key,
         msg,

@@ -21,6 +21,8 @@ enum SecurityErrorCode {
     kSecurityError = 1,
 };
 
+using RawPrivateKey = std::pair<const char*, uint32_t>;
+
 inline static std::string GetContractAddress(
         const std::string& from,
         const std::string& gid,

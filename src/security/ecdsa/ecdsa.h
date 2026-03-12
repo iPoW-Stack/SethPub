@@ -27,16 +27,20 @@ public:
         const std::string& sign,
         const std::string& hash);
 
-    virtual const std::string& GetPrikey() const {
-        return str_prikey_;
+    virtual RawPrivateKey GetPrikey() const {
+        if (private_key_ptr_ != nullptr) {
+            return std::make_pair(private_key_ptr_, private_key_length_);
+        }
+
+        return std::make_pair(str_prikey_.c_str(), str_prikey_.size());
     }
 
     virtual const std::string& GetAddress() const;
     virtual std::string GetAddress(const std::string& pubkey);
     virtual const std::string& GetPublicKey() const;
     virtual const std::string& GetPublicKeyUnCompressed() const;
-    virtual int Encrypt(const std::string& msg, const std::string& key, std::string* out);
-    virtual int Decrypt(const std::string& msg, const std::string& key, std::string* out);
+    virtual int Encrypt(const std::string& msg, RawPrivateKey key, std::string* out);
+    virtual int Decrypt(const std::string& msg, RawPrivateKey key, std::string* out);
     virtual int GetEcdhKey(const std::string& peer_pubkey, std::string* ecdh_key);
     virtual bool IsValidPublicKey(const std::string& pubkey);
     virtual std::string UnicastAddress(const std::string& src_address);
