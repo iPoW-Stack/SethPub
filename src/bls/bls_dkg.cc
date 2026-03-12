@@ -418,9 +418,10 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
         return;
     }
 
+    security::RawPrivateKey raw_private_key = std::make_pair(encrypt_key.c_str(), encrypt_key.size());
     int res = security_->Decrypt(
         bls_msg.swap_req().keys(local_member_index_).sec_key(),
-        encrypt_key,
+        raw_private_key,
         &dec_msg);
     if (dec_msg.empty()) {
         BLS_ERROR("dec_msg.empty()");
@@ -809,9 +810,10 @@ void BlsDkg::CreateSwapKey(uint32_t member_idx, std::string* seckey, int32_t* se
         return;
     }
 
+    security::RawPrivateKey raw_private_key = std::make_pair(encrypt_key.c_str(), encrypt_key.size());
     int res = security_->Encrypt(
         msg,
-        encrypt_key,
+        raw_private_key,
         seckey);
     if (res != security::kSecuritySuccess) {
         return;
