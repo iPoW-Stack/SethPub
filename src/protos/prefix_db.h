@@ -663,6 +663,17 @@ public:
     
     void AddBlsVerifyG2(
             const std::string& id,
+            const bls::protobuf::VerifyVecBrdReq& verfy_req,
+            db::DbWriteBatch& db_batch) {
+        std::string key = kBlsVerifyPrefex + id;
+        std::string val = verfy_req.SerializeAsString();
+        db_batch.Put(key, val);
+        SETH_DEBUG("%s add bls verify g2: %s", 
+            common::Encode::HexEncode(id).c_str(), ProtobufToJson(verfy_req).c_str());
+    }
+
+    void AddBlsVerifyG2(
+            const std::string& id,
             const bls::protobuf::VerifyVecBrdReq& verfy_req) {
         std::string key = kBlsVerifyPrefex + id;
         std::string val = verfy_req.SerializeAsString();
