@@ -629,6 +629,71 @@ int NetworkInit::InitConfigWithArgs(int argc, char** argv) {
         exit(0);
     }
 
+    if (parser_arg.Has("A")) {
+        if (!parser_arg.Has("D")) {
+            exit(0);
+        }
+
+        std::string src_prikey_file;
+        parser_arg.Get("A", src_prikey_file);
+        std::ifstream infile(src_prikey_file);
+        if (!infile.is_open()) {
+            std::cout << "Error: Cannot open input file: " << src_prikey_file << std::endl;
+            return;
+        }
+
+        std::string des_prikey_file;
+        parser_arg.Get("D", des_prikey_file);
+        std::ofstream outfile(des_prikey_file);
+        if (!outfile.is_open()) {
+            std::cout << "Error: Cannot open output file: " << des_prikey_file << std::endl;
+            return;
+        }
+
+        std::string line;
+        uint32_t count = 0;
+        while (std::getline(infile, line)) {
+            if (line.empty()) continue;
+
+            // 寻找第一个制表符 \t 的位置
+            size_t tab_pos = line.find('\t');
+            
+            std::string first_column;
+            std::string remaining_part = "";
+
+            if (tab_pos != std::string::npos) {
+                // 存在多列：拆分第一列和剩余部分
+                first_column = line.substr(0, tab_pos);
+                remaining_part = line.substr(tab_pos); // 包含第一个 \t 及其后的所有内容
+            } else {
+                // 只有一列
+                first_column = line;
+            }
+
+            if (first_column.empty()) {
+                outfile << line << "\n"; // 如果第一列为空，保留原行输出或跳过
+                continue;
+            }
+
+            // 使用 Whitebox Seal 逻辑加密第一列
+            std::string encrypted = seth::security::KeyManager::SealKey(first_column);
+            
+            if (!encrypted.empty()) {
+                // 输出：加密后的第一列 + 原有的剩余列数据
+                outfile << encrypted << remaining_part << "\n";
+                count++;
+            } else {
+                // 如果加密失败，可以选择输出原行或报错
+                outfile << line << "\n";
+            }
+        }
+
+        std::cout << "Successfully processed " << count << " lines to " << des_prikey_file << std::endl;
+        infile.close();
+        outfile.close();
+        exit(0);
+    }
+
     parser_arg.Get("c", config_path_);
     if (config_path_.empty()) {
         config_path_ = kDefaultConfigPath;
@@ -778,6 +843,8 @@ int NetworkInit::ParseParams(int argc, char** argv, common::ParserArgs& parser_a
     parser_arg.AddArgType('E', "end_net", common::kMaybeValue);
     parser_arg.AddArgType('N', "node_count", common::kMaybeValue);
     parser_arg.AddArgType('C', "cross_latest", common::kNoValue);
+    parser_arg.AddArgType('A', "src_transform_prikey", common::kMaybeValue);
+    parser_arg.AddArgType('D', "des_transform_prikey", common::kMaybeValue);
     // parser_arg.AddArgType('1', "root_nodes", common::kMaybeValue);    
 
     for (uint32_t arg_i = network::kConsensusShardBeginNetworkId-1; arg_i < network::kConsensusShardEndNetworkId; arg_i++) {
