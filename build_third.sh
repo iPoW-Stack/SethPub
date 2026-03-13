@@ -4,7 +4,7 @@
 # Check OS and install only if necessary
 if [ -f /etc/debian_version ]; then
     sudo apt update
-    sudo apt install -y autoconf automake libtool libprocps-dev texinfo libgnutls28-dev \
+    sudo apt install -y autoconf automake libtool texinfo libgnutls28-dev \
                         liblzma-dev pkg-config yasm zlib1g-dev libssh2-1-dev cmake
 elif [ -f /etc/redhat-release ]; then
     sudo dnf install -y gnutls-devel perl procps-ng-devel texinfo xz-devel cmake
