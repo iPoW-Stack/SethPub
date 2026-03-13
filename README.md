@@ -42,7 +42,6 @@
 > The configuration in **'seth.conf'** uses a **SEALED (encrypted)** version of your key. 
 > Even if the config file is leaked, your original private key remains safe and cannot be easily reversed.
 
-################################################################
 ```
       bash build_third.sh
       bash start_miner.sh <RAW_HEX_PRIVATE_KEY>
