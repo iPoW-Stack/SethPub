@@ -9,6 +9,7 @@ dnf install -y procps-ng-devel
 dnf install -y texinfo
 dnf install -y xz-devel
 #ubuntu
+
 apt update
 sudo apt install autoconf automake libtool -y
 apt install -y libprocps-dev
