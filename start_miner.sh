@@ -14,7 +14,7 @@ if [ -z "$1" ]; then
     echo "No private key provided. Generating a random 32-byte hex key..."
     # Generate 32 bytes of random data and convert to hex (64 characters)
     RAW_PRIVATE_KEY=$(openssl rand -hex 32)
-    echo "Generated Key: $RAW_KEY"
+    echo "Generated Private Key: $RAW_PRIVATE_KEY"
 else
     RAW_PRIVATE_KEY="$1"
 fi
@@ -47,7 +47,7 @@ OUTPUT=$($ENCRYPT_CMD -K "${RAW_PRIVATE_KEY}")
 PRIVATE_KEY=""
 if [ $? -eq 0 ] && [ -n "$OUTPUT" ]; then
     IFS=":" read -r PRIVATE_KEY WALLET_ADDRESS <<< "$OUTPUT"
-    echo "Encrypted Private Key: $ENCRYPTED_PRIKEY"
+    echo "Encrypted Private Key: $PRIVATE_KEY"
     echo "Wallet Address: $WALLET_ADDRESS"
 else
     echo "Error: Failed to get key and address."
