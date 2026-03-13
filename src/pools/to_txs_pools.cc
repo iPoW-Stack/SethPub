@@ -395,6 +395,7 @@ int ToTxsPools::CreateToTxWithHeights(
                             height, 
                             pool_idx,
                             common::Encode::HexEncode(addr_info->addr()).c_str());
+                        to_iter->second.set_des_sharding_id(des_sharding_id);
                     } else {
                         des_sharding_id = network::kRootCongressNetworkId;
                     }
@@ -465,7 +466,7 @@ int ToTxsPools::CreateToTxWithHeights(
         *to_item = iter->second;
         SETH_DEBUG("set to %s amount %lu, sharding id: %u, des sharding id: %d, pool index: %d, prepayment: %lu",
             common::Encode::HexEncode(to_item->des()).c_str(),
-            iter->second.amount(), to_item->sharding_id(), 
+            iter->second.amount(), to_item->des_sharding_id(), 
             sharding_id, to_item->pool_index(), to_item->prepayment());
     }
 
