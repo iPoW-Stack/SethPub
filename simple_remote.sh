@@ -281,6 +281,36 @@ start_all_nodes() {
     echo 'start_all_nodes over'
 }
 
+init_mining_dir() {
+    echo "init_mining_dir start..."
+    local mining_path="./mining_node"
+    mkdir -p $mining_path/conf
+    mkdir -p $mining_path/log
+    
+    cp -rf /root/nodes/seth/pkg/shard_db_3 $mining_path/db
+    cp /root/nodes/seth/pkg/conf/GeoLite2-City.mmdb $mining_path/conf/
+    cat <<EOF > $mining_path/conf/seth.conf_temp
+[db]
+path = "./db"
+
+[log]
+path = "log/seth.log"
+
+[seth]
+bootstrap = ${bootstrap}
+prikey = REPLACE_PRIVATE_KEY
+local_ip = REPLACE_LOCAL_IP
+public_ip = REPLACE_PUBLIC_IP
+http_port = 24009
+local_port = 14009
+net_id = 3
+leader_change_init_tm=0
+EOF
+
+    echo "Mining directory initialized at $mining_path"
+}
+
+
 killall -9 sshpass
 init
 make_package
@@ -290,3 +320,4 @@ get_bootstrap
 echo $bootstrap
 run_command
 start_all_nodes
+init_mining_dir

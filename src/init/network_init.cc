@@ -632,6 +632,32 @@ int NetworkInit::InitConfigWithArgs(int argc, char** argv) {
         exit(0);
     }
 
+    if (parser_arg.Has("K")) {
+        std::string hex_input;
+        parser_arg.Get("K", hex_input);
+        if (hex_input.empty()) {
+            std::cout << "Error: Input hex string is empty." << std::endl;
+            exit(1);
+        }
+
+        std::string raw_data = common::Encode::HexDecode(hex_input);
+        if (raw_data.empty() && !hex_input.empty()) {
+            std::cout << "Error: Invalid hex string input." << std::endl;
+            exit(1);
+        }
+
+        std::string encrypted_binary = seth::security::KeyManager::SealKey(raw_data);
+
+        if (!encrypted_binary.empty()) {
+            std::string encrypted_hex = common::Encode::HexEncode(encrypted_binary);
+            std::cout << encrypted_hex << std::endl;
+            exit(0);
+        } else {
+            std::cout << "Error: Encryption failed." << std::endl;
+            exit(1);
+        }
+    }
+
     if (parser_arg.Has("A")) {
         if (!parser_arg.Has("D")) {
             exit(1);
@@ -846,6 +872,7 @@ int NetworkInit::ParseParams(int argc, char** argv, common::ParserArgs& parser_a
     parser_arg.AddArgType('C', "cross_latest", common::kNoValue);
     parser_arg.AddArgType('A', "src_transform_prikey", common::kMaybeValue);
     parser_arg.AddArgType('D', "des_transform_prikey", common::kMaybeValue);
+    parser_arg.AddArgType('K', "encrypt_prikey", common::kMaybeValue);
     // parser_arg.AddArgType('1', "root_nodes", common::kMaybeValue);    
 
     for (uint32_t arg_i = network::kConsensusShardBeginNetworkId-1; arg_i < network::kConsensusShardEndNetworkId; arg_i++) {
