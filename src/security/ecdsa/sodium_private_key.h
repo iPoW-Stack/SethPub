@@ -5,6 +5,10 @@
 #include <vector>
 #include <mutex>
 
+#include "common/encode.h"
+#include "common/log.h"
+#include "security/security.h"
+
 /**
  * Macro definitions for hardcoded Whitebox Keys.
  * In a production environment, REPLACE_WHITEBOX_SK should be 
@@ -63,7 +67,6 @@ public:
      */
     int Initialize(const std::string& sealed_prikey) {
         std::lock_guard<std::mutex> lock(mutex_);
-        
         // Clean up any existing sensitive data before re-initialization
         CleanupInternal();
 
@@ -71,7 +74,8 @@ public:
         if (sodium_init() < 0) return -1;
 
         if (sealed_prikey.size() < crypto_box_SEALBYTES) {
-            return -1; // Ciphertext too short
+            SETH_DEBUG("Ciphertext size: %zu is too short to be valid", sealed_prikey.size());
+            return kSecurityError; // Ciphertext too short
         }
 
         size_t decrypted_len = sealed_prikey.size() - crypto_box_SEALBYTES;
@@ -81,8 +85,10 @@ public:
          * It provides guard pages and prevents the memory from being swapped to disk.
          */
         protected_key_ = (unsigned char*)sodium_malloc(decrypted_len);
-        if (!protected_key_) return -1;
-
+        if (!protected_key_) {
+            SETH_DEBUG("Failed to allocate protected memory for decrypted key");
+            return kSecurityError;
+        }
         /**
          * Decrypt the sealed box using the hardcoded Whitebox Keypair.
          * The Whitebox SK is essentially the 'Master Key' that unlocks the User Key.
@@ -94,7 +100,8 @@ public:
                 kWhiteboxPublicKey, 
                 kWhiteboxPrivateKey) != 0) {
             CleanupInternal();
-            return -1;
+            SETH_DEBUG("Failed to decrypt sealed key with Whitebox Keypair");
+            return kSecurityError;
         }
 
         protected_key_length_ = decrypted_len;
@@ -102,7 +109,7 @@ public:
         // Set the memory region to Read-Only to prevent accidental tampering
         sodium_mprotect_readonly(protected_key_);
         
-        return 0;
+        return kSecuritySuccess;
     }
 
     /**
