@@ -533,9 +533,12 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
         std::string enc_data;
         security::Ecdsa ecdsa;
         auto local_bls_str = local_bls_item.SerializeAsString();
+        security::RawPrivateKey raw_prikey= std::make_pair(
+            genesis_nodes[idx]->prikey.c_str(), 
+            genesis_nodes[idx]->prikey.size());
         if (ecdsa.Encrypt(
                 local_bls_str,
-                genesis_nodes[idx]->prikey,
+                raw_prikey,
                 &enc_data) != security::kSecuritySuccess) {
             SETH_FATAL("encrypt data failed!");
             return false;

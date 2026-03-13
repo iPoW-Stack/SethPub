@@ -234,6 +234,7 @@ Status BlockAcceptor::Accept(
             addr,
             join_info,
             zjc_host.db_batch_);
+        prefix_db_->AddBlsVerifyG2(addr, join_info.g2_req(), zjc_host.db_batch_);
     }
 
     for (auto iter = zjc_host.cross_to_map_.begin(); iter != zjc_host.cross_to_map_.end(); ++iter) {

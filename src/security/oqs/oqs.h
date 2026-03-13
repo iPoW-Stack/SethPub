@@ -24,6 +24,10 @@ public:
     }
 
     virtual int SetPrivateKey(const std::string& prikey);
+    virtual int SetPrivateKey(const char* prikey, uint32_t length) {
+        assert(false);
+        return kSecurityError;
+    }
     int SetPrivateKey(const std::string& prikey, const std::string& pubkey);
     virtual int Sign(const std::string& hash, std::string* sign);
     virtual int Verify(const std::string& hash, const std::string& pubkey, const std::string& sign);
@@ -31,16 +35,16 @@ public:
         const std::string& sign,
         const std::string& hash);
 
-    virtual const std::string& GetPrikey() const {
-        return str_prikey_;
+    virtual RawPrivateKey GetPrikey() const {
+        return std::make_pair(str_prikey_.c_str(), str_prikey_.size());
     }
 
     virtual const std::string& GetAddress() const;
     virtual std::string GetAddress(const std::string& pubkey);
     virtual const std::string& GetPublicKey() const;
     virtual const std::string& GetPublicKeyUnCompressed() const;
-    virtual int Encrypt(const std::string& msg, const std::string& key, std::string* out);
-    virtual int Decrypt(const std::string& msg, const std::string& key, std::string* out);
+    virtual int Encrypt(const std::string& msg, RawPrivateKey key, std::string* out);
+    virtual int Decrypt(const std::string& msg, RawPrivateKey key, std::string* out);
 
     virtual int GetEcdhKey(const std::string& peer_pubkey, std::string* ecdh_key) {
         SETH_FATAL("invalid!");

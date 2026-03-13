@@ -844,7 +844,8 @@ static void GetSecAndEncData(const httplib::Request& req, httplib::Response& htt
     GT m(e, test_data.c_str(), test_data.size());
     auto seckey = common::Hash::Hash256(m.toString());
     std::string sec_data;
-    secptr->Encrypt(data, seckey, &sec_data);
+    security::RawPrivateKey raw_prikey = std::make_pair(seckey.c_str(), seckey.size());
+    secptr->Encrypt(data, raw_prikey, &sec_data);
     SETH_WARN("get m data src data: %s, hex data: %s, m: %s, hash sec: %s, sec data: %s", 
         test_data.c_str(), 
         common::Encode::HexEncode(test_data).c_str(),
@@ -894,7 +895,8 @@ static void ProxDecryption(const httplib::Request& req, httplib::Response& http_
     }
 
     std::string dec_data;
-    secptr->Decrypt(kv_info.value(), hash256, &dec_data);
+    security::RawPrivateKey raw_prikey = std::make_pair(hash256.c_str(), hash256.size());
+    secptr->Decrypt(kv_info.value(), raw_prikey, &dec_data);
     SETH_WARN("get m data src data: %s, hex data: %s, m: %s, hash sec: %s, sec data: %s", 
         dec_data.c_str(), 
         common::Encode::HexEncode(dec_data).c_str(),

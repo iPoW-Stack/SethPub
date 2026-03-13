@@ -316,7 +316,7 @@ void BlockManager::RootHandleNormalToTx(
         tx->set_gas_limit(0);
         tx->set_amount(0);
         tx->set_gas_price(common::kBuildinTransactionGasPrice);
-        tx->set_nonce(msg_ptr->address_info->nonce() + 1);
+        tx->set_nonce(++step_with_nonce_[tx->step()]);
         tx->set_value(SerializeDeterministic(tos_item));
         auto unique_hash = common::Hash::keccak256(
             tx->to() + "_" +

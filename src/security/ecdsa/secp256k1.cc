@@ -65,7 +65,7 @@ bool Secp256k1::Sign(const std::string& hash, const PrivateKey& privkey, std::st
         getCtx(),
         &sig,
         (const uint8_t*)hash.c_str(),
-        (const uint8_t*)privkey.private_key().c_str(),
+        (const uint8_t*)privkey.private_key(),
         NULL,
         NULL);
     uint8_t data[kSignatureSize];
@@ -123,14 +123,14 @@ std::string Secp256k1::GetSign(const std::string& r, const std::string& s, uint8
 
 bool Secp256k1::Secp256k1Sign(
         const std::string& msg,
-        const PrivateKey& privkey,
+        const char* privkey,
         std::string* sign) {
     secp256k1_ecdsa_recoverable_signature sig;
     if (secp256k1_ecdsa_sign_recoverable(
             getCtx(),
             &sig,
             (const uint8_t*)msg.c_str(),
-            (const uint8_t*)privkey.private_key().c_str(),
+            (const uint8_t*)privkey,
             NULL,
             NULL) != 1) {
         return false;

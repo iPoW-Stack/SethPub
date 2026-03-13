@@ -1019,7 +1019,7 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
 
 //         ADD_DEBUG_PROCESS_TIMESTAMP();
 // // #ifndef NDEBUG
-// //         auto msg_hash = GetQCMsgHash(pro_msg.tc());爱他
+// //         auto msg_hash = GetQCMsgHash(pro_msg.tc());
 // //         auto* tc_ptr = &pro_msg.tc();
 // //         SETH_WARN("HandleProposeMsgStep_VerifyQC success verify qc %u_%u_%lu, hash: %s, "
 // //             "view block hash: %s, sign x: %s called hash: %lu, propose_debug: %s",
@@ -1280,7 +1280,7 @@ Status Hotstuff::HandleProposeMsgStep_Vote(std::shared_ptr<ProposeMsgWrapper>& p
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
-    // NOTICE: pipeline 重试时，protobuf 结构体被析构，因此 pro_msg_wrap->header.hash64() 是 0
+    // NOTICE: When the pipeline is retried, the protobuf structure is destructed, so pro_msg_wrap->header.hash64() is 0
     SETH_DEBUG("pacemaker pool: %d, highQC: %lu, highTC: %lu, chainSize: %lu, "
         "curView: %lu, vblock: %lu, txs: %lu, hash64: %lu, propose_debug: %s",
         pool_idx_,
@@ -1374,9 +1374,12 @@ Status Hotstuff::VerifyFollower(const transport::MessagePtr& msg_ptr) {
     auto msg_hash = transport::TcpTransport::Instance()->GetHeaderHashForSign(
         msg_ptr->header);
     std::string decrypt_msg;
+    security::RawPrivateKey ecdh_key = std::make_pair(
+        member->backup_ecdh_key.c_str(), 
+        member->backup_ecdh_key.size());
     if (crypto_->security()->Decrypt(
             msg_ptr->header.ecdh_encrypt(), 
-            member->backup_ecdh_key, 
+            ecdh_key, 
             &decrypt_msg) != security::kSecuritySuccess) {
         SETH_DEBUG("verify follower encrypt failed: %s", 
             common::Encode::HexEncode(member->id).c_str());
@@ -2322,9 +2325,12 @@ Status Hotstuff::SendMsgToLeader(
     auto msg_hash = transport::TcpTransport::Instance()->GetHeaderHashForSign(
         header_msg);
     std::string crypt_msg;
+    security::RawPrivateKey ecdh_key = std::make_pair(
+        leader->leader_ecdh_key.c_str(), 
+        leader->leader_ecdh_key.size());
     if (crypto_->security()->Encrypt(
             msg_hash, 
-            leader->leader_ecdh_key, 
+            ecdh_key, 
             &crypt_msg)!= security::kSecuritySuccess) {
         SETH_DEBUG("send to leader encrypt failed: %s", 
             common::Encode::HexEncode(leader->id).c_str());

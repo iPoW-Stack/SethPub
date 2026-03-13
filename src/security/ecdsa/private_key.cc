@@ -17,6 +17,12 @@ PrivateKey::PrivateKey(const std::string& src)
     private_key_ = src;
 }
 
+PrivateKey::PrivateKey(const char* src, uint32_t length) : bignum_(BN_new(), BN_clear_free){
+    bignum_ = SecurityStringTrans::Instance()->StringToBignum(src, length);
+    private_key_ptr_ = src;
+    private_key_length_ = length;
+}
+
 PrivateKey::PrivateKey(const PrivateKey& src) : bignum_(BN_new(), BN_clear_free) {
     assert(bignum_ != nullptr);
     if (BN_copy(bignum_.get(), src.bignum_.get()) == NULL) {

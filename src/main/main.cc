@@ -7,7 +7,7 @@
 static void GlobalInitSpdlog() {
     spdlog::init_thread_pool(8192, 1);
     auto max_size = 1024LL * 1024 * 1024;
-    auto max_files = 4;
+    auto max_files = 2;
     auto logger = spdlog::create_async<spdlog::sinks::rotating_file_sink_mt>(
         "async_file",
         "log/seth.log",

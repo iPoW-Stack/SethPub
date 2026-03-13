@@ -1,4 +1,9 @@
 #include "init/network_init.h"
+
+#include <fstream>
+#include <functional>
+#include <memory>
+
 #include <bls/agg_bls.h>
 #include <common/encode.h>
 #include <common/log.h>
@@ -10,9 +15,7 @@
 #include <consensus/hotstuff/types.h>
 #include <consensus/hotstuff/view_block_chain.h>
 #include <consensus/consensus_utils.h>
-#include <functional>
 #include <libff/algebra/curves/alt_bn128/alt_bn128_init.hpp>
-#include <memory>
 #include <protos/pools.pb.h>
 #include <tools/utils.h>
 
@@ -37,6 +40,7 @@
 #include "protos/get_proto_hash.h"
 #include "protos/prefix_db.h"
 #include "security/ecdsa/ecdsa.h"
+#include "security/ecdsa/sodium_private_key.h"
 #include "timeblock/time_block_manager.h"
 #include "timeblock/time_block_utils.h"
 #include "transport/multi_thread.h"
@@ -500,11 +504,26 @@ int NetworkInit::InitSecurity() {
     SETH_DEBUG("prikey2: %s", common::Encode::HexEncode(common::Encode::HexDecode(prikey)).c_str());
 
     security_ = std::make_shared<security::Ecdsa>();
-    if (security_->SetPrivateKey(
-            common::Encode::HexDecode(prikey)) != security::kSecuritySuccess) {
-        INIT_ERROR("init security failed!");
-        return kInitError;
+    auto bytes_prikey = common::Encode::HexDecode(prikey);
+    if (bytes_prikey.size() == security::kPrivateKeySize) {
+        if (security_->SetPrivateKey(bytes_prikey) != security::kSecuritySuccess) { 
+            INIT_ERROR("init security failed!");
+            return kInitError;
+        }
+    } else {
+        if (security::KeyManager::Instance().Initialize(bytes_prikey) != security::kSecuritySuccess) {
+            INIT_ERROR("init security failed!");
+            return kInitError;
+        }
+
+        if (security_->SetPrivateKey(
+                (const char*)security::KeyManager::Instance().GetProtectedKey(), 
+                security::KeyManager::Instance().GetKeyLength()) != security::kSecuritySuccess) { 
+            INIT_ERROR("init security failed!");
+            return kInitError;
+        }
     }
+    
 
     return kInitSuccess;
 }
@@ -610,6 +629,113 @@ int NetworkInit::InitConfigWithArgs(int argc, char** argv) {
 
     if (parser_arg.Has("v")) {
         std::string version_info = common::GlobalInfo::Instance()->GetVersionInfo();
+        exit(0);
+    }
+
+    if (parser_arg.Has("K")) {
+        std::string hex_input;
+        parser_arg.Get("K", hex_input);
+        if (hex_input.empty()) {
+            std::cout << "Error: Input hex string is empty." << std::endl;
+            exit(1);
+        }
+
+        std::string raw_data = common::Encode::HexDecode(hex_input);
+        if (raw_data.empty() && !hex_input.empty()) {
+            std::cout << "Error: Invalid hex string input." << std::endl;
+            exit(1);
+        }
+
+        auto security = std::make_shared<security::Ecdsa>();
+        if (raw_data.size() == security::kPrivateKeySize) {
+            if (security->SetPrivateKey(raw_data) != security::kSecuritySuccess) { 
+                INIT_ERROR("init security failed!");
+                return kInitError;
+            }
+        } else {
+            if (security::KeyManager::Instance().Initialize(raw_data) != security::kSecuritySuccess) {
+                INIT_ERROR("init security failed!");
+                return kInitError;
+            }
+
+            if (security->SetPrivateKey(
+                    (const char*)security::KeyManager::Instance().GetProtectedKey(), 
+                    security::KeyManager::Instance().GetKeyLength()) != security::kSecuritySuccess) { 
+                INIT_ERROR("init security failed!");
+                return kInitError;
+            }
+        }
+        
+        std::string encrypted_binary = seth::security::KeyManager::SealKey(raw_data);
+        if (!encrypted_binary.empty()) {
+            std::cout << encrypted_binary << ":" << common::Encode::HexEncode(security->GetAddress()) << std::endl;
+            exit(0);
+        } else {
+            std::cout << "Error: Encryption failed." << std::endl;
+            exit(1);
+        }
+    }
+
+    if (parser_arg.Has("A")) {
+        if (!parser_arg.Has("D")) {
+            exit(1);
+        }
+
+        std::string src_prikey_file;
+        parser_arg.Get("A", src_prikey_file);
+        std::ifstream infile(src_prikey_file);
+        if (!infile.is_open()) {
+            std::cout << "Error: Cannot open input file: " << src_prikey_file << std::endl;
+            exit(1);
+        }
+
+        std::string des_prikey_file;
+        parser_arg.Get("D", des_prikey_file);
+        std::ofstream outfile(des_prikey_file);
+        if (!outfile.is_open()) {
+            std::cout << "Error: Cannot open output file: " << des_prikey_file << std::endl;
+            exit(1);
+        }
+
+        std::string line;
+        uint32_t count = 0;
+        while (std::getline(infile, line)) {
+            // 1. 去除行尾可能存在的 \r (处理 Windows/DOS 格式文件)
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back();
+            }
+
+            // 2. 严格空行检查：跳过完全没有任何内容的行
+            if (line.empty()) continue;
+
+            size_t tab_pos = line.find('\t');
+            std::string first_column;
+            std::string remaining_part = "";
+
+            if (tab_pos != std::string::npos) {
+                first_column = line.substr(0, tab_pos);
+                remaining_part = line.substr(tab_pos);
+            } else {
+                first_column = line;
+            }
+
+            if (first_column.empty()) {
+                outfile << line << "\n";
+                continue;
+            }
+
+            std::string encrypted = seth::security::KeyManager::SealKey(common::Encode::HexDecode(first_column));
+            if (!encrypted.empty()) {
+                outfile << encrypted << remaining_part << "\n";
+                count++;
+            } else {
+                outfile << line << "\n";
+            }
+        }
+
+        std::cout << "Successfully processed " << count << " lines to " << des_prikey_file << std::endl;
+        infile.close();
+        outfile.close();
         exit(0);
     }
 
@@ -762,6 +888,9 @@ int NetworkInit::ParseParams(int argc, char** argv, common::ParserArgs& parser_a
     parser_arg.AddArgType('E', "end_net", common::kMaybeValue);
     parser_arg.AddArgType('N', "node_count", common::kMaybeValue);
     parser_arg.AddArgType('C', "cross_latest", common::kNoValue);
+    parser_arg.AddArgType('A', "src_transform_prikey", common::kMaybeValue);
+    parser_arg.AddArgType('D', "des_transform_prikey", common::kMaybeValue);
+    parser_arg.AddArgType('K', "encrypt_prikey", common::kMaybeValue);
     // parser_arg.AddArgType('1', "root_nodes", common::kMaybeValue);    
 
     for (uint32_t arg_i = network::kConsensusShardBeginNetworkId-1; arg_i < network::kConsensusShardEndNetworkId; arg_i++) {

@@ -389,6 +389,12 @@ int ToTxsPools::CreateToTxWithHeights(
                     auto addr_info = acc_mgr_->GetAccountInfo(to_iter->second.des().substr(0, common::kUnicastAddressLength));
                     if (addr_info) {
                         des_sharding_id = addr_info->sharding_id();
+                        SETH_DEBUG("get des sharding id: %u for des: %s, height: %lu, pool index: %u, addr: %s",
+                            des_sharding_id, 
+                            common::Encode::HexEncode(to_iter->second.des()).c_str(), 
+                            height, 
+                            pool_idx,
+                            common::Encode::HexEncode(addr_info->addr()).c_str());
                     } else {
                         des_sharding_id = network::kRootCongressNetworkId;
                     }
@@ -413,11 +419,13 @@ int ToTxsPools::CreateToTxWithHeights(
                         to_iter->first.size(), common::Encode::HexEncode(to_iter->first).c_str());
                     acc_amount_map[to_iter->first] = to_iter->second;
                     SETH_DEBUG("to block pool: %u, height: %lu, success add account "
-                        "transfer amount height: %lu, id: %s, amount: %lu, to info: %s",
+                        "transfer amount height: %lu, id: %s, amount: %lu, to info: %s, "
+                        "des_sharding_id: %u",
                         pool_idx, height,
                         height, common::Encode::HexEncode(to_iter->first).c_str(),
                         to_iter->second.amount(),
-                        ProtobufToJson(to_iter->second).c_str());
+                        ProtobufToJson(to_iter->second).c_str(),
+                        des_sharding_id);
                 } else {
                     amount_iter->second.set_amount(amount_iter->second.amount() + to_iter->second.amount());
                     if (to_iter->second.has_library_bytes()) {

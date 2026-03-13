@@ -6,6 +6,7 @@ PASSWORD=$4
 TARGET=$5
 FIRST_NODE_COUNT=$1
 
+CODE_PATH=`pwd`
 node_hash=$(printf "%s%d" "$node_ips" "$each_nodes_count" | md5sum | cut -d ' ' -f1)
 
 bash cmd.sh $2 "systemctl list-units --state=active --no-legend | grep seth@ | awk '{print \$1}' | xargs -r systemctl stop; killall -9 seth"
@@ -121,6 +122,10 @@ make_package() {
         cp -rf /root/seth/cbuild_$TARGET/seth /root/seth/pkgs/$node_hash/seth
         cp -rf /root/seth/cbuild_$TARGET/txcli /root/seth/pkgs/$node_hash/txcli
         cp -rf /root/seth/pkgs/$node_hash /root/nodes/seth/pkg
+        for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
+            /root/seth/cbuild_$TARGET/seth -A /root/seth/shards${shard_id} -D /root/nodes/seth/pkg/shards${shard_id}
+            /root/seth/cbuild_$TARGET/seth -A  /root/seth/init_accounts${shard_id} -D /root/nodes/seth/pkg/init_accounts${shard_id}
+        done
     else
         cd /root/nodes/seth && ./seth -U -N $nodes_count -E 4
         cd /root/nodes/seth && ./seth -S 3 -N $nodes_count -E 4
@@ -133,14 +138,16 @@ make_package() {
         cp /root/nodes/txcli /root/nodes/seth/pkg
         cp /root/nodes/seth/conf/GeoLite2-City.mmdb /root/nodes/seth/pkg
         cp /root/nodes/seth/conf/log4cpp.properties /root/nodes/seth/pkg
-        cp /root/seth/shards* /root/nodes/seth/pkg/
+        for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
+            /root/seth/cbuild_$TARGET/seth -A /root/seth/shards${shard_id} -D /root/nodes/seth/pkg/shards${shard_id}
+            /root/seth/cbuild_$TARGET/seth -A  /root/seth/init_accounts${shard_id} -D /root/nodes/seth/pkg/init_accounts${shard_id}
+        done
         cp /root/seth/temp_cmd.sh /root/nodes/seth/pkg
         cp /root/seth/start_cmd.sh /root/nodes/seth/pkg
         cp -rf /root/nodes/seth/shard_db_2 /root/nodes/seth/pkg/shard_db_2
         cp -rf /root/nodes/seth/shard_db_3 /root/nodes/seth/pkg
         cp -rf /root/nodes/temp /root/nodes/seth/pkg
         cp -rf /root/seth/gdb/* /root/nodes/seth/pkg
-        cp -rf /root/seth/init_accounts* /root/nodes/seth/pkg
         cp -rf /root/nodes/seth/pkg /root/seth/pkgs/$node_hash
     fi
 
@@ -275,6 +282,38 @@ start_all_nodes() {
     echo 'start_all_nodes over'
 }
 
+init_mining_dir() {
+    cd $CODE_PATH
+    echo "init_mining_dir start..."
+    local mining_path="./mining_node"
+    rm -rf $mining_path
+    mkdir -p $mining_path/conf
+    mkdir -p $mining_path/log
+    
+    cp -rf /root/nodes/seth/pkg/shard_db_3 $mining_path/db
+    cp /root/nodes/seth/pkg/GeoLite2-City.mmdb $mining_path/conf/
+    cat <<EOF > $mining_path/conf/seth.conf_temp
+[db]
+path = "./db"
+
+[log]
+path = "log/seth.log"
+
+[seth]
+bootstrap = ${bootstrap}
+prikey = REPLACE_PRIVATE_KEY
+local_ip = REPLACE_LOCAL_IP
+public_ip = REPLACE_PUBLIC_IP
+http_port = 24009
+local_port = 14009
+net_id = 3
+leader_change_init_tm=0
+EOF
+
+    echo "Mining directory initialized at $mining_path"
+}
+
+
 killall -9 sshpass
 init
 make_package
@@ -283,4 +322,5 @@ scp_package
 get_bootstrap
 echo $bootstrap
 run_command
+init_mining_dir
 start_all_nodes

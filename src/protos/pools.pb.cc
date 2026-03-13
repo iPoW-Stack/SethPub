@@ -715,22 +715,24 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::pools::protobuf::TxMessage, sign_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::pools::protobuf::TxMessage, tx_debug_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::pools::protobuf::TxMessage, tx_debug_timeout_seconds_),
-  10,
-  7,
-  0,
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::pools::protobuf::TxMessage, tx_hash_),
+  11,
   8,
+  0,
   9,
+  10,
   1,
   2,
   3,
-  12,
-  11,
   13,
+  12,
+  14,
   4,
   5,
   6,
   ~0u,
-  14,
+  15,
+  7,
 };
 static const ::google::protobuf::internal::MigrationSchema schemas[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
   { 0, 12, sizeof(::seth::pools::protobuf::ToTxHeights)},
@@ -751,7 +753,7 @@ static const ::google::protobuf::internal::MigrationSchema schemas[] GOOGLE_PROT
   { 209, 223, sizeof(::seth::pools::protobuf::ElectStatistic)},
   { 232, 240, sizeof(::seth::pools::protobuf::SyncPoolsMaxHeight)},
   { 243, 250, sizeof(::seth::pools::protobuf::TxDelayTestInfo)},
-  { 252, 273, sizeof(::seth::pools::protobuf::TxMessage)},
+  { 252, 274, sizeof(::seth::pools::protobuf::TxMessage)},
 };
 
 static ::google::protobuf::Message const * const file_default_instances[] = {
@@ -859,7 +861,7 @@ void AddDescriptorsImpl() {
       "oolsMaxHeight\022\022\n\003req\030\001 \001(\010:\005false\022\017\n\007hei"
       "ghts\030\002 \003(\004\022\025\n\rcross_heights\030\003 \003(\004\"@\n\017TxD"
       "elayTestInfo\022\026\n\016tx_debug_tm_ms\030\001 \001(\004\022\025\n\r"
-      "tx_debug_info\030\002 \001(\014\"\207\003\n\tTxMessage\022\017\n\007ver"
+      "tx_debug_info\030\002 \001(\014\"\230\003\n\tTxMessage\022\017\n\007ver"
       "sion\030\001 \001(\r\022\r\n\005nonce\030\002 \001(\004\022\016\n\006pubkey\030\003 \001("
       "\014\022\021\n\tgas_limit\030\004 \001(\004\022\021\n\tgas_price\030\005 \001(\004\022"
       "\013\n\003key\030\006 \001(\014\022\r\n\005value\030\007 \001(\014\022\n\n\002to\030\010 \001(\014\022"
@@ -869,19 +871,19 @@ void AddDescriptorsImpl() {
       "\014 \001(\014\022\026\n\016contract_input\030\r \001(\014\022\014\n\004sign\030\016 "
       "\001(\014\0226\n\010tx_debug\030\017 \003(\0132$.seth.pools.proto"
       "buf.TxDelayTestInfo\022 \n\030tx_debug_timeout_"
-      "seconds\030\020 \001(\004*\345\002\n\010StepType\022\017\n\013kNormalFro"
-      "m\020\000\022\r\n\tkNormalTo\020\001\022\034\n\030kConsensusRootElec"
-      "tShard\020\002\022\033\n\027kConsensusRootTimeBlock\020\003\022!\n"
-      "\035kConsensusCreateGenesisAcount\020\004\022\026\n\022kCon"
-      "sensusLocalTos\020\005\022\023\n\017kContractCreate\020\006\022\032\n"
-      "\026kContractGasPrepayment\020\007\022\023\n\017kContractEx"
-      "cute\020\010\022\026\n\022kRootCreateAddress\020\t\022\016\n\nkStati"
-      "stic\020\014\022\016\n\nkJoinElect\020\r\022\022\n\016kCreateLibrary"
-      "\020\016\022\n\n\006kCross\020\017\022\016\n\nkRootCross\020\020\022\025\n\021kPoolS"
-      "tatisticTag\020\021"
+      "seconds\030\020 \001(\004\022\017\n\007tx_hash\030\021 \001(\014*\345\002\n\010StepT"
+      "ype\022\017\n\013kNormalFrom\020\000\022\r\n\tkNormalTo\020\001\022\034\n\030k"
+      "ConsensusRootElectShard\020\002\022\033\n\027kConsensusR"
+      "ootTimeBlock\020\003\022!\n\035kConsensusCreateGenesi"
+      "sAcount\020\004\022\026\n\022kConsensusLocalTos\020\005\022\023\n\017kCo"
+      "ntractCreate\020\006\022\032\n\026kContractGasPrepayment"
+      "\020\007\022\023\n\017kContractExcute\020\010\022\026\n\022kRootCreateAd"
+      "dress\020\t\022\016\n\nkStatistic\020\014\022\016\n\nkJoinElect\020\r\022"
+      "\022\n\016kCreateLibrary\020\016\022\n\n\006kCross\020\017\022\016\n\nkRoot"
+      "Cross\020\020\022\025\n\021kPoolStatisticTag\020\021"
   };
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-      descriptor, 3253);
+      descriptor, 3270);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "protos/pools.proto", &protobuf_RegisterTypes);
   ::protobuf_protos_2fbls_2eproto::AddDescriptors();
@@ -7870,6 +7872,7 @@ const int TxMessage::kContractInputFieldNumber;
 const int TxMessage::kSignFieldNumber;
 const int TxMessage::kTxDebugFieldNumber;
 const int TxMessage::kTxDebugTimeoutSecondsFieldNumber;
+const int TxMessage::kTxHashFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
 TxMessage::TxMessage()
@@ -7913,6 +7916,10 @@ TxMessage::TxMessage(const TxMessage& from)
   if (from.has_sign()) {
     sign_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.sign_);
   }
+  tx_hash_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.has_tx_hash()) {
+    tx_hash_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.tx_hash_);
+  }
   ::memcpy(&nonce_, &from.nonce_,
     static_cast<size_t>(reinterpret_cast<char*>(&tx_debug_timeout_seconds_) -
     reinterpret_cast<char*>(&nonce_)) + sizeof(tx_debug_timeout_seconds_));
@@ -7927,6 +7934,7 @@ void TxMessage::SharedCtor() {
   contract_code_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   contract_input_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   sign_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  tx_hash_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   ::memset(&nonce_, 0, static_cast<size_t>(
       reinterpret_cast<char*>(&tx_debug_timeout_seconds_) -
       reinterpret_cast<char*>(&nonce_)) + sizeof(tx_debug_timeout_seconds_));
@@ -7945,6 +7953,7 @@ void TxMessage::SharedDtor() {
   contract_code_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   contract_input_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   sign_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  tx_hash_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 
 void TxMessage::SetCachedSize(int size) const {
@@ -7969,7 +7978,7 @@ void TxMessage::Clear() {
 
   tx_debug_.Clear();
   cached_has_bits = _has_bits_[0];
-  if (cached_has_bits & 127u) {
+  if (cached_has_bits & 255u) {
     if (cached_has_bits & 0x00000001u) {
       pubkey_.ClearNonDefaultToEmptyNoArena();
     }
@@ -7991,12 +8000,14 @@ void TxMessage::Clear() {
     if (cached_has_bits & 0x00000040u) {
       sign_.ClearNonDefaultToEmptyNoArena();
     }
+    if (cached_has_bits & 0x00000080u) {
+      tx_hash_.ClearNonDefaultToEmptyNoArena();
+    }
   }
-  nonce_ = GOOGLE_ULONGLONG(0);
-  if (cached_has_bits & 32512u) {
-    ::memset(&gas_limit_, 0, static_cast<size_t>(
+  if (cached_has_bits & 65280u) {
+    ::memset(&nonce_, 0, static_cast<size_t>(
         reinterpret_cast<char*>(&tx_debug_timeout_seconds_) -
-        reinterpret_cast<char*>(&gas_limit_)) + sizeof(tx_debug_timeout_seconds_));
+        reinterpret_cast<char*>(&nonce_)) + sizeof(tx_debug_timeout_seconds_));
   }
   _has_bits_.Clear();
   _internal_metadata_.Clear();
@@ -8226,6 +8237,18 @@ bool TxMessage::MergePartialFromCodedStream(
         break;
       }
 
+      // optional bytes tx_hash = 17;
+      case 17: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(138u /* 138 & 0xFF */)) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadBytes(
+                input, this->mutable_tx_hash()));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
       default: {
       handle_unusual:
         if (tag == 0) {
@@ -8254,12 +8277,12 @@ void TxMessage::SerializeWithCachedSizes(
 
   cached_has_bits = _has_bits_[0];
   // optional uint32 version = 1;
-  if (cached_has_bits & 0x00000400u) {
+  if (cached_has_bits & 0x00000800u) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(1, this->version(), output);
   }
 
   // optional uint64 nonce = 2;
-  if (cached_has_bits & 0x00000080u) {
+  if (cached_has_bits & 0x00000100u) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(2, this->nonce(), output);
   }
 
@@ -8270,12 +8293,12 @@ void TxMessage::SerializeWithCachedSizes(
   }
 
   // optional uint64 gas_limit = 4;
-  if (cached_has_bits & 0x00000100u) {
+  if (cached_has_bits & 0x00000200u) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(4, this->gas_limit(), output);
   }
 
   // optional uint64 gas_price = 5;
-  if (cached_has_bits & 0x00000200u) {
+  if (cached_has_bits & 0x00000400u) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(5, this->gas_price(), output);
   }
 
@@ -8298,18 +8321,18 @@ void TxMessage::SerializeWithCachedSizes(
   }
 
   // optional uint64 amount = 9;
-  if (cached_has_bits & 0x00001000u) {
+  if (cached_has_bits & 0x00002000u) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(9, this->amount(), output);
   }
 
   // optional .seth.pools.protobuf.StepType step = 10 [default = kNormalFrom];
-  if (cached_has_bits & 0x00000800u) {
+  if (cached_has_bits & 0x00001000u) {
     ::google::protobuf::internal::WireFormatLite::WriteEnum(
       10, this->step(), output);
   }
 
   // optional uint64 contract_prepayment = 11;
-  if (cached_has_bits & 0x00002000u) {
+  if (cached_has_bits & 0x00004000u) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(11, this->contract_prepayment(), output);
   }
 
@@ -8341,8 +8364,14 @@ void TxMessage::SerializeWithCachedSizes(
   }
 
   // optional uint64 tx_debug_timeout_seconds = 16;
-  if (cached_has_bits & 0x00004000u) {
+  if (cached_has_bits & 0x00008000u) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(16, this->tx_debug_timeout_seconds(), output);
+  }
+
+  // optional bytes tx_hash = 17;
+  if (cached_has_bits & 0x00000080u) {
+    ::google::protobuf::internal::WireFormatLite::WriteBytesMaybeAliased(
+      17, this->tx_hash(), output);
   }
 
   if (_internal_metadata_.have_unknown_fields()) {
@@ -8361,12 +8390,12 @@ void TxMessage::SerializeWithCachedSizes(
 
   cached_has_bits = _has_bits_[0];
   // optional uint32 version = 1;
-  if (cached_has_bits & 0x00000400u) {
+  if (cached_has_bits & 0x00000800u) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(1, this->version(), target);
   }
 
   // optional uint64 nonce = 2;
-  if (cached_has_bits & 0x00000080u) {
+  if (cached_has_bits & 0x00000100u) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(2, this->nonce(), target);
   }
 
@@ -8378,12 +8407,12 @@ void TxMessage::SerializeWithCachedSizes(
   }
 
   // optional uint64 gas_limit = 4;
-  if (cached_has_bits & 0x00000100u) {
+  if (cached_has_bits & 0x00000200u) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(4, this->gas_limit(), target);
   }
 
   // optional uint64 gas_price = 5;
-  if (cached_has_bits & 0x00000200u) {
+  if (cached_has_bits & 0x00000400u) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(5, this->gas_price(), target);
   }
 
@@ -8409,18 +8438,18 @@ void TxMessage::SerializeWithCachedSizes(
   }
 
   // optional uint64 amount = 9;
-  if (cached_has_bits & 0x00001000u) {
+  if (cached_has_bits & 0x00002000u) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(9, this->amount(), target);
   }
 
   // optional .seth.pools.protobuf.StepType step = 10 [default = kNormalFrom];
-  if (cached_has_bits & 0x00000800u) {
+  if (cached_has_bits & 0x00001000u) {
     target = ::google::protobuf::internal::WireFormatLite::WriteEnumToArray(
       10, this->step(), target);
   }
 
   // optional uint64 contract_prepayment = 11;
-  if (cached_has_bits & 0x00002000u) {
+  if (cached_has_bits & 0x00004000u) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(11, this->contract_prepayment(), target);
   }
 
@@ -8454,8 +8483,15 @@ void TxMessage::SerializeWithCachedSizes(
   }
 
   // optional uint64 tx_debug_timeout_seconds = 16;
-  if (cached_has_bits & 0x00004000u) {
+  if (cached_has_bits & 0x00008000u) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(16, this->tx_debug_timeout_seconds(), target);
+  }
+
+  // optional bytes tx_hash = 17;
+  if (cached_has_bits & 0x00000080u) {
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteBytesToArray(
+        17, this->tx_hash(), target);
   }
 
   if (_internal_metadata_.have_unknown_fields()) {
@@ -8536,6 +8572,15 @@ size_t TxMessage::ByteSizeLong() const {
           this->sign());
     }
 
+    // optional bytes tx_hash = 17;
+    if (has_tx_hash()) {
+      total_size += 2 +
+        ::google::protobuf::internal::WireFormatLite::BytesSize(
+          this->tx_hash());
+    }
+
+  }
+  if (_has_bits_[8 / 32] & 65280u) {
     // optional uint64 nonce = 2;
     if (has_nonce()) {
       total_size += 1 +
@@ -8543,8 +8588,6 @@ size_t TxMessage::ByteSizeLong() const {
           this->nonce());
     }
 
-  }
-  if (_has_bits_[8 / 32] & 32512u) {
     // optional uint64 gas_limit = 4;
     if (has_gas_limit()) {
       total_size += 1 +
@@ -8653,30 +8696,33 @@ void TxMessage::MergeFrom(const TxMessage& from) {
       sign_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.sign_);
     }
     if (cached_has_bits & 0x00000080u) {
+      set_has_tx_hash();
+      tx_hash_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.tx_hash_);
+    }
+  }
+  if (cached_has_bits & 65280u) {
+    if (cached_has_bits & 0x00000100u) {
       nonce_ = from.nonce_;
     }
-    _has_bits_[0] |= cached_has_bits;
-  }
-  if (cached_has_bits & 32512u) {
-    if (cached_has_bits & 0x00000100u) {
+    if (cached_has_bits & 0x00000200u) {
       gas_limit_ = from.gas_limit_;
     }
-    if (cached_has_bits & 0x00000200u) {
+    if (cached_has_bits & 0x00000400u) {
       gas_price_ = from.gas_price_;
     }
-    if (cached_has_bits & 0x00000400u) {
+    if (cached_has_bits & 0x00000800u) {
       version_ = from.version_;
     }
-    if (cached_has_bits & 0x00000800u) {
+    if (cached_has_bits & 0x00001000u) {
       step_ = from.step_;
     }
-    if (cached_has_bits & 0x00001000u) {
+    if (cached_has_bits & 0x00002000u) {
       amount_ = from.amount_;
     }
-    if (cached_has_bits & 0x00002000u) {
+    if (cached_has_bits & 0x00004000u) {
       contract_prepayment_ = from.contract_prepayment_;
     }
-    if (cached_has_bits & 0x00004000u) {
+    if (cached_has_bits & 0x00008000u) {
       tx_debug_timeout_seconds_ = from.tx_debug_timeout_seconds_;
     }
     _has_bits_[0] |= cached_has_bits;
@@ -8721,6 +8767,8 @@ void TxMessage::InternalSwap(TxMessage* other) {
   contract_input_.Swap(&other->contract_input_, &::google::protobuf::internal::GetEmptyStringAlreadyInited(),
     GetArenaNoVirtual());
   sign_.Swap(&other->sign_, &::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+    GetArenaNoVirtual());
+  tx_hash_.Swap(&other->tx_hash_, &::google::protobuf::internal::GetEmptyStringAlreadyInited(),
     GetArenaNoVirtual());
   swap(nonce_, other->nonce_);
   swap(gas_limit_, other->gas_limit_);

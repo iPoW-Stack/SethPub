@@ -382,9 +382,7 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
         //     return;
         // }
 
-        uint32_t changed_idx = 0;
-        for_common_pk_g2s_[bls_msg.index()] = GetVerifyG2FromDb(
-            bls_msg.index(), &changed_idx);
+        for_common_pk_g2s_[bls_msg.index()] = GetVerifyG2FromDb(bls_msg.index());
         valid_swapkey_set_.insert(bls_msg.index());
         ++valid_sec_key_count_;
         has_swaped_keys_[bls_msg.index()] = true;
@@ -420,9 +418,10 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
         return;
     }
 
+    security::RawPrivateKey raw_private_key = std::make_pair(encrypt_key.c_str(), encrypt_key.size());
     int res = security_->Decrypt(
         bls_msg.swap_req().keys(local_member_index_).sec_key(),
-        encrypt_key,
+        raw_private_key,
         &dec_msg);
     if (dec_msg.empty()) {
         BLS_ERROR("dec_msg.empty()");
@@ -475,17 +474,6 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
 bool BlsDkg::VerifySekkeyValid(
         uint32_t peer_index,
         const libff::alt_bn128_Fr& seckey) {
-    bls::protobuf::BlsVerifyValue verify_val;
-    uint32_t changed_idx = 0;
-    libff::alt_bn128_G2 new_val = GetVerifyG2FromDb(peer_index, &changed_idx);
-    if (new_val == libff::alt_bn128_G2::zero()) {
-        SETH_ERROR("failed get verify g2 from db, peer_index: %d, "
-            "min_aggree_member_count_: %d, net: %d",
-            peer_index, min_aggree_member_count_, (*members_)[0]->net_id);
-//         assert(false);
-        return false;
-    }
-
     bls::protobuf::JoinElectBlsInfo verfy_final_vals;
     if (!prefix_db_->GetVerifiedG2s(
             local_member_index_,
@@ -513,48 +501,57 @@ bool BlsDkg::VerifySekkeyValid(
             (*members_)[0]->net_id);
     }
 
-    bls::protobuf::JoinElectInfo join_info;
-    if (!prefix_db_->GetNodeVerificationVector((*members_)[peer_index]->id, &join_info)) {
+    libff::alt_bn128_G2 new_val = GetVerifyG2FromDb(peer_index);
+    if (new_val == libff::alt_bn128_G2::zero()) {
+        SETH_ERROR("failed get verify g2 from db, peer_index: %d, "
+            "min_aggree_member_count_: %d, net: %d",
+            peer_index, min_aggree_member_count_, (*members_)[0]->net_id);
         assert(false);
         return false;
     }
 
-    if (join_info.g2_req().verify_vec_size() <= (int32_t)changed_idx) {
-        assert(false);
-        return false;
-    }
+    // bls::protobuf::JoinElectInfo join_info;
+    // if (!prefix_db_->GetNodeVerificationVector((*members_)[peer_index]->id, &join_info)) {
+    //     assert(false);
+    //     return false;
+    // }
 
-    libff::alt_bn128_G2 old_val;
-    {
-        auto& item = join_info.g2_req().verify_vec(changed_idx);
-        auto x_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c0()).c_str());
-        auto x_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c1()).c_str());
-        auto x_coord = libff::alt_bn128_Fq2(x_c0, x_c1);
-        auto y_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c0()).c_str());
-        auto y_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c1()).c_str());
-        auto y_coord = libff::alt_bn128_Fq2(y_c0, y_c1);
-        auto z_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c0()).c_str());
-        auto z_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c1()).c_str());
-        auto z_coord = libff::alt_bn128_Fq2(z_c0, z_c1);
-        old_val = libff::alt_bn128_G2(x_coord, y_coord, z_coord);
+    // if (join_info.g2_req().verify_vec_size() <= (int32_t)changed_idx) {
+    //     assert(false);
+    //     return false;
+    // }
 
-        if (changed_idx == 0) {
-            for_common_pk_g2s_[peer_index] = new_val;
-        } else {
-            auto& item = join_info.g2_req().verify_vec(0);
-            auto x_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c0()).c_str());
-            auto x_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c1()).c_str());
-            auto x_coord = libff::alt_bn128_Fq2(x_c0, x_c1);
-            auto y_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c0()).c_str());
-            auto y_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c1()).c_str());
-            auto y_coord = libff::alt_bn128_Fq2(y_c0, y_c1);
-            auto z_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c0()).c_str());
-            auto z_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c1()).c_str());
-            auto z_coord = libff::alt_bn128_Fq2(z_c0, z_c1);
-            auto tmp_val = libff::alt_bn128_G2(x_coord, y_coord, z_coord);
-            for_common_pk_g2s_[peer_index] = tmp_val;
-        }
-    }
+    // libff::alt_bn128_G2 old_val;
+    // {
+    //     auto& item = join_info.g2_req().verify_vec(changed_idx);
+    //     auto x_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c0()).c_str());
+    //     auto x_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c1()).c_str());
+    //     auto x_coord = libff::alt_bn128_Fq2(x_c0, x_c1);
+    //     auto y_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c0()).c_str());
+    //     auto y_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c1()).c_str());
+    //     auto y_coord = libff::alt_bn128_Fq2(y_c0, y_c1);
+    //     auto z_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c0()).c_str());
+    //     auto z_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c1()).c_str());
+    //     auto z_coord = libff::alt_bn128_Fq2(z_c0, z_c1);
+    //     old_val = libff::alt_bn128_G2(x_coord, y_coord, z_coord);
+
+    //     if (changed_idx == 0) {
+    //         for_common_pk_g2s_[peer_index] = new_val;
+    //     } else {
+    //         auto& item = join_info.g2_req().verify_vec(0);
+    //         auto x_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c0()).c_str());
+    //         auto x_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c1()).c_str());
+    //         auto x_coord = libff::alt_bn128_Fq2(x_c0, x_c1);
+    //         auto y_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c0()).c_str());
+    //         auto y_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c1()).c_str());
+    //         auto y_coord = libff::alt_bn128_Fq2(y_c0, y_c1);
+    //         auto z_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c0()).c_str());
+    //         auto z_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c1()).c_str());
+    //         auto z_coord = libff::alt_bn128_Fq2(z_c0, z_c1);
+    //         auto tmp_val = libff::alt_bn128_G2(x_coord, y_coord, z_coord);
+    //         for_common_pk_g2s_[peer_index] = tmp_val;
+    //     }
+    // }
 
     auto& item = verfy_final_vals.verified_g2();
     auto x_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c0()).c_str());
@@ -567,9 +564,9 @@ bool BlsDkg::VerifySekkeyValid(
     auto z_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c1()).c_str());
     auto z_coord = libff::alt_bn128_Fq2(z_c0, z_c1);
     auto all_verified_val = libff::alt_bn128_G2(x_coord, y_coord, z_coord);
-    auto old_g2_val = power(libff::alt_bn128_Fr(local_member_index_ + 1), changed_idx) * old_val;
-    auto new_g2_val = power(libff::alt_bn128_Fr(local_member_index_ + 1), changed_idx) * new_val;
-    all_verified_val = all_verified_val - old_g2_val + new_g2_val;
+    // auto old_g2_val = power(libff::alt_bn128_Fr(local_member_index_ + 1), changed_idx) * old_val;
+    // auto new_g2_val = power(libff::alt_bn128_Fr(local_member_index_ + 1), changed_idx) * new_val;
+    // all_verified_val = all_verified_val - old_g2_val + new_g2_val;
     if (all_verified_val != seckey * libff::alt_bn128_G2::one()) {
         for_common_pk_g2s_[peer_index] = libff::alt_bn128_G2::zero();
         SETH_WARN("failed verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
@@ -665,7 +662,7 @@ bool BlsDkg::CheckRecomputeG2s(
     return true;
 }
 
-libff::alt_bn128_G2 BlsDkg::GetVerifyG2FromDb(uint32_t peer_mem_index, uint32_t* changed_idx) {
+libff::alt_bn128_G2 BlsDkg::GetVerifyG2FromDb(uint32_t peer_mem_index) {
     libff::alt_bn128_G2 g2;
     auto res = dkg_cache_->GetBlsVerifyG2((*members_)[peer_mem_index]->id, &g2);
     if (!res) {
@@ -813,9 +810,10 @@ void BlsDkg::CreateSwapKey(uint32_t member_idx, std::string* seckey, int32_t* se
         return;
     }
 
+    security::RawPrivateKey raw_private_key = std::make_pair(encrypt_key.c_str(), encrypt_key.size());
     int res = security_->Encrypt(
         msg,
-        encrypt_key,
+        raw_private_key,
         seckey);
     if (res != security::kSecuritySuccess) {
         return;
@@ -856,13 +854,14 @@ void BlsDkg::FinishBroadcast() try {
 
         auto& id = (*members_)[i]->id;
         auto g2_iter = for_common_pk_g2s.find(id);
-        // if (g2_iter == for_common_pk_g2s.end()) {
-        //     valid_seck_keys.push_back(libff::alt_bn128_Fr::zero());
-        //     common_public_key_ = common_public_key_ + libff::alt_bn128_G2::zero();
-        //     SETH_WARN("elect_height: %d, invalid all_verification_vector index: %d",
-        //         elect_hegiht_, i);
-        //     continue;
-        // }
+        if (g2_iter == for_common_pk_g2s.end()) {
+            valid_seck_keys.push_back(libff::alt_bn128_Fr::zero());
+            common_public_key_ = common_public_key_ + libff::alt_bn128_G2::zero();
+            SETH_WARN("elect_height: %d, invalid all_verification_vector index: %d",
+                elect_hegiht_, i);
+            assert(false);
+            continue;
+        }
 
         std::string seckey;
         if (!dkg_cache_->GetSwapKey(

@@ -30,7 +30,7 @@ void AggBls::Sign(
         const libff::alt_bn128_Fr &sec_key,
         const std::string &str_hash,
         libff::alt_bn128_G1* signature) {
-    // NOTICE: 此处不能使用 Thresholdutils::HashtoG1
+    // NOTICE: Thresholdutils::HashtoG1 cannot be used here
     auto hex_str = common::Encode::HexEncode(str_hash);
     *signature = libBLS::Bls::CoreSignAggregated(hex_str, sec_key);
 }
@@ -41,7 +41,7 @@ void AggBls::Aggregate(
     *signature = libBLS::Bls::Aggregate(sigs);
 }
 
-// Aggregateverify 不同的消息，没办法聚合公钥，比较慢，验证 e(P1, Q1)e(P2, Q2)... = e(G, S)
+// Aggregateverify different messages, public keys cannot be aggregated, relatively slow, verifies e(P1, Q1)e(P2, Q2)... = e(G, S)
 bool AggBls::AggregateVerify(
         const std::vector<libff::alt_bn128_G2>& pks,
         const std::vector<std::string>& str_hashes,
@@ -49,7 +49,7 @@ bool AggBls::AggregateVerify(
     return aggregatedVerification(str_hashes, agg_sig, pks);
 }
 
-// Fastaggregateverify 使用公钥聚合，快速验证 e(P, Q) = e(G, S)
+// Fastaggregateverify uses public key aggregation, fast verification e(P, Q) = e(G, S)
 bool AggBls::FastAggregateVerify(
         const std::vector<libff::alt_bn128_G2>& pks,
         const std::string& str_hash,
