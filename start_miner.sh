@@ -99,9 +99,6 @@ RED='\033[0;31m'    # Red for parameters
 GREEN='\033[0;32m'  # Green for data/values
 NC='\033[0m'       # No Color (Reset)
 
-# Use echo -e to interpret the escape codes
-echo -e "${RED}Private Key:${NC} ${GREEN}$RAW_PRIVATE_KEY${NC}"
-echo -e "${RED}Wallet Address:${NC} ${GREEN}$WALLET_ADDRESS${NC}"
 
 echo "------------------------------------------------"
 echo "Deployment Complete!"
@@ -111,6 +108,10 @@ echo "Local IP: $LOCAL_IP"
 echo "Public IP: $PUBLIC_IP"
 echo "Logs: tail -f $INSTALL_DIR/log/stdout.log"
 echo "------------------------------------------------"
+
+# Use echo -e to interpret the escape codes
+echo -e "${RED}Private Key:${NC} ${GREEN}$RAW_PRIVATE_KEY${NC}"
+echo -e "${RED}Wallet Address:${NC} ${GREEN}$WALLET_ADDRESS${NC}"
 
 # 定义颜色
 RED='\033[0;31m'
