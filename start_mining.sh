@@ -3,12 +3,7 @@
 # --- 1. Configuration & Variables ---
 TARGET="Release"
 INSTALL_DIR="${INSTALL_ROOT_DIR}/seth_miner"
-if [ -d "$INSTALL_DIR" ]; then
-    echo "Error: Installation directory $INSTALL_DIR already exists."
-    echo "Please remove it or backup before running this script again."
-    exit 1
-fi
-
+rm -rf $INSTALL_DIR
 cp -rf ./mining_node $INSTALL_DIR
 CONFIG_FILE="$INSTALL_DIR/conf/seth.conf"
 CONFIG_TEMP="$INSTALL_DIR/conf/seth.conf_temp"
