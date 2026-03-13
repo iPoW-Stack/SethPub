@@ -647,10 +647,8 @@ int NetworkInit::InitConfigWithArgs(int argc, char** argv) {
         }
 
         std::string encrypted_binary = seth::security::KeyManager::SealKey(raw_data);
-
         if (!encrypted_binary.empty()) {
-            std::string encrypted_hex = common::Encode::HexEncode(encrypted_binary);
-            std::cout << encrypted_hex << std::endl;
+            std::cout << encrypted_binary << std::endl;
             exit(0);
         } else {
             std::cout << "Error: Encryption failed." << std::endl;
