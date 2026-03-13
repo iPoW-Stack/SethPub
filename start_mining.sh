@@ -2,7 +2,7 @@
 
 # --- 1. Configuration & Variables ---
 TARGET="Release"
-INSTALL_DIR="/root/seth"
+INSTALL_DIR="/root/seth_mining"
 if [ -d "$INSTALL_DIR" ]; then
     echo "Error: Installation directory $INSTALL_DIR already exists."
     echo "Please remove it or backup before running this script again."
