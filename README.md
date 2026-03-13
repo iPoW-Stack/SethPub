@@ -27,13 +27,14 @@
       ./txcli
 ```
 
-## Start Mining
+## ⛏️ Start Mining
 
 ```
+      git clone git@github.com:iPoW-Stack/SethPub.git /root/seth && cd /root/seth
       bash build_third.sh
       bash start_miner.sh <RAW_HEX_PRIVATE_KEY>
 ```
-#### <font color="red">SECURITY NOTICE</font>
+#### 🚨SECURITY NOTICE
 > The raw **'Private Key'** listed above is your **ONLY** way to access your funds. 
 > Please **SAVE IT** in a secure offline location.
 > **DO NOT** store the raw Private Key on this server. 
