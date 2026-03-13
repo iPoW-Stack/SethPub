@@ -337,11 +337,12 @@ void BlockManager::HandleNormalToTx(
         const view_block::protobuf::ViewBlockItem& view_block,
         const pools::protobuf::ToTxMessage& to_txs) {
     std::unordered_map<std::string, std::shared_ptr<localToTxInfo>> addr_amount_map;
-    SETH_DEBUG("0 handle local to to_txs.tos_size(): %u, addr: %s, nonce: %lu, step: %d", 
+    SETH_DEBUG("0 handle local to to_txs.tos_size(): %u, addr: %s, nonce: %lu, step: %d, %s", 
         to_txs.tos_size(),
         "",
         0,
-        0);
+        0,
+        ProtobufToJson(to_txs).c_str());
     for (int32_t i = 0; i < to_txs.tos_size(); ++i) {
         auto to_tx = to_txs.tos(i);
         if (to_tx.des_sharding_id() != common::GlobalInfo::Instance()->network_id()) {

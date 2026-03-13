@@ -67,8 +67,8 @@ public:
         zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "0");
         zjc_host.SaveKeyValue(block_tx.to(), unique_hash, "1");
         block_tx.set_unique_hash(unique_hash);
-        // TODO: nonce to 0 is valid?
-        block_tx.set_nonce(0);
+        // // TODO: nonce to 0 is valid?
+        // block_tx.set_nonce(0);
         auto& all_to_txs = *view_block.mutable_block_info()->mutable_normal_to();
         if (!all_to_txs.ParseFromString(tx_info->value()) || all_to_txs.to_tx_arr_size() == 0) {
             return consensus::kConsensusError;
