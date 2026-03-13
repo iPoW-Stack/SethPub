@@ -646,9 +646,29 @@ int NetworkInit::InitConfigWithArgs(int argc, char** argv) {
             exit(1);
         }
 
+        auto security = std::make_shared<security::Ecdsa>();
+        if (raw_data.size() == security::kPrivateKeySize) {
+            if (security->SetPrivateKey(raw_data) != security::kSecuritySuccess) { 
+                INIT_ERROR("init security failed!");
+                return kInitError;
+            }
+        } else {
+            if (security::KeyManager::Instance().Initialize(raw_data) != security::kSecuritySuccess) {
+                INIT_ERROR("init security failed!");
+                return kInitError;
+            }
+
+            if (security->SetPrivateKey(
+                    (const char*)security::KeyManager::Instance().GetProtectedKey(), 
+                    security::KeyManager::Instance().GetKeyLength()) != security::kSecuritySuccess) { 
+                INIT_ERROR("init security failed!");
+                return kInitError;
+            }
+        }
+        
         std::string encrypted_binary = seth::security::KeyManager::SealKey(raw_data);
         if (!encrypted_binary.empty()) {
-            std::cout << encrypted_binary << std::endl;
+            std::cout << encrypted_binary << ":" << common::Encode::HexEncode(security->GetAddress()) << std::endl;
             exit(0);
         } else {
             std::cout << "Error: Encryption failed." << std::endl;

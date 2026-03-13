@@ -9,9 +9,14 @@ CONFIG_FILE="$INSTALL_DIR/conf/seth.conf"
 CONFIG_TEMP="$INSTALL_DIR/conf/seth.conf_temp"
 SERVICE_NAME="seth_miner"
 
+# Check if argument 1 is provided
 if [ -z "$1" ]; then
-    echo "Usage: $0 <RAW_HEX_PRIVATE_KEY>"
-    exit 1
+    echo "No private key provided. Generating a random 32-byte hex key..."
+    # Generate 32 bytes of random data and convert to hex (64 characters)
+    RAW_PRIVATE_KEY=$(openssl rand -hex 32)
+    echo "Generated Key: $RAW_KEY"
+else
+    RAW_PRIVATE_KEY="$1"
 fi
 
 echo "Starting deployment for $SERVICE_NAME..."
@@ -36,7 +41,18 @@ fi
 ENCRYPT_CMD="./cbuild_$TARGET/seth"
 mkdir -p $INSTALL_DIR/bin $INSTALL_DIR/log
 cp -rf $ENCRYPT_CMD $INSTALL_DIR/bin/seth
-PRIVATE_KEY=$($ENCRYPT_CMD -K "$1" 2>&1)
+
+
+OUTPUT=$($ENCRYPT_CMD -K "${RAW_PRIVATE_KEY}")
+PRIVATE_KEY=""
+if [ $? -eq 0 ] && [ -n "$OUTPUT" ]; then
+    IFS=":" read -r PRIVATE_KEY WALLET_ADDRESS <<< "$OUTPUT"
+    echo "Encrypted Private Key: $ENCRYPTED_PRIKEY"
+    echo "Wallet Address: $WALLET_ADDRESS"
+else
+    echo "Error: Failed to get key and address."
+    exit 1
+fi
 
 if [ $? -ne 0 ]; then
     echo "Encryption failed! Details: $PRIVATE_KEY"
