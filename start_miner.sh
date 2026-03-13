@@ -34,6 +34,7 @@ fi
 
 # --- 4. Encrypt Private Key ---
 ENCRYPT_CMD="./cbuild_$TARGET/seth"
+mkdir -p $INSTALL_DIR/bin $INSTALL_DIR/log
 cp -rf $ENCRYPT_CMD $INSTALL_DIR/bin/seth
 PRIVATE_KEY=$($ENCRYPT_CMD -K "$1" 2>&1)
 
