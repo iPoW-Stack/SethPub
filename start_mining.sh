@@ -2,7 +2,7 @@
 
 # --- 1. Configuration & Variables ---
 TARGET="Release"
-INSTALL_DIR="/root/seth_mining"
+INSTALL_DIR="${INSTALL_ROOT_DIR}/seth_miner"
 if [ -d "$INSTALL_DIR" ]; then
     echo "Error: Installation directory $INSTALL_DIR already exists."
     echo "Please remove it or backup before running this script again."
@@ -10,7 +10,6 @@ if [ -d "$INSTALL_DIR" ]; then
 fi
 
 cp -rf ./mining_node $INSTALL_DIR
-INSTALL_DIR="${INSTALL_ROOT_DIR}/mining_node"
 CONFIG_FILE="$INSTALL_DIR/conf/seth.conf"
 CONFIG_TEMP="$INSTALL_DIR/conf/seth.conf_temp"
 SERVICE_NAME="seth_miner"
@@ -24,8 +23,6 @@ echo "Starting deployment for $SERVICE_NAME..."
 
 # --- 2. Build and Environment Setup ---
 bash build.sh a $TARGET
-mkdir -p "$INSTALL_DIR/bin" "$INSTALL_DIR/conf" "$INSTALL_DIR/log" "$INSTALL_DIR/db"
-
 # --- 3. Network Discovery ---
 if command -v hostname > /dev/null; then
     LOCAL_IP=$(hostname -I | awk '{print $1}')
