@@ -319,5 +319,5 @@ scp_package
 get_bootstrap
 echo $bootstrap
 run_command
-start_all_nodes
 init_mining_dir
+start_all_nodes
