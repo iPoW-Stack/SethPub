@@ -43,8 +43,6 @@ format_to_c_array() {
 PK_ARRAY=$(format_to_c_array "$RAW_PK")
 SK_ARRAY=$(format_to_c_array "$RAW_SK")
 
-echo "Generated PK: $PK_ARRAY"
-echo "Generated SK: $SK_ARRAY"
 rm -rf ../third_party/lib/lib*.so*
 rm -rf ../third_party/lib64/lib*.so*
 

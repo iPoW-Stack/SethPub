@@ -284,11 +284,12 @@ start_all_nodes() {
 init_mining_dir() {
     echo "init_mining_dir start..."
     local mining_path="./mining_node"
+    rm -rf $mining_path
     mkdir -p $mining_path/conf
     mkdir -p $mining_path/log
     
     cp -rf /root/nodes/seth/pkg/shard_db_3 $mining_path/db
-    cp /root/nodes/seth/pkg/conf/GeoLite2-City.mmdb $mining_path/conf/
+    cp /root/nodes/seth/pkg/GeoLite2-City.mmdb $mining_path/conf/
     cat <<EOF > $mining_path/conf/seth.conf_temp
 [db]
 path = "./db"
