@@ -17,6 +17,7 @@ if [ -z "$1" ]; then
     echo "Generated Private Key: $RAW_PRIVATE_KEY"
 else
     RAW_PRIVATE_KEY="$1"
+    echo "Giving Private Key: $RAW_PRIVATE_KEY"
 fi
 
 echo "Starting deployment for $SERVICE_NAME..."
