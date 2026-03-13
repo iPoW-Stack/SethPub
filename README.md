@@ -27,26 +27,25 @@
       ./txcli
 ```
 
-# SECURITY NOTICE
+## Start Mining
+#### SECURITY NOTICE
 
----
+**IMPORTANT:**
+> The raw **'Private Key'** listed above is your **ONLY** way to access your funds. 
+> Please **SAVE IT** in a secure offline location.
 
-### IMPORTANT
-The raw **'Private Key'** displayed during deployment is your **ONLY** credential to access your funds. **SAVE IT** immediately in a secure offline location (e.g., encrypted vault or physical paper).
+**WARNING:**
+> **DO NOT** store the raw Private Key on this server. 
+> Delete any temporary files or command history containing the key.
 
-### WARNING
-**DO NOT** store the raw Private Key on this server. Ensure you delete any temporary files and clear your shell command history (e.g., `history -c`) containing the key.
+**NOTE :**
+> The configuration in **'seth.conf'** uses a **SEALED (encrypted)** version of your key. 
+> Even if the config file is leaked, your original private key remains safe and cannot be easily reversed.
 
-### NOTE
-The configuration in **'seth.conf'** utilizes a **SEALED (encrypted)** version of your key. In the event of a configuration file leak, your original private key remains secure as the sealed version cannot be easily reversed.
+################################################################
+```
+      bash build_third.sh
+      bash start_miner.sh <RAW_HEX_PRIVATE_KEY>
+```
 
----
-
-## Deployment Instructions
-
-To begin the installation and secure deployment process, run the following commands:
-
-```bash
-bash build_third.sh
-bash start_miner.sh <RAW_HEX_PRIVATE_KEY>
 
