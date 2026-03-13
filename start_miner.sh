@@ -101,7 +101,6 @@ NC='\033[0m'       # No Color (Reset)
 
 # Use echo -e to interpret the escape codes
 echo -e "${RED}Private Key:${NC} ${GREEN}$RAW_PRIVATE_KEY${NC}"
-echo -e "${RED}Encrypted Private Key:${NC} ${GREEN}$PRIVATE_KEY${NC}"
 echo -e "${RED}Wallet Address:${NC} ${GREEN}$WALLET_ADDRESS${NC}"
 
 echo "------------------------------------------------"
@@ -112,3 +111,25 @@ echo "Local IP: $LOCAL_IP"
 echo "Public IP: $PUBLIC_IP"
 echo "Logs: tail -f $INSTALL_DIR/log/stdout.log"
 echo "------------------------------------------------"
+
+# 定义颜色
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${YELLOW}================================================================${NC}"
+echo -e "${YELLOW}             SECURITY NOTICE / 安全提示                          ${NC}"
+echo -e "${YELLOW}================================================================${NC}"
+
+echo -e "${RED}IMPORTANT:${NC} ${GREEN}The raw 'Private Key' listed above is your ONLY way to${NC}"
+echo -e "${GREEN}access your funds. Please SAVE IT in a secure offline location.${NC}"
+
+echo -e "${RED}WARNING:${NC} ${GREEN}DO NOT store the raw Private Key on this server.${NC}"
+echo -e "${GREEN}Delete any temporary files or command history containing the key.${NC}"
+
+echo -e "${BLUE}NOTE:${NC} ${GREEN}The configuration in 'seth.conf' uses a SEALED (encrypted)${NC}"
+echo -e "${GREEN}version of your key. Even if the config file is leaked, your${NC}"
+echo -e "${GREEN}original private key remains safe and cannot be easily reversed.${NC}"
+
+echo -e "${YELLOW}================================================================${NC}"
