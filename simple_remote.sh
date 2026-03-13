@@ -6,6 +6,7 @@ PASSWORD=$4
 TARGET=$5
 FIRST_NODE_COUNT=$1
 
+CODE_PATH=`pwd`
 node_hash=$(printf "%s%d" "$node_ips" "$each_nodes_count" | md5sum | cut -d ' ' -f1)
 
 bash cmd.sh $2 "systemctl list-units --state=active --no-legend | grep seth@ | awk '{print \$1}' | xargs -r systemctl stop; killall -9 seth"
@@ -282,6 +283,7 @@ start_all_nodes() {
 }
 
 init_mining_dir() {
+    cd $CODE_PATH
     echo "init_mining_dir start..."
     local mining_path="./mining_node"
     rm -rf $mining_path
