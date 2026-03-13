@@ -28,17 +28,14 @@
 ```
 
 ## Start Mining
-#### SECURITY NOTICE
+### SECURITY NOTICE
 
-**IMPORTANT:**
 > The raw **'Private Key'** listed above is your **ONLY** way to access your funds. 
 > Please **SAVE IT** in a secure offline location.
 
-**WARNING:**
 > **DO NOT** store the raw Private Key on this server. 
 > Delete any temporary files or command history containing the key.
 
-**NOTE :**
 > The configuration in **'seth.conf'** uses a **SEALED (encrypted)** version of your key. 
 > Even if the config file is leaked, your original private key remains safe and cannot be easily reversed.
 
