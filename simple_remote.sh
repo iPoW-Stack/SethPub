@@ -120,7 +120,6 @@ make_package() {
         cd /root/seth/ && bash build.sh a $TARGET
         cd /root/seth/cbuild_$TARGET && make txcli
         cp -rf /root/seth/cbuild_$TARGET/seth /root/seth/pkgs/$node_hash/seth
-        cp -rf /root/seth/cbuild_$TARGET/txcli /root/seth/pkgs/$node_hash/txcli
         cp -rf /root/seth/pkgs/$node_hash /root/nodes/seth/pkg
         for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
             /root/seth/cbuild_$TARGET/seth -A /root/seth/shards${shard_id} -D /root/nodes/seth/pkg/shards${shard_id}
@@ -131,11 +130,9 @@ make_package() {
         cd /root/nodes/seth && ./seth -S 3 -N $nodes_count -E 4
         cd /root/nodes/seth && ./seth -C
         cd /root/seth/cbuild_$TARGET && make txcli
-        sudo cp -rf /root/seth/cbuild_$TARGET/txcli /root/nodes/txcli
 
         mkdir /root/nodes/seth/pkg
         cp /root/nodes/seth/seth /root/nodes/seth/pkg
-        cp /root/nodes/txcli /root/nodes/seth/pkg
         cp /root/nodes/seth/conf/GeoLite2-City.mmdb /root/nodes/seth/pkg
         cp /root/nodes/seth/conf/log4cpp.properties /root/nodes/seth/pkg
         for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
