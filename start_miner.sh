@@ -2,7 +2,7 @@
 
 # --- 1. Configuration & Variables ---
 TARGET="Release"
-INSTALL_DIR="${INSTALL_ROOT_DIR}/seth_miner"
+INSTALL_DIR="/root/seth_miner"
 rm -rf $INSTALL_DIR
 cp -rf ./mining_node $INSTALL_DIR
 CONFIG_FILE="$INSTALL_DIR/conf/seth.conf"
@@ -34,6 +34,7 @@ fi
 
 # --- 4. Encrypt Private Key ---
 ENCRYPT_CMD="./cbuild_$TARGET/seth"
+cp -rf $ENCRYPT_CMD $INSTALL_DIR/bin/seth
 PRIVATE_KEY=$($ENCRYPT_CMD -K "$1" 2>&1)
 
 if [ $? -ne 0 ]; then
