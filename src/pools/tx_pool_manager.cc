@@ -700,7 +700,8 @@ void TxPoolManager::HandleSyncPoolsMaxHeight(const transport::MessagePtr& msg_pt
             return;
         }
 
-        if (src_net_id != common::GlobalInfo::Instance()->network_id()) {
+        auto local_des_shard_id = network::GetLocalConsensusNetworkId();
+        if (src_net_id != local_des_shard_id) {
             if (src_net_id != network::kRootCongressNetworkId) {
                 auto sharding_id = msg_ptr->header.src_sharding_id();
                 auto& cross_heights = msg_ptr->header.sync_heights().cross_heights();
