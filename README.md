@@ -32,7 +32,7 @@ cd ./cbuild_Release && make txcli
 ## ⛏️ Start Mining
 
 ```
-      git clone git@github.com:iPoW-Stack/SethPub.git /root/seth && cd /root/seth
+      git clone https://github.com/iPoW-Stack/SethPub.git /root/seth && cd /root/seth
       bash build_third.sh
       bash start_miner.sh <RAW_HEX_PRIVATE_KEY>
 ```
