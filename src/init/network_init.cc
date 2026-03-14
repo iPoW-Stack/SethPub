@@ -1498,13 +1498,13 @@ void NetworkInit::SendJoinElectTransaction() {
         join_info.set_shard_id(common::GlobalInfo::Instance()->network_id());
     }
     
-    // if (pos == common::kInvalidUint32) {
+    if (pos == common::kInvalidUint32) {
         auto* req = join_info.mutable_g2_req();
-        // auto res = prefix_db_->GetBlsVerifyG2(security_->GetAddress(), req);
-        // if (!res) {
+        auto res = prefix_db_->GetBlsVerifyG2(security_->GetAddress(), req);
+        if (!res) {
             CreateContribution(req);
-        // }
-    // }
+        }
+    }
 
     new_tx->set_value(SerializeDeterministic(join_info));
     transport::TcpTransport::Instance()->SetMessageHash(msg);
