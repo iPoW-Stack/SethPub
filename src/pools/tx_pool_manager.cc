@@ -431,11 +431,19 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
     //         tx_pool_[pool_idx].CheckPopedTxs();
     //     }
     // }
+    auto& header = msg_ptr->header;
+    TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
+    ADD_DEBUG_PROCESS_TIMESTAMP();
+    if (header.has_sync_heights()) {
+        SETH_DEBUG("header.has_sync_heights()");
+        HandleSyncPoolsMaxHeight(msg_ptr);
+        return;
+    }
+
     if (TmpFirewallCheckMessage(msg_ptr) != transport::kFirewallCheckSuccess) {
         return;
     }
 
-    auto& header = msg_ptr->header;
     if (header.has_tx_proto()) {
         auto& tx_msg = header.tx_proto();
         if (IsUserTransaction(tx_msg.step())) {
@@ -492,14 +500,7 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
         }
     }
 
-    TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
-    ADD_DEBUG_PROCESS_TIMESTAMP();
-    if (header.has_sync_heights()) {
-        SETH_DEBUG("header.has_sync_heights()");
-        HandleSyncPoolsMaxHeight(msg_ptr);
-        return;
-    }
-
+    
     TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
     ADD_DEBUG_PROCESS_TIMESTAMP();
     HandlePoolsMessage(msg_ptr);
