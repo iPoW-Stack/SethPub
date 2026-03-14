@@ -251,6 +251,7 @@ bool BlsDkg::IsSignValid(const transport::MessagePtr& msg_ptr, std::string* cont
 }
 
 void BlsDkg::HandleVerifyBroadcast(const transport::MessagePtr& msg_ptr) try {
+    assert(false);
     auto& header = msg_ptr->header;
     auto& bls_msg = header.bls_proto();
     if (member_count_ <= bls_msg.index()) {

@@ -234,6 +234,11 @@ Status BlockAcceptor::Accept(
             addr,
             join_info,
             zjc_host.db_batch_);
+#ifndef NDEBUG
+        auto n = common::GlobalInfo::Instance()->each_shard_max_members();
+        auto t = common::GetSignerCount(n);
+        assert(join_info.g2_req().verify_vec_size() >= t);
+#endif
         prefix_db_->AddBlsVerifyG2(addr, join_info.g2_req(), zjc_host.db_batch_);
     }
 
