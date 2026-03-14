@@ -1461,9 +1461,14 @@ void NetworkInit::SendJoinElectTransaction() {
     }
 
     if (des_sharding_id_ == common::kInvalidUint32) {
-        SETH_DEBUG("failed get address info: %s",
-            common::Encode::HexEncode(security_->GetAddress()).c_str());
-        return;
+        auto local_node_account_info = prefix_db_->GetAddressInfo(security_->GetAddress());
+        if (local_node_account_info == nullptr) {
+            SETH_DEBUG("failed get address info: %s",
+                common::Encode::HexEncode(security_->GetAddress()).c_str());
+            return;
+        }
+        
+        des_sharding_id_ = local_node_account_info->sharding_id();
     }
 
     auto msg_ptr = std::make_shared<transport::TransportMessage>();
