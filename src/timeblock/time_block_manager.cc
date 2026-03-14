@@ -100,6 +100,11 @@ bool TimeBlockManager::HasTimeblockTx(
 bool TimeBlockManager::CheckLeaderTimeblockTxValid(
         const pools::protobuf::TxMessage& tx_item, 
         pools::CheckAddrNonceValidFunction tx_valid_func) const {
+    if (!CanCallTimeBlockTx()) {
+        SETH_DEBUG("CanCallTimeBlockTx leader: %s", ProtobufToJson(tx_item).c_str());
+        return false;
+    }
+    
     timeblock::protobuf::TimeBlock timer_block;
     if (!timer_block.ParseFromString(tx_item.value())) {
         SETH_WARN("Failed to parse TimeBlock from tx value");
