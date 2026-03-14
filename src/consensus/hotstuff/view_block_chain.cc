@@ -108,6 +108,16 @@ Status ViewBlockChain::Store(
                 common::Encode::HexEncode(view_block->block_info().key_value_array(i).key()).c_str(), 
                 common::Encode::HexEncode(view_block->block_info().key_value_array(i).value()).c_str());
         }
+
+        for (int32_t i = 0; i < view_block->block_info().joins_size(); i++) {
+            auto& join_info = view_block->block_info().joins(i);
+            auto addr = security_ptr_->GetAddress(join_info.public_key());
+            prefix_db_->SaveNodeVerificationVector(
+                addr,
+                join_info,
+                zjc_host_ptr->db_batch_);
+            prefix_db_->AddBlsVerifyG2(addr, join_info.g2_req(), zzjc_host_ptr->db_batch_);
+        }
     }
 
 #ifndef NDEBUG
