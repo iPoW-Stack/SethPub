@@ -36,8 +36,25 @@ int JoinElectTxItem::HandleTx(
     }
 
     bls::protobuf::JoinElectInfo join_info;
+    auto store_gas = (tx_info->key().size() + tx_info->value().size()) * consensus::kKeyValueStorageEachBytes;
     do {
         gas_used = consensus::kJoinElectGas;
+        if (block_tx.gas_limit() < (gas_used + store_gas)) {
+            block_tx.set_status(consensus::kConsensusUserSetGasLimitError);
+            SETH_DEBUG("1 id: %s  balance error: %lu, %lu, %lu",
+                common::Encode::HexEncode(from).c_str(),
+                from_balance, block_tx.gas_limit(), gas_used);
+            break;
+        }
+
+        if (from_balance < (gas_used + store_gas) * block_tx.gas_price()) {
+            block_tx.set_status(consensus::kConsensusAccountBalanceError);
+            SETH_DEBUG("1 id: %s  balance error: %lu, %lu, %lu",
+                common::Encode::HexEncode(from).c_str(),
+                from_balance, block_tx.gas_limit(), gas_used);
+            break;
+        }
+
         if (from_nonce + 1 != block_tx.nonce()) {
             block_tx.set_status(kConsensusNonceInvalid);
             // will never happen
@@ -66,25 +83,23 @@ int JoinElectTxItem::HandleTx(
             break;
         }
 
-        if (block_tx.gas_limit() < gas_used) {
-            block_tx.set_status(consensus::kConsensusUserSetGasLimitError);
-            SETH_DEBUG("1 id: %s  balance error: %lu, %lu, %lu",
-                common::Encode::HexEncode(from).c_str(),
-                from_balance, block_tx.gas_limit(), gas_used);
-            break;
-        }
     } while (0);
 
     if (block_tx.status() == kConsensusSuccess) {
-        uint64_t dec_amount = gas_used * block_tx.gas_price();
-        if (from_balance >= gas_used * block_tx.gas_price()) {
-            from_balance -= gas_used * block_tx.gas_price();
+        if (from_balance >= (gas_used + store_gas) * block_tx.gas_price()) {
+            from_balance -= (gas_used + store_gas) * block_tx.gas_price();
+            gas_used += store_gas;
         } else {
-            from_balance = 0;
+            if (from_balance >= (gas_used) * block_tx.gas_price()) {
+                from_balance -= (gas_used) * block_tx.gas_price();
+            } else {
+                from_balance = 0;
+            }
+
             block_tx.set_status(consensus::kConsensusAccountBalanceError);
             SETH_ERROR("id: %s leader balance error: %llu, %llu",
                 common::Encode::HexEncode(from).c_str(),
-                from_balance, gas_used * block_tx.gas_price());
+                from_balance, (gas_used + store_gas) * block_tx.gas_price());
         }
     } else {
         if (from_balance >= gas_used * block_tx.gas_price()) {
