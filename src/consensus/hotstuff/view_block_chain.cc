@@ -663,6 +663,14 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
         }
 
         view_blocks_info_.erase(tmp_block->parent_hash());
+        if (BlockHeightCommited(
+                prefix_db_,
+                tmp_block->qc().network_id(), 
+                tmp_block->qc().pool_index(),
+                tmp_block->block_info().height() + 1)) {
+            view_blocks_info_.erase(tmp_block->qc().view_block_hash());
+        }
+
         if (block_acceptor_) {
             block_acceptor_->CalculateTps(tmp_block->block_info().tx_list_size());
         }
@@ -767,7 +775,14 @@ void ViewBlockChain::HandleTimerMessage() {
                 //     phash_commited,
                 //     view_with_blocks_.size());
                 // if (!phash_commited) {
-                    view_blocks_info_.erase(view_block->parent_hash());
+                    if (BlockHeightCommited(
+                            prefix_db_,
+                            view_block->qc().network_id(), 
+                            view_block->qc().pool_index(),
+                            view_block->block_info().height() + 1)) {
+                        view_blocks_info_.erase(view_block->qc().view_block_hash());
+                    }
+
                     auto it_to_erase = std::next(iter).base();
                     auto next_valid_forward = view_with_blocks_.erase(it_to_erase);
                     iter = std::make_reverse_iterator(next_valid_forward);
