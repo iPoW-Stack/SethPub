@@ -734,9 +734,10 @@ void ViewBlockChain::HandleTimerMessage() {
         return;
     }
 
-    SETH_DEBUG("network: %d, pool: %d, now check view_with_blocks_ size: %d", 
+    SETH_DEBUG("network: %d, pool: %d, now check view_with_blocks_ size: %d, "
+        "view_blocks_info_ size: %lu", 
         view_with_blocks_.begin()->second->view_block->qc().network_id(),
-        pool_index_, view_with_blocks_.size());      
+        pool_index_, view_with_blocks_.size(), view_blocks_info_.size());      
     for (auto iter = view_with_blocks_.rbegin(); iter != view_with_blocks_.rend();) {
         bool commited = false;
         auto view_block = iter->second->view_block;
@@ -766,6 +767,7 @@ void ViewBlockChain::HandleTimerMessage() {
                 //     phash_commited,
                 //     view_with_blocks_.size());
                 // if (!phash_commited) {
+                    view_blocks_info_.erase(view_block->parent_hash());
                     auto it_to_erase = std::next(iter).base();
                     auto next_valid_forward = view_with_blocks_.erase(it_to_erase);
                     iter = std::make_reverse_iterator(next_valid_forward);
