@@ -362,8 +362,10 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
     auto& bls_msg = header.bls_proto();
     if (!IsSwapKeyPeriod()) {
         //assert(false);
-        BLS_DEBUG("invalid swap key period hash64: %lu, elect height: %lu, member index: %d", 
-            msg_ptr->header.hash64(), elect_hegiht_, bls_msg.index());
+        BLS_DEBUG("invalid swap key period hash64: %lu, elect height: %lu, "
+            "member index: %d, id: %s", 
+            msg_ptr->header.hash64(), elect_hegiht_, bls_msg.index(),
+            common::Encode::HexEncode((*members_)[bls_msg.index()]->id).c_str());
         return;
     }
 
@@ -386,9 +388,10 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
         valid_swapkey_set_.insert(bls_msg.index());
         ++valid_sec_key_count_;
         has_swaped_keys_[bls_msg.index()] = true;
-        SETH_DEBUG("use prev swap key elect_hegiht_: %lu, peer elect height: %lu, "
+        SETH_DEBUG("id: %s, use prev swap key elect_hegiht_: %lu, peer elect height: %lu, "
             "min_aggree_member_count_: %u, "
             "success member: %d, index: %d,  for_common_pk_g2s_: %s, real data: %s",
+            (*members_)[bls_msg.index()]->id.c_str(),
             elect_hegiht_, bls_msg.elect_height(),
             min_aggree_member_count_,
             local_member_index_, bls_msg.index(),
@@ -405,7 +408,8 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
 
     std::string msg_hash;
     if (!IsSignValid(msg_ptr, &msg_hash)) {
-        BLS_ERROR("sign verify failed!");
+        BLS_ERROR("sign verify failed index: %d, id: %s", 
+            bls_msg.index(), common::Encode::HexEncode((*members_)[bls_msg.index()]->id).c_str());
         return;
     }
 
@@ -414,7 +418,8 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
     if (security_->GetEcdhKey(
             (*members_)[bls_msg.index()]->pubkey,
             &encrypt_key) != security::kSecuritySuccess) {
-        BLS_WARN("invalid ecdh key.");
+        BLS_ERROR("invalid ecdh keyindex: %d, id: %s", 
+            bls_msg.index(), common::Encode::HexEncode((*members_)[bls_msg.index()]->id).c_str());
         return;
     }
 
@@ -424,7 +429,8 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
         raw_private_key,
         &dec_msg);
     if (dec_msg.empty()) {
-        BLS_ERROR("dec_msg.empty()");
+        BLS_ERROR("dec_msg.empty index: %d, id: %s", 
+            bls_msg.index(), common::Encode::HexEncode((*members_)[bls_msg.index()]->id).c_str());
         return;
     }
 
@@ -438,13 +444,15 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
     }
 
     if (has_swaped_keys_[bls_msg.index()]) {
-        BLS_WARN("has_swaped_keys_  %d.", bls_msg.index());
+        BLS_ERROR("has_swaped_keys_ index: %d, id: %s", 
+            bls_msg.index(), common::Encode::HexEncode((*members_)[bls_msg.index()]->id).c_str());
         return;
     }
 
     auto tmp_swap_key = libff::alt_bn128_Fr(sec_key.c_str());
     if (!VerifySekkeyValid(bls_msg.index(), tmp_swap_key)) {
-        SETH_ERROR("verify error member: %d, index: %d, %s , min_aggree_member_count_: %d",
+        SETH_ERROR("id: %s, verify error member: %d, index: %d, %s , min_aggree_member_count_: %d",
+            common::Encode::HexEncode((*members_)[bls_msg.index()]->id).c_str(),
             local_member_index_, bls_msg.index(),
             libBLS::ThresholdUtils::fieldElementToString(tmp_swap_key).c_str(),
             min_aggree_member_count_);
@@ -452,9 +460,10 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
         return;
     }
 
-    SETH_DEBUG("use new swap key elect_hegiht_: %lu, peer elect height: %lu, "
+    SETH_DEBUG("id: %s, use new swap key elect_hegiht_: %lu, peer elect height: %lu, "
         "min_aggree_member_count_: %u, "
         "success member: %d, index: %d, %s, for_common_pk_g2s_: %s",
+        (*members_)[bls_msg.index()]->id.c_str(),
         elect_hegiht_, bls_msg.elect_height(),
         min_aggree_member_count_,
         local_member_index_, bls_msg.index(),
@@ -623,6 +632,8 @@ bool BlsDkg::CheckRecomputeG2s(
         begin_idx = 0;
     }
 
+    SETH_DEBUG("begin_idx: %d, min_idx: %d, min_aggree_member_count_: %d, id: %s",
+        begin_idx, min_idx, min_aggree_member_count_, common::Encode::HexEncode(id).c_str());
     for (uint32_t i = begin_idx; i < min_aggree_member_count_; ++i) {
         auto& item = join_info.g2_req().verify_vec(i);
         auto x_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c0()).c_str());
