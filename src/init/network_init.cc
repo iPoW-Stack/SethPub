@@ -1504,6 +1504,11 @@ void NetworkInit::SendJoinElectTransaction() {
         if (!res) {
             CreateContribution(req);
         }
+#ifndef NDEBUG
+        auto n = common::GlobalInfo::Instance()->each_shard_max_members();
+        auto t = common::GetSignerCount(n);
+        assert(req->verify_vec_size() >= t);
+#endif
     // }
 
     new_tx->set_value(SerializeDeterministic(join_info));
