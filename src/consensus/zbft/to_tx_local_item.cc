@@ -96,9 +96,8 @@ void ToTxLocalItem::CreateLocalToTx(
 
         if (amount <= 0 && 
                 to_tx_item.library_bytes().empty()) {
-            SETH_DEBUG("failed just contract set prepayment add addr: %s, value: %s, to item: %s", 
+            SETH_DEBUG("failed just contract set prepayment add addr: %s, to item: %s", 
                 common::Encode::HexEncode(addr).c_str(), 
-                ProtobufToJson(*(acc_balance_map[addr])).c_str(),
                 ProtobufToJson(to_tx_item).c_str());
             return;
         }
