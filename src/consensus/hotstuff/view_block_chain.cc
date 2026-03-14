@@ -8,6 +8,7 @@
 #include "consensus/hotstuff/view_block_chain.h"
 #include "consensus/hotstuff/types.h"
 #include "protos/block.pb.h"
+#include "security/ecdsa/ecdsa.h"
 #include "security/ecdsa/secp256k1.h"
 
 namespace seth {
@@ -111,12 +112,13 @@ Status ViewBlockChain::Store(
 
         for (int32_t i = 0; i < view_block->block_info().joins_size(); i++) {
             auto& join_info = view_block->block_info().joins(i);
-            auto addr = security_ptr_->GetAddress(join_info.public_key());
+            security::Ecdsa ecdsa;
+            auto addr = ecdsa.GetAddress(join_info.public_key());
             prefix_db_->SaveNodeVerificationVector(
                 addr,
                 join_info,
                 zjc_host_ptr->db_batch_);
-            prefix_db_->AddBlsVerifyG2(addr, join_info.g2_req(), zzjc_host_ptr->db_batch_);
+            prefix_db_->AddBlsVerifyG2(addr, join_info.g2_req(), zjc_host_ptr->db_batch_);
         }
     }
 
