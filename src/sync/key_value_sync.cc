@@ -620,6 +620,12 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                 break;
             }
          
+            if (pb_vblock->block_info().chain_id() != hotstuff::kGlobalChainId) {
+                SETH_ERROR("pb vblock parse failed chain id invalid: %lu, %lu", 
+                    pb_vblock->block_info().chain_id(), hotstuff::kGlobalChainId);
+                break;
+            }
+
             assert(!pb_vblock->qc().sign_x().empty());
             SETH_DEBUG("0 success handle network new view block: %u_%u_%lu, height: %lu key: %s, is broadcast: %d", 
                 pb_vblock->qc().network_id(),
@@ -629,10 +635,10 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                 (iter->tag() == kBlockHeight ? key.c_str() : common::Encode::HexEncode(key).c_str()),
                 iter->key().empty());
             res_map[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->qc().view()] = pb_vblock;
+            responsed_keys_.add(key);
+            synced_map_.erase(key);
         } while (0);
 
-        responsed_keys_.add(key);
-        synced_map_.erase(key);
         SETH_DEBUG("block response coming: %s, sync map size: %u, hash64: %lu",
             key.c_str(), synced_map_.size(), msg_ptr->header.hash64());
     }

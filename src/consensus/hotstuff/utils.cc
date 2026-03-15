@@ -11,7 +11,6 @@ namespace seth {
 
 namespace hotstuff {
 
-static const uint32_t kGlobalChainId = 3355103123u;
 std::string GetBlockHash(const view_block::protobuf::ViewBlockItem &view_block) {
     auto& block = view_block.block_info();
     std::string serialized = SerializeDeterministic(block);
@@ -23,7 +22,8 @@ std::string GetBlockHash(const view_block::protobuf::ViewBlockItem &view_block) 
     serialized.append((char*)&leader_index, sizeof(leader_index));
     uint64_t view = view_block.qc().view();
     serialized.append((char*)&view, sizeof(view));
-    serialized.append((char*)&kGlobalChainId, sizeof(kGlobalChainId));
+    uint64_t chain_id = block.chain_id();
+    serialized.append((char*)&chain_id, sizeof(chain_id));
     serialized.append(view_block.parent_hash());
     auto hash = common::Hash::keccak256(serialized);
 

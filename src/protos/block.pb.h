@@ -1785,6 +1785,13 @@ class Block : public ::google::protobuf::Message /* @@protoc_insertion_point(cla
   ::google::protobuf::uint32 version() const;
   void set_version(::google::protobuf::uint32 value);
 
+  // optional uint64 chain_id = 26;
+  bool has_chain_id() const;
+  void clear_chain_id();
+  static const int kChainIdFieldNumber = 26;
+  ::google::protobuf::uint64 chain_id() const;
+  void set_chain_id(::google::protobuf::uint64 value);
+
   // @@protoc_insertion_point(class_scope:seth.block.protobuf.Block)
  private:
   void set_has_version();
@@ -1815,6 +1822,8 @@ class Block : public ::google::protobuf::Message /* @@protoc_insertion_point(cla
   void clear_has_all_gas();
   void set_has_pool_st_info();
   void clear_has_pool_st_info();
+  void set_has_chain_id();
+  void clear_has_chain_id();
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
@@ -1841,6 +1850,7 @@ class Block : public ::google::protobuf::Message /* @@protoc_insertion_point(cla
   ::google::protobuf::uint64 pool_statistic_height_;
   ::google::protobuf::uint64 all_gas_;
   ::google::protobuf::uint32 version_;
+  ::google::protobuf::uint64 chain_id_;
   friend struct ::protobuf_protos_2fblock_2eproto::TableStruct;
 };
 // -------------------------------------------------------------------
@@ -8130,6 +8140,30 @@ inline ::google::protobuf::RepeatedPtrField< ::std::string>*
 Block::mutable_unique_hashs() {
   // @@protoc_insertion_point(field_mutable_list:seth.block.protobuf.Block.unique_hashs)
   return &unique_hashs_;
+}
+
+// optional uint64 chain_id = 26;
+inline bool Block::has_chain_id() const {
+  return (_has_bits_[0] & 0x00004000u) != 0;
+}
+inline void Block::set_has_chain_id() {
+  _has_bits_[0] |= 0x00004000u;
+}
+inline void Block::clear_has_chain_id() {
+  _has_bits_[0] &= ~0x00004000u;
+}
+inline void Block::clear_chain_id() {
+  chain_id_ = GOOGLE_ULONGLONG(0);
+  clear_has_chain_id();
+}
+inline ::google::protobuf::uint64 Block::chain_id() const {
+  // @@protoc_insertion_point(field_get:seth.block.protobuf.Block.chain_id)
+  return chain_id_;
+}
+inline void Block::set_chain_id(::google::protobuf::uint64 value) {
+  set_has_chain_id();
+  chain_id_ = value;
+  // @@protoc_insertion_point(field_set:seth.block.protobuf.Block.chain_id)
 }
 
 // -------------------------------------------------------------------

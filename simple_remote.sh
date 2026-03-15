@@ -75,7 +75,7 @@ init() {
     fi
 
     if [ "$TARGET" == "" ]; then
-        TARGET=Release
+        TARGET=Debug
     fi
 
     killall -9 seth
@@ -286,7 +286,7 @@ init_mining_dir() {
     rm -rf $mining_path
     mkdir -p $mining_path/conf
     mkdir -p $mining_path/log
-    
+
     cp -rf /root/nodes/seth/pkg/shard_db_3 $mining_path/db
     cp /root/nodes/seth/pkg/GeoLite2-City.mmdb $mining_path/conf/
     cat <<EOF > $mining_path/conf/seth.conf_temp

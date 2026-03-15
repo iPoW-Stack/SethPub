@@ -443,8 +443,6 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
             }
         }
 
-        std::shared_ptr<security::Security> secptr = std::make_shared<security::Ecdsa>();
-        secptr->SetPrivateKey(genesis_nodes[idx]->prikey);
         genesis_nodes[idx]->verification = dkg_instance.VerificationVector(genesis_nodes[idx]->polynomial);
         secret_key_contribution[idx] = dkg_instance.SecretKeyContribution(
             genesis_nodes[idx]->polynomial, valid_n, valid_t);
@@ -470,8 +468,38 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
                 libBLS::ThresholdUtils::fieldElementToString(g2_vec[i].Z.c1)));
         }
 
-        prefix_db_->SaveLocalPolynomial(secptr, secptr->GetAddress(), local_poly);
-        prefix_db_->AddBlsVerifyG2(secptr->GetAddress(), *req);
+        // 1. 获取原始私钥（确保不是空的）
+        auto private_key = genesis_nodes[idx]->prikey;
+        if (private_key.empty()) {
+            SETH_ERROR("Genesis node %d private key is empty!", idx);
+            assert(false);
+            return;
+        }
+
+        // 2. 初始化 Ecdsa 对象
+        auto secptr = std::make_shared<security::Ecdsa>();
+        if (secptr->SetPrivateKey(private_key) != security::kSecuritySuccess) {
+            SETH_ERROR("Failed to set private key for node %d", idx);
+            assert(false);
+            return;
+        }
+
+        // 3. 预先获取 Checksum 地址，确保一致性
+        // 提示：如果你在 Python 端用了 to_checksum_address，C++ 端也应保持格式对齐
+        std::string node_addr = secptr->GetAddress(); 
+
+        // 4. 安全转换指针
+        auto security_ptr = std::dynamic_pointer_cast<security::Security>(secptr);
+        if (!security_ptr) {
+            SETH_ERROR("Dynamic pointer cast to security::Security failed!");
+            assert(false);
+            return;
+        }
+
+        // 5. 执行数据库持久化
+        // 修复点：确保 SaveLocalPolynomial 和 AddBlsVerifyG2 使用的是同一个 node_addr 变量
+        prefix_db_->SaveLocalPolynomial(security_ptr, node_addr, local_poly);
+        prefix_db_->AddBlsVerifyG2(node_addr, *req);
     };
 
     std::vector<std::thread> thread_vec;
@@ -650,6 +678,7 @@ int GenesisBlockInit::CreateElectBlock(
             common::Encode::HexEncode((*iter)->id).c_str());
     }
 
+    tenon_block->set_chain_id(hotstuff::kGlobalChainId);
     tenon_block->set_height(height);
     tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
     ec_block.set_shard_network_id(shard_netid);
@@ -799,6 +828,7 @@ int GenesisBlockInit::GenerateRootSingleBlock(
             account_info->addr(), 0, tx_info->nonce());
         account_info->set_nonce(account_info->nonce() + 1);
         account_info->set_tx_index(account_info->nonce() + 1);
+        tenon_block->set_chain_id(hotstuff::kGlobalChainId);
         tenon_block->set_height(root_pool_height[common::kImmutablePoolSize]++);
         tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         timeblock::protobuf::TimeBlock& tm_block = *tenon_block->mutable_timer_block();
@@ -1009,6 +1039,7 @@ int GenesisBlockInit::CreateRootGenesisBlocks(
         }
 
         tenon_block->set_version(common::kTransactionVersion);
+        tenon_block->set_chain_id(hotstuff::kGlobalChainId);
         tenon_block->set_height(pool_with_heights[i]++);
         tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         tenon_block->set_timeblock_height(0);
@@ -1140,6 +1171,7 @@ int GenesisBlockInit::CreateRootGenesisBlocks(
         auto view_block_ptr = std::make_shared<view_block::protobuf::ViewBlockItem>();
         auto* tenon_block = view_block_ptr->mutable_block_info();
         tenon_block->set_version(common::kTransactionVersion);
+        tenon_block->set_chain_id(hotstuff::kGlobalChainId);
         tenon_block->set_height(pool_with_heights[pool_index]++);
         tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         tenon_block->set_timeblock_height(0);
@@ -1524,6 +1556,7 @@ int GenesisBlockInit::CreateShardNodesBlocks(
         }
 
         tenon_block->set_version(common::kTransactionVersion);
+        tenon_block->set_chain_id(hotstuff::kGlobalChainId);
         tenon_block->set_height(pool_with_heights[pool_index]++);
         tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         tenon_block->set_timeblock_height(0);
@@ -1642,6 +1675,7 @@ int GenesisBlockInit::CreateShardGenesisBlocks(
         }
         
         tenon_block->set_version(common::kTransactionVersion);
+        tenon_block->set_chain_id(hotstuff::kGlobalChainId);
         tenon_block->set_height(pool_with_heights[i]++);
         tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         tenon_block->set_timeblock_height(0);
@@ -1672,6 +1706,7 @@ int GenesisBlockInit::CreateShardGenesisBlocks(
         auto view_block_ptr = std::make_shared<view_block::protobuf::ViewBlockItem>();
         auto* tenon_block = view_block_ptr->mutable_block_info();
         tenon_block->set_version(common::kTransactionVersion);
+        tenon_block->set_chain_id(hotstuff::kGlobalChainId);
         tenon_block->set_height(pool_with_heights[pool_index]++);
         tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         tenon_block->set_timeblock_height(0);

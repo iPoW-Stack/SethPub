@@ -41,6 +41,7 @@ Status BlockWrapper::Wrap(
     auto* block = view_block->mutable_block_info();
     block->set_version(common::kTransactionVersion);
     block->set_consistency_random(0);
+    block->set_chain_id(kGlobalChainId);
     block->set_height(prev_block->height()+1);
     SETH_DEBUG("propose block net: %u, pool: %u, set height: %lu, pre height: %lu",
         view_block->qc().network_id(), view_block->qc().pool_index(), 

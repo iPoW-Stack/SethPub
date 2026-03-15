@@ -317,7 +317,7 @@ dht::BaseDhtPtr Route::GetDht(const std::string& dht_key) {
 
 void Route::RouteByUniversal(const transport::MessagePtr& msg_ptr) {
     auto& header = msg_ptr->header;
-    SETH_DEBUG("now get universal dht 5");
+    SETH_DEBUG("now get universal dht: %lu", header.hash64());
     auto universal_dht = UniversalManager::Instance()->GetUniversal(kUniversalNetworkId);
     if (!universal_dht) {
         return;

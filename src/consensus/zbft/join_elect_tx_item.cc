@@ -102,6 +102,8 @@ int JoinElectTxItem::HandleTx(
         if (from_balance >= (gas_used + store_gas) * block_tx.gas_price()) {
             from_balance -= (gas_used + store_gas) * block_tx.gas_price();
             gas_used += store_gas;
+            auto* block_join_info = view_block.mutable_block_info()->add_joins();
+            *block_join_info = join_info;
         } else {
             if (from_balance >= (gas_used) * block_tx.gas_price()) {
                 from_balance -= (gas_used) * block_tx.gas_price();
@@ -122,6 +124,7 @@ int JoinElectTxItem::HandleTx(
         }
     }
 
+    zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::to_string(block_tx.status()));
     uint64_t stoke = 0;
     prefix_db_->GetElectNodeMinStoke(common::GlobalInfo::Instance()->network_id(), from, &stoke);
     join_info.set_stoke(stoke);
@@ -135,9 +138,6 @@ int JoinElectTxItem::HandleTx(
         ProtobufToJson(*(acc_balance_map[from])).c_str());
     block_tx.set_balance(from_balance);
     block_tx.set_gas_used(gas_used);
-    auto* block_join_info = view_block.mutable_block_info()->add_joins();
-    *block_join_info = join_info;
-    zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "0");
     SETH_DEBUG("status: %d, success join elect: %s, pool: %u, height: %lu, des shard: %d",
         block_tx.status(), common::Encode::HexEncode(from).c_str(),
         view_block.qc().pool_index(),

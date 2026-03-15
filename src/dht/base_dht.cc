@@ -330,6 +330,7 @@ void BaseDht::SendToDesNetworkNodes(const transport::MessagePtr& msg_ptr) {
     uint32_t send_count = 0;
     auto dht_ptr = readonly_hash_sort_dht_[valid_dht_idx];
     uint32_t des_net_id = DhtKeyManager::DhtKeyGetNetId(message.des_dht_key());
+    SETH_DEBUG("send to des network: %d, hash: %lu", des_net_id, message.hash64());
     for (auto iter = dht_ptr->begin(); iter != dht_ptr->end(); ++iter) {
         auto dht_node = (*iter);
         if (dht_node == nullptr) {
@@ -378,6 +379,7 @@ void BaseDht::SendToClosestNode(const transport::MessagePtr& msg_ptr) {
 
     auto dht_ptr = readonly_hash_sort_dht_[valid_dht_idx];
     if (dht_ptr->empty()) {
+        DHT_ERROR("send to local dht key dht_ptr empty: %d!", local_node_->sharding_id);
         return;
     }
 
@@ -386,8 +388,8 @@ void BaseDht::SendToClosestNode(const transport::MessagePtr& msg_ptr) {
         closest_node->public_ip,
         closest_node->public_port,
         message);
-    // SETH_DEBUG("send to closest node: %s:%u, hash64: %lu",
-    //     closest_node->public_ip.c_str(), closest_node->public_port, message.hash64());
+    SETH_DEBUG("send to closest node: %s:%u, hash64: %lu",
+        closest_node->public_ip.c_str(), closest_node->public_port, message.hash64());
 }
 
 NodePtr BaseDht::FindNodeDirect(transport::protobuf::Header& message) {
