@@ -75,6 +75,19 @@ int JoinElectTxItem::HandleTx(
             }
         }
 
+        auto n = common::GlobalInfo::Instance()->each_shard_max_members();
+        auto t = common::GetSignerCount(n);
+        if (join_info.g2_req().verify_vec_size() != t) {
+            SETH_DEBUG("join des shard error: %d,  %d, "
+                "join_info.g2_req().verify_vec_size() != t %u : %u",
+                join_info.shard_id(), msg_ptr->address_info->sharding_id(),
+                join_info.g2_req().verify_vec_size(), t);
+            block_tx.set_status(consensus::kConsensusJoinElectThreashTInvalid);
+                SETH_DEBUG("shard error: %lu", join_info.shard_id());
+            break;
+        }
+
+
         if (from_balance < block_tx.gas_limit()  * block_tx.gas_price()) {
             block_tx.set_status(consensus::kConsensusUserSetGasLimitError);
             SETH_DEBUG("id: %s balance error: %lu, %lu, %lu",

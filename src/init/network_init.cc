@@ -1499,14 +1499,14 @@ void NetworkInit::SendJoinElectTransaction() {
     }
     
     // if (pos == common::kInvalidUint32) {
+        auto n = common::GlobalInfo::Instance()->each_shard_max_members();
+        auto t = common::GetSignerCount(n);
         auto* req = join_info.mutable_g2_req();
         auto res = prefix_db_->GetBlsVerifyG2(security_->GetAddress(), req);
-        if (!res) {
+        if (!res || req->verify_vec_size() != t) {
             CreateContribution(req);
         }
 #ifndef NDEBUG
-        auto n = common::GlobalInfo::Instance()->each_shard_max_members();
-        auto t = common::GetSignerCount(n);
         assert(req->verify_vec_size() >= t);
 #endif
     // }
