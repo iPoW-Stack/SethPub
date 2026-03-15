@@ -468,11 +468,44 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
                 libBLS::ThresholdUtils::fieldElementToString(g2_vec[i].Z.c1)));
         }
 
+        // 1. 获取原始私钥（确保不是空的）
         auto private_key = genesis_nodes[idx]->prikey;
+        if (private_key.empty()) {
+            SETH_ERROR("Genesis node %d private key is empty!", idx);
+            return;
+        }
+
+        // 2. 初始化 Ecdsa 对象
         auto secptr = std::make_shared<security::Ecdsa>();
-        secptr->SetPrivateKey(private_key);
-        prefix_db_->SaveLocalPolynomial(std::dynamic_pointer_cast<security::Security>(secptr), secptr->GetAddress(), local_poly);
-        prefix_db_->AddBlsVerifyG2(secptr->GetAddress(), *req);
+        if (secptr->SetPrivateKey(private_key) != security::kSecuritySuccess) {
+            SETH_ERROR("Failed to set private key for node %d", idx);
+            assert(false);
+            return;
+        }
+
+        // 3. 预先获取 Checksum 地址，确保一致性
+        // 提示：如果你在 Python 端用了 to_checksum_address，C++ 端也应保持格式对齐
+        std::string node_addr = secptr->GetAddress(); 
+
+        // 4. 安全转换指针
+        auto security_ptr = std::dynamic_pointer_cast<security::Security>(secptr);
+        if (!security_ptr) {
+            SETH_ERROR("Dynamic pointer cast to security::Security failed!");
+            assert(false);
+            return;
+        }
+
+        // 5. 执行数据库持久化
+        // 修复点：确保 SaveLocalPolynomial 和 AddBlsVerifyG2 使用的是同一个 node_addr 变量
+        if (prefix_db_->SaveLocalPolynomial(security_ptr, node_addr, local_poly) != db::kDbSuccess) {
+            SETH_ERROR("SaveLocalPolynomial failed for address: %s", node_addr.c_str());
+            assert(false);
+        }
+
+        if (prefix_db_->AddBlsVerifyG2(node_addr, *req) != db::kDbSuccess) {
+            SETH_ERROR("AddBlsVerifyG2 failed for address: %s", node_addr.c_str());
+            assert(false);
+        }
     };
 
     std::vector<std::thread> thread_vec;
