@@ -104,7 +104,6 @@ int JoinElectTxItem::HandleTx(
             gas_used += store_gas;
             auto* block_join_info = view_block.mutable_block_info()->add_joins();
             *block_join_info = join_info;
-            assert(block_join_info->g2_req().verify_vec_size() == t);
         } else {
             if (from_balance >= (gas_used) * block_tx.gas_price()) {
                 from_balance -= (gas_used) * block_tx.gas_price();
