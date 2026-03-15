@@ -471,7 +471,7 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
         auto private_key = genesis_nodes[idx]->prikey;
         auto secptr = std::make_shared<security::Ecdsa>();
         secptr->SetPrivateKey(private_key);
-        prefix_db_->SaveLocalPolynomial(secptr, secptr->GetAddress(), local_poly);
+        prefix_db_->SaveLocalPolynomial(std::dynamic_pointer_cast<security::Security>(secptr), secptr->GetAddress(), local_poly);
         prefix_db_->AddBlsVerifyG2(secptr->GetAddress(), *req);
     };
 
