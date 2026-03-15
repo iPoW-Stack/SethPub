@@ -650,6 +650,7 @@ int GenesisBlockInit::CreateElectBlock(
             common::Encode::HexEncode((*iter)->id).c_str());
     }
 
+    tenon_block->set_chain_id(hotstuff::kGlobalChainId);
     tenon_block->set_height(height);
     tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
     ec_block.set_shard_network_id(shard_netid);
@@ -799,6 +800,7 @@ int GenesisBlockInit::GenerateRootSingleBlock(
             account_info->addr(), 0, tx_info->nonce());
         account_info->set_nonce(account_info->nonce() + 1);
         account_info->set_tx_index(account_info->nonce() + 1);
+        tenon_block->set_chain_id(hotstuff::kGlobalChainId);
         tenon_block->set_height(root_pool_height[common::kImmutablePoolSize]++);
         tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         timeblock::protobuf::TimeBlock& tm_block = *tenon_block->mutable_timer_block();
@@ -1009,6 +1011,7 @@ int GenesisBlockInit::CreateRootGenesisBlocks(
         }
 
         tenon_block->set_version(common::kTransactionVersion);
+        tenon_block->set_chain_id(hotstuff::kGlobalChainId);
         tenon_block->set_height(pool_with_heights[i]++);
         tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         tenon_block->set_timeblock_height(0);
@@ -1140,6 +1143,7 @@ int GenesisBlockInit::CreateRootGenesisBlocks(
         auto view_block_ptr = std::make_shared<view_block::protobuf::ViewBlockItem>();
         auto* tenon_block = view_block_ptr->mutable_block_info();
         tenon_block->set_version(common::kTransactionVersion);
+        tenon_block->set_chain_id(hotstuff::kGlobalChainId);
         tenon_block->set_height(pool_with_heights[pool_index]++);
         tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         tenon_block->set_timeblock_height(0);
@@ -1524,6 +1528,7 @@ int GenesisBlockInit::CreateShardNodesBlocks(
         }
 
         tenon_block->set_version(common::kTransactionVersion);
+        tenon_block->set_chain_id(hotstuff::kGlobalChainId);
         tenon_block->set_height(pool_with_heights[pool_index]++);
         tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         tenon_block->set_timeblock_height(0);
@@ -1642,6 +1647,7 @@ int GenesisBlockInit::CreateShardGenesisBlocks(
         }
         
         tenon_block->set_version(common::kTransactionVersion);
+        tenon_block->set_chain_id(hotstuff::kGlobalChainId);
         tenon_block->set_height(pool_with_heights[i]++);
         tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         tenon_block->set_timeblock_height(0);
@@ -1672,6 +1678,7 @@ int GenesisBlockInit::CreateShardGenesisBlocks(
         auto view_block_ptr = std::make_shared<view_block::protobuf::ViewBlockItem>();
         auto* tenon_block = view_block_ptr->mutable_block_info();
         tenon_block->set_version(common::kTransactionVersion);
+        tenon_block->set_chain_id(hotstuff::kGlobalChainId);
         tenon_block->set_height(pool_with_heights[pool_index]++);
         tenon_block->set_timestamp(common::TimeUtils::TimestampMs());
         tenon_block->set_timeblock_height(0);

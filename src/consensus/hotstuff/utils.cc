@@ -11,7 +11,6 @@ namespace seth {
 
 namespace hotstuff {
 
-static const uint32_t kGlobalChainId = 3355103123u;
 std::string GetBlockHash(const view_block::protobuf::ViewBlockItem &view_block) {
     auto& block = view_block.block_info();
     std::string serialized = SerializeDeterministic(block);

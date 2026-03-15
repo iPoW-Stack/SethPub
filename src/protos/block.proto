@@ -88,6 +88,7 @@ message Block {
     repeated bls.protobuf.JoinElectInfo joins = 23;
     optional pools.protobuf.PoolStatisticTxInfo pool_st_info = 24;
     repeated bytes unique_hashs = 25;
+    optional uint64 chain_id = 26;
 }
 
 message GetTxBlockRequest {
