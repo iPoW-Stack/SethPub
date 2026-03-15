@@ -422,7 +422,7 @@ void TcpTransport::AddLocalMessage(transport::MessagePtr msg_ptr) {
 }
 
 void uv_async_cb(uv_async_t* handle) {
-    msg_handler_->RealFreeInvalidConnections();
+    tcp_transport->RealFreeInvalidConnections();
     for (uint32_t i = 0; i < common::kMaxThreadCount; ++i) {
         MessagePtr msg_ptr;
         while (local_messages_[i].pop(&msg_ptr)) {
