@@ -409,7 +409,6 @@ int TcpTransport::Send(
 
 void TcpTransport::Output() {
     while (!destroy_) {
-        RealFreeInvalidConnections();
         uv_async_send(&async_handle);
         std::unique_lock<std::mutex> lock(output_mutex_);
         output_con_.wait_for(lock, std::chrono::milliseconds(10));
@@ -423,6 +422,7 @@ void TcpTransport::AddLocalMessage(transport::MessagePtr msg_ptr) {
 }
 
 void uv_async_cb(uv_async_t* handle) {
+    RealFreeInvalidConnections();
     for (uint32_t i = 0; i < common::kMaxThreadCount; ++i) {
         MessagePtr msg_ptr;
         while (local_messages_[i].pop(&msg_ptr)) {
@@ -545,7 +545,20 @@ void TcpTransport::Run() {
     }
 
     uv_ip4_addr(splits[0], port, &addr);
-    uv_tcp_bind(&server, (const struct sockaddr*)&addr, UV_UDP_REUSEADDR);
+    int bind_res = uv_tcp_bind(&server, (const struct sockaddr*)&addr, UV_TCP_REUSEPORT);
+    if (bind_res < 0) {
+        SETH_ERROR("bind failed: %s", uv_strerror(bind_res));
+    }
+
+    // 2. 深度注入：通过底层 fd 设置 SO_REUSEADDR (防止 TIME_WAIT 导致绑定失败)
+    uv_os_fd_t fd;
+    if (uv_fileno((const uv_handle_t*)&server, &fd) == 0) {
+        int opt = 1;
+        // 在 Linux 系统下，显式设置 SO_REUSEADDR
+        setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    }
+
+    // uv_tcp_bind(&server, (const struct sockaddr*)&addr, UV_UDP_REUSEADDR);
     int32_t try_times = 0;
     do {
         int r = uv_listen((uv_stream_t*)&server, 128, on_new_connection);
