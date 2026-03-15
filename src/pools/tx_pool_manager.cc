@@ -811,6 +811,7 @@ void TxPoolManager::HandleElectTx(const transport::MessagePtr& msg_ptr) {
     msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(addr);
     if (msg_ptr->address_info == nullptr) {
         SETH_WARN("no address info: %s", common::Encode::HexEncode(addr).c_str());
+        msg_ptr->handle_status = transport::kTxInvalidAddress;
         return;
     }
 
@@ -824,6 +825,7 @@ void TxPoolManager::HandleElectTx(const transport::MessagePtr& msg_ptr) {
             common::Encode::HexEncode(addr).c_str(), 
             msg_ptr->address_info->balance(), 
             consensus::kJoinElectGas);
+        msg_ptr->handle_status = transport::kTxInvalidAddress;
         return;
     }
 
@@ -863,10 +865,21 @@ void TxPoolManager::HandleElectTx(const transport::MessagePtr& msg_ptr) {
             return;
         }
     }
+
+    auto n = common::GlobalInfo::Instance()->each_shard_max_members();
+    auto t = common::GetSignerCount(n);
+    if (join_info.g2_req().verify_vec_size() != t) {
+        SETH_DEBUG("join des shard error: %d,  %d, "
+            "join_info.g2_req().verify_vec_size() != t %u : %u",
+            tmp_shard, msg_ptr->address_info->sharding_id(),
+            join_info.g2_req().verify_vec_size(), t);
+        return;
+    }
     
     SETH_DEBUG("elect tx msg hash is %s", 
         common::Encode::HexEncode(msg_ptr->msg_hash).c_str());
     msg_ptr->msg_hash = msg_hash;
+    msg_ptr->handle_status = transport::kMessageHandle;
 }
 
 void TxPoolManager::HandleContractExcute(const transport::MessagePtr& msg_ptr) {

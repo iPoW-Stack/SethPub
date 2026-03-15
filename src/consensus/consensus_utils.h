@@ -75,6 +75,7 @@ enum ConsensusErrorCode {
     kConsensusOutOfPrepayment = 49,
     kConsensusElectNodeExists = 50,
     kConsensusNonceInvalid = 51,
+    kConsensusJoinElectThreashTInvalid = 52,
 };
 
 enum BftStatus : int32_t {
