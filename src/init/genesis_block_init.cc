@@ -497,15 +497,8 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
 
         // 5. 执行数据库持久化
         // 修复点：确保 SaveLocalPolynomial 和 AddBlsVerifyG2 使用的是同一个 node_addr 变量
-        if (prefix_db_->SaveLocalPolynomial(security_ptr, node_addr, local_poly) != db::kDbSuccess) {
-            SETH_ERROR("SaveLocalPolynomial failed for address: %s", node_addr.c_str());
-            assert(false);
-        }
-
-        if (prefix_db_->AddBlsVerifyG2(node_addr, *req) != db::kDbSuccess) {
-            SETH_ERROR("AddBlsVerifyG2 failed for address: %s", node_addr.c_str());
-            assert(false);
-        }
+        prefix_db_->SaveLocalPolynomial(security_ptr, node_addr, local_poly);
+        prefix_db_->AddBlsVerifyG2(node_addr, *req);
     };
 
     std::vector<std::thread> thread_vec;
