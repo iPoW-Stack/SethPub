@@ -409,7 +409,6 @@ int TcpTransport::Send(
 
 void TcpTransport::Output() {
     while (!destroy_) {
-        RealFreeInvalidConnections();
         uv_async_send(&async_handle);
         std::unique_lock<std::mutex> lock(output_mutex_);
         output_con_.wait_for(lock, std::chrono::milliseconds(10));
@@ -423,6 +422,7 @@ void TcpTransport::AddLocalMessage(transport::MessagePtr msg_ptr) {
 }
 
 void uv_async_cb(uv_async_t* handle) {
+    tcp_transport->RealFreeInvalidConnections();
     for (uint32_t i = 0; i < common::kMaxThreadCount; ++i) {
         MessagePtr msg_ptr;
         while (local_messages_[i].pop(&msg_ptr)) {
