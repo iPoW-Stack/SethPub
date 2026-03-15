@@ -373,13 +373,14 @@ void BaseDht::RandomSend(const transport::MessagePtr& msg_ptr) {
 void BaseDht::SendToClosestNode(const transport::MessagePtr& msg_ptr) {
     auto& message = msg_ptr->header;
     if (message.des_dht_key() == local_node_->dht_key) {
-        DHT_ERROR("send to local dht key failed!");
+        DHT_ERROR("send to local dht key failed: %lu", message.hash64());
         return;
     }
 
     auto dht_ptr = readonly_hash_sort_dht_[valid_dht_idx];
     if (dht_ptr->empty()) {
-        DHT_ERROR("send to local dht key dht_ptr empty: %d!", local_node_->sharding_id);
+        DHT_ERROR("send to local dht key dht_ptr empty: %d, hash: %lu!", 
+            local_node_->sharding_id, message.hash64());
         return;
     }
 

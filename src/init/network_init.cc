@@ -1460,8 +1460,14 @@ void NetworkInit::SendJoinElectTransaction() {
         return;
     }
 
+    auto local_node_account_info = prefix_db_->GetAddressInfo(security_->GetAddress());
+    if (local_node_account_info == nullptr) {
+        SETH_DEBUG("failed get address info: %s",
+            common::Encode::HexEncode(security_->GetAddress()).c_str());
+        return;
+    }
+    
     if (des_sharding_id_ == common::kInvalidUint32) {
-        auto local_node_account_info = prefix_db_->GetAddressInfo(security_->GetAddress());
         if (local_node_account_info == nullptr) {
             SETH_DEBUG("failed get address info: %s",
                 common::Encode::HexEncode(security_->GetAddress()).c_str());

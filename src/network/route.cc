@@ -323,6 +323,7 @@ void Route::RouteByUniversal(const transport::MessagePtr& msg_ptr) {
         return;
     }
 
+    SETH_DEBUG("now get universal dht: %lu broadcast: %d", header.hash64(), header.has_broadcast());
     if (header.has_broadcast()) {
         // choose limit nodes to broadcast from universal
         universal_dht->SendToDesNetworkNodes(msg_ptr);
