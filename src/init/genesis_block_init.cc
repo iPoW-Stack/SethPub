@@ -443,8 +443,6 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
             }
         }
 
-        std::shared_ptr<security::Security> secptr = std::make_shared<security::Ecdsa>();
-        secptr->SetPrivateKey(genesis_nodes[idx]->prikey);
         genesis_nodes[idx]->verification = dkg_instance.VerificationVector(genesis_nodes[idx]->polynomial);
         secret_key_contribution[idx] = dkg_instance.SecretKeyContribution(
             genesis_nodes[idx]->polynomial, valid_n, valid_t);
@@ -471,6 +469,8 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
         }
 
         auto private_key = genesis_nodes[idx]->prikey;
+        auto secptr = std::make_shared<security::Ecdsa>();
+        secptr->SetPrivateKey(private_key);
         prefix_db_->SaveLocalPolynomial(secptr, secptr->GetAddress(), local_poly);
         prefix_db_->AddBlsVerifyG2(secptr->GetAddress(), *req);
     };
