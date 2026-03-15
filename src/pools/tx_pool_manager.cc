@@ -204,6 +204,11 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
         }
     }
 
+    if (msg_ptr->address_info->sharding_id != common::GlobalInfo::Instance()->network_id()) {
+        network::Route::Instance()->Send(msg_ptr->header);
+        return transport::kFirewallCheckError;
+    }
+
     tx_msg.set_tx_hash(msg_ptr->msg_hash);
     return transport::kFirewallCheckSuccess;
 }
