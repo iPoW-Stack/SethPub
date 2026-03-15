@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # --- 1. Configuration & Variables ---
-TARGET="Release"
+TARGET="Debug"
 INSTALL_DIR="/root/seth_miner"
 rm -rf $INSTALL_DIR
 cp -rf ./mining_node $INSTALL_DIR
