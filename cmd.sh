@@ -23,8 +23,9 @@ clear_command() {
     node_ips_array=(${node_ips//,/ })
     run_cmd_count=0
     for ip in "${node_ips_array[@]}"; do
-        echo $ip
-        sshpass -p Xf4aGbTaf\& ssh -o ConnectTimeout=10 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 2221 "$cmd" &
+        sshpass -p Xf4aGbTaf\& ssh -o ConnectTimeout=10 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5 root@$ip -p 2221 \
+            "$cmd 2>&1 | sed \"s/^/[$ip] /\"" &
+        
         run_cmd_count=$(($run_cmd_count + 1))
         if (($run_cmd_count >= 250)); then
             check_cmd_finished
