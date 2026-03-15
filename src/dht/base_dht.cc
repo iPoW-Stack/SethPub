@@ -378,6 +378,7 @@ void BaseDht::SendToClosestNode(const transport::MessagePtr& msg_ptr) {
 
     auto dht_ptr = readonly_hash_sort_dht_[valid_dht_idx];
     if (dht_ptr->empty()) {
+        DHT_ERROR("send to local dht key dht_ptr empty!");
         return;
     }
 
