@@ -1490,6 +1490,7 @@ void NetworkInit::SendJoinElectTransaction() {
     uint32_t pos = common::kInvalidUint32;
     prefix_db_->GetLocalElectPos(security_->GetAddress(), &pos);
     join_info.set_member_idx(pos);
+    join_info.set_public_key(security_->GetPublicKey());
     if (common::GlobalInfo::Instance()->network_id() >= network::kConsensusShardEndNetworkId) {
         join_info.set_shard_id(
             common::GlobalInfo::Instance()->network_id() -
