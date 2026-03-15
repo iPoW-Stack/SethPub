@@ -80,7 +80,7 @@ int JoinElectTxItem::HandleTx(
         if (join_info.g2_req().verify_vec_size() != t) {
             SETH_DEBUG("join des shard error: %d,  %d, "
                 "join_info.g2_req().verify_vec_size() != t %u : %u",
-                tmp_shard, msg_ptr->address_info->sharding_id(),
+                join_info.shard_id(), msg_ptr->address_info->sharding_id(),
                 join_info.g2_req().verify_vec_size(), t);
             block_tx.set_status(consensus::kConsensusJoinElectThreashTInvalid);
                 SETH_DEBUG("shard error: %lu", join_info.shard_id());
