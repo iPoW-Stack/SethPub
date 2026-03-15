@@ -472,6 +472,7 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
         auto private_key = genesis_nodes[idx]->prikey;
         if (private_key.empty()) {
             SETH_ERROR("Genesis node %d private key is empty!", idx);
+            assert(false);
             return;
         }
 
