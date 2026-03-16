@@ -553,7 +553,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     }
 
     uint64_t view_prev_vote_tm = 0;
-    if (laste_vote_prev_view_tm_.Get(
+    if (laste_vote_prev_view_tm_.Peek(
             msg_ptr->header.hotstuff().pro_msg().tc().view(), view_prev_vote_tm)) {
         auto now_tm = common::TimeUtils::TimestampMs();
         if (view_prev_vote_tm + 15000lu >= now_tm) {
