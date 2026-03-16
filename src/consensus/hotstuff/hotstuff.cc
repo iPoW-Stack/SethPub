@@ -582,7 +582,6 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     }
 
     auto latest_view_block_ptr = view_block_chain()->HighViewBlock();
-    auto latest_view_block_ptr = view_block_chain()->HighViewBlock();
     if (msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size() == 0) {
         if (latest_view_block_ptr->block_info().tx_list_size() == 0) {
             ADD_DEBUG_PROCESS_TIMESTAMP();
