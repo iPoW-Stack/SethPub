@@ -481,7 +481,6 @@ private:
     }
 
     static const uint64_t kLatestPoposeSendTxToLeaderPeriodMs = 10000lu;
-    static const uint64_t kNewTimeblockDelaySeconds = 30u;
 
     std::shared_ptr<block::BlockManager> block_mgr_;
     uint32_t pool_idx_;
@@ -519,6 +518,7 @@ private:
     uint32_t last_stable_leader_member_index_ = 0u;
     uint64_t latest_elect_height_ = 0llu;
     common::LRUMap<uint64_t, uint64_t> view_with_block_tm_map_{16};
+    common::LRUMap<uint64_t, uint64_t> laste_vote_prev_view_tm_{16};
     std::atomic<common::BftMemberPtr> pool_tx_leader_;
 
 // #ifndef NDEBUG
