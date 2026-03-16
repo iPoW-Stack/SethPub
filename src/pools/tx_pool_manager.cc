@@ -11,6 +11,7 @@
 #include "network/dht_manager.h"
 #include "network/network_utils.h"
 #include "network/route.h"
+#include "network/universal_manager.h"
 #include "protos/pools.pb.h"
 #include "protos/prefix_db.h"
 #include "security/ecdsa/secp256k1.h"
@@ -213,10 +214,21 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
 
     auto leader = hotstuff_mgr_->is_other_leader(msg_ptr->address_info->pool_index());
     if (leader) {
-        transport::TcpTransport::Instance()->Send(
-            leader->public_ip(), 
-            leader->public_port(), 
-            msg_ptr->header);
+        auto dht = network::UniversalManager::Instance()->GetDht(network::kRootCongressNetworkId);
+        auto dht_vec = dht->readonly_hash_sort_dht();
+        auto node_it = std::find_if(dht_vec.begin(), dht_vec.end(), [&](const auto& item) {
+            return item->id == leader->id;
+        });
+
+        if (node_it != dht_vec.end()) {
+            auto found_node = *node_it; 
+            transport::TcpTransport::Instance()->Send(
+                found_node->public_ip, 
+                found_node->public_port, 
+                msg_ptr->header);
+        } else {
+            network::Route::Instance()->Send(msg_ptr);
+        }
     }
 
     tx_msg.set_tx_hash(msg_ptr->msg_hash);
