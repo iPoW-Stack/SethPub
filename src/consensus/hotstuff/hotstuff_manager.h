@@ -107,11 +107,7 @@ public:
     int VerifySyncedViewBlock(const view_block::protobuf::ViewBlockItem& pb_vblock);    
 
     inline std::shared_ptr<Hotstuff> hotstuff(uint32_t pool_idx) const {
-        auto it = pool_hotstuff_.find(pool_idx);
-        if (it == pool_hotstuff_.end()) {
-            return nullptr;
-        }
-        return it->second;
+        return pool_hotstuff_[pool_idx];
     }    
     
     inline std::shared_ptr<Pacemaker> pacemaker(uint32_t pool_idx) const {
@@ -164,7 +160,7 @@ public:
         pop_tx_con_.notify_one();
     }
 
-    common::BftMemberPtr is_other_leader(uint32_t pool_index) const {
+    common::BftMemberPtr is_other_leader(uint32_t pool_index) {
         return pool_hotstuff_[pool_index]->is_other_leader();
     }
 

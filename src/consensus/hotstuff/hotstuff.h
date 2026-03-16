@@ -194,13 +194,13 @@ public:
         bool has_new_tx,
         bool has_system_tx);
 
-    common::BftMemberPtr is_other_leader() const {
+    common::BftMemberPtr is_other_leader() {
         auto local_idx = GetLocalMemberIdx();
         View out_view = 0;
         auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view);
         if (leader && leader->index == local_idx) {
             if (leader->pubkey != crypto_->security()->GetPublicKey()) {
-                return leader
+                return leader;
             }
         }
         
