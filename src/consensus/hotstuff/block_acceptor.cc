@@ -157,14 +157,12 @@ Status BlockAcceptor::Accept(
         if (!iter->second->has_balance() || !iter->second->has_nonce() || !iter->second->has_sharding_id() || 
                 !iter->second->has_pool_index() || !iter->second->has_addr() || !iter->second->has_type() ||
                 !iter->second->has_latest_height()) {
-            SETH_WARN("invalid addr, %u_%u_%lu_%lu, success addr info: %s, balance: %lu, nonce: %lu", 
+            SETH_WARN("invalid addr, %u_%u_%lu_%lu, success addr info: %s", 
                 view_block.qc().network_id(),
                 view_block.qc().pool_index(),
                 view_block.block_info().height(),
                 view_block.qc().view(),
-                common::Encode::HexEncode(iter->second->addr()).c_str(), 
-                addr_info->balance(),
-                addr_info->nonce());
+                common::Encode::HexEncode(iter->second->addr()).c_str());
             continue;
         }
 
