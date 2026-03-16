@@ -21,10 +21,9 @@
 #include "block/block_manager.h"
 #include "bls/bls_sign.h"
 #include "consensus/consensus_utils.h"
-// #ifndef ENABLE_HOTSTUFF
+#include "consensus/hotstuff/hotstuff_manager.h"
 #include "consensus/zbft/zbft_utils.h"
 #include "protos/zbft.pb.h"
-// #endif
 #include "elect/elect_utils.h"
 #include "network/network_utils.h"
 #include "init/init_utils.h"
@@ -301,7 +300,8 @@ void GenesisBlockInit::ComputeG2sForNodes(const std::vector<std::string>& prikey
 void GenesisBlockInit::PrepareCreateGenesisBlocks(uint32_t shard_node_net_id) {
     std::shared_ptr<security::Security> security = nullptr;
     std::shared_ptr<sync::KeyValueSync> kv_sync = nullptr;
-    pools_mgr_ = std::make_shared<pools::TxPoolManager>(security, db_, kv_sync, account_mgr_);
+    std::shared_ptr<consensus::HotstuffManager> hotstuff_mgr = nullptr;
+    pools_mgr_ = std::make_shared<pools::TxPoolManager>(security, db_, kv_sync, account_mgr_, hotstuff_mgr);
     // SaveGenisisPoolHeights(shard_node_net_id);
     std::shared_ptr<pools::ShardStatistic> statistic_mgr = nullptr;
     std::shared_ptr<contract::ContractManager> ct_mgr = nullptr;
