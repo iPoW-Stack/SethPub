@@ -552,8 +552,6 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         return;
     }
 
-    SETH_DEBUG("handle propose called hash: %lu, propose_debug: %s", msg_ptr->header.hash64(), 
-            ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
     uint64_t view_prev_vote_tm = 0;
     if (laste_vote_prev_view_tm_.Get(
             msg_ptr->header.hotstuff().pro_msg().tc().view(), view_prev_vote_tm)) {
@@ -566,8 +564,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
             return;
         }
     }
-SETH_DEBUG("handle propose called hash: %lu, propose_debug: %s", msg_ptr->header.hash64(), 
-            ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
+
     if (!msg_ptr->header.hotstuff().pro_msg().has_view_item()) {
         SETH_DEBUG("handle propose called hash: %lu, %u_%u_%lu, "
             "view block hash: %s, sign x: %s, propose_debug: %s", 
@@ -583,15 +580,18 @@ SETH_DEBUG("handle propose called hash: %lu, propose_debug: %s", msg_ptr->header
         ADD_DEBUG_PROCESS_TIMESTAMP();
         return;
     }
-SETH_DEBUG("handle propose called hash: %lu, propose_debug: %s", msg_ptr->header.hash64(), 
-            ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
+
+    auto latest_view_block_ptr = view_block_chain()->HighViewBlock();
     auto latest_view_block_ptr = view_block_chain()->HighViewBlock();
     if (msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size() == 0) {
-        ADD_DEBUG_PROCESS_TIMESTAMP();
-        SETH_INFO("pool: %d, high view block tx size is 0, and not timeout "
-            "and propose tx size is 0, ignore.", pool_idx_);
-        return;
+        if (latest_view_block_ptr->block_info().tx_list_size() == 0) {
+            ADD_DEBUG_PROCESS_TIMESTAMP();
+            SETH_INFO("pool: %d, high view block tx size is 0, and not timeout "
+                "and propose tx size is 0, ignore.", pool_idx_);
+            return;
+        }
     }
+    
 SETH_DEBUG("handle propose called hash: %lu, propose_debug: %s", msg_ptr->header.hash64(), 
             ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
     // assert(msg_ptr->header.hotstuff().pro_msg().view_item().qc().view_block_hash().empty());
