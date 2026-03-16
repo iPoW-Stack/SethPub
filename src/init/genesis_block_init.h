@@ -60,7 +60,7 @@ private:
         const std::vector<GenisisNodeInfoPtr>& cons_genesis_nodes,
         uint32_t net_id,
         uint64_t* init_heights,
-        hotstuff::View* pool_latest_view); // 节点对应的余额
+        hotstuff::View* pool_latest_view); // Balance corresponding to the node
     uint32_t GetNetworkIdOfGenesisAddress(const std::string& address);
     const std::map<uint32_t, std::string> GetGenesisAccount(uint32_t net_id);
     void InitShardGenesisAccount();

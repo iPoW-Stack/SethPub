@@ -301,6 +301,7 @@ private:
             return nullptr;
         }
 
+        last_stable_leader_member_index_ = GetEpochLeaderIndex();
         auto now_tm = common::TimeUtils::TimestampSeconds();
         if (now_tm <= common::GlobalInfo::Instance()->leader_change_init_tm()) {
             if (high_view_block->qc().elect_height() < latest_elect_height_) {
@@ -437,7 +438,7 @@ private:
             return common::kInvalidUint32;
         }
 
-        auto index = (elect_item->ElectHeight() + pool_idx_) % elect_item->valid_leaders()->size();
+        auto index = (tm_block_mgr_->LatestTimestampHeight() + pool_idx_) % elect_item->valid_leaders()->size();
         return elect_item->valid_leaders()->at(index)->index;
     }
 

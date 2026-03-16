@@ -302,11 +302,11 @@ static const uint32_t kSingleBlockMaxMBytes = 2u;
 static const uint32_t kVpnShareStakingPrice = 1u;
 
 static const uint64_t kZjcMiniTransportUnit = 100000000llu;
-static const uint64_t kZjcMaxAmount = 210llu * 100000000llu * kZjcMiniTransportUnit;
+static const uint64_t kZjcMaxAmount = 2100llu * 100000000llu * kZjcMiniTransportUnit;
 static const uint32_t kTransactionNoVersion = 0u;
 static const uint32_t kTransactionVersion = 1u;
-static const uint64_t kGenesisFoundationMaxZjc = kZjcMaxAmount / 100llu * 14llu;
-static const uint64_t kGenesisShardingNodesMaxZjc = kZjcMaxAmount / 100llu * 1llu;
+// 10% 
+static const uint64_t kGenesisShardingNodesMaxZjc = kZjcMaxAmount / 100llu * 10llu;
 static const uint32_t kElectNodeMinMemberIndex = 1024u;
 
 static const uint64_t kVpnVipMinPayfor = 66llu * kZjcMiniTransportUnit;
