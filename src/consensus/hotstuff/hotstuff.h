@@ -435,7 +435,10 @@ private:
             return common::kInvalidUint32;
         }
 
-        auto index = (tm_block_mgr_->LatestTimestampHeight() + pool_idx_) % elect_item->valid_leaders()->size();
+        auto index = (
+            tm_block_mgr_->LatestTimestampHeight() + 
+            elect_item->elect_height_ + 
+            pool_idx_) % elect_item->valid_leaders()->size();
         return elect_item->valid_leaders()->at(index)->index;
     }
 
