@@ -248,7 +248,7 @@ void KeyValueSync::PopItems() {
                 sync_dht_map[item->network_id] = sync::protobuf::SyncMessage();
             }
 
-            auto sync_req = sync_dht_map[item->network_id].mutable_sync_value_req();
+            auto* sync_req = sync_dht_map[item->network_id].mutable_sync_value_req();
             sync_req->set_network_id(item->network_id);
             if (item->height != common::kInvalidUint64) {
                 auto height_item = sync_req->add_heights();
@@ -306,7 +306,6 @@ void KeyValueSync::PopItems() {
                 sended_neigbors);
             if (choose_node != 0) {
                 sended_neigbors.insert(choose_node);
-                break;
             }
         }
     }
@@ -317,7 +316,7 @@ uint64_t KeyValueSync::SendSyncRequest(
         const sync::protobuf::SyncMessage& sync_msg,
         const std::set<uint64_t>& sended_neigbors) {
     std::vector<dht::NodePtr> nodes;
-    SETH_DEBUG("now get universal dht 9");
+    SETH_DEBUG("now get universal dht: %u", network_id);
     auto dht_ptr = network::UniversalManager::Instance()->GetUniversal(network::kUniversalNetworkId);
     auto dht = *dht_ptr->readonly_hash_sort_dht();
     dht::DhtFunction::GetNetworkNodes(dht, network_id, nodes);
