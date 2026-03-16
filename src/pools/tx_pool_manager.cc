@@ -6,6 +6,7 @@
 #include "common/hash.h"
 #include "common/string_utils.h"
 #include "common/time_utils.h"
+#include "consensus/hotstuff_manager.h"
 #include "dht/dht_key.h"
 #include "network/dht_manager.h"
 #include "network/network_utils.h"
@@ -205,8 +206,8 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
         }
     }
 
-    if (msg_ptr->address_info->sharding_id != common::GlobalInfo::Instance()->network_id()) {
-        network::Route::Instance()->Send(msg_ptr->header);
+    if (msg_ptr->address_info->sharding_id() != common::GlobalInfo::Instance()->network_id()) {
+        network::Route::Instance()->Send(msg_ptr);
         return transport::kFirewallCheckError;
     }
 
