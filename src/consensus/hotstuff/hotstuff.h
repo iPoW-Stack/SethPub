@@ -108,7 +108,6 @@ public:
 
         latest_elect_height_ = elect_height;
         consecutive_failures_ = 0;
-        last_stable_leader_member_index_ = GetEpochLeaderIndex();
         SETH_DEBUG("pool: %d, success set last_stable_leader_member_index_: %d, "
             "latest_elect_height_: %lu",
             pool_idx_, last_stable_leader_member_index_, latest_elect_height_);
@@ -194,6 +193,19 @@ public:
         const transport::MessagePtr& msg_ptr,
         bool has_new_tx,
         bool has_system_tx);
+
+    common::BftMemberPtr is_other_leader() const {
+        auto local_idx = GetLocalMemberIdx();
+        View out_view = 0;
+        auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view);
+        if (leader && leader->index == local_idx) {
+            if (leader->pubkey != crypto_->security()->GetPublicKey()) {
+                return leader
+            }
+        }
+        
+        return nullptr;
+    }
 
 private:
     void InitAddNewViewBlock(
@@ -515,7 +527,7 @@ private:
     std::shared_ptr<ViewBlock> latest_voted_view_block_ = nullptr;
 
     uint32_t consecutive_failures_ = 0u;
-    uint32_t last_stable_leader_member_index_ = 0u;
+    std::atomic<uint32_t> last_stable_leader_member_index_ = 0u;
     uint64_t latest_elect_height_ = 0llu;
     common::LRUMap<uint64_t, uint64_t> view_with_block_tm_map_{16};
 

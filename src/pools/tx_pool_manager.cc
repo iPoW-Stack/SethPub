@@ -27,11 +27,13 @@ TxPoolManager::TxPoolManager(
         std::shared_ptr<security::Security>& security,
         std::shared_ptr<db::Db>& db,
         std::shared_ptr<sync::KeyValueSync>& kv_sync,
-        std::shared_ptr<block::AccountManager>& acc_mgr) {
+        std::shared_ptr<block::AccountManager>& acc_mgr,
+        std::shared_ptr<hotstuff::HotstuffManager>& hotstuff_mgr) {
     security_ = security;
     db_ = db;
     acc_mgr_ = acc_mgr;
     prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
+    hotstuff_mgr_ = hotstuff_mgr;
     // prefix_db_->InitGidManager();
     kv_sync_ = kv_sync;
     cross_block_mgr_ = std::make_shared<CrossBlockManager>(db_, kv_sync_);
@@ -61,7 +63,6 @@ TxPoolManager::TxPoolManager(
         SETH_WARN("success create test tx thread.");
     }
 #endif
-
 }
 
 TxPoolManager::~TxPoolManager() {
@@ -207,6 +208,14 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
     if (msg_ptr->address_info->sharding_id != common::GlobalInfo::Instance()->network_id()) {
         network::Route::Instance()->Send(msg_ptr->header);
         return transport::kFirewallCheckError;
+    }
+
+    auto leader = hotstuff_mgr_->is_other_leader(msg_ptr->address_info->pool_index());
+    if (leader) {
+        transport::TcpTransport::Instance()->Send(
+            leader->public_ip(), 
+            leader->public_port(), 
+            msg_ptr->header);
     }
 
     tx_msg.set_tx_hash(msg_ptr->msg_hash);

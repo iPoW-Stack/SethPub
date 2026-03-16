@@ -195,8 +195,9 @@ int NetworkInit::Init(int argc, char** argv) {
     elect_mgr_ = std::make_shared<elect::ElectManager>(
         vss_mgr_, account_mgr_, block_mgr_, security_, bls_mgr_, db_,
         nullptr);
+    hotstuff_mgr_ = std::make_shared<consensus::HotstuffManager>();
     pools_mgr_ = std::make_shared<pools::TxPoolManager>(
-        security_, db_, kv_sync_, account_mgr_);
+        security_, db_, kv_sync_, account_mgr_, hotstuff_mgr_);
     account_mgr_->Init(db_, pools_mgr_);
     zjcvm::Execution::Instance()->Init(db_);
     auto new_db_cb = std::bind(
@@ -206,7 +207,6 @@ int NetworkInit::Init(int argc, char** argv) {
     shard_statistic_ = std::make_shared<pools::ShardStatistic>(
         elect_mgr_, db_, security_, pools_mgr_, contract_mgr_);
     tm_block_mgr_ = std::make_shared<timeblock::TimeBlockManager>();
-    hotstuff_mgr_ = std::make_shared<consensus::HotstuffManager>();
     block_mgr_->Init(
         account_mgr_,
         db_,
