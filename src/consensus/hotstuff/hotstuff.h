@@ -478,6 +478,7 @@ private:
     }
 
     static const uint64_t kLatestPoposeSendTxToLeaderPeriodMs = 10000lu;
+    static const uint64_t kNewTimeblockDelaySeconds = 30u;
 
     std::shared_ptr<block::BlockManager> block_mgr_;
     uint32_t pool_idx_;

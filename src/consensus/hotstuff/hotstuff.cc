@@ -570,10 +570,19 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
 
     auto latest_view_block_ptr = view_block_chain()->HighViewBlock();
     if (msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size() == 0) {
-        if (latest_view_block_ptr->block_info().tx_list_size() == 0) {
+        auto now_tm = common::TimeUtils::TimestampMs();
+        if (latest_view_block_ptr->block_info().timestamp() + 10000llu > now_tm) {
             ADD_DEBUG_PROCESS_TIMESTAMP();
             SETH_INFO("pool: %d, high view block tx size is 0, and not timeout "
                 "and propose tx size is 0, ignore.", pool_idx_);
+            return;
+        }
+
+        if (tm_block_mgr_->LatestTimestamp() + kNewTimeblockDelaySeconds < (now_tm / 1000lu)) {
+            SETH_INFO("pool: %d, high view block tx size is 0, and not timeout tm block invalid "
+                "and propose tx size is 0, ignore, %iu, %lu", pool_idx_,
+                (tm_block_mgr_->LatestTimestamp() + kNewTimeblockDelaySeconds),
+                (now_tm / 1000lu));
             return;
         }
     }
@@ -2079,6 +2088,14 @@ bool Hotstuff::IsEmptyBlockAllowed(const ViewBlock& v_block) {
     if (!v_block1 || v_block1->block_info().tx_list_size() > 0) {
         SETH_DEBUG("!v_block1 || v_block1->block_info().tx_list_size() > 0");
         return true;
+    }
+
+    // keep leader alive
+    auto now_tm = common::TimeUtils::TimestampMs();
+    if (tm_block_mgr_->LatestTimestamp() + 30u >= (now_tm / 1000)) {
+        if (v_block1->block_info().timestamp() + 10000llu < now_tm) {
+            return true;
+        }
     }
 
     return false;
