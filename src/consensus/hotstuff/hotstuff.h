@@ -108,9 +108,6 @@ public:
 
         latest_elect_height_ = elect_height;
         consecutive_failures_ = 0;
-        SETH_DEBUG("pool: %d, success set last_stable_leader_member_index_: %d, "
-            "latest_elect_height_: %lu",
-            pool_idx_, last_stable_leader_member_index_, latest_elect_height_);
     }
 
     Status Start();
