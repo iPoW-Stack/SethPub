@@ -162,7 +162,7 @@ Status BlockAcceptor::Accept(
                 view_block.qc().pool_index(),
                 view_block.block_info().height(),
                 view_block.qc().view(),
-                common::Encode::HexEncode(addr_info->addr()).c_str(), 
+                common::Encode::HexEncode(iter->second->addr()).c_str(), 
                 addr_info->balance(),
                 addr_info->nonce());
             continue;
