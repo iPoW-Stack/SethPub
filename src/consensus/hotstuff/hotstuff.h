@@ -437,7 +437,7 @@ private:
 
         auto index = (
             tm_block_mgr_->LatestTimestampHeight() + 
-            elect_item->elect_height_ + 
+            elect_item->ElectHeight() + 
             pool_idx_) % elect_item->valid_leaders()->size();
         return elect_item->valid_leaders()->at(index)->index;
     }
