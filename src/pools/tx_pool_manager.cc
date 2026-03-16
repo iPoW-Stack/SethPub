@@ -29,7 +29,7 @@ TxPoolManager::TxPoolManager(
         std::shared_ptr<db::Db>& db,
         std::shared_ptr<sync::KeyValueSync>& kv_sync,
         std::shared_ptr<block::AccountManager>& acc_mgr,
-        std::shared_ptr<hotstuff::HotstuffManager>& hotstuff_mgr) {
+        std::shared_ptr<consensus::HotstuffManager>& hotstuff_mgr) {
     security_ = security;
     db_ = db;
     acc_mgr_ = acc_mgr;

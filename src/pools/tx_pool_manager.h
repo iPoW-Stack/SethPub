@@ -29,7 +29,7 @@ namespace block {
     class AccountManager;
 };
 
-namespace hotstuff {
+namespace consensus {
     class HotstuffManager;
 }
 
@@ -42,7 +42,7 @@ public:
         std::shared_ptr<db::Db>& db,
         std::shared_ptr<sync::KeyValueSync>& kv_sync,
         std::shared_ptr<block::AccountManager>& acc_mgr,
-        std::shared_ptr<hotstuff::HotstuffManager>& hotstuff_mgr);
+        std::shared_ptr<consensus::HotstuffManager>& hotstuff_mgr);
     ~TxPoolManager();
     void TxPoolHandleMessage(const transport::MessagePtr& msg);
     void GetTxIdempotently(
@@ -311,7 +311,7 @@ private:
     std::weak_ptr<block::AccountManager> acc_mgr_;
     std::atomic<uint32_t> now_max_tx_count_ = 0;
     AccountQpsLruMap<102400> account_tx_qps_check_;
-    std::shared_ptr<hotstuff::HotstuffManager> hotstuff_mgr_;
+    std::shared_ptr<consensus::HotstuffManager> hotstuff_mgr_;
 #ifdef USE_SERVER_TEST_TRANSACTION
     std::shared_ptr<std::thread> test_tx_thread_ = nullptr;
 #endif
