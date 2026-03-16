@@ -154,6 +154,20 @@ Status BlockAcceptor::Accept(
     }
 
     for (auto iter = balance_and_nonce_map.begin(); iter != balance_and_nonce_map.end(); ++iter) {
+        if (!iter->second->has_balance() || !iter->second->has_nonce() || !iter->second->has_sharding_id() || 
+                !iter->second->has_pool_index() || !iter->second->has_addr() || !iter->second->has_type() ||
+                !iter->second->has_latest_height()) {
+            SETH_WARN("invalid addr, %u_%u_%lu_%lu, success addr info: %s, balance: %lu, nonce: %lu", 
+                view_block.qc().network_id(),
+                view_block.qc().pool_index(),
+                view_block.block_info().height(),
+                view_block.qc().view(),
+                common::Encode::HexEncode(addr_info->addr()).c_str(), 
+                addr_info->balance(),
+                addr_info->nonce());
+            continue;
+        }
+
         if (iter->first.size() != common::kUnicastAddressLength && 
                 iter->first.size() != common::kPreypamentAddressLength) {
             assert(false);
@@ -170,13 +184,6 @@ Status BlockAcceptor::Accept(
             common::Encode::HexEncode(addr_info->addr()).c_str(), 
             addr_info->balance(),
             addr_info->nonce());
-        assert(addr_info->has_balance());
-        assert(addr_info->has_nonce());
-        assert(addr_info->has_sharding_id());
-        assert(addr_info->has_pool_index());
-        assert(addr_info->has_addr());
-        assert(addr_info->has_type());
-        assert(addr_info->has_latest_height());
         prefix_db_->AddAddressInfo(addr_info->addr(), *addr_info, zjc_host.db_batch_);
     }
 

@@ -27,6 +27,10 @@ int ToTxLocalItem::HandleTx(
     std::string val;
     if (zjc_host.GetKeyValue(block_tx.to(), unique_hash, &val) == zjcvm::kZjcvmSuccess) {
         SETH_DEBUG("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
+        if (!acc_balance_map[block_tx.to()]->has_balance()) {
+            acc_balance_map.erase(block_tx.to());
+        }
+        
         return consensus::kConsensusError;
     }
 
