@@ -220,7 +220,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
             return item->id == leader->id;
         });
 
-        if (node_it != dht_vec.end()) {
+        if (node_it != dht_vec->end()) {
             auto found_node = *node_it; 
             transport::TcpTransport::Instance()->Send(
                 found_node->public_ip, 
