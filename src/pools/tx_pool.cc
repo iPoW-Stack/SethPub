@@ -84,9 +84,15 @@ void TxPool::InitHeightTree() {
 
 uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
     if (!height_tree_ptr_) {
-        SETH_DEBUG("pool: %u, get invalid height_tree_ptr_ size: %u, latest_height_: %lu", 
-            pool_index_, 0, latest_height_);
-        return 0;
+        if (has_missing_height_) {
+            InitHeightTree();
+        }
+
+        if (!height_tree_ptr_) {
+            SETH_DEBUG("pool: %u, get invalid height_tree_ptr_ size: %u, latest_height_: %lu", 
+                pool_index_, 0, latest_height_);
+            return 0;
+        }
     }
 
 //     if (prev_synced_time_ms_ >= now_tm_ms) {
