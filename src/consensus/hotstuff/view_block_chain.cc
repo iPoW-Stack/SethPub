@@ -755,7 +755,7 @@ void ViewBlockChain::HandleTimerMessage() {
     }
 
     prev_check_timeout_blocks_ms_ = now_tm_ms;
-    if (view_with_blocks_.size() <= 2) {
+    if (view_with_blocks_.size() <= 1) {
         return;
     }
 
