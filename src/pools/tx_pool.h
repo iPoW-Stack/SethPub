@@ -158,19 +158,18 @@ public:
 
     void FlushHeightTree(db::DbWriteBatch& db_batch) {
         // CheckThreadIdValid();
-        // TODO: fix bug
-        std::vector<uint64_t> invalid_heights;
-        height_tree_ptr->GetMissingHeights(&invalid_heights, latest_height_);
-        SETH_DEBUG("%u get invalid heights size: %u, latest_height_: %lu", 
-            pool_index_, invalid_heights.size(), latest_height_);
-        if (invalid_heights.size() > 0 && invalid_heights[0] <= latest_height_) {
-            has_missing_height_ = true;
-        } else {
-            has_missing_height_ = false;
-        }
-        
         if (height_tree_ptr_ != nullptr) {
             auto tmp_tree_ptr = height_tree_ptr_;
+            std::vector<uint64_t> invalid_heights;
+            tmp_tree_ptr->GetMissingHeights(&invalid_heights, latest_height_);
+            SETH_DEBUG("%u get invalid heights size: %u, latest_height_: %lu", 
+                pool_index_, invalid_heights.size(), latest_height_);
+            if (invalid_heights.size() > 0 && invalid_heights[0] <= latest_height_) {
+                has_missing_height_ = true;
+            } else {
+                has_missing_height_ = false;
+            }
+
             tmp_tree_ptr->FlushToDb(db_batch);
             height_tree_ptr_ = nullptr;
         }
