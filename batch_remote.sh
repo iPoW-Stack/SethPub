@@ -98,17 +98,46 @@ init() {
 
     start_shard=2
     total_shards=$((end_shard - start_shard + 1))
+    # node_ips_array=(${node_ips//,/ })
+    # total_ips=${#node_ips_array[@]}
+    # declare -A shard_map
+    # for ((i=0; i<$total_ips; i++)); do
+    #     shard_idx=$((i % total_shards))
+    #     current_shard=$((shard_idx + start_shard))
+    #     shard_map[$current_shard]+="${node_ips_array[$i]} "
+    # done
+
+    # nodes_count=$(((total_ips / total_shards) * 10))
+    # echo "node count: " $nodes_count $node_ips $shard_map
+
+    # 1. 字符串转数组（处理逗号分隔的 IP）
     node_ips_array=(${node_ips//,/ })
     total_ips=${#node_ips_array[@]}
+
+    # 2. 声明关联数组
     declare -A shard_map
+
+    # 3. 分配 IP 到 Shard
     for ((i=0; i<$total_ips; i++)); do
+        # 计算当前 IP 应该属于哪个分片
         shard_idx=$((i % total_shards))
         current_shard=$((shard_idx + start_shard))
+        
+        # 将 IP 追加到对应分片的字符串中（以空格分隔）
         shard_map[$current_shard]+="${node_ips_array[$i]} "
     done
 
+    # 4. 计算节点总数（假设每个 IP 对应 10 个虚拟节点）
     nodes_count=$(((total_ips / total_shards) * 10))
-    echo "node count: " $nodes_count $node_ips $shard_map
+
+    # --- 关键修改：打印关联数组 ---
+    echo "Node count: $nodes_count"
+    echo "Original IPs: $node_ips"
+    echo "Shard Mapping Details:"
+    for shard in "${!shard_map[@]}"; do
+        echo "  [Shard $shard]: ${shard_map[$shard]}"
+    done
+
     rm -rf /root/nodes/seth/latest_blocks
 }
 
