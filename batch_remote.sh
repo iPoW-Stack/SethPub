@@ -126,8 +126,10 @@ make_package() {
         done
     else
         end_shard_index=$((end_shard + 1))
-        cd /root/nodes/seth && ./seth -U -N $nodes_count -E ${end_shard_index}
-        cd /root/nodes/seth && ./seth -S 3 -N $nodes_count -E ${end_shard_index}
+        echo "./seth -U -N ${nodes_count} -E ${end_shard_index}"
+        echo "./seth -S 3 -N ${nodes_count} -E ${end_shard_index}"
+        cd /root/nodes/seth && ./seth -U -N ${nodes_count} -E ${end_shard_index}
+        cd /root/nodes/seth && ./seth -S 3 -N ${nodes_count} -E ${end_shard_index}
         cd /root/nodes/seth && ./seth -C
         cd /root/seth/cbuild_$TARGET && make txcli
 
