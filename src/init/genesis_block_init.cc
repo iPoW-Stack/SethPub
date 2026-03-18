@@ -210,7 +210,7 @@ void ComputeG2ForNode(
         }
 
         uint32_t valid_n = prikeys.size();
-        uint32_t valid_t = common::GetSignerCount(valid_n);
+        uint32_t valid_t = common::GetSignerCount(valid_n); // Valid threshold
         libBLS::Dkg dkg_instance = libBLS::Dkg(valid_t, valid_n);
         auto contribution = dkg_instance.SecretKeyContribution(polynomial, valid_n, valid_t);
         uint32_t local_member_index_ = k;
@@ -480,7 +480,7 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
             return;
         }
 
-        // 2. 初始化 Ecdsa 对象
+        // 2. Initialize Ecdsa object
         auto secptr = std::make_shared<security::Ecdsa>();
         if (secptr->SetPrivateKey(private_key) != security::kSecuritySuccess) {
             SETH_ERROR("Failed to set private key for node %d", idx);
@@ -488,14 +488,14 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
             return;
         }
 
-        // 3. 预先获取 Checksum 地址，确保一致性
-        // 提示：如果你在 Python 端用了 to_checksum_address，C++ 端也应保持格式对齐
+        // 3. Pre-fetch Checksum address to ensure consistency
+        // Tip: If you used to_checksum_address in Python, the C++ side should also maintain format alignment
         std::string node_addr = secptr->GetAddress(); 
 
-        // 4. 安全转换指针
+        // 4. Safely convert pointer
         auto security_ptr = std::dynamic_pointer_cast<security::Security>(secptr);
         if (!security_ptr) {
-            SETH_ERROR("Dynamic pointer cast to security::Security failed!");
+            SETH_ERROR("Dynamic pointer cast to security::Security failed!"); // Dynamic pointer cast to security::Security failed!
             assert(false);
             return;
         }

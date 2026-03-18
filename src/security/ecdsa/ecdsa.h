@@ -63,8 +63,8 @@ private:
     std::string str_prikey_;
     std::string str_addr_;
     std::string str_pk_;
-    const char* private_key_ptr_;
-    uint32_t private_key_length_;
+    const char* private_key_ptr_ = nullptr;
+    uint32_t private_key_length_ = 0;
 //     common::UniqueMap<std::string, std::string, 16, 4> pk_addr_map_;
 
     DISALLOW_COPY_AND_ASSIGN(Ecdsa);
