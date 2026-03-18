@@ -138,6 +138,7 @@ init() {
         echo "  [Shard $shard]: ${shard_map[$shard]}"
     done
 
+    exit 0
     rm -rf /root/nodes/seth/latest_blocks
 }
 
