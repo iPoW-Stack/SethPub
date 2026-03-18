@@ -210,7 +210,9 @@ scp_package() {
     run_cmd_count=0
     for ((shard_id=start_shard; shard_id<=$end_shard; shard_id++)); do
         ips=(${shard_map[$shard_id]})
+        echo 'run_cstart_ascp_packagell_nodesommand: ' $shard_id $ips
         for ip in "${ips[@]}"; do
+            echo "scp_package: " $ip
             sshpass -p $PASSWORD scp -o ConnectTimeout=10  -o StrictHostKeyChecking=no /root/nodes/seth/pkg.tar.gz root@$ip:/root &
             run_cmd_count=$((run_cmd_count + 1))
             if (($run_cmd_count >= 100)); then
@@ -230,8 +232,9 @@ run_command() {
     for ((shard_id=start_shard; shard_id<=$end_shard; shard_id++)); do
         start_pos=1
         ips=(${shard_map[$shard_id]})
+        echo 'run_command: ' $shard_id $ips
         for ip in "${ips[@]}"; do
-            echo "start node: " $ip $each_nodes_count
+            echo "config node: " $ip $each_nodes_count
             start_nodes_count=$(($each_nodes_count + 0))
             leader_init_tm=$(date -u -d "+240 seconds" +%s)
             echo 'sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5 root@$ip "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count $bootstrap $shard_id $(($shard_id+1)) $leader_init_tm"'
@@ -254,6 +257,7 @@ start_all_nodes() {
     for ((shard_id=start_shard; shard_id<=$end_shard; shard_id++)); do
         start_pos=1
         ips=(${shard_map[$shard_id]})
+        echo 'run_cstart_all_nodesommand: ' $shard_id $ips
         for ip in "${ips[@]}"; do
             echo "start node: " $ip $each_nodes_count
             start_nodes_count=$(($each_nodes_count + 0))
