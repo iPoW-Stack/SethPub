@@ -225,6 +225,16 @@ public:
         return leader_change_init_tm_;
     }
 
+    uint32_t now_valid_end_shard() const {
+        return now_valid_end_shard_; 
+    }
+
+    void set_now_valid_end_shard(uint32_t shard_id) {
+        if (now_valid_end_shard_ < shard_id) {
+            now_valid_end_shard_ = shard_id;
+        }
+    }
+
 private:
     GlobalInfo();
     ~GlobalInfo();
@@ -279,6 +289,7 @@ private:
     std::atomic<uint64_t> global_latency_ = 0;
     uint8_t hotstuff_thread_count_ = 8;
     uint64_t leader_change_init_tm_ = 0;
+    std::atomic<uint32_t> now_valid_end_shard_ = common::kInvalidUint32;
 
     DISALLOW_COPY_AND_ASSIGN(GlobalInfo);
 };
