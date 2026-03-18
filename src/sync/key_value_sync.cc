@@ -626,6 +626,22 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
             }
 
             assert(!pb_vblock->qc().sign_x().empty());
+            if (!view_block_synced_callback_) {
+                return;
+            }
+
+            if (view_block_synced_callback_(*pb_vblock) != 0) {
+                SETH_DEBUG("failed check viewblock handle network new view "
+                    "block: %u_%u_%lu, height: %lu key: %s, is broadcast: %d", 
+                    pb_vblock->qc().network_id(),
+                    pb_vblock->qc().pool_index(),
+                    pb_vblock->qc().view(),
+                    pb_vblock->block_info().height(),
+                    (iter->tag() == kBlockHeight ? key.c_str() : common::Encode::HexEncode(key).c_str()),
+                    iter->key().empty());
+                break;
+            }
+
             SETH_DEBUG("0 success handle network new view block: %u_%u_%lu, height: %lu key: %s, is broadcast: %d", 
                 pb_vblock->qc().network_id(),
                 pb_vblock->qc().pool_index(),
