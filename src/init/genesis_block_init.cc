@@ -472,7 +472,6 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
                 libBLS::ThresholdUtils::fieldElementToString(g2_vec[i].Z.c1)));
         }
 
-        // 1. 获取原始私钥（确保不是空的）
         auto private_key = genesis_nodes[idx]->prikey;
         if (private_key.empty()) {
             SETH_ERROR("Genesis node %d private key is empty!", idx);
@@ -500,8 +499,6 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
             return;
         }
 
-        // 5. 执行数据库持久化
-        // 修复点：确保 SaveLocalPolynomial 和 AddBlsVerifyG2 使用的是同一个 node_addr 变量
         prefix_db_->SaveLocalPolynomial(security_ptr, node_addr, local_poly);
         prefix_db_->AddBlsVerifyG2(node_addr, *req);
     };
