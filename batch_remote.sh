@@ -108,7 +108,7 @@ init() {
     done
 
     nodes_count=$(((total_ips / total_shards) * 10))
-    echo "node count: " $nodes_count
+    echo "node count: " $nodes_count $node_ips $shard_map
     rm -rf /root/nodes/seth/latest_blocks
 }
 
