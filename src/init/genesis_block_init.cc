@@ -46,9 +46,13 @@ GenesisBlockInit::GenesisBlockInit(
         : account_mgr_(account_mgr), block_mgr_(block_mgr), db_(db) {
     prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
     bls_pk_json_ = nlohmann::json::array();
+    InitPool();
+
 }
 
-GenesisBlockInit::~GenesisBlockInit() {}
+GenesisBlockInit::~GenesisBlockInit() {
+    FreePool();
+}
 
 int GenesisBlockInit::CreateGenesisBlocks(
         uint32_t network_id,
