@@ -962,6 +962,7 @@ int NetworkInit::GenesisCmd(common::ParserArgs& parser_arg) {
 
     SETH_DEBUG("now consensus_shard_node_count: %u", consensus_shard_node_count);
     if (parser_arg.Has("U")) {
+        std::cout << "now genisis root" << std::endl;
         std::string valid_arg_i_value;
         for (uint32_t net_id = network::kConsensusShardBeginNetworkId; 
                 net_id < end_shard_id; ++net_id) {
@@ -998,6 +999,7 @@ int NetworkInit::GenesisCmd(common::ParserArgs& parser_arg) {
     }
 
     if (parser_arg.Has("S")) {
+        std::cout << "now genisis shards" << std::endl;
         for (uint32_t i = 3; i < end_shard_id; i++) {
             std::cout << "now genisis shard" << i << std::endl;
             std::string net_id_str = std::to_string(i);
@@ -1180,6 +1182,7 @@ void NetworkInit::GetNetworkNodesFromConf(
     for (uint32_t net_i = network::kRootCongressNetworkId; net_i < end_shard_id; net_i++) {
         auto filename = std::string("/root/seth/shards") + std::to_string(net_i);
         bool reuse_shard = common::isFileExist(filename);
+        std::cout << filename << ", reuse: " << reuse_shard << std::endl;
         auto sfd = fopen(filename.c_str(), (reuse_shard ? "r" : "w"));
         if (sfd == nullptr) {
             SETH_FATAL("open file failed: %s", filename.c_str());
