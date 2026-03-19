@@ -246,8 +246,8 @@ run_command() {
             echo "config node: " $ip $each_nodes_count
             start_nodes_count=$(($each_nodes_count + 0))
             leader_init_tm=$(date -u -d "+240 seconds" +%s)
-            echo 'sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5 root@$ip "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count $bootstrap $shard_id $(($shard_id+1)) $leader_init_tm"'
-            sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5 root@$ip "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count $bootstrap $shard_id $(($shard_id+1)) $leader_init_tm"  > /dev/null 2>&1 &
+            echo 'sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5 root@$ip "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count $bootstrap $shard_id $shard_id $leader_init_tm"'
+            sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5 root@$ip "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count $bootstrap $shard_id $shard_id $leader_init_tm"  > /dev/null 2>&1 &
             run_cmd_count=$(($run_cmd_count + 1))
             if (($run_cmd_count >= 250)); then
                 check_cmd_finished
@@ -270,8 +270,8 @@ start_all_nodes() {
         for ip in "${ips[@]}"; do
             echo "start node: " $ip $each_nodes_count
             start_nodes_count=$(($each_nodes_count + 0))
-            echo 'sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5 root@$ip "cd /root/pkg && bash start_cmd.sh $ip $start_pos $start_nodes_count $bootstrap $shard_id $(($shard_id+1)) "'
-            sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5 root@$ip "cd /root/pkg && bash start_cmd.sh $ip $start_pos $start_nodes_count $bootstrap $shard_id $(($shard_id+1)) "  &
+            echo 'sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5 root@$ip "cd /root/pkg && bash start_cmd.sh $ip $start_pos $start_nodes_count $bootstrap $shard_id $shard_id "'
+            sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5 root@$ip "cd /root/pkg && bash start_cmd.sh $ip $start_pos $start_nodes_count $bootstrap $shard_id $shard_id "  &
             if ((start_pos==1)); then
                 sleep 3
             fi
