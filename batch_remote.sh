@@ -5,8 +5,12 @@ end_shard=$3
 PASSWORD=$4
 TARGET=$5
 
+if [ "$end_shard" == "" ]; then
+    end_shard=3
+fi
+
 CODE_PATH=`pwd`
-node_hash=$(printf "%s%d" "$node_ips" "$each_nodes_count" | md5sum | cut -d ' ' -f1)
+node_hash=$(printf "%s%d" "$node_ips" "$each_nodes_count" "$end_shard" | md5sum | cut -d ' ' -f1)
 declare -A shard_map
 
 bash cmd.sh $2 "systemctl list-units --state=active --no-legend | grep seth@ | awk '{print \$1}' | xargs -r systemctl stop; killall -9 seth"
