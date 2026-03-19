@@ -288,7 +288,6 @@ void BlockManager::RootHandleNormalToTx(
         const view_block::protobuf::ViewBlockItem& view_block,
         const pools::protobuf::ToTxMessage& to_txs) {
     auto& block = view_block.block_info();
-    // 将 NormalTo 中的多个 tx 拆分成多个 kRootCreateAddress tx
     for (int32_t i = 0; i < to_txs.tos_size(); ++i) {
         auto tos_item = to_txs.tos(i);
         SETH_DEBUG("to tx new address %s, amount: %lu, prepayment: %lu, nonce: %lu",
@@ -300,13 +299,6 @@ void BlockManager::RootHandleNormalToTx(
         auto msg_ptr = std::make_shared<transport::TransportMessage>();
         auto tx = msg_ptr->header.mutable_tx_proto();
         tx->set_step(pools::protobuf::kRootCreateAddress);
-        // if (tos_item.sharding_id() >= network::kConsensusShardBeginNetworkId &&
-        //         tos_item.sharding_id() < network::kConsensusShardEndNetworkId) {
-        //     char data[4];
-        //     uint32_t* uint_data = (uint32_t*)data;
-        //     uint_data[0] = tos_item.sharding_id();
-        // }
-        
         auto pool_index = common::GetAddressPoolIndex(tos_item.des().substr(0, common::kUnicastAddressLength));
         msg_ptr->address_info = account_mgr_->pools_address_info(
             pools::protobuf::kRootCreateAddress, 
