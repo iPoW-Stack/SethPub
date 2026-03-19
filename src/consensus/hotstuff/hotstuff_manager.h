@@ -85,6 +85,7 @@ public:
             uint64_t timeblock_addr_nonce) {
         for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
             chain(i)->OnTimeBlock(lastest_time_block_tm, latest_time_block_height, vss_random, timeblock_addr_nonce);
+            hotstuff(i)->OnTimeBlock();
         }
     }
     

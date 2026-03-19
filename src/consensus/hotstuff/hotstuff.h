@@ -108,6 +108,11 @@ public:
 
         latest_elect_height_ = elect_height;
         consecutive_failures_ = 0;
+        update_latest_view_tm_ = true;
+    }
+
+    void OnTimeBlock() {
+        update_latest_view_tm_ = true;
     }
 
     Status Start();
@@ -520,6 +525,7 @@ private:
     common::LRUMap<uint64_t, uint64_t> view_with_block_tm_map_{16};
     common::LRUMap<uint64_t, uint64_t> laste_vote_prev_view_tm_{16};
     std::atomic<common::BftMemberPtr> pool_tx_leader_;
+    std::atomic<bool> update_latest_view_tm_ = false;
 
 // #ifndef NDEBUG
     static std::atomic<uint32_t> sendout_bft_message_count_;

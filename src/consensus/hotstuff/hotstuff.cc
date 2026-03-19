@@ -553,15 +553,17 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     }
 
     uint64_t view_prev_vote_tm = 0;
-    if (laste_vote_prev_view_tm_.Get(
-            msg_ptr->header.hotstuff().pro_msg().tc().view(), view_prev_vote_tm)) {
-        auto now_tm = common::TimeUtils::TimestampMs();
-        if (view_prev_vote_tm + 15000lu >= now_tm) {
-            SETH_DEBUG("view: %lu, view_prev_vote_tm: %lu, now_tm: %lu, not timeout, ignore propose msg hash: %lu, propose_debug: %s", 
-                msg_ptr->header.hotstuff().pro_msg().tc().view(), 
-                view_prev_vote_tm, now_tm, msg_ptr->header.hash64(),
-                ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
-            return;
+    if (last_stable_leader_member_index_ != msg_ptr->header.hotstuff().pro_msg().view_item().qc().leader_idx()) {
+        if (laste_vote_prev_view_tm_.Get(
+                msg_ptr->header.hotstuff().pro_msg().tc().view(), view_prev_vote_tm)) {
+            auto now_tm = common::TimeUtils::TimestampMs();
+            if (view_prev_vote_tm + 15000lu >= now_tm) {
+                SETH_DEBUG("view: %lu, view_prev_vote_tm: %lu, now_tm: %lu, not timeout, ignore propose msg hash: %lu, propose_debug: %s", 
+                    msg_ptr->header.hotstuff().pro_msg().tc().view(), 
+                    view_prev_vote_tm, now_tm, msg_ptr->header.hash64(),
+                    ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
+                return;
+            }
         }
     }
 
@@ -2211,6 +2213,13 @@ void Hotstuff::TryRecoverFromStuck(
     //     SETH_WARN("latest_qc_item_ptr_ null, pool: %u", pool_idx_);
     //     return;
     // }
+
+    auto now_tm_ms = common::TimeUtils::TimestampMs();
+    if (update_latest_view_tm_) {
+        laste_vote_prev_view_tm_.Put(latest_qc_item_ptr_->view(), now_tm_ms);
+        update_latest_view_tm_ = false;
+    }
+
     view_block_chain()->HandleTimerMessage();
     root_view_block_chain_->HandleTimerMessage();
     for (auto& cross_view_block_chain : cross_shard_view_block_chain_) {
@@ -2227,7 +2236,6 @@ void Hotstuff::TryRecoverFromStuck(
         return;
     }
 
-    auto now_tm_ms = common::TimeUtils::TimestampMs();
     if (now_tm_ms >= prev_sync_latest_view_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs) {
         prev_sync_latest_view_tm_ms_ = now_tm_ms;
         auto hight_view_block = view_block_chain_->HighViewBlock();
