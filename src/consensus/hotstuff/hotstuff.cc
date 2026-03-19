@@ -209,25 +209,8 @@ Status Hotstuff::Propose(
 
         return Status::kError;
     }
-    // SETH_DEBUG("net: %d, pool %u has dht ptr size: %d.", 
-    //     common::GlobalInfo::Instance()->network_id(), 
-    //     pool_idx_, 
-    //     readobly_dht->size());
+
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    // if (tc != nullptr) {
-    //     if (latest_qc_item_ptr_ == nullptr || tc->view() >= latest_qc_item_ptr_->view()) {
-    //         assert(tc->pool_index() == pool_idx_);
-    //         assert(tc->network_id() == common::GlobalInfo::Instance()->network_id());
-    //         assert(IsQcTcValid(*tc));
-    //         latest_qc_item_ptr_ = tc;
-    //     }
-
-    //     // if (latest_leader_propose_message_ && 
-    //     //         latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view() <= tc->view()) {
-    //     //     latest_leader_propose_message_ = nullptr;
-    //     // }
-    // }
-
     if (latest_leader_propose_message_ &&
             latest_leader_propose_message_->latest_qc_view < latest_qc_item_ptr_->view()) {
         SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
@@ -339,13 +322,6 @@ Status Hotstuff::Propose(
 #ifndef NDEBUG
     auto t2 = common::TimeUtils::TimestampMs();
 #endif
-    // SETH_DEBUG("1 now ontime called propose: %d", pool_idx_);
-    // auto tmp_msg_ptr = latest_leader_propose_message_;
-    // if (!tmp_msg_ptr ||
-    //         tmp_msg_ptr->header.hotstuff().pro_msg().view_item().qc().view() < 
-    //         pacemaker_->CurView()) {
-    // }
-
     leader_view_block_hash_ = "";
     auto tmp_msg_ptr = std::make_shared<transport::TransportMessage>();
     tmp_msg_ptr->is_leader = true;
@@ -576,17 +552,18 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         return;
     }
 
-    // if (msg_ptr->header.hotstuff().pro_msg().view_item().block_info().timeblock_height() != 
-    //         tm_block_mgr_->LatestTimestampHeight() && 
-    //         msg_ptr->header.hotstuff().pro_msg().view_item().block_info().timeblock_height() != 
-    //         tm_block_mgr_->LatestPrevTimestampHeight()) {
-    //     SETH_DEBUG("invalid time block height: %lu, %lu, prev: %lu", 
-    //         msg_ptr->header.hotstuff().pro_msg().view_item().block_info().timeblock_height(),
-    //         tm_block_mgr_->LatestTimestampHeight(),
-    //         tm_block_mgr_->LatestPrevTimestampHeight());
-    //     ADD_DEBUG_PROCESS_TIMESTAMP();
-    //     return;
-    // }
+    uint64_t view_prev_vote_tm = 0;
+    if (laste_vote_prev_view_tm_.Get(
+            msg_ptr->header.hotstuff().pro_msg().tc().view(), view_prev_vote_tm)) {
+        auto now_tm = common::TimeUtils::TimestampMs();
+        if (view_prev_vote_tm + 15000lu >= now_tm) {
+            SETH_DEBUG("view: %lu, view_prev_vote_tm: %lu, now_tm: %lu, not timeout, ignore propose msg hash: %lu, propose_debug: %s", 
+                msg_ptr->header.hotstuff().pro_msg().tc().view(), 
+                view_prev_vote_tm, now_tm, msg_ptr->header.hash64(),
+                ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
+            return;
+        }
+    }
 
     if (!msg_ptr->header.hotstuff().pro_msg().has_view_item()) {
         SETH_DEBUG("handle propose called hash: %lu, %u_%u_%lu, "
@@ -607,17 +584,15 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     auto latest_view_block_ptr = view_block_chain()->HighViewBlock();
     if (msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size() == 0) {
         if (latest_view_block_ptr->block_info().tx_list_size() == 0) {
-            // keep leader alive
-            auto now_tm = common::TimeUtils::TimestampMs();
-            if (latest_view_block_ptr->block_info().timestamp() + 10000llu > now_tm) {
-                ADD_DEBUG_PROCESS_TIMESTAMP();
-                SETH_INFO("pool: %d, high view block tx size is 0, and not timeout "
-                    "and propose tx size is 0, ignore.", pool_idx_);
-                return;
-            }
+            ADD_DEBUG_PROCESS_TIMESTAMP();
+            SETH_INFO("pool: %d, high view block tx size is 0, and not timeout "
+                "and propose tx size is 0, ignore.", pool_idx_);
+            return;
         }
     }
-
+    
+SETH_DEBUG("handle propose called hash: %lu, propose_debug: %s", msg_ptr->header.hash64(), 
+            ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
     // assert(msg_ptr->header.hotstuff().pro_msg().view_item().qc().view_block_hash().empty());
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
@@ -704,39 +679,6 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto propose_view = pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().tc().view();
     View handled_view = 0;
-    // for (auto iter = leader_view_with_propose_msgs_.begin();
-    //         iter != leader_view_with_propose_msgs_.end();) {
-    //     if (iter->first > propose_view) {
-    //         // assert(false);
-    //         break;
-    //     }
-
-        // auto& rehandle_view_item = *iter->second->view_block_ptr;
-        // SETH_WARN(
-        //     "rehandle propose message begin HandleProposeMessageByStep called hash: %lu, "
-        //     "last_vote_view_: %lu, view_item.qc().view(): %lu, "
-        //     "propose_debug: %s, view_block_hash: %s",
-        //     iter->second->msg_ptr->header.hash64(), 
-        //     last_vote_view_, rehandle_view_item.qc().view(),
-        //     iter->second->msg_ptr->header.debug().c_str(),
-        //     common::Encode::HexEncode(rehandle_view_item.qc().view_block_hash()).c_str());
-        // rehandle_view_item.mutable_qc()->release_view_block_hash();
-        // auto st = HandleProposeMessageByStep(iter->second);
-        // if (st != Status::kSuccess) {
-        //     SETH_ERROR("handle propose message failed hash: %lu, propose_debug: %s",
-        //         msg_ptr->header.hash64(),
-        //         msg_ptr->header.debug().c_str());
-        //     break;
-        // }
-
-        // SETH_WARN("rehandle propose message success HandleProposeMessageByStep called hash: %lu, "
-        //     "last_vote_view_: %lu, view_item.qc().view(): %lu, propose_debug: %s",
-        //     iter->second->msg_ptr->header.hash64(), last_vote_view_, rehandle_view_item.qc().view(),
-        //     iter->second->msg_ptr->header.debug().c_str());
-    //     iter = leader_view_with_propose_msgs_.erase(iter);
-    //     CHECK_MEMORY_SIZE(leader_view_with_propose_msgs_);
-    // }
-    
     ADD_DEBUG_PROCESS_TIMESTAMP();
     // HandleProposeMsgStep_VerifyQC(pro_msg_wrap);
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -745,18 +687,6 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         SETH_ERROR("handle propose message failed hash: %lu, propose_debug: %s",
             msg_ptr->header.hash64(),
             ProtobufToJson(msg_ptr->header).c_str());
-        // leader_view_with_propose_msgs_[propose_view] = pro_msg_wrap;
-        // CHECK_MEMORY_SIZE(leader_view_with_propose_msgs_);
-    } else {
-        // for (auto iter = leader_view_with_propose_msgs_.begin();
-        //         iter != leader_view_with_propose_msgs_.end();) {
-        //     if (iter->first > propose_view) {
-        //         break;
-        //     }
-
-        //     iter = leader_view_with_propose_msgs_.erase(iter);
-        //     CHECK_MEMORY_SIZE(leader_view_with_propose_msgs_);
-        // }
     }
 
     SETH_DEBUG("handle propose message success hash: %lu, propose_debug: %s",
@@ -957,85 +887,17 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
         pacemaker()->NewQcView(qc.view());
         view_block_chain()->UpdateHighViewBlock(qc);
         TryCommit(view_block_chain(), pro_msg_wrap->msg_ptr, qc);
-        // last_stable_leader_member_index_ = qc.leader_idx();
         if (latest_qc_item_ptr_ == nullptr ||
                 tc_ptr->view() >= latest_qc_item_ptr_->view()) {
             assert(IsQcTcValid(*tc_ptr));
             latest_qc_item_ptr_ = tc_ptr;
         }
-        SETH_DEBUG("commit use time: %lu", (common::TimeUtils::TimestampMs() - btime));
 
-// #ifndef NDEBUG
-//         auto msg_hash = GetTCMsgHash(pro_msg.tc());
-//         SETH_WARN("HandleTC success verify tc %u_%u_%lu, hash: %s called hash: %lu, propose_debug: %s",
-//             tc_ptr->network_id(), 
-//             tc_ptr->pool_index(), 
-//             tc_ptr->view(), 
-//             common::Encode::HexEncode(msg_hash).c_str(), 
-//             pro_msg_wrap->msg_ptr->header.hash64(), pro_msg_wrap->msg_ptr->header.debug().c_str());
-// #endif
+        SETH_DEBUG("commit use time: %lu", (common::TimeUtils::TimestampMs() - btime));
     }
 
     return Status::kSuccess;
 }
-
-// Status Hotstuff::HandleProposeMsgStep_VerifyQC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
-//     auto& msg_ptr = pro_msg_wrap->msg_ptr;
-//     auto& pro_msg = msg_ptr->header.hotstuff().pro_msg();
-// #ifndef NDEBUG
-//     transport::protobuf::ConsensusDebug cons_debug;
-//     cons_debug.ParseFromString(pro_msg_wrap->msg_ptr->header.debug());
-
-//     SETH_DEBUG("HandleProposeMsgStep_VerifyQC called hash: %lu, "
-//         "view_block_hash: %s, propose_debug: %s, sign x: %s",
-//         msg_ptr->header.hash64(), 
-//         common::Encode::HexEncode(pro_msg.tc().view_block_hash()).c_str(),
-//         ProtobufToJson(cons_debug).c_str(),
-//         common::Encode::HexEncode(pro_msg.tc().sign_x()).c_str());
-// #endif
-//     if (pro_msg.has_tc() && pro_msg.tc().has_view_block_hash() && IsQcTcValid(pro_msg.tc())) {
-//         ADD_DEBUG_PROCESS_TIMESTAMP();
-//         if (VerifyQC(pro_msg.tc()) != Status::kSuccess) {
-//             SETH_DEBUG("pool: %d verify qc failed: %lu", pool_idx_, pro_msg.tc().view());
-//             return Status::kError;
-//         }
-
-//         ADD_DEBUG_PROCESS_TIMESTAMP();
-//         SETH_DEBUG("success new set qc view: %lu, %u_%u_%lu",
-//             pro_msg.tc().view(),
-//             pro_msg.tc().network_id(),
-//             pro_msg.tc().pool_index(),
-//             pro_msg.tc().view());
-//         pacemaker()->NewQcView(pro_msg.tc().view());
-//         ADD_DEBUG_PROCESS_TIMESTAMP();
-//         view_block_chain()->UpdateHighViewBlock(pro_msg.tc());
-//         ADD_DEBUG_PROCESS_TIMESTAMP();
-//         TryCommit(view_block_chain(), msg_ptr, pro_msg.tc());
-//         if (latest_qc_item_ptr_ == nullptr ||
-//                 pro_msg.tc().view() >= latest_qc_item_ptr_->view()) {
-//             assert(IsQcTcValid(pro_msg.tc()));
-//             latest_qc_item_ptr_ = std::make_shared<view_block::protobuf::QcItem>(pro_msg.tc());
-//         }
-
-//         ADD_DEBUG_PROCESS_TIMESTAMP();
-// // #ifndef NDEBUG
-// //         auto msg_hash = GetQCMsgHash(pro_msg.tc());
-// //         auto* tc_ptr = &pro_msg.tc();
-// //         SETH_WARN("HandleProposeMsgStep_VerifyQC success verify qc %u_%u_%lu, hash: %s, "
-// //             "view block hash: %s, sign x: %s called hash: %lu, propose_debug: %s",
-// //             tc_ptr->network_id(), 
-// //             tc_ptr->pool_index(), 
-// //             tc_ptr->view(), 
-// //             common::Encode::HexEncode(msg_hash).c_str(), 
-// //             common::Encode::HexEncode(tc_ptr->view_block_hash()).c_str(), 
-// //             common::Encode::HexEncode(tc_ptr->sign_x()).c_str(), 
-// //             pro_msg_wrap->msg_ptr->header.hash64(),
-// //             pro_msg_wrap->msg_ptr->header.debug().c_str());
-// // #endif
-//     }
-    
-//     return Status::kSuccess;
-// }
 
 Status Hotstuff::HandleProposeMsgStep_VerifyViewBlock(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
 #ifndef NDEBUG
@@ -1346,6 +1208,7 @@ Status Hotstuff::HandleProposeMsgStep_Vote(std::shared_ptr<ProposeMsgWrapper>& p
         StopVoting(pro_msg_wrap->view_block_ptr->qc().view());
     }
     
+    laste_vote_prev_view_tm_.Put(msg_ptr->header.hotstuff().pro_msg().tc().view(), now_tm_ms);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     has_user_tx_tag_ = false;
     return Status::kSuccess;
@@ -2234,59 +2097,6 @@ bool Hotstuff::IsEmptyBlockAllowed(const ViewBlock& v_block) {
         return true;
     }
 
-    // keep leader alive
-    auto now_tm = common::TimeUtils::TimestampMs();
-    if (v_block1->block_info().timestamp() + 10000llu < now_tm) {
-        return true;
-    }
-
-    // auto v_block2_info = view_block_chain()->Get(v_block.parent_hash());
-    // if (!v_block2_info) {
-    //     SETH_DEBUG("!v_block2_info: %s, %u_%u_%lu", 
-    //         common::Encode::HexEncode(v_block.parent_hash()),
-    //         v_block.qc().network_id(), v_block.qc().pool_index(), v_block.qc().view());
-    //     return true;
-    // }
-
-    // auto v_block2 = v_block2_info->view_block;
-    // if (!v_block2 || v_block2->block_info().tx_list_size() > 0) {
-    //     SETH_DEBUG("v_block2 || v_block2->block_info().tx_list_size() > 0 %s, %u_%u_%lu", 
-    //         common::Encode::HexEncode(v_block.parent_hash()),
-    //         v_block.qc().network_id(), v_block.qc().pool_index(), v_block.qc().view());
-
-    //     return true;
-    // }
-
-    // // fast hotstuff
-    // auto v_block3_info = view_block_chain()->Get(v_block2->parent_hash());
-    // if (!v_block3_info) {
-    //     SETH_DEBUG("v_block2 || v_block2->block_info().tx_list_size() > 0 %s, %u_%u_%lu", 
-    //         common::Encode::HexEncode(v_block2->parent_hash()),
-    //         v_block2->qc().network_id(), v_block2->qc().pool_index(), v_block2->qc().view());
-    //     return true;
-    // }
-
-    // auto v_block3 = v_block3_info->view_block;
-    // if (!v_block3 || v_block3->block_info().tx_list_size() > 0) {
-    //     SETH_DEBUG("!v_block3 || v_block3->block_info().tx_list_size() > 0 %s, %u_%u_%lu", 
-    //         common::Encode::HexEncode(v_block2->parent_hash()),
-    //         v_block2->qc().network_id(), v_block2->qc().pool_index(), v_block2->qc().view());
-    //     return true;
-    // }
-
-    // SETH_DEBUG("failed check is empty block allowd block1: %u_%u_%lu, %s, block2: %u_%u_%lu, %s, block3: %u_%u_%lu, %s",
-    //     v_block1->qc().network_id(),
-    //     v_block1->qc().pool_index(),
-    //     v_block1->qc().view(),
-    //     common::Encode::HexEncode(v_block1->qc().view_block_hash()).c_str(),
-    //     v_block2->qc().network_id(),
-    //     v_block2->qc().pool_index(),
-    //     v_block2->qc().view(),
-    //     common::Encode::HexEncode(v_block2->qc().view_block_hash()).c_str(),
-    //     v_block3->qc().network_id(),
-    //     v_block3->qc().pool_index(),
-    //     v_block3->qc().view(),
-    //     common::Encode::HexEncode(v_block3->qc().view_block_hash()).c_str());
     return false;
 }
 

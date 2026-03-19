@@ -244,8 +244,8 @@ void HotstuffManager::OnNewElectBlock(
         const libff::alt_bn128_G2& common_pk, 
         const libff::alt_bn128_Fr& sec_key) {        
     elect_info_->OnNewElectBlock(sharding_id, elect_height, members, common_pk, sec_key);
-    for (auto iter = pool_hotstuff_.begin(); iter != pool_hotstuff_.end(); iter++) {
-        iter->second->OnNewElectBlock(sharding_id, elect_height, members, common_pk, sec_key);
+    for (uint32_t i = 0; i < common::kInvalidPoolIndex; i++) {
+        pool_hotstuff_[i]->OnNewElectBlock(sharding_id, elect_height, members, common_pk, sec_key);
     }
 }
 
@@ -333,10 +333,6 @@ void HotstuffManager::HandleMessage(const transport::MessagePtr& msg_ptr) {
 }
 
 void HotstuffManager::HandleTimerMessage(const transport::MessagePtr& msg_ptr) {
-    if (network::IsWaitingForElect()) {
-        return;
-    }
-
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto thread_index = common::GlobalInfo::Instance()->get_thread_index();
     auto now_tm_ms = common::TimeUtils::TimestampMs();

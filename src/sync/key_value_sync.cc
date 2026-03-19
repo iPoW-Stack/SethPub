@@ -248,7 +248,7 @@ void KeyValueSync::PopItems() {
                 sync_dht_map[item->network_id] = sync::protobuf::SyncMessage();
             }
 
-            auto sync_req = sync_dht_map[item->network_id].mutable_sync_value_req();
+            auto* sync_req = sync_dht_map[item->network_id].mutable_sync_value_req();
             sync_req->set_network_id(item->network_id);
             if (item->height != common::kInvalidUint64) {
                 auto height_item = sync_req->add_heights();
@@ -306,7 +306,6 @@ void KeyValueSync::PopItems() {
                 sended_neigbors);
             if (choose_node != 0) {
                 sended_neigbors.insert(choose_node);
-                break;
             }
         }
     }
@@ -317,7 +316,7 @@ uint64_t KeyValueSync::SendSyncRequest(
         const sync::protobuf::SyncMessage& sync_msg,
         const std::set<uint64_t>& sended_neigbors) {
     std::vector<dht::NodePtr> nodes;
-    SETH_DEBUG("now get universal dht 9");
+    SETH_DEBUG("now get universal dht: %u", network_id);
     auto dht_ptr = network::UniversalManager::Instance()->GetUniversal(network::kUniversalNetworkId);
     auto dht = *dht_ptr->readonly_hash_sort_dht();
     dht::DhtFunction::GetNetworkNodes(dht, network_id, nodes);
@@ -627,6 +626,22 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
             }
 
             assert(!pb_vblock->qc().sign_x().empty());
+            if (!view_block_synced_callback_) {
+                return;
+            }
+
+            if (view_block_synced_callback_(*pb_vblock) != 0) {
+                SETH_DEBUG("failed check viewblock handle network new view "
+                    "block: %u_%u_%lu, height: %lu key: %s, is broadcast: %d", 
+                    pb_vblock->qc().network_id(),
+                    pb_vblock->qc().pool_index(),
+                    pb_vblock->qc().view(),
+                    pb_vblock->block_info().height(),
+                    (iter->tag() == kBlockHeight ? key.c_str() : common::Encode::HexEncode(key).c_str()),
+                    iter->key().empty());
+                break;
+            }
+
             SETH_DEBUG("0 success handle network new view block: %u_%u_%lu, height: %lu key: %s, is broadcast: %d", 
                 pb_vblock->qc().network_id(),
                 pb_vblock->qc().pool_index(),

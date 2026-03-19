@@ -108,10 +108,6 @@ public:
 
         latest_elect_height_ = elect_height;
         consecutive_failures_ = 0;
-        last_stable_leader_member_index_ = GetEpochLeaderIndex();
-        SETH_DEBUG("pool: %d, success set last_stable_leader_member_index_: %d, "
-            "latest_elect_height_: %lu",
-            pool_idx_, last_stable_leader_member_index_, latest_elect_height_);
     }
 
     Status Start();
@@ -194,6 +190,19 @@ public:
         const transport::MessagePtr& msg_ptr,
         bool has_new_tx,
         bool has_system_tx);
+
+    common::BftMemberPtr is_other_leader() {
+        auto local_idx = GetLocalMemberIdx();
+        View out_view = 0;
+        auto leader = pool_tx_leader_.load();
+        if (leader && leader->index == local_idx) {
+            if (leader->pubkey != crypto_->security()->GetPublicKey()) {
+                return leader;
+            }
+        }
+        
+        return nullptr;
+    }
 
 private:
     void InitAddNewViewBlock(
@@ -282,15 +291,8 @@ private:
             uint32_t new_leader_idx, 
             const view_block::protobuf::QcItem& leader_latest_qc, 
             View* out_view) {
-        // auto sharding_id = common::GlobalInfo::Instance()->network_id();
-        // assert(elect_info_ != nullptr);
-        // auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
-        // if (elect_item == nullptr) {
-        //     // assert(false);
-        //     return nullptr;
-        // }
-
         // auto members = elect_item->valid_leaders();
+        pool_tx_leader_.store(nullptr);
         auto members = Members(common::GlobalInfo::Instance()->network_id());
         if (members == nullptr) {
             return nullptr;
@@ -301,6 +303,7 @@ private:
             return nullptr;
         }
 
+        last_stable_leader_member_index_ = GetEpochLeaderIndex();
         auto now_tm = common::TimeUtils::TimestampSeconds();
         if (now_tm <= common::GlobalInfo::Instance()->leader_change_init_tm()) {
             if (high_view_block->qc().elect_height() < latest_elect_height_) {
@@ -318,6 +321,7 @@ private:
                 last_stable_leader_member_index_,
                 new_leader_idx,
                 leader_latest_qc.leader_idx());
+            pool_tx_leader_.store((*members)[new_leader_idx % members->size()]);
             return (*members)[last_stable_leader_member_index_ % members->size()];
         }
 
@@ -345,16 +349,10 @@ private:
                     last_stable_leader_member_index_,
                     new_leader_idx,
                     leader_latest_qc.leader_idx());
+                pool_tx_leader_.store((*members)[new_leader_idx % members->size()]);
                 return (*members)[new_leader_idx % members->size()];
             } while (0);
         }
-
-        // if (last_vote_view_ > view_block_chain_->LatestCommittedBlock()->qc().view() &&
-        //         leader_latest_qc.view() <= view_block_chain_->LatestCommittedBlock()->qc().view()) {
-        //     SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is too old, latest committed block view: %lu",
-        //         pool_idx_, leader_latest_qc.view(), view_block_chain_->LatestCommittedBlock()->qc().view());
-        //     return nullptr;
-        // }
 
         auto high_view_block_info = view_block_chain_->Get(leader_latest_qc.view_block_hash());
         if (high_view_block_info == nullptr || high_view_block_info->view_block == nullptr) {
@@ -415,7 +413,7 @@ private:
             prev_qc_timestamp_sec,
             high_view_block->block_info().timestamp(),
             *out_view);
-
+        pool_tx_leader_.store((*members)[leader_idx % members->size()]);
         return (*members)[leader_idx % members->size()];
     }
 
@@ -437,7 +435,10 @@ private:
             return common::kInvalidUint32;
         }
 
-        auto index = (elect_item->ElectHeight() + pool_idx_) % elect_item->valid_leaders()->size();
+        auto index = (
+            tm_block_mgr_->LatestTimestampHeight() + 
+            elect_item->ElectHeight() + 
+            pool_idx_) % elect_item->valid_leaders()->size();
         return elect_item->valid_leaders()->at(index)->index;
     }
 
@@ -517,7 +518,8 @@ private:
     uint32_t last_stable_leader_member_index_ = 0u;
     uint64_t latest_elect_height_ = 0llu;
     common::LRUMap<uint64_t, uint64_t> view_with_block_tm_map_{16};
-
+    common::LRUMap<uint64_t, uint64_t> laste_vote_prev_view_tm_{16};
+    std::atomic<common::BftMemberPtr> pool_tx_leader_;
 
 // #ifndef NDEBUG
     static std::atomic<uint32_t> sendout_bft_message_count_;

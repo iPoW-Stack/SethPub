@@ -195,8 +195,9 @@ int NetworkInit::Init(int argc, char** argv) {
     elect_mgr_ = std::make_shared<elect::ElectManager>(
         vss_mgr_, account_mgr_, block_mgr_, security_, bls_mgr_, db_,
         nullptr);
+    hotstuff_mgr_ = std::make_shared<consensus::HotstuffManager>();
     pools_mgr_ = std::make_shared<pools::TxPoolManager>(
-        security_, db_, kv_sync_, account_mgr_);
+        security_, db_, kv_sync_, account_mgr_, hotstuff_mgr_);
     account_mgr_->Init(db_, pools_mgr_);
     zjcvm::Execution::Instance()->Init(db_);
     auto new_db_cb = std::bind(
@@ -206,7 +207,6 @@ int NetworkInit::Init(int argc, char** argv) {
     shard_statistic_ = std::make_shared<pools::ShardStatistic>(
         elect_mgr_, db_, security_, pools_mgr_, contract_mgr_);
     tm_block_mgr_ = std::make_shared<timeblock::TimeBlockManager>();
-    hotstuff_mgr_ = std::make_shared<consensus::HotstuffManager>();
     block_mgr_->Init(
         account_mgr_,
         db_,
@@ -962,6 +962,7 @@ int NetworkInit::GenesisCmd(common::ParserArgs& parser_arg) {
 
     SETH_DEBUG("now consensus_shard_node_count: %u", consensus_shard_node_count);
     if (parser_arg.Has("U")) {
+        std::cout << "now genisis root" << std::endl;
         std::string valid_arg_i_value;
         for (uint32_t net_id = network::kConsensusShardBeginNetworkId; 
                 net_id < end_shard_id; ++net_id) {
@@ -998,6 +999,7 @@ int NetworkInit::GenesisCmd(common::ParserArgs& parser_arg) {
     }
 
     if (parser_arg.Has("S")) {
+        std::cout << "now genisis shards" << std::endl;
         for (uint32_t i = 3; i < end_shard_id; i++) {
             std::cout << "now genisis shard" << i << std::endl;
             std::string net_id_str = std::to_string(i);
@@ -1180,6 +1182,7 @@ void NetworkInit::GetNetworkNodesFromConf(
     for (uint32_t net_i = network::kRootCongressNetworkId; net_i < end_shard_id; net_i++) {
         auto filename = std::string("/root/seth/shards") + std::to_string(net_i);
         bool reuse_shard = common::isFileExist(filename);
+        std::cout << filename << ", reuse: " << reuse_shard << std::endl;
         auto sfd = fopen(filename.c_str(), (reuse_shard ? "r" : "w"));
         if (sfd == nullptr) {
             SETH_FATAL("open file failed: %s", filename.c_str());
@@ -1394,6 +1397,7 @@ void NetworkInit::HandleElectionBlock(
     }
 
     auto sharding_id = elect_block->shard_network_id();
+    common::GlobalInfo::Instance()->set_now_valid_end_shard(sharding_id);
     auto elect_height = elect_mgr_->latest_height(sharding_id);
     libff::alt_bn128_G2 common_pk;
     libff::alt_bn128_Fr sec_key;
@@ -1460,8 +1464,14 @@ void NetworkInit::SendJoinElectTransaction() {
         return;
     }
 
+    auto local_node_account_info = prefix_db_->GetAddressInfo(security_->GetAddress());
+    if (local_node_account_info == nullptr) {
+        SETH_DEBUG("failed get address info: %s",
+            common::Encode::HexEncode(security_->GetAddress()).c_str());
+        return;
+    }
+    
     if (des_sharding_id_ == common::kInvalidUint32) {
-        auto local_node_account_info = prefix_db_->GetAddressInfo(security_->GetAddress());
         if (local_node_account_info == nullptr) {
             SETH_DEBUG("failed get address info: %s",
                 common::Encode::HexEncode(security_->GetAddress()).c_str());

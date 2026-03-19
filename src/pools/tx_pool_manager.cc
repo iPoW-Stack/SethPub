@@ -6,10 +6,12 @@
 #include "common/hash.h"
 #include "common/string_utils.h"
 #include "common/time_utils.h"
+#include "consensus/hotstuff/hotstuff_manager.h"
 #include "dht/dht_key.h"
 #include "network/dht_manager.h"
 #include "network/network_utils.h"
 #include "network/route.h"
+#include "network/universal_manager.h"
 #include "protos/pools.pb.h"
 #include "protos/prefix_db.h"
 #include "security/ecdsa/secp256k1.h"
@@ -27,11 +29,13 @@ TxPoolManager::TxPoolManager(
         std::shared_ptr<security::Security>& security,
         std::shared_ptr<db::Db>& db,
         std::shared_ptr<sync::KeyValueSync>& kv_sync,
-        std::shared_ptr<block::AccountManager>& acc_mgr) {
+        std::shared_ptr<block::AccountManager>& acc_mgr,
+        std::shared_ptr<consensus::HotstuffManager>& hotstuff_mgr) {
     security_ = security;
     db_ = db;
     acc_mgr_ = acc_mgr;
     prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
+    hotstuff_mgr_ = hotstuff_mgr;
     // prefix_db_->InitGidManager();
     kv_sync_ = kv_sync;
     cross_block_mgr_ = std::make_shared<CrossBlockManager>(db_, kv_sync_);
@@ -61,7 +65,6 @@ TxPoolManager::TxPoolManager(
         SETH_WARN("success create test tx thread.");
     }
 #endif
-
 }
 
 TxPoolManager::~TxPoolManager() {
@@ -201,6 +204,30 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
                 common::Encode::HexEncode(security_->GetAddress(tx_msg.pubkey())).c_str());
             msg_ptr->handle_status = transport::kTxInvalidAddress;
             return transport::kFirewallCheckError;
+        }
+    }
+
+    if (msg_ptr->address_info->sharding_id() != common::GlobalInfo::Instance()->network_id()) {
+        network::Route::Instance()->Send(msg_ptr);
+        return transport::kFirewallCheckError;
+    }
+
+    auto leader = hotstuff_mgr_->is_other_leader(msg_ptr->address_info->pool_index());
+    if (leader) {
+        auto dht = network::UniversalManager::Instance()->GetUniversal(network::kRootCongressNetworkId);
+        auto dht_vec = dht->readonly_hash_sort_dht();
+        auto node_it = std::find_if(dht_vec->begin(), dht_vec->end(), [&](const auto& item) {
+            return item->id == leader->id;
+        });
+
+        if (node_it != dht_vec->end()) {
+            auto found_node = *node_it; 
+            transport::TcpTransport::Instance()->Send(
+                found_node->public_ip, 
+                found_node->public_port, 
+                msg_ptr->header);
+        } else {
+            network::Route::Instance()->Send(msg_ptr);
         }
     }
 

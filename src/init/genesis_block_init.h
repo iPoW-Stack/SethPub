@@ -44,6 +44,31 @@ public:
         const std::map<uint32_t, std::vector<GenisisNodeInfoPtr>>& cons_genesis_nodes_of_shards);
 
 private:
+    void InitPool() {
+        using AddressInfoPtr = std::shared_ptr<address::protobuf::AddressInfo>;
+        pool_address_info_ = new AddressInfoPtr**[network::kConsensusShardEndNetworkId];
+        for (int i = 0; i < network::kConsensusShardEndNetworkId; ++i) {
+            pool_address_info_[i] = new AddressInfoPtr*[pools::protobuf::kPoolStatisticTag + 1];
+            for (int j = 0; j <= pools::protobuf::kPoolStatisticTag; ++j) {
+                pool_address_info_[i][j] = new AddressInfoPtr[common::kInvalidPoolIndex];
+            }
+        }
+    }
+
+    void FreePool() {
+        if (pool_address_info_ == nullptr) return;
+
+        for (int i = 0; i < network::kConsensusShardEndNetworkId; ++i) {
+            for (int j = 0; j <= pools::protobuf::kPoolStatisticTag; ++j) {
+                delete[] pool_address_info_[i][j];
+            }
+            delete[] pool_address_info_[i];
+        }
+        delete[] pool_address_info_;
+        pool_address_info_ = nullptr;
+    }
+
+
     int CreateRootGenesisBlocks(
         const std::vector<GenisisNodeInfoPtr>& root_genesis_nodes,
         const std::map<uint32_t, std::vector<GenisisNodeInfoPtr>>& cons_genesis_nodes_of_shards);
@@ -60,7 +85,7 @@ private:
         const std::vector<GenisisNodeInfoPtr>& cons_genesis_nodes,
         uint32_t net_id,
         uint64_t* init_heights,
-        hotstuff::View* pool_latest_view); // 节点对应的余额
+        hotstuff::View* pool_latest_view); // Balance corresponding to the node
     uint32_t GetNetworkIdOfGenesisAddress(const std::string& address);
     const std::map<uint32_t, std::string> GetGenesisAccount(uint32_t net_id);
     void InitShardGenesisAccount();
@@ -134,7 +159,7 @@ private:
     std::shared_ptr<pools::TxPoolManager> pools_mgr_ = nullptr;
     libff::alt_bn128_G2 common_pk_[16] = { libff::alt_bn128_G2::zero() };
     nlohmann::json bls_pk_json_;
-    std::shared_ptr<address::protobuf::AddressInfo> pool_address_info_[network::kConsensusShardEndNetworkId][pools::protobuf::kPoolStatisticTag + 1][common::kInvalidPoolIndex];
+    std::shared_ptr<address::protobuf::AddressInfo>*** pool_address_info_;
     std::unordered_map<std::string, uint64_t> genesis_acount_balance_map_;
     
     DISALLOW_COPY_AND_ASSIGN(GenesisBlockInit);

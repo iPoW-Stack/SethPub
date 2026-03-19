@@ -844,8 +844,8 @@ static void GetSecAndEncData(const httplib::Request& req, httplib::Response& htt
     GT m(e, test_data.c_str(), test_data.size());
     auto seckey = common::Hash::Hash256(m.toString());
     std::string sec_data;
-    security::RawPrivateKey raw_prikey = std::make_pair(seckey.c_str(), seckey.size());
-    secptr->Encrypt(data, raw_prikey, &sec_data);
+    auto raw_key = std::make_pair(seckey.c_str(), seckey.size());
+    secptr->Encrypt(data, raw_key, &sec_data);
     SETH_WARN("get m data src data: %s, hex data: %s, m: %s, hash sec: %s, sec data: %s", 
         test_data.c_str(), 
         common::Encode::HexEncode(test_data).c_str(),
@@ -895,8 +895,8 @@ static void ProxDecryption(const httplib::Request& req, httplib::Response& http_
     }
 
     std::string dec_data;
-    security::RawPrivateKey raw_prikey = std::make_pair(hash256.c_str(), hash256.size());
-    secptr->Decrypt(kv_info.value(), raw_prikey, &dec_data);
+    auto raw_key = std::make_pair(hash256.c_str(), hash256.size());
+    secptr->Decrypt(kv_info.value(), raw_key, &dec_data);
     SETH_WARN("get m data src data: %s, hex data: %s, m: %s, hash sec: %s, sec data: %s", 
         dec_data.c_str(), 
         common::Encode::HexEncode(dec_data).c_str(),
@@ -945,7 +945,7 @@ static void ArsCreateSecKeys(const httplib::Request& req, httplib::Response& htt
         return;
     }
 
-    // 创建环中的公钥和私钥对
+    // Create public and private key pairs in the ring
     std::vector<element_t> private_keys(ars.ring_size());
     std::vector<element_t> public_keys(ars.ring_size());
     nlohmann::json res_json;

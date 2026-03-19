@@ -195,14 +195,8 @@ static void SignalCallback(int sig_int) {
 void SignalRegister() {
 #ifndef _WIN32
     signal(SIGPIPE, SIG_IGN);
-    signal(SIGABRT, SIG_IGN);
     signal(SIGINT, SignalCallback);
     signal(SIGTERM, SignalCallback);
-
-    sigset_t signal_mask;
-    sigemptyset(&signal_mask);
-    sigaddset(&signal_mask, SIGPIPE);
-    pthread_sigmask(SIG_BLOCK, &signal_mask, NULL);
 #endif
 }
 

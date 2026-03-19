@@ -107,11 +107,7 @@ public:
     int VerifySyncedViewBlock(const view_block::protobuf::ViewBlockItem& pb_vblock);    
 
     inline std::shared_ptr<Hotstuff> hotstuff(uint32_t pool_idx) const {
-        auto it = pool_hotstuff_.find(pool_idx);
-        if (it == pool_hotstuff_.end()) {
-            return nullptr;
-        }
-        return it->second;
+        return pool_hotstuff_[pool_idx];
     }    
     
     inline std::shared_ptr<Pacemaker> pacemaker(uint32_t pool_idx) const {
@@ -162,6 +158,10 @@ public:
         auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
         consensus_add_tx_msgs_[thread_idx].push(msg_ptr);
         pop_tx_con_.notify_one();
+    }
+
+    common::BftMemberPtr is_other_leader(uint32_t pool_index) {
+        return pool_hotstuff_[pool_index]->is_other_leader();
     }
 
 private:
@@ -287,7 +287,7 @@ private:
 
     static const uint64_t kHandleTimerPeriodMs = 3000lu;
 
-    std::unordered_map<uint32_t, std::shared_ptr<Hotstuff>> pool_hotstuff_;
+    std::shared_ptr<Hotstuff> pool_hotstuff_[common::kInvalidPoolIndex] = {nullptr};
     std::shared_ptr<ElectInfo> elect_info_;
     
 

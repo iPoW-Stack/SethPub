@@ -29,6 +29,10 @@ namespace block {
     class AccountManager;
 };
 
+namespace consensus {
+    class HotstuffManager;
+}
+
 namespace pools {
 
 class TxPoolManager {
@@ -37,7 +41,8 @@ public:
         std::shared_ptr<security::Security>& security,
         std::shared_ptr<db::Db>& db,
         std::shared_ptr<sync::KeyValueSync>& kv_sync,
-        std::shared_ptr<block::AccountManager>& acc_mgr);
+        std::shared_ptr<block::AccountManager>& acc_mgr,
+        std::shared_ptr<consensus::HotstuffManager>& hotstuff_mgr);
     ~TxPoolManager();
     void TxPoolHandleMessage(const transport::MessagePtr& msg);
     void GetTxIdempotently(
@@ -251,6 +256,7 @@ private:
     void GetMinValidTxCount();
     uint32_t GetTxPoolIndex(const transport::MessagePtr& msg_ptr);
     void CreateTestTxs(uint32_t pool_begin, uint32_t pool_end, uint32_t tps);
+    void SendTxToOtherNodes(const transport::MessagePtr& msg_ptr);
 
     static const uint32_t kPopMessageCountEachTime = 64000u;
     static const uint64_t kFlushHeightTreePeriod = 60000lu;
@@ -305,6 +311,7 @@ private:
     std::weak_ptr<block::AccountManager> acc_mgr_;
     std::atomic<uint32_t> now_max_tx_count_ = 0;
     AccountQpsLruMap<102400> account_tx_qps_check_;
+    std::shared_ptr<consensus::HotstuffManager> hotstuff_mgr_;
 #ifdef USE_SERVER_TEST_TRANSACTION
     std::shared_ptr<std::thread> test_tx_thread_ = nullptr;
 #endif
