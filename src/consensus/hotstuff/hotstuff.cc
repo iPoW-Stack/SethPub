@@ -2209,12 +2209,12 @@ void Hotstuff::TryRecoverFromStuck(
         const transport::MessagePtr& msg_ptr, 
         bool has_user_tx, 
         bool has_system_tx) {
-    // if (!latest_qc_item_ptr_) {
-    //     SETH_WARN("latest_qc_item_ptr_ null, pool: %u", pool_idx_);
-    //     return;
-    // }
-
     auto now_tm_ms = common::TimeUtils::TimestampMs();
+    if (!latest_qc_item_ptr_ && update_latest_view_tm_) {
+        laste_vote_prev_view_tm_.Put(latest_qc_item_ptr_->view(), now_tm_ms);
+        update_latest_view_tm_ = false;
+    }
+
     view_block_chain()->HandleTimerMessage();
     root_view_block_chain_->HandleTimerMessage();
     for (auto& cross_view_block_chain : cross_shard_view_block_chain_) {
