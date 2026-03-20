@@ -259,6 +259,7 @@ private:
         const transport::MessagePtr& msg_ptr,
         hotstuff::protobuf::VoteMsg* vote_msg,
         uint64_t elect_height,
+        uint64_t tm_height,
         const std::shared_ptr<ViewBlock>& v_block);
     Status ConstructViewBlock(
         View leader_view,
@@ -312,10 +313,14 @@ private:
         auto now_tm = common::TimeUtils::TimestampSeconds();
         if (now_tm <= common::GlobalInfo::Instance()->leader_change_init_tm()) {
             if (high_view_block->qc().elect_height() < latest_elect_height_) {
-                *out_view = high_view_block->qc().view() + latest_elect_height_ + 1;
-            } else {
-                *out_view = high_view_block->qc().view() + 1;
+                *out_view = high_view_block->qc().view() + latest_elect_height_;
             }
+
+            if (high_view_block->qc().tm_height() < tm_block_mgr_->LatestTimestampHeight()) {
+                *out_view = high_view_block->qc().view() + tm_block_mgr_->LatestTimestampHeight();
+            }
+            
+            *out_view += 1;
             
             SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is equal with high view block qc view: %lu, "
                 "high_view_block->qc().elect_height(): %lu, latest_elect_height_: %lu, out view: %lu, "
@@ -330,7 +335,8 @@ private:
             return (*members)[last_stable_leader_member_index_ % members->size()];
         }
 
-        if (last_stable_leader_member_index_ == new_leader_idx) {
+        if (last_stable_leader_member_index_ == new_leader_idx ||
+                leader_latest_qc.leader_idx() == new_leader_idx) {
             do {
                 if (leader_latest_qc.view() != high_view_block->qc().view()) {
                     SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is not equal with high view block qc view: %lu",
@@ -339,11 +345,14 @@ private:
                 }
 
                 if (high_view_block->qc().elect_height() < latest_elect_height_) {
-                    *out_view = high_view_block->qc().view() + latest_elect_height_ + 1;
-                } else {
-                    *out_view = high_view_block->qc().view() + 1;
+                    *out_view = high_view_block->qc().view() + latest_elect_height_;
                 }
 
+                if (high_view_block->qc().tm_height() < tm_block_mgr_->LatestTimestampHeight()) {
+                    *out_view = high_view_block->qc().view() + tm_block_mgr_->LatestTimestampHeight();
+                }
+
+                *out_view += 1;
                 SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is equal with high view block qc view: %lu, "
                     "high_view_block->qc().elect_height(): %lu, latest_elect_height_: %lu, out view: %lu, "
                     "last_stable_leader_member_index_: %u, new_leader_idx: %u, leader_latest_qc.leader_idx(): %u",
@@ -440,8 +449,8 @@ private:
         }
 
         auto index = (
-            tm_block_mgr_->LatestTimestampHeight() + 
             elect_item->ElectHeight() + 
+            tm_block_mgr_->LatestTimestampHeight() + 
             pool_idx_) % elect_item->valid_leaders()->size();
         return elect_item->valid_leaders()->at(index)->index;
     }

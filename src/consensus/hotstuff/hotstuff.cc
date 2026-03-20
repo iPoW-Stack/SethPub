@@ -552,6 +552,13 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         return;
     }
 
+    if (msg_ptr->header.hotstuff().pro_msg().view_item().qc().tm_height() != tm_block_mgr_->LatestTimestampHeight()) {
+        SETH_DEBUG("timestamp height not match handle propose called hash: %lu, propose_debug: %s", 
+            msg_ptr->header.hash64(), 
+            ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
+        return;
+    }
+    
     uint64_t view_prev_vote_tm = 0;
     if (last_stable_leader_member_index_ != msg_ptr->header.hotstuff().pro_msg().view_item().qc().leader_idx()) {
         if (laste_vote_prev_view_tm_.Get(
@@ -1172,6 +1179,7 @@ Status Hotstuff::HandleProposeMsgStep_Vote(std::shared_ptr<ProposeMsgWrapper>& p
         msg_ptr,
         vote_msg, 
         pro_msg_wrap->view_block_ptr->qc().elect_height(), 
+        pro_msg_wrap->view_block_ptr->qc().tm_height(), 
         pro_msg_wrap->view_block_ptr);
     if (s != Status::kSuccess) {
         SETH_ERROR("pool: %d, ConstructVoteMsg error %d, hash64: %lu",
@@ -1348,6 +1356,7 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     // Generate aggregate signature, create qc
     auto elect_height = vote_msg.elect_height();
     auto replica_idx = vote_msg.replica_idx();
+    auto tm_height = vote_msg.tm_height();
     ADD_DEBUG_PROCESS_TIMESTAMP();
     std::shared_ptr<libff::alt_bn128_G1> reconstructed_sign;
     auto qc_item_ptr = std::make_shared<QC>();
@@ -1359,6 +1368,7 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     assert(!prefix_db_->BlockExists(qc_item.view_block_hash()));
     qc_item.set_elect_height(elect_height);
     qc_item.set_leader_idx(vote_msg.leader_idx());
+    qc_item.set_tm_height(tm_height);
     auto qc_hash = GetQCMsgHash(qc_item);
     SETH_DEBUG("success set view block hash: %s, qc_hash: %s, "
         "sign x: %s, replica: %d, elect_height: %lu, %u_%u_%lu, vote_msg.leader_idx: %d",
@@ -1933,6 +1943,7 @@ Status Hotstuff::ConstructVoteMsg(
         const transport::MessagePtr& msg_ptr,
         hotstuff::protobuf::VoteMsg* vote_msg,
         uint64_t elect_height, 
+        uint64_t tm_height, 
         const std::shared_ptr<ViewBlock>& v_block) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto elect_item = elect_info_->GetElectItem(
@@ -1954,6 +1965,7 @@ Status Hotstuff::ConstructVoteMsg(
     vote_msg->set_view(v_block->qc().view());
     vote_msg->set_elect_height(elect_height);
     vote_msg->set_leader_idx(v_block->qc().leader_idx());
+    vote_msg->set_tm_height(tm_height);
     QC qc_item;
     qc_item.set_network_id(common::GlobalInfo::Instance()->network_id());
     qc_item.set_pool_index(pool_idx_);
@@ -1967,6 +1979,7 @@ Status Hotstuff::ConstructVoteMsg(
         v_block->qc().leader_idx());
     assert(!prefix_db_->BlockExists(v_block->qc().view_block_hash()));
     qc_item.set_elect_height(elect_height);
+    qc_item.set_tm_height(tm_height);
     qc_item.set_leader_idx(v_block->qc().leader_idx());
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto qc_hash = GetQCMsgHash(qc_item);
@@ -2045,6 +2058,7 @@ Status Hotstuff::ConstructViewBlock(
 
     auto* qc = view_block->mutable_qc();
     qc->set_leader_idx(leader->index);
+    qc->set_tm_height(tm_block_mgr_->LatestTimestampHeight());
     qc->set_view(leader_view);
     qc->set_network_id(common::GlobalInfo::Instance()->network_id());
     qc->set_pool_index(pool_idx_);
