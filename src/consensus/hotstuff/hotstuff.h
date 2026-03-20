@@ -312,10 +312,6 @@ private:
         last_stable_leader_member_index_ = GetEpochLeaderIndex();
         auto now_tm = common::TimeUtils::TimestampSeconds();
         if (now_tm <= common::GlobalInfo::Instance()->leader_change_init_tm()) {
-            if (high_view_block->qc().elect_height() < latest_elect_height_) {
-                *out_view = high_view_block->qc().view() + latest_elect_height_;
-            }
-
             if (high_view_block->qc().tm_height() < tm_block_mgr_->LatestTimestampHeight()) {
                 *out_view = high_view_block->qc().view() + tm_block_mgr_->LatestTimestampHeight();
             }
@@ -342,10 +338,6 @@ private:
                     SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is not equal with high view block qc view: %lu",
                         pool_idx_, leader_latest_qc.view(), high_view_block->qc().view());
                     break;
-                }
-
-                if (high_view_block->qc().elect_height() < latest_elect_height_) {
-                    *out_view = high_view_block->qc().view() + latest_elect_height_;
                 }
 
                 if (high_view_block->qc().tm_height() < tm_block_mgr_->LatestTimestampHeight()) {
@@ -449,7 +441,6 @@ private:
         }
 
         auto index = (
-            elect_item->ElectHeight() + 
             tm_block_mgr_->LatestTimestampHeight() + 
             pool_idx_) % elect_item->valid_leaders()->size();
         return elect_item->valid_leaders()->at(index)->index;
