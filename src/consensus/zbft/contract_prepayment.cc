@@ -30,6 +30,10 @@ int ContractPrepayment::HandleTx(
         gas_used = consensus::kTransferGas;
         if (from_nonce + 1 != block_tx.nonce()) {
             block_tx.set_status(kConsensusNonceInvalid);
+            SETH_DEBUG("addr: %s, contract: %s, nonce error: %lu, %lu", 
+                common::Encode::HexEncode(from).c_str(),
+                common::Encode::HexEncode(block_tx.to()).c_str(),
+                from_nonce, block_tx.nonce());
             // will never happen
             assert(false);
             break;
