@@ -439,9 +439,12 @@ void BlockManager::HandleRootCrossShardTx(const view_block::protobuf::ViewBlockI
     for (int32_t i = 0; i < block_item.cross_shard_to_array_size(); ++i) {
         // dispatch to txs to tx pool
         auto to_tx = block_item.cross_shard_to_array(i);
-        SETH_DEBUG("handle root cross shard to tx: %s, des: %s, amount: %lu, prepayment: %lu",
+        SETH_DEBUG("handle root cross shard to tx: %s, des: %s, "
+            "des shard: %u, local: %u, amount: %lu, prepayment: %lu",
             ProtobufToJson(to_tx).c_str(),
             common::Encode::HexEncode(to_tx.des()).c_str(),
+            to_tx.des_sharding_id(),
+            common::GlobalInfo::Instance()->network_id(),
             to_tx.amount(), to_tx.prepayment());
         if (to_tx.des_sharding_id() != common::GlobalInfo::Instance()->network_id()) {
             continue;
