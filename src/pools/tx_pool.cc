@@ -382,7 +382,7 @@ void TxPool::GetTxSyncToLeader(
         }
 
         tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
-        consensus_tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
+        // consensus_tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
         SETH_DEBUG("pool: %d, success add tx nonce invalid addr: %s, addr nonce: %lu, tx nonce: %lu",
             pool_index_,
             common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
@@ -530,7 +530,7 @@ void TxPool::TempGetTxIdempotently(
         }
 
         tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
-        consensus_tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
+        // consensus_tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
         SETH_DEBUG("pool: %d, success add tx nonce addr: %s, addr nonce: %lu, tx nonce: %lu",
             pool_index_,
             common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
@@ -551,8 +551,17 @@ void TxPool::TempGetTxIdempotently(
             }
         }
 
+        auto tx_map_iter = tx_map_.find(tx_ptr->address_info->addr());
+        if (tx_map_iter != tx_map_.end()) {
+            auto nonce_iter = tx_map_iter->second.find(tx_ptr->tx_info->nonce());
+            if (nonce_iter != tx_map_iter->second.end()) {
+                continue;
+            }
+        }
+
         consensus_tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
-        SETH_DEBUG("pool: %d, consensus_added_txs_ success add tx nonce addr: %s, addr nonce: %lu, tx nonce: %lu",
+        SETH_DEBUG("pool: %d, consensus_added_txs_ success add tx nonce addr: %s, "
+            "addr nonce: %lu, tx nonce: %lu",
             pool_index_,
             common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
             tx_ptr->address_info->nonce(), 
