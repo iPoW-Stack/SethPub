@@ -715,8 +715,10 @@ void TxPool::TempGetTxIdempotently(
                 valid_nonce = tx_ptr->tx_info->nonce();
                 tx_ptr->receive_tm_us = common::TimeUtils::TimestampUs();
                 res_map.push_back(tx_ptr);
-                SETH_DEBUG("trace tx pool: %d, consensus leader tx addr: %s, key: %s, nonce: %lu, "
+                SETH_DEBUG("iter addr: %s, trace tx pool: %d, "
+                    "consensus leader tx addr: %s, key: %s, nonce: %lu, "
                     "res count: %u, count: %u, tx_map size: %u, addr tx size: %u", 
+                    common::Encode::HexEncode(iter->first).c_str(), 
                     pool_index_,
                     common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
                     common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(), 
@@ -737,6 +739,10 @@ void TxPool::TempGetTxIdempotently(
     };
 
     get_tx_func(tx_map_);
+    SETH_DEBUG("pool: %d, now get tx by leader all: %u, added tx size: %u, "
+        "get: %u, count: %u", 
+        pool_index_, all_tx_size(), added_txs_.size(),
+        res_map.size(), count);
     get_tx_func(consensus_tx_map_);
     SETH_DEBUG("pool: %d, now get tx by leader all: %u, added tx size: %u, "
         "get: %u, count: %u", 
