@@ -15,8 +15,9 @@ int ToTxLocalItem::HandleTx(
     pools::protobuf::ToTxMessageItem to_tx_item;
     if (!to_tx_item.ParseFromString(tx_info->value())) {
         block_tx.set_status(kConsensusError);
-        SETH_WARN("local get to txs info failed: %s",
-            common::Encode::HexEncode(tx_info->value()).c_str());
+        SETH_WARN("local get to txs info failed: %s, unique: %s",
+            common::Encode::HexEncode(tx_info->value()).c_str(),
+            common::Encode::HexEncode(tx_info->key()).c_str());
         return consensus::kConsensusSuccess;
     }
 
@@ -26,7 +27,10 @@ int ToTxLocalItem::HandleTx(
     auto& unique_hash = tx_info->key();
     std::string val;
     if (zjc_host.GetKeyValue(block_tx.to(), unique_hash, &val) == zjcvm::kZjcvmSuccess) {
-        SETH_DEBUG("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
+        SETH_DEBUG("unique hash has consensus: %s, %s, %lu", 
+            common::Encode::HexEncode(unique_hash).c_str(),
+            common::Encode::HexEncode(to_tx_item.des()).c_str(),
+            to_tx_item.amount());
         if (!acc_balance_map[block_tx.to()]->has_balance()) {
             acc_balance_map.erase(block_tx.to());
         }
@@ -41,8 +45,9 @@ int ToTxLocalItem::HandleTx(
     block_tx.set_nonce(0);
     auto& block_to_txs = *view_block.mutable_block_info()->mutable_local_to();
     CreateLocalToTx(tx_index, view_block, zjc_host, acc_balance_map, to_tx_item, block_to_txs);
-    SETH_WARN("success call to tx local block pool: %d, view: %lu, to_nonce: %lu. tx nonce: %lu", 
-        view_block.qc().pool_index(), view_block.qc().view(), src_to_nonce, block_tx.nonce());
+    SETH_WARN("success call to tx local block pool: %d, view: %lu, to_nonce: %lu. tx nonce: %lu, %s, %lu", 
+        view_block.qc().pool_index(), view_block.qc().view(), src_to_nonce, block_tx.nonce(),
+        common::Encode::HexEncode(to_tx_item.des()).c_str(), to_tx_item.amount());
     acc_balance_map[block_tx.to()]->set_balance(src_to_balance);
     acc_balance_map[block_tx.to()]->set_nonce(block_tx.nonce());
     acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());

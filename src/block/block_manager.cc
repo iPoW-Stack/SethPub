@@ -308,7 +308,7 @@ void BlockManager::RootHandleNormalToTx(
         tx->set_gas_limit(0);
         tx->set_amount(0);
         tx->set_gas_price(common::kBuildinTransactionGasPrice);
-        tx->set_nonce(++step_with_nonce_[tx->step()]);
+        tx->set_nonce(++step_with_nonce_[pool_index][tx->step()]);
         tx->set_value(SerializeDeterministic(tos_item));
         auto unique_hash = common::Hash::keccak256(
             tx->to() + "_" +
@@ -491,12 +491,13 @@ void BlockManager::CreateLocalToTx(
     tx->set_gas_limit(0);
     tx->set_amount(0); // 具体 amount 在 kv 中
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
-    tx->set_nonce(++step_with_nonce_[tx->step()]);
+    tx->set_nonce(++step_with_nonce_[pool_index][tx->step()]);
     pools_mgr_->AddPoolMessage(msg_ptr);
-    SETH_DEBUG("pool_index: %d, success add local transfer tx %s, %lu "
+    SETH_DEBUG("pool_index: %d, to pool addr: %s, success add local transfer tx %s, %lu "
         "tos hash: %s, nonce: %lu, src to tx nonce: %lu, val: %s",
         pool_index,
         common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
+        common::Encode::HexEncode(to_tx_item.des()).c_str(),
         to_tx_item.amount(),
         common::Encode::HexEncode(uinique_tx_str).c_str(),
         msg_ptr->address_info->nonce(),
