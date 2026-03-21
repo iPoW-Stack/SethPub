@@ -354,17 +354,17 @@ static void QueryContract(const httplib::Request& req, httplib::Response& http_r
 
     uint64_t height = 0;
     auto contract_prepayment_id = contract_addr + from;
-    protos::AddressInfoPtr addr_info =  http_handler->acc_mgr()->GetAccountInfo(contract_prepayment_id);
-    if (!addr_info) {
-        addr_info = prefix_db->GetAddressInfo(contract_prepayment_id);
-    }
+    // protos::AddressInfoPtr addr_info =  http_handler->acc_mgr()->GetAccountInfo(contract_prepayment_id);
+    // if (!addr_info) {
+    //     addr_info = prefix_db->GetAddressInfo(contract_prepayment_id);
+    // }
 
-    if (!addr_info) {
-        std::string res = "get from prepayment failed: " + std::string(tmp_contract_addr) + ", " + std::string(tmp_from);
-        SETH_INFO("query contract param error: %s.", res.c_str());
-        http_res.set_content(res, "text/plain");
-        return;
-    }
+    // if (!addr_info) {
+    //     std::string res = "get from prepayment failed: " + std::string(tmp_contract_addr) + ", " + std::string(tmp_from);
+    //     SETH_INFO("query contract param error: %s.", res.c_str());
+    //     http_res.set_content(res, "text/plain");
+    //     return;
+    // }
 
     uint64_t prepayment = 9999999999lu;//addr_info->balance();
     auto contract_addr_info = prefix_db->GetAddressInfo(contract_addr);
@@ -446,19 +446,19 @@ static void AbiQueryContract(const httplib::Request& req, httplib::Response& htt
     uint64_t height = 0;
 
     auto contract_prepayment_id = contract_addr + from;
-    protos::AddressInfoPtr addr_info =  http_handler->acc_mgr()->GetAccountInfo(contract_prepayment_id);
-    if (!addr_info) {
-        addr_info = prefix_db->GetAddressInfo(contract_prepayment_id);
-    }
+    // protos::AddressInfoPtr addr_info =  http_handler->acc_mgr()->GetAccountInfo(contract_prepayment_id);
+    // if (!addr_info) {
+    //     addr_info = prefix_db->GetAddressInfo(contract_prepayment_id);
+    // }
 
-    if (!addr_info) {
-        std::string res = "get from prepayment failed: " + std::string(tmp_contract_addr) + ", " + std::string(tmp_from);
-        http_res.set_content(res, "text/plain");
-        SETH_INFO("query contract param error: %s.", res.c_str());
-        return;
-    }
+    // if (!addr_info) {
+    //     std::string res = "get from prepayment failed: " + std::string(tmp_contract_addr) + ", " + std::string(tmp_from);
+    //     http_res.set_content(res, "text/plain");
+    //     SETH_INFO("query contract param error: %s.", res.c_str());
+    //     return;
+    // }
 
-    uint64_t prepayment = addr_info->balance();
+    uint64_t prepayment = 9999999999lu;  // addr_info->balance();
     auto contract_addr_info = prefix_db->GetAddressInfo(contract_addr);
     if (contract_addr_info == nullptr) {
         std::string res = "get contract addr failed: " + std::string(tmp_contract_addr);
