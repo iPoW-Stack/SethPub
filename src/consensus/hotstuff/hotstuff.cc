@@ -552,12 +552,12 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         return;
     }
 
-    if (msg_ptr->header.hotstuff().pro_msg().view_item().qc().tm_height() != tm_block_mgr_->LatestTimestampHeight()) {
-        SETH_DEBUG("timestamp height not match handle propose called hash: %lu, propose_debug: %s", 
-            msg_ptr->header.hash64(), 
-            ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
-        return;
-    }
+    // if (msg_ptr->header.hotstuff().pro_msg().view_item().qc().tm_height() != tm_block_mgr_->LatestTimestampHeight()) {
+    //     SETH_DEBUG("timestamp height not match handle propose called hash: %lu, propose_debug: %s", 
+    //         msg_ptr->header.hash64(), 
+    //         ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
+    //     return;
+    // }
     
     uint64_t view_prev_vote_tm = 0;
     if (last_stable_leader_member_index_ != msg_ptr->header.hotstuff().pro_msg().view_item().qc().leader_idx()) {
@@ -2058,7 +2058,7 @@ Status Hotstuff::ConstructViewBlock(
 
     auto* qc = view_block->mutable_qc();
     qc->set_leader_idx(leader->index);
-    qc->set_tm_height(tm_block_mgr_->LatestTimestampHeight());
+    qc->set_tm_height(0);
     qc->set_view(leader_view);
     qc->set_network_id(common::GlobalInfo::Instance()->network_id());
     qc->set_pool_index(pool_idx_);
@@ -2295,6 +2295,8 @@ void Hotstuff::TryRecoverFromStuck(
         }
 
         ADD_DEBUG_PROCESS_TIMESTAMP();
+        SETH_DEBUG("leader try recover from stuck, pool: %u, out_view: %lu, last_vote_view_: %lu",
+            pool_idx_, out_view, last_vote_view_);
         if (last_vote_view_ < out_view) {
             Propose(out_view, leader, nullptr, nullptr, msg_ptr);
         }

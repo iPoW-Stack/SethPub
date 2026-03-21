@@ -115,8 +115,9 @@ int RootToTxItem::HandleTx(
             }
         }
 
-        SETH_INFO("success add addr cross to: %s, to info: %s", 
+        SETH_INFO("success add addr cross to: %s, sharding_id: %u, to info: %s", 
             common::Encode::HexEncode(to_item.des()).c_str(), 
+            sharding_id,
             ProtobufToJson(*to_item_ptr).c_str());
     } else {
         zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::to_string(block_tx.status()));

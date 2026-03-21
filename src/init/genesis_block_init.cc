@@ -777,7 +777,6 @@ int GenesisBlockInit::CreateAllQc(
     commit_qc->set_pool_index(pool_index);
     commit_qc->set_view(view);
     commit_qc->set_leader_idx(0);
-    commit_qc->set_tm_height(0);
     commit_qc->set_elect_height(1);
     auto view_block_hash = hotstuff::GetBlockHash(*view_block_ptr);
     commit_qc->set_view_block_hash(view_block_hash);
@@ -1506,57 +1505,79 @@ int GenesisBlockInit::CreateShardNodesBlocks(
         uint32_t net_id,
         uint64_t* pool_with_heights,
         hotstuff::View* pool_latest_view) {
-    std::map<std::string, GenisisNodeInfoPtr> valid_ids;
+    std::unordered_map<uint32_t, std::map<std::string, GenisisNodeInfoPtr>> pool_address_info_;
     for (auto iter = root_genesis_nodes.begin(); iter != root_genesis_nodes.end(); ++iter) {
-        if (valid_ids.find((*iter)->id) != valid_ids.end()) {
+        auto pool_idx = common::GetAddressPoolIndex((*iter)->id);
+        if (pool_address_info_[pool_idx].find((*iter)->id) != pool_address_info_[pool_idx].end()) {
             SETH_FATAL("invalid id: %s", common::Encode::HexEncode((*iter)->id).c_str());
             return kInitError;
         }
 
-        valid_ids[(*iter)->id] = *iter;
+        pool_address_info_[pool_idx][(*iter)->id] = *iter;
     }
 
     for (auto iter = cons_genesis_nodes.begin(); iter != cons_genesis_nodes.end(); ++iter) {
-        if (valid_ids.find((*iter)->id) != valid_ids.end()) {
-            SETH_FATAL("invalid id: %s, prikey: %s", 
-                common::Encode::HexEncode((*iter)->id).c_str(), 
-                common::Encode::HexEncode((*iter)->prikey).c_str());
+        auto pool_idx = common::GetAddressPoolIndex((*iter)->id);
+        if (pool_address_info_[pool_idx].find((*iter)->id) != pool_address_info_[pool_idx].end()) {
+            SETH_FATAL("invalid id: %s", common::Encode::HexEncode((*iter)->id).c_str());
             return kInitError;
         }
 
-        valid_ids[(*iter)->id] = *iter;
+        pool_address_info_[pool_idx][(*iter)->id] = *iter;
     }
 
     uint64_t all_balance = 0llu;
     uint64_t expect_all_balance = 0;
     int32_t idx = 0;
-    for (auto iter = valid_ids.begin(); iter != valid_ids.end(); ++iter, ++idx) {
+    for (auto pool_iter = pool_address_info_.begin(); pool_iter != pool_address_info_.end(); ++pool_iter) {
+        auto& valid_ids = pool_iter->second;
         std::map<std::string, std::shared_ptr<address::protobuf::AddressInfo>> address_info_map;
         auto view_block_ptr = std::make_shared<view_block::protobuf::ViewBlockItem>();
         auto* tenon_block = view_block_ptr->mutable_block_info();
-        auto tx_list = tenon_block->mutable_tx_list();
-        uint64_t genesis_account_balance = 0;
-        auto balance_iter = genesis_acount_balance_map_.find(iter->first);
-        if (balance_iter != genesis_acount_balance_map_.end()) {
-            genesis_account_balance = balance_iter->second;
-            expect_all_balance += genesis_account_balance;
+        for (auto iter = valid_ids.begin(); iter != valid_ids.end(); ++iter, ++idx) {
+            auto tx_list = tenon_block->mutable_tx_list();
+            uint64_t genesis_account_balance = 0;
+            auto balance_iter = genesis_acount_balance_map_.find(iter->first);
+            if (balance_iter != genesis_acount_balance_map_.end()) {
+                genesis_account_balance = balance_iter->second;
+                expect_all_balance += genesis_account_balance;
+            }
+
+            auto pool_index = common::GetAddressPoolIndex(iter->first);
+            assert(pool_index == pool_iter->first);
+            {
+                auto tx_info = tx_list->Add();
+                tx_info->set_nonce(iter->second->nonce++);
+                tx_info->set_from("");
+                tx_info->set_to(iter->first);
+                tx_info->set_amount(0);
+                tx_info->set_balance(genesis_account_balance);
+                tx_info->set_gas_limit(0);
+                tx_info->set_step(pools::protobuf::kConsensusCreateGenesisAcount);
+                address_info_map[iter->first] = CreateAddress(
+                    "", tx_info->balance(), net_id == network::kRootCongressNetworkId ? network::kConsensusShardBeginNetworkId : net_id, pool_index, 
+                    iter->first, 0, tx_info->nonce());
+            }
+
+            
+            // auto account_ptr = account_mgr_->GetAcountInfoFromDb(iter->first);
+            // if (account_ptr == nullptr) {
+            //     SETH_FATAL("get address failed! [%s]", common::Encode::HexEncode(iter->first).c_str());
+            //     return kInitError;
+            // }
+
+            // if (account_ptr->balance() != genesis_account_balance) {
+            //     SETH_FATAL("get address balance failed! [%s]", common::Encode::HexEncode(iter->first).c_str());
+            //     return kInitError;
+            // }
+            all_balance += genesis_account_balance;
+            // SETH_INFO("new address %s, genesis balance: %lu, nonce: %lu",
+            //     common::Encode::HexEncode(account_ptr->addr()).c_str(), 
+            //     account_ptr->balance(),
+            //     account_ptr->nonce());
         }
 
-        auto pool_index = common::GetAddressPoolIndex(iter->first);
-        {
-            auto tx_info = tx_list->Add();
-            tx_info->set_nonce(iter->second->nonce++);
-            tx_info->set_from("");
-            tx_info->set_to(iter->first);
-            tx_info->set_amount(0);
-            tx_info->set_balance(genesis_account_balance);
-            tx_info->set_gas_limit(0);
-            tx_info->set_step(pools::protobuf::kConsensusCreateGenesisAcount);
-            address_info_map[iter->first] = CreateAddress(
-                "", tx_info->balance(), net_id == network::kRootCongressNetworkId ? network::kConsensusShardBeginNetworkId : net_id, pool_index, 
-                iter->first, 0, tx_info->nonce());
-        }
-
+        auto pool_index = pool_iter->first;
         tenon_block->set_version(common::kTransactionVersion);
         tenon_block->set_chain_id(hotstuff::kGlobalChainId);
         tenon_block->set_height(pool_with_heights[pool_index]++);
@@ -1594,21 +1615,6 @@ int GenesisBlockInit::CreateShardNodesBlocks(
         auto tenon_block_ptr = std::make_shared<block::protobuf::Block>(*tenon_block);
         AddBlockItemToCache(view_block_ptr, address_info_map, db_batch);
         db_->Put(db_batch);
-        auto account_ptr = account_mgr_->GetAcountInfoFromDb(iter->first);
-        if (account_ptr == nullptr) {
-            SETH_FATAL("get address failed! [%s]", common::Encode::HexEncode(iter->first).c_str());
-            return kInitError;
-        }
-
-        if (account_ptr->balance() != genesis_account_balance) {
-            SETH_FATAL("get address balance failed! [%s]", common::Encode::HexEncode(iter->first).c_str());
-            return kInitError;
-        }
-        all_balance += account_ptr->balance();
-        SETH_INFO("new address %s, genesis balance: %lu, nonce: %lu",
-            common::Encode::HexEncode(account_ptr->addr()).c_str(), 
-            account_ptr->balance(),
-            account_ptr->nonce());
     }
 
     if (all_balance != expect_all_balance) {

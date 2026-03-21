@@ -439,6 +439,10 @@ void BlockManager::HandleRootCrossShardTx(const view_block::protobuf::ViewBlockI
     for (int32_t i = 0; i < block_item.cross_shard_to_array_size(); ++i) {
         // dispatch to txs to tx pool
         auto to_tx = block_item.cross_shard_to_array(i);
+        SETH_DEBUG("handle root cross shard to tx: %s, des: %s, amount: %lu, prepayment: %lu",
+            ProtobufToJson(to_tx).c_str(),
+            common::Encode::HexEncode(to_tx.des()).c_str(),
+            to_tx.amount(), to_tx.prepayment());
         if (to_tx.des_sharding_id() != common::GlobalInfo::Instance()->network_id()) {
             continue;
         }
@@ -486,9 +490,11 @@ void BlockManager::CreateLocalToTx(
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
     tx->set_nonce(++step_with_nonce_[tx->step()]);
     pools_mgr_->AddPoolMessage(msg_ptr);
-    SETH_DEBUG("pool_index: %d, success add local transfer tx "
+    SETH_DEBUG("pool_index: %d, success add local transfer tx %s, %lu "
         "tos hash: %s, nonce: %lu, src to tx nonce: %lu, val: %s",
         pool_index,
+        common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
+        to_tx_item.amount(),
         common::Encode::HexEncode(uinique_tx_str).c_str(),
         msg_ptr->address_info->nonce(),
         0,
