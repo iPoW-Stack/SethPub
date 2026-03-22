@@ -310,7 +310,7 @@ private:
         }
 
         *out_view = high_view_block->qc().view() + 1;
-        return (*members)[0];
+        return (*members)[pool_idx_ % members->size()];
         last_stable_leader_member_index_ = GetEpochLeaderIndex();
         auto now_tm = common::TimeUtils::TimestampSeconds();
         if (now_tm <= common::GlobalInfo::Instance()->leader_change_init_tm()) {
