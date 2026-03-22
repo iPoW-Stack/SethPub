@@ -454,6 +454,7 @@ void TxPool::GetTxIdempotently(
         pools::CheckAddrNonceValidFunction tx_valid_func) {
     int32_t try_times = 0;
     while (res_map.size() < count && try_times++ < 10) {
+        res_map.clear();
         TempGetTxIdempotently(msg_ptr, res_map, count, tx_valid_func);
         if (count == 1) {
             break;
