@@ -725,8 +725,8 @@ void KeyValueSync::SyncAllLatestBlocks() {
         sync_latest_req->set_network_id(network);
         if (!global) {
             if (sync_latest_req->pool_latest_heights_size() != common::kInvalidPoolIndex) {
-                for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i)
-                    sync_latest_req->pool_latest_heights.add(common::kInvalidUint64);
+                for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
+                    sync_latest_req->add_pool_latest_heights(common::kInvalidUint64);
                 }
             }
 
