@@ -734,7 +734,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
         } else {
             sync_latest_req->set_globl_pool_height(height);
         }
-    }
+    };
 
     for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
         for (uint32_t network_id = network::kRootCongressNetworkId;
@@ -790,7 +790,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
         }
     }
 
-    for (uint32_t network_id = network::kConsensusShardBeginNetworkId
+    for (uint32_t network_id = network::kConsensusShardBeginNetworkId;
             network_id <= common::GlobalInfo::Instance()->now_valid_end_shard(); ++network_id) {
         if (network::IsSameToLocalShard(network_id)) {
             continue;
