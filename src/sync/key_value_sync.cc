@@ -209,6 +209,7 @@ void KeyValueSync::ConsensusTimerMessage() {
         // assert(false);
     }
 
+    SyncAllLatestBlocks();
     kv_tick_.CutOff(
         10000lu,
         std::bind(&KeyValueSync::ConsensusTimerMessage, this));
@@ -633,16 +634,9 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                 return;
             }
 
+            synced_res_map_[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->block_info().height()] = pb_vblock;
             int verify_res = view_block_synced_callback_(*pb_vblock);
             if (verify_res != 0) {
-                if (verify_res == 1) {
-                    if (network::IsSameToLocalShard(network::kRootCongressNetworkId)) {
-                        AddSyncContinusBlocks(pb_vblock->qc().pool_index(), pb_vblock->qc().elect_height() + 1);
-                    } else {
-                        AddSyncContinusBlocks(pb_vblock->qc().network_id(), pb_vblock->qc().elect_height() + 1);
-                    }
-                }
-                
                 SETH_DEBUG("failed check viewblock handle network new view "
                     "block: %u_%u_%lu, height: %lu key: %s, is broadcast: %d", 
                     pb_vblock->qc().network_id(),
@@ -695,15 +689,26 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
     }
 }
 
-void KeyValueSync::AddSyncContinusBlocks(uint32_t pool_index, uint64_t max_height) {
-    auto latest_height = tx_pool_mgr_->root_latest_height(pool_index);
-    if (network::IsSameToLocalShard(network::kRootCongressNetworkId)) {
-        latest_height = tx_pool_mgr_->latest_height(pool_index);
-    }
+void KeyValueSync::SyncAllLatestBlocks() {
+    auto local_netid = network::GetLocalConsensusNetworkId();
+    for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
+        auto latest_height = tx_pool_mgr_->latest_height(i);
+        auto iter = synced_res_map_.find(local_netid);
+        if (iter == synced_res_map_.end()) {
+            continue;
+        }
 
-    uint32_t count = 0;
-    for (uint64_t i = latest_height + 1; i <= max_height && count++ < 64; ++i) {
-        AddSyncHeight(network::kRootCongressNetworkId, pool_index, i, kSyncHighest);
+        auto pool_iter = iter->second.find(i);
+        if (pool_iter == iter->second.end()) {
+            continue;
+        }
+
+        auto height_iter = pool_iter->second.find(++latest_height);
+        while (height_iter != pool_iter->second.end()) {
+            height_iter = pool_iter->second.find(++latest_height);
+        }
+
+        
     }
 }
 

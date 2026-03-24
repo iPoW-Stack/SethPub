@@ -152,7 +152,7 @@ private:
         sync::protobuf::SyncValueResponse* res,
         uint32_t& add_size);
     void BroadcastGlobalBlock();
-    void AddSyncContinusBlocks(uint32_t pool_index, uint64_t max_height);
+    void SyncAllLatestBlocks();
 
     static const uint64_t kSyncPeriodUs = 300000lu;
     static const uint64_t kSyncTimeoutPeriodUs = 3000000lu;
@@ -164,6 +164,9 @@ private:
     common::ThreadSafeQueue<SyncItemPtr> item_queues_[common::kMaxThreadCount];
     common::ThreadSafeQueue<ViewBlockPtr> broadcast_global_blocks_queues_[common::kMaxThreadCount];
     common::UniqueMap<std::string, SyncItemPtr, kCacheSyncKeyValueCount> synced_map_;
+    std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>> synced_res_map_;
+    common::SpinMutex synced_res_map_mutex_;
+
     common::Tick kv_tick_;
     common::ThreadSafeQueue<std::shared_ptr<transport::TransportMessage>> kv_msg_queue_;
     uint64_t elect_net_heights_map_[network::kConsensusShardEndNetworkId] = { 0 };
