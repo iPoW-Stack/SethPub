@@ -617,7 +617,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
                 }
             }
 
-            if (latest_sync_item.pool_latest_heights_size() == common::kImmutablePoolSize) {
+            if (latest_sync_item.pool_latest_heights_size() == common::kInvalidPoolIndex) {
                 for (int32_t i = 0; i < latest_sync_item.pool_latest_heights_size(); ++i) {
                     if (latest_sync_item.pool_latest_heights(i) == common::kInvalidUint64) {
                         continue;
