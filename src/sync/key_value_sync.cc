@@ -690,17 +690,83 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
 }
 
 void KeyValueSync::SyncAllLatestBlocks() {
-    auto local_netid = network::GetLocalConsensusNetworkId();
+    std::set<uint64_t> sended_neigbors;
+    std::map<uint32_t, sync::protobuf::SyncMessage> sync_dht_map;
+    auto add_sync_item = [&](uint32_t network, uint32_t pool_index, uint64_t height) {
+        auto iter = sync_dht_map.find(item->network_id);
+        if (iter == sync_dht_map.end()) {
+            sync_dht_map[network] = sync::protobuf::SyncMessage();
+        }
+
+        auto* sync_req = sync_dht_map[network].mutable_sync_value_req();
+        auto* sync_latest_req = sync_req->mutable_latest_sync_item();
+        sync_latest_req->set_network_id(network);
+        sync_latest_req->set_pool_idx(pool_index);
+        sync_latest_req->set_height(height);
+    }
+
     for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
-        auto latest_height = tx_pool_mgr_->latest_height(i);
-        auto iter = synced_res_map_.find(local_netid);
-        if (iter == synced_res_map_.end()) {
+        for (uint32_t network_id = network::kRootCongressNetworkId;
+                network_id <= common::GlobalInfo::Instance()->now_valid_end_shard(); ++network_id)
+            auto latest_height = tx_pool_mgr_->latest_height(i);
+            if (network_id == network::kRootCongressNetworkId) {
+                if (!network::IsSameToLocalShard(network_id)) {
+                    latest_height = tx_pool_mgr_->root_latest_height(i);
+                }
+            } else {
+                if (network::IsSameToLocalShard(network_id)) {
+                    break;
+                }
+            }
+
+            auto iter = synced_res_map_.find(network_id);
+            if (iter == synced_res_map_.end()) {
+                add_sync_item(network_id, i, latest_height + 1);
+                continue;
+            }
+
+            auto pool_iter = iter->second.find(i);
+            if (pool_iter == iter->second.end()) {
+                add_sync_item(network_id, i, latest_height + 1);
+                continue;
+            }
+
+            auto latest_height_iter = pool_iter->second.find(latest_height);
+            if (latest_height_iter == pool_iter->second.end()) {
+            pool_iter->second.erase(pool_iter->second.begin(), latest_height_iter);
+            }
+
+            auto height_iter = pool_iter->second.find(++latest_height);
+            while (height_iter != pool_iter->second.end()) {
+                height_iter = pool_iter->second.find(++latest_height);
+            }
+
+            add_sync_item(network_id, i, latest_height);
+        }
+    }
+
+    for (uint32_t network_id = network::kConsensusShardBeginNetworkId
+            network_id <= common::GlobalInfo::Instance()->now_valid_end_shard(); ++network_id)
+        if (network::IsSameToLocalShard(network_id)) {
             continue;
         }
 
-        auto pool_iter = iter->second.find(i);
-        if (pool_iter == iter->second.end()) {
+        auto latest_height = tx_pool_mgr_->cross_latest_height(network_id);
+        auto iter = synced_res_map_.find(network_id);
+        if (iter == synced_res_map_.end()) {
+            add_sync_item(network_id, common::kGlobalPoolIndex, latest_height + 1);
             continue;
+        }
+
+        auto pool_iter = iter->second.find(common::kGlobalPoolIndex);
+        if (pool_iter == iter->second.end()) {
+            add_sync_item(network_id, common::kGlobalPoolIndex, latest_height + 1);
+            continue;
+        }
+
+        auto latest_height_iter = pool_iter->second.find(latest_height);
+        if (latest_height_iter == pool_iter->second.end()) {
+            pool_iter->second.erase(pool_iter->second.begin(), latest_height_iter);
         }
 
         auto height_iter = pool_iter->second.find(++latest_height);
@@ -708,7 +774,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
             height_iter = pool_iter->second.find(++latest_height);
         }
 
-        
+        add_sync_item(network_id, common::kGlobalPoolIndex, latest_height);
     }
 }
 
