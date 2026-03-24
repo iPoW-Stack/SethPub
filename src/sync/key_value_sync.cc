@@ -593,6 +593,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
     }
 
     if (sync_msg.sync_value_req().has_latest_sync_item()) {
+        auto& latest_sync_item = sync_msg.sync_value_req().latest_sync_item();
         SETH_DEBUG("handle sync value latest_sync_item request hash: %lu, net: %u, "
             "globl_pool_height: %lu, pool_latest_heights size: %u, des net: %u",
             msg_ptr->header.hash64(),
@@ -600,7 +601,6 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
             sync_msg.sync_value_req().latest_sync_item().globl_pool_height(),
             sync_msg.sync_value_req().latest_sync_item().pool_latest_heights_size(),
             latest_sync_item.network_id());
-        auto& latest_sync_item = sync_msg.sync_value_req().latest_sync_item();
         if (network::IsSameToLocalShard(latest_sync_item.network_id())) {
             std::shared_ptr<view_block::protobuf::ViewBlockItem> view_block_ptr = nullptr;
             if (latest_sync_item.has_globl_pool_height()) {
