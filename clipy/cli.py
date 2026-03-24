@@ -50,7 +50,7 @@ class MessageHandleStatus(IntEnum):
 
 class SethClient:
     def __init__(self, host, port):
-        self.base_url = f"http={host}:{port}"
+        self.base_url = f"http://{host}:{port}"
         self.tx_url = f"{self.base_url}/transaction"
         self.query_url = f"{self.base_url}/query_account"
         self.receipt_url = f"{self.base_url}/transaction_receipt"
