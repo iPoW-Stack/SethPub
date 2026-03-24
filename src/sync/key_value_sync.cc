@@ -901,15 +901,12 @@ void KeyValueSync::SyncAllLatestBlocks() {
     HandlerVerifiedBlock(res_map);
     std::set<uint64_t> sended_neigbors;
     for (auto iter = sync_dht_map.begin(); iter != sync_dht_map.end(); ++iter) {
-        if (iter->second.sync_value_req().keys_size() > 0 ||
-                iter->second.sync_value_req().heights_size() > 0) {
-            uint64_t choose_node = SendSyncRequest(
-                iter->first,
-                iter->second,
-                sended_neigbors);
-            if (choose_node != 0) {
-                sended_neigbors.insert(choose_node);
-            }
+        uint64_t choose_node = SendSyncRequest(
+            iter->first,
+            iter->second,
+            sended_neigbors);
+        if (choose_node != 0) {
+            sended_neigbors.insert(choose_node);
         }
     }
 }
