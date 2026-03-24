@@ -2240,10 +2240,11 @@ void Hotstuff::TryRecoverFromStuck(
         has_user_tx_tag_ = true;
     }
 
-    if (GetLocalMemberIdx() == common::kInvalidUint32) {
-        // SETH_DEBUG("GetLocalMemberIdx() == common::kInvalidUint32, pool: %u", pool_idx_);
-        return;
-    }
+
+    // if (GetLocalMemberIdx() == common::kInvalidUint32) {
+    //     // SETH_DEBUG("GetLocalMemberIdx() == common::kInvalidUint32, pool: %u", pool_idx_);
+    //     return;
+    // }
 
     if (now_tm_ms >= prev_sync_latest_view_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs) {
         prev_sync_latest_view_tm_ms_ = now_tm_ms;
