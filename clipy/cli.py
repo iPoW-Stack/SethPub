@@ -222,9 +222,9 @@ def compile_contract_with_link(source_code, library_addresses=None):
     install_solc_versions()
     return solcx.compile_source(source_code, output_values=['abi', 'bin'], **compiler_params)
 
-SETH_IP = "35.197.170.240" # 已根据日志更新 IP
+SETH_IP = "127.0.0.1" # 已根据日志更新 IP
 SETH_PORT = 23001
-PRIVATE_KEY = "c75f8d9b2a6bc0fe68eac7fef67c6b6f7c4f85163d58829b59110ff9e9210848"
+PRIVATE_KEY = "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
 
 def test_library():
     client = SethClient(SETH_IP, SETH_PORT)
