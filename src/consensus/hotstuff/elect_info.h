@@ -250,6 +250,7 @@ public:
     inline std::shared_ptr<ElectItem> GetElectItemWithShardingId(uint32_t sharding_id) const {
         if (sharding_id > network::kConsensusShardEndNetworkId) {
             SETH_DEBUG("get elect item failed sharding id: %u", sharding_id);
+            assert(false);
             return nullptr;
         }
 
