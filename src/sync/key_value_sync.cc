@@ -230,7 +230,7 @@ void KeyValueSync::PopItems() {
                 break;
             }
             
-            if (item.tag == kBlockHeight) {
+            if (item->tag == kBlockHeight) {
                 auto iter = synced_res_map_.find(item->network_id);
                 if (iter != synced_res_map_.end()) {
                     auto iter2 = iter->second.find(item->pool_idx);
@@ -713,10 +713,9 @@ void KeyValueSync::HandlerVerifiedBlock(const std::map<uint32_t, std::map<uint32
 
 void KeyValueSync::SyncAllLatestBlocks() {
     std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>> res_map;
-    std::set<uint64_t> sended_neigbors;
     std::map<uint32_t, sync::protobuf::SyncMessage> sync_dht_map;
     auto add_sync_item = [&](uint32_t network, uint32_t pool_index, uint64_t height) {
-        auto iter = sync_dht_map.find(item->network_id);
+        auto iter = sync_dht_map.find(network);
         if (iter == sync_dht_map.end()) {
             sync_dht_map[network] = sync::protobuf::SyncMessage();
         }
@@ -830,6 +829,19 @@ void KeyValueSync::SyncAllLatestBlocks() {
     }
 
     HandlerVerifiedBlock(res_map);
+    std::set<uint64_t> sended_neigbors;
+    for (auto iter = sync_dht_map.begin(); iter != sync_dht_map.end(); ++iter) {
+        if (iter->second.sync_value_req().keys_size() > 0 ||
+                iter->second.sync_value_req().heights_size() > 0) {
+            uint64_t choose_node = SendSyncRequest(
+                iter->first,
+                iter->second,
+                sended_neigbors);
+            if (choose_node != 0) {
+                sended_neigbors.insert(choose_node);
+            }
+        }
+    }
 }
 
 }  // namespace sync
