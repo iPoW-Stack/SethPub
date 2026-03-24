@@ -230,6 +230,19 @@ void KeyValueSync::PopItems() {
                 break;
             }
             
+            if (item.tag == kBlockHeight) {
+                auto iter = synced_res_map_.find(item->network_id);
+                if (iter != synced_res_map_.end()) {
+                    auto iter2 = iter->second.find(item->pool_idx);
+                    if (iter2 != iter->second.end()) {
+                        auto iter3 = iter2->second.find(item->height);
+                        if (iter3 != iter2->second.end()) {
+                            continue;
+                        }
+                    }
+                }
+            }
+
             if (synced_map_.get(item->key, &item)) {
                 if (item->sync_tm_us + kSyncTimeoutPeriodUs >= now_tm) {
                     SETH_DEBUG("item->sync_tm_us + kSyncTimeoutPeriodUs >= now_tm: %s", item->key.c_str());
@@ -634,8 +647,12 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                 return;
             }
 
-            synced_res_map_[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->block_info().height()] = pb_vblock;
             int verify_res = view_block_synced_callback_(*pb_vblock);
+            if (verify_res == -1) {
+                return;
+            }
+
+            synced_res_map_[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->block_info().height()] = std::make_pair((verify_res == 0), pb_vblock);
             if (verify_res != 0) {
                 SETH_DEBUG("failed check viewblock handle network new view "
                     "block: %u_%u_%lu, height: %lu key: %s, is broadcast: %d", 
@@ -664,6 +681,10 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
             key.c_str(), synced_map_.size(), msg_ptr->header.hash64());
     }
 
+    HandlerVerifiedBlock(res_map);
+}
+
+void KeyValueSync::HandlerVerifiedBlock(const std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>>& res_map) {
     for (auto iter = res_map.begin(); iter != res_map.end(); ++iter) {
         auto network_id = iter->first;
         for (auto pool_iter = iter->second.begin(); pool_iter != iter->second.end(); ++pool_iter) {
@@ -689,7 +710,9 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
     }
 }
 
+
 void KeyValueSync::SyncAllLatestBlocks() {
+    std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>> res_map;
     std::set<uint64_t> sended_neigbors;
     std::map<uint32_t, sync::protobuf::SyncMessage> sync_dht_map;
     auto add_sync_item = [&](uint32_t network, uint32_t pool_index, uint64_t height) {
@@ -707,7 +730,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
 
     for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
         for (uint32_t network_id = network::kRootCongressNetworkId;
-                network_id <= common::GlobalInfo::Instance()->now_valid_end_shard(); ++network_id)
+                network_id <= common::GlobalInfo::Instance()->now_valid_end_shard(); ++network_id) {
             auto latest_height = tx_pool_mgr_->latest_height(i);
             if (network_id == network::kRootCongressNetworkId) {
                 if (!network::IsSameToLocalShard(network_id)) {
@@ -732,12 +755,26 @@ void KeyValueSync::SyncAllLatestBlocks() {
             }
 
             auto latest_height_iter = pool_iter->second.find(latest_height);
-            if (latest_height_iter == pool_iter->second.end()) {
-            pool_iter->second.erase(pool_iter->second.begin(), latest_height_iter);
+            if (latest_height_iter != pool_iter->second.end()) {
+                pool_iter->second.erase(pool_iter->second.begin(), latest_height_iter);
             }
 
             auto height_iter = pool_iter->second.find(++latest_height);
             while (height_iter != pool_iter->second.end()) {
+                if (!height_iter->second.first) {
+                    auto& pb_vblock = height_iter->second.second;
+                    int verify_res = view_block_synced_callback_(*pb_vblock);
+                    if (verify_res == 0) {
+                        height_iter->second.first = true;
+                        res_map[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->qc().view()] = pb_vblock;
+                        SETH_DEBUG("success check viewblock handle network new view "
+                            "block: %u_%u_%lu, height: %lu ", 
+                            pb_vblock->qc().network_id(),
+                            pb_vblock->qc().pool_index(),
+                            pb_vblock->qc().view(),
+                            pb_vblock->block_info().height());
+                    }
+                }
                 height_iter = pool_iter->second.find(++latest_height);
             }
 
@@ -746,7 +783,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
     }
 
     for (uint32_t network_id = network::kConsensusShardBeginNetworkId
-            network_id <= common::GlobalInfo::Instance()->now_valid_end_shard(); ++network_id)
+            network_id <= common::GlobalInfo::Instance()->now_valid_end_shard(); ++network_id) {
         if (network::IsSameToLocalShard(network_id)) {
             continue;
         }
@@ -765,17 +802,34 @@ void KeyValueSync::SyncAllLatestBlocks() {
         }
 
         auto latest_height_iter = pool_iter->second.find(latest_height);
-        if (latest_height_iter == pool_iter->second.end()) {
+        if (latest_height_iter != pool_iter->second.end()) {
             pool_iter->second.erase(pool_iter->second.begin(), latest_height_iter);
         }
 
         auto height_iter = pool_iter->second.find(++latest_height);
         while (height_iter != pool_iter->second.end()) {
+            if (!height_iter->second.first) {
+                auto& pb_vblock = height_iter->second.second;
+                int verify_res = view_block_synced_callback_(*pb_vblock);
+                if (verify_res == 0) {
+                    height_iter->second.first = true;
+                    res_map[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->qc().view()] = pb_vblock;
+                    SETH_DEBUG("success check viewblock handle network new view "
+                        "block: %u_%u_%lu, height: %lu ", 
+                        pb_vblock->qc().network_id(),
+                        pb_vblock->qc().pool_index(),
+                        pb_vblock->qc().view(),
+                        pb_vblock->block_info().height());
+                }
+            }
+
             height_iter = pool_iter->second.find(++latest_height);
         }
 
         add_sync_item(network_id, common::kGlobalPoolIndex, latest_height);
     }
+
+    HandlerVerifiedBlock(res_map);
 }
 
 }  // namespace sync
