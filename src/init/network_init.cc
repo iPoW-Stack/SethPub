@@ -240,6 +240,7 @@ int NetworkInit::Init(int argc, char** argv) {
     kv_sync_->Init(
         block_mgr_,
         hotstuff_mgr_,
+        pools_mgr_,
         db_,
         std::bind(&consensus::HotstuffManager::VerifySyncedViewBlock,
             hotstuff_mgr_, std::placeholders::_1));

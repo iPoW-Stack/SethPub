@@ -15,6 +15,7 @@
 #include "network/universal_manager.h"
 #include "protos/block.pb.h"
 #include "protos/view_block.pb.h"
+#include "pools/tx_pool_manager.h"
 #include "sync/sync_utils.h"
 #include "transport/processor.h"
 
@@ -30,12 +31,14 @@ KeyValueSync::~KeyValueSync() {
 void KeyValueSync::Init(
         const std::shared_ptr<block::BlockManager>& block_mgr,
         const std::shared_ptr<consensus::HotstuffManager>& hotstuff_mgr,
+        std::shared_ptr<pools::TxPoolManager> tx_pool_mgr,
         const std::shared_ptr<db::Db>& db,
         ViewBlockSyncedCallback view_block_synced_callback) {
     SETH_DEBUG("init key value sync 0");
     hotstuff_mgr_ = hotstuff_mgr;
     SETH_DEBUG("init key value sync 1");
     view_block_synced_callback_ = view_block_synced_callback;
+    tx_pool_mgr_ = tx_pool_mgr;
     SETH_DEBUG("init key value sync 2");
     network::Route::Instance()->RegisterMessage(
         common::kSyncMessage,
@@ -630,7 +633,16 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                 return;
             }
 
-            if (view_block_synced_callback_(*pb_vblock) != 0) {
+            int verify_res = view_block_synced_callback_(*pb_vblock);
+            if (verify_res != 0) {
+                if (verify_res == 1) {
+                    if (network::IsSameToLocalShard(network::kRootCongressNetworkId)) {
+                        AddSyncContinusBlocks(pb_vblock->qc().pool_index(), pb_vblock->qc().elect_height() + 1);
+                    } else {
+                        AddSyncContinusBlocks(pb_vblock->qc().network_id(), pb_vblock->qc().elect_height() + 1);
+                    }
+                }
+                
                 SETH_DEBUG("failed check viewblock handle network new view "
                     "block: %u_%u_%lu, height: %lu key: %s, is broadcast: %d", 
                     pb_vblock->qc().network_id(),
@@ -680,6 +692,18 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                     vblock_queues_[thread_idx].size());
             }
         }
+    }
+}
+
+void KeyValueSync::AddSyncContinusBlocks(uint32_t pool_index, uint64_t max_height) {
+    auto latest_height = tx_pool_mgr_->root_latest_height(pool_index);
+    if (network::IsSameToLocalShard(network::kRootCongressNetworkId)) {
+        latest_height = tx_pool_mgr_->latest_height(pool_index);
+    }
+
+    uint32_t count = 0;
+    for (uint64_t i = latest_height + 1; i <= max_height && count++ < 64; ++i) {
+        AddSyncHeight(network::kRootCongressNetworkId, pool_index, i, kSyncHighest);
     }
 }
 

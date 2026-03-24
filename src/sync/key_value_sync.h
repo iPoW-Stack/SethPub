@@ -35,6 +35,10 @@ namespace consensus {
     class HotstuffManager;
 }
 
+namespace pools {
+    class PoolManager;
+}
+
 namespace sync {
 
 using ViewBlockSyncedCallback = std::function<int(const view_block::protobuf::ViewBlockItem& pb_vblock)>;
@@ -107,6 +111,7 @@ public:
     void Init(
         const std::shared_ptr<block::BlockManager>& block_mgr,
         const std::shared_ptr<consensus::HotstuffManager>& hotstuff_mgr,
+        std::shared_ptr<pools::TxPoolManager> tx_pool_mgr,
         const std::shared_ptr<db::Db>& db,
         ViewBlockSyncedCallback view_block_synced_callback);
     void HandleMessage(const transport::MessagePtr& msg);
@@ -147,6 +152,7 @@ private:
         sync::protobuf::SyncValueResponse* res,
         uint32_t& add_size);
     void BroadcastGlobalBlock();
+    void AddSyncContinusBlocks(uint32_t pool_index, uint64_t max_height);
 
     static const uint64_t kSyncPeriodUs = 300000lu;
     static const uint64_t kSyncTimeoutPeriodUs = 3000000lu;
@@ -154,6 +160,7 @@ private:
     static const uint32_t kCacheSyncKeyValueCount = 1024000u;
     static const uint32_t kSyncCount = 5u;
 
+    std::shared_ptr<pools::TxPoolManager> tx_pool_mgr_ = nullptr;
     common::ThreadSafeQueue<SyncItemPtr> item_queues_[common::kMaxThreadCount];
     common::ThreadSafeQueue<ViewBlockPtr> broadcast_global_blocks_queues_[common::kMaxThreadCount];
     common::UniqueMap<std::string, SyncItemPtr, kCacheSyncKeyValueCount> synced_map_;
