@@ -17,6 +17,28 @@ from ecdsa.util import sigencode_string_canonize
 # Preset environment
 install_solc('0.8.30')
 
+class StepType(IntEnum):
+    """
+    Shardora (Seth) 协议交易步骤类型枚举
+    用于 send_transaction 中的 step 参数
+    """
+    kNormalFrom = 0                 # 用户直接转账 (发送方)
+    kNormalTo = 1                   # 跨片确认交易 (发送方统计后的确认)
+    kConsensusRootElectShard = 2    # 分片/根网络选举交易
+    kConsensusRootTimeBlock = 3     # 时间块创建交易
+    kConsensusCreateGenesisAcount = 4 # 创世账号创建交易
+    kConsensusLocalTos = 5          # 跨片确认交易 (接收方累计后的确认)
+    kCreateContract = 6             # 合约部署/创建交易
+    kContractGasPrepayment = 7      # 设置合约调用预付 Gas
+    kContractExcute = 8             # 执行合约调用
+    kRootCreateAddress = 9          # 根网络创建新地址
+    kStatistic = 12                 # 统计类交易
+    kJoinElect = 13                 # 新节点参与选举交易
+    kCreateLibrary = 14             # 创建公共合约库 (Library)
+    kCross = 15                     # 跨片防丢块补齐交易
+    kRootCross = 16                 # 根网络跨片防丢块补齐交易
+    kPoolStatisticTag = 17          # 本轮交易池统计结束标记块
+
 class MessageHandleStatus(IntEnum):
     kConsensusSuccess = 0
     kMessageHandle = 1
@@ -211,19 +233,49 @@ def calc_create2_address(sender, salt_hex, bytecode_hex):
     return raw_address[-20:].hex().lower()
 
 # ==========================================
-# Full Lifecycle Test
+# 增加：Library 部署与链接逻辑
 # ==========================================
-if __name__ == "__main__":
-    client = SethClient("35.197.170.240", 23001)
-    MY_PK = "c75f8d9b2a6bc0fe68eac7fef67c6b6f7c4f85163d58829b59110ff9e9210848"
+
+def compile_contract_with_link(source_code, library_addresses=None):
+    """
+    支持库链接的编译函数
+    :param library_addresses: 格式为 {'LibName': '0xAddress'}
+    """
+    compiler_params = {
+        "evm_version": 'shanghai',
+        "optimize": True,
+        "optimize_runs": 200,
+    }
+
+    if library_addresses:
+        # 核心：通知编译器将字节码中的占位符替换为真实的库地址
+        compiler_params["libraries"] = library_addresses
+
+    install_solc_versions()
+    # 注意：这里需要传入所有相关的 source，或者合并 source
+    compiled_sol = solcx.compile_source(
+        source_code,
+        output_values=['abi', 'bin'],
+        **compiler_params
+    )
+    return compiled_sol
+
+SETH_IP = "127.0.0.1"
+SETH_PORT = 23001
+PRIVATE_KEY = "c75f8d9b2a6bc0fe68eac7fef67c6b6f7c4f85163d58829b59110ff9e9210848"
+
+def test_transfer():
+    client = SethClient(SETH_IP, SETH_PORT)
     OTHER_ADDR = "1234567890abcdef1234567890abcdef12345678"
 
     # --- 1. Transfer ---
     print("[Task 1] Sending standard transfer...")
-    tx_transfer = client.send_transaction_auto(MY_PK, OTHER_ADDR, amount=1000)
+    tx_transfer = client.send_transaction_auto(PRIVATE_KEY, OTHER_ADDR, step=StepType.kNormalFrom, amount=1000)
     if client.wait_for_receipt(tx_transfer):
         print("✓ Transfer success.")
 
+def test_contract():
+    client = SethClient(SETH_IP, SETH_PORT)
     # --- 2. Compile Contract ---
     contract_source = """
     // SPDX-License-Identifier: MIT
@@ -247,9 +299,9 @@ if __name__ == "__main__":
     # Replace CONTRACT_ADDR if it is deterministically derived, 
     # otherwise, it's usually obtained from the receipt after deployment.
     # For demonstration purposes, we use your deterministic calculation function.
-    TARGET_CONTRACT = calc_create2_address(client.get_address(MY_PK), "00", deploy_code)
+    TARGET_CONTRACT = calc_create2_address(client.get_address(PRIVATE_KEY), "00", deploy_code)
     
-    tx_deploy = client.send_transaction_auto(MY_PK, TARGET_CONTRACT, step=6, contract_code=deploy_code, prepayment=10000000)
+    tx_deploy = client.send_transaction_auto(PRIVATE_KEY, TARGET_CONTRACT, step=StepType.kCreateContract, contract_code=deploy_code, prepayment=10000000)
     client.wait_for_receipt(tx_deploy, timeout=30)
     print(f"✓ Contract deployed at: {TARGET_CONTRACT}")
 
@@ -259,7 +311,7 @@ if __name__ == "__main__":
     selector_set = get_selector("setMessage(string)")
     input_set = selector_set + eth_abi.encode(['string'], [new_text]).hex()
     
-    tx_update = client.send_transaction_auto(MY_PK, TARGET_CONTRACT, step=8, input_hex=input_set)
+    tx_update = client.send_transaction_auto(PRIVATE_KEY, TARGET_CONTRACT, step=8, input_hex=input_set)
     client.wait_for_receipt(tx_update)
     print(f"✓ Message updated to: {new_text}")
 
@@ -267,9 +319,92 @@ if __name__ == "__main__":
     print("[Step 4] Querying message...")
     selector_get = get_selector("getMessage()")
     # Note: getMessage() has no parameters, so input contains only the selector
-    raw_output = client.query_contract(client.get_address(MY_PK), TARGET_CONTRACT, selector_get)
+    raw_output = client.query_contract(client.get_address(PRIVATE_KEY), TARGET_CONTRACT, selector_get)
     
     if raw_output:
         print(f"🔎 Current Message in Contract: {raw_output}")
     else:
         print("✗ Query failed.")
+
+def test_library():
+    client = SethClient(SETH_IP, SETH_PORT)
+    MY_ADDR = client.get_address(PRIVATE_KEY)
+    # --- 1. 定义 Library 和 主合约 ---
+    lib_source = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+    library MathLib {
+        function add(uint256 a, uint256 b) public pure returns (uint256) {
+            return a + b;
+        }
+    }
+    """
+
+    contract_source = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.0;
+    import "MathLib"; // 逻辑引用
+
+    contract Calculator {
+        uint256 public lastResult;
+        function doAdd(uint256 a, uint256 b) public {
+            lastResult = MathLib.add(a, b);
+        }
+    }
+    """
+    
+    # 将源码合并（模拟文件引用）
+    full_source = lib_source + "\n" + contract_source
+
+    # --- 2. 部署 Library ---
+    print("[Task Library] Compiling and Deploying MathLib...")
+    lib_compile = compile_contract(lib_source) # 简单编译库
+    lib_bin = lib_compile['bin']
+    
+    # 计算库地址并发送部署交易 (Step 6 为部署)
+    LIB_TARGET = calc_create2_address(MY_ADDR, "01", lib_bin) # 使用不同的 salt "01"
+    tx_lib = client.send_transaction_auto(PRIVATE_KEY, LIB_TARGET, step=StepType.kCreateLibrary, contract_code=lib_bin, prepayment=5000000)
+    client.wait_for_receipt(tx_lib)
+    print(f"✓ MathLib deployed at: 0x{LIB_TARGET}")
+
+    # --- 3. 链接并部署主合约 ---
+    print("[Task Contract] Linking MathLib and Deploying Calculator...")
+    
+    # 格式必须符合 solc 要求：'<文件名>:<库名>': '地址'
+    # 因为我们是 compile_source 且合并了源码，文件名默认为 '<stdin>'
+    link_refs = {
+        "<stdin>:MathLib": "0x" + LIB_TARGET
+    }
+    
+    # 使用带链接功能的编译
+    contract_compiled = compile_contract_with_link(full_source, library_addresses=link_refs)
+    # 获取 Calculator 合约的编译产物
+    calculator_interface = contract_compiled['<stdin>:Calculator']
+    calc_bin = calculator_interface['bin']
+
+    # 部署主合约
+    CALC_TARGET = calc_create2_address(MY_ADDR, "02", calc_bin)
+    tx_calc = client.send_transaction_auto(PRIVATE_KEY, CALC_TARGET, step=StepType.kCreateContract, contract_code=calc_bin, prepayment=10000000)
+    client.wait_for_receipt(tx_calc)
+    print(f"✓ Calculator deployed at: 0x{CALC_TARGET}")
+
+    # --- 4. 调用主合约（间接调用 Library） ---
+    print("[Task Interaction] Calling Calculator.doAdd(10, 20)...")
+    selector_add = get_selector("doAdd(uint256,uint256)")
+    input_add = selector_add + eth_abi.encode(['uint256', 'uint256'], [10, 20]).hex()
+    
+    tx_call = client.send_transaction_auto(PRIVATE_KEY, CALC_TARGET, step=8, input_hex=input_add)
+    client.wait_for_receipt(tx_call)
+    
+    # 查询结果
+    selector_res = get_selector("lastResult()")
+    raw_res = client.query_contract(MY_ADDR, CALC_TARGET, selector_res)
+    print(f"🔎 Calculation Result from Library: {raw_res}")
+
+# ==========================================
+# Full Lifecycle Test
+# ==========================================
+if __name__ == "__main__":
+    # test_transfer()
+    # test_contract()
+    test_library()
