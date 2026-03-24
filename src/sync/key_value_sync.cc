@@ -209,7 +209,11 @@ void KeyValueSync::ConsensusTimerMessage() {
         // assert(false);
     }
 
-    SyncAllLatestBlocks();
+    if (prev_sync_tm_ms_ + 3000 < now_tm_ms3) {
+        SyncAllLatestBlocks();
+        prev_sync_tm_ms_ = now_tm_ms3;
+    }
+
     kv_tick_.CutOff(
         10000lu,
         std::bind(&KeyValueSync::ConsensusTimerMessage, this));
@@ -789,6 +793,8 @@ void KeyValueSync::SyncAllLatestBlocks() {
         } else {
             sync_latest_req->set_globl_pool_height(height);
         }
+
+        SETH_DEBUG("add sync item: %u_%u_%u", network, pool_index, height);
     };
 
     for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {

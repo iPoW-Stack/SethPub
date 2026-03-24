@@ -178,6 +178,7 @@ private:
     std::shared_ptr<consensus::HotstuffManager> hotstuff_mgr_ = nullptr;
     std::mutex wait_mutex_;
     std::condition_variable wait_con_;
+    uint64_t prev_sync_tm_ms_ = 0;
 
     DISALLOW_COPY_AND_ASSIGN(KeyValueSync);
 };
