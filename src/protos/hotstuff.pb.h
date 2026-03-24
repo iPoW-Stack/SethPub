@@ -921,6 +921,13 @@ class VoteMsg : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   ::google::protobuf::uint32 leader_idx() const;
   void set_leader_idx(::google::protobuf::uint32 value);
 
+  // optional uint64 tm_height = 10;
+  bool has_tm_height() const;
+  void clear_tm_height();
+  static const int kTmHeightFieldNumber = 10;
+  ::google::protobuf::uint64 tm_height() const;
+  void set_tm_height(::google::protobuf::uint64 value);
+
   // @@protoc_insertion_point(class_scope:seth.hotstuff.protobuf.VoteMsg)
  private:
   void set_has_replica_idx();
@@ -939,6 +946,8 @@ class VoteMsg : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   void clear_has_partial_sig();
   void set_has_leader_idx();
   void clear_has_leader_idx();
+  void set_has_tm_height();
+  void clear_has_tm_height();
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
@@ -952,6 +961,7 @@ class VoteMsg : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   ::google::protobuf::uint64 elect_height_;
   ::google::protobuf::uint32 replica_idx_;
   ::google::protobuf::uint32 leader_idx_;
+  ::google::protobuf::uint64 tm_height_;
   friend struct ::protobuf_protos_2fhotstuff_2eproto::TableStruct;
 };
 // -------------------------------------------------------------------
@@ -2341,6 +2351,30 @@ inline void VoteMsg::set_leader_idx(::google::protobuf::uint32 value) {
   set_has_leader_idx();
   leader_idx_ = value;
   // @@protoc_insertion_point(field_set:seth.hotstuff.protobuf.VoteMsg.leader_idx)
+}
+
+// optional uint64 tm_height = 10;
+inline bool VoteMsg::has_tm_height() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void VoteMsg::set_has_tm_height() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void VoteMsg::clear_has_tm_height() {
+  _has_bits_[0] &= ~0x00000100u;
+}
+inline void VoteMsg::clear_tm_height() {
+  tm_height_ = GOOGLE_ULONGLONG(0);
+  clear_has_tm_height();
+}
+inline ::google::protobuf::uint64 VoteMsg::tm_height() const {
+  // @@protoc_insertion_point(field_get:seth.hotstuff.protobuf.VoteMsg.tm_height)
+  return tm_height_;
+}
+inline void VoteMsg::set_tm_height(::google::protobuf::uint64 value) {
+  set_has_tm_height();
+  tm_height_ = value;
+  // @@protoc_insertion_point(field_set:seth.hotstuff.protobuf.VoteMsg.tm_height)
 }
 
 // -------------------------------------------------------------------
