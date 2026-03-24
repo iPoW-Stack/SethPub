@@ -457,6 +457,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
             sync_msg.sync_value_req().keys_size(),
             sync_msg.sync_value_req().heights_size());
     });
+
     for (int32_t i = 0; i < sync_msg.sync_value_req().keys_size(); ++i) {
         const std::string& key = sync_msg.sync_value_req().keys(i);
         SETH_DEBUG("now handle sync view bock hash key: %s", 
@@ -584,6 +585,60 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
                 req_height.height(),
                 msg_ptr->header.hash64());
             break;
+        }
+    }
+
+    if (sync_msg.sync_value_req().has_latest_sync_item()) {
+        auto& latest_sync_item = sync_msg.sync_value_req().latest_sync_item();
+        if (network::IsSameToLocalShard(latest_sync_item.network_id())) {
+            std::shared_ptr<view_block::protobuf::ViewBlockItem> view_block_ptr = nullptr;
+            if (latest_sync_item.has_globl_pool_height()) {
+                view_block_ptr = hotstuff_mgr_->chain(common::kGlobalPoolIndex)->GetViewBlockWithHeight(
+                    network_id, latest_sync_item.globl_pool_height());
+                if (view_block_ptr && !view_block_ptr->qc().sign_x().empty()) {
+                    auto res = sync_res->add_res();
+                    res->set_network_id(network_id);
+                    res->set_pool_idx(common::kGlobalPoolIndex);
+                    res->set_height(latest_sync_item.globl_pool_height());
+                    res->set_value(SerializeDeterministic(*view_block_ptr));
+                    res->set_tag(kBlockHeight);
+                    add_size += 16 + res->value().size();
+                }
+            }
+
+            if (latest_sync_item.pool_latest_heights_size() == common::kImmutablePoolSize) {
+                for (int32_t i = 0; i < latest_sync_item.pool_latest_heights_size(); ++i) {
+                    if (latest_sync_item.pool_latest_heights(i) == common::kInvalidUint64) {
+                        continue;
+                    }
+
+                    for (uint64_t height = latest_sync_item.pool_latest_heights(i); 
+                            height < latest_sync_item.pool_latest_heights(i) + 64; ++height) {
+                        view_block_ptr = hotstuff_mgr_->chain(i)->GetViewBlockWithHeight(
+                            network_id, height);
+                        if (!view_block_ptr || view_block_ptr->qc().sign_x().empty()) {
+                            break;
+                        }
+
+                        auto res = sync_res->add_res();
+                        res->set_network_id(network_id);
+                        res->set_pool_idx(i);
+                        res->set_height(height);
+                        res->set_value(SerializeDeterministic(*view_block_ptr));
+                        res->set_tag(kBlockHeight);
+                        add_size += 16 + res->value().size();
+                        if (add_size >= kSyncPacketMaxSize) {
+                            SETH_DEBUG("handle sync value add_size failed request hash: %lu, "
+                                "net: %u, pool: %u, height: %lu",
+                                network_id,
+                                i,
+                                height,
+                                msg_ptr->header.hash64());
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 
