@@ -2224,7 +2224,7 @@ void Hotstuff::TryRecoverFromStuck(
         bool has_user_tx, 
         bool has_system_tx) {
     auto now_tm_ms = common::TimeUtils::TimestampMs();
-    if (!latest_qc_item_ptr_ && update_latest_view_tm_) {
+    if (latest_qc_item_ptr_ && update_latest_view_tm_) {
         laste_vote_prev_view_tm_.Put(latest_qc_item_ptr_->view(), now_tm_ms);
         update_latest_view_tm_ = false;
     }
