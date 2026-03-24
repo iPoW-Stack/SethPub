@@ -239,20 +239,34 @@ def calc_create2_address(sender, salt_hex, bytecode_hex):
 def compile_contract_with_link(source_code, library_addresses=None):
     """
     支持库链接的编译函数
-    :param library_addresses: 格式为 {'LibName': '0xAddress'}
+    :param library_addresses: 格式为 {'MathLib': '0x73b04ef0...'}
     """
+    # 核心修复点：将字典转换为 solc 要求的字符串格式
+    # 格式通常为: "filename:libname=address,filename2:lib2=addr2"
+    lib_str = None
+    if library_addresses:
+        # 因为我们用的是 compile_source，文件名默认为 <stdin>
+        lib_parts = []
+        for lib_full_name, addr in library_addresses.items():
+            # 确保地址有 0x 前缀
+            if not addr.startswith('0x'):
+                addr = '0x' + addr
+            lib_parts.append(f"{lib_full_name}={addr}")
+        lib_str = ",".join(lib_parts)
+
     compiler_params = {
         "evm_version": 'shanghai',
         "optimize": True,
         "optimize_runs": 200,
+        # "via_ir": True, # 如果报错可以尝试关闭或开启
     }
 
-    if library_addresses:
-        # 核心：通知编译器将字节码中的占位符替换为真实的库地址
-        compiler_params["libraries"] = library_addresses
+    if lib_str:
+        compiler_params["libraries"] = lib_str
 
     install_solc_versions()
-    # 注意：这里需要传入所有相关的 source，或者合并 source
+    
+    # 调用编译
     compiled_sol = solcx.compile_source(
         source_code,
         output_values=['abi', 'bin'],
