@@ -714,7 +714,7 @@ void KeyValueSync::HandlerVerifiedBlock(const std::map<uint32_t, std::map<uint32
 void KeyValueSync::SyncAllLatestBlocks() {
     std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>> res_map;
     std::map<uint32_t, sync::protobuf::SyncMessage> sync_dht_map;
-    auto add_sync_item = [&](uint32_t network, uint32_t pool_index, uint64_t height) {
+    auto add_sync_item = [&](uint32_t network, uint32_t pool_index, uint64_t height, bool global) {
         auto iter = sync_dht_map.find(network);
         if (iter == sync_dht_map.end()) {
             sync_dht_map[network] = sync::protobuf::SyncMessage();
@@ -723,8 +723,17 @@ void KeyValueSync::SyncAllLatestBlocks() {
         auto* sync_req = sync_dht_map[network].mutable_sync_value_req();
         auto* sync_latest_req = sync_req->mutable_latest_sync_item();
         sync_latest_req->set_network_id(network);
-        sync_latest_req->set_pool_idx(pool_index);
-        sync_latest_req->set_height(height);
+        if (!global) {
+            if (sync_latest_req->pool_latest_heights_size() != common::kInvalidPoolIndex) {
+                for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i)
+                    sync_latest_req->pool_latest_heights.add(common::kInvalidUint64);
+                }
+            }
+
+            sync_latest_req->set_pool_latest_heights(pool_index, height);
+        } else {
+            sync_latest_req->set_globl_pool_height(height);
+        }
     }
 
     for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
@@ -743,13 +752,13 @@ void KeyValueSync::SyncAllLatestBlocks() {
 
             auto iter = synced_res_map_.find(network_id);
             if (iter == synced_res_map_.end()) {
-                add_sync_item(network_id, i, latest_height + 1);
+                add_sync_item(network_id, i, latest_height + 1, false);
                 continue;
             }
 
             auto pool_iter = iter->second.find(i);
             if (pool_iter == iter->second.end()) {
-                add_sync_item(network_id, i, latest_height + 1);
+                add_sync_item(network_id, i, latest_height + 1, false);
                 continue;
             }
 
@@ -777,7 +786,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
                 height_iter = pool_iter->second.find(++latest_height);
             }
 
-            add_sync_item(network_id, i, latest_height);
+            add_sync_item(network_id, i, latest_height, false);
         }
     }
 
@@ -790,13 +799,13 @@ void KeyValueSync::SyncAllLatestBlocks() {
         auto latest_height = tx_pool_mgr_->cross_latest_height(network_id);
         auto iter = synced_res_map_.find(network_id);
         if (iter == synced_res_map_.end()) {
-            add_sync_item(network_id, common::kGlobalPoolIndex, latest_height + 1);
+            add_sync_item(network_id, common::kGlobalPoolIndex, latest_height + 1, true);
             continue;
         }
 
         auto pool_iter = iter->second.find(common::kGlobalPoolIndex);
         if (pool_iter == iter->second.end()) {
-            add_sync_item(network_id, common::kGlobalPoolIndex, latest_height + 1);
+            add_sync_item(network_id, common::kGlobalPoolIndex, latest_height + 1, true);
             continue;
         }
 
@@ -825,7 +834,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
             height_iter = pool_iter->second.find(++latest_height);
         }
 
-        add_sync_item(network_id, common::kGlobalPoolIndex, latest_height);
+        add_sync_item(network_id, common::kGlobalPoolIndex, latest_height, true);
     }
 
     HandlerVerifiedBlock(res_map);
