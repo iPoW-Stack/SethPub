@@ -577,11 +577,11 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
     // }
     
     uint64_t view_prev_vote_tm = 0;
-    if (last_stable_leader_member_index_ != msg_ptr->header.hotstuff().pro_msg().view_item().qc().leader_idx()) {
+    if (last_stable_leader_member_index_ != msg_ptr->header.hotstuff().pro_msg().view_item().qc().leader_idx() && !msg_ptr->is_leader) {
         if (laste_vote_prev_view_tm_.Get(
                 msg_ptr->header.hotstuff().pro_msg().tc().view(), view_prev_vote_tm)) {
             auto now_tm = common::TimeUtils::TimestampMs();
-            if (view_prev_vote_tm + 15000lu >= now_tm) {
+            if (view_prev_vote_tm + 5000lu >= now_tm) {
                 SETH_DEBUG("view: %lu, view_prev_vote_tm: %lu, now_tm: %lu, not timeout, ignore propose msg hash: %lu, propose_debug: %s", 
                     msg_ptr->header.hotstuff().pro_msg().tc().view(), 
                     view_prev_vote_tm, now_tm, msg_ptr->header.hash64(),
