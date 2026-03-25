@@ -595,12 +595,13 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
     if (sync_msg.sync_value_req().has_latest_sync_item()) {
         auto& latest_sync_item = sync_msg.sync_value_req().latest_sync_item();
         SETH_DEBUG("handle sync value latest_sync_item request hash: %lu, net: %u, "
-            "globl_pool_height: %lu, pool_latest_heights size: %u, des net: %u",
+            "globl_pool_height: %lu, pool_latest_heights size: %u, des net: %u, info: %s",
             msg_ptr->header.hash64(),
             network_id,
             sync_msg.sync_value_req().latest_sync_item().globl_pool_height(),
             sync_msg.sync_value_req().latest_sync_item().pool_latest_heights_size(),
-            latest_sync_item.network_id());
+            latest_sync_item.network_id(),
+            ProtobufToJson(latest_sync_item).c_str());
         if (network::IsSameToLocalShard(latest_sync_item.network_id())) {
             std::shared_ptr<view_block::protobuf::ViewBlockItem> view_block_ptr = nullptr;
             if (latest_sync_item.has_globl_pool_height()) {
@@ -784,6 +785,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
         auto iter = sync_dht_map.find(network);
         if (iter == sync_dht_map.end()) {
             sync_dht_map[network] = sync::protobuf::SyncMessage();
+            sync_dht_map[network].set_network_id(network);
         }
 
         auto* sync_req = sync_dht_map[network].mutable_sync_value_req();

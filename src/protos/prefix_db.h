@@ -488,7 +488,7 @@ public:
             uint64_t height,
             view_block::protobuf::ViewBlockItem* block) {
         std::string block_hash;
-        SETH_DEBUG("GetBlockWithHeight.");
+        SETH_DEBUG("GetBlockWithHeight: %u_%u_%lu", sharding_id, pool_index, height);
         if (!GetBlockHashWithBlockHeight(sharding_id, pool_index, height, &block_hash)) {
             return false;
         }
