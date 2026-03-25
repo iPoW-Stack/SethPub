@@ -116,44 +116,44 @@ uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
         has_missing_height_ = false;
     }
 
-    // if (invalid_heights.size() > 0) {
-    //     auto net_id = common::GlobalInfo::Instance()->network_id();
-    //     if (net_id >= network::kConsensusWaitingShardBeginNetworkId &&
-    //         net_id < network::kConsensusWaitingShardEndNetworkId) {
-    //         net_id -= network::kConsensusWaitingShardOffset;
-    //     }
+    if (invalid_heights.size() > 0) {
+        auto net_id = common::GlobalInfo::Instance()->network_id();
+        if (net_id >= network::kConsensusWaitingShardBeginNetworkId &&
+            net_id < network::kConsensusWaitingShardEndNetworkId) {
+            net_id -= network::kConsensusWaitingShardOffset;
+        }
 
-    //     if (net_id < network::kRootCongressNetworkId || net_id >= network::kConsensusShardEndNetworkId) {
-    //         return 0;
-    //     }
+        if (net_id < network::kRootCongressNetworkId || net_id >= network::kConsensusShardEndNetworkId) {
+            return 0;
+        }
 
-    //     uint64_t min_height = invalid_heights[0];
-    //     uint32_t synced_count = 0;
-    //     for (uint64_t i = min_height; i < latest_height_; ++i) {
-    //         if (prefix_db_->BlockExists(net_id, pool_index_, i)) {
-    //             SETH_DEBUG("block exists now add sync height 1, %u_%u_%lu", 
-    //                 net_id,
-    //                 pool_index_,
-    //                 i);
-    //             height_tree_ptr_->Set(i);
-    //             continue;
-    //         }
+        uint64_t min_height = invalid_heights[0];
+        uint32_t synced_count = 0;
+        for (uint64_t i = min_height; i < latest_height_; ++i) {
+            if (prefix_db_->BlockExists(net_id, pool_index_, i)) {
+                SETH_DEBUG("block exists now add sync height 1, %u_%u_%lu", 
+                    net_id,
+                    pool_index_,
+                    i);
+                height_tree_ptr_->Set(i);
+                continue;
+            }
 
-    //         SETH_DEBUG("now add sync height 1, %u_%u_%lu", 
-    //             net_id,
-    //             pool_index_,
-    //             i);
-    //         kv_sync_->AddSyncHeight(
-    //             net_id,
-    //             pool_index_,
-    //             i,
-    //             sync::kSyncHigh);
-    //         ++synced_count;
-    //         if (synced_count >= 128u) {
-    //             break;
-    //         }
-    //     }
-    // }
+            SETH_DEBUG("now add sync height 1, %u_%u_%lu", 
+                net_id,
+                pool_index_,
+                i);
+            kv_sync_->AddSyncHeight(
+                net_id,
+                pool_index_,
+                i,
+                sync::kSyncHigh);
+            ++synced_count;
+            if (synced_count >= 128u) {
+                break;
+            }
+        }
+    }
 
     return invalid_heights.size();
 }

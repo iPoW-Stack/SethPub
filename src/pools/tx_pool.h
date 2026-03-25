@@ -69,13 +69,14 @@ public:
     void SyncBlock();
     void TxOver(view_block::protobuf::ViewBlockItem& view_block);
     bool PoolChainIsFull(uint64_t height) const {
-        if (latest_height_ < height) {
-            SETH_DEBUG("pool: %d, check pool chain is full height: %lu, latest_height_: %lu", 
-                pool_index_, height, latest_height_);
-            return false;
-        }
+        // if (latest_height_ < height) {
+        //     SETH_DEBUG("pool: %d, check pool chain is full height: %lu, latest_height_: %lu", 
+        //         pool_index_, height, latest_height_);
+        //     return false;
+        // }
 
-        return !has_missing_height_ ;
+        // return !has_missing_height_ ;
+        return true;
     }
 
     bool TxKeyExists(const std::string& addr, uint64_t nonce, const std::string& key) {
