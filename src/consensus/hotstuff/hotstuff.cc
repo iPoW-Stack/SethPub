@@ -2303,7 +2303,7 @@ void Hotstuff::TryRecoverFromStuck(
         ADD_DEBUG_PROCESS_TIMESTAMP();
         SETH_DEBUG("leader try recover from stuck, pool: %u, out_view: %lu, last_vote_view_: %lu",
             pool_idx_, out_view, last_vote_view_);
-        if (last_vote_view_ <= out_view) {
+        if (last_vote_view_ < out_view) {
             Propose(out_view, leader, nullptr, nullptr, msg_ptr);
         }
         ADD_DEBUG_PROCESS_TIMESTAMP();
