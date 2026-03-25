@@ -101,6 +101,7 @@ uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
     height_tree_ptr_->GetMissingHeights(&invalid_heights, latest_height_);
     SETH_DEBUG("%u get invalid heights size: %u, latest_height_: %lu", 
         pool_index_, invalid_heights.size(), latest_height_);
+    uint32_t synced_count = 0;
     if (invalid_heights.size() > 0) {
         auto net_id = common::GlobalInfo::Instance()->network_id();
         if (net_id >= network::kConsensusWaitingShardBeginNetworkId &&
@@ -113,7 +114,6 @@ uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
         }
 
         uint64_t min_height = invalid_heights[0];
-        uint32_t synced_count = 0;
         for (uint64_t i = min_height; i < latest_height_; ++i) {
             if (prefix_db_->BlockExists(net_id, pool_index_, i)) {
                 SETH_DEBUG("block exists now add sync height 1, %u_%u_%lu", 
