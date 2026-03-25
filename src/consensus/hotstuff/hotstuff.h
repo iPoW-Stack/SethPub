@@ -300,7 +300,7 @@ private:
         // auto members = elect_item->valid_leaders();
         pool_tx_leader_.store(nullptr);
         auto members = Members(common::GlobalInfo::Instance()->network_id());
-        if (members == nullptr) {
+        if (members == nullptr || members->empty()) {
             return nullptr;
         }
 
