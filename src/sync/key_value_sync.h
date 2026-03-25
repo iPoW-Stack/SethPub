@@ -160,14 +160,14 @@ private:
     static const uint32_t kEachTimerHandleCount = 64u;
     static const uint32_t kCacheSyncKeyValueCount = 1024000u;
     static const uint32_t kSyncCount = 5u;
+    static const uint32_t kMaxSyncLatestNotRootCount = 1024u;
 
     std::shared_ptr<pools::TxPoolManager> tx_pool_mgr_ = nullptr;
     common::ThreadSafeQueue<SyncItemPtr> item_queues_[common::kMaxThreadCount];
     common::ThreadSafeQueue<ViewBlockPtr> broadcast_global_blocks_queues_[common::kMaxThreadCount];
     common::UniqueMap<std::string, SyncItemPtr, kCacheSyncKeyValueCount> synced_map_;
     std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::pair<bool, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>>> synced_res_map_;
-    common::SpinMutex synced_res_map_mutex_;
-
+    uint32_t not_root_synced_res_map_count_ = 0;
     common::Tick kv_tick_;
     common::ThreadSafeQueue<std::shared_ptr<transport::TransportMessage>> kv_msg_queue_;
     uint64_t elect_net_heights_map_[network::kConsensusShardEndNetworkId] = { 0 };

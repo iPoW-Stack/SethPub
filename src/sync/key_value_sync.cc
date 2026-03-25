@@ -720,6 +720,10 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
             }
 
             synced_res_map_[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->block_info().height()] = std::make_pair((verify_res == 0), pb_vblock);
+            if (pb_vblock->qc().network_id() != network::kRootCongressNetworkId) {
+                ++not_root_synced_res_map_count_;
+            }
+
             if (verify_res != 0) {
                 SETH_DEBUG("failed check viewblock handle network new view "
                     "block: %u_%u_%lu, height: %lu key: %s, is broadcast: %d", 
@@ -782,6 +786,10 @@ void KeyValueSync::SyncAllLatestBlocks() {
     std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>> res_map;
     std::map<uint32_t, sync::protobuf::SyncMessage> sync_dht_map;
     auto add_sync_item = [&](uint32_t network, uint32_t pool_index, uint64_t height, bool global) {
+        if (network != network::kRootCongressNetworkId && not_root_synced_res_map_count_ >= kMaxSyncLatestNotRootCount) {
+            return;
+        }
+        
         auto iter = sync_dht_map.find(network);
         if (iter == sync_dht_map.end()) {
             sync_dht_map[network] = sync::protobuf::SyncMessage();
@@ -835,7 +843,11 @@ void KeyValueSync::SyncAllLatestBlocks() {
 
             auto latest_height_iter = pool_iter->second.find(latest_height);
             if (latest_height_iter != pool_iter->second.end()) {
+                auto now_size = pool_iter->second.size();
                 pool_iter->second.erase(pool_iter->second.begin(), latest_height_iter);
+                if (network_id != network::kRootCongressNetworkId) {
+                    not_root_synced_res_map_count_ -= now_size - pool_iter->second.size();
+                }
             }
 
             auto height_iter = pool_iter->second.find(++latest_height);
@@ -882,7 +894,11 @@ void KeyValueSync::SyncAllLatestBlocks() {
 
         auto latest_height_iter = pool_iter->second.find(latest_height);
         if (latest_height_iter != pool_iter->second.end()) {
+            auto now_size = pool_iter->second.size();
             pool_iter->second.erase(pool_iter->second.begin(), latest_height_iter);
+            if (network_id != network::kRootCongressNetworkId) {
+                not_root_synced_res_map_count_ -= now_size - pool_iter->second.size();
+            }
         }
 
         auto height_iter = pool_iter->second.find(++latest_height);
