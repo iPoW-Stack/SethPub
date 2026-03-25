@@ -785,7 +785,8 @@ void KeyValueSync::SyncAllLatestBlocks() {
         auto iter = sync_dht_map.find(network);
         if (iter == sync_dht_map.end()) {
             sync_dht_map[network] = sync::protobuf::SyncMessage();
-            sync_dht_map[network].set_network_id(network);
+            auto* sync_req = sync_dht_map[network].mutable_sync_value_req();
+            sync_req->set_network_id(network);
         }
 
         auto* sync_req = sync_dht_map[network].mutable_sync_value_req();
