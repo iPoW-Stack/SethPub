@@ -293,21 +293,21 @@ void TxPoolManager::ConsensusTimerMessage() {
         prev_sync_height_tree_tm_ms_ = now_tm_ms + kFlushHeightTreePeriod;
     }
 
-    // if (prev_sync_check_ms_ < now_tm_ms) {
-    //     SyncMinssingHeights(now_tm_ms);
-    //     SyncMinssingRootHeights(now_tm_ms);
-    //     prev_sync_check_ms_ = now_tm_ms + kSyncMissingBlockPeriod;
-    // }
+    if (prev_sync_check_ms_ < now_tm_ms) {
+        SyncMinssingHeights(now_tm_ms);
+        SyncMinssingRootHeights(now_tm_ms);
+        prev_sync_check_ms_ = now_tm_ms + kSyncMissingBlockPeriod;
+    }
 
-    // if (prev_sync_heights_ms_ < now_tm_ms) {
-    //     SyncPoolsMaxHeight();
-    //     prev_sync_heights_ms_ = now_tm_ms + kSyncPoolsMaxHeightsPeriod;
-    // }
+    if (prev_sync_heights_ms_ < now_tm_ms) {
+        SyncPoolsMaxHeight();
+        prev_sync_heights_ms_ = now_tm_ms + kSyncPoolsMaxHeightsPeriod;
+    }
 
-    // if (prev_sync_cross_ms_ < now_tm_ms) {
-    //     SyncCrossPool();
-    //     prev_sync_cross_ms_ = now_tm_ms + kSyncCrossPeriod;
-    // }
+    if (prev_sync_cross_ms_ < now_tm_ms) {
+        SyncCrossPool();
+        prev_sync_cross_ms_ = now_tm_ms + kSyncCrossPeriod;
+    }
 
     auto etime = common::TimeUtils::TimestampMs();
     if (etime - now_tm_ms >= 10) {

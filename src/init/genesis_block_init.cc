@@ -1403,6 +1403,7 @@ void GenesisBlockInit::AddBlockItemToCache(
     pool_info.set_hash(view_block->qc().view_block_hash());
     pool_info.set_timestamp(block->timestamp());
     pool_info.set_view(view_block->qc().view());
+    pool_info.set_synced_height(block->height());
     prefix_db_->SaveLatestPoolInfo(
         view_block->qc().network_id(), view_block->qc().pool_index(), pool_info, db_batch);
     SETH_DEBUG("success add pool latest info: %u_%u_%lu, block height: %lu, tm: %lu",

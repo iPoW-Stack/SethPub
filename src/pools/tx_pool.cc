@@ -69,17 +69,8 @@ void TxPool::InitHeightTree() {
 
     SETH_DEBUG("init height tree success, net_id: %u, pool_index_: %u, latest_height_: %lu, synced_height_: %lu", 
         net_id, pool_index_, latest_height_, synced_height_);
-    std::vector<uint64_t> invalid_heights;
-    height_tree_ptr->GetMissingHeights(&invalid_heights, latest_height_);
-    SETH_DEBUG("%u get invalid heights size: %u, latest_height_: %lu", 
-        pool_index_, invalid_heights.size(), latest_height_);
-    if (invalid_heights.size() > 0 && invalid_heights[0] <= latest_height_) {
-        has_missing_height_ = true;
-    } else {
-        has_missing_height_ = false;
-    }
-
     height_tree_ptr_ = height_tree_ptr;
+    SyncMissingBlocks(common::TimeUtils::TimestampMs());
 }
 
 uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
@@ -110,12 +101,6 @@ uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
     height_tree_ptr_->GetMissingHeights(&invalid_heights, latest_height_);
     SETH_DEBUG("%u get invalid heights size: %u, latest_height_: %lu", 
         pool_index_, invalid_heights.size(), latest_height_);
-    if (invalid_heights.size() > 0 && invalid_heights[0] <= latest_height_) {
-        has_missing_height_ = true;
-    } else {
-        has_missing_height_ = false;
-    }
-
     if (invalid_heights.size() > 0) {
         auto net_id = common::GlobalInfo::Instance()->network_id();
         if (net_id >= network::kConsensusWaitingShardBeginNetworkId &&
@@ -136,6 +121,7 @@ uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
                     pool_index_,
                     i);
                 height_tree_ptr_->Set(i);
+                std::erase(invalid_heights, i);
                 continue;
             }
 
@@ -153,6 +139,12 @@ uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
                 break;
             }
         }
+    }
+
+    if (synced_count > 0) {
+        has_missing_height_ = true;
+    } else {
+        has_missing_height_ = false;
     }
 
     return invalid_heights.size();
