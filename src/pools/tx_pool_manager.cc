@@ -293,11 +293,14 @@ void TxPoolManager::ConsensusTimerMessage() {
         prev_sync_height_tree_tm_ms_ = now_tm_ms + kFlushHeightTreePeriod;
     }
 
-    // if (prev_sync_check_ms_ < now_tm_ms) {
-    //     SyncMinssingHeights(now_tm_ms);
-    //     SyncMinssingRootHeights(now_tm_ms);
-    //     prev_sync_check_ms_ = now_tm_ms + kSyncMissingBlockPeriod;
-    // }
+    if (prev_sync_check_ms_ < now_tm_ms) {
+        for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
+            tx_pool_[i].SyncMissingBlocks(now_tm_ms);
+        }
+        // SyncMinssingHeights(now_tm_ms);
+        // SyncMinssingRootHeights(now_tm_ms);
+        prev_sync_check_ms_ = now_tm_ms + kSyncMissingBlockPeriod;
+    }
 
     // if (prev_sync_heights_ms_ < now_tm_ms) {
     //     SyncPoolsMaxHeight();
