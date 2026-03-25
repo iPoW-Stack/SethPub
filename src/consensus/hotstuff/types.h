@@ -32,7 +32,7 @@ static const double ViewDurationMaxTimeoutMs = 60000;
 static const double ViewDurationMultiplier = 1.3; // The cost of causing a freeze after a large election is high. Once it gets stuck, the recovery time is long (e.g., inconsistent leaders). If it is too small, the CPU will not be able to come down for a long time when there are no transactions.
 
 
-enum class Status : int {
+enum Status : int {
   kSuccess = 0,
   kError = 1,
   kNotFound = 2,
