@@ -536,7 +536,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
                 last_leader_propose_view_ = 0llu;
             }
         }
-        
+
         SETH_DEBUG("handle propose failed hash: %lu, propose_debug: %s", 
             msg_ptr->header.hash64(), ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
     }
@@ -2258,7 +2258,6 @@ void Hotstuff::TryRecoverFromStuck(
         has_user_tx_tag_ = true;
     }
 
-
     // if (GetLocalMemberIdx() == common::kInvalidUint32) {
     //     // SETH_DEBUG("GetLocalMemberIdx() == common::kInvalidUint32, pool: %u", pool_idx_);
     //     return;
@@ -2300,10 +2299,12 @@ void Hotstuff::TryRecoverFromStuck(
     View out_view = 0;
     auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view);
     if (!leader) {
-        // SETH_DEBUG("pool index: %d, no leader", pool_idx_);
+        SETH_DEBUG("pool index: %d, no leader", pool_idx_);
         return;
     }
     
+    SETH_DEBUG("pool index: %d, found leader: %d, local_index: %d",
+        pool_idx_, leader->index, local_idx);
     if (leader && leader->index == local_idx) {
         if (leader->pubkey != crypto_->security()->GetPublicKey()) {
             SETH_ERROR("leader pubkey: %s != local pubkey: %s, pool index: %d",
