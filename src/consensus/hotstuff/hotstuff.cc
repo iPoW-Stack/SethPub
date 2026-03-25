@@ -213,7 +213,11 @@ Status Hotstuff::Propose(
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (latest_leader_propose_message_ &&
             latest_leader_propose_message_->latest_qc_view < latest_qc_item_ptr_->view()) {
-        SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
+        SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr, "
+            "latest_leader_propose_message_->latest_qc_view: %lu, latest_qc_item_ptr_->view: %lu", 
+            pool_idx_,
+            latest_leader_propose_message_->latest_qc_view,
+            latest_qc_item_ptr_->view());
         latest_leader_propose_message_ = nullptr;
         last_leader_propose_view_ = 0llu;
     }
@@ -592,7 +596,8 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
 
     auto latest_view_block_ptr = view_block_chain()->HighViewBlock();
     if (msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size() == 0) {
-        if (latest_view_block_ptr->block_info().tx_list_size() == 0) {
+        if (latest_view_block_ptr->block_info().tx_list_size() == 0 && 
+                latest_view_block_ptr->qc().view() == pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().tc().view()) {
             ADD_DEBUG_PROCESS_TIMESTAMP();
             SETH_INFO("pool: %d, high view block tx size is 0, and not timeout "
                 "and propose tx size is 0, ignore.", pool_idx_);
@@ -600,7 +605,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         }
     }
     
-SETH_DEBUG("handle propose called hash: %lu, propose_debug: %s", msg_ptr->header.hash64(), 
+    SETH_DEBUG("handle propose called hash: %lu, propose_debug: %s", msg_ptr->header.hash64(), 
             ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
     // assert(msg_ptr->header.hotstuff().pro_msg().view_item().qc().view_block_hash().empty());
 #ifndef NDEBUG
@@ -2298,7 +2303,7 @@ void Hotstuff::TryRecoverFromStuck(
         ADD_DEBUG_PROCESS_TIMESTAMP();
         SETH_DEBUG("leader try recover from stuck, pool: %u, out_view: %lu, last_vote_view_: %lu",
             pool_idx_, out_view, last_vote_view_);
-        if (last_vote_view_ < out_view) {
+        if (last_vote_view_ <= out_view) {
             Propose(out_view, leader, nullptr, nullptr, msg_ptr);
         }
         ADD_DEBUG_PROCESS_TIMESTAMP();
