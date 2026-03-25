@@ -308,7 +308,6 @@ Status Hotstuff::Propose(
             latest_leader_propose_message_->latest_qc_view,
             latest_qc_item_ptr_->view());
 #endif
-        // HandleProposeMsg(latest_leader_propose_message_);
         latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
         return Status::kSuccess;
     }
@@ -452,8 +451,6 @@ Status Hotstuff::Propose(
         latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
     }
 
-    // ADD_DEBUG_PROCESS_TIMESTAMP();
-    // HandleProposeMsg(tmp_msg_ptr);
     ADD_DEBUG_PROCESS_TIMESTAMP();
 #ifndef NDEBUG
     auto t7 = common::TimeUtils::TimestampMs();
@@ -530,8 +527,24 @@ void Hotstuff::BroadcastGlobalPoolBlock(const std::shared_ptr<ViewBlock>& v_bloc
 }
 
 void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
+    int res = HandleProposeMsgImpl(msg_ptr);
+    if (res != Status::kSuccess) {
+        if (res == Status::kLeaderInvalid) {
+            if (msg_ptr->is_leader) {
+                SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
+                latest_leader_propose_message_ = nullptr;
+                last_leader_propose_view_ = 0llu;
+            }
+        }
+        
+        SETH_DEBUG("handle propose failed hash: %lu, propose_debug: %s", 
+            msg_ptr->header.hash64(), ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
+    }
+}
+
+int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
     if (!view_block_chain()->HighViewBlock()) {
-        return;
+        return Status::kLeaderInvalid;
     }
     
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -544,7 +557,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
             msg_ptr->header.hash64(), 
             ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
         assert(false);
-        return;
+        return Status::kLeaderInvalid;
     }
 
     auto st = HandleTC(pro_msg_wrap);
@@ -553,7 +566,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
             msg_ptr->header.hash64(), 
             ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
         // assert(false);
-        return;
+        return Status::kLeaderInvalid;
     }
 
     // if (msg_ptr->header.hotstuff().pro_msg().view_item().qc().tm_height() != tm_block_mgr_->LatestTimestampHeight()) {
@@ -573,7 +586,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
                     msg_ptr->header.hotstuff().pro_msg().tc().view(), 
                     view_prev_vote_tm, now_tm, msg_ptr->header.hash64(),
                     ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
-                return;
+                return Status::kLeaderInvalid;
             }
         }
     }
@@ -591,7 +604,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
             msg_ptr->header.hotstuff().pro_msg().tc().sign_x()).c_str(),
             ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
         ADD_DEBUG_PROCESS_TIMESTAMP();
-        return;
+        return Status::kLeaderInvalid;
     }
 
     auto latest_view_block_ptr = view_block_chain()->HighViewBlock();
@@ -601,7 +614,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
             ADD_DEBUG_PROCESS_TIMESTAMP();
             SETH_INFO("pool: %d, high view block tx size is 0, and not timeout "
                 "and propose tx size is 0, ignore.", pool_idx_);
-            return;
+            return Status::kLeaderInvalid;
         }
     }
     
@@ -625,7 +638,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
 #endif
     if (GetLocalMemberIdx() == common::kInvalidUint32) {
         ADD_DEBUG_PROCESS_TIMESTAMP();
-        return;
+        return Status::kLeaderInvalid;
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -665,7 +678,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
             pool_idx_, view_item.qc().leader_idx(), 
             msg_ptr->header.hotstuff().pro_msg().tc().view(),
             "");
-        return;
+        return Status::kLeaderInvalid;
     }
 
     if (view_item.qc().view() != out_view) {
@@ -673,7 +686,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
             "leader view: %lu, propose view: %lu, hash: %lu, propose_debug: %s",
             pool_idx_, out_view, view_item.qc().view(), pro_msg_wrap->msg_ptr->header.hash64(),
             "");
-        return;
+        return Status::kLeaderInvalid;
     }
 
     pro_msg_wrap->leader = leader;
@@ -687,7 +700,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     if (st != Status::kSuccess) {
         // HandleProposeMsgStep_VerifyQC(pro_msg_wrap);
         ADD_DEBUG_PROCESS_TIMESTAMP();
-        return;
+        return Status::kLeaderInvalid;
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -716,6 +729,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
+    return st;
 }
 
 Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> pro_msg_wrap) {
@@ -726,7 +740,7 @@ Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> p
         SETH_DEBUG("HandleProposeMsgStep_VerifyLeader failed hash: %lu, propose_debug: %s",
             msg_ptr->header.hash64(),
             ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
-        return st;
+        return Status::kLeaderInvalid;
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -735,7 +749,7 @@ Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> p
         SETH_DEBUG("HandleProposeMsgStep_VerifyViewBlock failed hash: %lu, propose_debug: %s",
             msg_ptr->header.hash64(),
             ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
-        return st;
+        return Status::kLeaderInvalid;
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -744,7 +758,7 @@ Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> p
         SETH_DEBUG("HandleProposeMsgStep_TxAccept failed hash: %lu, propose_debug: %s",
             msg_ptr->header.hash64(),
             ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
-        return st;
+        return Status::kLeaderInvalid;
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -753,7 +767,7 @@ Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> p
         SETH_DEBUG("HandleProposeMsgStep_ChainStore failed hash: %lu, propose_debug: %s",
             msg_ptr->header.hash64(),
             ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
-        return st;
+        return Status::kLeaderInvalid;
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -762,7 +776,7 @@ Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> p
         SETH_DEBUG("HandleProposeMsgStep_Vote failed hash: %lu, propose_debug: %s",
             msg_ptr->header.hash64(),
             ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
-        return st;
+        return Status::kLeaderInvalid;
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -771,7 +785,6 @@ Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> p
         ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
     return Status::kSuccess;
 }
-
 
 Status Hotstuff::HandleProposeMsgStep_HasVote(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
     auto& view_item = *pro_msg_wrap->view_block_ptr;

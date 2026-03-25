@@ -117,6 +117,7 @@ public:
 
     Status Start();
     void HandleProposeMsg(const transport::MessagePtr& msg_ptr);
+    int HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr);
     void HandlePreResetTimerMsg(const transport::MessagePtr& msg_ptr);
     void HandleVoteMsg(const transport::MessagePtr& msg_ptr);
     Status Propose(

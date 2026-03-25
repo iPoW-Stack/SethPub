@@ -49,6 +49,7 @@ enum class Status : int {
   kLackOfParentBlock = 13,
   kNotExpectHash = 14,
   kInvalidOpposedCount = 15,
+  kLeaderInvalid = 16,
 };
 
 enum WaitingBlockType {
