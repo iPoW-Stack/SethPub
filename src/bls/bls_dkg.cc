@@ -61,16 +61,14 @@ void BlsDkg::Destroy() {
 void BlsDkg::TimerMessage() {
     auto now_tm_us = common::TimeUtils::TimestampUs();
     PopBlsMessage();
-    if (!has_broadcast_verify_ &&
-            now_tm_us < (begin_time_us_ + kDkgPeriodUs * 4) &&
-            now_tm_us > (begin_time_us_ + ver_offset_)) {
+    if (!has_broadcast_verify_) {
         SETH_WARN("now call send verify g2.");
         BroadcastVerfify();
         has_broadcast_verify_ = true;
     }
 
     if (has_broadcast_verify_ && !has_broadcast_swapkey_ && 
-            now_tm_us < (begin_time_us_ + kDkgPeriodUs * 7) &&
+            now_tm_us < (begin_time_us_ + kDkgPeriodUs * 5) &&
             now_tm_us >(begin_time_us_ + swap_offset_)) {
         SETH_WARN("now call send swap sec key.");
         SwapSecKey();
@@ -122,21 +120,18 @@ void BlsDkg::OnNewElectionBlock(
     uint64_t end_tm_point = (latest_timeblock_info->lastest_time_block_tm +
         common::kTimeBlockCreatePeriodSeconds) * 1000000lu;
     begin_time_us_ = common::TimeUtils::TimestampUs();
-    ver_offset_ = 0;
-    swap_offset_ = kDkgPeriodUs * 4;
-    finish_offset_ = kDkgPeriodUs * 7;
+    swap_offset_ = 0;
+    finish_offset_ = kDkgPeriodUs * 5;
     auto bls_period = kTimeBlsPeriodSeconds * 1000l * 1000l;
     if (begin_time_us_ < tmblock_tm && end_tm_point > tmblock_tm) {
         kDkgPeriodUs = (end_tm_point - tmblock_tm) / 10l;
         begin_time_us_ = tmblock_tm;
-        ver_offset_ = 0;
-        swap_offset_ = kDkgPeriodUs * 4;
-        finish_offset_ = kDkgPeriodUs * 7;
+        swap_offset_ = 0;
+        finish_offset_ = kDkgPeriodUs * 5;
     }
 
-    ver_offset_ += (common::Random::RandomUint32() % (kDkgPeriodUs / 1000000lu)) * 1000000lu;
-    swap_offset_ += (common::Random::RandomUint32() % (kDkgPeriodUs / 1000000lu)) * 1000000lu;
-    finish_offset_ += (common::Random::RandomUint32() % (kDkgPeriodUs /1000000lu)) * 1000000lu;
+    swap_offset_ += (common::Random::RandomUint32() % (3 * kDkgPeriodUs / 1000000lu)) * 1000000lu;
+    finish_offset_ += (common::Random::RandomUint32() % (3 * kDkgPeriodUs /1000000lu)) * 1000000lu;
     SETH_WARN("bls time point now: %lu, time block tm: %lu, begin_time_sec_: %lu, "
         "kDkgPeriodUs: %lu, ver_offset_: %lu, swap_offset_: %lu, "
         "finish_offset_: %lu, elect_hegiht_: %lu",

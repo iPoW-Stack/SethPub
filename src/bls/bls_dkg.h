@@ -138,14 +138,13 @@ private:
 #endif
         auto now_tm_us = common::TimeUtils::TimestampUs();
        SETH_DEBUG("IsSwapKeyPeriod begin_time_us_: %lu, now_tm_us: %lu, "
-            "kDkgPeriodUs: %lu, now_tm_us > (begin_time_us_ + kDkgPeriodUs * 4): %d, now_tm_us < (begin_time_us_ + kDkgPeriodUs * 7): %d",
+            "kDkgPeriodUs: %lu, now_tm_us > 0: %d, now_tm_us < (begin_time_us_ + kDkgPeriodUs * 5): %d",
             begin_time_us_,
             now_tm_us,
             kDkgPeriodUs,
-            (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 4)),
-            (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 7)));
-        if (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 7) &&
-                now_tm_us >= (begin_time_us_ + kDkgPeriodUs * 4)) {
+            0,
+            (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 5)));
+        if (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 5)) {
             return true;
         }
 
@@ -158,14 +157,14 @@ private:
 #endif
         auto now_tm_us = common::TimeUtils::TimestampUs();
         SETH_DEBUG("IsFinishPeriod begin_time_us_: %lu, now_tm_us: %lu, "
-            "kDkgPeriodUs: %lu, now_tm_us > (begin_time_us_ + kDkgPeriodUs * 4): %d, now_tm_us < (begin_time_us_ + kDkgPeriodUs * 7): %d",
+            "kDkgPeriodUs: %lu, now_tm_us > (begin_time_us_ + kDkgPeriodUs * 5): %d, now_tm_us < (begin_time_us_ + kDkgPeriodUs * 10): %d",
             begin_time_us_,
             now_tm_us,
             kDkgPeriodUs,
-            (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 7)),
+            (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 5)),
             (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 10)));
         if (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 10) &&
-            now_tm_us >= (begin_time_us_ + kDkgPeriodUs * 7)) {
+            now_tm_us >= (begin_time_us_ + kDkgPeriodUs * 5)) {
             return true;
         }
 
