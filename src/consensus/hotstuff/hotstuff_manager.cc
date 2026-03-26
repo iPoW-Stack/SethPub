@@ -153,13 +153,14 @@ int HotstuffManager::VerifySyncedViewBlock(const view_block::protobuf::ViewBlock
             pb_vblock.qc().pool_index(),
             pb_vblock.block_info().height(),
             common::Encode::HexEncode(pb_vblock.qc().view_block_hash()).c_str());
-        return -1;
+        return 2;
     }
     
     auto s = VerifyViewBlockWithCommitQC(pb_vblock);
     if (s != Status::kSuccess) {
         return s == Status::kElectItemNotFound ? 1 : -1;
     }
+    
     return 0;
 }
 

@@ -1512,6 +1512,10 @@ public:
         std::string block_hash;
         auto st = db_->Get(key, &block_hash);
         if (!st.ok()) {
+            SETH_DEBUG("failed get elect height with block hash: %s, sharding id: %u, elect height: %lu",
+                common::Encode::HexEncode(block_hash).c_str(), 
+                sharding_id, 
+                elect_height);
             return false;
         }
         

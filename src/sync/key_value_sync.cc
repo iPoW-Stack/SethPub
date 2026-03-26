@@ -711,12 +711,18 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
 
             assert(!pb_vblock->qc().sign_x().empty());
             if (!view_block_synced_callback_) {
-                return;
+                break;
             }
 
             int verify_res = view_block_synced_callback_(*pb_vblock);
             if (verify_res == -1) {
-                return;
+                break;
+            }
+
+            if (verify_res == 2) {
+                responsed_keys_.add(key);
+                synced_map_.erase(key);
+                break;
             }
 
             synced_res_map_[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->block_info().height()] = std::make_pair((verify_res == 0), pb_vblock);
@@ -789,7 +795,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
         if (network != network::kRootCongressNetworkId && not_root_synced_res_map_count_ >= kMaxSyncLatestNotRootCount) {
             return;
         }
-        
+
         auto iter = sync_dht_map.find(network);
         if (iter == sync_dht_map.end()) {
             sync_dht_map[network] = sync::protobuf::SyncMessage();
