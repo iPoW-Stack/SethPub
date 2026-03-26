@@ -109,7 +109,7 @@ public:
         latest_elect_height_ = elect_height;
         consecutive_failures_ = 0;
         update_latest_view_tm_ = true;
-        if (latest_elect_height_ > latest_qc_item_ptr_->elect_height()) {
+        if (latest_qc_item_ptr_ == nullptr || latest_elect_height_ > latest_qc_item_ptr_->elect_height()) {
             last_stable_leader_member_index_ = GetEpochLeaderIndex();
         }
     }
