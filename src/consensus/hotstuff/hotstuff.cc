@@ -110,7 +110,7 @@ bool Hotstuff::InitLoadLatestBlock(
         assert(temp_ptr);
         if (network::IsSameToLocalShard(latest_view_block->qc().network_id())) {
             assert(!latest_view_block->qc().sign_x().empty());
-            latest_qc_item_ptr_ = std::make_shared<view_block::protobuf::QcItem>(latest_view_block->qc());
+            UpdateLatestQcItemPtr(std::make_shared<view_block::protobuf::QcItem>(latest_view_block->qc()));
         }
 
         view_block_chain->SetLatestCommittedBlock(temp_ptr);
@@ -917,7 +917,7 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
         if (latest_qc_item_ptr_ == nullptr ||
                 tc_ptr->view() >= latest_qc_item_ptr_->view()) {
             assert(IsQcTcValid(*tc_ptr));
-            latest_qc_item_ptr_ = tc_ptr;
+            UpdateLatestQcItemPtr(tc_ptr);
         }
 
         SETH_DEBUG("commit use time: %lu", (common::TimeUtils::TimestampMs() - btime));
@@ -1494,7 +1494,7 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
         (common::TimeUtils::TimestampMs() - view_block_info_ptr->b_tm_ms));
     ADD_DEBUG_PROCESS_TIMESTAMP();
     latest_propose_msg_tm_ms_ = 0;
-    latest_qc_item_ptr_ = qc_item_ptr;
+    UpdateLatestQcItemPtr(qc_item_ptr);
     auto leader = LocalMember();
     if (leader) {
         Propose(qc_item_ptr->view() + 1, leader, qc_item_ptr, nullptr, msg_ptr);
@@ -1656,8 +1656,7 @@ void Hotstuff::HandleSyncedViewBlock(
         if (latest_qc_item_ptr_ == nullptr ||
                 vblock->qc().view() >= latest_qc_item_ptr_->view()) {
             if (IsQcTcValid(vblock->qc())) {
-                latest_qc_item_ptr_ = std::make_shared<view_block::protobuf::QcItem>(vblock->qc());
-                
+                UpdateLatestQcItemPtr(std::make_shared<view_block::protobuf::QcItem>(vblock->qc()));
             }
         }
         TryCommit(view_block_chain(), msg_ptr, *latest_qc_item_ptr_);

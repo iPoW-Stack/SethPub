@@ -109,6 +109,9 @@ public:
         latest_elect_height_ = elect_height;
         consecutive_failures_ = 0;
         update_latest_view_tm_ = true;
+        if (latest_elect_height_ > latest_qc_item_ptr_->elect_height()) {
+            last_stable_leader_member_index_ = GetEpochLeaderIndex();
+        }
     }
 
     void OnTimeBlock() {
@@ -226,6 +229,13 @@ private:
         const std::string& expect_view_block_hash);
     void StartInit();
     Status HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr);
+    void UpdateLatestQcItemPtr(std::shared_ptr<view_block::protobuf::QcItem> qc_ptr) {
+        if (qc_ptr->elect_height() >= latest_elect_height_ && qc_ptr->leader_idx() != common::kInvalidUint32) {
+            last_stable_leader_member_index_ = qc_ptr->leader_idx();
+        }
+
+        latest_qc_item_ptr_ = qc_ptr;
+    }
 
     bool HandleProposeMsgCondition(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
         // Only new v_block is allowed to execute
@@ -312,11 +322,10 @@ private:
 
         // *out_view = high_view_block->qc().view() + 1;
         // return (*members)[pool_idx_ % members->size()];
-        last_stable_leader_member_index_ = GetEpochLeaderIndex();
         auto now_tm = common::TimeUtils::TimestampSeconds();
         if (now_tm <= common::GlobalInfo::Instance()->leader_change_init_tm()) {
             if (high_view_block->qc().elect_height() < latest_elect_height_) {
-                *out_view = high_view_block->qc().view() + latest_elect_height_;
+                *out_view = high_view_block->qc().view() + latest_elect_height_ + 1;
             } else {
                 *out_view = high_view_block->qc().view() + 1;
             }
@@ -535,7 +544,7 @@ private:
     std::shared_ptr<ViewBlock> latest_voted_view_block_ = nullptr;
 
     uint32_t consecutive_failures_ = 0u;
-    uint32_t last_stable_leader_member_index_ = 0u;
+    std::atomic<uint32_t> last_stable_leader_member_index_ = 0u;
     uint64_t latest_elect_height_ = 0llu;
     common::LRUMap<uint64_t, uint64_t> view_with_block_tm_map_{16};
     common::LRUMap<uint64_t, uint64_t> laste_vote_prev_view_tm_{16};

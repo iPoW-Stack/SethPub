@@ -776,7 +776,7 @@ int GenesisBlockInit::CreateAllQc(
     commit_qc->set_network_id(network_id);
     commit_qc->set_pool_index(pool_index);
     commit_qc->set_view(view);
-    commit_qc->set_leader_idx(0);
+    commit_qc->set_leader_idx(common::kInvalidUint32);
     commit_qc->set_elect_height(1);
     auto view_block_hash = hotstuff::GetBlockHash(*view_block_ptr);
     commit_qc->set_view_block_hash(view_block_hash);
