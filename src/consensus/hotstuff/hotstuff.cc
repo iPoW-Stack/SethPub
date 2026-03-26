@@ -2274,10 +2274,10 @@ void Hotstuff::TryRecoverFromStuck(
                 hight_view_block->qc().view() + 1,
                 sync::kSyncHighest);
         }
-    } else {
-        if (!has_user_tx_tag_ && !has_system_tx) {
-            return;
-        }
+    // } else {
+        // if (!has_user_tx_tag_ && !has_system_tx) {
+        //     return;
+        // }
     }
 
     if (now_tm_ms < latest_propose_msg_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs) {
