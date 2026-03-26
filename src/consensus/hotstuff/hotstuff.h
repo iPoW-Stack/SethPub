@@ -478,12 +478,14 @@ private:
         auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
         if (elect_item == nullptr) {
             // assert(false);
+            SETH_DEBUG("get local member index failed, elect item is null, sharding_id: %u", sharding_id);
             return common::kInvalidUint32;
         }
 
         auto local_mem_ptr = elect_item->LocalMember();
         if (local_mem_ptr == nullptr) {
             // assert(false);
+            SETH_DEBUG("get local member index failed, local member is null, sharding_id: %u", sharding_id);
             return common::kInvalidUint32;
         }
 
