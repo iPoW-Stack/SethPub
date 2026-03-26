@@ -186,6 +186,19 @@ Status Hotstuff::Propose(
         return Status::kError;
     }
 
+    uint64_t view_prev_vote_tm = 0;
+    if (pre_v_block->qc().leader_idx() != last_stable_leader_member_index_ && laste_vote_prev_view_tm_.Get(
+            pre_v_block->qc().view(), view_prev_vote_tm)) {
+        auto now_tm = common::TimeUtils::TimestampMs();
+        if (view_prev_vote_tm + 25000lu >= now_tm) {
+            SETH_DEBUG("view: %lu, view_prev_vote_tm: %lu, now_tm: %lu, not timeout", 
+                pre_v_block->qc().view(), 
+                view_prev_vote_tm,
+                now_tm);
+            return Status::kError;
+        }
+    }
+    
     auto dht_ptr = network::DhtManager::Instance()->GetDht(
         common::GlobalInfo::Instance()->network_id());
     if (!dht_ptr) {
@@ -581,7 +594,7 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
         if (laste_vote_prev_view_tm_.Get(
                 msg_ptr->header.hotstuff().pro_msg().tc().view(), view_prev_vote_tm)) {
             auto now_tm = common::TimeUtils::TimestampMs();
-            if (view_prev_vote_tm + 5000lu >= now_tm) {
+            if (view_prev_vote_tm + 25000lu >= now_tm) {
                 SETH_DEBUG("view: %lu, view_prev_vote_tm: %lu, now_tm: %lu, not timeout, ignore propose msg hash: %lu, propose_debug: %s", 
                     msg_ptr->header.hotstuff().pro_msg().tc().view(), 
                     view_prev_vote_tm, now_tm, msg_ptr->header.hash64(),
