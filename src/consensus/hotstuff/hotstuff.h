@@ -342,7 +342,7 @@ private:
                 pool_idx_, leader_latest_qc.view(), high_view_block->qc().view(),
                 high_view_block->qc().elect_height(),
                 latest_elect_height_, *out_view,
-                last_stable_leader_member_index_,
+                last_stable_leader_member_index_.load(),
                 new_leader_idx,
                 leader_latest_qc.leader_idx());
             pool_tx_leader_.store((*members)[new_leader_idx % members->size()]);
@@ -374,7 +374,7 @@ private:
                     pool_idx_, leader_latest_qc.view(), high_view_block->qc().view(),
                     high_view_block->qc().elect_height(),
                     latest_elect_height_, *out_view,
-                    last_stable_leader_member_index_,
+                    last_stable_leader_member_index_.load(),
                     new_leader_idx,
                     leader_latest_qc.leader_idx());
                 pool_tx_leader_.store((*members)[new_leader_idx % members->size()]);
@@ -434,7 +434,7 @@ private:
             consecutive_failures_,
             now, 
             high_view_block->block_info().timestamp(),
-            last_stable_leader_member_index_,
+            last_stable_leader_member_index_.load(),
             leader_idx,
             latest_elect_height_,
             (high_view_block->qc().view() + latest_elect_height_ + 1),
