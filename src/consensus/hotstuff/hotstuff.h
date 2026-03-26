@@ -239,7 +239,6 @@ private:
                 pool_idx_, qc_ptr->elect_height(), last_stable_leader_member_index_.load(),
                 last_vote_view_,
                 qc_ptr->view());
-            last_vote_view_ = qc_ptr->view();
             laste_vote_prev_view_tm_.Put(qc_ptr->view(), common::TimeUtils::TimestampUs());
         }
 
@@ -412,10 +411,18 @@ private:
             common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
         auto elapsed = now - prev_qc_timestamp_sec;
         if (elapsed < timeout) {
+            SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, consecutive_failures: %d, now: %u, block tm: %lu, "
+                "last_stable_leader_member_index: %d, get leader index: %u, latest_elect_height: %lu, out view: %lu", 
+                pool_idx_, high_view_block->qc().view(), elapsed, timeout, consecutive_failures_,
+                now, high_view_block->block_info().timestamp(),
+                last_stable_leader_member_index_.load(),
+                last_stable_leader_member_index_ % members->size(),
+                latest_elect_height_,
+                *out_view);
             return (*members)[last_stable_leader_member_index_ % members->size()];
         }
 
-        auto k = elapsed / common::kLeaderRoatationBaseTimeoutSec;
+        auto k = (elapsed / common::kLeaderRoatationBaseTimeoutSec) * common::kLeaderRoatationBaseTimeoutSec;
         auto leader_idx = (
             last_stable_leader_member_index_ + 
             static_cast<int>(k) + 
