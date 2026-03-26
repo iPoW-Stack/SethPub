@@ -112,7 +112,7 @@ public:
         if (latest_qc_item_ptr_ == nullptr || latest_elect_height_ > latest_qc_item_ptr_->elect_height()) {
             last_stable_leader_member_index_ = GetEpochLeaderIndex();
             SETH_DEBUG("pool: %u, new elect block, elect height: %lu, leader index: %u",
-                pool_idx_, latest_elect_height_, last_stable_leader_member_index_);
+                pool_idx_, latest_elect_height_, last_stable_leader_member_index_.load());
         }
     }
 
@@ -236,7 +236,7 @@ private:
             last_stable_leader_member_index_ = qc_ptr->leader_idx();
             SETH_DEBUG("pool: %u, update latest qc item ptr, elect height: %lu, leader index: %u, "
                 "old last_vote_view_: %lu,  new last_vote_view_: %lu",
-                pool_idx_, qc_ptr->elect_height(), last_stable_leader_member_index_,
+                pool_idx_, qc_ptr->elect_height(), last_stable_leader_member_index_.load(),
                 last_vote_view_,
                 qc_ptr->view());
             last_vote_view_ = qc_ptr->view();
