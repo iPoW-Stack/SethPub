@@ -135,7 +135,8 @@ get_bootstrap() {
             done
         done
     done
-    sed -i 's/BOOTSTRAP/'$bootstrap'/g' /root/nodes/seth/pkg/temp/conf/seth.conf
+    BOOTSTRAP_VAL="$bootstrap" /root/tools/python3.10/bin/python3 -c "import os; path='/root/nodes/seth/pkg/temp/conf/seth.conf'; data=open(path).read(); open(path, 'w').write(data.replace('BOOTSTRAP', os.environ['BOOTSTRAP_VAL']))"
+    # sed -i 's/BOOTSTRAP/'$bootstrap'/g' /root/nodes/seth/pkg/temp/conf/seth.conf
     echo $bootstrap
 }
 
@@ -147,6 +148,8 @@ make_package() {
         cd /root/seth/cbuild_$TARGET && make txcli
         cp -rf /root/seth/cbuild_$TARGET/seth /root/seth/pkgs/$node_hash/seth
         cp -rf /root/seth/pkgs/$node_hash /root/nodes/seth/pkg
+        rm -rf /root/nodes/seth/pkg/temp
+        cp -rf /root/nodes/temp /root/nodes/seth/pkg
         for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
             /root/seth/cbuild_$TARGET/seth -A /root/seth/shards${shard_id} -D /root/nodes/seth/pkg/shards${shard_id}
             /root/seth/cbuild_$TARGET/seth -A  /root/seth/init_accounts${shard_id} -D /root/nodes/seth/pkg/init_accounts${shard_id}
