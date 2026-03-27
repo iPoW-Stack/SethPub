@@ -168,7 +168,8 @@ private:
 bool CheckRecomputeG2s(uint32_t local_member_index, uint32_t valid_t,
                        const std::string &id,
                        const std::shared_ptr<protos::PrefixDb> &prefix_db,
-                       bls::protobuf::JoinElectBlsInfo &verfy_final_vals);
+                       bls::protobuf::JoinElectBlsInfo &verfy_final_vals,
+                        const bls::protobuf::JoinElectInfo& join_info);
 void ComputeG2ForNode(const std::string &prikey, uint32_t k,
                       const std::shared_ptr<protos::PrefixDb> &prefix_db,
                       const std::vector<std::string> &prikeys);

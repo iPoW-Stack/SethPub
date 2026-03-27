@@ -146,6 +146,23 @@ public:
             uint32_t local_member_idx,
             const std::string& id,
             uint32_t peer_idx,
+            const std::string& seckey,
+            db::DbWriteBatch& db_batch) {
+        std::string key;
+        key.reserve(32);
+        key.append(kBlsSwapKeyPrefex);
+        key.append((char*)&sharding_id, sizeof(sharding_id));
+        key.append((char*)&local_member_idx, sizeof(local_member_idx));
+        key.append(id);
+        key.append((char*)&peer_idx, sizeof(peer_idx));
+        db_batch.Put(key, seckey);
+    }
+
+    void SaveSwapKey(
+            uint32_t sharding_id,
+            uint32_t local_member_idx,
+            const std::string& id,
+            uint32_t peer_idx,
             const std::string& seckey) {
         std::string key;
         key.reserve(32);

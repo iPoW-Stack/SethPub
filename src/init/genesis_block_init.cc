@@ -203,6 +203,12 @@ void ComputeG2ForNode(
     bls::protobuf::LocalPolynomial local_poly;
     std::vector<libff::alt_bn128_Fr> polynomial;
     prefix_db->SaveLocalElectPos(secptr->GetAddress(), k);
+
+    bls::protobuf::JoinElectInfo join_info;
+    if (!prefix_db->GetNodeVerificationVector(secptr->GetAddress(), &join_info)) {
+        return false;
+    }
+
     if (prefix_db->GetLocalPolynomial(secptr, secptr->GetAddress(), &local_poly)) {
         for (int32_t i = 0; i < local_poly.polynomial_size(); ++i) {
             polynomial.push_back(libff::alt_bn128_Fr(
@@ -228,7 +234,7 @@ void ComputeG2ForNode(
             //             secptr->GetAddress(),
             //             valid_t,
             //             &verfy_final_vals)) {
-                if (!CheckRecomputeG2s(mem_idx, valid_t, secptr->GetAddress(), prefix_db, verfy_final_vals)) {
+                if (!CheckRecomputeG2s(mem_idx, valid_t, secptr->GetAddress(), prefix_db, verfy_final_vals, join_info)) {
                     assert(false);
                     continue;
                 }
@@ -318,17 +324,14 @@ bool CheckRecomputeG2s(
         uint32_t valid_t,
         const std::string& id,
         const std::shared_ptr<protos::PrefixDb>& prefix_db,
-        bls::protobuf::JoinElectBlsInfo& verfy_final_vals) {
+        bls::protobuf::JoinElectBlsInfo& verfy_final_vals,
+        const bls::protobuf::JoinElectInfo& join_info) {
     assert(valid_t > 1);
-    bls::protobuf::JoinElectInfo join_info;
-    if (!prefix_db->GetNodeVerificationVector(id, &join_info)) {
-        return false;
-    }
 
-    int32_t min_idx = 0;
-    if (join_info.g2_req().verify_vec_size() >= 32) {
-        min_idx = join_info.g2_req().verify_vec_size() - 32;
-    }
+    // int32_t min_idx = 0;
+    // if (join_info.g2_req().verify_vec_size() >= 32) {
+    //     min_idx = join_info.g2_req().verify_vec_size() - 32;
+    // }
 
     libff::alt_bn128_G2 verify_g2s = libff::alt_bn128_G2::zero();
     // int32_t begin_idx = valid_t - 1;
@@ -523,14 +526,17 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
         }
     }
 
+    db::DbWriteBatch db_batch;
     for (size_t i = 0; i < genesis_nodes.size(); ++i) {
         for (size_t j = 0; j < genesis_nodes.size(); ++j) {
             auto val = libBLS::ThresholdUtils::fieldElementToString(
                 secret_key_contribution[i][j]);
-            prefix_db_->SaveSwapKey(sharding_id, i, genesis_nodes[j]->id, j, val);
+            prefix_db_->SaveSwapKey(sharding_id, i, genesis_nodes[j]->id, j, val, db_batch);
         }
     }
 
+    auto st = db_->Put(db_batch);
+    assert(st.ok());
     libBLS::Dkg tmpdkg(valid_t, valid_n);
     auto common_public_key = libff::alt_bn128_G2::zero();
     bls::protobuf::LocalBlsItem tmp_local_bls_item;
