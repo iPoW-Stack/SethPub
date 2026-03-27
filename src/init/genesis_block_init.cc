@@ -367,29 +367,29 @@ bool CheckRecomputeG2s(
         auto z_coord = libff::alt_bn128_Fq2(z_c0, z_c1);
         auto g2 = libff::alt_bn128_G2(x_coord, y_coord, z_coord);
         verify_g2s = verify_g2s + power(libff::alt_bn128_Fr(local_member_index + 1), i) * g2;
-        bls::protobuf::VerifyVecItem& verify_item = *verfy_final_vals.mutable_verified_g2();
-        verify_item.set_x_c0(common::Encode::HexDecode(
-            libBLS::ThresholdUtils::fieldElementToString(verify_g2s.X.c0)));
-        verify_item.set_x_c1(common::Encode::HexDecode(
-            libBLS::ThresholdUtils::fieldElementToString(verify_g2s.X.c1)));
-        verify_item.set_y_c0(common::Encode::HexDecode(
-            libBLS::ThresholdUtils::fieldElementToString(verify_g2s.Y.c0)));
-        verify_item.set_y_c1(common::Encode::HexDecode(
-            libBLS::ThresholdUtils::fieldElementToString(verify_g2s.Y.c1)));
-        verify_item.set_z_c0(common::Encode::HexDecode(
-            libBLS::ThresholdUtils::fieldElementToString(verify_g2s.Z.c0)));
-        verify_item.set_z_c1(common::Encode::HexDecode(
-            libBLS::ThresholdUtils::fieldElementToString(verify_g2s.Z.c1)));
-        auto verified_val = verfy_final_vals.SerializeAsString();
-        prefix_db->SaveVerifiedG2s(local_member_index, id, i + 1, verfy_final_vals);
-        SETH_DEBUG("success save verified g2: %u, peer: %d, t: %d, %s, %s",
-            local_member_index,
-            join_info.member_idx(),
-            i + 1,
-            common::Encode::HexEncode(id).c_str(),
-            libBLS::ThresholdUtils::fieldElementToString(verify_g2s.X.c0).c_str());
     }
 
+    bls::protobuf::VerifyVecItem& verify_item = *verfy_final_vals.mutable_verified_g2();
+    verify_item.set_x_c0(common::Encode::HexDecode(
+        libBLS::ThresholdUtils::fieldElementToString(verify_g2s.X.c0)));
+    verify_item.set_x_c1(common::Encode::HexDecode(
+        libBLS::ThresholdUtils::fieldElementToString(verify_g2s.X.c1)));
+    verify_item.set_y_c0(common::Encode::HexDecode(
+        libBLS::ThresholdUtils::fieldElementToString(verify_g2s.Y.c0)));
+    verify_item.set_y_c1(common::Encode::HexDecode(
+        libBLS::ThresholdUtils::fieldElementToString(verify_g2s.Y.c1)));
+    verify_item.set_z_c0(common::Encode::HexDecode(
+        libBLS::ThresholdUtils::fieldElementToString(verify_g2s.Z.c0)));
+    verify_item.set_z_c1(common::Encode::HexDecode(
+        libBLS::ThresholdUtils::fieldElementToString(verify_g2s.Z.c1)));
+    auto verified_val = verfy_final_vals.SerializeAsString();
+    prefix_db->SaveVerifiedG2s(local_member_index, id, i + 1, verfy_final_vals);
+    SETH_DEBUG("success save verified g2: %u, peer: %d, t: %d, %s, %s",
+        local_member_index,
+        join_info.member_idx(),
+        i + 1,
+        common::Encode::HexEncode(id).c_str(),
+        libBLS::ThresholdUtils::fieldElementToString(verify_g2s.X.c0).c_str());
     return true;
 }
 
