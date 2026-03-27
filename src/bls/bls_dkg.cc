@@ -479,32 +479,32 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
 bool BlsDkg::VerifySekkeyValid(
         uint32_t peer_index,
         const libff::alt_bn128_Fr& seckey) {
-    bls::protobuf::JoinElectBlsInfo verfy_final_vals;
-    if (!prefix_db_->GetVerifiedG2s(
-            local_member_index_,
-            (*members_)[peer_index]->id,
-            min_aggree_member_count_,
-            &verfy_final_vals)) {
-        // compute verified g2s with new index
-        SETH_ERROR("failed get verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
-            local_member_index_, 
-            common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
-            min_aggree_member_count_, 
-            (*members_)[0]->net_id);
-        if (!CheckRecomputeG2s((*members_)[peer_index]->id, verfy_final_vals)) {
-            SETH_WARN("failed get verified g2: %u, %s",
-                local_member_index_,
-                common::Encode::HexEncode((*members_)[peer_index]->id).c_str());
-//             assert(false);
-            return false;
-        }
-    } else {
-        SETH_WARN("success get verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
-            local_member_index_, 
-            common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
-            min_aggree_member_count_, 
-            (*members_)[0]->net_id);
-    }
+//     bls::protobuf::JoinElectBlsInfo verfy_final_vals;
+//     if (!prefix_db_->GetVerifiedG2s(
+//             local_member_index_,
+//             (*members_)[peer_index]->id,
+//             min_aggree_member_count_,
+//             &verfy_final_vals)) {
+//         // compute verified g2s with new index
+//         SETH_ERROR("failed get verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
+//             local_member_index_, 
+//             common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
+//             min_aggree_member_count_, 
+//             (*members_)[0]->net_id);
+//         if (!CheckRecomputeG2s((*members_)[peer_index]->id, verfy_final_vals)) {
+//             SETH_WARN("failed get verified g2: %u, %s",
+//                 local_member_index_,
+//                 common::Encode::HexEncode((*members_)[peer_index]->id).c_str());
+// //             assert(false);
+//             return false;
+//         }
+//     } else {
+//         SETH_WARN("success get verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
+//             local_member_index_, 
+//             common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
+//             min_aggree_member_count_, 
+//             (*members_)[0]->net_id);
+//     }
 
     libff::alt_bn128_G2 new_val = GetVerifyG2FromDb(peer_index);
     if (new_val == libff::alt_bn128_G2::zero()) {
@@ -558,29 +558,29 @@ bool BlsDkg::VerifySekkeyValid(
     //     }
     // }
 
-    auto& item = verfy_final_vals.verified_g2();
-    auto x_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c0()).c_str());
-    auto x_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c1()).c_str());
-    auto x_coord = libff::alt_bn128_Fq2(x_c0, x_c1);
-    auto y_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c0()).c_str());
-    auto y_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c1()).c_str());
-    auto y_coord = libff::alt_bn128_Fq2(y_c0, y_c1);
-    auto z_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c0()).c_str());
-    auto z_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c1()).c_str());
-    auto z_coord = libff::alt_bn128_Fq2(z_c0, z_c1);
-    auto all_verified_val = libff::alt_bn128_G2(x_coord, y_coord, z_coord);
-    // auto old_g2_val = power(libff::alt_bn128_Fr(local_member_index_ + 1), changed_idx) * old_val;
-    // auto new_g2_val = power(libff::alt_bn128_Fr(local_member_index_ + 1), changed_idx) * new_val;
-    // all_verified_val = all_verified_val - old_g2_val + new_g2_val;
-    if (all_verified_val != seckey * libff::alt_bn128_G2::one()) {
-        for_common_pk_g2s_[peer_index] = libff::alt_bn128_G2::zero();
-        SETH_WARN("failed verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
-            local_member_index_, 
-            common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
-            min_aggree_member_count_, 
-            (*members_)[0]->net_id);
-        return false;
-    }
+    // auto& item = verfy_final_vals.verified_g2();
+    // auto x_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c0()).c_str());
+    // auto x_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.x_c1()).c_str());
+    // auto x_coord = libff::alt_bn128_Fq2(x_c0, x_c1);
+    // auto y_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c0()).c_str());
+    // auto y_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.y_c1()).c_str());
+    // auto y_coord = libff::alt_bn128_Fq2(y_c0, y_c1);
+    // auto z_c0 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c0()).c_str());
+    // auto z_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c1()).c_str());
+    // auto z_coord = libff::alt_bn128_Fq2(z_c0, z_c1);
+    // auto all_verified_val = libff::alt_bn128_G2(x_coord, y_coord, z_coord);
+    // // auto old_g2_val = power(libff::alt_bn128_Fr(local_member_index_ + 1), changed_idx) * old_val;
+    // // auto new_g2_val = power(libff::alt_bn128_Fr(local_member_index_ + 1), changed_idx) * new_val;
+    // // all_verified_val = all_verified_val - old_g2_val + new_g2_val;
+    // if (all_verified_val != seckey * libff::alt_bn128_G2::one()) {
+    //     for_common_pk_g2s_[peer_index] = libff::alt_bn128_G2::zero();
+    //     SETH_WARN("failed verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
+    //         local_member_index_, 
+    //         common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
+    //         min_aggree_member_count_, 
+    //         (*members_)[0]->net_id);
+    //     return false;
+    // }
 
     SETH_WARN("success verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
         local_member_index_, 

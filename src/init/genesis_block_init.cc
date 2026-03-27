@@ -197,7 +197,6 @@ void ComputeG2ForNode(
         uint32_t k,
         const std::shared_ptr<protos::PrefixDb>& prefix_db,
         const std::vector<std::string>& prikeys) {
-    // std::cout << "Start ComputeG2ForNode k: " << k << " n: " << prikeys.size() << std::endl;
     std::shared_ptr<security::Security> secptr = std::make_shared<security::Ecdsa>();
     secptr->SetPrivateKey(prikey);
     bls::protobuf::LocalPolynomial local_poly;
@@ -288,7 +287,6 @@ void ComputeG2ForNode(
             // assert(all_verified_val == contribution[mem_idx] * libff::alt_bn128_G2::one());
         }
     }
-    // std::cout << "End ComputeG2ForNode k: " << k << " n: " << prikeys.size() << std::endl;
 }
 
 void GenesisBlockInit::ComputeG2sForNodes(const std::vector<std::string>& prikeys) {
