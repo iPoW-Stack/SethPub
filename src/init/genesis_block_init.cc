@@ -206,7 +206,8 @@ void ComputeG2ForNode(
 
     bls::protobuf::JoinElectInfo join_info;
     if (!prefix_db->GetNodeVerificationVector(secptr->GetAddress(), &join_info)) {
-        return false;
+        assert(false);
+        return;
     }
 
     if (prefix_db->GetLocalPolynomial(secptr, secptr->GetAddress(), &local_poly)) {
