@@ -113,6 +113,30 @@ init() {
     rm -rf /root/nodes/seth/latest_blocks
 }
 
+get_bootstrap() {
+    node_ips_array=(${node_ips//,/ })
+    for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
+        i=1
+        for ip in "${node_ips_array[@]}"; do
+            tmppubkey=`sed -n "$i""p" /root/nodes/seth/pkg/shards${shard_id} | awk -F'\t' '{print $2}'`
+            port=''
+            if ((i>=100)); then
+                port='1'$shard_id''$i
+            elif ((i>=10)); then
+                port='1'$shard_id'0'$i
+            else
+                port='1'$shard_id'00'$i
+            fi
+
+            node_info=$tmppubkey":"$ip":"$port
+            bootstrap=$node_info","$bootstrap
+            i=$((i+1))
+        done
+    done
+    sed -i 's/BOOTSTRAP/'$bootstrap'/g' /root/nodes/seth/pkg/temp/conf/seth.conf
+    echo $bootstrap
+}
+
 make_package() {
     mkdir -p /root/seth/pkgs
     rm -rf /root/nodes/seth/pkg
@@ -148,30 +172,8 @@ make_package() {
         cp -rf /root/nodes/seth/pkg /root/seth/pkgs/$node_hash
     fi
 
+    get_bootstrap
     cd /root/nodes/seth/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
-}
-
-get_bootstrap() {
-    node_ips_array=(${node_ips//,/ })
-    for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
-        i=1
-        for ip in "${node_ips_array[@]}"; do
-            tmppubkey=`sed -n "$i""p" /root/nodes/seth/pkg/shards${shard_id} | awk -F'\t' '{print $2}'`
-            port=''
-            if ((i>=100)); then
-                port='1'$shard_id''$i
-            elif ((i>=10)); then
-                port='1'$shard_id'0'$i
-            else
-                port='1'$shard_id'00'$i
-            fi
-
-            node_info=$tmppubkey":"$ip":"$port
-            bootstrap=$node_info","$bootstrap
-            i=$((i+1))
-        done
-    done
-    sed -i 's/BOOTSTRAP/'$bootstrap'/g' /root/nodes/seth/pkg/temp/conf/seth.conf
 }
 
 check_cmd_finished() {
@@ -323,8 +325,7 @@ init
 make_package
 clear_command
 scp_package
-get_bootstrap
-echo $bootstrap
+# get_bootstrap
 run_command
 init_mining_dir
 start_all_nodes
