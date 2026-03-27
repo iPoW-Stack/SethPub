@@ -383,11 +383,11 @@ bool CheckRecomputeG2s(
     verify_item.set_z_c1(common::Encode::HexDecode(
         libBLS::ThresholdUtils::fieldElementToString(verify_g2s.Z.c1)));
     auto verified_val = verfy_final_vals.SerializeAsString();
-    prefix_db->SaveVerifiedG2s(local_member_index, id, i + 1, verfy_final_vals);
+    prefix_db->SaveVerifiedG2s(local_member_index, id, valid_t, verfy_final_vals);
     SETH_DEBUG("success save verified g2: %u, peer: %d, t: %d, %s, %s",
         local_member_index,
         join_info.member_idx(),
-        i + 1,
+        valid_t,
         common::Encode::HexEncode(id).c_str(),
         libBLS::ThresholdUtils::fieldElementToString(verify_g2s.X.c0).c_str());
     return true;
