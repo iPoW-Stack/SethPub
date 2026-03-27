@@ -128,7 +128,7 @@ get_bootstrap() {
                 port='1'$shard_id'00'$i
             fi
 
-            node_info=$tmppubkey":"$ip":"$port
+            node_info=$tmppubkey":"$ip":"$port":"$shard_id
             bootstrap=$node_info","$bootstrap
             i=$((i+1))
         done

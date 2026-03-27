@@ -46,7 +46,7 @@ int Bootstrap::Init(common::Config& config, std::shared_ptr<security::Security>&
     common::Split<2048> split(bootstrap.c_str(), ',', bootstrap.size());
     for (uint32_t i = 0; i < split.Count(); ++i) {
         common::Split<> field_split(split[i], ':', split.SubLen(i));
-        if (field_split.Count() != 3) {
+        if (field_split.Count() != 4) {
             continue;
         }
 
