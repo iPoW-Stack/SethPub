@@ -1471,7 +1471,7 @@ void NetworkInit::JoinInitNodes() {
 
         auto node = std::make_shared<dht::Node>();
         node->pubkey_str = common::Encode::HexDecode(items[0]);
-        node->id = security_->GetAddress(node->pubkey);
+        node->id = security_->GetAddress(node->pubkey_str);
         node->public_ip = items[1];
         common::StringUtil::ToUint16(items[2], &node->public_port);
         network::DhtManager::Instance()->Join(node);
