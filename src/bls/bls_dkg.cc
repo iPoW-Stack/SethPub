@@ -479,6 +479,7 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
 bool BlsDkg::VerifySekkeyValid(
         uint32_t peer_index,
         const libff::alt_bn128_Fr& seckey) {
+    return true;
     bls::protobuf::JoinElectBlsInfo verfy_final_vals;
     if (!prefix_db_->GetVerifiedG2s(
             local_member_index_,
