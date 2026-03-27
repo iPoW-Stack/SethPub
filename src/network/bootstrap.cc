@@ -31,7 +31,7 @@ int Bootstrap::Init(common::Config& config, std::shared_ptr<security::Security>&
     std::set<std::string> boot_set;
     for (uint32_t i = 0; i < boot_spliter.Count(); ++i) {
         boot_set.insert(boot_spliter[i]);
-        if (boot_set.size() >= 32) {
+        if (boot_set.size() >= 16) {
             break;
         }
     }

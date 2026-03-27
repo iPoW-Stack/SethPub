@@ -1506,6 +1506,8 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
         msg_ptr->header.debug().c_str(),
         (common::TimeUtils::TimestampMs() - view_block_info_ptr->b_tm_ms));
     ADD_DEBUG_PROCESS_TIMESTAMP();
+    latest_leader_propose_message_ = nullptr;
+    last_leader_propose_view_ = 0llu;
     latest_propose_msg_tm_ms_ = 0;
     UpdateLatestQcItemPtr(qc_item_ptr);
     auto leader = LocalMember();

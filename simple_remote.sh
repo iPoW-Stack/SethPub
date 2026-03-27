@@ -157,14 +157,21 @@ get_bootstrap() {
         i=1
         for ip in "${node_ips_array[@]}"; do
             tmppubkey=`sed -n "$i""p" /root/nodes/seth/pkg/shards${shard_id} | awk -F'\t' '{print $2}'`
-            node_info=$tmppubkey":"$ip":1"$shard_id"00"$i
+            port=''
+            if ((i>=100)); then
+                port='1'$shard_id''$i
+            elif ((i>=10)); then
+                port='1'$shard_id'0'$i
+            else
+                port='1'$shard_id'00'$i
+            fi
+
+            node_info=$tmppubkey":"$ip":"$port
             bootstrap=$node_info","$bootstrap
             i=$((i+1))
-            if ((i>=10)); then
-                break
-            fi
         done
     done
+    sed -i 's/BOOTSTRAP/'$bootstrap'/g' /root/nodes/seth/pkg/temp/conf/seth.conf
 }
 
 check_cmd_finished() {
@@ -238,7 +245,7 @@ run_command() {
         fi
 
         leader_init_tm=$(date -u -d "+240 seconds" +%s)
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 2221 "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count $bootstrap 2 $end_shard $leader_init_tm"  > /dev/null 2>&1 &
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 2221 "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count 0 2 $end_shard $leader_init_tm"  > /dev/null 2>&1 &
         if ((start_pos==1)); then
             sleep 3
         fi
@@ -266,7 +273,7 @@ start_all_nodes() {
             start_nodes_count=$FIRST_NODE_COUNT
         fi
 
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 2221 "cd /root/pkg && bash start_cmd.sh $ip $start_pos $start_nodes_count $bootstrap 2 $end_shard "  &
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 2221 "cd /root/pkg && bash start_cmd.sh $ip $start_pos $start_nodes_count 0 2 $end_shard "  &
         if ((start_pos==1)); then
             sleep 3
         fi

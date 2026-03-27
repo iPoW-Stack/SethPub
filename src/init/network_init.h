@@ -86,6 +86,7 @@ private:
     void SaveLatestBlock(std::shared_ptr<db::Db> db, uint32_t sharding_id);
     bool InitLocalNetworkIdWithLatestElectBlock();
     void SaveCrossBlockToEachShard();
+    void JoinInitNodes();
         
     static const uint32_t kInvalidPoolFactor = 50u;  // 50%
     static const uint32_t kMinValodPoolCount = 4u;  // 64 must finish all

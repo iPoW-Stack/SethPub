@@ -30,7 +30,6 @@ deploy_nodes() {
             sed -i 's/PRIVATE_KEY/'$prikey'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
             sed -i 's/PUBLIC_IP/'$public_ip'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
             sed -i 's/LOCAL_IP/'$local_ip'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
-            sed -i 's/BOOTSTRAP/'$bootstrap'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
             sed -i 's/LEADER_CHANGE_INIT_TM/'$leader_init_tm'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
             if ((i<=TEST_TX_MAX_POOL_INDEX)); then
                 sed -i 's/TEST_POOL_INDEX/'$(($i-1))'/g' /root/seths/s3_$i/conf/seth.conf

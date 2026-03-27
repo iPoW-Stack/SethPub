@@ -288,6 +288,7 @@ int NetworkInit::Init(int argc, char** argv) {
     }
 
     SETH_INFO("init 8");
+    JoinInitNodes();
     inited_ = true;
     common::GlobalInfo::Instance()->set_main_inited_success();
     SETH_INFO("init 9");
@@ -1456,6 +1457,25 @@ void NetworkInit::HandleElectionBlock(
             std::bind(&NetworkInit::SendJoinElectTransaction, this));
         SETH_DEBUG("now send join elect request transaction. second message.");
         another_join_elect_msg_needed_ = false;
+    }
+}
+
+void NetworkInit::JoinInitNodes() {
+    std::string init_nodes = conf_.Get("seth", "bootstrap");
+    common::Split<1024> nodes(init_nodes, ',');
+    for (uint32_t i = 0; i < nodes.Count(); ++i) {
+        common::Split<> items(nodes[i], ':');
+        if (items.Count() != 3) {
+            continue;
+        }
+
+        auto node = std::make_shared<network::Node>();
+        node->pubkey = common::Encode::HexDecode(items[0]);
+        node->id = security_->GetAddress(node->pubkey);
+        node->public_ip = items[1];
+        common::StringUtil::ToUint16(items[2], &node->public_port);
+        network::DhtManager::Instance()->Join(node);
+        network::UniversalManager::Instance()->Join(node);
     }
 }
 
