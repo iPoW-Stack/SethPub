@@ -1475,11 +1475,11 @@ void NetworkInit::JoinInitNodes() {
         node->id = security_->GetAddress(node->pubkey_str);
         node->public_ip = items[1];
         common::StringUtil::ToUint16(items[2], &node->public_port);
-        common::StringUtil::ToUint32(items[3], &node->sharding_id);
+        common::StringUtil::ToInt32(items[3], &node->sharding_id);
         if (network::IsSameToLocalShard(node->sharding_id)) {
             network::DhtManager::Instance()->Join(node);
         }
-        
+
         network::UniversalManager::Instance()->Join(node);
     }
 }
