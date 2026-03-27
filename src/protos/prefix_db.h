@@ -1021,6 +1021,9 @@ public:
         key.append(id);
         std::string val = verfy_final_vals.SerializeAsString();
         db_batch.Put(key, val);
+        SETH_DEBUG("%s save verified g2s: local_member_idx: %u, valid_t: %u, id: %s, val: %s",
+            common::Encode::HexEncode(id).c_str(), local_member_idx, valid_t,
+            common::Encode::HexEncode(id).c_str(), ProtobufToJson(verfy_final_vals).c_str());
     }
 
     void SaveVerifiedG2s(
@@ -1039,6 +1042,10 @@ public:
         if (!st.ok()) {
             SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString());
         }
+
+        SETH_DEBUG("%s save verified g2s: local_member_idx: %u, valid_t: %u, id: %s, val: %s",
+            common::Encode::HexEncode(id).c_str(), local_member_idx, valid_t,
+            common::Encode::HexEncode(id).c_str(), ProtobufToJson(verfy_final_vals).c_str());
     }
 
     bool GetVerifiedG2s(
@@ -1052,6 +1059,9 @@ public:
         key.append((char*)&local_member_idx, sizeof(local_member_idx));
         key.append((char*)&valid_t, sizeof(valid_t));
         key.append(id);
+        SETH_DEBUG("%s get verified g2s: local_member_idx: %u, valid_t: %u, id: %s",
+            common::Encode::HexEncode(id).c_str(), local_member_idx, valid_t,
+            common::Encode::HexEncode(id).c_str());
         std::string val;
         auto st = db_->Get(key, &val);
         if (!st.ok()) {
