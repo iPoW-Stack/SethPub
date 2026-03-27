@@ -9,7 +9,7 @@ FIRST_NODE_COUNT=$1
 CODE_PATH=`pwd`
 node_hash=$(printf "%s%d" "$node_ips" "$each_nodes_count" | md5sum | cut -d ' ' -f1)
 
-bash cmd.sh $2 "systemctl list-units --state=active --no-legend | grep seth@ | awk '{print \$1}' | xargs -r systemctl stop; killall -9 seth"
+bash cmd.sh $2 "systemctl stop 'seth@*' 2>/dev/null; systemctl list-units --all 'seth@*' --no-legend | cut -d' ' -f1 | xargs -r -n1 sh -c 'systemctl stop \"\$0\"; systemctl disable \"\$0\"' 2>/dev/null; systemctl daemon-reload; systemctl reset-failed"
 init() {
     tmp_ips=(${node_ips//-/ })
     tmp_ips_len=(${#tmp_ips[*]})
@@ -117,9 +117,11 @@ get_bootstrap() {
     node_ips_array=(${node_ips//,/ })
     for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
         i=1
+        k=1
         for ip in "${node_ips_array[@]}"; do
+            tmppubkey=`sed -n "$k""p" /root/nodes/seth/pkg/shards${shard_id} | awk -F'\t' '{print $2}'`
+            k=$((k+1))
             for ((j=0; j<=$nodes_count;j++)); do
-                tmppubkey=`sed -n "$i""p" /root/nodes/seth/pkg/shards${shard_id} | awk -F'\t' '{print $2}'`
                 port=''
                 if ((i>=100)); then
                     port='1'$shard_id''$i
