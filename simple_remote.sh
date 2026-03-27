@@ -121,7 +121,7 @@ get_bootstrap() {
         for ip in "${node_ips_array[@]}"; do
             tmppubkey=`sed -n "$k""p" /root/nodes/seth/pkg/shards${shard_id} | awk -F'\t' '{print $2}'`
             k=$((k+1))
-            for ((j=0; j<=$nodes_count;j++)); do
+            for ((j=0; j<=$each_nodes_count;j++)); do
                 port=''
                 if ((i>=100)); then
                     port='1'$shard_id''$i
