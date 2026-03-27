@@ -408,11 +408,14 @@ int NetworkInit::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
 void NetworkInit::HandleMessage(const transport::MessagePtr& msg_ptr) {
     // SETH_DEBUG("common::kPoolTimerMessage coming.");
     if (msg_ptr->header.type() == common::kPoolTimerMessage) {
+        ADD_DEBUG_PROCESS_TIMESTAMP();
         HandleNewBlock();
+        ADD_DEBUG_PROCESS_TIMESTAMP();
         bls_mgr_->PoolTimerMessage();
+        ADD_DEBUG_PROCESS_TIMESTAMP();
         pools_mgr_->PoolTimerMessage();
+        ADD_DEBUG_PROCESS_TIMESTAMP();
     }
-    ADD_DEBUG_PROCESS_TIMESTAMP();
 }
 
 

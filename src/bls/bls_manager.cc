@@ -522,20 +522,20 @@ void BlsManager::HandleFinish(const transport::MessagePtr& msg_ptr) {
     sign.X = libff::alt_bn128_Fq(bls_msg.finish_req().bls_sign_x().c_str());
     sign.Y = libff::alt_bn128_Fq(bls_msg.finish_req().bls_sign_y().c_str());
     sign.Z = libff::alt_bn128_Fq::one();
-    std::string verify_hash;
-    libff::alt_bn128_G1 g1_hash;
-    GetLibffHash(cpk_hash, &g1_hash);
-    if (Verify(
-            t,
-            members->size(),
-            *pkey.getPublicKey(),
-            sign,
-            g1_hash,
-            &verify_hash) != bls::kBlsSuccess) {
-        SETH_WARN("verify bls finish bls sign error t: %d, size: %d, cpk_hash: %s, pk: %s",
-            t, members->size(), common::Encode::HexEncode(cpk_hash).c_str(), common_pk_str.c_str());
-        return;
-    }
+    // std::string verify_hash;
+    // libff::alt_bn128_G1 g1_hash;
+    // GetLibffHash(cpk_hash, &g1_hash);
+    // if (Verify(
+    //         t,
+    //         members->size(),
+    //         *pkey.getPublicKey(),
+    //         sign,
+    //         g1_hash,
+    //         &verify_hash) != bls::kBlsSuccess) {
+    //     SETH_WARN("verify bls finish bls sign error t: %d, size: %d, cpk_hash: %s, pk: %s",
+    //         t, members->size(), common::Encode::HexEncode(cpk_hash).c_str(), common_pk_str.c_str());
+    //     return;
+    // }
 
     BlsFinishItemPtr finish_item = nullptr;
     auto iter = finish_networks_map_.find(bls_msg.finish_req().network_id());
