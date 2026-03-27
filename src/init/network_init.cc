@@ -1470,7 +1470,7 @@ void NetworkInit::JoinInitNodes() {
         }
 
         auto node = std::make_shared<dht::Node>();
-        node->pubkey = common::Encode::HexDecode(items[0]);
+        node->pubkey_str = common::Encode::HexDecode(items[0]);
         node->id = security_->GetAddress(node->pubkey);
         node->public_ip = items[1];
         common::StringUtil::ToUint16(items[2], &node->public_port);
