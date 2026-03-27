@@ -129,15 +129,33 @@ get_bootstrap() {
                     port='1'$shard_id'00'$i
                 fi
 
+                if (( port > 65535 )); then
+                    (( port = (port % 60000) + 1024 ))
+                fi
+
                 node_info=$tmppubkey":"$ip":"$port":"$shard_id
-                bootstrap=$node_info","$bootstrap
+                bootstrap=$bootstrap","$node_info
                 i=$((i+1))
             done
         done
     done
-    BOOTSTRAP_VAL="$bootstrap" /root/tools/python3.10/bin/python3 -c "import os; path='/root/nodes/seth/pkg/temp/conf/seth.conf'; data=open(path).read(); open(path, 'w').write(data.replace('BOOTSTRAP', os.environ['BOOTSTRAP_VAL']))"
-    # sed -i 's/BOOTSTRAP/'$bootstrap'/g' /root/nodes/seth/pkg/temp/conf/seth.conf
-    echo $bootstrap
+# 1. 先把超长的 bootstrap 变量写入一个临时文件
+printf "%s" "$bootstrap" > /tmp/bootstrap_data.tmp
+
+# 2. 让 Python 读取文件进行替换
+/root/tools/python3.10/bin/python3 -c "
+import os
+conf_path = '/root/nodes/seth/pkg/temp/conf/seth.conf'
+with open('/tmp/bootstrap_data.tmp', 'r') as f:
+    new_val = f.read()
+with open(conf_path, 'r') as f:
+    content = f.read()
+with open(conf_path, 'w') as f:
+    f.write(content.replace('BOOTSTRAP', new_val))
+"
+
+# 3. 删除临时文件
+rm /tmp/bootstrap_data.tmp    echo $bootstrap
 }
 
 make_package() {
