@@ -1476,6 +1476,9 @@ void NetworkInit::JoinInitNodes() {
         node->public_ip = items[1];
         common::StringUtil::ToUint16(items[2], &node->public_port);
         common::StringUtil::ToInt32(items[3], &node->sharding_id);
+        SETH_DEBUG("join init node: %s:%d, %d, pk: %s, id: %s", 
+            node->public_ip.c_str(), node->public_port, node->sharding_id,
+            items[0], common::Encode::HexEncode(node->id).c_str());
         if (network::IsSameToLocalShard(node->sharding_id)) {
             network::DhtManager::Instance()->Join(node);
         }
