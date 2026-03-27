@@ -2299,7 +2299,7 @@ void Hotstuff::TryRecoverFromStuck(
         return;
     }
 
-    if (prev_recover_check_tm_ms_ + 3000u > now_tm_ms) {
+    if (prev_recover_check_tm_ms_ + 3000lu > now_tm_ms) {
         return;
     }
 

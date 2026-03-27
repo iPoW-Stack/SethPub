@@ -566,7 +566,7 @@ private:
     common::LRUMap<uint64_t, uint64_t> laste_vote_prev_view_tm_{16};
     std::atomic<common::BftMemberPtr> pool_tx_leader_;
     std::atomic<bool> update_latest_view_tm_ = false;
-    uint32_t prev_recover_check_tm_ms_ = 0;
+    uint64_t prev_recover_check_tm_ms_ = 0;
 
 // #ifndef NDEBUG
     static std::atomic<uint32_t> sendout_bft_message_count_;
