@@ -1461,7 +1461,8 @@ void NetworkInit::HandleElectionBlock(
 }
 
 void NetworkInit::JoinInitNodes() {
-    std::string init_nodes = conf_.Get("seth", "bootstrap");
+    std::string init_nodes;
+    conf_.Get("seth", "bootstrap", init_nodes);
     common::Split<1024> nodes(init_nodes.c_str(), ',');
     for (uint32_t i = 0; i < nodes.Count(); ++i) {
         common::Split<> items(nodes[i], ':');
