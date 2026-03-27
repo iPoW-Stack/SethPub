@@ -73,9 +73,9 @@ void FilterBroadcast::Broadcasting(
 
         SETH_DEBUG("random Broadcasting: %lu, size: %u",
             msg_ptr->header.hash64(), nodes.size());
-        if (msg_ptr->header.broadcast().bloomfilter_size() >= 64) {
-            return;
-        }
+        // if (msg_ptr->header.broadcast().bloomfilter_size() >= 64) {
+        //     return;
+        // }
 
         // msg_ptr->header.mutable_broadcast()->clear_bloomfilter();
         message.set_hop_count(now_hop_count + 1);
