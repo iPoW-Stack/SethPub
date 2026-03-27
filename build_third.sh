@@ -42,6 +42,7 @@ if [ ! -d "$SRC_PATH/third_party/include/evmone" ]; then
     cd third_party/evmone && git fetch --tags && git checkout v0.11.0 && git submodule update --init --recursive
     
     # 修改编译选项：使用 -O2 避免激进优化导致的 dispatch 错误，并确保静态链接
+    rm -rf build_release
     cmake -S . -B build_release \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
         -DCMAKE_CXX_FLAGS="-O2 -g" \
@@ -57,7 +58,7 @@ if [ ! -d "$SRC_PATH/third_party/include/evmc" ]; then
     cd $SRC_PATH
     # evmc 通常作为 evmone 的子模块存在，确保版本对齐
     cd third_party/evmone/evmc && git checkout v11.0.1 && git submodule update --init
-    
+    rm -rf build_release
     cmake -S . -B build_release \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_CXX_FLAGS="-O2" \
