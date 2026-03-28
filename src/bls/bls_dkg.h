@@ -58,7 +58,7 @@ public:
         uint64_t prev_elect_height,
         common::MembersPtr& members,
         std::shared_ptr<TimeBlockItem> latest_timeblock_info);
-    void HandleMessage(const transport::MessagePtr& header);
+    void HandleMessage(const transport::MessagePtr header);
     bool CheckBlsMessageValid(transport::MessagePtr& msg_ptr);
     void Destroy();
     void TimerMessage();
@@ -93,8 +93,8 @@ public:
     }        
 
 private:
-    void HandleVerifyBroadcast(const transport::MessagePtr& header);
-    void HandleSwapSecKey(const transport::MessagePtr& header);
+    void HandleVerifyBroadcast(const transport::MessagePtr header);
+    void HandleSwapSecKey(const transport::MessagePtr header);
     bool IsSignValid(const transport::MessagePtr msg_ptr, std::string* msg_hash);
     void BroadcastVerfify();
     void SwapSecKey();
