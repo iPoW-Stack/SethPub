@@ -177,7 +177,7 @@ bool BlsDkg::CheckBlsMessageValid(transport::MessagePtr& msg_ptr) {
     return true;
 }
 
-void BlsDkg::HandleBlsMessage(const transport::MessagePtr& msg_ptr) try {
+void BlsDkg::HandleBlsMessage(const transport::MessagePtr msg_ptr) try {
     if (members_ == nullptr) {
         BLS_ERROR("members_ == nullptr");
         return;
@@ -353,7 +353,7 @@ void BlsDkg::SendGetSwapKey(int32_t index) {
     SETH_WARN("send get swap key req elect_height: %lu, index: %d", elect_hegiht_, index);
 }
 
-void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
+void BlsDkg::HandleSwapSecKey(const transport::MessagePtr msg_ptr) try {
     auto& header = msg_ptr->header;
     auto& bls_msg = header.bls_proto();
     if (!IsSwapKeyPeriod()) {

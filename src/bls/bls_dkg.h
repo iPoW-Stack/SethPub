@@ -112,7 +112,7 @@ private:
     bool VerifySekkeyValid(uint32_t peer_index, const libff::alt_bn128_Fr& seckey);
     bool CheckRecomputeG2s(const std::string& id, bls::protobuf::JoinElectBlsInfo& verfy_final_vals);
     void PopBlsMessage();
-    void HandleBlsMessage(const transport::MessagePtr& msg_ptr);
+    void HandleBlsMessage(const transport::MessagePtr msg_ptr);
 
     bool IsVerifyBrdPeriod() {
 #ifdef SETH_UNITTEST
