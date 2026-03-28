@@ -95,7 +95,7 @@ public:
 private:
     void HandleVerifyBroadcast(const transport::MessagePtr& header);
     void HandleSwapSecKey(const transport::MessagePtr& header);
-    bool IsSignValid(const transport::MessagePtr& msg_ptr, std::string* msg_hash);
+    bool IsSignValid(const transport::MessagePtr msg_ptr, std::string* msg_hash);
     void BroadcastVerfify();
     void SwapSecKey();
     void FinishBroadcast();

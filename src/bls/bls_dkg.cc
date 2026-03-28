@@ -150,7 +150,7 @@ void BlsDkg::OnNewElectionBlock(
     BLS_ERROR("catch error: %s", e.what());
 }
 
-void BlsDkg::HandleMessage(const transport::MessagePtr& msg_ptr) {
+void BlsDkg::HandleMessage(const transport::MessagePtr msg_ptr) {
     bls_msg_queue_.push(msg_ptr);
     SETH_DEBUG("now add bls message: %lu", msg_ptr->header.hash64());
 }
@@ -222,7 +222,7 @@ void BlsDkg::HandleBlsMessage(const transport::MessagePtr msg_ptr) try {
     BLS_ERROR("catch error: %s", e.what());
 }
 
-bool BlsDkg::IsSignValid(const transport::MessagePtr& msg_ptr, std::string* content_to_hash) {
+bool BlsDkg::IsSignValid(const transport::MessagePtr msg_ptr, std::string* content_to_hash) {
 #ifdef SETH_UNITTEST
     return true;
 #endif // SETH_UNITTEST
@@ -245,7 +245,7 @@ bool BlsDkg::IsSignValid(const transport::MessagePtr& msg_ptr, std::string* cont
     return true;
 }
 
-void BlsDkg::HandleVerifyBroadcast(const transport::MessagePtr& msg_ptr) try {
+void BlsDkg::HandleVerifyBroadcast(const transport::MessagePtr msg_ptr) try {
     assert(false);
     auto& header = msg_ptr->header;
     auto& bls_msg = header.bls_proto();
