@@ -155,7 +155,8 @@ with open(conf_path, 'w') as f:
 "
 
 # 3. 删除临时文件
-rm /tmp/bootstrap_data.tmp    echo $bootstrap
+rm /tmp/bootstrap_data.tmp    
+echo $bootstrap
 }
 
 make_package() {

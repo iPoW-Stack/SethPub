@@ -209,7 +209,7 @@ void KeyValueSync::ConsensusTimerMessage() {
         // assert(false);
     }
 
-    if (prev_sync_tm_ms_ + 3000 < now_tm_ms3) {
+    if (prev_sync_tm_ms_ + 15000lu < now_tm_ms3) {
         SyncAllLatestBlocks();
         prev_sync_tm_ms_ = now_tm_ms3;
     }

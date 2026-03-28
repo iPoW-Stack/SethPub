@@ -75,7 +75,6 @@ deploy_nodes() {
     done
 }
 
-
 killall -9 seth
 
 deploy_nodes
