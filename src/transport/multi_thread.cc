@@ -344,6 +344,11 @@ uint8_t MultiThreadHandler::GetThreadIndex(MessagePtr& msg_ptr) {
         memset(msg_type_count_, 0, sizeof(msg_type_count_));
         prev_log_msg_type_tm_ = now_tm_ms + 3000lu;
     }
+
+    if (msg_ptr->header.type() == common::kBlsMessage) {
+        SETH_DEBUG("handle bls message hash64: %lu, index: %u", 
+            msg_ptr->header.hash64(), msg_ptr->header.bls_proto().index());
+    }
 #endif
 
     switch (msg_ptr->header.type()) {

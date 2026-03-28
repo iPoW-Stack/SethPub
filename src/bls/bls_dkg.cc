@@ -167,7 +167,7 @@ void BlsDkg::PopBlsMessage() {
     }
 }
 
-bool BlsDkg::CheckBlsMessageValid(transport::MessagePtr& msg_ptr) {
+bool BlsDkg::CheckBlsMessageValid(transport::MessagePtr msg_ptr) {
     std::string msg_hash;
     if (!IsSignValid(msg_ptr, &msg_hash)) {
         BLS_ERROR("sign verify failed!");
@@ -747,18 +747,6 @@ void BlsDkg::BroadcastVerfify() try {
         return;
     }
 
-//     CreateDkgMessage(msg_ptr);
-//     SETH_WARN("brd verify g2 success local net: %u, local: %d,  %s, %s, hash64: %lu",
-//         common::GlobalInfo::Instance()->network_id(),
-//         local_member_index_,
-//         common::Encode::HexEncode((*members_)[local_member_index_]->id).c_str(),
-//         common::Encode::HexEncode(bls_msg.verify_brd().verify_vec(0).x_c0()).c_str(),
-//         msg_ptr->header.hash64());
-// #ifdef SETH_UNITTEST
-//     ver_brd_msg_ = msg_ptr;
-// #else
-//     network::Route::Instance()->Send(msg_ptr);
-// #endif
 } catch (std::exception& e) {
     BLS_ERROR("catch error: %s", e.what());
 }
@@ -800,8 +788,10 @@ void BlsDkg::SwapSecKey() try {
     // }
 
     CreateDkgMessage(msg_ptr);
-    SETH_WARN("success send swap seckey request local member index: %d, local net: %u, hash64: %lu",
-        local_member_index_, common::GlobalInfo::Instance()->network_id(), msg_ptr->header.hash64());
+    SETH_WARN("success send swap seckey request local member index: %d, bls index: %u, local net: %u, hash64: %lu",
+        local_member_index_, 
+        msg_ptr->header.bls_proto().index(),
+        common::GlobalInfo::Instance()->network_id(), msg_ptr->header.hash64());
 #ifdef SETH_UNITTEST
     sec_swap_msgs_ = msg_ptr;
     SETH_WARN("success add swap msg");
@@ -1159,7 +1149,7 @@ void BlsDkg::CreateContribution(uint32_t valid_n, uint32_t valid_t) {
     ++valid_sec_key_count_;
 }
 
-void BlsDkg::CreateDkgMessage(transport::MessagePtr& msg_ptr) {
+void BlsDkg::CreateDkgMessage(transport::MessagePtr msg_ptr) {
     auto& msg = msg_ptr->header;
     auto& bls_msg = *msg.mutable_bls_proto();
     msg.set_src_sharding_id(common::GlobalInfo::Instance()->network_id());

@@ -59,7 +59,7 @@ public:
         common::MembersPtr& members,
         std::shared_ptr<TimeBlockItem> latest_timeblock_info);
     void HandleMessage(const transport::MessagePtr header);
-    bool CheckBlsMessageValid(transport::MessagePtr& msg_ptr);
+    bool CheckBlsMessageValid(transport::MessagePtr msg_ptr);
     void Destroy();
     void TimerMessage();
     void FlushToCk(const libff::alt_bn128_G2& common_public_key);
@@ -100,7 +100,7 @@ private:
     void SwapSecKey();
     void FinishBroadcast();
     void CreateContribution(uint32_t valid_n, uint32_t valid_t);
-    void CreateDkgMessage(transport::MessagePtr& msg_ptr);
+    void CreateDkgMessage(transport::MessagePtr msg_ptr);
     void BroadcastFinish(const common::Bitmap& bitmap);
     void CreateSwapKey(uint32_t member_idx, std::string* seckey, int32_t* seckey_len);
     void CheckVerifyAllValid();
