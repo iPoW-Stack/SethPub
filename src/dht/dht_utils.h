@@ -76,7 +76,6 @@ static const uint32_t kRefreshNeighborsDefaultCount = 32u;
 static const uint32_t kRefreshNeighborsBloomfilterBitCount = 4096u;
 static const uint32_t kRefreshNeighborsBloomfilterHashCount = 11u;
 static const uint32_t kHeartbeatDefaultAliveTimes = 3u;
-
 struct Node {
     uint64_t id_hash{ 0 };
     uint64_t dht_key_hash{ 0 };

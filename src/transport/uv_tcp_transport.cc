@@ -613,7 +613,9 @@ void TcpTransport::RealFreeInvalidConnections() {
     while (!invalid_conns_.empty()) {
         auto* ex_uv_tcp = invalid_conns_.front();
         if (now_sec <= ex_uv_tcp->timeout + kInvalidConnectionTimeoutSec) {
-            uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
+            if (!uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp)) {
+                uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
+            }
             invalid_conns_.pop();
             continue;
         }
