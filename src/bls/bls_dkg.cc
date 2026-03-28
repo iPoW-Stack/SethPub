@@ -433,8 +433,9 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
     std::string sec_key(dec_msg.substr(
         0,
         bls_msg.swap_req().keys(local_member_index_).sec_key_len()));
-    SETH_DEBUG("id: %s, dec_msg: %s, sec_key: %s, len: %d, local: %u, peer: %u, peer pk: %s, encrypt_key: %s",
+    SETH_DEBUG("id: %s, enc sec: %s dec_msg: %s, sec_key: %s, len: %d, local: %u, peer: %u, peer pk: %s, encrypt_key: %s",
         common::Encode::HexEncode((*members_)[bls_msg.index()]->id).c_str(),
+        common::Encode::HexEncode(bls_msg.swap_req().keys(local_member_index_).sec_key()).c_str(),
         common::Encode::HexEncode(dec_msg).c_str(),
         common::Encode::HexEncode(sec_key).c_str(),
         bls_msg.swap_req().keys(local_member_index_).sec_key_len(),
@@ -834,12 +835,12 @@ void BlsDkg::CreateSwapKey(uint32_t member_idx, std::string* seckey, int32_t* se
         return;
     }
 
-    SETH_DEBUG("succecss encrypt seckey: %s, local: %u, peer: %u, peer pk: %s",
+    SETH_DEBUG("msg: %s, succecss encrypt seckey: %s, local: %u, peer: %u, peer pk: %s",
+        msg.c_str(),
         common::Encode::HexEncode(*seckey).c_str(), local_member_index_, member_idx, 
         common::Encode::HexEncode((*members_)[member_idx]->pubkey).c_str());
     *seckey_len = msg.size();
 }
-
 void BlsDkg::FinishBroadcast() try {
     SETH_DEBUG("test 0");
     if (members_ == nullptr || local_member_index_ >= member_count_ /*|| valid_sec_key_count_ < min_aggree_member_count_*/) {
