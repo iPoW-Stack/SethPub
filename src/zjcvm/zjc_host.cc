@@ -377,6 +377,10 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
                     zjcvm::kJustCall,
                     *this,
                     &evmc_res);
+                if (acc_info->pool_index() == view_block_chain_->pool_index()) {
+                    contract_to_call_dirty_ = false;
+                }
+                
                 if (contract_to_call_dirty_) {
                     evmc_res.status_code = EVMC_REVERT;
                     SETH_DEBUG("contract to call contract should not modify status. not support: %s, %s",
