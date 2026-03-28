@@ -435,7 +435,7 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
         bls_msg.swap_req().keys(local_member_index_).sec_key_len()));
     if (!IsValidBigInt(sec_key)) {
         BLS_ERROR("invalid big int[%s]", sec_key.c_str());
-        assert(false);
+        // assert(false);
         return;
     }
 
