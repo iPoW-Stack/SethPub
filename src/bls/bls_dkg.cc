@@ -444,7 +444,7 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr msg_ptr) try {
         common::Encode::HexEncode(encrypt_key).c_str());
     if (!IsValidBigInt(sec_key)) {
         BLS_ERROR("invalid big int[%s]", sec_key.c_str());
-        assert(false);
+        // assert(false);
         return;
     }
 
