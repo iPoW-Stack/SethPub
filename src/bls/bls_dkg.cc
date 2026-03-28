@@ -433,9 +433,17 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr& msg_ptr) try {
     std::string sec_key(dec_msg.substr(
         0,
         bls_msg.swap_req().keys(local_member_index_).sec_key_len()));
+    SETH_DEBUG("id: %s, dec_msg: %s, sec_key: %s, len: %d, local: %u, peer: %u, peer pk: %s, encrypt_key: %s",
+        common::Encode::HexEncode((*members_)[bls_msg.index()]->id).c_str(),
+        common::Encode::HexEncode(dec_msg).c_str(),
+        common::Encode::HexEncode(sec_key).c_str(),
+        bls_msg.swap_req().keys(local_member_index_).sec_key_len(),
+        local_member_index_, bls_msg.index(),
+        common::Encode::HexEncode((*members_)[bls_msg.index()]->pubkey).c_str(),
+        common::Encode::HexEncode(encrypt_key).c_str());
     if (!IsValidBigInt(sec_key)) {
         BLS_ERROR("invalid big int[%s]", sec_key.c_str());
-        // assert(false);
+        assert(false);
         return;
     }
 
@@ -826,6 +834,9 @@ void BlsDkg::CreateSwapKey(uint32_t member_idx, std::string* seckey, int32_t* se
         return;
     }
 
+    SETH_DEBUG("succecss encrypt seckey: %s, local: %u, peer: %u, peer pk: %s",
+        common::Encode::HexEncode(*seckey).c_str(), local_member_index_, member_idx, 
+        common::Encode::HexEncode((*members_)[member_idx]->pubkey).c_str());
     *seckey_len = msg.size();
 }
 
