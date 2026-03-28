@@ -422,7 +422,7 @@ private:
             return (*members)[last_stable_leader_member_index_ % members->size()];
         }
 
-        auto k = (elapsed / common::kLeaderRoatationBaseTimeoutSec) * common::kLeaderRoatationBaseTimeoutSec;
+        auto k = (elapsed / common::kLeaderRoatationBaseTimeoutSec) + 7;
         auto leader_idx = (
             last_stable_leader_member_index_ + 
             static_cast<int>(k) + 
