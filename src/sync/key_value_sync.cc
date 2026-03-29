@@ -692,8 +692,8 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                 iter->tag());
             auto pb_vblock = std::make_shared<view_block::protobuf::ViewBlockItem>();
             if (!pb_vblock->ParseFromString(iter->value())) {
-                SETH_ERROR("pb vblock parse failed");
-                assert(false);
+                SETH_ERROR("pb vblock parse failed: %s", key.c_str());
+                // assert(false);
                 break;
             }
     
