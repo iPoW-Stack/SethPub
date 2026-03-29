@@ -423,10 +423,18 @@ private:
         }
 
         auto k = (elapsed / common::kLeaderRoatationBaseTimeoutSec) + 7;
-        auto leader_idx = (
+
+        auto elect_item = elect_info_->GetElectItemWithShardingId(common::GlobalInfo::Instance()->network_id());
+        if (elect_item == nullptr) {
+            // assert(false);
+            return nullptr;
+        }
+
+        auto index = (
             last_stable_leader_member_index_ + 
             static_cast<int>(k) + 
-            common::kImmutablePoolSize) % members->size();
+            pool_idx_) % elect_item->valid_leaders()->size();
+        auto leader_idx = elect_item->valid_leaders()->at(index)->index;
         // ++consecutive_failures_;
        
         // switch mode: force skip a view number (V + k + 1)
