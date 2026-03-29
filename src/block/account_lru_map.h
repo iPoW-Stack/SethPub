@@ -22,6 +22,7 @@ public:
     ~AccountLruMap() {}
 
     void insert(AccountPtr value) {
+        common::AutoSpinLock spinlock(spin_mutex_);
         auto& key = value->addr();
         if (item_map_.count(key)) {
             item_list_.erase(item_map_[key]);
@@ -31,11 +32,7 @@ public:
         item_list_.push_front(key);
         item_map_[key] = item_list_.begin();
         uint32_t index = common::Hash::Hash32(key) % kBucketSize;
-        {
-            common::AutoSpinLock spinlock(spin_mutex_);
-            index_data_map_[index] = value;
-        }
-
+        index_data_map_[index] = value;
         if (item_list_.size() > kBucketSize) {
             std::string& last = item_list_.back();
             item_map_.erase(last);
@@ -46,13 +43,9 @@ public:
     }
 
     AccountPtr get(const std::string& key) {
+        common::AutoSpinLock spinlock(spin_mutex_);
         uint32_t index = common::Hash::Hash32(key) % kBucketSize;
-        AccountPtr item_ptr = nullptr;
-        {
-            common::AutoSpinLock spinlock(spin_mutex_);
-            item_ptr = index_data_map_[index];
-        }
-        
+        auto item_ptr = index_data_map_[index];
         if (item_ptr != nullptr && item_ptr->addr() == key) {
             return item_ptr;
         }

@@ -7,7 +7,12 @@ TARGET=$5
 FIRST_NODE_COUNT=$1
 
 CODE_PATH=`pwd`
-node_hash=$(printf "%s%d" "$node_ips" "$each_nodes_count" | md5sum | cut -d ' ' -f1)
+node_ips_array=(${node_ips//,/ })
+nodes_count=0
+for ip in "${node_ips_array[@]}"; do
+    nodes_count=$(($nodes_count + $each_nodes_count))
+done
+node_hash=$(printf "%d%d" "$nodes_count" "$each_nodes_count" | md5sum | cut -d ' ' -f1)
 
 bash cmd.sh $2 "systemctl stop 'seth@*' 2>/dev/null; systemctl list-units --all 'seth@*' --no-legend | cut -d' ' -f1 | xargs -r -n1 sh -c 'systemctl stop \"\$0\"; systemctl disable \"\$0\"' 2>/dev/null; systemctl daemon-reload; systemctl reset-failed"
 init() {
@@ -96,11 +101,6 @@ init() {
         each_nodes_count=4
     fi
 
-    node_ips_array=(${node_ips//,/ })
-    nodes_count=0
-    for ip in "${node_ips_array[@]}"; do
-        nodes_count=$(($nodes_count + $each_nodes_count))
-    done
 
     nodes_count=$(($nodes_count - $each_nodes_count + $FIRST_NODE_COUNT))
     shard3_node_count=`wc -l /root/seth/shards3 | awk -F' ' '{print $1}'`
