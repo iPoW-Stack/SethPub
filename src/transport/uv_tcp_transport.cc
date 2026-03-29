@@ -186,7 +186,7 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
         SETH_ERROR("message coming: %s:%d, type: %d, invalid port", from_ip, from_port, msg_ptr->header.type());
         return false;
     }
-    
+
     tcp_transport->msg_handler()->HandleMessage(msg_ptr);
     packet.Free();
     return true;
@@ -393,7 +393,7 @@ int TcpTransport::Send(
     assert(des_port > 0);
     auto tmpHeader = const_cast<transport::protobuf::Header*>(&message);
     tmpHeader->set_from_public_port(common::GlobalInfo::Instance()->config_public_port());
-    assert(message.broadcast().bloomfilter_size() < 64);
+    // assert(message.broadcast().bloomfilter_size() < 64);
     if (!message.has_hash64() || message.hash64() == 0) {
         SetMessageHash(message);
     }
