@@ -160,7 +160,7 @@ void BlsManager::OnNewElectBlock(
         elect_height, prev_elect_height);
 }
 
-int BlsManager::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
+int BlsManager::FirewallCheckMessage(transport::MessagePtr& msg_ptr) try {
     auto& header = msg_ptr->header;
     auto& bls_msg = header.bls_proto();
     if (bls_msg.has_finish_req()) {
@@ -179,6 +179,11 @@ int BlsManager::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
 
     SETH_DEBUG("check firewall success!");
     return transport::kFirewallCheckSuccess;
+} catch (std::exception& e) {
+    auto& header = msg_ptr->header;
+    auto& bls_msg = header.bls_proto();
+    BLS_ERROR("catch error: %s, %s", e.what(), ProtobufToJson(bls_msg).c_str());
+    return transport::kFirewallCheckError;
 }
 
 int BlsManager::CheckFinishMessageValid(const transport::MessagePtr& msg_ptr) {
