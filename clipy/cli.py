@@ -149,7 +149,7 @@ class SethClient:
                     if status not in [MessageHandleStatus.kMessageHandle, MessageHandleStatus.kTxAccept]:
                         return status == MessageHandleStatus.kConsensusSuccess
             except: pass
-            time.sleep(1)
+            time.sleep(5)
         return False
 
     def query_contract(self, from_hex, to_hex, input_hex):
