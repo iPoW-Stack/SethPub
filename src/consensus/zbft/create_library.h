@@ -4,6 +4,7 @@
 #include "consensus/zbft/tx_item_base.h"
 #include "protos/pools.pb.h"
 #include "security/security.h"
+#include "zjcvm/execution.h"
 
 namespace seth {
 
