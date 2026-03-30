@@ -71,6 +71,25 @@ public:
             }
         } while (0);
 
+        evmc::Result res{ evmc_res };
+        int call_res = CreateContractCallExcute(zjc_host, block_tx, &res);
+        gas_used = block_tx.gas_limit() - res.gas_left;
+        if (call_res != kConsensusSuccess || res.status_code != EVMC_SUCCESS) {
+            block_tx.set_status(EvmcStatusToZbftStatus(res.status_code));
+            SETH_DEBUG("create contract: %s failed, call_res: %d, "
+                "evmc res: %d, gas_used: %lu, gas price: %lu, from_balance: %lu",
+                common::Encode::HexEncode(block_tx.to()).c_str(),
+                call_res,
+                (int32_t)res.status_code,
+                gas_used,
+                block_tx.gas_price(),
+                from_balance);
+        }
+
+        if (res.gas_left > (int64_t)block_tx.gas_limit()) {
+            gas_used = block_tx.gas_limit();
+        }
+
         if (block_tx.status() == kConsensusSuccess) {
             uint64_t dec_amount = gas_used * block_tx.gas_price();
             if (from_balance >= gas_used * block_tx.gas_price()) {
@@ -130,7 +149,7 @@ public:
             contract_info->set_sharding_id(view_block.qc().network_id());
             contract_info->set_pool_index(view_block.qc().pool_index());
             contract_info->set_type(address::protobuf::kNormal);
-            contract_info->set_bytes_code(block_tx.contract_code());
+            contract_info->set_bytes_code(zjc_host.create_bytes_code_);
             contract_info->set_latest_height(view_block.block_info().height());
             contract_info->set_tx_index(tx_index);
             contract_info->set_nonce(0);
@@ -152,6 +171,35 @@ public:
             to_item_ptr->set_library_bytes(block_tx.contract_code());
         } else {
             pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+        }
+
+        return kConsensusSuccess;
+    }
+
+    int CreateContractCallExcute(
+            zjcvm::ZjchainHost& zjc_host,
+            block::protobuf::BlockTx& tx,
+            evmc::Result* out_res) {
+        uint32_t call_mode = zjcvm::kJustCreate;
+        if (tx.has_contract_input() && !tx.contract_input().empty()) {
+            call_mode = zjcvm::kCreateAndCall;
+        }
+
+        int exec_res = zjcvm::Execution::Instance()->execute(
+            tx.contract_code(),
+            tx.contract_input(),
+            tx.from(),
+            tx.to(),
+            tx.from(),
+            tx.amount(),
+            tx.gas_limit(),
+            0,
+            call_mode,
+            zjc_host,
+            out_res);
+        if (exec_res != zjcvm::kZjcvmSuccess) {
+            SETH_ERROR("CreateContractCallExcute failed: %d", exec_res);
+            return kConsensusError;
         }
 
         return kConsensusSuccess;
