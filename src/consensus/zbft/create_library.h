@@ -116,7 +116,7 @@ public:
         auto status_val = std::string((char*)&status_code, sizeof(status_code));
         int32_t* status_arr = (int32_t*)status_val.c_str();
         SETH_DEBUG("create library status: %d, out: %d output: %s, from: %s, to: %s", 
-            (int32_t)status_code, \
+            (int32_t)status_code,
             status_arr[0],
             "",
             common::Encode::HexEncode(block_tx.from()).c_str(),
