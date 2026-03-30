@@ -381,6 +381,11 @@ int ContractCall::SaveContractCreateInfo(
                     return kConsensusError;
                 }
 
+                if (addr_info->pool_index() != zjc_host.view_block_chain_->pool_index()) {
+                    assert(false);
+                    return kConsensusError;
+                }
+
                 if (addr_info->balance() < to_iter->second) {
                     assert(false);
                     return kConsensusError;
