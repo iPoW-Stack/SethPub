@@ -1167,7 +1167,7 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
         int32_t status = 0;
         uint32_t* status_arr = (uint32_t*)res.c_str();
         res_json["status"] = status_arr[0];
-        res_json["msg"] = common::encode::HexEncode(std::string(res.c_str() + 4, res.size() - 4));
+        res_json["msg"] = common::Encode::HexEncode(std::string(res.c_str() + 4, res.size() - 4));
         {
             std::lock_guard<std::mutex> lock(http_handler->tx_msg_map_mutex());
             http_handler->tx_msg_map().Remove(tx_hash);
