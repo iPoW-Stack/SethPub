@@ -328,7 +328,7 @@ int ContractCall::HandleTx(
         for (auto iter = dep_contract_balance_map.begin(); iter != dep_contract_balance_map.end(); ++iter) {
             acc_balance_map[iter->first] = iter->second;
         }
-        
+
         zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string(tx_status_str, sizeof(tx_status_str)));
         zjc_host.MergeToPrev();
         for (auto exists_iter = cross_to_map_.begin(); exists_iter != cross_to_map_.end(); ++exists_iter) {
@@ -395,6 +395,7 @@ int ContractCall::SaveContractCreateInfo(
                 dep_contract_balance_map[addr_info->addr()] = addr_info;
             } else {
                 contract_balance_add -= to_iter->second;
+                other_add += to_iter->second;
             }
 
             auto iter = cross_to_map_.find(to_iter->first);
@@ -410,7 +411,6 @@ int ContractCall::SaveContractCreateInfo(
                 to_item_ptr->set_amount(to_iter->second + to_item_ptr->amount());
             }
             
-            other_add += to_iter->second;
             SETH_DEBUG("contract call transfer nonce: %lu, from: %s, to: %s, amount: %lu, contract_balance_add: %ld",
                 block_tx.nonce(),
                 common::Encode::HexEncode(transfer_iter->first).c_str(),
