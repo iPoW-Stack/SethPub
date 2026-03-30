@@ -78,6 +78,7 @@ int ContractCall::HandleTx(
     } while (0);
 
     evmc_result evmc_res = {};
+    hotstuff::BalanceAndNonceMap dep_contract_balance_map;
     if (!check_valid) {
         if (from_balance >= gas_used * block_tx.gas_price()) {
             from_balance -= gas_used * block_tx.gas_price();
@@ -159,6 +160,7 @@ int ContractCall::HandleTx(
             int res = SaveContractCreateInfo(
                 zjc_host,
                 block_tx,
+                dep_contract_balance_map,
                 contract_balance_add);
             gas_used += gas_more;
             do {
@@ -323,6 +325,10 @@ int ContractCall::HandleTx(
         common::Encode::HexEncode(block_tx.from()).c_str(),
         common::Encode::HexEncode(block_tx.to()).c_str());
     if (block_tx.status() == kConsensusSuccess) {
+        for (auto iter = dep_contract_balance_map.begin(); iter != dep_contract_balance_map.end(); ++iter) {
+            acc_balance_map[iter->first] = iter->second;
+        }
+        
         zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string(tx_status_str, sizeof(tx_status_str)));
         zjc_host.MergeToPrev();
         for (auto exists_iter = cross_to_map_.begin(); exists_iter != cross_to_map_.end(); ++exists_iter) {
@@ -345,6 +351,7 @@ int ContractCall::HandleTx(
 int ContractCall::SaveContractCreateInfo(
         zjcvm::ZjchainHost& zjc_host,
         block::protobuf::BlockTx& block_tx,
+        hotstuff::BalanceAndNonceMap& dep_contract_balance_map,
         int64_t& contract_balance_add) {
     int64_t other_add = 0;
     for (auto transfer_iter = zjc_host.to_account_value_.begin();
@@ -363,11 +370,33 @@ int ContractCall::SaveContractCreateInfo(
             }
 
             if (block_tx.to() != transfer_iter->first) {
-                assert(false);
-                return kConsensusError;
+                auto addr_info = zjc_host.view_block_chain_->ChainGetAccountInfo(to_iter->first);
+                if (addr_info == nullptr) {
+                    assert(false);
+                    return kConsensusError;
+                }
+
+                if (addr_info->destructed()) {
+                    assert(false);
+                    return kConsensusError;
+                }
+
+                if (addr_info->balance() < to_iter->second) {
+                    assert(false);
+                    return kConsensusError;
+                }
+
+                if (addr_info->bytes_code().empty()) {
+                    assert(false);
+                    return kConsensusError;
+                }
+
+                addr_info->set_balance(addr_info->balance() - to_iter->second);
+                dep_contract_balance_map[addr_info->addr()] = addr_info;
+            } else {
+                contract_balance_add -= to_iter->second;
             }
 
-            contract_balance_add -= to_iter->second;
             auto iter = cross_to_map_.find(to_iter->first);
             std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
             if (iter == cross_to_map_.end()) {
