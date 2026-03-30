@@ -9,12 +9,15 @@ contract ProbeTreasury {
     address public bridge;
     uint256 public totalSwaps;
     uint256 public lastOut;
+    address public owner;
 
     constructor(address _pool) {
         pool = _pool;
+        owner = msg.sender;
     }
 
     function setBridge(address _bridge) external {
+        require(msg.sender == owner, "not owner");
         bridge = _bridge;
     }
 

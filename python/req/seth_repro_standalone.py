@@ -19,67 +19,135 @@ from eth_utils import to_checksum_address
 
 SOLC_VERSION = "0.8.30"
 IN_PROGRESS = {1, 3, 10}
-
 PROBE_POOL_SOL = """// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
+
 contract ProbePool {
     uint256 public reserveSETH;
     uint256 public reserveUSDC;
     uint256 public totalSells;
     uint256 public lastOut;
+
+    event PoolInitialized(uint256 reserveSETH, uint256 reserveUSDC);
+    event SethSold(address indexed sender, uint256 amountIn, uint256 amountOut, uint256 newReserveSETH, uint256 newReserveUSDC);
+    event TestEvent(uint256 num);
+
     constructor(uint256 _reserveSETH, uint256 _reserveUSDC) {
         reserveSETH = _reserveSETH;
         reserveUSDC = _reserveUSDC;
+        emit PoolInitialized(_reserveSETH, _reserveUSDC);
     }
+
     function sellSETH(uint256 minOut) external payable returns (uint256 out) {
+        emit TestEvent(20000);
         require(msg.value > 0, "ProbePool: zero in");
+        emit TestEvent(20001);
         require(reserveSETH > 0 && reserveUSDC > 0, "ProbePool: empty");
+        emit TestEvent(20002);
+        
         out = (msg.value * reserveUSDC) / (reserveSETH + msg.value);
+        emit TestEvent(20003);
         require(out >= minOut, "ProbePool: slippage");
+        emit TestEvent(20004);
+        
         reserveSETH += msg.value;
         reserveUSDC -= out;
         totalSells += 1;
         lastOut = out;
+        emit TestEvent(20005);
+
+        emit SethSold(msg.sender, msg.value, out, reserveSETH, reserveUSDC);
     }
 }
 """
 
 PROBE_TREASURY_SOL = """// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
+
 contract ProbeTreasury {
     address public pool;
     address public bridge;
     uint256 public totalSwaps;
     uint256 public lastOut;
-    constructor(address _pool) { pool = _pool; }
-    function setBridge(address _bridge) external { bridge = _bridge; }
-    modifier onlyBridge() { require(msg.sender == bridge, "ProbeTreasury: not bridge"); _; }
+
+    event TreasuryInitialized(address pool);
+    event BridgeSet(address bridge);
+    event TestEvent(uint256 num);
+    event SwapExecuted(address indexed sender, uint256 amountIn, uint256 amountOut);
+
+    constructor(address _pool) { 
+        pool = _pool; 
+        emit TestEvent(50001);
+        emit TreasuryInitialized(_pool);
+    }
+
+    function setBridge(address _bridge) external { 
+        bridge = _bridge; 
+        emit TestEvent(50003);
+        emit BridgeSet(_bridge);
+    }
+
+    modifier onlyBridge() { 
+        require(msg.sender == bridge, "ProbeTreasury: not bridge");
+        _;
+    }
+
     function swap(uint256 minOut) external payable onlyBridge returns (uint256 out) {
-        (bool ok, bytes memory ret) = pool.call{value: msg.value}(abi.encodeWithSignature("sellSETH(uint256)", minOut));
+        (bool ok, bytes memory ret) = pool.call{value: msg.value}(
+            abi.encodeWithSignature("sellSETH(uint256)", minOut)
+        );
+
+        emit TestEvent(40000);
         require(ok, "ProbeTreasury: pool call failed");
+        
         out = abi.decode(ret, (uint256));
         require(out > 0, "ProbeTreasury: zero out");
+        
         totalSwaps += 1;
         lastOut = out;
+
+        emit SwapExecuted(msg.sender, msg.value, out);
     }
 }
 """
 
 PROBE_BRIDGE_SOL = """// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
+
 contract ProbeBridge {
     address public treasury;
     uint256 public totalRequests;
     uint256 public lastOut;
-    constructor(address _treasury) { treasury = _treasury; }
+
+    event BridgeInitialized(address treasury);
+    event RequestReceived(address indexed sender, uint256 amountIn, uint256 minOut);
+    event RequestCompleted(address indexed sender, uint256 amountOut);
+    event TestEvent(uint256 num);
+
+    constructor(address _treasury) { 
+        treasury = _treasury; 
+        emit TestEvent(50002);
+        emit BridgeInitialized(_treasury);
+    }
+
     function request(uint256 minOut) external payable returns (uint256 out) {
         require(msg.value > 0, "ProbeBridge: zero value");
-        (bool ok, bytes memory ret) = treasury.call{value: msg.value}(abi.encodeWithSignature("swap(uint256)", minOut));
+
+        (bool ok, bytes memory ret) = treasury.call{value: msg.value}(
+            abi.encodeWithSignature("swap(uint256)", minOut)
+        );
+        emit TestEvent(10002);
         require(ok, "ProbeBridge: treasury call failed");
+        emit TestEvent(10003);
+        
         out = abi.decode(ret, (uint256));
         require(out > 0, "ProbeBridge: zero out");
+        emit TestEvent(10005);
+        
         totalRequests += 1;
         lastOut = out;
+
+        emit RequestCompleted(msg.sender, out);
     }
 }
 """
@@ -367,7 +435,7 @@ def run_probe_chain(client: SethClient, pk: str, sender: str):
     a_req = q_u(client, sender, bridge, "totalRequests()")
     a_sw = q_u(client, sender, treasury, "totalSwaps()")
     print("after  pool=", a_rs, a_ru, "bridgeReq=", a_req, "treasurySwaps=", a_sw)
-
+    run_business(client, pk, sender, bridge, pool, 100)
 
 def main():
     ap = argparse.ArgumentParser(description="Standalone Seth repro script (no project imports)")
@@ -389,11 +457,6 @@ def main():
     sender = client.addr_from_pk(pk)
     print("sender=0x" + sender, "balance=", client.balance(sender))
 
-    if not args.skip_business:
-        if not args.bridge or not args.pool:
-            print("skip business repro: --bridge/--pool missing", file=sys.stderr)
-        else:
-            run_business(client, pk, sender, args.bridge.replace("0x", "").lower(), args.pool.replace("0x", "").lower(), args.amount_seth)
     if not args.skip_probe:
         run_probe_chain(client, pk, sender)
 

@@ -256,7 +256,20 @@ evmc::uint256be ZjchainHost::get_balance(const evmc::address& addr) const noexce
         return pre_zjc_host_->get_balance(addr);
     }
     
-    return {};
+    auto acc_info = view_block_chain_->ChainGetAccountInfo(
+        std::string((char*)addr.bytes, sizeof(addr.bytes)));
+    if (acc_info == nullptr) {
+        SETH_DEBUG("failed now get balace: %s, my: %s, origin: %s, %lu",
+            common::Encode::HexEncode(std::string((char*)addr.bytes, 20)).c_str(),
+            common::Encode::HexEncode(my_address_).c_str(),
+            common::Encode::HexEncode(origin_address_).c_str(),
+            -1);
+        return {};
+    }
+
+    evmc::uint256be res_val;
+    Uint64ToEvmcBytes32(res_val, acc_info->balance());
+    return res_val;
 }
 
 size_t ZjchainHost::get_code_size(const evmc::address& addr) const noexcept {
