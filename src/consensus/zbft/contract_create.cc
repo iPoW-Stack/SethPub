@@ -243,7 +243,7 @@ int ContractUserCreateCall::HandleTx(
         block_tx.status());
     char tx_status_str[4 + evmc_res.output_size];
     uint32_t* status_arr = (uint32_t*)tx_status_str;
-    status_arr[0] = block_tx.status();
+    status_arr[0] = evmc_res.status_code;
     memcpy(tx_status_str + 4, evmc_res.output_data, evmc_res.output_size);
     if (block_tx.status() == kConsensusSuccess) {
         zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string(tx_status_str, sizeof(tx_status_str)));
