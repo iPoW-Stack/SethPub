@@ -964,9 +964,12 @@ void BlockManager::CallTimeBlock(
         uint64_t latest_time_block_height,
         uint64_t vss_random,
         uint64_t nonce) {
+    SETH_DEBUG("new timeblock coming: %lu, %lu, lastest_time_block_tm: %lu, "
+        "nonce: %lu, latest_timeblock_tm_sec_: %lu, now top: %lu",
+        latest_timeblock_height_, latest_time_block_height, 
+        lastest_time_block_tm, nonce, latest_timeblock_tm_sec_, 
+        timeblock_height_pq_.empty() ? 0 : timeblock_height_pq_.top());
     timeblock_height_pq_.push(latest_time_block_height);
-    SETH_DEBUG("new timeblock coming: %lu, %lu, lastest_time_block_tm: %lu, nonce: %lu, latest_timeblock_tm_sec_: %lu",
-        latest_timeblock_height_, latest_time_block_height, lastest_time_block_tm, nonce, latest_timeblock_tm_sec_);
     timeblock_height_with_nonce_[latest_time_block_height] = nonce;
     if (latest_timeblock_tm_sec_ >= lastest_time_block_tm) {
         return;
