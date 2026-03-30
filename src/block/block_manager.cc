@@ -697,11 +697,13 @@ void BlockManager::CreateStatisticTx() {
         std::to_string(elect_statistic.sharding_id()) + "_" +
         std::to_string(elect_statistic.statistic_height()));
     SETH_DEBUG("success create statistic message hash: %s, timeblock_height: %lu, "
-        "statistic: %s, timeblock nonce: %lu, des nonce: %lu", 
+        "statistic: %s, timeblock nonce: %lu, des nonce: %lu, "
+        "elect_statistic.statistic_height() != des_timeblock_height: %lu, %lu", 
         common::Encode::HexEncode(unique_hash).c_str(), 
         timeblock_height, ProtobufToJson(elect_statistic).c_str(),
         timeblock_height_with_nonce_[timeblock_height],
-        timeblock_height_with_nonce_[elect_statistic.statistic_height()]);
+        timeblock_height_with_nonce_[elect_statistic.statistic_height()],
+        elect_statistic.statistic_height(), des_timeblock_height);
     if (!unique_hash.empty()) {
         if (elect_statistic.statistic_height() != des_timeblock_height) {
             return;
