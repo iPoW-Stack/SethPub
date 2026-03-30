@@ -571,6 +571,7 @@ public:
             const std::string& val,
             db::DbWriteBatch& db_batch) {
         std::string key = kTemporaryKeyPrefix + tmp_key;
+        SETH_DEBUG("save temporary kv: %s, %s", common::Encode::HexEncode(tmp_key).c_str(), common::Encode::HexEncode(val).c_str());
         db_batch.Put(key, val);
     }
 
@@ -579,6 +580,7 @@ public:
             std::string* val) {
         std::string key = kTemporaryKeyPrefix + tmp_key;
         auto st = db_->Get(key, val);
+        SETH_DEBUG("get temporary kv: %s, %s", common::Encode::HexEncode(tmp_key).c_str(), common::Encode::HexEncode(val).c_str());
         return st.ok();
     }
 

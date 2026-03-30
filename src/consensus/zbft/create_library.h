@@ -124,7 +124,6 @@ public:
         if (block_tx.status() == kConsensusSuccess) {
             zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
             zjc_host.MergeToPrev();
-
             auto contract_info = std::make_shared<address::protobuf::AddressInfo>();
             contract_info->set_addr(block_tx.to());
             contract_info->set_balance(0);
