@@ -146,7 +146,7 @@ class SethClient:
                 if resp.status_code == 200:
                     status = resp.json().get("status")
                     msg = resp.json().get("msg")
-                    print(f"Transaction {tx_hash} receipt status: {MessageHandleStatus(status).name}, output: {msg}")
+                    print(f"Transaction {tx_hash} receipt status: {status}, output: {msg}")
                     if status not in [MessageHandleStatus.kMessageHandle, MessageHandleStatus.kTxAccept]:
                         return status == MessageHandleStatus.kConsensusSuccess
             except: pass
