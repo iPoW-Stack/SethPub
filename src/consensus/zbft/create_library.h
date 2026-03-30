@@ -183,13 +183,9 @@ public:
             block::protobuf::BlockTx& tx,
             evmc::Result* out_res) {
         uint32_t call_mode = zjcvm::kJustCreate;
-        if (tx.has_contract_input() && !tx.contract_input().empty()) {
-            call_mode = zjcvm::kCreateAndCall;
-        }
-
         int exec_res = zjcvm::Execution::Instance()->execute(
             tx.contract_code(),
-            tx.contract_input(),
+            "",
             tx.from(),
             tx.to(),
             tx.from(),

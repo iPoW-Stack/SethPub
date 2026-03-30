@@ -334,12 +334,18 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
     params.zjc_host = this;
     params.gas = msg.gas;
     params.apparent_value = zjcvm::EvmcBytes32ToUint64(msg.value);
-    params.value = msg.kind == EVMC_DELEGATECALL ? 0 : params.apparent_value;
+    params.value = (msg.kind == EVMC_DELEGATECALL) ? 0 : params.apparent_value;
     params.from = std::string((char*)msg.sender.bytes, sizeof(msg.sender.bytes));
     params.code_address = std::string(
-        (char*)msg.recipient.bytes,
-        sizeof(msg.recipient.bytes));
-    params.to = msg.kind == EVMC_CALL ? params.code_address : my_address_;
+        (char*)msg.code_address.bytes,
+        sizeof(msg.code_address.bytes));
+    if (msg.kind == EVMC_DELEGATECALL || msg.kind == EVMC_CALLCODE) {
+        params.to = my_address_;
+    } else {
+        params.to = address_to_str(msg.recipient);
+    }
+
+    // params.to = msg.kind == EVMC_CALL ? params.code_address : my_address_;
     params.data = std::string((char*)msg.input_data, msg.input_size);
     params.on_op = {};
     evmc_result call_result = {};
@@ -360,9 +366,10 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
         protos::AddressInfoPtr acc_info = view_block_chain_->ChainGetAccountInfo(id);
         if (acc_info != nullptr) {
             if (!acc_info->bytes_code().empty()) {
-                SETH_DEBUG("get call bytes code success: %s, field: %s",
+                SETH_DEBUG("get call bytes code success: %s, field: %s, value: %s",
                     common::Encode::HexEncode(id).c_str(),
-                    protos::kFieldBytesCode.c_str());
+                    protos::kFieldBytesCode.c_str(),
+                    common::Encode::HexEncode(acc_info->bytes_code()).c_str());
                 ++depth_;
                 contract_to_call_dirty_ = false;
                 int res_status = zjcvm::Execution::Instance()->execute(
