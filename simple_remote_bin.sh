@@ -140,15 +140,15 @@ scp_package() {
 ln_all_nodes() {
     echo 'start_all_nodes start'
     node_ips_array=(${node_ips//,/ })
-    start_pos=1
-    for ip in "${node_ips_array[@]}"; do
-        echo "start node: " $ip $each_nodes_count
-        start_nodes_count=$(($each_nodes_count + 0))
-        if ((start_pos==1)); then
-            start_nodes_count=$FIRST_NODE_COUNT
-        fi
+    for ((shard=2; shard<=end_shard; shard++)); do
+        start_pos=1
+        for ip in "${node_ips_array[@]}"; do
+            echo "start node: " $ip $each_nodes_count
+            start_nodes_count=$(($each_nodes_count + 0))
+            if ((start_pos==1)); then
+                start_nodes_count=$FIRST_NODE_COUNT
+            fi
 
-        for ((shard=2; shard<=end_shard; shard++)); do
             for ((i=1; i<=$each_nodes_count;i++)); do
                 echo "/root/seths/s${shard}_${start_pos}/"
                 REMOTE_CMD="if [ -d \"/root/seths/s${shard}_${start_pos}/\" ]; then 
