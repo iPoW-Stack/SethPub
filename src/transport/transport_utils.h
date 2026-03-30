@@ -78,16 +78,16 @@ enum FirewallCheckStatus {
 
 enum MessageHandleStatus : int32_t {
     kConsensusSuccess = 0,
-    kMessageHandle = 1,
-    kMessageHandleError = 2,
-    kTxAccept = 3,
-    kTxInvalidSignature = 4,
-    kTxInvalidAddress = 5,
-    kTxPoolFullReject = 6,
-    kTxUserNonceInvalid = 7,
-    kUnkonwn = 8,
-    kRequestInvalid = 9,
-    kNotExists = 10,
+    kMessageHandle = 10001,
+    kMessageHandleError = 10002,
+    kTxAccept = 10003,
+    kTxInvalidSignature = 10004,
+    kTxInvalidAddress = 10005,
+    kTxPoolFullReject = 10006,
+    kTxUserNonceInvalid = 10007,
+    kUnkonwn = 10008,
+    kRequestInvalid = 10009,
+    kNotExists = 100010,
 };
 
 static const uint64_t kConsensusMessageTimeoutUs = 5000000lu;

@@ -37,17 +37,17 @@ class StepType(IntEnum):
 
 class MessageHandleStatus(IntEnum):
     kConsensusSuccess = 0
-    kMessageHandle = 1
-    kMessageHandleError = 2
-    kTxAccept = 3
-    kTxInvalidSignature = 4
-    kTxInvalidAddress = 5
-    kTxPoolFullReject = 6
-    kTxUserNonceInvalid = 7
-    kUnknown = 8
-    kRequestInvalid = 9
-    kNotExists = 10
-
+    kMessageHandle = 10001
+    kMessageHandleError = 10002
+    kTxAccept = 10003
+    kTxInvalidSignature = 10004
+    kTxInvalidAddress = 10005
+    kTxPoolFullReject = 10006
+    kTxUserNonceInvalid = 10007
+    kUnkonwn = 10008
+    kRequestInvalid = 10009
+    kNotExists = 100010
+    
 class SethClient:
     def __init__(self, host, port):
         self.base_url = f"http://{host}:{port}"
