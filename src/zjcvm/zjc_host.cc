@@ -78,7 +78,7 @@ evmc::bytes32 ZjchainHost::GetCachedStorage(
 evmc::bytes32 ZjchainHost::get_storage(
         const evmc::address& addr,
         const evmc::bytes32& key) const noexcept {
-    auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
+    auto thread_idx = -1;//common::GlobalInfo::Instance()->get_thread_index();
     std::string id((char*)addr.bytes, sizeof(addr.bytes));
     std::string key_str((char*)key.bytes, sizeof(key.bytes));
     SETH_DEBUG("view: %lu, 0 0 success get storage addr: %s, "
