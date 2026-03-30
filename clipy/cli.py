@@ -138,7 +138,7 @@ class SethClient:
             print(f"Send TX Error: {e}")
             return None
 
-    def wait_for_receipt(self, tx_hash, timeout=15):
+    def wait_for_receipt(self, tx_hash, timeout=60):
         start = time.time()
         while time.time() - start < timeout:
             try:
