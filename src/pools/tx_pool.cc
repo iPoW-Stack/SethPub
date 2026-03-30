@@ -238,10 +238,6 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
                         }
                     }
 
-                    if (nonce_iter->second->msg_ptr) {
-                        nonce_iter->second->msg_ptr->handle_status = transport::kConsensusSuccess;
-                    }
-                    
                     if (IsUserTransaction(tx_info.step())) {
                         ++all_delay_tx_count_;
                         all_delay_tm_us_ += now_tm_us - nonce_iter->second->receive_tm_us;
