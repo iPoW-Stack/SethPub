@@ -1157,7 +1157,7 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
         res_json["status"] = transport::kRequestInvalid;
         res_json["msg"] = std::string("not has tx hash param");
         http_res.set_content(res_json.dump(), "application/json");
-        return;`    `
+        return;
     }
 
     auto tx_hash = common::Encode::HexDecode(req.get_param_value("tx_hash"));
