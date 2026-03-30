@@ -71,6 +71,7 @@ int ContractUserCreateCall::HandleTx(
     zjc_host.view_block_chain_ = pre_zjc_host.view_block_chain_;
     zjc_host.tx_context_ = pre_zjc_host.tx_context_;
     zjc_host.pre_zjc_host_ = &pre_zjc_host;
+    evmc_result evmc_res = {};
     if (block_tx.status() == kConsensusSuccess) {
         InitHost(
             zjc_host, 
@@ -85,7 +86,6 @@ int ContractUserCreateCall::HandleTx(
         zjc_host.AddTmpAccountBalance(
             block_tx.to(),
             block_tx.amount());
-        evmc_result evmc_res = {};
         evmc::Result res{ evmc_res };
         int call_res = CreateContractCallExcute(zjc_host, block_tx, &res);
         gas_used = block_tx.gas_limit() - res.gas_left;
@@ -241,8 +241,12 @@ int ContractUserCreateCall::HandleTx(
         block_tx.contract_prepayment(),
         block_tx.amount(),
         block_tx.status());
+    char tx_status_str[4 + evmc_res.output_size];
+    uint32_t* status_arr = (uint32_t*)tx_status_str;
+    status_arr[0] = block_tx.tx_hash();
+    memcpy(tx_status_str + 4, evmc_res.output_data, evmc_res.output_size);
     if (block_tx.status() == kConsensusSuccess) {
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "0");
+        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string(tx_status_str, sizeof(tx_status_str)));
         zjc_host.MergeToPrev();
         auto iter = pre_zjc_host.cross_to_map_.find(block_tx.to());
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
@@ -260,8 +264,6 @@ int ContractUserCreateCall::HandleTx(
             SETH_DEBUG("success add to tx item addr prepayment id: %s, prepayment: %lu",
                 common::Encode::HexEncode(to_item_ptr->des()).c_str(),
                 block_tx.contract_prepayment());
-        } else {
-            pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::to_string(block_tx.status()));
         }
 
         for (auto exists_iter = cross_to_map_.begin(); exists_iter != cross_to_map_.end(); ++exists_iter) {
@@ -278,6 +280,8 @@ int ContractUserCreateCall::HandleTx(
                 common::Encode::HexEncode(exists_iter->second->des()).c_str(),
                 exists_iter->second->amount());
         }
+    } else {
+        pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string(tx_status_str, sizeof(tx_status_str)));
     }
 
     return kConsensusSuccess;

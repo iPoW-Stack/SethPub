@@ -95,8 +95,9 @@ int RootToTxItem::HandleTx(
     acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
     acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
 
+    uint32_t status_code = block_tx.status();
     if (block_tx.status() == kConsensusSuccess) {
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "0");
+        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
         auto iter = zjc_host.cross_to_map_.find(to_item.des());
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
         if (iter == zjc_host.cross_to_map_.end()) {
@@ -120,7 +121,7 @@ int RootToTxItem::HandleTx(
             sharding_id,
             ProtobufToJson(*to_item_ptr).c_str());
     } else {
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::to_string(block_tx.status()));
+        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
     }
 
     SETH_DEBUG("success add addr to: %s, value: %s, unique hash: %s", 

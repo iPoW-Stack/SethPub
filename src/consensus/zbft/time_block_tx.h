@@ -55,7 +55,8 @@ public:
 
         timer_block.set_height(view_block.block_info().height());
         InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "0");
+        uint32_t status_code = block_tx.status();
+        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
         zjc_host.SaveKeyValue(block_tx.to(), unique_hash, tx_info->value());
         block_tx.set_unique_hash(unique_hash);
         SETH_WARN("success call time block pool: %d, view: %lu, to_nonce: %lu. tx nonce: %lu", 

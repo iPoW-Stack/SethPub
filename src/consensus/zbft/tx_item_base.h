@@ -34,7 +34,8 @@ protected:
             zjcvm::ZjchainHost& zjc_host,
             hotstuff::BalanceAndNonceMap& acc_balance_map,
             block::protobuf::BlockTx& block_tx) {
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "0");
+        uint32_t status_code = 0;
+        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
         return consensus::kConsensusSuccess;
     }
 

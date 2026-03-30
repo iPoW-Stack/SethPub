@@ -77,6 +77,7 @@ int ContractCall::HandleTx(
         check_valid = true;
     } while (0);
 
+    evmc_result evmc_res = {};
     if (!check_valid) {
         if (from_balance >= gas_used * block_tx.gas_price()) {
             from_balance -= gas_used * block_tx.gas_price();
@@ -94,7 +95,6 @@ int ContractCall::HandleTx(
             block_tx.to(),
             new_contract_balance);
         if (block_tx.contract_input().size() >= protos::kContractBytesStartCode.size()) {
-            evmc_result evmc_res = {};
             evmc::Result res{ evmc_res };
             SETH_DEBUG("now call contract address: %s, bytes: %s", 
                 common::Encode::HexEncode(address_info->addr()).c_str(), 
@@ -309,8 +309,12 @@ int ContractCall::HandleTx(
         contract_balance_add,
         new_contract_balance,
         (etime - btime));
+    char tx_status_str[4 + evmc_res.output_size];
+    uint32_t* status_arr = (uint32_t*)tx_status_str;
+    status_arr[0] = block_tx.tx_hash();
+    memcpy(tx_status_str + 4, evmc_res.output_data, evmc_res.output_size);
     if (block_tx.status() == kConsensusSuccess) {
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "0");
+        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string(tx_status_str, sizeof(tx_status_str)));
         zjc_host.MergeToPrev();
         for (auto exists_iter = cross_to_map_.begin(); exists_iter != cross_to_map_.end(); ++exists_iter) {
             auto iter = pre_zjc_host.cross_to_map_.find(exists_iter->first);
@@ -323,7 +327,7 @@ int ContractCall::HandleTx(
             }
         }
     } else {
-        pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::to_string(block_tx.status()));
+        pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string(tx_status_str, sizeof(tx_status_str)));
     }
 
     return kConsensusSuccess;
