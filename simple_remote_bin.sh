@@ -181,7 +181,7 @@ start_all_nodes() {
             start_nodes_count=$FIRST_NODE_COUNT
         fi
 
-        REMOTE_CMD="killall -9 seth "
+        REMOTE_CMD="pkill -9 seth "
         sshpass -p "$PASSWORD" ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5 root@$ip "$REMOTE_CMD" &
         if ((start_pos == 1)); then
             sleep 3
