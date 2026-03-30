@@ -70,6 +70,7 @@ public:
     MessagePtr GetMessageFromQueue(uint32_t thread_idx, bool);
     void Destroy();
     void NewHttpServer(MessagePtr& msg_ptr) {
+        std::lock_guard<std::mutex> lock(http_server_message_queue_mutex_);
         http_server_message_queue_.push(msg_ptr);
     }
 
@@ -125,7 +126,8 @@ private:
     bool inited_{ false };
     common::LRUSet<uint64_t> unique_message_sets2_{ 102400 }; // 10M+ 左右，10000 tps 情况下能够忍受 10s 消息延迟
     common::ThreadSafeQueue<MessagePtr>** threads_message_queues_;
-    common::ThreadSafeQueue<MessagePtr> http_server_message_queue_;
+    std::queue<MessagePtr> http_server_message_queue_;
+    std::mutex http_server_message_queue_mutex_;
     common::ThreadSafeQueue<SavedBlockQueueItemPtr> saved_block_queue_;
     std::condition_variable* wait_con_ = nullptr;
     std::mutex* wait_mutex_ = nullptr;

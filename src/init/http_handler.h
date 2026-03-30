@@ -48,6 +48,10 @@ public:
     common::LRUMap<std::string, transport::MessagePtr>& tx_msg_map() {
         return tx_msg_map_;
     }
+
+    std::mutex& tx_msg_map_mutex() {
+        return tx_msg_map_mutex_;
+    }
     
 private:
     void Run();
@@ -62,6 +66,7 @@ private:
     httplib::Server svr;
     std::shared_ptr<std::thread> http_svr_thread_ = nullptr;
     common::LRUMap<std::string, transport::MessagePtr> tx_msg_map_{10240};
+    std::mutex tx_msg_map_mutex_;
 
     DISALLOW_COPY_AND_ASSIGN(HttpHandler);
 };

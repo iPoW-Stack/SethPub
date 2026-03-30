@@ -311,7 +311,7 @@ static void HttpTransaction(const httplib::Request& req, httplib::Response& http
         return;
     }
 
-    auto thread_index = common::GlobalInfo::Instance()->get_thread_index();
+    auto thread_index = -1;
     SETH_DEBUG("http handler success get http server thread index: %d, address: %s", 
         thread_index, 
         common::Encode::HexEncode(
@@ -336,7 +336,11 @@ static void HttpTransaction(const httplib::Request& req, httplib::Response& http
     std::string res = std::string("ok");
     http_res.set_content(res, "text/plain");
     msg_ptr->handle_status = transport::kMessageHandle;
-    http_handler->tx_msg_map().Put(msg_ptr->msg_hash, msg_ptr);
+    {
+        std::lock_guard<std::mutex> lock(http_handler->tx_msg_map_mutex());
+        http_handler->tx_msg_map().Put(msg_ptr->msg_hash, msg_ptr);
+    }
+
     SETH_WARN("http transaction success %s, %s, nonce: %lu, txhash: %s", 
         common::Encode::HexEncode(
         http_handler->security_ptr()->GetAddress(common::Encode::HexDecode(frompk))).c_str(), 
@@ -1167,10 +1171,19 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
 
         res_json["status"] = status;
         res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
-        http_handler->tx_msg_map().Remove(tx_hash);
+        {
+            std::lock_guard<std::mutex> lock(http_handler->tx_msg_map_mutex());
+            http_handler->tx_msg_map().Remove(tx_hash);
+        }
+        
     } else {
         transport::MessagePtr msg_ptr = nullptr;
-        if (http_handler->tx_msg_map().Get(tx_hash, msg_ptr)) {
+        {
+            std::lock_guard<std::mutex> lock(http_handler->tx_msg_map_mutex());
+            http_handler->tx_msg_map().Get(tx_hash, msg_ptr);
+        }
+
+        if (msg_ptr) {
             res_json["status"] = (int32_t)msg_ptr->handle_status.load();
             res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
         } else {
