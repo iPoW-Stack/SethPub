@@ -269,6 +269,11 @@ evmc::uint256be ZjchainHost::get_balance(const evmc::address& addr) const noexce
 
     evmc::uint256be res_val;
     Uint64ToEvmcBytes32(res_val, acc_info->balance());
+    SETH_DEBUG("success now get balace: %s, my: %s, origin: %s, %lu",
+        common::Encode::HexEncode(std::string((char*)addr.bytes, 20)).c_str(),
+        common::Encode::HexEncode(my_address_).c_str(),
+        common::Encode::HexEncode(origin_address_).c_str(),
+        acc_info->balance());
     return res_val;
 }
 

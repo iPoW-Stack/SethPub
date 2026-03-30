@@ -367,7 +367,7 @@ class SethClient:
         return r.text if r.status_code == 200 else None
 
 
-def deploy(client: SethClient, pk: str, deployer: str, code: str, salt: str, label: str):
+def deploy(client: SethClient, pk: str, deployer: str, code: str, salt: str, label: str, amount: int = 0):
     target = create2(deployer, salt, code)
     print(f"[Deploy] {label} -> {target}")
     tx = client.send_tx(pk, target, step=6, contract_code=code, prepayment=10_000_000, gas_limit=5_000_000)
@@ -408,7 +408,7 @@ def run_probe_chain(client: SethClient, pk: str, sender: str):
     bridge_bin = compile_inline(PROBE_BRIDGE_SOL, "ProbeBridge")
 
     pool_ctor = eth_abi_encode(["uint256", "uint256"], [10_000, 10_000]).hex()
-    pool = deploy(client, pk, sender, pool_bin + pool_ctor, "abf1", "ProbePool")
+    pool = deploy(client, pk, sender, pool_bin + pool_ctor, "abf1", "ProbePool", amount=10000000)
 
     tr_ctor = eth_abi_encode(["address"], [to_checksum_address("0x" + pool)]).hex()
     treasury = deploy(client, pk, sender, treasury_bin + tr_ctor, "abf2", "ProbeTreasury")
