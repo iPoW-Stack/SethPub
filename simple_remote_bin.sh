@@ -149,6 +149,7 @@ ln_all_nodes() {
         fi
 
         for ((shard=2; shard<=end_shard; shard++)); do
+            echo "/root/seths/s${shard}_${start_pos}/"
             REMOTE_CMD="if [ -d \"/root/seths/s${shard}_${start_pos}/\" ]; then 
                             rm -rf /root/seths/s${shard}_${start_pos}/seth && \
                             rm -rf /root/seths/s${shard}_${start_pos}/log/* && \
