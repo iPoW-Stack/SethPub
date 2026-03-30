@@ -171,7 +171,7 @@ public:
                 pre_zjc_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
             }
 
-            to_item_ptr->set_library_bytes(block_tx.contract_code());
+            to_item_ptr->set_library_bytes(zjc_host.create_bytes_code_);
         } else {
             pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
         }
