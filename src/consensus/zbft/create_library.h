@@ -155,9 +155,10 @@ public:
             contract_info->set_latest_height(view_block.block_info().height());
             contract_info->set_tx_index(tx_index);
             contract_info->set_nonce(0);
-            SETH_DEBUG("success add contract address info: %s, %s", 
+            SETH_DEBUG("success add contract address info: %s, %s, library bytes: %s", 
                 common::Encode::HexEncode(block_tx.to()).c_str(), 
-                ProtobufToJson(*contract_info).c_str());
+                ProtobufToJson(*contract_info).c_str(),
+                common::Encode::HexEncode(zjc_host.create_bytes_code_).c_str());
             acc_balance_map[block_tx.to()] = contract_info;
 
             auto iter = pre_zjc_host.cross_to_map_.find(block_tx.to());
