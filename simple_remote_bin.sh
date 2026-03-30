@@ -163,10 +163,10 @@ ln_all_nodes() {
                 if ((start_pos == 1)); then
                     sleep 3
                 fi
+                start_pos=$(($start_pos+1))
             done
         done
         sleep 0.1
-        start_pos=$(($start_pos+$start_nodes_count))
     done
 
     check_cmd_finished
