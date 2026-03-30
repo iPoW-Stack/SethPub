@@ -244,8 +244,10 @@ def test_library():
 
     contract Calculator {
         uint256 public lastResult;
-        function doAdd(uint256 a, uint256 b) public {
+        // 增加了 returns (uint256)
+        function doAdd(uint256 a, uint256 b) public returns (uint256) {
             lastResult = MathLib.add(a, b);
+            return lastResult; // 将结果返回
         }
     }
     """
