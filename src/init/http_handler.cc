@@ -387,6 +387,7 @@ static void QueryContract(const httplib::Request& req, httplib::Response& http_r
     zjc_host.contract_mgr_ = contract_mgr;
     zjc_host.my_address_ = contract_addr;
     zjc_host.tx_context_.block_gas_limit = prepayment;
+    zjc_host.view_block_chain_ = std::make_shared<view_block::ViewBlockChain>();
     // user caller prepayment 's gas
     uint64_t from_balance = prepayment;
     uint64_t to_balance = contract_addr_info->balance();
