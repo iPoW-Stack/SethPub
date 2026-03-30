@@ -532,6 +532,7 @@ static void AbiQueryContract(const httplib::Request& req, httplib::Response& htt
 
 static void QueryAccount(const httplib::Request& req, httplib::Response& http_res) {
     auto tmp_addr = req.get_param_value("address");
+    SETH_DEBUG("coming query account: %s", tmp_addr.c_str());
     if (tmp_addr.empty()) {
         std::string res = common::StringUtil::Format("param address is null");
         http_res.set_content(res, "text/plain");
