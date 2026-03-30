@@ -250,6 +250,11 @@ def test_library():
             lastResult = MathLib.add(a, b);
             return lastResult; // 将结果返回
         }
+
+        function doDec(uint256 a, uint256 b) public returns (uint256) {
+            lastResult = MathLib.dec(a, b);
+            return lastResult; // 将结果返回
+        }
     }
     """
 
@@ -258,7 +263,10 @@ def test_library():
     # 提取库的单独代码进行编译
     lib_source = """
     pragma solidity ^0.8.0;
-    library MathLib { function add(uint256 a, uint256 b) public pure returns (uint256) { return a+b; } }
+    library MathLib { 
+        function add(uint256 a, uint256 b) public pure returns (uint256) { return a+b; } 
+        function dec(uint256 a, uint256 b) public pure returns (uint256) { return a-b; } 
+    }
     """
     lib_compile = compile_contract(lib_source)
     lib_bin = lib_compile['bin']
