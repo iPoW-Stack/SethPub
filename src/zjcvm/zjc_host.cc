@@ -335,10 +335,12 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
     params.gas = msg.gas;
     params.apparent_value = zjcvm::EvmcBytes32ToUint64(msg.value);
     params.value = (msg.kind == EVMC_DELEGATECALL) ? 0 : params.apparent_value;
-    params.from = std::string((char*)msg.sender.bytes, sizeof(msg.sender.bytes));
-    params.code_address = std::string(
-        (char*)msg.code_address.bytes,
-        sizeof(msg.code_address.bytes));
+    auto address_to_str = [](const evmc_address& addr) {
+        return std::string(reinterpret_cast<const char*>(addr.bytes), sizeof(addr.bytes));
+    };
+
+    params.from = address_to_str(msg.sender);
+    params.code_address = address_to_str(msg.code_address);
     if (msg.kind == EVMC_DELEGATECALL || msg.kind == EVMC_CALLCODE) {
         params.to = my_address_;
     } else {
@@ -362,7 +364,7 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
             raw_result) != contract::kContractNotExists) {
         SETH_DEBUG("call default contract failed: %s", common::Encode::HexEncode(origin_address_).c_str());
     } else {
-        std::string id = std::string((char*)msg.code_address.bytes, sizeof(msg.code_address.bytes));
+        std::string id = params.code_address;
         protos::AddressInfoPtr acc_info = view_block_chain_->ChainGetAccountInfo(id);
         if (acc_info != nullptr) {
             if (!acc_info->bytes_code().empty()) {
