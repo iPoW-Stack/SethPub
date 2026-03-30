@@ -149,19 +149,21 @@ ln_all_nodes() {
         fi
 
         for ((shard=2; shard<=end_shard; shard++)); do
-            echo "/root/seths/s${shard}_${start_pos}/"
-            REMOTE_CMD="if [ -d \"/root/seths/s${shard}_${start_pos}/\" ]; then 
-                            rm -rf /root/seths/s${shard}_${start_pos}/seth && \
-                            rm -rf /root/seths/s${shard}_${start_pos}/log/* && \
-                            ln /root/pkg/seth /root/seths/s${shard}_${start_pos}/seth && \
-                            echo \"[Shard $shard] Updated\"; 
-                        else 
-                            echo \"[Shard $shard] Not exists, skipping\"; 
-                        fi"
-            sshpass -p "$PASSWORD" ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5 root@$ip "$REMOTE_CMD" &
-            if ((start_pos == 1)); then
-                sleep 3
-            fi
+            for ((i=1; i<=$each_nodes_count;i++)); do
+                echo "/root/seths/s${shard}_${start_pos}/"
+                REMOTE_CMD="if [ -d \"/root/seths/s${shard}_${start_pos}/\" ]; then 
+                                rm -rf /root/seths/s${shard}_${start_pos}/seth && \
+                                rm -rf /root/seths/s${shard}_${start_pos}/log/* && \
+                                ln /root/pkg/seth /root/seths/s${shard}_${start_pos}/seth && \
+                                echo \"[Shard $shard] Updated\"; 
+                            else 
+                                echo \"[Shard $shard] Not exists, skipping\"; 
+                            fi"
+                sshpass -p "$PASSWORD" ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5 root@$ip "$REMOTE_CMD" &
+                if ((start_pos == 1)); then
+                    sleep 3
+                fi
+            done
         done
         sleep 0.1
         start_pos=$(($start_pos+$start_nodes_count))
