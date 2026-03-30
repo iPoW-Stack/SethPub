@@ -313,6 +313,11 @@ int ContractCall::HandleTx(
     uint32_t* status_arr = (uint32_t*)tx_status_str;
     status_arr[0] = evmc_res.status_code;
     memcpy(tx_status_str + 4, evmc_res.output_data, evmc_res.output_size);
+    SETH_DEBUG("call contract status: %d, output: %s, from: %s, to: %s", 
+        (int32_t)evmc_res.status_code, 
+        common::Encode::HexEncode(std::string((char*)evmc_res.output_data, evmc_res.output_size)).c_str(),
+        common::Encode::HexEncode(block_tx.from()).c_str(),
+        common::Encode::HexEncode(block_tx.to()).c_str());
     if (block_tx.status() == kConsensusSuccess) {
         zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string(tx_status_str, sizeof(tx_status_str)));
         zjc_host.MergeToPrev();

@@ -113,6 +113,11 @@ public:
             common::Encode::HexEncode(block_tx.from()).c_str(),
             common::Encode::HexEncode(block_tx.to()).c_str());
         uint32_t status_code = block_tx.status();
+        SETH_DEBUG("call contract status: %d, output: %s, from: %s, to: %s", 
+            (int32_t)evmc_res.status_code, 
+            "",
+            common::Encode::HexEncode(block_tx.from()).c_str(),
+            common::Encode::HexEncode(block_tx.to()).c_str());
         if (block_tx.status() == kConsensusSuccess) {
             zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
             zjc_host.MergeToPrev();
