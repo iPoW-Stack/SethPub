@@ -32,7 +32,7 @@ contract ProbePool {
     event SethSold(address indexed sender, uint256 amountIn, uint256 amountOut, uint256 newReserveSETH, uint256 newReserveUSDC);
     event TestEvent(uint256 num);
 
-    constructor(uint256 _reserveSETH, uint256 _reserveUSDC) {
+    constructor(uint256 _reserveSETH, uint256 _reserveUSDC) payable {
         reserveSETH = _reserveSETH;
         reserveUSDC = _reserveUSDC;
         emit PoolInitialized(_reserveSETH, _reserveUSDC);
@@ -75,7 +75,7 @@ contract ProbeTreasury {
     event TestEvent(uint256 num);
     event SwapExecuted(address indexed sender, uint256 amountIn, uint256 amountOut);
 
-    constructor(address _pool) { 
+    constructor(address _pool) payable { 
         pool = _pool; 
         emit TestEvent(50001);
         emit TreasuryInitialized(_pool);
@@ -370,7 +370,7 @@ class SethClient:
 def deploy(client: SethClient, pk: str, deployer: str, code: str, salt: str, label: str, amount: int = 0):
     target = create2(deployer, salt, code)
     print(f"[Deploy] {label} -> {target}")
-    tx = client.send_tx(pk, target, step=6, contract_code=code, prepayment=10_000_000, gas_limit=5_000_000)
+    tx = client.send_tx(pk, target, step=6, contract_code=code, prepayment=10_000_000, gas_limit=5_000_000, amount=amount)
     ok, st, _ = client.wait_receipt(tx, timeout=600)
     print(f"  receipt={ok} status={st} tx={tx}")
     return target
@@ -408,13 +408,13 @@ def run_probe_chain(client: SethClient, pk: str, sender: str):
     bridge_bin = compile_inline(PROBE_BRIDGE_SOL, "ProbeBridge")
 
     pool_ctor = eth_abi_encode(["uint256", "uint256"], [10_000, 10_000]).hex()
-    pool = deploy(client, pk, sender, pool_bin + pool_ctor, "abf1", "ProbePool", amount=10000000)
+    pool = deploy(client, pk, sender, pool_bin + pool_ctor, "abf3", "ProbePool", amount=10000000)
 
     tr_ctor = eth_abi_encode(["address"], [to_checksum_address("0x" + pool)]).hex()
-    treasury = deploy(client, pk, sender, treasury_bin + tr_ctor, "abf2", "ProbeTreasury")
+    treasury = deploy(client, pk, sender, treasury_bin + tr_ctor, "abf4", "ProbeTreasury", amount=10000000)
 
     br_ctor = eth_abi_encode(["address"], [to_checksum_address("0x" + treasury)]).hex()
-    bridge = deploy(client, pk, sender, bridge_bin + br_ctor, "abf3", "ProbeBridge")
+    bridge = deploy(client, pk, sender, bridge_bin + br_ctor, "abf5", "ProbeBridge")
 
     tx_set = client.send_tx(pk, treasury, step=8, gas_limit=8_000_000, input_hex=encode_call("setBridge(address)", ["address"], [to_checksum_address("0x" + bridge)]))
     ok_set, st_set, _ = client.wait_receipt(tx_set, timeout=300)

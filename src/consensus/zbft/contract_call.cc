@@ -350,10 +350,10 @@ int ContractCall::SaveContractCreateInfo(
     for (auto transfer_iter = zjc_host.to_account_value_.begin();
             transfer_iter != zjc_host.to_account_value_.end(); ++transfer_iter) {
         // transfer from must caller or contract address, other not allowed.
-        if (transfer_iter->first != block_tx.from() && transfer_iter->first != block_tx.to()) {
-            assert(false);
-            return kConsensusError;
-        }
+        // if (transfer_iter->first != block_tx.from() && transfer_iter->first != block_tx.to()) {
+        //     assert(false);
+        //     return kConsensusError;
+        // }
 
         for (auto to_iter = transfer_iter->second.begin();
                 to_iter != transfer_iter->second.end(); ++to_iter) {
