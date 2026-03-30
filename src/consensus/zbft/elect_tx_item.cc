@@ -98,7 +98,7 @@ int ElectTxItem::HandleTx(
     *view_block.mutable_block_info()->mutable_elect_block() = *elect_block_;
     view_block.mutable_block_info()->add_unique_hashs(block_tx.unique_hash());
     uint32_t status_code = block_tx.status();
-    zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code));
+    zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
     zjc_host.MergeToPrev();
     return consensus::kConsensusSuccess;
 }
