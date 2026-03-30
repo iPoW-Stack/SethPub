@@ -1189,6 +1189,8 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
         }
     }
     
+    SETH_DEBUG("transaction receipt query, tx hash: %s, res: %s", 
+        req.get_param_value("tx_hash").c_str(), res_json.dump().c_str());
     http_res.set_content(res_json.dump(), "application/json");
 }
 
