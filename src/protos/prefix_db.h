@@ -580,7 +580,10 @@ public:
             std::string* val) {
         std::string key = kTemporaryKeyPrefix + tmp_key;
         auto st = db_->Get(key, val);
-        SETH_DEBUG("get temporary kv: %s, %s", common::Encode::HexEncode(tmp_key).c_str(), common::Encode::HexEncode(*val).c_str());
+        SETH_DEBUG("get temporary kv: %s, status: %d, value: %s", 
+            common::Encode::HexEncode(tmp_key).c_str(), 
+            st.ok(), 
+            common::Encode::HexEncode(*val).c_str());
         return st.ok();
     }
 
