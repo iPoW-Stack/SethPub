@@ -105,6 +105,7 @@ class SethClient:
         sk = SigningKey.from_string(bytes.fromhex(private_key_hex), curve=SECP256k1)
         pubkey_hex = sk.verifying_key.to_string("uncompressed").hex()
         my_addr = self.get_address(private_key_hex)
+        step = int(step)
         if step == 8:
             my_addr = to_hex + my_addr
             
