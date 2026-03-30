@@ -1170,7 +1170,12 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
         int32_t status = 0;
         int32_t* status_arr = (int32_t*)res.c_str();
         res_json["status"] = status_arr[0];
-        res_json["msg"] = common::Encode::HexEncode(std::string(res.c_str() + 4, res.size() - 4));
+        if (res.size() > sizeof(int32_t)) {
+            res_json["msg"] = common::Encode::HexEncode(std::string(res.c_str() + 4, res.size() - 4));
+        } else {
+            res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
+        }
+
         {
             std::lock_guard<std::mutex> lock(http_handler->tx_msg_map_mutex());
             http_handler->tx_msg_map().Remove(tx_hash);

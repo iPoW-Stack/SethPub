@@ -112,14 +112,17 @@ public:
             block_tx.status(),
             common::Encode::HexEncode(block_tx.from()).c_str(),
             common::Encode::HexEncode(block_tx.to()).c_str());
-        uint32_t status_code = block_tx.status();
-        SETH_DEBUG("call contract status: %d, output: %s, from: %s, to: %s", 
-            (int32_t)status_code, 
+        int32_t status_code = block_tx.status();
+        auto status_val = std::string((char*)&status_code, sizeof(status_code));
+        int32_t* status_arr = (int32_t*)status_val.c_str();
+        SETH_DEBUG("create library status: %d, out: %d output: %s, from: %s, to: %s", 
+            (int32_t)status_code, \
+            status_arr[0],
             "",
             common::Encode::HexEncode(block_tx.from()).c_str(),
             common::Encode::HexEncode(block_tx.to()).c_str());
         if (block_tx.status() == kConsensusSuccess) {
-            zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
+            zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
             zjc_host.MergeToPrev();
 
             auto contract_info = std::make_shared<address::protobuf::AddressInfo>();
@@ -149,7 +152,7 @@ public:
 
             to_item_ptr->set_library_bytes(block_tx.contract_code());
         } else {
-            pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
+            pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
         }
 
         return kConsensusSuccess;

@@ -245,13 +245,17 @@ int ContractUserCreateCall::HandleTx(
     int32_t* status_arr = (int32_t*)tx_status_str;
     status_arr[0] = evmc_res.status_code;
     memcpy(tx_status_str + 4, evmc_res.output_data, evmc_res.output_size);
-    SETH_DEBUG("create contract status: %d, output: %s, from: %s, to: %s", 
+    auto status_val = std::string(tx_status_str, sizeof(tx_status_str));
+    int32_t* tmp_status_arr = (int32_t*)status_val.c_str();
+    SETH_DEBUG("create contract status: %d, rel: %d, realo: %s, output: %s, from: %s, to: %s", 
         (int32_t)evmc_res.status_code, 
+        tmp_status_arr[0],
+        common::Encode::HexEncode(std::string((char*)tmp_status_arr + 4, evmc_res.output_size)).c_str(),
         common::Encode::HexEncode(std::string((char*)evmc_res.output_data, evmc_res.output_size)).c_str(),
         common::Encode::HexEncode(block_tx.from()).c_str(),
         common::Encode::HexEncode(block_tx.to()).c_str());
     if (block_tx.status() == kConsensusSuccess) {
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string(tx_status_str, sizeof(tx_status_str)));
+        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
         zjc_host.MergeToPrev();
         auto iter = pre_zjc_host.cross_to_map_.find(block_tx.to());
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
@@ -286,7 +290,7 @@ int ContractUserCreateCall::HandleTx(
                 exists_iter->second->amount());
         }
     } else {
-        pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string(tx_status_str, sizeof(tx_status_str)));
+        pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
     }
 
     return kConsensusSuccess;
