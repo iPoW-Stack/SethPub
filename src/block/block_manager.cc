@@ -62,14 +62,7 @@ int BlockManager::Init(
     pools_mgr_ = pools_mgr;
     new_block_callback_ = new_block_callback;
     statistic_mgr_ = statistic_mgr;
-
-    pools::protobuf::PoolStatisticTxInfo statistic_info;
-    if (prefix_db_->GetLatestPoolStatisticTag(
-            common::GlobalInfo::Instance()->network_id(), 
-            &statistic_info)) {
-        timeblock_height_pq_.push(statistic_info.height());
-        SETH_INFO("latest statisticed height: %lu", statistic_info.height());
-    }
+    
 
     security_ = security;
     contract_mgr_ = contract_mgr;
@@ -78,6 +71,13 @@ int BlockManager::Init(
     to_txs_pool_ = std::make_shared<pools::ToTxsPools>(
         db_, local_id, max_consensus_sharding_id_, pools_mgr_, account_mgr_);
     consensus_block_queues_ = new common::ThreadSafeQueue<std::shared_ptr<hotstuff::ViewBlockInfo>>[common::kMaxThreadCount];
+    pools::protobuf::PoolStatisticTxInfo statistic_info;
+    if (prefix_db_->GetLatestPoolStatisticTag(
+            common::GlobalInfo::Instance()->network_id(), 
+            &statistic_info)) {
+        timeblock_height_pq_.push(statistic_info.height());
+        SETH_INFO("latest statisticed height: %lu", statistic_info.height());
+    }
 
     bool genesis = false;
     pop_tx_tick_.CutOff(200000lu, std::bind(&BlockManager::PopTxTicker, this));
