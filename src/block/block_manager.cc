@@ -75,6 +75,7 @@ int BlockManager::Init(
     if (prefix_db_->GetLatestPoolStatisticTag(
             common::GlobalInfo::Instance()->network_id(), 
             &statistic_info)) {
+        latest_statistic_height_ = statistic_info.height();
         timeblock_height_pq_.push(statistic_info.height());
         SETH_INFO("latest statisticed height: %lu", statistic_info.height());
     }
@@ -190,6 +191,10 @@ void BlockManager::HandleStatisticTx(const view_block::protobuf::ViewBlockItem& 
 
     auto& elect_statistic = view_block.block_info().elect_statistic();
     if (elect_statistic.sharding_id() == net_id) {
+        if (latest_statistic_height_ < elect_statistic.statistic_height()) {
+            latest_statistic_height_ = elect_statistic.statistic_height();
+        }
+
         while (!timeblock_height_pq_.empty() && 
                 timeblock_height_pq_.top() < elect_statistic.height_info().tm_height()) {
             SETH_DEBUG("success pop tm height: %lu, statistic tm height: %lu, "
@@ -969,7 +974,10 @@ void BlockManager::CallTimeBlock(
         latest_timeblock_height_, latest_time_block_height, 
         lastest_time_block_tm, nonce, latest_timeblock_tm_sec_, 
         timeblock_height_pq_.empty() ? 0 : timeblock_height_pq_.top());
-    timeblock_height_pq_.push(latest_time_block_height);
+    if (latest_time_block_height > latest_statistic_height_) {
+        timeblock_height_pq_.push(latest_time_block_height);
+    }
+    
     timeblock_height_with_nonce_[latest_time_block_height] = nonce;
     if (latest_timeblock_tm_sec_ >= lastest_time_block_tm) {
         return;

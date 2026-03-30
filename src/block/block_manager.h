@@ -163,6 +163,7 @@ private:
     uint64_t latest_timeblock_height_ = 0;
     uint64_t prev_timeblock_tm_sec_ = 0;
     uint64_t latest_timeblock_tm_sec_ = 0;
+    uint64_t latest_statistic_height_ = 0;
     common::UniqueMinPriorityQueue<uint64_t> timeblock_height_pq_;
     std::shared_ptr<pools::protobuf::ToTxHeights> statistic_heights_ptr_ = nullptr;
 //     std::shared_ptr<pools::protobuf::ToTxHeights> to_tx_heights_ptr_ = nullptr;
