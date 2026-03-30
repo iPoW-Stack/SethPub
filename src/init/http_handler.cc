@@ -1163,7 +1163,10 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
     auto tx_hash = common::Encode::HexDecode(req.get_param_value("tx_hash"));
     SETH_DEBUG("transaction receipt query, tx hash: %s", req.get_param_value("tx_hash").c_str());
     std::string res;
-    if (prefix_db->GetTemporaryKv(std::string("tx") + tx_hash, &res)) {
+    auto addr = evmc::address{};
+    auto id = std::string("tx");
+    memcpy(addr.bytes, id.c_str(), id.size());
+    if (prefix_db->GetTemporaryKv(std::string((char*)addr.bytes, sizeof(addr.bytes)) + tx_hash, &res)) {
         int32_t status = 0;
         uint32_t* status_arr = (uint32_t*)res.c_str();
         res_json["status"] = status_arr[0];
@@ -1172,7 +1175,6 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
             std::lock_guard<std::mutex> lock(http_handler->tx_msg_map_mutex());
             http_handler->tx_msg_map().Remove(tx_hash);
         }
-        
     } else {
         transport::MessagePtr msg_ptr = nullptr;
         {
