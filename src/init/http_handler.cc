@@ -1234,6 +1234,9 @@ void HttpHandler::Init(
     svr.Post("/transaction_receipt", TransactionReceipt);
     http_ip_ = ip;
     http_port_ = port;
+    svr.new_TaskQueue = [] { 
+        return new httplib::ThreadPool(40); 
+    };
     if (!svr.is_valid()) {
         SETH_ERROR("http server invalid.");
         return;
