@@ -591,7 +591,7 @@ bool BlsDkg::VerifySekkeyValid(
     //     return false;
     // }
 
-    SETH_WARN("success verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
+    SETH_DEBUG("success verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
         local_member_index_, 
         common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
         min_aggree_member_count_, 
@@ -669,7 +669,7 @@ bool BlsDkg::CheckRecomputeG2s(
         libBLS::ThresholdUtils::fieldElementToString(verify_g2s.Z.c1)));
     auto verified_val = verfy_final_vals.SerializeAsString();
     prefix_db_->SaveVerifiedG2s(local_member_index_, id, min_aggree_member_count_, verfy_final_vals);
-    SETH_WARN("success save verified g2: %u, peer: %d, t: %d, %s, %s",
+    SETH_DEBUG("success save verified g2: %u, peer: %d, t: %d, %s, %s",
         local_member_index_,
         join_info.member_idx(),
         min_aggree_member_count_,
@@ -788,7 +788,7 @@ void BlsDkg::SwapSecKey() try {
     // }
 
     CreateDkgMessage(msg_ptr);
-    SETH_WARN("success send swap seckey request local member index: %d, bls index: %u, local net: %u, hash64: %lu",
+    SETH_DEBUG("success send swap seckey request local member index: %d, bls index: %u, local net: %u, hash64: %lu",
         local_member_index_, 
         msg_ptr->header.bls_proto().index(),
         common::GlobalInfo::Instance()->network_id(), msg_ptr->header.hash64());
@@ -1027,7 +1027,7 @@ void BlsDkg::BroadcastFinish(const common::Bitmap& bitmap) {
     SETH_DEBUG("test 5 3");
     finish_msg->set_bls_sign_y(sign_y);
 #ifndef SETH_UNITTEST
-    SETH_WARN("success broadcast finish message. t: %d, n: %d, "
+    SETH_DEBUG("success broadcast finish message. t: %d, n: %d, "
         "local seckey: %s, msg hash: %s, pk: %s, hash64: %lu",
         min_aggree_member_count_, member_count_,
         libBLS::ThresholdUtils::fieldElementToString(local_sec_key_).c_str(),
@@ -1068,7 +1068,7 @@ void BlsDkg::FlushToCk(const libff::alt_bn128_G2& common_public_key) {
         info.local_sk = BlsDkg::serializeLocalSk(local_sec_key_);
         info.common_pk = BlsDkg::serializeCommonPk(common_public_key);
         info.swaped_sec_keys = valid_seck_keys_str_;
-        SETH_WARN("success insert bls elect info elect_hegiht_: %lu, "
+        SETH_DEBUG("success insert bls elect info elect_hegiht_: %lu, "
             "local_member_index_: %u, shard_id: %u, local_pri_keys: %s, "
             "local_pub_keys: %s, local_sk: %s, common_pk: %s, swaped_sec_keys: %s", 
             info.elect_height, info.member_idx, info.shard_id, 
