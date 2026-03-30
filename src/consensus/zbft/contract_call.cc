@@ -318,7 +318,7 @@ int ContractCall::HandleTx(
     SETH_DEBUG("call contract status: %d, rel: %d, relo: %s, output: %s, from: %s, to: %s", 
         (int32_t)evmc_res.status_code, 
         tmp_status_arr[0],
-        common::Encode::HexEncode((char*)status_val.c_str() + 4, evmc_res.output_size).c_str(),
+        common::Encode::HexEncode(std::string((char*)tx_status_str + 4, evmc_res.output_size)).c_str(),
         common::Encode::HexEncode(std::string((char*)evmc_res.output_data, evmc_res.output_size)).c_str(),
         common::Encode::HexEncode(block_tx.from()).c_str(),
         common::Encode::HexEncode(block_tx.to()).c_str());
