@@ -62,8 +62,15 @@ int BlockManager::Init(
     pools_mgr_ = pools_mgr;
     new_block_callback_ = new_block_callback;
     statistic_mgr_ = statistic_mgr;
-    timeblock_height_pq_.push(statistic_mgr_->latest_statisticed_height());
-    SETH_INFO("latest statisticed height: %lu", statistic_mgr_->latest_statisticed_height());
+
+    pools::protobuf::PoolStatisticTxInfo statistic_info;
+    if (prefix_db_->GetLatestPoolStatisticTag(
+            common::GlobalInfo::Instance()->network_id(), 
+            &statistic_info)) {
+        timeblock_height_pq_.push(statistic_info.height());
+        SETH_INFO("latest statisticed height: %lu", statistic_info.height());
+    }
+
     security_ = security;
     contract_mgr_ = contract_mgr;
     hotstuff_mgr_ = hotstuff_mgr;
