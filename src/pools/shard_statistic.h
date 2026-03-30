@@ -56,6 +56,9 @@ public:
     int StatisticWithHeights(
         pools::protobuf::ElectStatistic &elect_statistic,
         uint64_t statisticed_timeblock_height);
+    uint64_t latest_statisticed_height() const {
+        return latest_statisticed_height_;
+    }
 
 
   private:
