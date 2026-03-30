@@ -114,7 +114,7 @@ public:
             common::Encode::HexEncode(block_tx.to()).c_str());
         uint32_t status_code = block_tx.status();
         SETH_DEBUG("call contract status: %d, output: %s, from: %s, to: %s", 
-            (int32_t)evmc_res.status_code, 
+            (int32_t)status_code, 
             "",
             common::Encode::HexEncode(block_tx.from()).c_str(),
             common::Encode::HexEncode(block_tx.to()).c_str());
