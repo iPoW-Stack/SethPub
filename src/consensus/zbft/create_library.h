@@ -116,6 +116,22 @@ public:
         if (block_tx.status() == kConsensusSuccess) {
             zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
             zjc_host.MergeToPrev();
+
+            auto contract_info = std::make_shared<address::protobuf::AddressInfo>();
+            contract_info->set_addr(block_tx.to());
+            contract_info->set_balance(0);
+            contract_info->set_sharding_id(view_block.qc().network_id());
+            contract_info->set_pool_index(view_block.qc().pool_index());
+            contract_info->set_type(address::protobuf::kNormal);
+            contract_info->set_bytes_code(block_tx.contract_code());
+            contract_info->set_latest_height(view_block.block_info().height());
+            contract_info->set_tx_index(tx_index);
+            contract_info->set_nonce(0);
+            SETH_DEBUG("success add contract address info: %s, %s", 
+                common::Encode::HexEncode(block_tx.to()).c_str(), 
+                ProtobufToJson(*contract_info).c_str());
+            acc_balance_map[block_tx.to()] = contract_info;
+
             auto iter = pre_zjc_host.cross_to_map_.find(block_tx.to());
             std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
             if (iter == pre_zjc_host.cross_to_map_.end()) {
