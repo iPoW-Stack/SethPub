@@ -104,11 +104,14 @@ public:
             ProtobufToJson(*(acc_balance_map[from])).c_str());
         block_tx.set_balance(from_balance);
         block_tx.set_gas_used(gas_used);
-        SETH_DEBUG("create library called handle tx success nonce: %lu, %lu, %lu, status: %d",
+        SETH_DEBUG("create library called handle tx success nonce: "
+            "%lu, %lu, %lu, status: %d, from: %s, to: %s",
             block_tx.nonce(),
             block_tx.balance(),
             block_tx.gas_used(),
-            block_tx.status());
+            block_tx.status(),
+            common::Encode::HexEncode(block_tx.from()).c_str(),
+            common::Encode::HexEncode(block_tx.to()).c_str());
         uint32_t status_code = block_tx.status();
         if (block_tx.status() == kConsensusSuccess) {
             zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
@@ -123,7 +126,7 @@ public:
                 pre_zjc_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
             }
 
-            to_item_ptr->set_library_bytes(tx_info->value());
+            to_item_ptr->set_library_bytes(block_tx.contract_code());
         } else {
             pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
         }
