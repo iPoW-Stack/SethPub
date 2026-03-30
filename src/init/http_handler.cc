@@ -1167,12 +1167,19 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
     auto id = std::string("tx");
     memcpy(addr.bytes, id.c_str(), id.size());
     if (prefix_db->GetTemporaryKv(std::string((char*)addr.bytes, sizeof(addr.bytes)) + tx_hash, &res)) {
-        int32_t status = 0;
-        int32_t* status_arr = (int32_t*)res.c_str();
-        res_json["status"] = status_arr[0];
-        if (res.size() > sizeof(int32_t)) {
-            res_json["msg"] = common::Encode::HexEncode(std::string(res.c_str() + 4, res.size() - 4));
+        block::protobuf::KeyValueInfo kv_info;
+        if (kv_info.ParseFromString(res)) {
+            int32_t status = 0;
+            int32_t* status_arr = (int32_t*)kv_info.value().c_str();
+            res_json["status"] = status_arr[0];
+            if (kv_info.value().size() > sizeof(int32_t)) {
+                res_json["msg"] = common::Encode::HexEncode(
+                    std::string(kv_info.value().c_str() + 4, kv_info.value().size() - 4));
+            } else {
+                res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
+            }
         } else {
+            res_json["status"] = transport::kUnkonwn;
             res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
         }
 
