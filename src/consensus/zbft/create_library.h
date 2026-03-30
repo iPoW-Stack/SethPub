@@ -111,7 +111,7 @@ public:
             block_tx.status());
         uint32_t status_code = block_tx.status();
         if (block_tx.status() == kConsensusSuccess) {
-            zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std:string((char*)&status_code, sizeof(status_code)));
+            zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
             zjc_host.MergeToPrev();
             auto iter = pre_zjc_host.cross_to_map_.find(block_tx.to());
             std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
@@ -125,7 +125,7 @@ public:
 
             to_item_ptr->set_library_bytes(tx_info->value());
         } else {
-            pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std:string((char*)&status_code, sizeof(status_code)));
+            pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
         }
 
         return kConsensusSuccess;
