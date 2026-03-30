@@ -326,7 +326,7 @@ static void HttpTransaction(const httplib::Request& req, httplib::Response& http
         return;
     }
     
-    transport::TcpTransport::Instance()->SetMessageHash(msg_ptr->header);
+    transport::TcpTransport::Instance()->SetMessageHash(common::Random::RandomUint64());
     SETH_WARN("http handler success get http server thread index: %d, address: %s, hash64: %lu", 
         thread_index, 
         common::Encode::HexEncode(
