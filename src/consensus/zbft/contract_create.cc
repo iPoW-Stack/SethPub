@@ -242,7 +242,7 @@ int ContractUserCreateCall::HandleTx(
         block_tx.amount(),
         block_tx.status());
     char tx_status_str[4 + evmc_res.output_size];
-    uint32_t* status_arr = (uint32_t*)tx_status_str;
+    int32_t* status_arr = (int32_t*)tx_status_str;
     status_arr[0] = evmc_res.status_code;
     memcpy(tx_status_str + 4, evmc_res.output_data, evmc_res.output_size);
     if (block_tx.status() == kConsensusSuccess) {

@@ -1168,7 +1168,7 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
     memcpy(addr.bytes, id.c_str(), id.size());
     if (prefix_db->GetTemporaryKv(std::string((char*)addr.bytes, sizeof(addr.bytes)) + tx_hash, &res)) {
         int32_t status = 0;
-        uint32_t* status_arr = (uint32_t*)res.c_str();
+        int32_t* status_arr = (int32_t*)res.c_str();
         res_json["status"] = status_arr[0];
         res_json["msg"] = common::Encode::HexEncode(std::string(res.c_str() + 4, res.size() - 4));
         {
