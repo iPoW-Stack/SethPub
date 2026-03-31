@@ -37,8 +37,6 @@ This SDK provides a **web3.py-like** Python interface for the **Seth Blockchain*
 
 ---
 
-### 🛠 Quick Start
-
 #### 1. Environment Initialization
 Connect to a Seth node and derive your wallet address from a private key.
 
@@ -88,7 +86,7 @@ calc = w3.eth.contract(abi=c_abi, bytecode=c_bin).deploy({
 }, PRIV_KEY)
 ```
 
-#### Interaction & Debugging
+#### 4. Interaction & Debugging
 ```python
 # 1. Sending Transactions with Value (Transact)
 In cross-contract calls (e.g., Bridge -> Treasury -> Pool), it is common to pass native tokens along the chain.
@@ -109,7 +107,7 @@ else:
     print(f"Failed. Reason: {receipt.get('error_reason')}")
 ```
 
-#### Read-Only Queries (Call)
+#### 5. Read-Only Queries (Call)
 ```python
 Query contract state variables or view/pure functions.
 
