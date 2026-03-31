@@ -244,31 +244,20 @@ int ContractUserCreateCall::HandleTx(
         block_tx.contract_prepayment(),
         block_tx.amount(),
         block_tx.status());
-    char* tx_status_str = nullptr;
-    defer({
-            delete[] tx_status_str;
-    });
-
-    size_t tx_status_str_len = 4;
+    block::protobuf::TxHashStatus tx_hash_status;
+    *tx_hash_status.mutbale_events() = block_tx.events();
     if (check_valid) {
-        tx_status_str = new char[4 + evmc_res.output_size];
-        uint32_t* status_arr = (uint32_t*)tx_status_str;
-        status_arr[0] = evmc_res.status_code;
-        memcpy(tx_status_str + 4, evmc_res.output_data, evmc_res.output_size);
-        tx_status_str_len = 4 + evmc_res.output_size;
+        tx_hash_status.set_status(evmc_res.status_code);
+        tx_hash_status.set_output(evmc_res.output_data, evmc_res.output_size);
     } else {
-        tx_status_str = new char[4];
-        uint32_t* status_arr = (uint32_t*)tx_status_str;
-        status_arr[0] = block_tx.status();
+        tx_hash_status.set_status(block_tx.status());
     }
 
-    auto status_val = std::string(tx_status_str, sizeof(tx_status_str));
-    int32_t* tmp_status_arr = (int32_t*)tx_status_str;
-    SETH_DEBUG("create contract status: %d, rel: %d, realo: %s, output: %s, from: %s, to: %s", 
+    auto status_val = tx_hash_status.SerializeAsString();
+    SETH_DEBUG("create contract status: %d, rel: %d, output: %s, from: %s, to: %s", 
         (int32_t)evmc_res.status_code, 
-        tmp_status_arr[0],
-        common::Encode::HexEncode(std::string((char*)tx_status_str + 4, evmc_res.output_size)).c_str(),
-        common::Encode::HexEncode(std::string((char*)evmc_res.output_data, evmc_res.output_size)).c_str(),
+        tx_hash_status.status(),
+        ProtobufToJson(tx_hash_status)c_str(),
         common::Encode::HexEncode(block_tx.from()).c_str(),
         common::Encode::HexEncode(block_tx.to()).c_str());
     if (block_tx.status() == kConsensusSuccess) {
