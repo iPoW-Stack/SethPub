@@ -71,7 +71,8 @@ int ContractUserCreateCall::HandleTx(
     zjc_host.view_block_chain_ = pre_zjc_host.view_block_chain_;
     zjc_host.tx_context_ = pre_zjc_host.tx_context_;
     zjc_host.pre_zjc_host_ = &pre_zjc_host;
-    evmc_result evmc_res = {};
+    evmc_result evmc_call_res = {};
+    evmc::Result evmc_res{ evmc_call_res };
     if (block_tx.status() == kConsensusSuccess) {
         InitHost(
             zjc_host, 
@@ -86,22 +87,21 @@ int ContractUserCreateCall::HandleTx(
         zjc_host.AddTmpAccountBalance(
             block_tx.to(),
             block_tx.amount());
-        evmc::Result res{ evmc_res };
-        int call_res = CreateContractCallExcute(zjc_host, block_tx, &res);
-        gas_used = block_tx.gas_limit() - res.gas_left;
-        if (call_res != kConsensusSuccess || res.status_code != EVMC_SUCCESS) {
-            block_tx.set_status(EvmcStatusToZbftStatus(res.status_code));
+        int call_res = CreateContractCallExcute(zjc_host, block_tx, &evmc_res);
+        gas_used = block_tx.gas_limit() - evmc_res.gas_left;
+        if (call_res != kConsensusSuccess || evmc_res.status_code != EVMC_SUCCESS) {
+            block_tx.set_status(EvmcStatusToZbftStatus(evmc_res.status_code));
             SETH_DEBUG("create contract: %s failed, call_res: %d, "
                 "evmc res: %d, gas_used: %lu, gas price: %lu, from_balance: %lu",
                 common::Encode::HexEncode(block_tx.to()).c_str(),
                 call_res,
-                (int32_t)res.status_code,
+                (int32_t)evmc_res.status_code,
                 gas_used,
                 block_tx.gas_price(),
                 from_balance);
         }
 
-        if (res.gas_left > (int64_t)block_tx.gas_limit()) {
+        if (evmc_res.gas_left > (int64_t)block_tx.gas_limit()) {
             gas_used = block_tx.gas_limit();
         }
 
@@ -241,16 +241,31 @@ int ContractUserCreateCall::HandleTx(
         block_tx.contract_prepayment(),
         block_tx.amount(),
         block_tx.status());
-    char tx_status_str[4 + evmc_res.output_size];
-    int32_t* status_arr = (int32_t*)tx_status_str;
-    status_arr[0] = evmc_res.status_code;
-    memcpy(tx_status_str + 4, evmc_res.output_data, evmc_res.output_size);
+    char* tx_status_str = nullptr;
+    defer({
+        if (tx_status_str != nullptr) {
+            delete[] tx_status_str;
+        }
+    });
+
+    size_t tx_status_str_len = 4;
+    if (check_valid) {
+        tx_status_str = new char[4 + evmc_res.output_size];
+        uint32_t* status_arr = (uint32_t*)tx_status_str;
+        status_arr[0] = evmc_res.status_code;
+        memcpy(tx_status_str + 4, evmc_res.output_data, evmc_res.output_size);
+        tx_status_str_len = 4 + evmc_res.output_size;
+    } else {
+        tx_status_str = new char[4];
+        status_arr[0] = block_tx.status();
+    }
+
     auto status_val = std::string(tx_status_str, sizeof(tx_status_str));
-    int32_t* tmp_status_arr = (int32_t*)status_val.c_str();
+    int32_t* tmp_status_arr = (int32_t*)tx_status_str;
     SETH_DEBUG("create contract status: %d, rel: %d, realo: %s, output: %s, from: %s, to: %s", 
         (int32_t)evmc_res.status_code, 
         tmp_status_arr[0],
-        common::Encode::HexEncode(std::string((char*)tmp_status_arr + 4, evmc_res.output_size)).c_str(),
+        common::Encode::HexEncode(std::string((char*)tx_status_str + 4, evmc_res.output_size)).c_str(),
         common::Encode::HexEncode(std::string((char*)evmc_res.output_data, evmc_res.output_size)).c_str(),
         common::Encode::HexEncode(block_tx.from()).c_str(),
         common::Encode::HexEncode(block_tx.to()).c_str());

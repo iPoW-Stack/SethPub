@@ -77,7 +77,8 @@ int ContractCall::HandleTx(
         check_valid = true;
     } while (0);
 
-    evmc_result evmc_res = {};
+    evmc_result call_contract_res = {};
+    evmc::Result evmc_res{ call_contract_res };
     hotstuff::BalanceAndNonceMap dep_contract_balance_map;
     if (!check_valid) {
         if (from_balance >= gas_used * block_tx.gas_price()) {
@@ -96,20 +97,19 @@ int ContractCall::HandleTx(
             block_tx.to(),
             new_contract_balance);
         if (block_tx.contract_input().size() >= protos::kContractBytesStartCode.size()) {
-            evmc::Result res{ evmc_res };
             SETH_DEBUG("now call contract address: %s, bytes: %s", 
                 common::Encode::HexEncode(address_info->addr()).c_str(), 
                 common::Encode::HexEncode(address_info->bytes_code()).c_str());
-            int call_res = ContractExcute(address_info, new_contract_balance, zjc_host, block_tx, gas_limit, &res);
-            if (call_res != kConsensusSuccess || res.status_code != EVMC_SUCCESS) {
-                block_tx.set_status(EvmcStatusToZbftStatus(res.status_code));
+            int call_res = ContractExcute(address_info, new_contract_balance, zjc_host, block_tx, gas_limit, &evmc_res);
+            if (call_res != kConsensusSuccess || evmc_res.status_code != EVMC_SUCCESS) {
+                block_tx.set_status(EvmcStatusToZbftStatus(evmc_res.status_code));
                 SETH_DEBUG("call contract failed, call_res: %d, evmc res: %d, gas_limit: %lu, bytes: %s, input: %s!",
-                    call_res, (int32_t)res.status_code, gas_limit, "common::Encode::HexEncode(address_info->bytes_code()).c_str()",
+                    call_res, (int32_t)evmc_res.status_code, gas_limit, "common::Encode::HexEncode(address_info->bytes_code()).c_str()",
                     common::Encode::HexEncode(block_tx.contract_input()).c_str());
             }
 
-            gas_used += gas_limit - res.gas_left;
-            if (res.gas_left > (int64_t)gas_limit) {
+            gas_used += gas_limit - evmc_res.gas_left;
+            if (evmc_res.gas_left > (int64_t)gas_limit) {
                 gas_used = gas_limit;
             }
         }
@@ -311,12 +311,27 @@ int ContractCall::HandleTx(
         contract_balance_add,
         new_contract_balance,
         (etime - btime));
-    char tx_status_str[4 + evmc_res.output_size];
-    uint32_t* status_arr = (uint32_t*)tx_status_str;
-    status_arr[0] = evmc_res.status_code;
-    memcpy(tx_status_str + 4, evmc_res.output_data, evmc_res.output_size);
-    auto status_val = std::string(tx_status_str, sizeof(tx_status_str));
-    int32_t* tmp_status_arr = (int32_t*)status_val.c_str();
+    char* tx_status_str = nullptr;
+    defer({
+        if (tx_status_str != nullptr) {
+            delete[] tx_status_str;
+        }
+    });
+
+    size_t tx_status_str_len = 4;
+    if (check_valid) {
+        tx_status_str = new char[4 + evmc_res.output_size];
+        uint32_t* status_arr = (uint32_t*)tx_status_str;
+        status_arr[0] = evmc_res.status_code;
+        memcpy(tx_status_str + 4, evmc_res.output_data, evmc_res.output_size);
+        tx_status_str_len = 4 + evmc_res.output_size;
+    } else {
+        tx_status_str = new char[4];
+        status_arr[0] = block_tx.status();
+    }
+
+    auto status_val = std::string(tx_status_str, tx_status_str_len);
+    int32_t* tmp_status_arr = (int32_t*)tx_status_str;
     SETH_DEBUG("call contract status: %d, rel: %d, relo: %s, output: %s, from: %s, to: %s", 
         (int32_t)evmc_res.status_code, 
         tmp_status_arr[0],
@@ -329,7 +344,7 @@ int ContractCall::HandleTx(
             acc_balance_map[iter->first] = iter->second;
         }
 
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string(tx_status_str, sizeof(tx_status_str)));
+        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
         zjc_host.MergeToPrev();
         for (auto exists_iter = cross_to_map_.begin(); exists_iter != cross_to_map_.end(); ++exists_iter) {
             auto iter = pre_zjc_host.cross_to_map_.find(exists_iter->first);
@@ -342,7 +357,7 @@ int ContractCall::HandleTx(
             }
         }
     } else {
-        pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string(tx_status_str, sizeof(tx_status_str)));
+        pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
     }
 
     return kConsensusSuccess;
