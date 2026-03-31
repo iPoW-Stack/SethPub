@@ -244,6 +244,16 @@ int ContractUserCreateCall::HandleTx(
         block_tx.contract_prepayment(),
         block_tx.amount(),
         block_tx.status());
+    for (auto event_iter = zjc_host.recorded_logs_.begin();
+            event_iter != zjc_host.recorded_logs_.end(); ++event_iter) {
+        auto log = block_tx.add_events();
+        log->set_data((*event_iter).data);
+        for (auto topic_iter = (*event_iter).topics.begin();
+                topic_iter != (*event_iter).topics.end(); ++topic_iter) {
+            log->add_topics(std::string((char*)(*topic_iter).bytes, sizeof((*topic_iter).bytes)));
+        }
+    }
+    
     block::protobuf::TxHashStatus tx_hash_status;
     *tx_hash_status.mutable_events() = block_tx.events();
     if (check_valid) {
