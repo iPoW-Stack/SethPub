@@ -143,7 +143,6 @@ static inline std::string MessageStatusToString(MessageHandleStatus status) {
             return "kRequestInvalid";
         case kNotExists:
             return "kNotExists";
-
         case EVMC_FAILURE:
             return "EVMC_FAILURE";
         case EVMC_REVERT:
