@@ -87,7 +87,6 @@ int FromTxItem::HandleTx(
 
     uint32_t status_code = block_tx.status();
     if (block_tx.status() == kConsensusSuccess) {
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
         zjc_host.MergeToPrev();
         auto iter = pre_zjc_host.cross_to_map_.find(block_tx.to());
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
@@ -107,8 +106,12 @@ int FromTxItem::HandleTx(
         SETH_DEBUG("failed add cross to shard array: %s, %lu",
             common::Encode::HexEncode(block_tx.to()).c_str(),
             block_tx.amount());
-        pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
     }
+
+    block::protobuf::TxHashStatus tx_hash_status;
+    tx_hash_status.set_status(block_tx.status());
+    auto status_val = tx_hash_status.SerializeAsString();
+    pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
 
     // Deduct the amount from the source account
     acc_balance_map[from]->set_balance(from_balance);

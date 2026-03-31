@@ -124,8 +124,10 @@ int JoinElectTxItem::HandleTx(
         }
     }
 
-    uint32_t status_code = block_tx.status();
-    zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
+    block::protobuf::TxHashStatus tx_hash_status;
+    tx_hash_status.set_status(block_tx.status());
+    auto status_val = tx_hash_status.SerializeAsString();
+    zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
     uint64_t stoke = 0;
     prefix_db_->GetElectNodeMinStoke(common::GlobalInfo::Instance()->network_id(), from, &stoke);
     join_info.set_stoke(stoke);

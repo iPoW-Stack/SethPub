@@ -61,8 +61,10 @@ public:
         }
 
         InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
-        uint32_t status_code = block_tx.status();
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
+       block::protobuf::TxHashStatus tx_hash_status;
+        tx_hash_status.set_status(block_tx.status());
+        auto status_val = tx_hash_status.SerializeAsString();
+        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
         zjc_host.SaveKeyValue(block_tx.to(), tx_info->key(), tx_info->value());
         block_tx.set_unique_hash(tx_info->key());
         uint64_t* udata = (uint64_t*)tx_info->value().c_str();

@@ -309,19 +309,33 @@ def test_library_with_contrcat(SETH_IP, SETH_PORT, PRIV_KEY):
     }
     """
 
+    # --- 1. Deploy Library (Web3 Style) ---
+    print("Deploying Library...")
     l_bin, l_abi = compile_and_link(source, "MathLib")
-    l_addr = calc_create2_address(MY_ADDR, "30", l_bin)
-    tx_l = w3.client.send_transaction_auto(PRIV_KEY, l_addr, StepType.kCreateLibrary, contract_code=l_bin, prepayment=10**7)
-    w3.client.wait_for_receipt(tx_l)
-    print(f"Library deployed at: {l_addr}")
+    
+    # We use a mock factory pattern
+    # salt "30" for Library
+    lib_addr = calc_create2_address(MY_ADDR, "30", l_bin)
+    w3.eth.contract(abi=l_abi, bytecode=l_bin).deploy(
+        transaction={'from': MY_ADDR, 'salt': "30", 'step': StepType.kCreateLibrary},
+        private_key=PRIV_KEY
+    )
+    print(f"Library deployed at: {lib_addr}")
 
-    c_bin, c_abi = compile_and_link(source, "Calculator", libs={"MathLib": l_addr})
-    c_addr = calc_create2_address(MY_ADDR, "31", c_bin)
-    tx_c = w3.client.send_transaction_auto(PRIV_KEY, c_addr, StepType.kCreateContract, contract_code=c_bin, prepayment=10**7)
-    w3.client.wait_for_receipt(tx_c)
-    print(f"Contract deployed at: {c_addr}")
+    # --- 2. Deploy Calculator (Web3 Style) ---
+    print("Deploying Calculator...")
+    # Linking is handled in compile_and_link
+    c_bin, c_abi = compile_and_link(source, "Calculator", libs={"MathLib": lib_addr})
+    
+    # salt "31" for Contract
+    calc_addr = calc_create2_address(MY_ADDR, "31", c_bin)
+    calculator = w3.eth.contract(abi=c_abi, bytecode=c_bin).deploy(
+        transaction={'from': MY_ADDR, 'salt': "31", 'step': StepType.kCreateContract},
+        private_key=PRIV_KEY
+    )
+    print(f"Contract deployed at: {calc_addr}")
 
-    calc = w3.eth.contract(address=c_addr, abi=c_abi, sender_address=MY_ADDR)
+    calc = w3.eth.contract(address=calc_addr, abi=c_abi, sender_address=MY_ADDR)
     receipt = calc.functions.doAdd(33, 66).transact(PRIV_KEY)
     
     print(f"⭐ Decoded Result: {receipt.get('decoded_output')}")
