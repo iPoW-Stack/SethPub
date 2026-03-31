@@ -466,24 +466,9 @@ class SethClient:
 
         txh = keccak.new(digest_bits=256).update(msg).digest()
 
-        # 3. 使用 liboqs-python 的标准方式签名 (推荐)
         with oqs.Signature('ML-DSA-44') as signer:
-            # 直接传入私钥字节（liboqs-python 会处理长度对齐和 ctypes 转换）
-            sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
-            
-            # 关键：调用 sign 时只传消息，私钥通过 init 或内部机制处理
-            # 如果你的版本支持直接传入 sk（某些版本的 .sign(msg, sk)），可以尝试下面这行：
-            # signature = signer.sign(txh, sk_bytes)   # 尝试这个
-            
-            # 最稳妥的方式（大多数 liboqs-python 版本）：
-            # 先设置私钥（如果类支持），或者直接用 sign(bytes)
-            # 推荐先尝试标准 bytes 输入
-            signature = signer.sign(txh)   # ← 这是标准调用，只传消息
-
-        # 如果上面报错 "secret key not set" 或类似，尝试下面这种（部分版本需要显式设置）：
-        # with oqs.Signature('ML-DSA-44') as signer:
-        #     signer.secret_key = sk_bytes   # 某些版本支持直接赋值 bytes
-        #     signature = signer.sign(txh)
+            signer.secret_key = bytes.fromhex(oqs_sk_hex.replace('0x',''))
+            signature = signer.sign(txh)
 
         # 4. 转 Hex 并组装交易
         sig_hex = bytes(signature).hex() if isinstance(signature, (bytes, bytearray)) else signature.hex()
