@@ -174,7 +174,7 @@ def run_comprehensive_ars_demo():
     
     # Constructor parameters
     init_param = b"initial_pbc_system_parameters"
-    ars_contract = w3.eth.contract(abi=abi, bytecode=bytecode, sender_address=MY_ADDR).deploy({
+    ars_contract = w3.seth.contract(abi=abi, bytecode=bytecode, sender_address=MY_ADDR).deploy({
         'from': MY_ADDR,
         'salt': secrets.token_hex(32),
         'args': [init_param]
