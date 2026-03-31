@@ -16,9 +16,23 @@ from ecdsa import SECP256k1, SigningKey
 from ecdsa.util import sigencode_string_canonize
 from eth_abi import encode as eth_abi_encode
 from eth_utils import to_checksum_address
+from enum import IntEnum
 
 SOLC_VERSION = "0.8.30"
-IN_PROGRESS = {1, 3, 10}
+
+class MessageHandleStatus(IntEnum):
+    kConsensusSuccess = 0
+    kMessageHandle = 10001
+    kMessageHandleError = 10002
+    kTxAccept = 10003
+    kTxInvalidSignature = 10004
+    kTxInvalidAddress = 10005
+    kTxPoolFullReject = 10006
+    kTxUserNonceInvalid = 10007
+    kUnkonwn = 10008
+    kRequestInvalid = 10009
+
+IN_PROGRESS = {MessageHandleStatus.kMessageHandle, MessageHandleStatus.kTxAccept, MessageHandleStatus.kRequestInvalid}
 PROBE_POOL_SOL = """// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
@@ -156,11 +170,7 @@ contract ProbeBridge {
 def normalize_status(status):
     if status is None:
         return None
-    s = int(status)
-    if s in (10003, 10005, 100010):
-        return s % 10000
-    return s
-
+    return MessageHandleStatus(status)
 
 def selector(signature: str) -> str:
     h = keccak.new(digest_bits=256)
@@ -170,7 +180,6 @@ def selector(signature: str) -> str:
 
 def encode_call(signature: str, types: list, args: list) -> str:
     return selector(signature) + eth_abi_encode(types, args).hex()
-
 
 def parse_hex_output(raw: str | None) -> str:
     if not raw:
