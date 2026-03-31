@@ -463,31 +463,35 @@ class SethClient:
 
         # 3. 执行 ML-DSA-44 (Dilithium2) 签名
         with oqs.Signature('ML-DSA-44') as signer:
-            sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
-            
-            # 强制长度对齐 (ML-DSA-44 必须是 2560 字节)
-            if len(sk_bytes) < 2560:
-                sk_bytes = sk_bytes.ljust(2560, b'\x00')
-            elif len(sk_bytes) > 2560:
-                sk_bytes = sk_bytes[:2560]
-
-            # --- 终极修复：直接向 signer 内部的 ctypes 缓冲区填充数据 ---
-            # 在 0.14.0/0.15.0 中，内部属性通常叫 _secret_key 或从父类继承
             import ctypes
+            
+            # --- A. 准备消息哈希 (txh) ---
+            # 显式转化为 c_ubyte 数组，防止 sign(txh) 报 "wrong type"
+            txh_bytes = bytes.fromhex(txh.hex()) if hasattr(txh, 'hex') else txh
+            msg_len = len(txh_bytes)
+            msg_ptr = (ctypes.c_uint8 * msg_len).from_buffer_copy(txh_bytes)
+
+            # --- B. 准备私钥 (sk) ---
+            sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
+            sk_len = signer.length_secret_key # 应该是 2560
+            
+            # 补齐或截断到标准长度
+            sk_bytes = sk_bytes.ljust(sk_len, b'\x00')[:sk_len]
+            sk_ptr = (ctypes.c_uint8 * sk_len).from_buffer_copy(sk_bytes)
+
+            # --- C. 注入私钥并签名 ---
             try:
-                # 尝试填充内部缓冲区
-                ctypes.memmove(signer._secret_key, sk_bytes, 2560)
-            except AttributeError:
-                # 如果没有 _secret_key，则尝试通用的缓冲区注入（某些版本直接挂在实例上）
-                # 这也是为什么你之前报 'Signature' object has no attribute 'secret_key'
-                # 我们直接通过私有变量或底层 buffer 尝试
-                target = getattr(signer, '_secret_key', None) or signer
-                ctypes.memmove(target, sk_bytes, 2560)
+                # 尝试通过新版推荐的属性注入（注意：必须是 c_ubyte 数组）
+                signer.secret_key = sk_ptr
+                # 调用签名，参数 1 (msg_ptr) 必须也是 ctypes 类型
+                signature = signer.sign(msg_ptr)
+            except (AttributeError, TypeError):
+                # 如果上面还报错，直接暴力调用签名函数（绕过封装检查）
+                # 在某些版本中，sign 接收 (bytes_like, sk_bytes_like)
+                # 但既然报了 "wrong type"，我们把两个都转成 ctypes
+                signature = signer.sign(msg_ptr, sk_ptr)
 
-            # 此时调用 sign，它会自动从已经填充好的内部缓冲区取私钥
-            # 这样就只传了 (self, txh)，符合“2 positional arguments”的限制
-            signature = signer.sign(txh)
-
+        sig_hex = signature.hex() if hasattr(signature, 'hex') else bytes(signature).hex()
         # 4. 组装请求数据
         data = {
             "nonce": str(nonce),
@@ -498,7 +502,7 @@ class SethClient:
             "gas_price": "1",
             "shard_id": "0",
             "type": str(int(step)),
-            "sign": signature.hex() 
+            "sign": sig_hex 
         }
         
         if contract_code: data["bytes_code"] = contract_code
