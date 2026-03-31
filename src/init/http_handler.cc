@@ -1169,14 +1169,12 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
     if (prefix_db->GetTemporaryKv(std::string((char*)addr.bytes, sizeof(addr.bytes)) + tx_hash, &res)) {
         block::protobuf::KeyValueInfo kv_info;
         if (kv_info.ParseFromString(res)) {
-            int32_t status = 0;
-            int32_t* status_arr = (int32_t*)kv_info.value().c_str();
-            res_json["status"] = status_arr[0];
-            if (kv_info.value().size() > sizeof(int32_t)) {
-                res_json["msg"] = common::Encode::HexEncode(
-                    std::string(kv_info.value().c_str() + 4, kv_info.value().size() - 4));
-            } else {
+            block::protobuf::TxHashStatus tx_status;
+            if (!tx_status.ParseFromString(kv_info.value())) {
+                res_json["status"] = transport::kUnkonwn;
                 res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
+            } else {
+                res_json = ProtobufToJson(tx_status);
             }
         } else {
             res_json["status"] = transport::kUnkonwn;
