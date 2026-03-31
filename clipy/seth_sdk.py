@@ -467,7 +467,8 @@ class SethClient:
         # 3. Execute ML-DSA-44 signature
         # Synchronize server side: OQS_SIG_alg_dilithium_2
         with oqs.Signature('ML-DSA-44') as signer:
-            signature = signer.sign(txh, bytes.fromhex(oqs_sk_hex.replace('0x','')))
+            signer.secret_key = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
+            signature = signer.sign(txh)
 
         # 4. Assemble request data
         data = {
