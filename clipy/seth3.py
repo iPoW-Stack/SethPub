@@ -287,7 +287,8 @@ class SethClient:
 
         return receipt
 
-    def query_contract(self, f, a, i): return requests.post(self.query_contract_url, data={"from": f, "address": a, "input": i}).text
+    def query_contract(self, f, a, i):
+        return requests.post(self.query_contract_url, data={"from": f, "address": a, "input": i}).text
     def get_balance(self, a):
         try:
             response = requests.post(self.query_url, data={"address": a}, timeout=5)
@@ -418,7 +419,7 @@ def test_contract_call_contract(w3, MY, KEY):
     treasury = w3.eth.contract(abi=t_abi, bytecode=t_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '04', 'args': [to_checksum_address(pool.address)], 'amount': 5000000 }, KEY)
     
     b_bin, b_abi = compile_and_link(PROBE_BRIDGE_SOL, "ProbeBridge")
-    bridge = w3.eth.contract(abi=b_abi, bytecode=b_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '05', 'args': [to_checksum_address(treasury.address)]}, KEY)
+    bridge = w3.eth.contract(abi=b_abi, bytecode=b_bin, sender_address=MY).deploy({'from': MY, 'salt': RANDOM_SALT + '05', 'args': [to_checksum_address(treasury.address)]}, KEY)
 
     treasury.functions.setBridge(to_checksum_address(bridge.address)).transact(KEY)
     receipt = bridge.functions.request(1).transact(KEY, value=5)
@@ -426,7 +427,6 @@ def test_contract_call_contract(w3, MY, KEY):
     if receipt.get('status') == 0:
         print(f"✅ Chain Call Success! AmountOut: {receipt.get('decoded_output')}")
         
-        # 打印解析后的事件
         for e in receipt.get('decoded_events', []):
             print(f"🔔 Event Log: {e['event']} -> {e['args']}")
     else:
