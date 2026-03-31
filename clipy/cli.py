@@ -7,6 +7,7 @@ from enum import IntEnum
 import solcx
 from solcx import compile_source, install_solc
 import eth_abi
+import base64
 
 # Fix: Uniformly use keccak logic from Crypto.Hash to avoid conflicts with eth_utils
 from Crypto.Hash import keccak
@@ -224,22 +225,6 @@ class SethClient:
                 return resp.text
         except: pass
         return None
-    
-    为了实现对 events 和 output 的自动解析，我们需要在 SethClient 类中增加解析逻辑，利用 eth_abi 将 Base64 编码的原始数据转换为人类可读的 Python 对象。
-
-核心逻辑包括：
-
-Output 解析：根据 ABI 定义的 outputs 类型进行解码。
-
-Events 解析：根据 topics（事件哈希）匹配 ABI 中的 event 定义，并解码 data。
-
-修改后的完整代码
-Python
-import base64
-# ... 保持之前的 import 不变 ...
-
-class SethClient:
-    # ... 保持之前的 __init__ 和其他方法不变 ...
 
     def decode_output(self, abi, function_name, base64_data):
         """解析函数返回值"""
