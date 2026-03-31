@@ -16,7 +16,6 @@ from ecdsa import SigningKey, SECP256k1
 from ecdsa.util import sigencode_string_canonize
 
 # --- 1. Constants & Enums ---
-# --- 1. Constants & Enums ---
 
 class StepType(IntEnum):
     """Defines the specific type of transaction/operation step."""
@@ -94,8 +93,21 @@ def calc_create2_address(sender_hex: str, salt_hex: str, bytecode_hex: str) -> s
 
 def compile_and_link(source: str, name: str, libs: Dict[str, str] = None):
     """Compiles Solidity and replaces Library linking placeholders."""
-    solcx.install_solc("0.8.30")
-    compiled = solcx.compile_source(source, output_values=['bin', 'abi'], optimize=True, evm_version='shanghai')
+    try:
+        solcx.get_executable(version="0.8.30")
+    except solcx.exceptions.SolcNotInstalled:
+        print("Installing solc v0.8.30...")
+        solcx.install_solc("0.8.30")
+    
+    solcx.set_solc_version("0.8.30")
+    
+    compiled = solcx.compile_source(
+        source, 
+        output_values=['bin', 'abi'], 
+        optimize=True, 
+        evm_version='shanghai'
+    )
+
     data = compiled[f"<stdin>:{name}"]
     bytecode = data['bin']
     if libs:
