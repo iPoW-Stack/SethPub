@@ -34,6 +34,9 @@ class StepType(IntEnum):
     kStatistic = 12                 # Statistical transaction
     kJoinElect = 13                 # Node election participation
     kCreateLibrary = 14             # Create public contract library (Library)
+    kCross = 15                     # Cross-shard anti-loss block replenishment
+    kRootCross = 16                 # Root network cross-shard replenishment
+    kPoolStatisticTag = 17          # End tag for transaction pool statistics round
 
 class MessageHandleStatus(IntEnum):
     """Status codes for message handling and EVM execution."""
@@ -41,6 +44,38 @@ class MessageHandleStatus(IntEnum):
     kMessageHandle = 10001
     kMessageHandleError = 10002
     kTxAccept = 10003
+    kTxInvalidSignature = 10004
+    kTxInvalidAddress = 10005
+    kTxPoolFullReject = 10006
+    kTxUserNonceInvalid = 10007
+    kUnkonwn = 10008
+    kRequestInvalid = 10009
+    kNotExists = 10010
+
+    # --- EVMC Standard Runtime Status ---
+    EVMC_SUCCESS = 0                # Execution finished with success
+    EVMC_FAILURE = 1                # Generic execution failure
+    EVMC_REVERT = 2                 # Execution terminated by REVERT opcode
+    EVMC_OUT_OF_GAS = 3             # Execution ran out of gas
+    EVMC_INVALID_INSTRUCTION = 4    # Hit an INVALID instruction
+    EVMC_UNDEFINED_INSTRUCTION = 5  # Encountered an undefined instruction
+    EVMC_STACK_OVERFLOW = 6         # EVM stack limit exceeded
+    EVMC_STACK_UNDERFLOW = 7        # Opcode required more items than available
+    EVMC_BAD_JUMP_DESTINATION = 8   # Violated jump destination restrictions
+    EVMC_INVALID_MEMORY_ACCESS = 9  # Tried to read/write outside memory bounds
+    EVMC_CALL_DEPTH_EXCEEDED = 10   # Call depth exceeded the limit
+    EVMC_STATIC_MODE_VIOLATION = 11 # Restricted operation attempted in static mode
+    EVMC_PRECOMPILE_FAILURE = 12    # Failure in precompiled or system contract
+    EVMC_CONTRACT_VALIDATION_FAILURE = 13 # Contract validation failed
+    EVMC_ARGUMENT_OUT_OF_RANGE = 14 # Argument value outside of accepted range
+    EVMC_WASM_UNREACHABLE_INSTRUCTION = 15 # WASM unreachable instruction hit
+    EVMC_WASM_TRAP = 16             # WASM trap hit
+    EVMC_INSUFFICIENT_BALANCE = 17  # Caller lacks funds for value transfer
+
+    # --- Internal Errors & Rejections ---
+    EVMC_INTERNAL_ERROR = -1        # Generic internal EVM implementation error
+    EVMC_REJECTED = -2              # Message/code rejected by the EVM
+    EVMC_OUT_OF_MEMORY = -3         # Failed to allocate memory
 
 # --- 2. Utilities ---
 
