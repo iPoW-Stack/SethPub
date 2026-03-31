@@ -1174,7 +1174,8 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
                 res_json["status"] = transport::kUnkonwn;
                 res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
             } else {
-                res_json = ProtobufToJson(tx_status);
+                res_json = nlohmann::json::parse(HttpProtobufToJson(tx_status));
+                res_json["msg"] = transport::MessageStatusToString(res_json["status"]);;
             }
         } else {
             res_json["status"] = transport::kUnkonwn;
