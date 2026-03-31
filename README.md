@@ -23,11 +23,129 @@ Ensure your development environment meets the following specifications:
       # machine user must root
       # machine password must Xf4aGbTaf!(for test), you can change it by edit simple_remote.sh
 
-## Transaction test
-```
-cd ./cbuild_Release && make txcli
-./txcli 0 3 0 $first_node_ip 13001
-```
+## Seth Web3 Python SDK Quick Start Guide
+
+This SDK provides a **web3.py-like** Python interface for the **Seth Blockchain**. It abstracts the complexities of low-level RPC signing, cross-shard nonce management, smart contract deployment, and Base64 encoding/decoding, allowing developers to build on Seth as easily as on Ethereum.
+
+---
+
+### 🚀 Key Features
+
+- **Web3-Style Interaction**: Supports the familiar `contract.functions.method(args).transact()` syntax.
+- **Automated Deployment**: Integrated `CREATE2` deterministic address calculation for cross-shard address consistency.
+- **Independent Library Support**: Deploy libraries first and link them to logical contracts automatically via bytecode manipulation.
+- **Deep Receipt Parsing**: Automatically decodes transaction return values (`output`) and `events` based on ABI, with support for `Revert` reason strings.
+- **Random Salt Management**: Built-in safe random salt generation to prevent contract deployment collisions.
+
+---
+
+### 🛠 Quick Start
+
+#### 1. Environment Initialization
+Connect to a Seth node and derive your wallet address from a private key.
+
+```python
+from seth_sdk import SethWeb3Mock, StepType
+
+IP, PORT = "127.0.0.1", 23001
+PRIV_KEY = "71e571862c0e4aefa87a3c16057a62c..." # Your private key hex
+
+w3 = SethWeb3Mock(IP, PORT)
+MY_ADDR = w3.client.get_address(PRIV_KEY)
+
+Gemini said
+Here is the complete Markdown source code for the Seth Web3 Python SDK README. You can copy this directly into your README.md file on GitHub.
+
+Markdown
+# Seth Web3 Python SDK Quick Start Guide
+
+This SDK provides a **web3.py-like** Python interface for the **Seth Blockchain**. It abstracts the complexities of low-level RPC signing, cross-shard nonce management, smart contract deployment, and Base64 encoding/decoding, allowing developers to build on Seth as easily as on Ethereum.
+
+---
+
+## 🚀 Key Features
+
+- **Web3-Style Interaction**: Supports the familiar `contract.functions.method(args).transact()` syntax.
+- **Automated Deployment**: Integrated `CREATE2` deterministic address calculation for cross-shard address consistency.
+- **Independent Library Support**: Deploy libraries first and link them to logical contracts automatically via bytecode manipulation.
+- **Deep Receipt Parsing**: Automatically decodes transaction return values (`output`) and `events` based on ABI, with support for `Revert` reason strings.
+- **Random Salt Management**: Built-in safe random salt generation to prevent contract deployment collisions.
+
+---
+
+## 🛠 Quick Start
+
+### 1. Environment Initialization
+Connect to a Seth node and derive your wallet address from a private key.
+
+```python
+from seth_sdk import SethWeb3Mock, StepType
+
+IP, PORT = "127.0.0.1", 23001
+PRIV_KEY = "71e571862c0e4aefa87a3c16057a62c..." # Your private key hex
+
+w3 = SethWeb3Mock(IP, PORT)
+MY_ADDR = w3.client.get_address(PRIV_KEY)
+### 2. Deploy an Independent Library
+On the Seth blockchain, complex logical contracts often depend on independently deployed libraries.
+
+```python
+# 1. Compile the Library source
+l_bin, l_abi = compile_and_link(LIBRARY_SOURCE, "MathLib")
+
+# 2. Deploy Library (Note: 'step' must be set to kCreateLibrary)
+lib = w3.eth.contract(abi=l_abi, bytecode=l_bin).deploy({
+    'from': MY_ADDR, 
+    'salt': '0x01', # Hexadecimal Salt
+    'step': StepType.kCreateLibrary
+}, PRIV_KEY)
+
+print(f"Library deployed at: {lib.address}")
+### 3. Deploy and Link a Contract
+When deploying a logic contract, inject the deployed library address using the libs parameter.
+
+```python
+# 1. Compile and link the library address
+c_bin, c_abi = compile_and_link(
+    CONTRACT_SOURCE, 
+    "Calculator", 
+    libs={"MathLib": lib.address} # Automatically replaces placeholders in bytecode
+)
+
+# 2. Deploy Logic Contract (Supports constructor arguments)
+calc = w3.eth.contract(abi=c_abi, bytecode=c_bin).deploy({
+    'from': MY_ADDR, 
+    'salt': '0x02',
+    'args': [1000, 1000] # Constructor arguments
+}, PRIV_KEY)
+
+### Interaction & Debugging
+# 1. Sending Transactions with Value (Transact)
+In cross-contract calls (e.g., Bridge -> Treasury -> Pool), it is common to pass native tokens along the chain.
+
+```python
+# Call request method, passing 5 SETH with 10^8 prepayment gas
+receipt = bridge.functions.request(1).transact(
+    private_key=PRIV_KEY, 
+    value=5, 
+    prepayment=10**8 
+)
+
+if receipt['status'] == 0:
+    print(f"Success! Return Value: {receipt['decoded_output']}")
+    # Automatically parse event logs
+    for e in receipt['decoded_events']:
+        print(f"🔔 Event: {e['event']} -> {e['args']}")
+else:
+    print(f"Failed. Reason: {receipt.get('error_reason')}")
+### Read-Only Queries (Call)
+Query contract state variables or view/pure functions.
+
+```python
+# Note: Even for calls, it is recommended to specify sender_address in the Seth environment
+total = bridge.functions.totalRequests().call()
+print(f"Current total requests: {total}")
+
 
 ## ⛏️ Start Mining
 
