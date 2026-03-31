@@ -432,74 +432,69 @@ class SethClient:
         k.update(pub_bytes)
         return k.digest()[:20].hex()
     
-    def send_oqs_transaction(self, oqs_sk_hex, oqs_pk_hex, to, step, amount=0, 
-                         contract_code='', input_hex='', prepayment=0):
-        """发送后量子交易 - 使用 liboqs-python (ML-DSA-44)"""
+    def send_oqs_transaction(self, oqs_sk_hex, oqs_pk_hex, to, step, amount=0, contract_code='', input_hex='', prepayment=0):
+        """发送后量子交易 - 完美适配 0.15.0/0.14.0 混合环境"""
         if not oqs:
             raise ImportError("liboqs-python is required")
-
+            
         my_addr = self.get_oqs_address(oqs_pk_hex)
         nonce_addr = to + my_addr if step == StepType.kContractExcute else my_addr
-
+        
         # 1. 获取 Nonce
         try:
             r = requests.post(self.query_url, data={"address": nonce_addr}).json()
             nonce = int(r.get("nonce", 0)) + 1
-        except Exception:
-            nonce = 1
+        except: nonce = 1
 
-        # 2. 构造待签名消息 (Keccak256)
+        # 2. 构造消息哈希 (Keccak256)
         msg = bytearray()
         msg.extend(struct.pack('<Q', nonce))
-        msg.extend(bytes.fromhex(oqs_pk_hex.replace('0x', '')))
-        msg.extend(bytes.fromhex(to.replace('0x', '')))
+        msg.extend(bytes.fromhex(oqs_pk_hex.replace('0x','')))
+        msg.extend(bytes.fromhex(to.replace('0x','')))
         msg.extend(struct.pack('<Q', amount))
-        msg.extend(struct.pack('<Q', 5000000))   # gas_limit
-        msg.extend(struct.pack('<Q', 1))         # gas_price
+        msg.extend(struct.pack('<Q', 5000000)) # gas_limit
+        msg.extend(struct.pack('<Q', 1))       # gas_price
         msg.extend(struct.pack('<Q', int(step)))
-        if contract_code:
-            msg.extend(bytes.fromhex(contract_code))
-        if input_hex:
-            msg.extend(bytes.fromhex(input_hex))
-        if prepayment > 0:
-            msg.extend(struct.pack('<Q', prepayment))
+        if contract_code: msg.extend(bytes.fromhex(contract_code))
+        if input_hex: msg.extend(bytes.fromhex(input_hex))
+        if prepayment > 0: msg.extend(struct.pack('<Q', prepayment))
 
         txh = keccak.new(digest_bits=256).update(msg).digest()
 
-        # 3. 签名 - 使用当前 binding 支持的高级 API（内部加载密钥）
-        # 注意：我们忽略传入的 oqs_sk_hex，因为这个 binding 不支持直接注入外部 sk
-        # （密钥必须通过 generate_keypair() 加载到 signer 内部）
+        # 3. 核心签名逻辑 - 适配新版 API
         with oqs.Signature('ML-DSA-44') as signer:
-            # generate_keypair() 会生成新的密钥对并把 secret key 存到 signer 内部
-            # 如果你想每次都用固定的密钥，可以在类初始化时持久化 signer 对象
-            signer.generate_keypair()          # 加载密钥（忽略返回值，这里只需加载 sk）
+            import ctypes
+            sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
             
-            signature = signer.sign(txh)       # 唯一可靠的调用方式
+            # 这里的 sk_bytes 长度必须是 2560 (由你的 t.py 验证得出)
+            # 注入私钥到内部缓冲区
+            if hasattr(signer, '_secret_key'):
+                ctypes.memmove(signer._secret_key, sk_bytes, len(sk_bytes))
+            else:
+                # 兼容性方案：如果是旧版暴露了 secret_key 属性
+                signer.secret_key = sk_bytes
 
-        # 签名转 hex
-        sig_hex = (signature.hex() if isinstance(signature, (bytes, bytearray))
-                else bytes(signature).hex())
+            # 执行签名：现在只需传 1 个参数 (txh)
+            # txh 必须是 bytes，如果报错就改为 (ctypes.c_uint8 * 32).from_buffer_copy(txh)
+            signature = signer.sign(txh)
 
-        # 构造交易数据
+        # 4. 组装请求
         data = {
             "nonce": str(nonce),
-            "pubkey": oqs_pk_hex.replace('0x', ''),
-            "to": to.replace('0x', ''),
+            "pubkey": oqs_pk_hex.replace('0x',''),
+            "to": to.replace('0x',''),
             "amount": str(amount),
             "gas_limit": "5000000",
             "gas_price": "1",
             "shard_id": "0",
             "type": str(int(step)),
-            "sign": sig_hex
+            "sign": signature.hex() 
         }
         
-        if contract_code:
-            data["bytes_code"] = contract_code
-        if input_hex:
-            data["input"] = input_hex
-        if prepayment:
-            data["pepay"] = str(prepayment)
-
+        if contract_code: data["bytes_code"] = contract_code
+        if input_hex: data["input"] = input_hex
+        if prepayment: data["pepay"] = str(prepayment)
+        
         requests.post(self.oqs_url, data=data)
         return txh.hex()
 
