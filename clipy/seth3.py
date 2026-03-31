@@ -94,25 +94,32 @@ def compile_and_link(source: str, name: str, libs: Dict[str, str] = None):
     try:
         solcx.install_solc("0.8.30")
         solcx.set_solc_version("0.8.30")
-    except Exception as e:
-        print(f"Solc installation/set issue: {e}")
+    except: pass
 
-    compiled = solcx.compile_source(
-        source, 
-        output_values=['bin', 'abi'], 
-        optimize=True, 
-        evm_version='shanghai'
-    )
+    compiled = solcx.compile_source(source, output_values=['bin', 'abi'], optimize=True, evm_version='shanghai')
     
-    data = compiled[f"<stdin>:{name}"]
-    bytecode = data['bin']
+    # Flexible lookup to handle different solc key naming conventions
+    contract_data = None
+    for key in compiled.keys():
+        if key.endswith(f":{name}"):
+            contract_data = compiled[key]
+            break
+            
+    if not contract_data:
+        raise KeyError(f"Contract '{name}' not found in compiled output. Available: {list(compiled.keys())}")
+
+    bytecode = contract_data['bin']
     
     if libs:
         for lib, addr in libs.items():
-            placeholder = keccak.new(digest_bits=256).update(f"<stdin>:{lib}".encode()).hexdigest()[:34]
-            bytecode = bytecode.replace(f"__${placeholder}$__", addr.replace('0x','').lower())
+            # Solidity linking placeholder format: __$hash$__
+            # The hash is based on the library's fully qualified name
+            placeholder_raw = f"<stdin>:{lib}"
+            placeholder = keccak.new(digest_bits=256).update(placeholder_raw.encode()).hexdigest()[:34]
+            clean_addr = addr.lower().replace('0x', '')
+            bytecode = bytecode.replace(f"__${placeholder}$__", clean_addr)
             
-    return bytecode, data['abi']
+    return bytecode, contract_data['abi']
 
 # --- 3. Web3 Mock Components ---
 
