@@ -304,7 +304,6 @@ def test_library():
     contract Calculator {
         uint256 public lastResult;
         event TestEvent(uint256 num);
-)
         // Added returns (uint256)
         function doAdd(uint256 a, uint256 b) public returns (uint256) {
             emit TestEvent(a);
