@@ -104,7 +104,7 @@ if receipt['status'] == 0:
     for e in receipt['decoded_events']:
         print(f"🔔 Event: {e['event']} -> {e['args']}")
 else:
-    print(f"Failed. Reason: {receipt.get('error_reason')}")
+    print(f"Failed. Reason: {receipt.get('msg')}")
 ```
 
 #### 5. Read-Only Queries (Call)

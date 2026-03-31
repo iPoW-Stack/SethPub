@@ -221,18 +221,19 @@ class SethClient:
         return txh.hex()
 
     def wait_for_receipt(self, tx_hash: str, abi: list = None, function_name: str = None) -> dict:
-        """循环轮询回执，并在获取后自动调用 decode_receipt"""
+        """Polls for the transaction receipt and automatically calls decode_receipt once retrieved."""
         while True:
             resp = requests.post(self.receipt_url, data={"tx_hash": tx_hash}).json()
             print(resp)
-            # 状态码 10001 (Pending) 或 10003 (Accepted) 表示还在处理中
+            
+            # Status codes 10001 (Pending) or 10003 (Accepted) indicate processing is still in progress
             if resp.get("status") not in [10001, 10003]:
-                # 找到回执了！如果传入了 ABI，就进行解码
+                # Receipt found! Decode if ABI and function name are provided
                 if abi and function_name:
                     return self.decode_receipt(resp, abi, function_name)
                 return resp
                 
-            time.sleep(5) # 每秒轮询一次
+            time.sleep(5)  # Poll once every 5 seconds
 
     def decode_receipt(self, receipt: dict, abi: list, function_name: str = None) -> dict:
         status = receipt.get("status")
@@ -242,7 +243,7 @@ class SethClient:
         receipt['decoded_output'] = None
         receipt['decoded_events'] = []
 
-        # --- 1. 解析返回值 (Output) ---
+        # --- 1. Parse Return Value (Output) ---
         if status == 0 and raw_out_b64 and function_name and abi:
             try:
                 raw_bytes = base64.b64decode(raw_out_b64)
@@ -250,30 +251,31 @@ class SethClient:
                 if item and 'outputs' in item:
                     decoded = eth_abi.decode([o['type'] for o in item['outputs']], raw_bytes)
                     receipt['decoded_output'] = decoded[0] if len(decoded) == 1 else decoded
-            except: pass
+            except: 
+                pass
 
-        # --- 2. 解析事件 (Events) ---
+        # --- 2. Parse Events ---
         if abi and raw_events:
-            # 先建立 topic0 -> event_abi 的映射表
+            # First, build a mapping table for topic0 -> event_abi
             event_map = {}
             for item in [i for i in abi if i.get('type') == 'event']:
                 sig = f"{item['name']}({','.join([i['type'] for i in item['inputs']])})"
-                # 计算 topic0: keccak256("EventName(type1,type2)")
+                # Calculate topic0: keccak256("EventName(type1,type2)")
                 topic0 = keccak.new(digest_bits=256).update(sig.encode()).digest().hex()
                 event_map[topic0] = item
 
             for e in raw_events:
                 try:
-                    # Seth 的 topics 是 Base64 编码的列表
+                    # Seth's topics are a list of Base64 encoded strings
                     t0_hex = base64.b64decode(e['topics'][0]).hex()
                     
                     if t0_hex in event_map:
                         spec = event_map[t0_hex]
                         data_bytes = base64.b64decode(e['data'])
                         
-                        # 区分 indexed 和 non-indexed 参数
-                        # 注意：Seth 简化实现中可能把所有数据都塞在 data 里，也可能部分在 topics 里
-                        # 这里假设 standard EVM 逻辑：non-indexed 在 data 中
+                        # Distinguish between indexed and non-indexed parameters
+                        # Note: In Seth's simplified implementation, all data might be packed in 'data',
+                        # or partially in 'topics'. This assumes standard EVM logic: non-indexed are in 'data'.
                         types = [i['type'] for i in spec['inputs'] if not i.get('indexed')]
                         names = [i['name'] for i in spec['inputs'] if not i.get('indexed')]
                         
