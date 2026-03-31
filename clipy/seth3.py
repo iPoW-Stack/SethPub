@@ -233,30 +233,66 @@ class SethClient:
             time.sleep(1) # 每秒轮询一次
 
     def decode_receipt(self, receipt: dict, abi: list, function_name: str = None) -> dict:
-        raw_out_b64 = receipt.get("output")
+        """
+        完整的回执解码函数：支持正常返回值解析与 Revert 原因解析。
+        """
+        status = receipt.get("status")
+        raw_out_b64 = receipt.get("output", "")
         
-        if raw_out_b64 and function_name:
-            # 1. 从 ABI 中找到对应函数的输出类型
-            item = next((i for i in abi if i.get('name') == function_name), None)
-            
-            if item and 'outputs' in item:
-                try:
-                    # 2. 将 Base64 转换为原始字节
-                    raw_bytes = base64.b64decode(raw_out_b64)
-                    
-                    # 3. 获取输出类型列表，例如 ['uint256', 'bool']
+        # 初始化解码结果字段
+        receipt['decoded_output'] = None
+        receipt['error_reason'] = None
+
+        if not raw_out_b64:
+            return receipt
+
+        try:
+            # 1. 统一进行 Base64 解码
+            raw_bytes = base64.b64decode(raw_out_b64)
+        except Exception as e:
+            print(f"Base64 decode failed: {e}")
+            return receipt
+
+        # --- 情况 A: 处理合约报错 (Revert/Fail) ---
+        if status != 0:
+            try:
+                # 检查是否为标准错误签名 Error(string) -> 0x08c379a0
+                if raw_bytes.startswith(b'\x08\xc3y\xa0'):
+                    # 去掉前 4 字节的 selector，解码剩下的 string
+                    reason = eth_abi.decode(['string'], raw_bytes[4:])[0]
+                    receipt['error_reason'] = reason
+                    print(f"❌ Contract Reverted! Status: {status}, Reason: {reason}")
+                else:
+                    # 可能是 Panic(uint256) 或自定义错误，记录原始十六进制
+                    receipt['error_reason'] = f"0x{raw_bytes.hex()}"
+                    print(f"❌ Contract Failed! Status: {status}, Raw Hex: 0x{raw_bytes.hex()}")
+            except Exception as e:
+                print(f"Failed to decode error message: {e}")
+            return receipt
+
+        # --- 情况 B: 处理正常返回 (Success) ---
+        if function_name and abi:
+            try:
+                # 从 ABI 查找函数定义
+                item = next((i for i in abi if i.get('name') == function_name and i.get('type') == 'function'), None)
+                
+                if item and 'outputs' in item and len(item['outputs']) > 0:
                     output_types = [o['type'] for o in item['outputs']]
                     
-                    # 4. 使用 eth_abi 解码
+                    # 执行 ABI 解码
                     decoded = eth_abi.decode(output_types, raw_bytes)
                     
-                    # 5. 将结果存入回执字典方便后续读取
+                    # 如果只有一个返回值，直接取值；否则返回元组/列表
                     receipt['decoded_output'] = decoded[0] if len(decoded) == 1 else decoded
-                    
-                except Exception as e:
-                    print(f"Decoding error: {e}")
+                    print(f"✅ Decoded Success: {function_name} -> {receipt['decoded_output']}")
+                else:
+                    # 函数没有返回值 (void)
                     receipt['decoded_output'] = None
-                    
+            except Exception as e:
+                print(f"ABI decoding failed for {function_name}: {e}")
+                # 如果解码失败（比如长度不匹配），记录原始数据防止得出巨型数字
+                receipt['decoded_output'] = f"Decode Error: 0x{raw_bytes.hex()}"
+
         return receipt
 
     def query_contract(self, f, a, i): return requests.post(self.query_contract_url, data={"from": f, "address": a, "input": i}).text
