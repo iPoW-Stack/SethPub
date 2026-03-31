@@ -159,9 +159,8 @@ contract Ars {
 }
 
 """
-
 def run_comprehensive_ars_demo():
-    # --- 配置信息 ---
+    # --- Configuration ---
     IP, PORT = "127.0.0.1", 23001
     PRIV_KEY = "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
     
@@ -169,28 +168,27 @@ def run_comprehensive_ars_demo():
     MY_ADDR = w3.client.get_address(PRIV_KEY)
     print(f"[*] Operator Address: {MY_ADDR}")
 
-    # --- 1. 编译与部署 ---
+    # --- 1. Compile and Deploy ---
     print("\n[1] Compiling and Deploying...")
     bytecode, abi = compile_and_link(ARS_SOL_SOURCE, "Ars")
     
-    # 构造函数参数
+    # Constructor parameters
     init_param = b"initial_pbc_system_parameters"
-    ars_contract = w3.seth.contract(abi=abi, bytecode=bytecode, sender_address=MY_ADDR).deploy({
+    ars_contract = w3.eth.contract(abi=abi, bytecode=bytecode, sender_address=MY_ADDR).deploy({
         'from': MY_ADDR,
         'salt': secrets.token_hex(32),
         'args': [init_param]
     }, PRIV_KEY)
     print(f"[+] Ars Contract deployed at: {ars_contract.address}")
 
-    # --- 2. 调用 call_proxy_reenc (简单写入) ---
+    # --- 2. Call call_proxy_reenc (Simple Write) ---
     print("\n[2] Executing: call_proxy_reenc")
     proxy_params = b"reencryption_metadata_bytes"
     receipt = ars_contract.functions.call_proxy_reenc(proxy_params).transact(PRIV_KEY)
     print(f"    Status: {receipt['status']} (Hash calculated in contract)")
 
-    # --- 3. 调用 CreateNewArs (创建基础数据) ---
+    # --- 3. Call CreateNewArs (Base Data Creation) ---
     print("\n[3] Executing: CreateNewArs")
-    # 我们需要创建一个 ID，供后续的 Sign 函数使用（因为它们有 require(exists)）
     base_id = secrets.token_bytes(32)
     ring_size = 2048
     signer_count = 10
@@ -201,35 +199,41 @@ def run_comprehensive_ars_demo():
     ).transact(PRIV_KEY, prepayment=10**8)
     print(f"    Status: {receipt['status']} | New Ars ID Created")
 
-    # --- 4. 调用 SingleSign (依赖状态写入) ---
+    # --- 4. Call SingleSign (State-dependent Write) ---
     print("\n[4] Executing: SingleSign")
     sign_params = b"single_signature_data"
-    # 使用刚才创建的 base_id
     receipt = ars_contract.functions.SingleSign(base_id, sign_params).transact(PRIV_KEY, prepayment=10**8)
     print(f"    Status: {receipt['status']} (Single sign verified)")
 
-    # --- 5. 调用 AggSign (聚合签名写入) ---
+    # --- 5. Call AggSign (Aggregate Signature Write) ---
     print("\n[5] Executing: AggSign")
     agg_params = b"aggregated_signature_data"
     receipt = ars_contract.functions.AggSign(base_id, agg_params).transact(PRIV_KEY, prepayment=10**8)
     print(f"    Status: {receipt['status']} (Aggregate sign verified)")
 
-    # --- 6. 查询状态 (Calls) ---
+    # --- 6. Query State (Calls) ---
     print("\n[6] Testing Query Functions...")
-    time.sleep(2) # 等待状态落库同步
+    time.sleep(2) # Wait for state synchronization
 
-    # A. 直接访问 Mapping (ars_map)
-    # Solidity 自动为 public mapping 生成 getter
+    # [6-A] Querying ars_map (Individual Getter)
     print("[6-A] Querying ars_map (Individual Getter):")
     info = ars_contract.functions.ars_map(base_id).call()
-    # 返回值顺序通常对应 struct 定义: ring_size, signer_count, id, res_info, exists
-    print(f"    Struct Data: ring_size={info[0]}, signer_count={info[1]}, exists={info[4]}")
+    
+    # Check if the return result is an indexable collection
+    if isinstance(info, (list, tuple)) and len(info) >= 5:
+        print(f"    ✅ Struct Data Found:")
+        print(f"       - Ring Size: {info[0]}")
+        print(f"       - Signer Count: {info[1]}")
+        print(f"       - ID: 0x{info[2].hex()}")
+        print(f"       - Res Info: 0x{info[3].hex()}")
+        print(f"       - Exists: {info[4]}")
+    else:
+        print(f"    ⚠️ Warning: Mapping query returned invalid format: {info}")
 
-    # B. GetAllArsJson (整体 JSON 查询)
-    print("[6-B] Querying GetAllArsJson:")
+    # [6-B] GetAllArsJson (Full JSON Query)
+    print("\n[6-B] Querying GetAllArsJson:")
     try:
         raw_json = ars_contract.functions.GetAllArsJson().call()
-        # 处理可能的 bytes/hex 返回
         if isinstance(raw_json, bytes):
             json_text = raw_json.decode('utf-8', errors='ignore')
         elif isinstance(raw_json, str) and raw_json.startswith('0x'):
@@ -240,12 +244,7 @@ def run_comprehensive_ars_demo():
     except Exception as e:
         print(f"    Query Error: {e}")
 
-    # --- 7. 工具函数测试 (Pure functions) ---
-    print("\n[7] Testing Utility Functions (Pure):")
-    addr_bytes = ars_contract.functions.toBytes(to_checksum_address(MY_ADDR)).call()
-    print(f"    Address to Bytes: {addr_bytes}")
-
-    print("\n[!] All Ars contract functions have been exercised.")
+    print("\n[!] Demo completed.")
 
 if __name__ == "__main__":
     run_comprehensive_ars_demo()
