@@ -329,7 +329,7 @@ def test_library():
     lib_compile = compile_contract(lib_source) # Assuming compile_contract is defined elsewhere or meant to be compile_solidity_contract
     lib_bin = lib_compile['bin'] # Assuming the output structure is {'<stdin>:MathLib': {'bin': '...', 'abi': [...]}}
     
-    LIB_TARGET = calc_create2_address(MY_ADDR, "01", lib_bin)
+    LIB_TARGET = calc_create2_address(MY_ADDR, "02", lib_bin)
     # Use step=14 (kCreateLibrary) to deploy public library and add prepayment
     tx_lib = client.send_transaction_auto(PRIVATE_KEY, LIB_TARGET, step=StepType.kCreateLibrary, contract_code=lib_bin, prepayment=10000000)
     
@@ -348,7 +348,7 @@ def test_library():
     calculator_interface = contract_compiled['<stdin>:Calculator']
     calc_bin = calculator_interface['bin']
 
-    CALC_TARGET = calc_create2_address(MY_ADDR, "02", calc_bin)
+    CALC_TARGET = calc_create2_address(MY_ADDR, "03", calc_bin)
     tx_calc = client.send_transaction_auto(PRIVATE_KEY, CALC_TARGET, step=StepType.kCreateContract, contract_code=calc_bin, prepayment=10000000)
     res_json = client.wait_for_receipt(tx_calc) # Wait for the Calculator deployment transaction
     if res_json and res_json["status"] == MessageHandleStatus.kConsensusSuccess:
