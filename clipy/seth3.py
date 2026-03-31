@@ -270,21 +270,17 @@ def oqs_sign_test():
     # Note: Private key length must be > 128 bits to trigger auto-switch logic in code
     OQS_KEY = "01" * 2560  # 模拟 ML-DSA-44 标准私钥 (5120 个 hex 字符)
     OQS_PK = "41" * 1312   # 公钥长度通常保持 1312 字节不变
-      
+
     w3 = SethWeb3Mock(IP, PORT)
     MY_OQS = w3.client.get_oqs_address(OQS_PK) # Use the newly added Keccak256 derivation logic
     print("\n======= RUNNING OQS DEMOS =======")
-    try:
-        # Test post-quantum transfer
-        test_oqs_transfer(w3, MY_OQS, OQS_KEY, OQS_PK)
-        # Test post-quantum contract operations
-        test_oqs_contract_deploy_and_call(w3, MY_OQS, OQS_KEY, OQS_PK)
-        # C. Library deployment and linking (with Step validation)
-        test_oqs_library_with_contract(w3, MY_OQS, OQS_KEY, OQS_PK)
-    except ImportError:
-        print("Skip OQS test: liboqs-python library not detected.")
-    except Exception as e:
-        print(f"OQS test failed: {e}")
+    # Test post-quantum transfer
+    test_oqs_transfer(w3, MY_OQS, OQS_KEY, OQS_PK)
+    # Test post-quantum contract operations
+    test_oqs_contract_deploy_and_call(w3, MY_OQS, OQS_KEY, OQS_PK)
+    # C. Library deployment and linking (with Step validation)
+    test_oqs_library_with_contract(w3, MY_OQS, OQS_KEY, OQS_PK)
+   
 
 if __name__ == "__main__":
     # ecdsa_sign_test()
