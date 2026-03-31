@@ -156,8 +156,7 @@ public:
         }
 
         auto status_val = tx_hash_status.SerializeAsString();
-        SETH_DEBUG("create library status: %d, out: %d output: %s, from: %s, to: %s", 
-            (int32_t)status_code,
+        SETH_DEBUG("create library status: %d, output: %s, from: %s, to: %s", 
             tx_hash_status.status(),
             "",
             common::Encode::HexEncode(block_tx.from()).c_str(),
