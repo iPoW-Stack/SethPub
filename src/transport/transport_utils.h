@@ -143,48 +143,50 @@ static inline std::string MessageStatusToString(MessageHandleStatus status) {
             return "kRequestInvalid";
         case kNotExists:
             return "kNotExists";
-        case EVMC_FAILURE:
-            return "EVMC_FAILURE";
-        case EVMC_REVERT:
-            return "EVMC_REVERT";
-        case EVMC_OUT_OF_GAS:
-            return "EVMC_OUT_OF_GAS";
-        case EVMC_INVALID_INSTRUCTION:
-            return "EVMC_INVALID_INSTRUCTION";
-        case EVMC_UNDEFINED_INSTRUCTION:
-            return "EVMC_UNDEFINED_INSTRUCTION";
-        case EVMC_STACK_OVERFLOW:
-            return "EVMC_STACK_OVERFLOW";
-        case EVMC_STACK_UNDERFLOW:
-            return "EVMC_STACK_UNDERFLOW";
-        case EVMC_BAD_JUMP_DESTINATION:
-            return "EVMC_BAD_JUMP_DESTINATION";
-        case EVMC_INVALID_MEMORY_ACCESS:
-            return "EVMC_INVALID_MEMORY_ACCESS";
-        case EVMC_CALL_DEPTH_EXCEEDED:
-            return "EVMC_CALL_DEPTH_EXCEEDED";
-        case EVMC_STATIC_MODE_VIOLATION:
-            return "EVMC_STATIC_MODE_VIOLATION";
-        case EVMC_PRECOMPILE_FAILURE:
-            return "EVMC_PRECOMPILE_FAILURE";
-        case EVMC_CONTRACT_VALIDATION_FAILURE:
-            return "EVMC_CONTRACT_VALIDATION_FAILURE";
-        case EVMC_ARGUMENT_OUT_OF_RANGE:
-            return "EVMC_ARGUMENT_OUT_OF_RANGE";
-        case EVMC_WASM_UNREACHABLE_INSTRUCTION:
-            return "EVMC_WASM_UNREACHABLE_INSTRUCTION";
-        case EVMC_WASM_TRAP:
-            return "EVMC_WASM_TRAP";
-        case EVMC_INSUFFICIENT_BALANCE:
-            return "EVMC_INSUFFICIENT_BALANCE";
 
-        // --- EVMC 内部/拒绝状态 (负值) ---
-        case EVMC_INTERNAL_ERROR:
-            return "EVMC_INTERNAL_ERROR";
-        case EVMC_REJECTED:
-            return "EVMC_REJECTED";
-        case EVMC_OUT_OF_MEMORY:
-            return "EVMC_OUT_OF_MEMORY";
+        // --- EVMC ---
+        case kEvmcFailure:
+            return "kEvmcFailure";
+        case kEvmcRevert:
+            return "kEvmcRevert";
+        case kEvmcOutOfGas:
+            return "kEvmcOutOfGas";
+        case kEvmcInvalidInstruction:
+            return "kEvmcInvalidInstruction";
+        case kEvmcUndefinedInstruction:
+            return "kEvmcUndefinedInstruction";
+        case kEvmcStackOverflow:
+            return "kEvmcStackOverflow";
+        case kEvmcStackUnderflow:
+            return "kEvmcStackUnderflow";
+        case kEvmcBadJumpDestination:
+            return "kEvmcBadJumpDestination";
+        case kEvmcInvalidMemoryAccess:
+            return "kEvmcInvalidMemoryAccess";
+        case kEvmcCallDepthExceeded:
+            return "kEvmcCallDepthExceeded";
+        case kEvmcStaticModeViolation:
+            return "kEvmcStaticModeViolation";
+        case kEvmcPrecompileFailure:
+            return "kEvmcPrecompileFailure";
+        case kEvmcContractValidationFailure:
+            return "kEvmcContractValidationFailure";
+        case kEvmcArgumentOutOfRange:
+            return "kEvmcArgumentOutOfRange";
+        case kEvmcWasmUnreachableInstruction:
+            return "kEvmcWasmUnreachableInstruction";
+        case kEvmcWasmTrap:
+            return "kEvmcWasmTrap";
+        case kEvmcInsufficientBalance:
+            return "kEvmcInsufficientBalance";
+
+        // --- EVMC  ---
+        case kEvmcInternalError:
+            return "kEvmcInternalError";
+        case kEvmcRejected:
+            return "kEvmcRejected";
+        case kEvmcOutOfMemory:
+            return "kEvmcOutOfMemory";
 
         default:
             return "unknown(" + std::to_string(static_cast<int32_t>(status)) + ")";
