@@ -214,7 +214,22 @@ class SethClient:
             time.sleep(1)
 
     def query_contract(self, f, a, i): return requests.post(self.query_contract_url, data={"from": f, "address": a, "input": i}).text
-    def get_balance(self, a): return int(requests.post(self.query_url, data={"address": a}).json().get("balance", 0))
+    def get_balance(self, a):
+        try:
+            response = requests.post(self.query_url, data={"address": a}, timeout=5)
+            # Check if the response is actually JSON
+            return int(response.json().get("balance", 0))
+        except Exception as e:
+            print(f"DEBUG: Balance query failed for {a}. Response text: '{response.text}'")
+            return 0
+
+    def get_nonce(self, a):
+        try:
+            response = requests.post(self.query_url, data={"address": a}, timeout=5)
+            return int(response.json().get("nonce", 0))
+        except Exception as e:
+            print(f"DEBUG: Nonce query failed for {a}. Response text: '{response.text}'")
+            return 0
 
 # --- 5. Main Execution ---
 
