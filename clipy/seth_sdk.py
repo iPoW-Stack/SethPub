@@ -465,33 +465,35 @@ class SethClient:
         with oqs.Signature('ML-DSA-44') as signer:
             import ctypes
             
-            # --- A. 彻底解决 byref 报错：将 txh 转换为 ctypes 数组实例 ---
-            # 这一步是关键！直接传 bytes 会在 byref() 处崩溃
+            # A. 消息哈希：直接用原生的 bytes (让 oqs.py 内部去处理 create_string_buffer)
             txh_bytes = bytes(txh)
-            msg_len = len(txh_bytes)
-            # 创建一个 c_ubyte 数组实例并填充数据
-            msg_ctypes = (ctypes.c_uint8 * msg_len).from_buffer_copy(txh_bytes)
             
-            # --- B. 准备并注入私钥 (长度必须是 2560，对应你的 t.py 结果) ---
+            # B. 私钥准备 (2560 字节)
             sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
             sk_len = 2560 
             sk_bytes = sk_bytes.ljust(sk_len, b'\x00')[:sk_len]
             
-            # 注入私钥到内部缓冲区 (0.14/0.15 版本通用注入点)
-            if hasattr(signer, '_secret_key'):
-                ctypes.memmove(signer._secret_key, sk_bytes, sk_len)
-            else:
-                # 某些子版本可能直接暴露了 secret_key 数组
-                try:
-                    ctypes.memmove(signer.secret_key, sk_bytes, sk_len)
-                except:
-                    signer.secret_key = sk_bytes
+            # C. 注入私钥并防止 free() 崩溃
+            # 我们必须把私钥放进一个名为 secret_key 的 ctypes 实例中，
+            # 因为 __exit__ 里的 free() 会对这个属性调用 byref()
+            sk_ctypes = (ctypes.c_uint8 * sk_len).from_buffer_copy(sk_bytes)
+            
+            try:
+                # 尝试覆盖。如果 secret_key 是 property，这可能会失败
+                signer.secret_key = sk_ctypes 
+            except:
+                # 如果上面失败，说明它是只读的，我们要么改内部变量，要么强制注入
+                # 在 0.14.0 中，内部缓冲区通常就在这里
+                if hasattr(signer, '_secret_key'):
+                    ctypes.memmove(signer._secret_key, sk_ctypes, sk_len)
+                else:
+                    # 最后的绝招：直接把对象属性替换掉
+                    signer.__dict__['secret_key'] = sk_ctypes
 
-            # --- C. 执行签名 ---
-            # 此时调用 sign(msg_ctypes)，它内部会执行 byref(msg_ctypes)，
-            # 因为 msg_ctypes 是 ctypes 实例，所以不会再报错！
-            # 参数个数也符合 (self, msg) 两个参数的限制
-            signature = signer.sign(msg_ctypes)
+            # D. 执行签名
+            # 传 1 个参数符合 "2 positional arguments" (self + msg)
+            # 且不手动构造 ctypes 避免内部 create_string_buffer 报错
+            signature = signer.sign(txh_bytes)
 
         # 4. 转换回 Hex
         sig_hex = bytes(signature).hex()
