@@ -58,7 +58,7 @@ On the Seth blockchain, complex logical contracts often depend on independently 
 l_bin, l_abi = compile_and_link(LIBRARY_SOURCE, "MathLib")
 
 # 2. Deploy Library (Note: 'step' must be set to kCreateLibrary)
-lib = w3.eth.contract(abi=l_abi, bytecode=l_bin).deploy({
+lib = w3.seth.contract(abi=l_abi, bytecode=l_bin).deploy({
     'from': MY_ADDR, 
     'salt': '0x01', # Hexadecimal Salt
     'step': StepType.kCreateLibrary
@@ -79,7 +79,7 @@ c_bin, c_abi = compile_and_link(
 )
 
 # 2. Deploy Logic Contract (Supports constructor arguments)
-calc = w3.eth.contract(abi=c_abi, bytecode=c_bin).deploy({
+calc = w3.seth.contract(abi=c_abi, bytecode=c_bin).deploy({
     'from': MY_ADDR, 
     'salt': '0x02',
     'args': [1000, 1000] # Constructor arguments

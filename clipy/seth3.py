@@ -100,21 +100,21 @@ def test_library_with_contrcat(w3, MY, KEY):
     print("\n--- TEST CASE 1: Library ---")
     src = "pragma solidity ^0.8.0; library MathLib { function add(uint a, uint b) public pure returns(uint){return a+b;} } contract Calculator { function use(uint a, uint b) public pure returns(uint){return MathLib.add(a,b);} }"
     l_bin, l_abi = compile_and_link(src, "MathLib")
-    lib = w3.eth.contract(abi=l_abi, bytecode=l_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '01', 'step': StepType.kCreateLibrary}, KEY)
+    lib = w3.seth.contract(abi=l_abi, bytecode=l_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '01', 'step': StepType.kCreateLibrary}, KEY)
     c_bin, c_abi = compile_and_link(src, "Calculator", libs={"MathLib": lib.address})
-    calc = w3.eth.contract(abi=c_abi, bytecode=c_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '02'}, KEY)
+    calc = w3.seth.contract(abi=c_abi, bytecode=c_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '02'}, KEY)
     print(f"Result: {calc.functions.use(10, 20).transact(KEY)['decoded_output']}")
 
 def test_contract_call_contract(w3, MY, KEY):
     print("\n--- TEST CASE 3: Chain Call ---")
     p_bin, p_abi = compile_and_link(PROBE_POOL_SOL, "ProbePool")
-    pool = w3.eth.contract(abi=p_abi, bytecode=p_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '03', 'args': [10000, 10000], 'amount': 5000000 }, KEY)
+    pool = w3.seth.contract(abi=p_abi, bytecode=p_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '03', 'args': [10000, 10000], 'amount': 5000000 }, KEY)
     
     t_bin, t_abi = compile_and_link(PROBE_TREASURY_SOL, "ProbeTreasury")
-    treasury = w3.eth.contract(abi=t_abi, bytecode=t_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '04', 'args': [to_checksum_address(pool.address)], 'amount': 5000000 }, KEY)
+    treasury = w3.seth.contract(abi=t_abi, bytecode=t_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '04', 'args': [to_checksum_address(pool.address)], 'amount': 5000000 }, KEY)
     
     b_bin, b_abi = compile_and_link(PROBE_BRIDGE_SOL, "ProbeBridge")
-    bridge = w3.eth.contract(abi=b_abi, bytecode=b_bin, sender_address=MY).deploy({'from': MY, 'salt': RANDOM_SALT + '05', 'args': [to_checksum_address(treasury.address)]}, KEY)
+    bridge = w3.seth.contract(abi=b_abi, bytecode=b_bin, sender_address=MY).deploy({'from': MY, 'salt': RANDOM_SALT + '05', 'args': [to_checksum_address(treasury.address)]}, KEY)
 
     treasury.functions.setBridge(to_checksum_address(bridge.address)).transact(KEY)
     receipt = bridge.functions.request(1).transact(KEY, value=5)
@@ -133,7 +133,7 @@ def test_transfer(w3, MY, KEY):
     print("\n--- TEST CASE 2: Standard Transfer ---")
     dest = "0000000000000000000000000000000000000001"
     print(f"Balance before: {w3.client.get_balance(dest)}")
-    receipt = w3.eth.send_transaction({'to': dest, 'value': 5000}, KEY)
+    receipt = w3.seth.send_transaction({'to': dest, 'value': 5000}, KEY)
     print(f"Transfer Status: {receipt['status']} | Balance after: {w3.client.get_balance(dest)}")
 
 if __name__ == "__main__":

@@ -162,7 +162,7 @@ class SethContract:
 class SethWeb3Mock:
     def __init__(self, host: str, port: int):
         self.client = SethClient(host, port)
-        self.eth = self
+        self.seth = self
 
     def contract(self, address: str = None, abi: list = None, bytecode: str = None, sender_address: str = ""):
         return SethContract(self.client, address, abi, bytecode, sender_address)
