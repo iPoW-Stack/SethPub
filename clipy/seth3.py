@@ -1,4 +1,5 @@
 from __future__ import annotations
+import secrets
 import struct
 import requests
 import hashlib
@@ -144,6 +145,7 @@ class SethContract:
         sender = transaction.get('from', self.sender_address)
         salt = str(transaction.get('salt', '0'))
         step = transaction.get('step', StepType.kCreateContract)
+        amount = transaction.get('amount', 0)
         args = transaction.get('args', [])
 
         full_bytecode = self.bytecode
@@ -153,7 +155,7 @@ class SethContract:
                 full_bytecode += eth_abi.encode([i['type'] for i in ctor['inputs']], args).hex()
 
         self.address = calc_create2_address(sender, salt, full_bytecode)
-        tx_hash = self.client.send_transaction_auto(private_key, self.address, step, contract_code=full_bytecode, prepayment=10**7)
+        tx_hash = self.client.send_transaction_auto(private_key, self.address, step, contract_code=full_bytecode, prepayment=10000000, amount=amount)
         self.client.wait_for_receipt(tx_hash)
         return self
 
@@ -317,28 +319,28 @@ class SethClient:
 
 # Solidity Sources for Test Case 3
 PROBE_POOL_SOL = "pragma solidity ^0.8.20; contract ProbePool { uint256 public reserveSETH; uint256 public reserveUSDC; constructor(uint256 s, uint256 u) payable { reserveSETH = s; reserveUSDC = u; } function sellSETH(uint256 m) external payable returns (uint256 out) { out = (msg.value * reserveUSDC) / (reserveSETH + msg.value); require(out >= m, 'slippage'); reserveSETH += msg.value; reserveUSDC -= out; return out; } }"
-PROBE_TREASURY_SOL = "pragma solidity ^0.8.20; contract ProbeTreasury { address public pool; address public bridge; uint256 public totalSwaps; constructor(address p) payable { pool = p; } function setBridge(address b) external { bridge = b; } function swap(uint256 m) external payable returns (uint256 out) { require(msg.sender == bridge, 'not bridge'); (bool ok, bytes memory ret) = pool.call{value: msg.value}(abi.encodeWithSignature('sellSETH(uint256)', m)); require(ok, 'failed'); out = abi.decode(ret, (uint256)); totalSwaps += 1; return out; } }"
-PROBE_BRIDGE_SOL = "pragma solidity ^0.8.20; contract ProbeBridge { address public treasury; uint256 public totalRequests; constructor(address t) { treasury = t; } function request(uint256 m) external payable returns (uint256 out) { (bool ok, bytes memory ret) = treasury.call{value: msg.value}(abi.encodeWithSignature('swap(uint256)', m)); require(ok, 'failed'); out = abi.decode(ret, (uint256)); totalRequests += 1; return out; } }"
-
+PROBE_TREASURY_SOL = "pragma solidity ^0.8.20; contract ProbeTreasury { address public pool; address public bridge; uint256 public totalSwaps; constructor(address p) payable { pool = p; } function setBridge(address b) external { bridge = b; } function swap(uint256 m) external payable returns (uint256 out) { require(msg.sender == bridge, 'not bridge'); (bool ok, bytes memory ret) = pool.call{value: msg.value}(abi.encodeWithSignature('sellSETH(uint256)', m)); require(ok, 'call sellSETH failed'); out = abi.decode(ret, (uint256)); totalSwaps += 1; return out; } }"
+PROBE_BRIDGE_SOL = "pragma solidity ^0.8.20; contract ProbeBridge { address public treasury; uint256 public totalRequests; constructor(address t) { treasury = t; } function request(uint256 m) external payable returns (uint256 out) { (bool ok, bytes memory ret) = treasury.call{value: msg.value}(abi.encodeWithSignature('swap(uint256)', m)); require(ok, 'call swap failed'); out = abi.decode(ret, (uint256)); totalRequests += 1; return out; } }"
+RANDOM_SALT = secrets.token_hex(31)
 def test_library_with_contrcat(w3, MY, KEY):
     print("\n--- TEST CASE 1: Library ---")
     src = "pragma solidity ^0.8.0; library MathLib { function add(uint a, uint b) public pure returns(uint){return a+b;} } contract Calculator { function use(uint a, uint b) public pure returns(uint){return MathLib.add(a,b);} }"
     l_bin, l_abi = compile_and_link(src, "MathLib")
-    lib = w3.eth.contract(abi=l_abi, bytecode=l_bin).deploy({'from': MY, 'salt': '01', 'step': StepType.kCreateLibrary}, KEY)
+    lib = w3.eth.contract(abi=l_abi, bytecode=l_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '01', 'step': StepType.kCreateLibrary}, KEY)
     c_bin, c_abi = compile_and_link(src, "Calculator", libs={"MathLib": lib.address})
-    calc = w3.eth.contract(abi=c_abi, bytecode=c_bin).deploy({'from': MY, 'salt': '02'}, KEY)
+    calc = w3.eth.contract(abi=c_abi, bytecode=c_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '02'}, KEY)
     print(f"Result: {calc.functions.use(10, 20).transact(KEY)['decoded_output']}")
 
 def test_contract_call_contract(w3, MY, KEY):
     print("\n--- TEST CASE 3: Chain Call ---")
     p_bin, p_abi = compile_and_link(PROBE_POOL_SOL, "ProbePool")
-    pool = w3.eth.contract(abi=p_abi, bytecode=p_bin).deploy({'from': MY, 'salt': '03', 'args': [10000, 10000]}, KEY)
+    pool = w3.eth.contract(abi=p_abi, bytecode=p_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '03', 'args': [10000, 10000]}, KEY)
     
     t_bin, t_abi = compile_and_link(PROBE_TREASURY_SOL, "ProbeTreasury")
-    treasury = w3.eth.contract(abi=t_abi, bytecode=t_bin).deploy({'from': MY, 'salt': '04', 'args': [to_checksum_address(pool.address)]}, KEY)
+    treasury = w3.eth.contract(abi=t_abi, bytecode=t_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '04', 'args': [to_checksum_address(pool.address)]}, KEY)
     
     b_bin, b_abi = compile_and_link(PROBE_BRIDGE_SOL, "ProbeBridge")
-    bridge = w3.eth.contract(abi=b_abi, bytecode=b_bin).deploy({'from': MY, 'salt': '05', 'args': [to_checksum_address(treasury.address)]}, KEY)
+    bridge = w3.eth.contract(abi=b_abi, bytecode=b_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '05', 'args': [to_checksum_address(treasury.address)]}, KEY)
 
     treasury.functions.setBridge(to_checksum_address(bridge.address)).transact(KEY)
     receipt = bridge.functions.request(1).transact(KEY, value=5)
