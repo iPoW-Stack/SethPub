@@ -224,6 +224,78 @@ class SethClient:
                 return resp.text
         except: pass
         return None
+    
+    为了实现对 events 和 output 的自动解析，我们需要在 SethClient 类中增加解析逻辑，利用 eth_abi 将 Base64 编码的原始数据转换为人类可读的 Python 对象。
+
+核心逻辑包括：
+
+Output 解析：根据 ABI 定义的 outputs 类型进行解码。
+
+Events 解析：根据 topics（事件哈希）匹配 ABI 中的 event 定义，并解码 data。
+
+修改后的完整代码
+Python
+import base64
+# ... 保持之前的 import 不变 ...
+
+class SethClient:
+    # ... 保持之前的 __init__ 和其他方法不变 ...
+
+    def decode_output(self, abi, function_name, base64_data):
+        """解析函数返回值"""
+        if not base64_data:
+            return None
+        
+        # 查找函数对应的 outputs 类型
+        func_abi = next((x for x in abi if x.get('name') == function_name), None)
+        if not func_abi or 'outputs' not in func_abi:
+            return None
+
+        output_types = [output['type'] for output in func_abi['outputs']]
+        raw_bytes = base64.b64decode(base64_data)
+        
+        decoded = eth_abi.decode(output_types, raw_bytes)
+        return decoded[0] if len(decoded) == 1 else decoded
+
+    def decode_events(self, abi, receipt_events):
+        """解析收据中的事件列表"""
+        if not receipt_events:
+            return []
+
+        parsed_events = []
+        # 预计算 ABI 中所有事件的 Topic0
+        event_definitions = {}
+        for item in abi:
+            if item['type'] == 'event':
+                # 计算事件签名哈希 (Topic0)
+                signature = f"{item['name']}({','.join([inputs['type'] for inputs in item['inputs']])})"
+                k = keccak.new(digest_bits=256)
+                k.update(signature.encode('utf-8'))
+                # 注意：Seth 返回的 topics 可能是 Base64 格式，需要处理
+                topic0_hex = k.digest().hex()
+                event_definitions[topic0_hex] = item
+
+        for event in receipt_events:
+            # Seth 的 topics 是 Base64 编码，转为 Hex
+            topics_hex = [base64.b64decode(t).hex() for t in event['topics']]
+            if not topics_hex:
+                continue
+            
+            topic0 = topics_hex[0]
+            if topic0 in event_definitions:
+                spec = event_definitions[topic0]
+                data_bytes = base64.b64decode(event['data'])
+                
+                # 分离 indexed 和 non-indexed 参数 (Seth 目前可能全在 data 中，视实现而定)
+                # 这里假设简单实现：非索引参数在 data 中解析
+                unindexed_types = [i['type'] for i in spec['inputs'] if not i.get('indexed')]
+                decoded_vals = eth_abi.decode(unindexed_types, data_bytes)
+                
+                parsed_events.append({
+                    "event": spec['name'],
+                    "args": dict(zip([i['name'] for i in spec['inputs']], decoded_vals))
+                })
+        return parsed_events
 
 def install_solc_versions():
     try:
@@ -336,7 +408,7 @@ def test_library():
     lib_compile = compile_contract(lib_source) # Assuming compile_contract is defined elsewhere or meant to be compile_solidity_contract
     lib_bin = lib_compile['bin'] # Assuming the output structure is {'<stdin>:MathLib': {'bin': '...', 'abi': [...]}}
     
-    LIB_TARGET = calc_create2_address(MY_ADDR, "03", lib_bin)
+    LIB_TARGET = calc_create2_address(MY_ADDR, "05", lib_bin)
     # Use step=14 (kCreateLibrary) to deploy public library and add prepayment
     tx_lib = client.send_transaction_auto(PRIVATE_KEY, LIB_TARGET, step=StepType.kCreateLibrary, contract_code=lib_bin, prepayment=10000000)
     
@@ -355,7 +427,7 @@ def test_library():
     calculator_interface = contract_compiled['<stdin>:Calculator']
     calc_bin = calculator_interface['bin']
 
-    CALC_TARGET = calc_create2_address(MY_ADDR, "04", calc_bin)
+    CALC_TARGET = calc_create2_address(MY_ADDR, "06", calc_bin)
     tx_calc = client.send_transaction_auto(PRIVATE_KEY, CALC_TARGET, step=StepType.kCreateContract, contract_code=calc_bin, prepayment=10000000)
     res_json = client.wait_for_receipt(tx_calc) # Wait for the Calculator deployment transaction
     if res_json and res_json["status"] == MessageHandleStatus.kConsensusSuccess:
@@ -366,11 +438,24 @@ def test_library():
         input_add = get_selector("doAdd(uint256,uint256)") + eth_abi.encode(['uint256', 'uint256'], [10, 20]).hex() # Encode function call
         tx_call = client.send_transaction_auto(PRIVATE_KEY, CALC_TARGET, step=StepType.kContractExcute, input_hex=input_add) # Send transaction to execute contract
         res_json_call = client.wait_for_receipt(tx_call) # Wait for the contract call transaction
+        calc_abi = calculator_interface['abi']
         if res_json_call and res_json_call["status"] == MessageHandleStatus.kConsensusSuccess:
-            raw_res = client.query_contract(MY_ADDR, CALC_TARGET, get_selector("lastResult()")) # Query the contract state
-            print(f"🔎 Result: {raw_res}")
-        else:
-            print("✗ Contract call failed.")
+            print("\n[Parsing Result]")
+            
+            # 1. 解析 Output (返回值)
+            raw_output = res_json_call.get("output")
+            parsed_output = client.decode_output(calc_abi, "doAdd", raw_output)
+            print(f"⭐ Decoded Output: {parsed_output}")
+
+            # 2. 解析 Events
+            raw_events = res_json_call.get("events", [])
+            parsed_events = client.decode_events(calc_abi, raw_events)
+            for e in parsed_events:
+                print(f"🔔 Decoded Event: {e['event']} -> {e['args']}")
+
+            # 3. 验证状态查询
+            raw_res = client.query_contract(MY_ADDR, CALC_TARGET, get_selector("lastResult()"))
+            print(f"🔎 State Query (lastResult): {int(raw_res, 16)}")
     else:
         print("✗ Calculator deployment failed.")
 
