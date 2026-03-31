@@ -1,5 +1,6 @@
 #include "consensus/zbft/contract_create.h"
 
+#include "common/defer.h"
 #include "consensus/hotstuff/view_block_chain.h"
 #include "contract/contract_manager.h"
 #include "zjcvm/execution.h"
