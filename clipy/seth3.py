@@ -93,28 +93,33 @@ def calc_create2_address(sender_hex: str, salt_hex: str, bytecode_hex: str) -> s
 
 def compile_and_link(source: str, name: str, libs: Dict[str, str] = None):
     """Compiles Solidity and replaces Library linking placeholders."""
+    # Ensure solc is installed
+    # Compatibility fix: Use install_solc which handles the check internally in many versions
     try:
-        solcx.get_executable(version="0.8.30")
-    except solcx.exceptions.SolcNotInstalled:
-        print("Installing solc v0.8.30...")
+        # This will install if missing, or do nothing if already present
         solcx.install_solc("0.8.30")
-    
-    solcx.set_solc_version("0.8.30")
-    
+        solcx.set_solc_version("0.8.30")
+    except Exception as e:
+        print(f"Solc installation/set issue: {e}")
+
     compiled = solcx.compile_source(
         source, 
         output_values=['bin', 'abi'], 
         optimize=True, 
         evm_version='shanghai'
     )
-
+    
+    # Get the specific contract data
     data = compiled[f"<stdin>:{name}"]
     bytecode = data['bin']
+    
+    # Handle Library Linking
     if libs:
         for lib, addr in libs.items():
-            # Solidity linking placeholder format: __$hash$__
+            # Placeholder format: __$hash$__
             placeholder = keccak.new(digest_bits=256).update(f"<stdin>:{lib}".encode()).hexdigest()[:34]
             bytecode = bytecode.replace(f"__${placeholder}$__", addr.replace('0x','').lower())
+            
     return bytecode, data['abi']
 
 # --- 3. Web3 Mock Components ---
