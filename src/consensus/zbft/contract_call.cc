@@ -312,11 +312,11 @@ int ContractCall::HandleTx(
         new_contract_balance,
         (etime - btime));
     char* tx_status_str = nullptr;
-    defer({
+    defer(
         if (tx_status_str != nullptr) {
             delete[] tx_status_str;
         }
-    });
+    );
 
     size_t tx_status_str_len = 4;
     if (check_valid) {
