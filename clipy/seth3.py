@@ -423,8 +423,15 @@ def test_contract_call_contract(w3, MY, KEY):
     treasury.functions.setBridge(to_checksum_address(bridge.address)).transact(KEY)
     receipt = bridge.functions.request(1).transact(KEY, value=5)
     print(f"Chain Call Result (AmountOut): {receipt.get('decoded_output')}")
-    for e in res.get('decoded_events', []):
-        print(f"🔔 Event Log: {e['event']} -> {e['args']}")
+    if receipt.get('status') == 0:
+        print(f"✅ Chain Call Success! AmountOut: {receipt.get('decoded_output')}")
+        
+        # 打印解析后的事件
+        for e in receipt.get('decoded_events', []):
+            print(f"🔔 Event Log: {e['event']} -> {e['args']}")
+    else:
+        print(f"❌ Chain Call Failed: {receipt.get('msg')}")
+
     print(f"Bridge Total Requests: {bridge.functions.totalRequests().call()}")
 
 def test_transfer(w3, MY, KEY):
