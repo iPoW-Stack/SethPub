@@ -1,448 +1,214 @@
-import struct
-import requests
-import hashlib
-import json
-import time
-from enum import IntEnum
-import solcx
-from solcx import compile_source, install_solc
-import eth_abi
-import base64
+from seth3 import SethWeb3Mock, compile_and_link, calc_create2_address, StepType
 
-# Fix: Uniformly use keccak logic from Crypto.Hash to avoid conflicts with eth_utils
-from Crypto.Hash import keccak
-from eth_utils import to_checksum_address
-from ecdsa import SigningKey, SECP256k1
-from ecdsa.util import sigencode_string_canonize
+def test_library_with_contrcat(SETH_IP, SETH_PORT, PRIV_KEY):
+    w3 = SethWeb3Mock(SETH_IP, SETH_PORT)
+    MY_ADDR = w3.client.get_address(PRIV_KEY)
 
-# Preset environment
-install_solc('0.8.30')
-
-class StepType(IntEnum): # Transaction Step Type
-    kNormalFrom = 0                 # User direct transfer (sender)
-    kNormalTo = 1                   # Cross-shard confirmation transaction (confirmation after sender's statistics)
-    kConsensusRootElectShard = 2    # Shard/Root network election transaction
-    kConsensusRootTimeBlock = 3     # Time block creation transaction
-    kConsensusCreateGenesisAcount = 4 # Genesis account creation transaction
-    kConsensusLocalTos = 5          # Cross-shard confirmation transaction (confirmation after receiver's accumulation)
-    kCreateContract = 6             # Contract deployment/creation transaction
-    kContractGasPrepayment = 7      # Set contract call prepayment Gas
-    kContractExcute = 8             # Execute contract call
-    kRootCreateAddress = 9          # Root network create new address
-    kStatistic = 12                 # Statistical transaction
-    kJoinElect = 13                 # New node participates in election transaction
-    kCreateLibrary = 14             # Create public contract library (Library)
-    kCross = 15                     # Cross-shard anti-loss block replenishment transaction
-    kRootCross = 16                 # Root network cross-shard anti-loss block replenishment transaction
-    kPoolStatisticTag = 17          # Current round transaction pool statistics end tag block
-
-class MessageHandleStatus(IntEnum): # Message Handling Status
-    kConsensusSuccess = 0
-    kMessageHandle = 10001
-    kMessageHandleError = 10002
-    kTxAccept = 10003
-    kTxInvalidSignature = 10004
-    kTxInvalidAddress = 10005
-    kTxPoolFullReject = 10006
-    kTxUserNonceInvalid = 10007
-    kUnkonwn = 10008
-    kRequestInvalid = 10009
-    kNotExists = 100010
-
-    # Generic execution failure
-    EVMC_FAILURE = 1
-
-    # Execution terminated by REVERT opcode
-    # In this case, the remaining Gas MAY be non-zero, and additional output data MAY be provided
-    EVMC_REVERT = 2
-
-    # The execution has run out of gas
-    EVMC_OUT_OF_GAS = 3
-
-    # The designated INVALID instruction has been hit (0xfe as defined in EIP-141)
-    EVMC_INVALID_INSTRUCTION = 4
-
-    # An undefined instruction has been encountered
-    EVMC_UNDEFINED_INSTRUCTION = 5
-
-    # The execution has attempted to put more items on the EVM stack than the specified limit (1024)
-    EVMC_STACK_OVERFLOW = 6
-
-    # Execution of an opcode has required more items on the EVM stack than available
-    EVMC_STACK_UNDERFLOW = 7
-
-    # Execution has violated the jump destination restrictions (JUMPDEST)
-    EVMC_BAD_JUMP_DESTINATION = 8
-
-    # Tried to read outside memory bounds (e.g., RETURNDATACOPY reading past available buffer)
-    EVMC_INVALID_MEMORY_ACCESS = 9
-
-    # Call depth has exceeded the limit (typically 1024)
-    EVMC_CALL_DEPTH_EXCEEDED = 10
-
-    # Tried to execute an operation that is restricted in static mode (state modification during STATICCALL)
-    EVMC_STATIC_MODE_VIOLATION = 11
-
-    # A call to a precompiled or system contract has ended with a failure
-    EVMC_PRECOMPILE_FAILURE = 12
-
-    # Contract validation has failed (e.g., due to EVM 1.5 jump validity, ewasm rules, etc.)
-    EVMC_CONTRACT_VALIDATION_FAILURE = 13
-
-    # An argument to a state accessing method has a value outside of the accepted range
-    EVMC_ARGUMENT_OUT_OF_RANGE = 14
-
-    # A WebAssembly `unreachable` instruction has been hit during execution
-    EVMC_WASM_UNREACHABLE_INSTRUCTION = 15
-
-    # A WebAssembly trap has been hit (e.g., division by zero, validation errors, etc.)
-    EVMC_WASM_TRAP = 16
-
-    # The caller does not have enough funds for value transfer
-    EVMC_INSUFFICIENT_BALANCE = 17
-
-    # --- Internal errors and rejections (negative values) ---
-
-    # EVM implementation generic internal error
-    EVMC_INTERNAL_ERROR = -1
-
-    # The execution of the given code and/or message has been rejected by the EVM implementation
-    EVMC_REJECTED = -2
-
-    # The VM failed to allocate the amount of memory needed for execution
-    EVMC_OUT_OF_MEMORY = -3
-    
-class SethClient:
-    def __init__(self, host, port):
-        self.base_url = f"http://{host}:{port}"
-        self.tx_url = f"{self.base_url}/transaction"
-        self.query_url = f"{self.base_url}/query_account"
-        self.receipt_url = f"{self.base_url}/transaction_receipt"
-        self.query_contract_url = f"{self.base_url}/query_contract"
-
-    def _uint64_to_bytes(self, val):
-        return struct.pack('<Q', val)
-
-    def _hex_to_bytes(self, hex_str):
-        if hex_str.startswith('0x'): hex_str = hex_str[2:]
-        return bytes.fromhex(hex_str)
-
-    def get_address(self, private_key_hex):
-        if private_key_hex.startswith('0x'): private_key_hex = private_key_hex[2:]
-        sk = SigningKey.from_string(bytes.fromhex(private_key_hex), curve=SECP256k1)
-        pub_key = sk.verifying_key.to_string("uncompressed")[1:] 
-        k = keccak.new(digest_bits=256)
-        k.update(pub_key)
-        return k.digest()[-20:].hex()
-
-    def get_nonce(self, address):
-        try:
-            resp = requests.post(self.query_url, data={"address": address}, timeout=5)
-            return int(resp.json().get("nonce", 0)) if resp.status_code == 200 else 0
-        except: return 0
-
-    def compute_hash(self, nonce, pubkey_hex, to_hex, amount, gas_limit, gas_price, step,
-                     contract_code='', input_hex='', prepayment=0, key='', val=''):
-        msg = bytearray()
-        msg.extend(self._uint64_to_bytes(nonce))
-        msg.extend(self._hex_to_bytes(pubkey_hex))
-        msg.extend(self._hex_to_bytes(to_hex))
-        msg.extend(self._uint64_to_bytes(amount))
-        msg.extend(self._uint64_to_bytes(gas_limit))
-        msg.extend(self._uint64_to_bytes(gas_price))
-        msg.extend(self._uint64_to_bytes(step))
-        if contract_code: msg.extend(self._hex_to_bytes(contract_code))
-        if input_hex: msg.extend(self._hex_to_bytes(input_hex))
-        if prepayment > 0: msg.extend(self._uint64_to_bytes(prepayment))
-        if key:
-            msg.extend(key.encode('utf-8'))
-            if val: msg.extend(val.encode('utf-8'))
-        k = keccak.new(digest_bits=256)
-        k.update(msg)
-        return k.digest()
-
-    def send_transaction_auto(self, private_key_hex, to_hex, amount=0,
-                              gas_limit=5000000, gas_price=1, step=0, shard_id=0,
-                              contract_code='', input_hex='', prepayment=0,
-                              key='', val=''):
-        if private_key_hex.startswith('0x'): private_key_hex = private_key_hex[2:]
-        sk = SigningKey.from_string(bytes.fromhex(private_key_hex), curve=SECP256k1)
-        pubkey_hex = sk.verifying_key.to_string("uncompressed").hex()
-        my_addr = self.get_address(private_key_hex)
-        step = int(step)
-        if step == 8:
-            my_addr = to_hex + my_addr
-            
-        nonce = self.get_nonce(my_addr) + 1
-        tx_hash = self.compute_hash(nonce, pubkey_hex, to_hex, amount, gas_limit, gas_price, 
-                                    step, contract_code, input_hex, prepayment, key, val)
-
-        signature = sk.sign_digest_deterministic(tx_hash, hashfunc=hashlib.sha256, sigencode=sigencode_string_canonize)
-        
-        data = {
-            "nonce": str(nonce), "pubkey": pubkey_hex, "to": to_hex, "amount": str(amount),
-            "gas_limit": str(gas_limit), "gas_price": str(gas_price), "shard_id": str(shard_id),
-            "type": str(step), "sign_r": signature[0:32].hex(), "sign_s": signature[32:64].hex(), "sign_v": "0"
-        }
-        if contract_code: data["bytes_code"] = contract_code
-        if input_hex: data["input"] = input_hex
-        if prepayment > 0: data["pepay"] = str(prepayment)
-        if key: data["key"] = key
-        if val: data["val"] = val
-
-        try:
-            resp = requests.post(self.tx_url, data=data, timeout=5)
-            print(f"transfer result: {resp.text}")
-            if "SignatureInvalid" in resp.text:
-                data["sign_v"] = "1"
-                resp = requests.post(self.tx_url, data=data, timeout=5)
-                print(f"1 transfer result: {resp.text}")
-            return tx_hash.hex()
-        except Exception as e:
-            print(f"Send TX Error: {e}")
-            return None
-
-    def wait_for_receipt(self, tx_hash, timeout=60):
-        start = time.time()
-        while time.time() - start < timeout:
-            try:
-                resp = requests.post(self.receipt_url, data={"tx_hash": tx_hash}, timeout=2)
-                if resp.status_code == 200:
-                    status = resp.json().get("status")
-                    msg = resp.json().get("msg")
-                    print(f"Transaction {tx_hash} receipt status: {status}, output: {msg}")
-                    if status not in [MessageHandleStatus.kMessageHandle, MessageHandleStatus.kTxAccept]:
-                        print(resp.json())
-                        return resp.json()
-            except: pass
-            time.sleep(5)
-        return None
-
-    def query_contract(self, from_hex, to_hex, input_hex):
-        try:
-            resp = requests.post(self.query_contract_url, data={"from": from_hex, "address": to_hex, "input": input_hex}, timeout=5)
-            if resp.status_code == 200:
-                return resp.text
-        except: pass
-        return None
-
-    def decode_output(self, abi, function_name, base64_data):
-        """解析函数返回值"""
-        if not base64_data:
-            return None
-        
-        # 查找函数对应的 outputs 类型
-        func_abi = next((x for x in abi if x.get('name') == function_name), None)
-        if not func_abi or 'outputs' not in func_abi:
-            return None
-
-        output_types = [output['type'] for output in func_abi['outputs']]
-        raw_bytes = base64.b64decode(base64_data)
-        
-        decoded = eth_abi.decode(output_types, raw_bytes)
-        return decoded[0] if len(decoded) == 1 else decoded
-
-    def decode_events(self, abi, receipt_events):
-        """解析收据中的事件列表"""
-        if not receipt_events:
-            return []
-
-        parsed_events = []
-        # 预计算 ABI 中所有事件的 Topic0
-        event_definitions = {}
-        for item in abi:
-            if item['type'] == 'event':
-                # 计算事件签名哈希 (Topic0)
-                signature = f"{item['name']}({','.join([inputs['type'] for inputs in item['inputs']])})"
-                k = keccak.new(digest_bits=256)
-                k.update(signature.encode('utf-8'))
-                # 注意：Seth 返回的 topics 可能是 Base64 格式，需要处理
-                topic0_hex = k.digest().hex()
-                event_definitions[topic0_hex] = item
-
-        for event in receipt_events:
-            # Seth 的 topics 是 Base64 编码，转为 Hex
-            topics_hex = [base64.b64decode(t).hex() for t in event['topics']]
-            if not topics_hex:
-                continue
-            
-            topic0 = topics_hex[0]
-            if topic0 in event_definitions:
-                spec = event_definitions[topic0]
-                data_bytes = base64.b64decode(event['data'])
-                
-                # 分离 indexed 和 non-indexed 参数 (Seth 目前可能全在 data 中，视实现而定)
-                # 这里假设简单实现：非索引参数在 data 中解析
-                unindexed_types = [i['type'] for i in spec['inputs'] if not i.get('indexed')]
-                decoded_vals = eth_abi.decode(unindexed_types, data_bytes)
-                
-                parsed_events.append({
-                    "event": spec['name'],
-                    "args": dict(zip([i['name'] for i in spec['inputs']], decoded_vals))
-                })
-        return parsed_events
-
-def install_solc_versions():
-    try:
-        solcx.install_solc("0.8.30")
-        solcx.set_solc_version("0.8.30")
-    except: pass
-    
-def compile_contract(source_code):
-    compiler_params = {
-        "evm_version": 'shanghai',
-        "optimize": True,
-        "optimize_runs": 200,
-    }
-    install_solc_versions()
-    compiled_sol = solcx.compile_source(source_code, output_values=['abi', 'bin'], **compiler_params)
-    return compiled_sol.popitem()[1]
-
-def get_selector(signature):
-    k = keccak.new(digest_bits=256)
-    k.update(signature.encode('utf-8'))
-    return k.digest()[:4].hex()
-
-def calc_create2_address(sender, salt_hex, bytecode_hex):
-    prefix = bytes.fromhex("ff")
-    sender_bytes = bytes.fromhex(sender.replace('0x', ''))
-    salt_bytes = bytes.fromhex(salt_hex.replace('0x', '').zfill(64))
-    bytecode_bytes = bytes.fromhex(bytecode_hex.replace('0x', ''))
-    k_code = keccak.new(digest_bits=256)
-    k_code.update(bytecode_bytes)
-    code_hash = k_code.digest()
-    k_final = keccak.new(digest_bits=256)
-    k_final.update(prefix + sender_bytes + salt_bytes + code_hash)
-    raw_address = k_final.digest()
-    return raw_address[-20:].hex().lower()
-
-def compile_contract_with_link(source_code, library_addresses=None):
-    """
-    :param library_addresses: {'MathLib': '0x...'}
-    """
-    lib_str = None
-    if library_addresses:
-        lib_parts = []
-        for lib_name, addr in library_addresses.items():
-            full_key = lib_name if ":" in lib_name else f"<stdin>:{lib_name}"
-            clean_addr = addr if addr.startswith('0x') else '0x' + addr
-            lib_parts.append(f"{full_key}={clean_addr}")
-        lib_str = ",".join(lib_parts)
-
-    compiler_params = {
-        "evm_version": 'shanghai',
-        "optimize": True,
-        "optimize_runs": 200,
-    }
-    if lib_str:
-        compiler_params["libraries"] = lib_str
-
-    install_solc_versions()
-    return solcx.compile_source(source_code, output_values=['abi', 'bin'], **compiler_params)
-
-SETH_IP = "127.0.0.1" # IP updated based on logs
-SETH_PORT = 23001
-PRIVATE_KEY = "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
-
-def test_library():
-    client = SethClient(SETH_IP, SETH_PORT)
-    MY_ADDR = client.get_address(PRIVATE_KEY)
-    
-    # --- 1. Source Code Definition (import statements removed) ---
-    full_source = """
-    // SPDX-License-Identifier: MIT
+    source = """
     pragma solidity ^0.8.0;
-
-    library MathLib { 
-        function add(uint256 a, uint256 b) public pure returns (uint256) { return a+b; } 
-        function dec(uint256 a, uint256 b) public pure returns (uint256) { return a-b; } 
-    }
-
+    library MathLib { function add(uint256 a, uint256 b) public pure returns (uint256) { return a + b; } }
     contract Calculator {
-        uint256 public lastResult;
-        event TestEvent(uint256 num);
-        // Added returns (uint256)
+        uint256 public val;
+        event TestEvent(uint256 value);
         function doAdd(uint256 a, uint256 b) public returns (uint256) {
-            emit TestEvent(a);
-            emit TestEvent(b);
-            lastResult = MathLib.add(a, b);
-            emit TestEvent(lastResult);
-            return lastResult; // Return the result
-        }
-
-        function doDec(uint256 a, uint256 b) public returns (uint256) {
-            emit TestEvent(a);
-            emit TestEvent(b);
-            lastResult = MathLib.dec(a, b);
-            emit TestEvent(lastResult);
-            return lastResult; // Return the result
+            val = MathLib.add(a, b);
+            emit TestEvent(val);
+            return val;
         }
     }
     """
 
-    # --- 2. Deploy Library ---
-    print("[Task Library] Compiling and Deploying MathLib...")
-    # Extract separate library code for compilation
-    lib_source = """
-    pragma solidity ^0.8.0;
-    library MathLib { 
-        function add(uint256 a, uint256 b) public pure returns (uint256) { return a+b; } 
-        function dec(uint256 a, uint256 b) public pure returns (uint256) { return a-b; } 
+    # 1. Deploy Library
+    l_bin, l_abi = compile_and_link(source, "MathLib")
+    l_addr = calc_create2_address(MY_ADDR, "30", l_bin)
+    tx_l = w3.client.send_transaction_auto(PRIV_KEY, l_addr, StepType.kCreateLibrary, contract_code=l_bin, prepayment=10**7)
+    w3.client.wait_for_receipt(tx_l) # Use actual tx hash
+    print(f"Library deployed at: {l_addr}")
+
+    # 2. Deploy Calculator
+    c_bin, c_abi = compile_and_link(source, "Calculator", libs={"MathLib": l_addr})
+    c_addr = calc_create2_address(MY_ADDR, "31", c_bin)
+    tx_c = w3.client.send_transaction_auto(PRIV_KEY, c_addr, StepType.kCreateContract, contract_code=c_bin, prepayment=10**7)
+    w3.client.wait_for_receipt(tx_c) # Use actual tx hash
+    print(f"Contract deployed at: {c_addr}")
+
+    # 3. Web3 Interaction
+    calc = w3.eth.contract(address=c_addr, abi=c_abi, sender_address=MY_ADDR)
+    receipt = calc.functions.doAdd(33, 66).transact(PRIV_KEY)
+    
+    print(f"⭐ Decoded Result: {receipt.get('decoded_output')}")
+    for e in receipt.get('decoded_events', []):
+        print(f"🔔 Event: {e['event']} -> {e['args']}")
+
+def test_transfer(SETH_IP, SETH_PORT, PRIV_KEY, RECEIVER_ADDR):
+    w3 = SethWeb3Mock(SETH_IP, SETH_PORT)
+    MY_ADDR = w3.client.get_address(PRIV_KEY)
+    receipt_tx = w3.eth.send_transaction({
+        'to': RECEIVER_ADDR,
+        'value': 10000
+    }, PRIV_KEY)
+    
+    print(f"Transfer receipt status: {receipt_tx['status']}")
+    print(f"Sender Balance after: {w3.client.get_balance(MY_ADDR)}")
+    print(f"Receiver Balance after: {w3.client.get_balance(RECEIVER_ADDR)}")
+
+
+
+# --- 增加所需的 Solidity 源码变量 (如果外部未定义) ---
+PROBE_POOL_SOL = """// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+contract ProbePool {
+    uint256 public reserveSETH; uint256 public reserveUSDC;
+    constructor(uint256 _reserveSETH, uint256 _reserveUSDC) payable {
+        reserveSETH = _reserveSETH; reserveUSDC = _reserveUSDC;
     }
-    """
-    lib_compile = compile_contract(lib_source) # Assuming compile_contract is defined elsewhere or meant to be compile_solidity_contract
-    lib_bin = lib_compile['bin'] # Assuming the output structure is {'<stdin>:MathLib': {'bin': '...', 'abi': [...]}}
+    function sellSETH(uint256 minOut) external payable returns (uint256 out) {
+        out = (msg.value * reserveUSDC) / (reserveSETH + msg.value);
+        require(out >= minOut, "ProbePool: slippage");
+        reserveSETH += msg.value; reserveUSDC -= out;
+        return out;
+    }
+}
+"""
+PROBE_TREASURY_SOL = """// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+contract ProbeTreasury {
+    address public pool; address public bridge; uint256 public totalSwaps;
+    constructor(address _pool) payable { pool = _pool; }
+    function setBridge(address _bridge) external { bridge = _bridge; }
+    function swap(uint256 minOut) external payable returns (uint256 out) {
+        require(msg.sender == bridge, "ProbeTreasury: not bridge");
+        (bool ok, bytes memory ret) = pool.call{value: msg.value}(
+            abi.encodeWithSignature("sellSETH(uint256)", minOut)
+        );
+        require(ok, "ProbeTreasury: pool call failed");
+        out = abi.decode(ret, (uint256));
+        totalSwaps += 1;
+        return out;
+    }
+}
+"""
+PROBE_BRIDGE_SOL = """// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+contract ProbeBridge {
+    address public treasury; uint256 public totalRequests;
+    constructor(address _treasury) { treasury = _treasury; }
+    function request(uint256 minOut) external payable returns (uint256 out) {
+        (bool ok, bytes memory ret) = treasury.call{value: msg.value}(
+            abi.encodeWithSignature("swap(uint256)", minOut)
+        );
+        require(ok, "ProbeBridge: treasury call failed");
+        out = abi.decode(ret, (uint256));
+        totalRequests += 1;
+        return out;
+    }
+}
+"""
+
+def test_contract_call_contract(SETH_IP, SETH_PORT, PRIV_KEY):
+    w3 = SethWeb3Mock(SETH_IP, SETH_PORT)
+    sender = w3.client.get_address(PRIV_KEY)
     
-    LIB_TARGET = calc_create2_address(MY_ADDR, "05", lib_bin)
-    # Use step=14 (kCreateLibrary) to deploy public library and add prepayment
-    tx_lib = client.send_transaction_auto(PRIVATE_KEY, LIB_TARGET, step=StepType.kCreateLibrary, contract_code=lib_bin, prepayment=10000000)
+    print("\n=== Web3 Style: Bridge -> Treasury -> Pool Chain Test ===")
+
+    # 1. Helper: 内部部署函数，保持 Web3 风格
+    def web3_deploy(source, name, args_types, args_vals, salt, label, amount=0):
+        # 编译
+        compiled = solcx.compile_source(source, output_values=["abi", "bin"], evm_version="shanghai")
+        contract_interface = compiled[f"<stdin>:{name}"]
+        bytecode = contract_interface['bin']
+        abi = contract_interface['abi']
+        
+        # 编码构造函数参数并拼接
+        ctor_encoded = eth_abi.encode(args_types, args_vals).hex()
+        full_bytecode = bytecode + ctor_encoded
+        
+        # 计算地址并部署
+        target_addr = calc_create2_address(sender, salt, full_bytecode)
+        print(f"[Deploying] {label} at 0x{target_addr}")
+        
+        tx_hash = w3.client.send_transaction_auto(
+            PRIV_KEY, target_addr, step=StepType.kCreateContract, 
+            contract_code=full_bytecode, prepayment=10**7
+        )
+        w3.client.wait_for_receipt(tx_hash)
+        
+        # 返回 w3 风格合约对象
+        return w3.eth.contract(address=target_addr, abi=abi, sender_address=sender)
+
+    # 2. 按顺序部署合约
+    # Pool (初始注入 10000 SETH, 10000 USDC)
+    pool_contract = web3_deploy(PROBE_POOL_SOL, "ProbePool", 
+                                ["uint256", "uint256"], [10000, 10000], 
+                                "p_salt_01", "Pool")
+
+    # Treasury (连接到 Pool)
+    treasury_contract = web3_deploy(PROBE_TREASURY_SOL, "ProbeTreasury", 
+                                    ["address"], [to_checksum_address("0x" + pool_contract.address)], 
+                                    "t_salt_01", "Treasury")
+
+    # Bridge (连接到 Treasury)
+    bridge_contract = web3_deploy(PROBE_BRIDGE_SOL, "ProbeBridge", 
+                                  ["address"], [to_checksum_address("0x" + treasury_contract.address)], 
+                                  "b_salt_01", "Bridge")
+
+    # 3. 设置权限 (Treasury 只允许来自 Bridge 的调用)
+    print("Configuring Treasury: setBridge...")
+    bridge_addr_checksum = to_checksum_address("0x" + bridge_contract.address)
+    treasury_contract.functions.setBridge(bridge_addr_checksum).transact(PRIV_KEY)
+
+    # 4. 执行链式调用: Bridge.request(minOut=1) 携带 Value=5
+    # 路径: User -> Bridge -> Treasury -> Pool
+    print("\n[Executing] Bridge.request(1) with 5 SETH...")
+    receipt = bridge_contract.functions.request(1).transact(PRIV_KEY, prepayment=10**6) 
+    # 注意：如果需要携带主代币(Value)，在 send_transaction_auto 逻辑中需对应 amount
+    # 这里修改 transact 内部逻辑或直接使用底层 send 以确保携带 amount=5
     
-    res_json = client.wait_for_receipt(tx_lib)
-    if res_json["status"] == MessageHandleStatus.kConsensusSuccess:
-        print(f"✓ MathLib deployed at: 0x{LIB_TARGET}")
+    # 重新包装一个带 Value 的 transact 调用
+    tx_hash_chain = w3.client.send_transaction_auto(
+        PRIV_KEY, bridge_contract.address, step=StepType.kContractExcute,
+        input_hex=bridge_contract.functions.request(1).encoded_input,
+        amount=5, # 携带 5 个 SETH 进入逻辑
+        prepayment=10**6
+    )
+    final_receipt = w3.client.wait_for_receipt(tx_hash_chain, bridge_contract.abi, "request")
+
+    # 5. 结果验证
+    if final_receipt.get('status') == 0:
+        print(f"✅ Chain Call Success!")
+        print(f"   Decoded Output (AmountOut): {final_receipt.get('decoded_output')}")
     else:
-        print("✗ MathLib deployment failed, but proceeding to link...")
+        print(f"❌ Chain Call Failed: Status {final_receipt.get('status')}")
 
-    # --- 3. Link and Deploy Main Contract ---
-    print("[Task Contract] Linking MathLib and Deploying Calculator...")
-    link_refs = {"MathLib": LIB_TARGET}
+    # 6. 使用 call() 验证状态
+    res_seth = pool_contract.functions.reserveSETH().call()
+    res_usdc = pool_contract.functions.reserveUSDC().call()
+    total_reqs = bridge_contract.functions.totalRequests().call()
     
-    # Compile main contract string
-    contract_compiled = compile_contract_with_link(full_source, library_addresses=link_refs)
-    calculator_interface = contract_compiled['<stdin>:Calculator']
-    calc_bin = calculator_interface['bin']
+    print(f"\nFinal State:")
+    print(f" - Pool SETH Reserve: {res_seth}")
+    print(f" - Pool USDC Reserve: {res_usdc}")
+    print(f" - Bridge Total Requests: {total_reqs}")
 
-    CALC_TARGET = calc_create2_address(MY_ADDR, "06", calc_bin)
-    tx_calc = client.send_transaction_auto(PRIVATE_KEY, CALC_TARGET, step=StepType.kCreateContract, contract_code=calc_bin, prepayment=10000000)
-    res_json = client.wait_for_receipt(tx_calc) # Wait for the Calculator deployment transaction
-    if res_json and res_json["status"] == MessageHandleStatus.kConsensusSuccess:
-        print(f"✓ Calculator deployed at: 0x{CALC_TARGET}")
-
-        # --- 4. Call Test ---
-        print("[Task Interaction] Calling Calculator.doAdd(10, 20)...")
-        input_add = get_selector("doAdd(uint256,uint256)") + eth_abi.encode(['uint256', 'uint256'], [10, 20]).hex() # Encode function call
-        tx_call = client.send_transaction_auto(PRIVATE_KEY, CALC_TARGET, step=StepType.kContractExcute, input_hex=input_add) # Send transaction to execute contract
-        res_json_call = client.wait_for_receipt(tx_call) # Wait for the contract call transaction
-        calc_abi = calculator_interface['abi']
-        if res_json_call and res_json_call["status"] == MessageHandleStatus.kConsensusSuccess:
-            print("\n[Parsing Result]")
-            
-            # 1. 解析 Output (返回值)
-            raw_output = res_json_call.get("output")
-            parsed_output = client.decode_output(calc_abi, "doAdd", raw_output)
-            print(f"⭐ Decoded Output: {parsed_output}")
-
-            # 2. 解析 Events
-            raw_events = res_json_call.get("events", [])
-            parsed_events = client.decode_events(calc_abi, raw_events)
-            for e in parsed_events:
-                print(f"🔔 Decoded Event: {e['event']} -> {e['args']}")
-
-            # 3. 验证状态查询
-            raw_res = client.query_contract(MY_ADDR, CALC_TARGET, get_selector("lastResult()"))
-            print(f"🔎 State Query (lastResult): {int(raw_res, 16)}")
-    else:
-        print("✗ Calculator deployment failed.")
+# --- 修改 main 部分以匹配调用 ---
+if __name__ == "__main__":
+    SETH_IP, SETH_PORT = "127.0.0.1", 23001
+    PRIV_KEY = "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
+    
+    # 执行原有测试
+    test_library_with_contrcat(SETH_IP, SETH_PORT, PRIV_KEY)
+    
+    # 执行新增加的跨合约调用测试
+    test_contract_call_contract(SETH_IP, SETH_PORT, PRIV_KEY)
 
 if __name__ == "__main__":
-    test_library()
+    SETH_IP, SETH_PORT = "127.0.0.1", 23001
+    PRIV_KEY = "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
+    # 测试library和合约调用library
+    test_library_with_contrcat(SETH_IP, SETH_PORT, PRIV_KEY)
+
+    # 测试普通交易转账
+    test_transfer(SETH_IP, SETH_PORT, PRIV_KEY, "71e571862c0e4aefa87a3c16057a62c8331991a1")
+
+    # 测试合约调用合约
+    test_contract_call_contract(SETH_IP, SETH_PORT, PRIV_KEY)

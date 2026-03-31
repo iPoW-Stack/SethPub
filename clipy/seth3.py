@@ -11,6 +11,7 @@ from typing import Any, Optional, Union, Dict, List
 # Core dependencies
 import solcx
 import eth_abi
+from eth_utils import to_checksum_address
 from Crypto.Hash import keccak
 from ecdsa import SigningKey, SECP256k1
 from ecdsa.util import sigencode_string_canonize
@@ -164,7 +165,6 @@ class SethContract:
         if abi:
             for item in abi:
                 if item.get('type') == 'function':
-                    # Use helper to avoid lambda closure issues in loop
                     setattr(self.functions, item['name'], self._create_method(item))
 
     def _create_method(self, item):
@@ -177,6 +177,16 @@ class SethWeb3Mock:
 
     def contract(self, address: str = None, abi: list = None, bytecode: str = None, sender_address: str = ""):
         return SethContract(self.client, address, abi, bytecode, sender_address)
+    
+    def send_transaction(self, tx_dict: dict, private_key: str) -> dict:
+        """Standard Transfer simulation."""
+        tx_hash = self.client.send_transaction_auto(
+            private_key_hex=private_key,
+            to_hex=tx_dict['to'],
+            amount=tx_dict.get('value', 0),
+            step=StepType.kNormalFrom
+        )
+        return self.client.wait_for_receipt(tx_hash)
 
 # --- 4. Base Client ---
 
@@ -193,7 +203,13 @@ class SethClient:
         pub_key = sk.verifying_key.to_string("uncompressed")[1:]
         return keccak.new(digest_bits=256).update(pub_key).digest()[-20:].hex()
 
-    def send_transaction_auto(self, private_key_hex, to_hex, step, contract_code='', input_hex='', prepayment=0):
+    def get_balance(self, address):
+        try:
+            resp = requests.post(self.query_url, data={"address": address}, timeout=5)
+            return int(resp.json().get("balance", 0)) if resp.status_code == 200 else 0
+        except: return 0
+
+    def send_transaction_auto(self, private_key_hex, to_hex, step, amount=0, contract_code='', input_hex='', prepayment=0):
         sk = SigningKey.from_string(bytes.fromhex(private_key_hex.replace('0x','')), curve=SECP256k1)
         pubkey_hex = sk.verifying_key.to_string("uncompressed").hex()
         my_addr = self.get_address(private_key_hex)
@@ -205,7 +221,7 @@ class SethClient:
         msg.extend(struct.pack('<Q', nonce))
         msg.extend(bytes.fromhex(pubkey_hex))
         msg.extend(bytes.fromhex(to_hex.replace('0x','')))
-        msg.extend(struct.pack('<Q', 0)) 
+        msg.extend(struct.pack('<Q', amount)) 
         msg.extend(struct.pack('<Q', 5000000)) 
         msg.extend(struct.pack('<Q', 1)) 
         msg.extend(struct.pack('<Q', int(step)))
@@ -217,7 +233,7 @@ class SethClient:
         signature = sk.sign_digest_deterministic(tx_hash, hashfunc=hashlib.sha256, sigencode=sigencode_string_canonize)
 
         data = {
-            "nonce": str(nonce), "pubkey": pubkey_hex, "to": to_hex, "amount": "0",
+            "nonce": str(nonce), "pubkey": pubkey_hex, "to": to_hex, "amount": str(amount),
             "gas_limit": "5000000", "gas_price": "1", "shard_id": "0",
             "type": str(int(step)), "sign_r": signature[:32].hex(), "sign_s": signature[32:64].hex(), "sign_v": "0"
         }
@@ -272,12 +288,10 @@ class SethClient:
     def query_contract(self, from_hex, to_hex, input_hex):
         return requests.post(self.query_contract_url, data={"from": from_hex, "address": to_hex, "input": input_hex}).text
 
-# --- 5. Main Execution ---
+# --- 5. Test Functions ---
 
-if __name__ == "__main__":
-    SETH_IP, SETH_PORT = "127.0.0.1", 23001
-    PRIV_KEY = "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
-    
+def test_library_with_contrcat(SETH_IP, SETH_PORT, PRIV_KEY):
+    print("\n--- TEST CASE 1: Library and Library-calling Contract ---")
     w3 = SethWeb3Mock(SETH_IP, SETH_PORT)
     MY_ADDR = w3.client.get_address(PRIV_KEY)
 
@@ -295,24 +309,167 @@ if __name__ == "__main__":
     }
     """
 
-    # 1. Deploy Library
     l_bin, l_abi = compile_and_link(source, "MathLib")
     l_addr = calc_create2_address(MY_ADDR, "30", l_bin)
     tx_l = w3.client.send_transaction_auto(PRIV_KEY, l_addr, StepType.kCreateLibrary, contract_code=l_bin, prepayment=10**7)
-    w3.client.wait_for_receipt(tx_l) # Use actual tx hash
+    w3.client.wait_for_receipt(tx_l)
     print(f"Library deployed at: {l_addr}")
 
-    # 2. Deploy Calculator
     c_bin, c_abi = compile_and_link(source, "Calculator", libs={"MathLib": l_addr})
     c_addr = calc_create2_address(MY_ADDR, "31", c_bin)
     tx_c = w3.client.send_transaction_auto(PRIV_KEY, c_addr, StepType.kCreateContract, contract_code=c_bin, prepayment=10**7)
-    w3.client.wait_for_receipt(tx_c) # Use actual tx hash
+    w3.client.wait_for_receipt(tx_c)
     print(f"Contract deployed at: {c_addr}")
 
-    # 3. Web3 Interaction
     calc = w3.eth.contract(address=c_addr, abi=c_abi, sender_address=MY_ADDR)
     receipt = calc.functions.doAdd(33, 66).transact(PRIV_KEY)
     
     print(f"⭐ Decoded Result: {receipt.get('decoded_output')}")
     for e in receipt.get('decoded_events', []):
         print(f"🔔 Event: {e['event']} -> {e['args']}")
+
+def test_transfer(SETH_IP, SETH_PORT, PRIV_KEY, RECEIVER_ADDR):
+    print("\n--- TEST CASE 2: Standard Transfer ---")
+    w3 = SethWeb3Mock(SETH_IP, SETH_PORT)
+    MY_ADDR = w3.client.get_address(PRIV_KEY)
+    receipt_tx = w3.eth.send_transaction({
+        'to': RECEIVER_ADDR,
+        'value': 10000
+    }, PRIV_KEY)
+    
+    print(f"Transfer receipt status: {receipt_tx['status']}")
+    print(f"Sender Balance after: {w3.client.get_balance(MY_ADDR)}")
+    print(f"Receiver Balance after: {w3.client.get_balance(RECEIVER_ADDR)}")
+
+# Contract Sources for Test Case 3
+PROBE_POOL_SOL = """// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+contract ProbePool {
+    uint256 public reserveSETH; uint256 public reserveUSDC;
+    constructor(uint256 _reserveSETH, uint256 _reserveUSDC) payable {
+        reserveSETH = _reserveSETH; reserveUSDC = _reserveUSDC;
+    }
+    function sellSETH(uint256 minOut) external payable returns (uint256 out) {
+        out = (msg.value * reserveUSDC) / (reserveSETH + msg.value);
+        require(out >= minOut, "ProbePool: slippage");
+        reserveSETH += msg.value; reserveUSDC -= out;
+        return out;
+    }
+}
+"""
+PROBE_TREASURY_SOL = """// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+contract ProbeTreasury {
+    address public pool; address public bridge; uint256 public totalSwaps;
+    constructor(address _pool) payable { pool = _pool; }
+    function setBridge(address _bridge) external { bridge = _bridge; }
+    function swap(uint256 minOut) external payable returns (uint256 out) {
+        require(msg.sender == bridge, "ProbeTreasury: not bridge");
+        (bool ok, bytes memory ret) = pool.call{value: msg.value}(
+            abi.encodeWithSignature("sellSETH(uint256)", minOut)
+        );
+        require(ok, "ProbeTreasury: pool call failed");
+        out = abi.decode(ret, (uint256));
+        totalSwaps += 1;
+        return out;
+    }
+}
+"""
+PROBE_BRIDGE_SOL = """// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+contract ProbeBridge {
+    address public treasury; uint256 public totalRequests;
+    constructor(address _treasury) { treasury = _treasury; }
+    function request(uint256 minOut) external payable returns (uint256 out) {
+        (bool ok, bytes memory ret) = treasury.call{value: msg.value}(
+            abi.encodeWithSignature("swap(uint256)", minOut)
+        );
+        require(ok, "ProbeBridge: treasury call failed");
+        out = abi.decode(ret, (uint256));
+        totalRequests += 1;
+        return out;
+    }
+}
+"""
+
+def test_contract_call_contract(SETH_IP, SETH_PORT, PRIV_KEY):
+    print("\n--- TEST CASE 3: Contract Chain Call (Bridge -> Treasury -> Pool) ---")
+    w3 = SethWeb3Mock(SETH_IP, SETH_PORT)
+    sender = w3.client.get_address(PRIV_KEY)
+    
+    def web3_deploy(source, name, args_types, args_vals, salt, label):
+        compiled = solcx.compile_source(source, output_values=["abi", "bin"], evm_version="shanghai")
+        contract_interface = compiled[f"<stdin>:{name}"]
+        bytecode = contract_interface['bin']
+        abi = contract_interface['abi']
+        
+        ctor_encoded = eth_abi.encode(args_types, args_vals).hex()
+        full_bytecode = bytecode + ctor_encoded
+        
+        target_addr = calc_create2_address(sender, salt, full_bytecode)
+        print(f"[Deploying] {label} at 0x{target_addr}")
+        
+        tx_hash = w3.client.send_transaction_auto(
+            PRIV_KEY, target_addr, step=StepType.kCreateContract, 
+            contract_code=full_bytecode, prepayment=10**7
+        )
+        w3.client.wait_for_receipt(tx_hash)
+        return w3.eth.contract(address=target_addr, abi=abi, sender_address=sender)
+
+    # Deploy Chain
+    pool_contract = web3_deploy(PROBE_POOL_SOL, "ProbePool", 
+                                ["uint256", "uint256"], [10000, 10000], 
+                                "p_salt_01", "Pool")
+
+    treasury_contract = web3_deploy(PROBE_TREASURY_SOL, "ProbeTreasury", 
+                                    ["address"], [to_checksum_address("0x" + pool_contract.address)], 
+                                    "t_salt_01", "Treasury")
+
+    bridge_contract = web3_deploy(PROBE_BRIDGE_SOL, "ProbeBridge", 
+                                  ["address"], [to_checksum_address("0x" + treasury_contract.address)], 
+                                  "b_salt_01", "Bridge")
+
+    # Set Permission
+    print("Configuring Treasury: setBridge...")
+    bridge_addr_checksum = to_checksum_address("0x" + bridge_contract.address)
+    treasury_contract.functions.setBridge(bridge_addr_checksum).transact(PRIV_KEY)
+
+    # Execute Chain Call: Bridge.request(1) with Value=5
+    print("\n[Executing] Bridge.request(1) with 5 SETH...")
+    tx_hash_chain = w3.client.send_transaction_auto(
+        PRIV_KEY, bridge_contract.address, step=StepType.kContractExcute,
+        input_hex=bridge_contract.functions.request(1).encoded_input,
+        amount=5, 
+        prepayment=10**6
+    )
+    final_receipt = w3.client.wait_for_receipt(tx_hash_chain, bridge_contract.abi, "request")
+
+    if final_receipt.get('status') == 0:
+        print(f"✅ Chain Call Success!")
+        print(f"   Decoded Output (AmountOut): {final_receipt.get('decoded_output')}")
+    else:
+        print(f"❌ Chain Call Failed: Status {final_receipt.get('status')}")
+
+    # Verify State
+    res_seth = pool_contract.functions.reserveSETH().call()
+    res_usdc = pool_contract.functions.reserveUSDC().call()
+    total_reqs = bridge_contract.functions.totalRequests().call()
+    
+    print(f"\nFinal State Verification:")
+    print(f" - Pool SETH Reserve: {res_seth}")
+    print(f" - Pool USDC Reserve: {res_usdc}")
+    print(f" - Bridge Total Requests: {total_reqs}")
+
+# --- Runner ---
+if __name__ == "__main__":
+    SETH_IP, SETH_PORT = "127.0.0.1", 23001
+    PRIV_KEY = "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
+    
+    # 1. Test library and contract calling library
+    test_library_with_contrcat(SETH_IP, SETH_PORT, PRIV_KEY)
+
+    # 2. Test standard transfer (Receiver address truncated for demo)
+    test_transfer(SETH_IP, SETH_PORT, PRIV_KEY, "71e571862c0e4aefa87a3c16057a62c8331991a1")
+
+    # 3. Test contract calling contract
+    test_contract_call_contract(SETH_IP, SETH_PORT, PRIV_KEY)
