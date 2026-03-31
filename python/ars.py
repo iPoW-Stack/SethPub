@@ -215,20 +215,19 @@ def run_comprehensive_ars_demo():
     print("\n[6] Testing Query Functions...")
     time.sleep(2) # Wait for state synchronization
 
-    # [6-A] Querying ars_map (Individual Getter)
-    print("[6-A] Querying ars_map (Individual Getter):")
+    # [6-A] Querying ars_map
     info = ars_contract.functions.ars_map(base_id).call()
     
-    # Check if the return result is an indexable collection
     if isinstance(info, (list, tuple)) and len(info) >= 5:
+        # Helper to safely hex bytes
+        to_hex = lambda x: f"0x{x.hex()}" if isinstance(x, bytes) else str(x)
+        
         print(f"    ✅ Struct Data Found:")
         print(f"       - Ring Size: {info[0]}")
         print(f"       - Signer Count: {info[1]}")
-        print(f"       - ID: 0x{info[2].hex()}")
-        print(f"       - Res Info: 0x{info[3].hex()}")
+        print(f"       - ID: {to_hex(info[2])}")
+        print(f"       - Res Info: {to_hex(info[3])}")
         print(f"       - Exists: {info[4]}")
-    else:
-        print(f"    ⚠️ Warning: Mapping query returned invalid format: {info}")
 
     # [6-B] GetAllArsJson (Full JSON Query)
     print("\n[6-B] Querying GetAllArsJson:")

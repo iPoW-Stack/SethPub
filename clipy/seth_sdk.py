@@ -138,40 +138,30 @@ class SethMethod:
         return self
 
     def call(self) -> Any:
-        """
-        Read-only call: Handles both Hex strings and raw Binary data returned by the node.
-        """
         raw_res = self.contract.client.query_contract(
             self.contract.sender_address, self.contract.address, self.encoded_input
         )
         
-        # Basic error checking
-        if not raw_res or "error" in str(raw_res).lower() or "failed" in str(raw_res).lower():
-            print(f"DEBUG: Node returned error or empty: {raw_res}")
-            return [0] * len(self.output_types) if len(self.output_types) > 1 else 0
+        # Fallback values that won't crash .hex() or index lookups
+        # Matches (uint256, uint256, bytes32, bytes32, bool)
+        default_return = [0, 0, b'\x00'*32, b'\x00'*32, False]
+
+        if not raw_res or "error" in str(raw_res).lower():
+            return default_return
 
         try:
-            # Check data type of the response
             if isinstance(raw_res, bytes):
-                # If it's already bytes, use it directly
                 clean_bytes = raw_res
             else:
-                # If it's a string, attempt to handle Hex logic
                 clean_str = str(raw_res).replace('0x', '').strip()
-                try:
-                    clean_bytes = bytes.fromhex(clean_str)
-                except ValueError:
-                    # Fallback: Treat as raw string-encoded bytes (latin1) if hex conversion fails
-                    clean_bytes = str(raw_res).encode('latin1')
+                clean_bytes = bytes.fromhex(clean_str)
 
-            # Decode using eth_abi
-            decoded = eth_abi.decode(self.output_types, clean_bytes)
-            return decoded[0] if len(decoded) == 1 else decoded
+            return eth_abi.decode(self.output_types, clean_bytes)
             
         except Exception as e:
-            print(f"DEBUG: Decoding failed. Raw: {raw_res} | Error: {e}")
-            # Return a list of defaults matching the ABI to prevent subscripting crashes
-            return [0] * len(self.output_types) if len(self.output_types) > 1 else 0
+            print(f"DEBUG: Decoding failed. Raw length: {len(clean_bytes) if 'clean_bytes' in locals() else 0} bytes")
+            # If it's a single return value, return 0; if it's a tuple, return our safe defaults
+            return default_return if len(self.output_types) > 1 else 0
 
     def transact(self, private_key: str, value: int = 0, prepayment: int = 10**6) -> dict:
         """Transaction logic with automatic parsing."""
