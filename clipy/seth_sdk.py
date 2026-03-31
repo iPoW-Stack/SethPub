@@ -433,44 +433,44 @@ class SethClient:
         return k.digest()[:20].hex()
 
     def send_oqs_transaction(self, oqs_sk_hex, oqs_pk_hex, to, step, amount=0, contract_code='', input_hex='', prepayment=0):
-        """Send post-quantum transaction - algorithm synchronized version"""
+        """发送后量子交易 - 兼容 liboqs 0.15.0 API"""
         if not oqs:
             raise ImportError("liboqs-python is required")
             
         my_addr = self.get_oqs_address(oqs_pk_hex)
         nonce_addr = to + my_addr if step == StepType.kContractExcute else my_addr
         
-        # Get Nonce (keep original logic)
+        # 1. 获取 Nonce
         try:
             r = requests.post(self.query_url, data={"address": nonce_addr}).json()
             nonce = int(r.get("nonce", 0)) + 1
         except: nonce = 1
 
-        # 1. Construct message to be signed
+        # 2. 构造待签名消息 (Keccak256 对齐服务端)
         msg = bytearray()
         msg.extend(struct.pack('<Q', nonce))
         msg.extend(bytes.fromhex(oqs_pk_hex.replace('0x','')))
         msg.extend(bytes.fromhex(to.replace('0x','')))
         msg.extend(struct.pack('<Q', amount))
-        msg.extend(struct.pack('<Q', 5000000)) # gas_limit
-        msg.extend(struct.pack('<Q', 1))       # gas_price
+        msg.extend(struct.pack('<Q', 5000000)) 
+        msg.extend(struct.pack('<Q', 1))       
         msg.extend(struct.pack('<Q', int(step)))
         if contract_code: msg.extend(bytes.fromhex(contract_code))
         if input_hex: msg.extend(bytes.fromhex(input_hex))
         if prepayment > 0: msg.extend(struct.pack('<Q', prepayment))
 
-        # 2. Calculate hash - key point:
-        # Must confirm the hash algorithm used by pools::GetTxMessageHash(*new_tx) on the C++ side
-        # Given the address uses Keccak, it's highly likely Keccak here too
         txh = keccak.new(digest_bits=256).update(msg).digest()
 
-        # 3. Execute ML-DSA-44 signature
-        # Synchronize server side: OQS_SIG_alg_dilithium_2
+        # 3. 执行 ML-DSA-44 (Dilithium2) 签名
+        # 修复点：liboqs 0.15.0 的 Signature 对象需要显式设置私钥 bytes
         with oqs.Signature('ML-DSA-44') as signer:
+            # 关键修复：直接赋值 secret_key 属性，内部会自动处理 ctypes 转换
             signer.secret_key = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
+            
+            # 关键修复：sign 只接受一个参数 (message_hash)
             signature = signer.sign(txh)
 
-        # 4. Assemble request data
+        # 4. 组装请求数据
         data = {
             "nonce": str(nonce),
             "pubkey": oqs_pk_hex.replace('0x',''),
@@ -488,7 +488,6 @@ class SethClient:
         if prepayment: data["pepay"] = str(prepayment)
         
         requests.post(self.oqs_url, data=data)
-        # Return result also uses Keccak Hex to match wait_for_receipt
         return txh.hex()
 
     def query_contract(self, f, a, i):
