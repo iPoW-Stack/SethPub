@@ -463,28 +463,30 @@ class SethClient:
 
         # 3. 执行 ML-DSA-44 (Dilithium2) 签名
         with oqs.Signature('ML-DSA-44') as signer:
-            # 将 hex 密钥转为 bytes
             sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
             
-            # --- 核心修复点 ---
-            # 既然不能直接赋值属性，我们就手动创建一个符合 C 要求的缓冲区
-            # ML-DSA-44 要求长度为 2560 字节
+            # 强制长度对齐 (ML-DSA-44 必须是 2560 字节)
+            if len(sk_bytes) < 2560:
+                sk_bytes = sk_bytes.ljust(2560, b'\x00')
+            elif len(sk_bytes) > 2560:
+                sk_bytes = sk_bytes[:2560]
+
+            # --- 终极修复：直接向 signer 内部的 ctypes 缓冲区填充数据 ---
+            # 在 0.14.0/0.15.0 中，内部属性通常叫 _secret_key 或从父类继承
             import ctypes
-            
-            # 1. 获取算法预期的私钥长度
-            expected_len = signer.length_secret_key
-            
-            # 2. 检查长度并构造 ctypes 数组
-            if len(sk_bytes) < expected_len:
-                sk_bytes = sk_bytes.ljust(expected_len, b'\x00')
-                
-            # 3. 创建一个 ctypes 可识别的缓冲区（ubyte 数组）
-            sk_buf = (ctypes.c_uint8 * expected_len).from_buffer_copy(sk_bytes)
-            
-            # 4. 调用 sign，传入消息哈希和这个 ctypes 缓冲区
-            # 注意：在新版 API 中，如果还是报参数数量错误，
-            # 请尝试 signature = signer.sign(txh, sk_buf)
-            signature = signer.sign(txh, sk_buf)
+            try:
+                # 尝试填充内部缓冲区
+                ctypes.memmove(signer._secret_key, sk_bytes, 2560)
+            except AttributeError:
+                # 如果没有 _secret_key，则尝试通用的缓冲区注入（某些版本直接挂在实例上）
+                # 这也是为什么你之前报 'Signature' object has no attribute 'secret_key'
+                # 我们直接通过私有变量或底层 buffer 尝试
+                target = getattr(signer, '_secret_key', None) or signer
+                ctypes.memmove(target, sk_bytes, 2560)
+
+            # 此时调用 sign，它会自动从已经填充好的内部缓冲区取私钥
+            # 这样就只传了 (self, txh)，符合“2 positional arguments”的限制
+            signature = signer.sign(txh)
 
         # 4. 组装请求数据
         data = {
