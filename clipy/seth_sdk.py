@@ -465,27 +465,31 @@ class SethClient:
         with oqs.Signature('ML-DSA-44') as signer:
             import ctypes
             
-            # --- A. 准备消息哈希 (强制转化为 ctypes 实例) ---
+            # --- A. 彻底解决 byref 报错：将 txh 转换为 ctypes 数组 ---
             txh_bytes = bytes(txh)
             msg_len = len(txh_bytes)
-            # 创建一个 c_ubyte 数组并从 bytes 拷贝数据
-            # 这一步解决了 "byref() argument must be a ctypes instance" 报错
+            # 必须这样构造，才能传给底层 byref()
             msg_ctypes = (ctypes.c_uint8 * msg_len).from_buffer_copy(txh_bytes)
             
-            # --- B. 准备并注入私钥 ---
+            # --- B. 准备并注入私钥 (根据 t.py 结果，长度必须是 2560) ---
             sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
-            # 确保长度为 2560 (基于你 t.py 的运行结果)
             sk_len = 2560 
+            # 强行对齐长度，多退少补
             sk_bytes = sk_bytes.ljust(sk_len, b'\x00')[:sk_len]
             
-            # 注入私钥到内部缓冲区
+            # 注入到 signer 内部缓冲区
             if hasattr(signer, '_secret_key'):
                 ctypes.memmove(signer._secret_key, sk_bytes, sk_len)
             else:
-                signer.secret_key = sk_bytes
+                # 某些子版本可能叫 secret_key 但其实是 ctypes 数组
+                try:
+                    ctypes.memmove(signer.secret_key, sk_bytes, sk_len)
+                except:
+                    signer.secret_key = sk_bytes
 
             # --- C. 执行签名 ---
-            # 现在 sign 只接受一个参数 (msg_ctypes)，符合 "2 positional arguments" 的限制
+            # 只传一个参数 (msg_ctypes)，满足 "2 positional arguments" (self + msg)
+            # 且 msg_ctypes 是 ctypes 实例，满足 "byref()" 的要求
             signature = signer.sign(msg_ctypes)
 
         # 4. 转换回 Hex
