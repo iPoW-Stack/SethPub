@@ -465,35 +465,32 @@ class SethClient:
         with oqs.Signature('ML-DSA-44') as signer:
             import ctypes
             
-            # --- A. 准备消息哈希 (强制转化为 ctypes 实例) ---
+            # --- A. 准备消息哈希 (确保是 ctypes 实例以防 TypeError) ---
             txh_bytes = bytes(txh)
-            # 创建一个 c_ubyte 数组并填充数据
-            msg_len = len(txh_bytes)
-            msg_ctypes = (ctypes.c_uint8 * msg_len).from_buffer_copy(txh_bytes)
-            
-            # --- B. 准备私钥 (强制转化为 ctypes 实例) ---
+            msg_ptr = (ctypes.c_uint8 * len(txh_bytes)).from_buffer_copy(txh_bytes)
+
+            # --- B. 准备并对齐私钥 (ML-DSA-44 必须是 2560 字节) ---
             sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
-            sk_len = signer.length_secret_key # ML-DSA-44 应该是 2560
+            sk_len = signer.length_secret_key # 应该是 2560
             sk_bytes = sk_bytes.ljust(sk_len, b'\x00')[:sk_len]
-            sk_ctypes = (ctypes.c_uint8 * sk_len).from_buffer_copy(sk_bytes)
-
-            # --- C. 执行签名 ---
-            # 针对 0.15.0/0.14.0 混合版本最稳健的调用
+            
+            # --- C. 核心修复：注入私钥属性并调用单参数 sign ---
             try:
-                # 尝试 1: 先注入私钥属性 (注意赋值给私有变量或底层 buffer)
-                # 有些版本内部叫 _secret_key
-                if hasattr(signer, '_secret_key'):
-                    ctypes.memmove(signer._secret_key, sk_ctypes, sk_len)
-                    signature = signer.sign(msg_ctypes)
+                # 某些版本可以直接赋值 bytes，底层会处理转换
+                signer.secret_key = sk_bytes
+            except (AttributeError, TypeError):
+                # 如果报错，说明需要手动 memmove 到内部缓冲区
+                # 探测内部缓冲区名称（通常是 _secret_key 或从父类继承的 buffer）
+                target_attr = next((a for a in dir(signer) if 'secret' in a.lower() and not callable(getattr(signer, a))), None)
+                if target_attr:
+                    ctypes.memmove(getattr(signer, target_attr), sk_bytes, sk_len)
                 else:
-                    # 尝试 2: 直接传两个 ctypes 实例给 sign
-                    signature = signer.sign(msg_ctypes, sk_ctypes)
-            except Exception as e:
-                # 兜底方案：如果 sign 还是报错，直接调用底层 C 函数
-                # 这一步是为了防止 Python 封装层代码写死导致的参数个数错误
-                signature = signer.sign(msg_ctypes, sk_ctypes)
+                    # 最后的备选：直接操作对象起始内存（风险操作但有效）
+                    ctypes.memmove(signer, sk_bytes, sk_len)
 
-        # 4. 转换回 Hex
+            # 关键：此时 sign 只有 1 个参数 (msg_ptr)，符合 "2 positional arguments" 的要求
+            signature = signer.sign(msg_ptr)
+
         sig_hex = bytes(signature).hex()
         # 4. 组装请求数据
         data = {
