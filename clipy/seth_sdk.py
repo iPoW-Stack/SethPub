@@ -466,11 +466,24 @@ class SethClient:
 
         txh = keccak.new(digest_bits=256).update(msg).digest()
 
+                # 3. 执行 ML-DSA-44 签名 - 使用 liboqs-python 推荐的高级 API
+        sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
+        
         with oqs.Signature('ML-DSA-44') as signer:
-            signer.secret_key = bytes.fromhex(oqs_sk_hex.replace('0x',''))
-            signature = signer.sign(txh)
+            # 方式 A（最推荐，大多数版本都支持）
+            try:
+                # 先设置私钥（如果需要）
+                if hasattr(signer, 'secret_key'):
+                    signer.secret_key = sk_bytes   # 有些版本支持直接赋值 bytes
+                
+                signature = signer.sign(txh)       # txh 是 32 字节的 keccak hash (bytes)
+            
+            except (AttributeError, TypeError, ValueError) as e:
+                # 方式 B：某些较新/旧版本需要显式传入私钥
+                print(f"Standard sign failed: {e}. Trying with secret_key parameter...")
+                signature = signer.sign(txh, sk_bytes)
 
-        # 4. 转 Hex 并组装交易
+        # 签名结果转 hex
         sig_hex = bytes(signature).hex() if isinstance(signature, (bytes, bytearray)) else signature.hex()
 
         data = {
