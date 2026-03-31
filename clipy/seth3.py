@@ -169,6 +169,29 @@ class SethContract:
 
     def _create_method(self, item):
         return lambda *args: SethMethod(self, item)(*args)
+    
+    def deploy(self, transaction: dict, private_key: str) -> SethContract:
+        """Fully Web3-compatible deployment logic."""
+        sender = transaction.get('from', self.sender_address)
+        salt = transaction.get('salt', '0')
+        step = transaction.get('step', StepType.kCreateContract)
+        args = transaction.get('args', [])
+
+        full_bytecode = self.bytecode
+        if args:
+            ctor_abi = next((x for x in self.abi if x['type'] == 'constructor'), None)
+            if ctor_abi:
+                types = [i['type'] for i in ctor_abi['inputs']]
+                full_bytecode += eth_abi.encode(types, args).hex()
+
+        self.address = calc_create2_address(sender, salt, full_bytecode)
+        self.sender_address = sender
+        
+        tx_hash = self.client.send_transaction_auto(
+            private_key, self.address, step, contract_code=full_bytecode, prepayment=10**7
+        )
+        self.client.wait_for_receipt(tx_hash)
+        return self
 
 class SethWeb3Mock:
     def __init__(self, host: str, port: int):
@@ -314,28 +337,23 @@ def test_library_with_contrcat(SETH_IP, SETH_PORT, PRIV_KEY):
     l_bin, l_abi = compile_and_link(source, "MathLib")
     
     # We use a mock factory pattern
-    # salt "30" for Library
-    lib_addr = calc_create2_address(MY_ADDR, "30", l_bin)
-    w3.eth.contract(abi=l_abi, bytecode=l_bin).deploy(
-        transaction={'from': MY_ADDR, 'salt': "30", 'step': StepType.kCreateLibrary},
+    # Deploy Library
+    l_bin, l_abi = compile_and_link(source, "L")
+    lib = w3.eth.contract(abi=l_abi, bytecode=l_bin).deploy(
+        transaction={'from': MY_ADDR, 'salt': 'lib_1', 'step': StepType.kCreateLibrary},
         private_key=PRIV_KEY
     )
-    print(f"Library deployed at: {lib_addr}")
+    print(f"Library at: {lib.address}")
 
-    # --- 2. Deploy Calculator (Web3 Style) ---
-    print("Deploying Calculator...")
-    # Linking is handled in compile_and_link
-    c_bin, c_abi = compile_and_link(source, "Calculator", libs={"MathLib": lib_addr})
-    
-    # salt "31" for Contract
-    calc_addr = calc_create2_address(MY_ADDR, "31", c_bin)
-    calculator = w3.eth.contract(abi=c_abi, bytecode=c_bin).deploy(
-        transaction={'from': MY_ADDR, 'salt': "31", 'step': StepType.kCreateContract},
+    # Deploy Contract
+    c_bin, c_abi = compile_and_link(source, "C", libs={"L": lib.address})
+    calc_contract = w3.eth.contract(abi=c_abi, bytecode=c_bin).deploy(
+        transaction={'from': MY_ADDR, 'salt': 'calc_1'},
         private_key=PRIV_KEY
     )
-    print(f"Contract deployed at: {calc_addr}")
+    print(f"Contract at: {calc_contract.address}")
 
-    calc = w3.eth.contract(address=calc_addr, abi=c_abi, sender_address=MY_ADDR)
+    calc = w3.eth.contract(address=calc_contract.address, abi=c_abi, sender_address=MY_ADDR)
     receipt = calc.functions.doAdd(33, 66).transact(PRIV_KEY)
     
     print(f"⭐ Decoded Result: {receipt.get('decoded_output')}")
@@ -410,61 +428,69 @@ def test_contract_call_contract(SETH_IP, SETH_PORT, PRIV_KEY):
     print("\n--- TEST CASE 3: Contract Chain Call (Bridge -> Treasury -> Pool) ---")
     w3 = SethWeb3Mock(SETH_IP, SETH_PORT)
     sender = w3.client.get_address(PRIV_KEY)
-    
-    def web3_deploy(source, name, args_types, args_vals, salt, label):
-        compiled = solcx.compile_source(source, output_values=["abi", "bin"], evm_version="shanghai")
-        contract_interface = compiled[f"<stdin>:{name}"]
-        bytecode = contract_interface['bin']
-        abi = contract_interface['abi']
-        
-        ctor_encoded = eth_abi.encode(args_types, args_vals).hex()
-        full_bytecode = bytecode + ctor_encoded
-        
-        target_addr = calc_create2_address(sender, salt, full_bytecode)
-        print(f"[Deploying] {label} at 0x{target_addr}")
-        
-        tx_hash = w3.client.send_transaction_auto(
-            PRIV_KEY, target_addr, step=StepType.kCreateContract, 
-            contract_code=full_bytecode, prepayment=10**7
-        )
-        w3.client.wait_for_receipt(tx_hash)
-        return w3.eth.contract(address=target_addr, abi=abi, sender_address=sender)
 
-    # Deploy Chain
-    pool_contract = web3_deploy(PROBE_POOL_SOL, "ProbePool", 
-                                ["uint256", "uint256"], [10000, 10000], 
-                                "p_salt_01", "Pool")
+    # --- 1. Deploy Pool (Web3 Style) ---
+    # Initial reserves: 10000 SETH, 10000 USDC
+    p_bin, p_abi = compile_and_link(PROBE_POOL_SOL, "ProbePool")
+    pool_contract = w3.eth.contract(abi=p_abi, bytecode=p_bin).deploy(
+        transaction={
+            'from': sender, 
+            'salt': 'p_salt_01', 
+            'args': [10000, 10000]
+        },
+        private_key=PRIV_KEY
+    )
+    print(f"[Deployed] Pool at 0x{pool_contract.address}")
 
-    treasury_contract = web3_deploy(PROBE_TREASURY_SOL, "ProbeTreasury", 
-                                    ["address"], [to_checksum_address("0x" + pool_contract.address)], 
-                                    "t_salt_01", "Treasury")
+    # --- 2. Deploy Treasury (Web3 Style) ---
+    # Connected to Pool address
+    t_bin, t_abi = compile_and_link(PROBE_TREASURY_SOL, "ProbeTreasury")
+    treasury_contract = w3.eth.contract(abi=t_abi, bytecode=t_bin).deploy(
+        transaction={
+            'from': sender, 
+            'salt': 't_salt_01', 
+            'args': [to_checksum_address(pool_contract.address)]
+        },
+        private_key=PRIV_KEY
+    )
+    print(f"[Deployed] Treasury at 0x{treasury_contract.address}")
 
-    bridge_contract = web3_deploy(PROBE_BRIDGE_SOL, "ProbeBridge", 
-                                  ["address"], [to_checksum_address("0x" + treasury_contract.address)], 
-                                  "b_salt_01", "Bridge")
+    # --- 3. Deploy Bridge (Web3 Style) ---
+    # Connected to Treasury address
+    b_bin, b_abi = compile_and_link(PROBE_BRIDGE_SOL, "ProbeBridge")
+    bridge_contract = w3.eth.contract(abi=b_abi, bytecode=b_bin).deploy(
+        transaction={
+            'from': sender, 
+            'salt': 'b_salt_01', 
+            'args': [to_checksum_address(treasury_contract.address)]
+        },
+        private_key=PRIV_KEY
+    )
+    print(f"[Deployed] Bridge at 0x{bridge_contract.address}")
 
-    # Set Permission
+    # --- 4. Set Permission ---
     print("Configuring Treasury: setBridge...")
-    bridge_addr_checksum = to_checksum_address("0x" + bridge_contract.address)
+    bridge_addr_checksum = to_checksum_address(bridge_contract.address)
     treasury_contract.functions.setBridge(bridge_addr_checksum).transact(PRIV_KEY)
 
-    # Execute Chain Call: Bridge.request(1) with Value=5
+    # --- 5. Execute Chain Call ---
+    # Bridge.request(minOut=1) with Value=5 SETH
     print("\n[Executing] Bridge.request(1) with 5 SETH...")
-    tx_hash_chain = w3.client.send_transaction_auto(
-        PRIV_KEY, bridge_contract.address, step=StepType.kContractExcute,
-        input_hex=bridge_contract.functions.request(1).encoded_input,
-        amount=5, 
+    # Using transact with 'value' to send the 5 SETH through the chain
+    receipt = bridge_contract.functions.request(1).transact(
+        private_key=PRIV_KEY, 
+        value=5, 
         prepayment=10**6
     )
-    final_receipt = w3.client.wait_for_receipt(tx_hash_chain, bridge_contract.abi, "request")
 
-    if final_receipt.get('status') == 0:
+    if receipt.get('status') == 0:
         print(f"✅ Chain Call Success!")
-        print(f"   Decoded Output (AmountOut): {final_receipt.get('decoded_output')}")
+        # Note: decoded_output comes from the automatic wait_for_receipt logic
+        print(f"   Decoded Output (AmountOut): {receipt.get('decoded_output')}")
     else:
-        print(f"❌ Chain Call Failed: Status {final_receipt.get('status')}")
+        print(f"❌ Chain Call Failed: Status {receipt.get('status')}")
 
-    # Verify State
+    # --- 6. Verify State via .call() ---
     res_seth = pool_contract.functions.reserveSETH().call()
     res_usdc = pool_contract.functions.reserveUSDC().call()
     total_reqs = bridge_contract.functions.totalRequests().call()
