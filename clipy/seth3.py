@@ -334,10 +334,10 @@ def test_library_with_contrcat(w3, MY, KEY):
 def test_contract_call_contract(w3, MY, KEY):
     print("\n--- TEST CASE 3: Chain Call ---")
     p_bin, p_abi = compile_and_link(PROBE_POOL_SOL, "ProbePool")
-    pool = w3.eth.contract(abi=p_abi, bytecode=p_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '03', 'args': [10000, 10000]}, KEY)
+    pool = w3.eth.contract(abi=p_abi, bytecode=p_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '03', 'args': [10000, 10000], 'amount': 5000000 }, KEY)
     
     t_bin, t_abi = compile_and_link(PROBE_TREASURY_SOL, "ProbeTreasury")
-    treasury = w3.eth.contract(abi=t_abi, bytecode=t_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '04', 'args': [to_checksum_address(pool.address)]}, KEY)
+    treasury = w3.eth.contract(abi=t_abi, bytecode=t_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '04', 'args': [to_checksum_address(pool.address)], 'amount': 5000000 }, KEY)
     
     b_bin, b_abi = compile_and_link(PROBE_BRIDGE_SOL, "ProbeBridge")
     bridge = w3.eth.contract(abi=b_abi, bytecode=b_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '05', 'args': [to_checksum_address(treasury.address)]}, KEY)
