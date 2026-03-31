@@ -74,6 +74,7 @@ int ContractUserCreateCall::HandleTx(
     zjc_host.pre_zjc_host_ = &pre_zjc_host;
     evmc_result evmc_call_res = {};
     evmc::Result evmc_res{ evmc_call_res };
+    bool check_valid = false;
     if (block_tx.status() == kConsensusSuccess) {
         InitHost(
             zjc_host, 
@@ -88,6 +89,7 @@ int ContractUserCreateCall::HandleTx(
         zjc_host.AddTmpAccountBalance(
             block_tx.to(),
             block_tx.amount());
+        check_valid = true;
         int call_res = CreateContractCallExcute(zjc_host, block_tx, &evmc_res);
         gas_used = block_tx.gas_limit() - evmc_res.gas_left;
         if (call_res != kConsensusSuccess || evmc_res.status_code != EVMC_SUCCESS) {
