@@ -433,20 +433,20 @@ class SethClient:
         return k.digest()[:20].hex()
 
     def send_oqs_transaction(self, oqs_sk_hex, oqs_pk_hex, to, step, amount=0, contract_code='', input_hex='', prepayment=0):
-        """发送后量子交易 - 修复 ctypes 类型匹配问题"""
+        """发送后量子交易 - 适配 liboqs 0.15.0 新版 API"""
         if not oqs:
             raise ImportError("liboqs-python is required")
             
         my_addr = self.get_oqs_address(oqs_pk_hex)
         nonce_addr = to + my_addr if step == StepType.kContractExcute else my_addr
         
-        # 1. 获取 Nonce
+        # 1. 获取 Nonce (保持原有逻辑)
         try:
             r = requests.post(self.query_url, data={"address": nonce_addr}).json()
             nonce = int(r.get("nonce", 0)) + 1
         except: nonce = 1
 
-        # 2. 构造待签名消息 (Keccak256)
+        # 2. 构造消息哈希 (Keccak256)
         msg = bytearray()
         msg.extend(struct.pack('<Q', nonce))
         msg.extend(bytes.fromhex(oqs_pk_hex.replace('0x','')))
@@ -461,20 +461,19 @@ class SethClient:
 
         txh = keccak.new(digest_bits=256).update(msg).digest()
 
-        # 3. 执行 ML-DSA-44 签名
+        # 3. 执行 ML-DSA-44 (Dilithium2) 签名
+        # 修复点：先加载私钥，再调用 sign(txh)
         with oqs.Signature('ML-DSA-44') as signer:
             # 将 hex 转为 bytes
             sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
             
-            # 确保 sk_bytes 长度至少为 signer.length_secret_key (2560)
-            if len(sk_bytes) < signer.length_secret_key:
-                # 如果传入的 Key 太短，自动补齐（仅用于模拟测试，生产环境需对应密钥）
-                sk_bytes = sk_bytes.ljust(signer.length_secret_key, b'\x00')
+            # 注入私钥到实例属性中 (liboqs-python 内部会通过 ctypes 处理)
+            signer.secret_key = sk_bytes
+            
+            # 关键：调用 sign 时只传消息，不传私钥
+            signature = signer.sign(txh)
 
-            # 0.15.0 版本中最通用的签名调用方式
-            signature = signer.sign(txh, sk_bytes)
-
-        # 4. 组装并发送
+        # 4. 组装请求数据 (保持不变)
         data = {
             "nonce": str(nonce),
             "pubkey": oqs_pk_hex.replace('0x',''),
