@@ -318,9 +318,99 @@ class SethClient:
 # --- 5. Main Execution ---
 
 # Solidity Sources for Test Case 3
-PROBE_POOL_SOL = "pragma solidity ^0.8.20; contract ProbePool { uint256 public reserveSETH; uint256 public reserveUSDC; constructor(uint256 s, uint256 u) payable { reserveSETH = s; reserveUSDC = u; } function sellSETH(uint256 m) external payable returns (uint256 out) { out = (msg.value * reserveUSDC) / (reserveSETH + msg.value); require(out >= m, 'slippage'); reserveSETH += msg.value; reserveUSDC -= out; return out; } }"
-PROBE_TREASURY_SOL = "pragma solidity ^0.8.20; contract ProbeTreasury { address public pool; address public bridge; uint256 public totalSwaps; constructor(address p) payable { pool = p; } function setBridge(address b) external { bridge = b; } function swap(uint256 m) external payable returns (uint256 out) { require(msg.sender == bridge, 'not bridge'); (bool ok, bytes memory ret) = pool.call{value: msg.value}(abi.encodeWithSignature('sellSETH(uint256)', m)); require(ok, 'call sellSETH failed'); out = abi.decode(ret, (uint256)); totalSwaps += 1; return out; } }"
-PROBE_BRIDGE_SOL = "pragma solidity ^0.8.20; contract ProbeBridge { address public treasury; uint256 public totalRequests; constructor(address t) { treasury = t; } function request(uint256 m) external payable returns (uint256 out) { (bool ok, bytes memory ret) = treasury.call{value: msg.value}(abi.encodeWithSignature('swap(uint256)', m)); require(ok, 'call swap failed'); out = abi.decode(ret, (uint256)); totalRequests += 1; return out; } }"
+PROBE_POOL_SOL = """
+pragma solidity ^0.8.20;
+
+contract ProbePool {
+    uint256 public reserveSETH;
+    uint256 public reserveUSDC;
+
+    # 记录兑换明细：投入、产出、以及更新后的储备
+    event PoolSwap(address indexed sender, uint256 amountIn, uint256 amountOut, uint256 resSETH, uint256 resUSDC);
+
+    constructor(uint256 s, uint256 u) payable {
+        reserveSETH = s;
+        reserveUSDC = u;
+    }
+
+    function sellSETH(uint256 m) external payable returns (uint256 out) {
+        out = (msg.value * reserveUSDC) / (reserveSETH + msg.value);
+        require(out >= m, 'ProbePool: slippage');
+        
+        reserveSETH += msg.value;
+        reserveUSDC -= out;
+
+        emit PoolSwap(msg.sender, msg.value, out, reserveSETH, reserveUSDC);
+        return out;
+    }
+}
+"""
+
+PROBE_TREASURY_SOL = """
+pragma solidity ^0.8.20;
+
+contract ProbeTreasury {
+    address public pool;
+    address public bridge;
+    uint256 public totalSwaps;
+
+    # 记录金库转发情况
+    event TreasuryForwarded(address indexed poolAddr, uint256 value, uint256 minOut);
+
+    constructor(address p) payable {
+        pool = p;
+    }
+
+    function setBridge(address b) external {
+        bridge = b;
+    }
+
+    function swap(uint256 m) external payable returns (uint256 out) {
+        require(msg.sender == bridge, 'ProbeTreasury: not bridge');
+        
+        emit TreasuryForwarded(pool, msg.value, m);
+
+        (bool ok, bytes memory ret) = pool.call{value: msg.value}(
+            abi.encodeWithSignature('sellSETH(uint256)', m)
+        );
+        require(ok, 'ProbeTreasury: call sellSETH failed');
+        
+        out = abi.decode(ret, (uint256));
+        totalSwaps += 1;
+        return out;
+    }
+}
+"""
+
+PROBE_BRIDGE_SOL = """
+pragma solidity ^0.8.20;
+
+contract ProbeBridge {
+    address public treasury;
+    uint256 public totalRequests;
+
+    # 记录用户发起的请求
+    event BridgeRequest(address indexed user, uint256 value, uint256 minOut, uint256 requestId);
+
+    constructor(address t) {
+        treasury = t;
+    }
+
+    function request(uint256 m) external payable returns (uint256 out) {
+        totalRequests += 1;
+        emit BridgeRequest(msg.sender, msg.value, m, totalRequests);
+
+        (bool ok, bytes memory ret) = treasury.call{value: msg.value}(
+            abi.encodeWithSignature('swap(uint256)', m)
+        );
+        require(ok, 'ProbeBridge: call swap failed');
+        
+        out = abi.decode(ret, (uint256));
+        return out;
+    }
+}
+"""
+
 RANDOM_SALT = secrets.token_hex(31)
 def test_library_with_contrcat(w3, MY, KEY):
     print("\n--- TEST CASE 1: Library ---")
