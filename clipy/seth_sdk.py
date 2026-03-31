@@ -465,32 +465,32 @@ class SethClient:
         with oqs.Signature('ML-DSA-44') as signer:
             import ctypes
             
-            # --- A. 准备消息哈希 (确保是 ctypes 实例以防 TypeError) ---
+            # --- A. 准备消息哈希 (必须转化为 ctypes 实例) ---
             txh_bytes = bytes(txh)
-            msg_ptr = (ctypes.c_uint8 * len(txh_bytes)).from_buffer_copy(txh_bytes)
-
-            # --- B. 准备并对齐私钥 (ML-DSA-44 必须是 2560 字节) ---
-            sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
-            sk_len = signer.length_secret_key # 应该是 2560
-            sk_bytes = sk_bytes.ljust(sk_len, b'\x00')[:sk_len]
+            msg_len = len(txh_bytes)
+            # 创建一个 c_ubyte 数组并填充数据
+            msg_ctypes = (ctypes.c_uint8 * msg_len).from_buffer_copy(txh_bytes)
             
-            # --- C. 核心修复：注入私钥属性并调用单参数 sign ---
+            # --- B. 准备私钥 (对齐 2560 字节并转化为 ctypes 实例) ---
+            sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
+            sk_len = signer.length_secret_key # ML-DSA-44 应该是 2560
+            # 严格对齐长度，防止底层 C 库断言失败
+            sk_bytes = sk_bytes.ljust(sk_len, b'\x00')[:sk_len]
+            sk_ctypes = (ctypes.c_uint8 * sk_len).from_buffer_copy(sk_bytes)
+
+            # --- C. 核心修复：绕过封装层，尝试匹配不同的 API 签名 ---
             try:
-                # 某些版本可以直接赋值 bytes，底层会处理转换
-                signer.secret_key = sk_bytes
+                # 尝试 1：某些 0.15.0 版本要求将私钥注入属性
+                # 如果这一步成功，sign 只需要 1 个参数 (msg_ctypes)
+                signer.secret_key = sk_ctypes
+                signature = signer.sign(msg_ctypes)
             except (AttributeError, TypeError):
-                # 如果报错，说明需要手动 memmove 到内部缓冲区
-                # 探测内部缓冲区名称（通常是 _secret_key 或从父类继承的 buffer）
-                target_attr = next((a for a in dir(signer) if 'secret' in a.lower() and not callable(getattr(signer, a))), None)
-                if target_attr:
-                    ctypes.memmove(getattr(signer, target_attr), sk_bytes, sk_len)
-                else:
-                    # 最后的备选：直接操作对象起始内存（风险操作但有效）
-                    ctypes.memmove(signer, sk_bytes, sk_len)
+                # 尝试 2：如果尝试 1 失败，说明需要直接传两个 ctypes 参数
+                # 因为之前报过 "3 given"，所以这里直接传 msg 和 sk
+                # 此时调用的是 signer.sign(msg_ctypes, sk_ctypes)
+                signature = signer.sign(msg_ctypes, sk_ctypes)
 
-            # 关键：此时 sign 只有 1 个参数 (msg_ptr)，符合 "2 positional arguments" 的要求
-            signature = signer.sign(msg_ptr)
-
+        # 4. 将结果转回 Hex
         sig_hex = bytes(signature).hex()
         # 4. 组装请求数据
         data = {
