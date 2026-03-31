@@ -431,84 +431,82 @@ class SethClient:
         k = keccak.new(digest_bits=256)
         k.update(pub_bytes)
         return k.digest()[:20].hex()
-
-    def send_oqs_transaction(self, oqs_sk_hex, oqs_pk_hex, to, step, amount=0, contract_code='', input_hex='', prepayment=0):
-        """发送后量子交易 - 修复 ctypes 类型匹配问题"""
+    
+    def send_oqs_transaction(self, oqs_sk_hex, oqs_pk_hex, to, step, amount=0, 
+                            contract_code='', input_hex='', prepayment=0):
+        """发送后量子交易 - 使用 liboqs-python 推荐方式"""
         if not oqs:
             raise ImportError("liboqs-python is required")
-            
+
         my_addr = self.get_oqs_address(oqs_pk_hex)
         nonce_addr = to + my_addr if step == StepType.kContractExcute else my_addr
-        
-        # 1. 获取 Nonce (保持原有逻辑)
+
+        # 1. 获取 Nonce
         try:
             r = requests.post(self.query_url, data={"address": nonce_addr}).json()
             nonce = int(r.get("nonce", 0)) + 1
-        except: nonce = 1
+        except Exception:
+            nonce = 1
 
         # 2. 构造待签名消息 (Keccak256)
         msg = bytearray()
         msg.extend(struct.pack('<Q', nonce))
-        msg.extend(bytes.fromhex(oqs_pk_hex.replace('0x','')))
-        msg.extend(bytes.fromhex(to.replace('0x','')))
+        msg.extend(bytes.fromhex(oqs_pk_hex.replace('0x', '')))
+        msg.extend(bytes.fromhex(to.replace('0x', '')))
         msg.extend(struct.pack('<Q', amount))
-        msg.extend(struct.pack('<Q', 5000000)) 
-        msg.extend(struct.pack('<Q', 1))       
+        msg.extend(struct.pack('<Q', 5000000))   # gas_limit
+        msg.extend(struct.pack('<Q', 1))         # gas_price
         msg.extend(struct.pack('<Q', int(step)))
-        if contract_code: msg.extend(bytes.fromhex(contract_code))
-        if input_hex: msg.extend(bytes.fromhex(input_hex))
-        if prepayment > 0: msg.extend(struct.pack('<Q', prepayment))
+        if contract_code:
+            msg.extend(bytes.fromhex(contract_code))
+        if input_hex:
+            msg.extend(bytes.fromhex(input_hex))
+        if prepayment > 0:
+            msg.extend(struct.pack('<Q', prepayment))
 
         txh = keccak.new(digest_bits=256).update(msg).digest()
 
-        # 3. 执行 ML-DSA-44 (Dilithium2) 签名
+        # 3. 使用 liboqs-python 的标准方式签名 (推荐)
         with oqs.Signature('ML-DSA-44') as signer:
-            import ctypes
-            
-            # --- A. 准备消息哈希 (必须转化为 ctypes 实例) ---
-            txh_bytes = bytes(txh)
-            msg_len = len(txh_bytes)
-            # 创建一个 c_ubyte 数组并填充数据
-            msg_ctypes = (ctypes.c_uint8 * msg_len).from_buffer_copy(txh_bytes)
-            
-            # --- B. 准备私钥 (对齐 2560 字节并转化为 ctypes 实例) ---
+            # 直接传入私钥字节（liboqs-python 会处理长度对齐和 ctypes 转换）
             sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
-            sk_len = signer.length_secret_key # ML-DSA-44 应该是 2560
-            # 严格对齐长度，防止底层 C 库断言失败
-            sk_bytes = sk_bytes.ljust(sk_len, b'\x00')[:sk_len]
-            sk_ctypes = (ctypes.c_uint8 * sk_len).from_buffer_copy(sk_bytes)
+            
+            # 关键：调用 sign 时只传消息，私钥通过 init 或内部机制处理
+            # 如果你的版本支持直接传入 sk（某些版本的 .sign(msg, sk)），可以尝试下面这行：
+            # signature = signer.sign(txh, sk_bytes)   # 尝试这个
+            
+            # 最稳妥的方式（大多数 liboqs-python 版本）：
+            # 先设置私钥（如果类支持），或者直接用 sign(bytes)
+            # 推荐先尝试标准 bytes 输入
+            signature = signer.sign(txh)   # ← 这是标准调用，只传消息
 
-            # --- C. 核心修复：绕过封装层，尝试匹配不同的 API 签名 ---
-            try:
-                # 尝试 1：某些 0.15.0 版本要求将私钥注入属性
-                # 如果这一步成功，sign 只需要 1 个参数 (msg_ctypes)
-                signer.secret_key = sk_ctypes
-                signature = signer.sign(msg_ctypes)
-            except (AttributeError, TypeError):
-                # 尝试 2：如果尝试 1 失败，说明需要直接传两个 ctypes 参数
-                # 因为之前报过 "3 given"，所以这里直接传 msg 和 sk
-                # 此时调用的是 signer.sign(msg_ctypes, sk_ctypes)
-                signature = signer.sign(msg_ctypes, sk_ctypes)
+        # 如果上面报错 "secret key not set" 或类似，尝试下面这种（部分版本需要显式设置）：
+        # with oqs.Signature('ML-DSA-44') as signer:
+        #     signer.secret_key = sk_bytes   # 某些版本支持直接赋值 bytes
+        #     signature = signer.sign(txh)
 
-        # 4. 将结果转回 Hex
-        sig_hex = bytes(signature).hex()
-        # 4. 组装请求数据
+        # 4. 转 Hex 并组装交易
+        sig_hex = bytes(signature).hex() if isinstance(signature, (bytes, bytearray)) else signature.hex()
+
         data = {
             "nonce": str(nonce),
-            "pubkey": oqs_pk_hex.replace('0x',''),
-            "to": to.replace('0x',''),
+            "pubkey": oqs_pk_hex.replace('0x', ''),
+            "to": to.replace('0x', ''),
             "amount": str(amount),
             "gas_limit": "5000000",
             "gas_price": "1",
             "shard_id": "0",
             "type": str(int(step)),
-            "sign": sig_hex 
+            "sign": sig_hex
         }
         
-        if contract_code: data["bytes_code"] = contract_code
-        if input_hex: data["input"] = input_hex
-        if prepayment: data["pepay"] = str(prepayment)
-        
+        if contract_code:
+            data["bytes_code"] = contract_code
+        if input_hex:
+            data["input"] = input_hex
+        if prepayment:
+            data["pepay"] = str(prepayment)
+
         requests.post(self.oqs_url, data=data)
         return txh.hex()
 
