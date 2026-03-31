@@ -17,6 +17,11 @@ from Crypto.Hash import keccak
 from ecdsa import SigningKey, SECP256k1
 from ecdsa.util import sigencode_string_canonize
 
+try:
+    import oqs
+except ImportError:
+    oqs = None
+
 # --- 1. Constants & Enums ---
 
 class StepType(IntEnum):
@@ -163,13 +168,49 @@ class SethMethod:
             # If it's a single return value, return 0; if it's a tuple, return our safe defaults
             return default_return if len(self.output_types) > 1 else 0
 
-    def transact(self, private_key: str, value: int = 0, prepayment: int = 10**6) -> dict:
-        """Transaction logic with automatic parsing."""
-        tx_hash = self.contract.client.send_transaction_auto(
-            private_key, self.contract.address, StepType.kContractExcute, 
-            amount=value, input_hex=self.encoded_input, prepayment=prepayment
+    def transact(self, private_key: str, value: int = 0, prepayment: int = 10**6, oqs_pubkey: str = None) -> dict:
+        """Transaction logic with automatic parsing. Supports OQS auto-detection."""
+        
+        # 1. Auto-detect private key type: ECDSA hex length is 64, OQS hex length is usually > 2000
+        is_oqs = len(private_key) > 128
+
+        if is_oqs:
+            # Get OQS public key: prioritize getting it from the contract object's attributes
+            # If you saved oqs_pubkey when deploying or initializing SethContract, it can be used directly here
+            if not oqs_pubkey:
+                # Alternative: If not preset, try deriving it from global/cache based on the private key (if liboqs supports it)
+                # Or throw an exception to remind the user to set the public key in the contract object
+                raise ValueError(
+                    "OQS detected by key length, but 'oqs_pubkey' is not set in SethContract. "
+                    "Please set 'contract.oqs_pubkey = ...' before calling transact."
+                )
+
+            tx_hash = self.contract.client.send_oqs_transaction(
+                private_key, 
+                oqs_pubkey, 
+                self.contract.address, 
+                StepType.kContractExcute, 
+                amount=value, 
+                input_hex=self.encoded_input, 
+                prepayment=prepayment
+            )
+        else:
+            # Execute standard ECDSA logic
+            tx_hash = self.contract.client.send_transaction_auto(
+                private_key, 
+                self.contract.address, 
+                StepType.kContractExcute, 
+                amount=value, 
+                input_hex=self.encoded_input, 
+                prepayment=prepayment
+            )
+
+        # 2. Wait for and return the receipt
+        return self.contract.client.wait_for_receipt(
+            tx_hash, 
+            abi=self.contract.abi, 
+            function_name=self.name
         )
-        return self.contract.client.wait_for_receipt(tx_hash, abi=self.contract.abi, function_name=self.name)
 
 class SethContract:
     def __init__(self, client: SethClient, address: Optional[str], abi: list, bytecode: str = None, sender_address: str = ""):
@@ -183,21 +224,52 @@ class SethContract:
         return lambda *args: SethMethod(self, item)(*args)
 
     def deploy(self, transaction: dict, private_key: str) -> SethContract:
-        """Web3-style deployment."""
+        """Web3-style deployment. Automatically detects OQS based on private_key length."""
+        # 1. Extract base parameters
         sender = transaction.get('from', self.sender_address)
         salt = str(transaction.get('salt', '0'))
         step = transaction.get('step', StepType.kCreateContract)
         amount = transaction.get('amount', 0)
         args = transaction.get('args', [])
 
+        # 2. Process bytecode and constructor arguments
         full_bytecode = self.bytecode
         if args:
             ctor = next((x for x in self.abi if x['type'] == 'constructor'), None)
             if ctor:
                 full_bytecode += eth_abi.encode([i['type'] for i in ctor['inputs']], args).hex()
 
+        # 3. Calculate deployment address
         self.address = calc_create2_address(sender, salt, full_bytecode)
-        tx_hash = self.client.send_transaction_auto(private_key, self.address, step, contract_code=full_bytecode, prepayment=10000000, amount=amount)
+
+        # 4. Automatically select transaction interface based on private key length
+        # ECDSA private key hex length is 64, OQS (e.g., Dilithium) private key hex length is usually > 2000
+        if len(private_key) > 128:
+            # Compatibility handling: attempt to get pubkey from the transaction dictionary
+            oqs_pubkey = transaction.get('pubkey')
+            if not oqs_pubkey:
+                raise ValueError("OQS deployment requires 'pubkey' inside the transaction dict.")
+                
+            tx_hash = self.client.send_oqs_transaction(
+                private_key, 
+                oqs_pubkey, 
+                self.address, 
+                step, 
+                contract_code=full_bytecode, 
+                prepayment=10000000, 
+                amount=amount
+            )
+        else:
+            tx_hash = self.client.send_transaction_auto(
+                private_key, 
+                self.address, 
+                step, 
+                contract_code=full_bytecode, 
+                prepayment=10000000, 
+                amount=amount
+            )
+
+        # 5. Wait for and return the result
         self.client.wait_for_receipt(tx_hash)
         return self
 
@@ -212,6 +284,23 @@ class SethWeb3Mock:
     def send_transaction(self, tx_dict: dict, private_key: str) -> dict:
         tx_hash = self.client.send_transaction_auto(private_key, tx_dict['to'], StepType.kNormalFrom, amount=tx_dict.get('value', 0))
         return self.client.wait_for_receipt(tx_hash)
+    
+    def send_oqs_transaction(self, tx_dict: dict, private_key: str) -> dict:
+        """Fix: Send Post-Quantum (OQS) transaction"""
+        # Must get the OQS public key from tx_dict, as OQS signature requires it
+        pubkey = tx_dict.get('pubkey')
+        if not pubkey:
+            raise ValueError("OQS transaction requires 'pubkey' in tx_dict")
+            
+        # Call the method specifically handling OQS in the client
+        tx_hash = self.client.send_oqs_transaction(
+            private_key,     # The private_key here should be the OQS private key
+            pubkey,          # OQS public key
+            tx_dict['to'], 
+            StepType.kNormalFrom, 
+            amount=tx_dict.get('value', 0)
+        )
+        return self.client.wait_for_receipt(tx_hash)
 
 # --- 4. Base Client ---
 
@@ -222,6 +311,7 @@ class SethClient:
         self.query_url = f"{self.base_url}/query_account"
         self.receipt_url = f"{self.base_url}/transaction_receipt"
         self.query_contract_url = f"{self.base_url}/query_contract"
+        self.oqs_url = f"http://{host}:{port}/oqs_transaction"
 
     def get_address(self, pk_hex):
         sk = SigningKey.from_string(bytes.fromhex(pk_hex.replace('0x', '')), curve=SECP256k1)
@@ -330,6 +420,75 @@ class SethClient:
                     print(f"Event decode error: {ex}")
 
         return receipt
+    
+    def get_oqs_address(self, pubkey_hex: str) -> str:
+        """
+        Fix: Synchronize server-side C++ logic
+        str_addr_ = common::Hash::keccak256(str_pk_).substr(0, 20)
+        """
+        pub_bytes = bytes.fromhex(pubkey_hex.replace('0x', ''))
+        # Must use Keccak256
+        k = keccak.new(digest_bits=256)
+        k.update(pub_bytes)
+        return k.digest()[:20].hex()
+
+    def send_oqs_transaction(self, oqs_sk_hex, oqs_pk_hex, to, step, amount=0, contract_code='', input_hex='', prepayment=0):
+        """Send post-quantum transaction - algorithm synchronized version"""
+        if not oqs:
+            raise ImportError("liboqs-python is required")
+            
+        my_addr = self.get_oqs_address(oqs_pk_hex)
+        nonce_addr = to + my_addr if step == StepType.kContractExcute else my_addr
+        
+        # Get Nonce (keep original logic)
+        try:
+            r = requests.post(self.query_url, data={"address": nonce_addr}).json()
+            nonce = int(r.get("nonce", 0)) + 1
+        except: nonce = 1
+
+        # 1. Construct message to be signed
+        msg = bytearray()
+        msg.extend(struct.pack('<Q', nonce))
+        msg.extend(bytes.fromhex(oqs_pk_hex.replace('0x','')))
+        msg.extend(bytes.fromhex(to.replace('0x','')))
+        msg.extend(struct.pack('<Q', amount))
+        msg.extend(struct.pack('<Q', 5000000)) # gas_limit
+        msg.extend(struct.pack('<Q', 1))       # gas_price
+        msg.extend(struct.pack('<Q', int(step)))
+        if contract_code: msg.extend(bytes.fromhex(contract_code))
+        if input_hex: msg.extend(bytes.fromhex(input_hex))
+        if prepayment > 0: msg.extend(struct.pack('<Q', prepayment))
+
+        # 2. Calculate hash - key point:
+        # Must confirm the hash algorithm used by pools::GetTxMessageHash(*new_tx) on the C++ side
+        # Given the address uses Keccak, it's highly likely Keccak here too
+        txh = keccak.new(digest_bits=256).update(msg).digest()
+
+        # 3. Execute Dilithium2 signature
+        # Synchronize server side: OQS_SIG_alg_dilithium_2
+        with oqs.Signature('Dilithium2') as signer:
+            signature = signer.sign(txh, bytes.fromhex(oqs_sk_hex.replace('0x','')))
+
+        # 4. Assemble request data
+        data = {
+            "nonce": str(nonce),
+            "pubkey": oqs_pk_hex.replace('0x',''),
+            "to": to.replace('0x',''),
+            "amount": str(amount),
+            "gas_limit": "5000000",
+            "gas_price": "1",
+            "shard_id": "0",
+            "type": str(int(step)),
+            "sign": signature.hex() 
+        }
+        
+        if contract_code: data["bytes_code"] = contract_code
+        if input_hex: data["input"] = input_hex
+        if prepayment: data["pepay"] = str(prepayment)
+        
+        requests.post(self.oqs_url, data=data)
+        # Return result also uses Keccak Hex to match wait_for_receipt
+        return txh.hex()
 
     def query_contract(self, f, a, i):
         return requests.post(self.query_contract_url, data={"from": f, "address": a, "input": i}).text
