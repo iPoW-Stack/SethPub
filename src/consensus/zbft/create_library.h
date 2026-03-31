@@ -72,24 +72,24 @@ public:
             }
         } while (0);
 
+        evmc_result evmc_call_res = {};
+        evmc::Result evmc_res{ evmc_call_res };
         if (block_tx.status() == kConsensusSuccess) {
-            evmc_result evmc_res = {};
-            evmc::Result res{ evmc_res };
-            int call_res = CreateContractCallExcute(zjc_host, block_tx, &res);
-            gas_used = block_tx.gas_limit() - res.gas_left;
-            if (call_res != kConsensusSuccess || res.status_code != EVMC_SUCCESS) {
-                block_tx.set_status(EvmcStatusToZbftStatus(res.status_code));
+            int call_res = CreateContractCallExcute(zjc_host, block_tx, &evmc_res);
+            gas_used = block_tx.gas_limit() - evmc_res.gas_left;
+            if (call_res != kConsensusSuccess || evmc_res.status_code != EVMC_SUCCESS) {
+                block_tx.set_status(EvmcStatusToZbftStatus(evmc_res.status_code));
                 SETH_DEBUG("create contract: %s failed, call_res: %d, "
                     "evmc res: %d, gas_used: %lu, gas price: %lu, from_balance: %lu",
                     common::Encode::HexEncode(block_tx.to()).c_str(),
                     call_res,
-                    (int32_t)res.status_code,
+                    (int32_t)evmc_res.status_code,
                     gas_used,
                     block_tx.gas_price(),
                     from_balance);
             }
 
-            if (res.gas_left > (int64_t)block_tx.gas_limit()) {
+            if (evmc_res.gas_left > (int64_t)block_tx.gas_limit()) {
                 gas_used = block_tx.gas_limit();
             }
             
@@ -133,12 +133,30 @@ public:
             block_tx.status(),
             common::Encode::HexEncode(block_tx.from()).c_str(),
             common::Encode::HexEncode(block_tx.to()).c_str());
-        int32_t status_code = block_tx.status();
-        auto status_val = std::string((char*)&status_code, sizeof(status_code));
-        int32_t* status_arr = (int32_t*)status_val.c_str();
+
+        for (auto event_iter = zjc_host.recorded_logs_.begin();
+                event_iter != zjc_host.recorded_logs_.end(); ++event_iter) {
+            auto log = block_tx.add_events();
+            log->set_data((*event_iter).data);
+            for (auto topic_iter = (*event_iter).topics.begin();
+                    topic_iter != (*event_iter).topics.end(); ++topic_iter) {
+                log->add_topics(std::string((char*)(*topic_iter).bytes, sizeof((*topic_iter).bytes)));
+            }
+        }
+        
+        block::protobuf::TxHashStatus tx_hash_status;
+        *tx_hash_status.mutable_events() = block_tx.events();
+        if (check_valid) {
+            tx_hash_status.set_status(evmc_res.status_code);
+            tx_hash_status.set_output(evmc_res.output_data, evmc_res.output_size);
+        } else {
+            tx_hash_status.set_status(block_tx.status());
+        }
+
+        auto status_val = tx_hash_status.SerializeAsString();
         SETH_DEBUG("create library status: %d, out: %d output: %s, from: %s, to: %s", 
             (int32_t)status_code,
-            status_arr[0],
+            tx_hash_status.status(),
             "",
             common::Encode::HexEncode(block_tx.from()).c_str(),
             common::Encode::HexEncode(block_tx.to()).c_str());
