@@ -313,7 +313,7 @@ int ContractCall::HandleTx(
         new_contract_balance,
         (etime - btime));
     block::protobuf::TxHashStatus tx_hash_status;
-    *tx_hash_status.mutbale_events() = block_tx.events();
+    *tx_hash_status.mutable_events() = block_tx.events();
     if (check_valid) {
         tx_hash_status.set_status(evmc_res.status_code);
         tx_hash_status.set_output(evmc_res.output_data, evmc_res.output_size);
@@ -325,7 +325,7 @@ int ContractCall::HandleTx(
     SETH_DEBUG("call contract status: %d, rel: %d, output: %s, from: %s, to: %s", 
         (int32_t)evmc_res.status_code, 
         tx_hash_status.status(),
-        ProtobufToJson(tx_hash_status)c_str(),
+        ProtobufToJson(tx_hash_status).c_str(),
         common::Encode::HexEncode(block_tx.from()).c_str(),
         common::Encode::HexEncode(block_tx.to()).c_str());
     if (block_tx.status() == kConsensusSuccess) {
