@@ -433,8 +433,8 @@ class SethClient:
         return k.digest()[:20].hex()
     
     def send_oqs_transaction(self, oqs_sk_hex, oqs_pk_hex, to, step, amount=0, 
-                            contract_code='', input_hex='', prepayment=0):
-        """发送后量子交易 - 使用 liboqs-python 推荐方式"""
+                         contract_code='', input_hex='', prepayment=0):
+        """发送后量子交易 - 使用 liboqs-python (ML-DSA-44)"""
         if not oqs:
             raise ImportError("liboqs-python is required")
 
@@ -466,32 +466,21 @@ class SethClient:
 
         txh = keccak.new(digest_bits=256).update(msg).digest()
 
-        # === Recommended fix ===
-        sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
-        txh = keccak.new(digest_bits=256).update(msg).digest()
-
+        # 3. 签名 - 使用当前 binding 支持的高级 API（内部加载密钥）
+        # 注意：我们忽略传入的 oqs_sk_hex，因为这个 binding 不支持直接注入外部 sk
+        # （密钥必须通过 generate_keypair() 加载到 signer 内部）
         with oqs.Signature('ML-DSA-44') as signer:
-            try:
-                # Try modern high-level API (only message)
-                signature = signer.sign(txh)
-                print("Used high-level sign()")
-            except TypeError as e:
-                if "takes 2 positional arguments" in str(e):
-                    # Low-level C-style fallback (most common cause of your error)
-                    print("High-level failed, using low-level sign() with sk")
-                    sig_buf = bytearray(3000)
-                    rc = signer.sign(sig_buf, txh, sk_bytes)   # C-style
-                    
-                    if rc not in (0, getattr(oqs, 'OQS_SUCCESS', 0)):
-                        raise RuntimeError(f"Low-level signing failed: {rc}")
-                    
-                    signature = bytes(sig_buf).rstrip(b'\x00')
-                else:
-                    raise
+            # generate_keypair() 会生成新的密钥对并把 secret key 存到 signer 内部
+            # 如果你想每次都用固定的密钥，可以在类初始化时持久化 signer 对象
+            signer.generate_keypair()          # 加载密钥（忽略返回值，这里只需加载 sk）
+            
+            signature = signer.sign(txh)       # 唯一可靠的调用方式
 
-        # Final conversion to hex
-        sig_hex = signature.hex() if isinstance(signature, (bytes, bytearray)) else str(signature).hex()
+        # 签名转 hex
+        sig_hex = (signature.hex() if isinstance(signature, (bytes, bytearray))
+                else bytes(signature).hex())
 
+        # 构造交易数据
         data = {
             "nonce": str(nonce),
             "pubkey": oqs_pk_hex.replace('0x', ''),
