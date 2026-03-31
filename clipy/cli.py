@@ -211,6 +211,7 @@ class SethClient:
                     msg = resp.json().get("msg")
                     print(f"Transaction {tx_hash} receipt status: {status}, output: {msg}")
                     if status not in [MessageHandleStatus.kMessageHandle, MessageHandleStatus.kTxAccept]:
+                        print(resp.json())
                         return resp.json()
             except: pass
             time.sleep(5)
