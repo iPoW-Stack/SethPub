@@ -15,6 +15,7 @@
 #include "network/universal_manager.h"
 #include "protos/block.pb.h"
 #include "protos/view_block.pb.h"
+#include "pools/tx_pool_manager.h"
 #include "sync/sync_utils.h"
 #include "transport/processor.h"
 
@@ -30,12 +31,14 @@ KeyValueSync::~KeyValueSync() {
 void KeyValueSync::Init(
         const std::shared_ptr<block::BlockManager>& block_mgr,
         const std::shared_ptr<consensus::HotstuffManager>& hotstuff_mgr,
+        std::shared_ptr<pools::TxPoolManager> tx_pool_mgr,
         const std::shared_ptr<db::Db>& db,
         ViewBlockSyncedCallback view_block_synced_callback) {
     SETH_DEBUG("init key value sync 0");
     hotstuff_mgr_ = hotstuff_mgr;
     SETH_DEBUG("init key value sync 1");
     view_block_synced_callback_ = view_block_synced_callback;
+    tx_pool_mgr_ = tx_pool_mgr;
     SETH_DEBUG("init key value sync 2");
     network::Route::Instance()->RegisterMessage(
         common::kSyncMessage,
@@ -206,6 +209,11 @@ void KeyValueSync::ConsensusTimerMessage() {
         // assert(false);
     }
 
+    if (prev_sync_tm_ms_ + 15000lu < now_tm_ms3) {
+        SyncAllLatestBlocks();
+        prev_sync_tm_ms_ = now_tm_ms3;
+    }
+
     kv_tick_.CutOff(
         10000lu,
         std::bind(&KeyValueSync::ConsensusTimerMessage, this));
@@ -226,6 +234,19 @@ void KeyValueSync::PopItems() {
                 break;
             }
             
+            if (item->tag == kBlockHeight) {
+                auto iter = synced_res_map_.find(item->network_id);
+                if (iter != synced_res_map_.end()) {
+                    auto iter2 = iter->second.find(item->pool_idx);
+                    if (iter2 != iter->second.end()) {
+                        auto iter3 = iter2->second.find(item->height);
+                        if (iter3 != iter2->second.end()) {
+                            continue;
+                        }
+                    }
+                }
+            }
+
             if (synced_map_.get(item->key, &item)) {
                 if (item->sync_tm_us + kSyncTimeoutPeriodUs >= now_tm) {
                     SETH_DEBUG("item->sync_tm_us + kSyncTimeoutPeriodUs >= now_tm: %s", item->key.c_str());
@@ -440,6 +461,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
             sync_msg.sync_value_req().keys_size(),
             sync_msg.sync_value_req().heights_size());
     });
+
     for (int32_t i = 0; i < sync_msg.sync_value_req().keys_size(); ++i) {
         const std::string& key = sync_msg.sync_value_req().keys(i);
         SETH_DEBUG("now handle sync view bock hash key: %s", 
@@ -570,6 +592,68 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
         }
     }
 
+    if (sync_msg.sync_value_req().has_latest_sync_item()) {
+        auto& latest_sync_item = sync_msg.sync_value_req().latest_sync_item();
+        SETH_DEBUG("handle sync value latest_sync_item request hash: %lu, net: %u, "
+            "globl_pool_height: %lu, pool_latest_heights size: %u, des net: %u, info: %s",
+            msg_ptr->header.hash64(),
+            network_id,
+            sync_msg.sync_value_req().latest_sync_item().globl_pool_height(),
+            sync_msg.sync_value_req().latest_sync_item().pool_latest_heights_size(),
+            latest_sync_item.network_id(),
+            ProtobufToJson(latest_sync_item).c_str());
+        if (network::IsSameToLocalShard(latest_sync_item.network_id())) {
+            std::shared_ptr<view_block::protobuf::ViewBlockItem> view_block_ptr = nullptr;
+            if (latest_sync_item.has_globl_pool_height()) {
+                view_block_ptr = hotstuff_mgr_->chain(common::kGlobalPoolIndex)->GetViewBlockWithHeight(
+                    network_id, latest_sync_item.globl_pool_height());
+                if (view_block_ptr && !view_block_ptr->qc().sign_x().empty()) {
+                    auto res = sync_res->add_res();
+                    res->set_network_id(network_id);
+                    res->set_pool_idx(common::kGlobalPoolIndex);
+                    res->set_height(latest_sync_item.globl_pool_height());
+                    res->set_value(SerializeDeterministic(*view_block_ptr));
+                    res->set_tag(kBlockHeight);
+                    add_size += 16 + res->value().size();
+                }
+            }
+
+            if (latest_sync_item.pool_latest_heights_size() == common::kInvalidPoolIndex) {
+                for (int32_t i = 0; i < latest_sync_item.pool_latest_heights_size(); ++i) {
+                    if (latest_sync_item.pool_latest_heights(i) == common::kInvalidUint64) {
+                        continue;
+                    }
+
+                    for (uint64_t height = latest_sync_item.pool_latest_heights(i); 
+                            height < latest_sync_item.pool_latest_heights(i) + 64; ++height) {
+                        view_block_ptr = hotstuff_mgr_->chain(i)->GetViewBlockWithHeight(
+                            network_id, height);
+                        if (!view_block_ptr || view_block_ptr->qc().sign_x().empty()) {
+                            break;
+                        }
+
+                        auto res = sync_res->add_res();
+                        res->set_network_id(network_id);
+                        res->set_pool_idx(i);
+                        res->set_height(height);
+                        res->set_value(SerializeDeterministic(*view_block_ptr));
+                        res->set_tag(kBlockHeight);
+                        add_size += 16 + res->value().size();
+                        if (add_size >= kSyncPacketMaxSize) {
+                            SETH_DEBUG("handle sync value add_size failed request hash: %lu, "
+                                "net: %u, pool: %u, height: %lu",
+                                network_id,
+                                i,
+                                height,
+                                msg_ptr->header.hash64());
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     if (add_size == 0) {
         return;
     }
@@ -608,8 +692,8 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                 iter->tag());
             auto pb_vblock = std::make_shared<view_block::protobuf::ViewBlockItem>();
             if (!pb_vblock->ParseFromString(iter->value())) {
-                SETH_ERROR("pb vblock parse failed");
-                assert(false);
+                SETH_ERROR("pb vblock parse failed: %s", key.c_str());
+                // assert(false);
                 break;
             }
     
@@ -627,10 +711,26 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
 
             assert(!pb_vblock->qc().sign_x().empty());
             if (!view_block_synced_callback_) {
-                return;
+                break;
             }
 
-            if (view_block_synced_callback_(*pb_vblock) != 0) {
+            int verify_res = view_block_synced_callback_(*pb_vblock);
+            if (verify_res == -1) {
+                break;
+            }
+
+            if (verify_res == 2) {
+                responsed_keys_.add(key);
+                synced_map_.erase(key);
+                break;
+            }
+
+            synced_res_map_[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->block_info().height()] = std::make_pair((verify_res == 0), pb_vblock);
+            if (pb_vblock->qc().network_id() != network::kRootCongressNetworkId) {
+                ++not_root_synced_res_map_count_;
+            }
+
+            if (verify_res != 0) {
                 SETH_DEBUG("failed check viewblock handle network new view "
                     "block: %u_%u_%lu, height: %lu key: %s, is broadcast: %d", 
                     pb_vblock->qc().network_id(),
@@ -642,13 +742,15 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                 break;
             }
 
-            SETH_DEBUG("0 success handle network new view block: %u_%u_%lu, height: %lu key: %s, is broadcast: %d", 
+            SETH_DEBUG("0 success handle network new view block: %u_%u_%lu, height: %lu key: %s, "
+                "is broadcast: %d, not_root_synced_res_map_count_: %lu", 
                 pb_vblock->qc().network_id(),
                 pb_vblock->qc().pool_index(),
                 pb_vblock->qc().view(),
                 pb_vblock->block_info().height(),
                 (iter->tag() == kBlockHeight ? key.c_str() : common::Encode::HexEncode(key).c_str()),
-                iter->key().empty());
+                iter->key().empty(),
+                not_root_synced_res_map_count_);
             res_map[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->qc().view()] = pb_vblock;
             responsed_keys_.add(key);
             synced_map_.erase(key);
@@ -658,6 +760,10 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
             key.c_str(), synced_map_.size(), msg_ptr->header.hash64());
     }
 
+    HandlerVerifiedBlock(res_map);
+}
+
+void KeyValueSync::HandlerVerifiedBlock(const std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>>& res_map) {
     for (auto iter = res_map.begin(); iter != res_map.end(); ++iter) {
         auto network_id = iter->first;
         for (auto pool_iter = iter->second.begin(); pool_iter != iter->second.end(); ++pool_iter) {
@@ -679,6 +785,162 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                     pb_vblock->block_info().height(),
                     vblock_queues_[thread_idx].size());
             }
+        }
+    }
+}
+
+
+void KeyValueSync::SyncAllLatestBlocks() {
+    std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>> res_map;
+    std::map<uint32_t, sync::protobuf::SyncMessage> sync_dht_map;
+    auto add_sync_item = [&](uint32_t network, uint32_t pool_index, uint64_t height, bool global) {
+        if (network != network::kRootCongressNetworkId && not_root_synced_res_map_count_ >= kMaxSyncLatestNotRootCount) {
+            return;
+        }
+
+        auto iter = sync_dht_map.find(network);
+        if (iter == sync_dht_map.end()) {
+            sync_dht_map[network] = sync::protobuf::SyncMessage();
+            auto* sync_req = sync_dht_map[network].mutable_sync_value_req();
+            sync_req->set_network_id(network);
+        }
+
+        auto* sync_req = sync_dht_map[network].mutable_sync_value_req();
+        auto* sync_latest_req = sync_req->mutable_latest_sync_item();
+        sync_latest_req->set_network_id(network);
+        if (!global) {
+            if (sync_latest_req->pool_latest_heights_size() != common::kInvalidPoolIndex) {
+                for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
+                    sync_latest_req->add_pool_latest_heights(common::kInvalidUint64);
+                }
+            }
+
+            sync_latest_req->set_pool_latest_heights(pool_index, height);
+        } else {
+            sync_latest_req->set_globl_pool_height(height);
+        }
+
+        SETH_DEBUG("add sync item: %u_%u_%u", network, pool_index, height);
+    };
+
+    for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
+        for (uint32_t network_id = network::kRootCongressNetworkId;
+                network_id <= common::GlobalInfo::Instance()->now_valid_end_shard(); ++network_id) {
+            auto latest_height = tx_pool_mgr_->latest_height(i);
+            if (network_id == network::kRootCongressNetworkId) {
+                if (!network::IsSameToLocalShard(network_id)) {
+                    latest_height = tx_pool_mgr_->root_latest_height(i);
+                }
+            } else {
+                if (!network::IsSameToLocalShard(network_id)) {
+                    break;
+                }
+            }
+
+            auto iter = synced_res_map_.find(network_id);
+            if (iter == synced_res_map_.end()) {
+                add_sync_item(network_id, i, latest_height + 1, false);
+                continue;
+            }
+
+            auto pool_iter = iter->second.find(i);
+            if (pool_iter == iter->second.end()) {
+                add_sync_item(network_id, i, latest_height + 1, false);
+                continue;
+            }
+
+            auto latest_height_iter = pool_iter->second.find(latest_height);
+            if (latest_height_iter != pool_iter->second.end()) {
+                auto now_size = pool_iter->second.size();
+                pool_iter->second.erase(pool_iter->second.begin(), latest_height_iter);
+                if (network_id != network::kRootCongressNetworkId) {
+                    not_root_synced_res_map_count_ -= now_size - pool_iter->second.size();
+                }
+            }
+
+            auto height_iter = pool_iter->second.find(++latest_height);
+            while (height_iter != pool_iter->second.end()) {
+                if (!height_iter->second.first) {
+                    auto& pb_vblock = height_iter->second.second;
+                    int verify_res = view_block_synced_callback_(*pb_vblock);
+                    if (verify_res == 0) {
+                        height_iter->second.first = true;
+                        res_map[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->qc().view()] = pb_vblock;
+                        SETH_DEBUG("success check viewblock handle network new view "
+                            "block: %u_%u_%lu, height: %lu ", 
+                            pb_vblock->qc().network_id(),
+                            pb_vblock->qc().pool_index(),
+                            pb_vblock->qc().view(),
+                            pb_vblock->block_info().height());
+                    }
+                }
+                height_iter = pool_iter->second.find(++latest_height);
+            }
+
+            add_sync_item(network_id, i, latest_height, false);
+        }
+    }
+
+    for (uint32_t network_id = network::kConsensusShardBeginNetworkId;
+            network_id <= common::GlobalInfo::Instance()->now_valid_end_shard(); ++network_id) {
+        if (network::IsSameToLocalShard(network_id)) {
+            continue;
+        }
+
+        auto latest_height = tx_pool_mgr_->cross_latest_height(network_id);
+        auto iter = synced_res_map_.find(network_id);
+        if (iter == synced_res_map_.end()) {
+            add_sync_item(network_id, common::kGlobalPoolIndex, latest_height + 1, true);
+            continue;
+        }
+
+        auto pool_iter = iter->second.find(common::kGlobalPoolIndex);
+        if (pool_iter == iter->second.end()) {
+            add_sync_item(network_id, common::kGlobalPoolIndex, latest_height + 1, true);
+            continue;
+        }
+
+        auto latest_height_iter = pool_iter->second.find(latest_height);
+        if (latest_height_iter != pool_iter->second.end()) {
+            auto now_size = pool_iter->second.size();
+            pool_iter->second.erase(pool_iter->second.begin(), latest_height_iter);
+            if (network_id != network::kRootCongressNetworkId) {
+                not_root_synced_res_map_count_ -= now_size - pool_iter->second.size();
+            }
+        }
+
+        auto height_iter = pool_iter->second.find(++latest_height);
+        while (height_iter != pool_iter->second.end()) {
+            if (!height_iter->second.first) {
+                auto& pb_vblock = height_iter->second.second;
+                int verify_res = view_block_synced_callback_(*pb_vblock);
+                if (verify_res == 0) {
+                    height_iter->second.first = true;
+                    res_map[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->qc().view()] = pb_vblock;
+                    SETH_DEBUG("success check viewblock handle network new view "
+                        "block: %u_%u_%lu, height: %lu ", 
+                        pb_vblock->qc().network_id(),
+                        pb_vblock->qc().pool_index(),
+                        pb_vblock->qc().view(),
+                        pb_vblock->block_info().height());
+                }
+            }
+
+            height_iter = pool_iter->second.find(++latest_height);
+        }
+
+        add_sync_item(network_id, common::kGlobalPoolIndex, latest_height, true);
+    }
+
+    HandlerVerifiedBlock(res_map);
+    std::set<uint64_t> sended_neigbors;
+    for (auto iter = sync_dht_map.begin(); iter != sync_dht_map.end(); ++iter) {
+        uint64_t choose_node = SendSyncRequest(
+            iter->first,
+            iter->second,
+            sended_neigbors);
+        if (choose_node != 0) {
+            sended_neigbors.insert(choose_node);
         }
     }
 }

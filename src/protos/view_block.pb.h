@@ -280,6 +280,13 @@ class QcItem : public ::google::protobuf::Message /* @@protoc_insertion_point(cl
   ::google::protobuf::uint32 network_id() const;
   void set_network_id(::google::protobuf::uint32 value);
 
+  // optional uint64 tm_height = 10;
+  bool has_tm_height() const;
+  void clear_tm_height();
+  static const int kTmHeightFieldNumber = 10;
+  ::google::protobuf::uint64 tm_height() const;
+  void set_tm_height(::google::protobuf::uint64 value);
+
   // optional uint32 pool_index = 9;
   bool has_pool_index() const;
   void clear_pool_index();
@@ -307,6 +314,8 @@ class QcItem : public ::google::protobuf::Message /* @@protoc_insertion_point(cl
   void clear_has_network_id();
   void set_has_pool_index();
   void clear_has_pool_index();
+  void set_has_tm_height();
+  void clear_has_tm_height();
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
@@ -319,6 +328,7 @@ class QcItem : public ::google::protobuf::Message /* @@protoc_insertion_point(cl
   ::google::protobuf::uint64 elect_height_;
   ::google::protobuf::uint32 leader_idx_;
   ::google::protobuf::uint32 network_id_;
+  ::google::protobuf::uint64 tm_height_;
   ::google::protobuf::uint32 pool_index_;
   friend struct ::protobuf_protos_2fview_5fblock_2eproto::TableStruct;
 };
@@ -2165,13 +2175,13 @@ inline void QcItem::set_network_id(::google::protobuf::uint32 value) {
 
 // optional uint32 pool_index = 9;
 inline bool QcItem::has_pool_index() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
+  return (_has_bits_[0] & 0x00000200u) != 0;
 }
 inline void QcItem::set_has_pool_index() {
-  _has_bits_[0] |= 0x00000100u;
+  _has_bits_[0] |= 0x00000200u;
 }
 inline void QcItem::clear_has_pool_index() {
-  _has_bits_[0] &= ~0x00000100u;
+  _has_bits_[0] &= ~0x00000200u;
 }
 inline void QcItem::clear_pool_index() {
   pool_index_ = 0u;
@@ -2185,6 +2195,30 @@ inline void QcItem::set_pool_index(::google::protobuf::uint32 value) {
   set_has_pool_index();
   pool_index_ = value;
   // @@protoc_insertion_point(field_set:seth.view_block.protobuf.QcItem.pool_index)
+}
+
+// optional uint64 tm_height = 10;
+inline bool QcItem::has_tm_height() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void QcItem::set_has_tm_height() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void QcItem::clear_has_tm_height() {
+  _has_bits_[0] &= ~0x00000100u;
+}
+inline void QcItem::clear_tm_height() {
+  tm_height_ = GOOGLE_ULONGLONG(0);
+  clear_has_tm_height();
+}
+inline ::google::protobuf::uint64 QcItem::tm_height() const {
+  // @@protoc_insertion_point(field_get:seth.view_block.protobuf.QcItem.tm_height)
+  return tm_height_;
+}
+inline void QcItem::set_tm_height(::google::protobuf::uint64 value) {
+  set_has_tm_height();
+  tm_height_ = value;
+  // @@protoc_insertion_point(field_set:seth.view_block.protobuf.QcItem.tm_height)
 }
 
 // -------------------------------------------------------------------

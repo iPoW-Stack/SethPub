@@ -22,12 +22,12 @@ void FilterBroadcast::Broadcasting(
         const transport::MessagePtr& msg_ptr) {
     assert(dht_ptr);
     auto readonly_dht_ptr = dht_ptr->readonly_hash_sort_dht();
-    if (readonly_dht_ptr->size() < 2u) {
-        SETH_DEBUG("random Broadcasting: %lu, size: %u, dht net: %d",
-            msg_ptr->header.hash64(), readonly_dht_ptr->size(), dht_ptr->local_node()->sharding_id);
-        // assert(false);
-        return;
-    }
+    // if (readonly_dht_ptr->size() < 2u) {
+    //     SETH_DEBUG("random Broadcasting: %lu, size: %u, dht net: %d",
+    //         msg_ptr->header.hash64(), readonly_dht_ptr->size(), dht_ptr->local_node()->sharding_id);
+    //     // assert(false);
+    //     return;
+    // }
 
     auto& message = msg_ptr->header;
     uint32_t now_hop_count = message.hop_count();
@@ -48,38 +48,41 @@ void FilterBroadcast::Broadcasting(
         return;
     }
 
-    if (now_hop_count >= kBroadcastHopLimit) {
+    if ((int32_t)now_hop_count >= kBroadcastHopLimit) {
         return;
     }
 
     auto bloomfilter = GetBloomfilter(message);
     // if (message.broadcast().has_hop_to_layer() &&
     //         now_hop_count >= message.broadcast().hop_to_layer()) {
-    //     auto nodes = GetlayerNodes(dht_ptr, bloomfilter, message);
-    //     for (auto iter = nodes.begin(); iter != nodes.end(); ++iter) {
-    //         bloomfilter->insert((*iter)->id_hash);
-    //     }
-
-    //     SETH_DEBUG("layer Broadcasting: %lu, size: %u", msg_ptr->header.hash64(), nodes.size());
-    //     // msg_ptr->header.mutable_broadcast()->clear_bloomfilter();
-    //     // TODO(xielei): test gossip ,remove it later
-    //     message.set_hop_count(now_hop_count + 1);
-    //     LayerSend(dht_ptr, msg_ptr, nodes);
-    // } else {
-        auto nodes = GetRandomFilterNodes(dht_ptr, bloomfilter, message);
-        // for (auto iter = nodes.begin(); iter != nodes.end(); ++iter) {
-        //     bloomfilter->insert((*iter)->id_hash);
-        // }
-
-        SETH_DEBUG("random Broadcasting: %lu, size: %u",
-            msg_ptr->header.hash64(), nodes.size());
-        if (msg_ptr->header.broadcast().bloomfilter_size() >= 64) {
-            return;
+        auto nodes = GetlayerNodes(dht_ptr, bloomfilter, message);
+        for (auto iter = nodes.begin(); iter != nodes.end(); ++iter) {
+            bloomfilter->insert((*iter)->id_hash);
         }
 
+        SETH_DEBUG("layer Broadcasting: %lu, size: %u, dht size: %u, network_id: %u", 
+            msg_ptr->header.hash64(), nodes.size(), 
+            dht_ptr->readonly_hash_sort_dht()->size(), dht_ptr->local_node()->sharding_id);
         // msg_ptr->header.mutable_broadcast()->clear_bloomfilter();
+        // TODO(xielei): test gossip ,remove it later
         message.set_hop_count(now_hop_count + 1);
-        Send(dht_ptr, msg_ptr, nodes);
+        LayerSend(dht_ptr, msg_ptr, nodes);
+    // } else {
+    //     auto nodes = GetRandomFilterNodes(dht_ptr, bloomfilter, message);
+    //     // for (auto iter = nodes.begin(); iter != nodes.end(); ++iter) {
+    //     //     bloomfilter->insert((*iter)->id_hash);
+    //     // }
+
+    //     SETH_DEBUG("random Broadcasting: %lu, size: %u",
+    //         msg_ptr->header.hash64(), nodes.size());
+    //     if (msg_ptr->header.broadcast().bloomfilter_size() >= 64) {
+    //         return;
+    //     }
+
+    //     // TODO(xielei): test gossip ,remove it later
+    //     // msg_ptr->header.mutable_broadcast()->clear_bloomfilter();
+    //     message.set_hop_count(now_hop_count + 1);
+    //     Send(dht_ptr, msg_ptr, nodes);
     // }
 }
 
@@ -112,7 +115,9 @@ std::vector<dht::NodePtr> FilterBroadcast::GetlayerNodes(
     auto layer_right = GetLayerRight(broad_param->layer_right(), message);
     uint32_t left = BinarySearch(*hash_order_dht, layer_left);
     uint32_t right = BinarySearch(*hash_order_dht, layer_right);
-    if (left >= right || right >= hash_order_dht->size()) {
+    if (left > right || right >= hash_order_dht->size()) {
+        SETH_DEBUG("layer no nodes: layer_left: %lu, layer_right: %lu, left: %u, right: %u, dht size: %u",
+            layer_left, layer_right, left, right, hash_order_dht->size());
         return {};
     }
 
@@ -221,11 +226,11 @@ std::vector<dht::NodePtr> FilterBroadcast::GetRandomFilterNodes(
     auto cast_msg = const_cast<transport::protobuf::Header*>(&message);
     auto broad_param = cast_msg->mutable_broadcast();
     broad_param->clear_bloomfilter();
-    // for (auto iter = bloomfilter->begin(); iter != bloomfilter->end(); ++iter) {
-    //     if (broad_param->bloomfilter_size() < 64) {
-    //         broad_param->add_bloomfilter(*iter);
-    //     }
-    // }
+    for (auto iter = bloomfilter->begin(); iter != bloomfilter->end(); ++iter) {
+        if (broad_param->bloomfilter_size() < 64) {
+            broad_param->add_bloomfilter(*iter);
+        }
+    }
 
     return nodes;
 }

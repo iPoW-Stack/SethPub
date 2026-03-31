@@ -35,5 +35,6 @@ int main(int argc, char** argv) {
     }
 
     init.Destroy();
+    spdlog::shutdown();
     return 0;
 }

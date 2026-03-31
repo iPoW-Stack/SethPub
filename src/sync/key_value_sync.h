@@ -35,6 +35,10 @@ namespace consensus {
     class HotstuffManager;
 }
 
+namespace pools {
+    class PoolManager;
+}
+
 namespace sync {
 
 using ViewBlockSyncedCallback = std::function<int(const view_block::protobuf::ViewBlockItem& pb_vblock)>;
@@ -107,6 +111,7 @@ public:
     void Init(
         const std::shared_ptr<block::BlockManager>& block_mgr,
         const std::shared_ptr<consensus::HotstuffManager>& hotstuff_mgr,
+        std::shared_ptr<pools::TxPoolManager> tx_pool_mgr,
         const std::shared_ptr<db::Db>& db,
         ViewBlockSyncedCallback view_block_synced_callback);
     void HandleMessage(const transport::MessagePtr& msg);
@@ -147,16 +152,22 @@ private:
         sync::protobuf::SyncValueResponse* res,
         uint32_t& add_size);
     void BroadcastGlobalBlock();
+    void SyncAllLatestBlocks();
+    void HandlerVerifiedBlock(const std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>>& res_map);
 
     static const uint64_t kSyncPeriodUs = 300000lu;
     static const uint64_t kSyncTimeoutPeriodUs = 3000000lu;
     static const uint32_t kEachTimerHandleCount = 64u;
     static const uint32_t kCacheSyncKeyValueCount = 1024000u;
     static const uint32_t kSyncCount = 5u;
+    static const uint32_t kMaxSyncLatestNotRootCount = 1024u;
 
+    std::shared_ptr<pools::TxPoolManager> tx_pool_mgr_ = nullptr;
     common::ThreadSafeQueue<SyncItemPtr> item_queues_[common::kMaxThreadCount];
     common::ThreadSafeQueue<ViewBlockPtr> broadcast_global_blocks_queues_[common::kMaxThreadCount];
     common::UniqueMap<std::string, SyncItemPtr, kCacheSyncKeyValueCount> synced_map_;
+    std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::pair<bool, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>>> synced_res_map_;
+    uint32_t not_root_synced_res_map_count_ = 0;
     common::Tick kv_tick_;
     common::ThreadSafeQueue<std::shared_ptr<transport::TransportMessage>> kv_msg_queue_;
     uint64_t elect_net_heights_map_[network::kConsensusShardEndNetworkId] = { 0 };
@@ -167,6 +178,7 @@ private:
     std::shared_ptr<consensus::HotstuffManager> hotstuff_mgr_ = nullptr;
     std::mutex wait_mutex_;
     std::condition_variable wait_con_;
+    uint64_t prev_sync_tm_ms_ = 0;
 
     DISALLOW_COPY_AND_ASSIGN(KeyValueSync);
 };

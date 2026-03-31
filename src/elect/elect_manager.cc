@@ -319,12 +319,13 @@ void ElectManager::ProcessNewElectBlock(
         now_elected_ids_.insert(id);
         ELECT_WARN("FFFFFFFF ProcessNewElectBlock network: %d, "
             "elect height: %lu, pre elect height: %lu, "
-            "member leader: %s",
+            "member leader: %s, elect_height: %lu",
             elect_block.shard_network_id(),
             height,
             elect_block.prev_members().prev_elect_height(),
             common::Encode::HexEncode(id).c_str(),
-            in[i].pool_idx_mod_num());
+            in[i].pool_idx_mod_num(),
+            elect_block.elect_height());
     }
 
     waiting_members_ptr_[elect_block.shard_network_id()].store(shard_members_ptr);

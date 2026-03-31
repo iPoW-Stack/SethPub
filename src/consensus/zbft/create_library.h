@@ -4,6 +4,7 @@
 #include "consensus/zbft/tx_item_base.h"
 #include "protos/pools.pb.h"
 #include "security/security.h"
+#include "zjcvm/execution.h"
 
 namespace seth {
 
@@ -71,7 +72,29 @@ public:
             }
         } while (0);
 
+        evmc_result evmc_call_res = {};
+        evmc::Result evmc_res{ evmc_call_res };
+        bool check_valid = false;
         if (block_tx.status() == kConsensusSuccess) {
+            check_valid = true;
+            int call_res = CreateContractCallExcute(zjc_host, block_tx, &evmc_res);
+            gas_used = block_tx.gas_limit() - evmc_res.gas_left;
+            if (call_res != kConsensusSuccess || evmc_res.status_code != EVMC_SUCCESS) {
+                block_tx.set_status(EvmcStatusToZbftStatus(evmc_res.status_code));
+                SETH_DEBUG("create contract: %s failed, call_res: %d, "
+                    "evmc res: %d, gas_used: %lu, gas price: %lu, from_balance: %lu",
+                    common::Encode::HexEncode(block_tx.to()).c_str(),
+                    call_res,
+                    (int32_t)evmc_res.status_code,
+                    gas_used,
+                    block_tx.gas_price(),
+                    from_balance);
+            }
+
+            if (evmc_res.gas_left > (int64_t)block_tx.gas_limit()) {
+                gas_used = block_tx.gas_limit();
+            }
+            
             uint64_t dec_amount = gas_used * block_tx.gas_price();
             if (from_balance >= gas_used * block_tx.gas_price()) {
                 if (from_balance >= dec_amount) {
@@ -104,14 +127,59 @@ public:
             ProtobufToJson(*(acc_balance_map[from])).c_str());
         block_tx.set_balance(from_balance);
         block_tx.set_gas_used(gas_used);
-        SETH_DEBUG("create library called handle tx success nonce: %lu, %lu, %lu, status: %d",
+        SETH_DEBUG("create library called handle tx success nonce: "
+            "%lu, %lu, %lu, status: %d, from: %s, to: %s",
             block_tx.nonce(),
             block_tx.balance(),
             block_tx.gas_used(),
-            block_tx.status());
+            block_tx.status(),
+            common::Encode::HexEncode(block_tx.from()).c_str(),
+            common::Encode::HexEncode(block_tx.to()).c_str());
+
+        for (auto event_iter = zjc_host.recorded_logs_.begin();
+                event_iter != zjc_host.recorded_logs_.end(); ++event_iter) {
+            auto log = block_tx.add_events();
+            log->set_data((*event_iter).data);
+            for (auto topic_iter = (*event_iter).topics.begin();
+                    topic_iter != (*event_iter).topics.end(); ++topic_iter) {
+                log->add_topics(std::string((char*)(*topic_iter).bytes, sizeof((*topic_iter).bytes)));
+            }
+        }
+        
+        block::protobuf::TxHashStatus tx_hash_status;
+        *tx_hash_status.mutable_events() = block_tx.events();
+        if (check_valid) {
+            tx_hash_status.set_status(evmc_res.status_code);
+            tx_hash_status.set_output(evmc_res.output_data, evmc_res.output_size);
+        } else {
+            tx_hash_status.set_status(block_tx.status());
+        }
+
+        auto status_val = tx_hash_status.SerializeAsString();
+        SETH_DEBUG("create library status: %d, output: %s, from: %s, to: %s", 
+            tx_hash_status.status(),
+            "",
+            common::Encode::HexEncode(block_tx.from()).c_str(),
+            common::Encode::HexEncode(block_tx.to()).c_str());
         if (block_tx.status() == kConsensusSuccess) {
-            zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "0");
+            zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
             zjc_host.MergeToPrev();
+            auto contract_info = std::make_shared<address::protobuf::AddressInfo>();
+            contract_info->set_addr(block_tx.to());
+            contract_info->set_balance(0);
+            contract_info->set_sharding_id(view_block.qc().network_id());
+            contract_info->set_pool_index(view_block.qc().pool_index());
+            contract_info->set_type(address::protobuf::kNormal);
+            contract_info->set_bytes_code(zjc_host.create_bytes_code_);
+            contract_info->set_latest_height(view_block.block_info().height());
+            contract_info->set_tx_index(tx_index);
+            contract_info->set_nonce(0);
+            SETH_DEBUG("success add contract address info: %s, %s, library bytes: %s", 
+                common::Encode::HexEncode(block_tx.to()).c_str(), 
+                ProtobufToJson(*contract_info).c_str(),
+                common::Encode::HexEncode(zjc_host.create_bytes_code_).c_str());
+            acc_balance_map[block_tx.to()] = contract_info;
+
             auto iter = pre_zjc_host.cross_to_map_.find(block_tx.to());
             std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
             if (iter == pre_zjc_host.cross_to_map_.end()) {
@@ -122,9 +190,34 @@ public:
                 pre_zjc_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
             }
 
-            to_item_ptr->set_library_bytes(tx_info->value());
+            to_item_ptr->set_library_bytes(zjc_host.create_bytes_code_);
         } else {
-            pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::to_string(block_tx.status()));
+            pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+        }
+
+        return kConsensusSuccess;
+    }
+
+    int CreateContractCallExcute(
+            zjcvm::ZjchainHost& zjc_host,
+            block::protobuf::BlockTx& tx,
+            evmc::Result* out_res) {
+        uint32_t call_mode = zjcvm::kJustCreate;
+        int exec_res = zjcvm::Execution::Instance()->execute(
+            tx.contract_code(),
+            "",
+            tx.from(),
+            tx.to(),
+            tx.from(),
+            tx.amount(),
+            tx.gas_limit(),
+            0,
+            call_mode,
+            zjc_host,
+            out_res);
+        if (exec_res != zjcvm::kZjcvmSuccess) {
+            SETH_ERROR("CreateContractCallExcute failed: %d", exec_res);
+            return kConsensusError;
         }
 
         return kConsensusSuccess;

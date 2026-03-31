@@ -240,6 +240,7 @@ int NetworkInit::Init(int argc, char** argv) {
     kv_sync_->Init(
         block_mgr_,
         hotstuff_mgr_,
+        pools_mgr_,
         db_,
         std::bind(&consensus::HotstuffManager::VerifySyncedViewBlock,
             hotstuff_mgr_, std::placeholders::_1));
@@ -287,6 +288,7 @@ int NetworkInit::Init(int argc, char** argv) {
     }
 
     SETH_INFO("init 8");
+    JoinInitNodes();
     inited_ = true;
     common::GlobalInfo::Instance()->set_main_inited_success();
     SETH_INFO("init 9");
@@ -407,11 +409,14 @@ int NetworkInit::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
 void NetworkInit::HandleMessage(const transport::MessagePtr& msg_ptr) {
     // SETH_DEBUG("common::kPoolTimerMessage coming.");
     if (msg_ptr->header.type() == common::kPoolTimerMessage) {
+        ADD_DEBUG_PROCESS_TIMESTAMP();
         HandleNewBlock();
+        ADD_DEBUG_PROCESS_TIMESTAMP();
         bls_mgr_->PoolTimerMessage();
+        ADD_DEBUG_PROCESS_TIMESTAMP();
         pools_mgr_->PoolTimerMessage();
+        ADD_DEBUG_PROCESS_TIMESTAMP();
     }
-    ADD_DEBUG_PROCESS_TIMESTAMP();
 }
 
 
@@ -1452,6 +1457,33 @@ void NetworkInit::HandleElectionBlock(
             std::bind(&NetworkInit::SendJoinElectTransaction, this));
         SETH_DEBUG("now send join elect request transaction. second message.");
         another_join_elect_msg_needed_ = false;
+    }
+}
+
+void NetworkInit::JoinInitNodes() {
+    std::string init_nodes;
+    conf_.Get("seth", "bootstrap", init_nodes);
+    common::Split<1024> nodes(init_nodes.c_str(), ',');
+    for (uint32_t i = 0; i < nodes.Count(); ++i) {
+        common::Split<> items(nodes[i], ':');
+        if (items.Count() != 4) {
+            continue;
+        }
+
+        auto node = std::make_shared<dht::Node>();
+        node->pubkey_str = common::Encode::HexDecode(items[0]);
+        node->id = security_->GetAddress(node->pubkey_str);
+        node->public_ip = items[1];
+        common::StringUtil::ToUint16(items[2], &node->public_port);
+        common::StringUtil::ToInt32(items[3], &node->sharding_id);
+        SETH_DEBUG("join init node: %s:%d, %d, pk: %s, id: %s", 
+            node->public_ip.c_str(), node->public_port, node->sharding_id,
+            items[0], common::Encode::HexEncode(node->id).c_str());
+        if (network::IsSameToLocalShard(node->sharding_id)) {
+            network::DhtManager::Instance()->Join(node);
+        }
+
+        network::UniversalManager::Instance()->Join(node);
     }
 }
 

@@ -14,7 +14,7 @@ namespace seth {
 
 namespace common {
 
-static const uint32_t kConfigMaxLen = 1024 * 1024;
+static const uint32_t kConfigMaxLen = 20 * 1024 * 1024;
 static const std::string kConfigEncKey = "dfger45eD4fe$^&Idfger45eD4fe$^&I";
 
 Config::Config() {}
@@ -314,7 +314,7 @@ bool Config::Init(const std::string& conf) {
 #ifdef ENCODE_CONFIG_CONTENT
     fseek(fd, 0, SEEK_END);
     auto file_size = ftell(fd);
-    if (file_size > 1024 * 1024) {
+    if (file_size > 10 * 1024 * 1024) {
         SETH_ERROR("read config file[%s] failed!", conf.c_str());
         printf("read config file[%s] failed! size error.[%ld]\n",
                 conf.c_str(), file_size);

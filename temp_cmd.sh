@@ -30,7 +30,6 @@ deploy_nodes() {
             sed -i 's/PRIVATE_KEY/'$prikey'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
             sed -i 's/PUBLIC_IP/'$public_ip'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
             sed -i 's/LOCAL_IP/'$local_ip'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
-            sed -i 's/BOOTSTRAP/'$bootstrap'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
             sed -i 's/LEADER_CHANGE_INIT_TM/'$leader_init_tm'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
             if ((i<=TEST_TX_MAX_POOL_INDEX)); then
                 sed -i 's/TEST_POOL_INDEX/'$(($i-1))'/g' /root/seths/s3_$i/conf/seth.conf
@@ -40,16 +39,29 @@ deploy_nodes() {
 
             sed -i 's/TEST_TX_TPS/'$TEST_TX_TPS'/g' /root/seths/s3_$i/conf/seth.conf
 
+            port0=''
+            port1=''
             if ((i>=100)); then
-                sed -i 's/HTTP_PORT/2'$shard_id''$i'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
-                sed -i 's/LOCAL_PORT/1'$shard_id''$i'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
+                port0='1'$shard_id''$i
+                port1='2'$shard_id''$i
             elif ((i>=10)); then
-                sed -i 's/HTTP_PORT/2'$shard_id'0'$i'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
-                sed -i 's/LOCAL_PORT/1'$shard_id'0'$i'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf 
+                port0='1'$shard_id'0'$i
+                port1='2'$shard_id'0'$i
             else
-                sed -i 's/HTTP_PORT/2'$shard_id'00'$i'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
-                sed -i 's/LOCAL_PORT/1'$shard_id'00'$i'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf 
+                port0='1'$shard_id'00'$i
+                port1='2'$shard_id'00'$i
             fi
+
+            if (( port0 > 65535 )); then
+                (( port0 = (port0 % 60000) + 1024 ))
+            fi
+
+            if (( port1 > 65535 )); then
+                (( port1 = (port1 % 60000) + 1024 ))
+            fi
+
+            sed -i 's/HTTP_PORT/'$port1'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
+            sed -i 's/LOCAL_PORT/'$port0'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
 
             echo /root/seths/s$shard_id'_'$i/seth
             ln /root/pkg/seth /root/seths/s$shard_id'_'$i/seth
@@ -62,7 +74,6 @@ deploy_nodes() {
         done
     done
 }
-
 
 killall -9 seth
 

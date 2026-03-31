@@ -112,7 +112,7 @@ bool TimeBlockManager::CheckLeaderTimeblockTxValid(
     }
 
     uint64_t new_time_block_tm = latest_time_block_tm_ + common::kTimeBlockCreatePeriodSeconds;
-    if (timer_block.timestamp() != new_time_block_tm) {
+    if (timer_block.timestamp() != new_time_block_tm && latest_time_block_height_ != 0) {
         SETH_WARN("TimeBlock timestamp mismatch, expected: %lu, actual: %lu",
             new_time_block_tm, timer_block.timestamp());
         return false;

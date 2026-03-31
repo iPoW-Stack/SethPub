@@ -78,7 +78,7 @@ evmc::bytes32 ZjchainHost::GetCachedStorage(
 evmc::bytes32 ZjchainHost::get_storage(
         const evmc::address& addr,
         const evmc::bytes32& key) const noexcept {
-    auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
+    auto thread_idx = -1;//common::GlobalInfo::Instance()->get_thread_index();
     std::string id((char*)addr.bytes, sizeof(addr.bytes));
     std::string key_str((char*)key.bytes, sizeof(key.bytes));
     SETH_DEBUG("view: %lu, 0 0 success get storage addr: %s, "
@@ -256,7 +256,25 @@ evmc::uint256be ZjchainHost::get_balance(const evmc::address& addr) const noexce
         return pre_zjc_host_->get_balance(addr);
     }
     
-    return {};
+    auto acc_info = view_block_chain_->ChainGetAccountInfo(
+        std::string((char*)addr.bytes, sizeof(addr.bytes)));
+    if (acc_info == nullptr) {
+        SETH_DEBUG("failed now get balace: %s, my: %s, origin: %s, %lu",
+            common::Encode::HexEncode(std::string((char*)addr.bytes, 20)).c_str(),
+            common::Encode::HexEncode(my_address_).c_str(),
+            common::Encode::HexEncode(origin_address_).c_str(),
+            -1);
+        return {};
+    }
+
+    evmc::uint256be res_val;
+    Uint64ToEvmcBytes32(res_val, acc_info->balance());
+    SETH_DEBUG("success now get balace: %s, my: %s, origin: %s, %lu",
+        common::Encode::HexEncode(std::string((char*)addr.bytes, 20)).c_str(),
+        common::Encode::HexEncode(my_address_).c_str(),
+        common::Encode::HexEncode(origin_address_).c_str(),
+        acc_info->balance());
+    return res_val;
 }
 
 size_t ZjchainHost::get_code_size(const evmc::address& addr) const noexcept {
@@ -334,12 +352,20 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
     params.zjc_host = this;
     params.gas = msg.gas;
     params.apparent_value = zjcvm::EvmcBytes32ToUint64(msg.value);
-    params.value = msg.kind == EVMC_DELEGATECALL ? 0 : params.apparent_value;
-    params.from = std::string((char*)msg.sender.bytes, sizeof(msg.sender.bytes));
-    params.code_address = std::string(
-        (char*)msg.recipient.bytes,
-        sizeof(msg.recipient.bytes));
-    params.to = msg.kind == EVMC_CALL ? params.code_address : my_address_;
+    params.value = (msg.kind == EVMC_DELEGATECALL) ? 0 : params.apparent_value;
+    auto address_to_str = [](const evmc_address& addr) {
+        return std::string(reinterpret_cast<const char*>(addr.bytes), sizeof(addr.bytes));
+    };
+
+    params.from = address_to_str(msg.sender);
+    params.code_address = address_to_str(msg.code_address);
+    if (msg.kind == EVMC_DELEGATECALL || msg.kind == EVMC_CALLCODE) {
+        params.to = my_address_;
+    } else {
+        params.to = address_to_str(msg.recipient);
+    }
+
+    // params.to = msg.kind == EVMC_CALL ? params.code_address : my_address_;
     params.data = std::string((char*)msg.input_data, msg.input_size);
     params.on_op = {};
     evmc_result call_result = {};
@@ -356,13 +382,14 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
             raw_result) != contract::kContractNotExists) {
         SETH_DEBUG("call default contract failed: %s", common::Encode::HexEncode(origin_address_).c_str());
     } else {
-        std::string id = std::string((char*)msg.code_address.bytes, sizeof(msg.code_address.bytes));
+        std::string id = params.code_address;
         protos::AddressInfoPtr acc_info = view_block_chain_->ChainGetAccountInfo(id);
         if (acc_info != nullptr) {
             if (!acc_info->bytes_code().empty()) {
-                SETH_DEBUG("get call bytes code success: %s, field: %s",
+                SETH_DEBUG("get call bytes code success: %s, field: %s, value: %s",
                     common::Encode::HexEncode(id).c_str(),
-                    protos::kFieldBytesCode.c_str());
+                    protos::kFieldBytesCode.c_str(),
+                    common::Encode::HexEncode(acc_info->bytes_code()).c_str());
                 ++depth_;
                 contract_to_call_dirty_ = false;
                 int res_status = zjcvm::Execution::Instance()->execute(
@@ -377,6 +404,10 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
                     zjcvm::kJustCall,
                     *this,
                     &evmc_res);
+                if (acc_info->pool_index() == view_block_chain_->pool_index()) {
+                    contract_to_call_dirty_ = false;
+                }
+                
                 if (contract_to_call_dirty_) {
                     evmc_res.status_code = EVMC_REVERT;
                     SETH_DEBUG("contract to call contract should not modify status. not support: %s, %s",

@@ -31,7 +31,7 @@ int Bootstrap::Init(common::Config& config, std::shared_ptr<security::Security>&
     std::set<std::string> boot_set;
     for (uint32_t i = 0; i < boot_spliter.Count(); ++i) {
         boot_set.insert(boot_spliter[i]);
-        if (boot_set.size() >= 32) {
+        if (boot_set.size() >= 16) {
             break;
         }
     }
@@ -46,7 +46,7 @@ int Bootstrap::Init(common::Config& config, std::shared_ptr<security::Security>&
     common::Split<2048> split(bootstrap.c_str(), ',', bootstrap.size());
     for (uint32_t i = 0; i < split.Count(); ++i) {
         common::Split<> field_split(split[i], ':', split.SubLen(i));
-        if (field_split.Count() != 3) {
+        if (field_split.Count() != 4) {
             continue;
         }
 

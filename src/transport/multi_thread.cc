@@ -344,6 +344,11 @@ uint8_t MultiThreadHandler::GetThreadIndex(MessagePtr& msg_ptr) {
         memset(msg_type_count_, 0, sizeof(msg_type_count_));
         prev_log_msg_type_tm_ = now_tm_ms + 3000lu;
     }
+
+    if (msg_ptr->header.type() == common::kBlsMessage) {
+        SETH_DEBUG("handle bls message hash64: %lu, index: %u", 
+            msg_ptr->header.hash64(), msg_ptr->header.bls_proto().index());
+    }
 #endif
 
     switch (msg_ptr->header.type()) {
@@ -544,8 +549,13 @@ MessagePtr MultiThreadHandler::GetMessageFromQueue(uint32_t thread_idx, bool htt
 
     // handle http/ws request
     if (http_svr_thread) {
-        MessagePtr msg_obj;
-        http_server_message_queue_.pop(&msg_obj);
+        std::lock_guard<std::mutex> lock(http_server_message_queue_mutex_);
+        if (http_server_message_queue_.empty()) {
+            return nullptr;
+        }
+
+        MessagePtr msg_obj = http_server_message_queue_.front();
+        http_server_message_queue_.pop();
         if (msg_obj != nullptr) {
             SETH_DEBUG("get msg http transaction success %s, %s, hash64: %lu, step: %d, nonce: %lu, type: %d", 
                 common::Encode::HexEncode(

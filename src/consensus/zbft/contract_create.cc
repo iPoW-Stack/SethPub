@@ -1,5 +1,6 @@
 #include "consensus/zbft/contract_create.h"
 
+#include "common/defer.h"
 #include "consensus/hotstuff/view_block_chain.h"
 #include "contract/contract_manager.h"
 #include "zjcvm/execution.h"
@@ -71,6 +72,9 @@ int ContractUserCreateCall::HandleTx(
     zjc_host.view_block_chain_ = pre_zjc_host.view_block_chain_;
     zjc_host.tx_context_ = pre_zjc_host.tx_context_;
     zjc_host.pre_zjc_host_ = &pre_zjc_host;
+    evmc_result evmc_call_res = {};
+    evmc::Result evmc_res{ evmc_call_res };
+    bool check_valid = false;
     if (block_tx.status() == kConsensusSuccess) {
         InitHost(
             zjc_host, 
@@ -85,23 +89,22 @@ int ContractUserCreateCall::HandleTx(
         zjc_host.AddTmpAccountBalance(
             block_tx.to(),
             block_tx.amount());
-        evmc_result evmc_res = {};
-        evmc::Result res{ evmc_res };
-        int call_res = CreateContractCallExcute(zjc_host, block_tx, &res);
-        gas_used = block_tx.gas_limit() - res.gas_left;
-        if (call_res != kConsensusSuccess || res.status_code != EVMC_SUCCESS) {
-            block_tx.set_status(EvmcStatusToZbftStatus(res.status_code));
+        check_valid = true;
+        int call_res = CreateContractCallExcute(zjc_host, block_tx, &evmc_res);
+        gas_used = block_tx.gas_limit() - evmc_res.gas_left;
+        if (call_res != kConsensusSuccess || evmc_res.status_code != EVMC_SUCCESS) {
+            block_tx.set_status(EvmcStatusToZbftStatus(evmc_res.status_code));
             SETH_DEBUG("create contract: %s failed, call_res: %d, "
                 "evmc res: %d, gas_used: %lu, gas price: %lu, from_balance: %lu",
                 common::Encode::HexEncode(block_tx.to()).c_str(),
                 call_res,
-                (int32_t)res.status_code,
+                (int32_t)evmc_res.status_code,
                 gas_used,
                 block_tx.gas_price(),
                 from_balance);
         }
 
-        if (res.gas_left > (int64_t)block_tx.gas_limit()) {
+        if (evmc_res.gas_left > (int64_t)block_tx.gas_limit()) {
             gas_used = block_tx.gas_limit();
         }
 
@@ -241,8 +244,34 @@ int ContractUserCreateCall::HandleTx(
         block_tx.contract_prepayment(),
         block_tx.amount(),
         block_tx.status());
+    for (auto event_iter = zjc_host.recorded_logs_.begin();
+            event_iter != zjc_host.recorded_logs_.end(); ++event_iter) {
+        auto log = block_tx.add_events();
+        log->set_data((*event_iter).data);
+        for (auto topic_iter = (*event_iter).topics.begin();
+                topic_iter != (*event_iter).topics.end(); ++topic_iter) {
+            log->add_topics(std::string((char*)(*topic_iter).bytes, sizeof((*topic_iter).bytes)));
+        }
+    }
+    
+    block::protobuf::TxHashStatus tx_hash_status;
+    *tx_hash_status.mutable_events() = block_tx.events();
+    if (check_valid) {
+        tx_hash_status.set_status(evmc_res.status_code);
+        tx_hash_status.set_output(evmc_res.output_data, evmc_res.output_size);
+    } else {
+        tx_hash_status.set_status(block_tx.status());
+    }
+
+    auto status_val = tx_hash_status.SerializeAsString();
+    SETH_DEBUG("create contract status: %d, rel: %d, output: %s, from: %s, to: %s", 
+        (int32_t)evmc_res.status_code, 
+        tx_hash_status.status(),
+        ProtobufToJson(tx_hash_status).c_str(),
+        common::Encode::HexEncode(block_tx.from()).c_str(),
+        common::Encode::HexEncode(block_tx.to()).c_str());
     if (block_tx.status() == kConsensusSuccess) {
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "0");
+        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
         zjc_host.MergeToPrev();
         auto iter = pre_zjc_host.cross_to_map_.find(block_tx.to());
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
@@ -260,8 +289,6 @@ int ContractUserCreateCall::HandleTx(
             SETH_DEBUG("success add to tx item addr prepayment id: %s, prepayment: %lu",
                 common::Encode::HexEncode(to_item_ptr->des()).c_str(),
                 block_tx.contract_prepayment());
-        } else {
-            pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::to_string(block_tx.status()));
         }
 
         for (auto exists_iter = cross_to_map_.begin(); exists_iter != cross_to_map_.end(); ++exists_iter) {
@@ -278,6 +305,8 @@ int ContractUserCreateCall::HandleTx(
                 common::Encode::HexEncode(exists_iter->second->des()).c_str(),
                 exists_iter->second->amount());
         }
+    } else {
+        pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
     }
 
     return kConsensusSuccess;

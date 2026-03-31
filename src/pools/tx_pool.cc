@@ -69,17 +69,8 @@ void TxPool::InitHeightTree() {
 
     SETH_DEBUG("init height tree success, net_id: %u, pool_index_: %u, latest_height_: %lu, synced_height_: %lu", 
         net_id, pool_index_, latest_height_, synced_height_);
-    std::vector<uint64_t> invalid_heights;
-    height_tree_ptr->GetMissingHeights(&invalid_heights, latest_height_);
-    SETH_DEBUG("%u get invalid heights size: %u, latest_height_: %lu", 
-        pool_index_, invalid_heights.size(), latest_height_);
-    if (invalid_heights.size() > 0 && invalid_heights[0] <= latest_height_) {
-        has_missing_height_ = true;
-    } else {
-        has_missing_height_ = false;
-    }
-
     height_tree_ptr_ = height_tree_ptr;
+    SyncMissingBlocks(common::TimeUtils::TimestampMs());
 }
 
 uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
@@ -110,12 +101,7 @@ uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
     height_tree_ptr_->GetMissingHeights(&invalid_heights, latest_height_);
     SETH_DEBUG("%u get invalid heights size: %u, latest_height_: %lu", 
         pool_index_, invalid_heights.size(), latest_height_);
-    if (invalid_heights.size() > 0 && invalid_heights[0] <= latest_height_) {
-        has_missing_height_ = true;
-    } else {
-        has_missing_height_ = false;
-    }
-
+    uint32_t synced_count = 0;
     if (invalid_heights.size() > 0) {
         auto net_id = common::GlobalInfo::Instance()->network_id();
         if (net_id >= network::kConsensusWaitingShardBeginNetworkId &&
@@ -128,7 +114,6 @@ uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
         }
 
         uint64_t min_height = invalid_heights[0];
-        uint32_t synced_count = 0;
         for (uint64_t i = min_height; i < latest_height_; ++i) {
             if (prefix_db_->BlockExists(net_id, pool_index_, i)) {
                 SETH_DEBUG("block exists now add sync height 1, %u_%u_%lu", 
@@ -136,6 +121,7 @@ uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
                     pool_index_,
                     i);
                 height_tree_ptr_->Set(i);
+                std::erase(invalid_heights, i);
                 continue;
             }
 
@@ -153,6 +139,12 @@ uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
                 break;
             }
         }
+    }
+
+    if (synced_count > 0) {
+        has_missing_height_ = true;
+    } else {
+        has_missing_height_ = false;
     }
 
     return invalid_heights.size();
@@ -246,10 +238,6 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
                         }
                     }
 
-                    if (nonce_iter->second->msg_ptr) {
-                        nonce_iter->second->msg_ptr->handle_status = transport::kConsensusSuccess;
-                    }
-                    
                     if (IsUserTransaction(tx_info.step())) {
                         ++all_delay_tx_count_;
                         all_delay_tm_us_ += now_tm_us - nonce_iter->second->receive_tm_us;
@@ -382,7 +370,7 @@ void TxPool::GetTxSyncToLeader(
         }
 
         tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
-        consensus_tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
+        // consensus_tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
         SETH_DEBUG("pool: %d, success add tx nonce invalid addr: %s, addr nonce: %lu, tx nonce: %lu",
             pool_index_,
             common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
@@ -454,6 +442,7 @@ void TxPool::GetTxIdempotently(
         pools::CheckAddrNonceValidFunction tx_valid_func) {
     int32_t try_times = 0;
     while (res_map.size() < count && try_times++ < 10) {
+        res_map.clear();
         TempGetTxIdempotently(msg_ptr, res_map, count, tx_valid_func);
         if (count == 1) {
             break;
@@ -530,7 +519,7 @@ void TxPool::TempGetTxIdempotently(
         }
 
         tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
-        consensus_tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
+        // consensus_tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
         SETH_DEBUG("pool: %d, success add tx nonce addr: %s, addr nonce: %lu, tx nonce: %lu",
             pool_index_,
             common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
@@ -551,8 +540,17 @@ void TxPool::TempGetTxIdempotently(
             }
         }
 
+        auto tx_map_iter = tx_map_.find(tx_ptr->address_info->addr());
+        if (tx_map_iter != tx_map_.end()) {
+            auto nonce_iter = tx_map_iter->second.find(tx_ptr->tx_info->nonce());
+            if (nonce_iter != tx_map_iter->second.end()) {
+                continue;
+            }
+        }
+
         consensus_tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
-        SETH_DEBUG("pool: %d, consensus_added_txs_ success add tx nonce addr: %s, addr nonce: %lu, tx nonce: %lu",
+        SETH_DEBUG("pool: %d, consensus_added_txs_ success add tx nonce addr: %s, "
+            "addr nonce: %lu, tx nonce: %lu",
             pool_index_,
             common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
             tx_ptr->address_info->nonce(), 
@@ -706,8 +704,10 @@ void TxPool::TempGetTxIdempotently(
                 valid_nonce = tx_ptr->tx_info->nonce();
                 tx_ptr->receive_tm_us = common::TimeUtils::TimestampUs();
                 res_map.push_back(tx_ptr);
-                SETH_DEBUG("trace tx pool: %d, consensus leader tx addr: %s, key: %s, nonce: %lu, "
+                SETH_DEBUG("iter addr: %s, trace tx pool: %d, "
+                    "consensus leader tx addr: %s, key: %s, nonce: %lu, "
                     "res count: %u, count: %u, tx_map size: %u, addr tx size: %u", 
+                    common::Encode::HexEncode(iter->first).c_str(), 
                     pool_index_,
                     common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
                     common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(), 
@@ -728,6 +728,10 @@ void TxPool::TempGetTxIdempotently(
     };
 
     get_tx_func(tx_map_);
+    SETH_DEBUG("pool: %d, now get tx by leader all: %u, added tx size: %u, "
+        "get: %u, count: %u", 
+        pool_index_, all_tx_size(), added_txs_.size(),
+        res_map.size(), count);
     get_tx_func(consensus_tx_map_);
     SETH_DEBUG("pool: %d, now get tx by leader all: %u, added tx size: %u, "
         "get: %u, count: %u", 

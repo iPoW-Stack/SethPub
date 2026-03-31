@@ -30,6 +30,10 @@ int ContractPrepayment::HandleTx(
         gas_used = consensus::kTransferGas;
         if (from_nonce + 1 != block_tx.nonce()) {
             block_tx.set_status(kConsensusNonceInvalid);
+            SETH_DEBUG("addr: %s, contract: %s, nonce error: %lu, %lu", 
+                common::Encode::HexEncode(from).c_str(),
+                common::Encode::HexEncode(block_tx.to()).c_str(),
+                from_nonce, block_tx.nonce());
             // will never happen
             assert(false);
             break;
@@ -100,6 +104,11 @@ int ContractPrepayment::HandleTx(
         common::Encode::HexEncode(block_tx.to()).c_str(),
         block_tx.contract_prepayment(),
         from_balance);
+
+    block::protobuf::TxHashStatus tx_hash_status;
+    tx_hash_status.set_status(block_tx.status());
+    auto status_val = tx_hash_status.SerializeAsString();
+    pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
     if (block_tx.status() == kConsensusSuccess) {
         pre_zjc_host.SaveKeyValue(block_tx.from(), block_tx.tx_hash(), "1");
         auto preypayment_id = block_tx.to() + block_tx.from();

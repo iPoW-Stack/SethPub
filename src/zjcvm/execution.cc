@@ -53,14 +53,17 @@ void Execution::Init(std::shared_ptr<db::Db>& db) {
 
 bool Execution::IsAddressExists(const std::string& addr) {
     if (!view_block_chain_) {
+        SETH_DEBUG("get address failed view_block_chain_: %s", common::Encode::HexEncode(addr).c_str());
         return false;
     }
 
     protos::AddressInfoPtr address_info = view_block_chain_->ChainGetAccountInfo(addr);
     if (address_info != nullptr) {
+        SETH_DEBUG("get address success: %s", common::Encode::HexEncode(addr).c_str());
         return true;
     }
 
+    SETH_DEBUG("get address failed: %s", common::Encode::HexEncode(addr).c_str());
     return false;
 }
 

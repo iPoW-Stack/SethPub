@@ -49,6 +49,7 @@ private:
     int SaveContractCreateInfo(
         zjcvm::ZjchainHost& zjc_host,
         block::protobuf::BlockTx& tx,
+        hotstuff::BalanceAndNonceMap& dep_contract_balance_map,
         int64_t& contract_balance_add);
     void GetTempPerpaymentBalance(
         const view_block::protobuf::ViewBlockItem& block,

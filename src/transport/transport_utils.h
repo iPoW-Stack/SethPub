@@ -78,17 +78,41 @@ enum FirewallCheckStatus {
 
 enum MessageHandleStatus : int32_t {
     kConsensusSuccess = 0,
-    kMessageHandle = 1,
-    kMessageHandleError = 2,
-    kTxAccept = 3,
-    kTxInvalidSignature = 4,
-    kTxInvalidAddress = 5,
-    kTxPoolFullReject = 6,
-    kTxUserNonceInvalid = 7,
-    kUnkonwn = 8,
-    kRequestInvalid = 9,
-    kNotExists = 10,
+    kMessageHandle = 10001,
+    kMessageHandleError = 10002,
+    kTxAccept = 10003,
+    kTxInvalidSignature = 10004,
+    kTxInvalidAddress = 10005,
+    kTxPoolFullReject = 10006,
+    kTxUserNonceInvalid = 10007,
+    kUnkonwn = 10008,
+    kRequestInvalid = 10009,
+    kNotExists = 100010,
+
+    kEvmcSuccess = 0,
+    kEvmcFailure = 1,
+    kEvmcRevert = 2,
+    kEvmcOutOfGas = 3,
+    kEvmcInvalidInstruction = 4,
+    kEvmcUndefinedInstruction = 5,
+    kEvmcStackOverflow = 6,
+    kEvmcStackUnderflow = 7,
+    kEvmcBadJumpDestination = 8,
+    kEvmcInvalidMemoryAccess = 9,
+    kEvmcCallDepthExceeded = 10,
+    kEvmcStaticModeViolation = 11,
+    kEvmcPrecompileFailure = 12,
+    kEvmcContractValidationFailure = 13,
+    kEvmcArgumentOutOfRange = 14,
+    kEvmcWasmUnreachableInstruction = 15,
+    kEvmcWasmTrap = 16,
+    kEvmcInsufficientBalance = 17,
+
+    kEvmcInternalError = -1,
+    kEvmcRejected = -2,
+    kEvmcOutOfMemory = -3
 };
+
 
 static const uint64_t kConsensusMessageTimeoutUs = 5000000lu;
 static const uint64_t kHandledTimeoutMs = 10000lu;
@@ -114,11 +138,58 @@ static inline std::string MessageStatusToString(MessageHandleStatus status) {
         case kTxUserNonceInvalid:
             return "kTxUserNonceInvalid";
         case kUnkonwn:
-            return "kUnkonwn";
+            return "kUnknown";
         case kRequestInvalid:
             return "kRequestInvalid";
+        case kNotExists:
+            return "kNotExists";
+
+        // --- EVMC ---
+        case kEvmcFailure:
+            return "kEvmcFailure";
+        case kEvmcRevert:
+            return "kEvmcRevert";
+        case kEvmcOutOfGas:
+            return "kEvmcOutOfGas";
+        case kEvmcInvalidInstruction:
+            return "kEvmcInvalidInstruction";
+        case kEvmcUndefinedInstruction:
+            return "kEvmcUndefinedInstruction";
+        case kEvmcStackOverflow:
+            return "kEvmcStackOverflow";
+        case kEvmcStackUnderflow:
+            return "kEvmcStackUnderflow";
+        case kEvmcBadJumpDestination:
+            return "kEvmcBadJumpDestination";
+        case kEvmcInvalidMemoryAccess:
+            return "kEvmcInvalidMemoryAccess";
+        case kEvmcCallDepthExceeded:
+            return "kEvmcCallDepthExceeded";
+        case kEvmcStaticModeViolation:
+            return "kEvmcStaticModeViolation";
+        case kEvmcPrecompileFailure:
+            return "kEvmcPrecompileFailure";
+        case kEvmcContractValidationFailure:
+            return "kEvmcContractValidationFailure";
+        case kEvmcArgumentOutOfRange:
+            return "kEvmcArgumentOutOfRange";
+        case kEvmcWasmUnreachableInstruction:
+            return "kEvmcWasmUnreachableInstruction";
+        case kEvmcWasmTrap:
+            return "kEvmcWasmTrap";
+        case kEvmcInsufficientBalance:
+            return "kEvmcInsufficientBalance";
+
+        // --- EVMC  ---
+        case kEvmcInternalError:
+            return "kEvmcInternalError";
+        case kEvmcRejected:
+            return "kEvmcRejected";
+        case kEvmcOutOfMemory:
+            return "kEvmcOutOfMemory";
+
         default:
-            return "unknown";
+            return "unknown(" + std::to_string(static_cast<int32_t>(status)) + ")";
     }
 }
 

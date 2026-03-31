@@ -289,7 +289,7 @@ private:
     std::atomic<uint64_t> global_latency_ = 0;
     uint8_t hotstuff_thread_count_ = 8;
     uint64_t leader_change_init_tm_ = 0;
-    std::atomic<uint32_t> now_valid_end_shard_ = common::kInvalidUint32;
+    std::atomic<uint32_t> now_valid_end_shard_ = 0;
 
     DISALLOW_COPY_AND_ASSIGN(GlobalInfo);
 };

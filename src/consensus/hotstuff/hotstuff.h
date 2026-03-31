@@ -108,10 +108,21 @@ public:
 
         latest_elect_height_ = elect_height;
         consecutive_failures_ = 0;
+        update_latest_view_tm_ = true;
+        if (latest_qc_item_ptr_ == nullptr || latest_elect_height_ > latest_qc_item_ptr_->elect_height()) {
+            last_stable_leader_member_index_ = GetEpochLeaderIndex();
+            SETH_DEBUG("pool: %u, new elect block, elect height: %lu, leader index: %u",
+                pool_idx_, latest_elect_height_, last_stable_leader_member_index_.load());
+        }
+    }
+
+    void OnTimeBlock() {
+        update_latest_view_tm_ = true;
     }
 
     Status Start();
     void HandleProposeMsg(const transport::MessagePtr& msg_ptr);
+    int HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr);
     void HandlePreResetTimerMsg(const transport::MessagePtr& msg_ptr);
     void HandleVoteMsg(const transport::MessagePtr& msg_ptr);
     Status Propose(
@@ -220,6 +231,19 @@ private:
         const std::string& expect_view_block_hash);
     void StartInit();
     Status HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr);
+    void UpdateLatestQcItemPtr(std::shared_ptr<view_block::protobuf::QcItem> qc_ptr) {
+        if (qc_ptr->elect_height() >= latest_elect_height_ && qc_ptr->leader_idx() != common::kInvalidUint32) {
+            last_stable_leader_member_index_ = qc_ptr->leader_idx();
+            SETH_DEBUG("pool: %u, update latest qc item ptr, elect height: %lu, leader index: %u, "
+                "old last_vote_view_: %lu,  new last_vote_view_: %lu",
+                pool_idx_, qc_ptr->elect_height(), last_stable_leader_member_index_.load(),
+                last_vote_view_,
+                qc_ptr->view());
+            laste_vote_prev_view_tm_.Put(qc_ptr->view(), common::TimeUtils::TimestampUs());
+        }
+
+        latest_qc_item_ptr_ = qc_ptr;
+    }
 
     bool HandleProposeMsgCondition(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
         // Only new v_block is allowed to execute
@@ -254,6 +278,7 @@ private:
         const transport::MessagePtr& msg_ptr,
         hotstuff::protobuf::VoteMsg* vote_msg,
         uint64_t elect_height,
+        uint64_t tm_height,
         const std::shared_ptr<ViewBlock>& v_block);
     Status ConstructViewBlock(
         View leader_view,
@@ -294,7 +319,7 @@ private:
         // auto members = elect_item->valid_leaders();
         pool_tx_leader_.store(nullptr);
         auto members = Members(common::GlobalInfo::Instance()->network_id());
-        if (members == nullptr) {
+        if (members == nullptr || members->empty()) {
             return nullptr;
         }
 
@@ -303,7 +328,8 @@ private:
             return nullptr;
         }
 
-        last_stable_leader_member_index_ = GetEpochLeaderIndex();
+        // *out_view = high_view_block->qc().view() + 1;
+        // return (*members)[pool_idx_ % members->size()];
         auto now_tm = common::TimeUtils::TimestampSeconds();
         if (now_tm <= common::GlobalInfo::Instance()->leader_change_init_tm()) {
             if (high_view_block->qc().elect_height() < latest_elect_height_) {
@@ -311,6 +337,12 @@ private:
             } else {
                 *out_view = high_view_block->qc().view() + 1;
             }
+
+            // if (high_view_block->qc().tm_height() < tm_block_mgr_->LatestTimestampHeight()) {
+            //     *out_view = high_view_block->qc().view() + tm_block_mgr_->LatestTimestampHeight();
+            // }
+            
+            // *out_view += 1;
             
             SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is equal with high view block qc view: %lu, "
                 "high_view_block->qc().elect_height(): %lu, latest_elect_height_: %lu, out view: %lu, "
@@ -318,15 +350,14 @@ private:
                 pool_idx_, leader_latest_qc.view(), high_view_block->qc().view(),
                 high_view_block->qc().elect_height(),
                 latest_elect_height_, *out_view,
-                last_stable_leader_member_index_,
+                last_stable_leader_member_index_.load(),
                 new_leader_idx,
                 leader_latest_qc.leader_idx());
             pool_tx_leader_.store((*members)[new_leader_idx % members->size()]);
             return (*members)[last_stable_leader_member_index_ % members->size()];
         }
 
-        if (last_stable_leader_member_index_ == new_leader_idx ||
-                leader_latest_qc.leader_idx() == new_leader_idx) {
+        if (last_stable_leader_member_index_ == new_leader_idx) {
             do {
                 if (leader_latest_qc.view() != high_view_block->qc().view()) {
                     SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is not equal with high view block qc view: %lu",
@@ -340,13 +371,18 @@ private:
                     *out_view = high_view_block->qc().view() + 1;
                 }
 
+                // if (high_view_block->qc().tm_height() < tm_block_mgr_->LatestTimestampHeight()) {
+                //     *out_view = high_view_block->qc().view() + tm_block_mgr_->LatestTimestampHeight();
+                // }
+
+                // *out_view += 1;
                 SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is equal with high view block qc view: %lu, "
                     "high_view_block->qc().elect_height(): %lu, latest_elect_height_: %lu, out view: %lu, "
                     "last_stable_leader_member_index_: %u, new_leader_idx: %u, leader_latest_qc.leader_idx(): %u",
                     pool_idx_, leader_latest_qc.view(), high_view_block->qc().view(),
                     high_view_block->qc().elect_height(),
                     latest_elect_height_, *out_view,
-                    last_stable_leader_member_index_,
+                    last_stable_leader_member_index_.load(),
                     new_leader_idx,
                     leader_latest_qc.leader_idx());
                 pool_tx_leader_.store((*members)[new_leader_idx % members->size()]);
@@ -375,14 +411,30 @@ private:
             common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
         auto elapsed = now - prev_qc_timestamp_sec;
         if (elapsed < timeout) {
+            SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, consecutive_failures: %d, now: %u, block tm: %lu, "
+                "last_stable_leader_member_index: %d, get leader index: %u, latest_elect_height: %lu, out view: %lu", 
+                pool_idx_, high_view_block->qc().view(), elapsed, timeout, consecutive_failures_,
+                now, high_view_block->block_info().timestamp(),
+                last_stable_leader_member_index_.load(),
+                last_stable_leader_member_index_ % members->size(),
+                latest_elect_height_,
+                *out_view);
             return (*members)[last_stable_leader_member_index_ % members->size()];
         }
 
-        auto k = elapsed / common::kLeaderRoatationBaseTimeoutSec;
-        auto leader_idx = (
+        auto k = (elapsed / common::kLeaderRoatationBaseTimeoutSec) + 7;
+
+        auto elect_item = elect_info_->GetElectItemWithShardingId(common::GlobalInfo::Instance()->network_id());
+        if (elect_item == nullptr) {
+            // assert(false);
+            return nullptr;
+        }
+
+        auto index = (
             last_stable_leader_member_index_ + 
             static_cast<int>(k) + 
-            common::kImmutablePoolSize) % members->size();
+            pool_idx_) % elect_item->valid_leaders()->size();
+        auto leader_idx = elect_item->valid_leaders()->at(index)->index;
         // ++consecutive_failures_;
        
         // switch mode: force skip a view number (V + k + 1)
@@ -406,7 +458,7 @@ private:
             consecutive_failures_,
             now, 
             high_view_block->block_info().timestamp(),
-            last_stable_leader_member_index_,
+            last_stable_leader_member_index_.load(),
             leader_idx,
             latest_elect_height_,
             (high_view_block->qc().view() + latest_elect_height_ + 1),
@@ -436,7 +488,6 @@ private:
         }
 
         auto index = (
-            tm_block_mgr_->LatestTimestampHeight() + 
             elect_item->ElectHeight() + 
             pool_idx_) % elect_item->valid_leaders()->size();
         return elect_item->valid_leaders()->at(index)->index;
@@ -460,12 +511,14 @@ private:
         auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
         if (elect_item == nullptr) {
             // assert(false);
+            SETH_DEBUG("get local member index failed, elect item is null, sharding_id: %u", sharding_id);
             return common::kInvalidUint32;
         }
 
         auto local_mem_ptr = elect_item->LocalMember();
         if (local_mem_ptr == nullptr) {
             // assert(false);
+            SETH_DEBUG("get local member index failed, local member is null, sharding_id: %u", sharding_id);
             return common::kInvalidUint32;
         }
 
@@ -515,11 +568,13 @@ private:
     std::shared_ptr<ViewBlock> latest_voted_view_block_ = nullptr;
 
     uint32_t consecutive_failures_ = 0u;
-    uint32_t last_stable_leader_member_index_ = 0u;
+    std::atomic<uint32_t> last_stable_leader_member_index_ = 0u;
     uint64_t latest_elect_height_ = 0llu;
     common::LRUMap<uint64_t, uint64_t> view_with_block_tm_map_{16};
     common::LRUMap<uint64_t, uint64_t> laste_vote_prev_view_tm_{16};
     std::atomic<common::BftMemberPtr> pool_tx_leader_;
+    std::atomic<bool> update_latest_view_tm_ = false;
+    uint64_t prev_recover_check_tm_ms_ = 0;
 
 // #ifndef NDEBUG
     static std::atomic<uint32_t> sendout_bft_message_count_;

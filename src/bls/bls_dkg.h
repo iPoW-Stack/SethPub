@@ -58,8 +58,8 @@ public:
         uint64_t prev_elect_height,
         common::MembersPtr& members,
         std::shared_ptr<TimeBlockItem> latest_timeblock_info);
-    void HandleMessage(const transport::MessagePtr& header);
-    bool CheckBlsMessageValid(transport::MessagePtr& msg_ptr);
+    void HandleMessage(const transport::MessagePtr header);
+    bool CheckBlsMessageValid(transport::MessagePtr msg_ptr);
     void Destroy();
     void TimerMessage();
     void FlushToCk(const libff::alt_bn128_G2& common_public_key);
@@ -93,14 +93,14 @@ public:
     }        
 
 private:
-    void HandleVerifyBroadcast(const transport::MessagePtr& header);
-    void HandleSwapSecKey(const transport::MessagePtr& header);
-    bool IsSignValid(const transport::MessagePtr& msg_ptr, std::string* msg_hash);
+    void HandleVerifyBroadcast(const transport::MessagePtr header);
+    void HandleSwapSecKey(const transport::MessagePtr header);
+    bool IsSignValid(const transport::MessagePtr msg_ptr, std::string* msg_hash);
     void BroadcastVerfify();
     void SwapSecKey();
     void FinishBroadcast();
     void CreateContribution(uint32_t valid_n, uint32_t valid_t);
-    void CreateDkgMessage(transport::MessagePtr& msg_ptr);
+    void CreateDkgMessage(transport::MessagePtr msg_ptr);
     void BroadcastFinish(const common::Bitmap& bitmap);
     void CreateSwapKey(uint32_t member_idx, std::string* seckey, int32_t* seckey_len);
     void CheckVerifyAllValid();
@@ -112,7 +112,7 @@ private:
     bool VerifySekkeyValid(uint32_t peer_index, const libff::alt_bn128_Fr& seckey);
     bool CheckRecomputeG2s(const std::string& id, bls::protobuf::JoinElectBlsInfo& verfy_final_vals);
     void PopBlsMessage();
-    void HandleBlsMessage(const transport::MessagePtr& msg_ptr);
+    void HandleBlsMessage(const transport::MessagePtr msg_ptr);
 
     bool IsVerifyBrdPeriod() {
 #ifdef SETH_UNITTEST
@@ -138,14 +138,13 @@ private:
 #endif
         auto now_tm_us = common::TimeUtils::TimestampUs();
        SETH_DEBUG("IsSwapKeyPeriod begin_time_us_: %lu, now_tm_us: %lu, "
-            "kDkgPeriodUs: %lu, now_tm_us > (begin_time_us_ + kDkgPeriodUs * 4): %d, now_tm_us < (begin_time_us_ + kDkgPeriodUs * 7): %d",
+            "kDkgPeriodUs: %lu, now_tm_us > 0: %d, now_tm_us < (begin_time_us_ + kDkgPeriodUs * 5): %d",
             begin_time_us_,
             now_tm_us,
             kDkgPeriodUs,
-            (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 4)),
-            (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 7)));
-        if (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 7) &&
-                now_tm_us >= (begin_time_us_ + kDkgPeriodUs * 4)) {
+            0,
+            (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 5)));
+        if (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 5)) {
             return true;
         }
 
@@ -158,14 +157,14 @@ private:
 #endif
         auto now_tm_us = common::TimeUtils::TimestampUs();
         SETH_DEBUG("IsFinishPeriod begin_time_us_: %lu, now_tm_us: %lu, "
-            "kDkgPeriodUs: %lu, now_tm_us > (begin_time_us_ + kDkgPeriodUs * 4): %d, now_tm_us < (begin_time_us_ + kDkgPeriodUs * 7): %d",
+            "kDkgPeriodUs: %lu, now_tm_us > (begin_time_us_ + kDkgPeriodUs * 5): %d, now_tm_us < (begin_time_us_ + kDkgPeriodUs * 10): %d",
             begin_time_us_,
             now_tm_us,
             kDkgPeriodUs,
-            (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 7)),
+            (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 5)),
             (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 10)));
         if (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 10) &&
-            now_tm_us >= (begin_time_us_ + kDkgPeriodUs * 7)) {
+            now_tm_us >= (begin_time_us_ + kDkgPeriodUs * 5)) {
             return true;
         }
 

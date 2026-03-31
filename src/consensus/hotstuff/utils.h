@@ -30,7 +30,7 @@ enum ChainType : int32_t {
     kCrossShardingChain = 2,
 };
 
-static const uint64_t kGlobalChainId = 3355103124u;
+static const uint64_t kGlobalChainId = 3355103125u;
 
 struct BlockViewKey {
     uint32_t network_id;

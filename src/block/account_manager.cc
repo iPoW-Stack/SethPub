@@ -98,16 +98,45 @@ protos::AddressInfoPtr AccountManager::GetAccountInfo(const std::string& addr) {
         BLOCK_DEBUG(
             "get account failed[%s]", 
             common::Encode::HexEncode(addr).c_str());
+    } else {
+        account_lru_map_.insert(addr_info);
     }
 
     return addr_info;
 }
 
 void AccountManager::AddNewBlock(const view_block::protobuf::ViewBlockItem& view_block_item) {
+    if (!network::IsSameToLocalShard(view_block_item.qc().network_id()))  {
+        return;
+    }
+
     for (int32_t i = 0; i < view_block_item.block_info().address_array_size(); ++i) {
         auto addr_info_ptr = std::make_shared<address::protobuf::AddressInfo>(
             view_block_item.block_info().address_array(i));
         auto acc_ptr = account_lru_map_.get(addr_info_ptr->addr());
+        if (acc_ptr) {
+            SETH_DEBUG("account exists in lru map: %s, balance: %lu, nonce: %lu, "
+                "latest height: %lu, tx index: %lu, block height: %lu, "
+                "addr_info_ptr latest height: %lu, tx_index: %u",
+                common::Encode::HexEncode(addr_info_ptr->addr()).c_str(),
+                acc_ptr->balance(),
+                acc_ptr->nonce(),
+                acc_ptr->latest_height(),
+                acc_ptr->tx_index(),
+                view_block_item.block_info().height(),
+                addr_info_ptr->latest_height(),
+                addr_info_ptr->tx_index());
+        } else {
+            SETH_DEBUG("account not exists in lru map: %s, balance: %lu, nonce: %lu, "
+                "latest height: %lu, tx index: %lu, block height: %lu",
+                common::Encode::HexEncode(addr_info_ptr->addr()).c_str(),
+                addr_info_ptr->balance(),
+                addr_info_ptr->nonce(),
+                addr_info_ptr->latest_height(),
+                addr_info_ptr->tx_index(),
+                view_block_item.block_info().height());
+        }
+
         if (!acc_ptr || 
                 acc_ptr->latest_height() < addr_info_ptr->latest_height() || 
                 (acc_ptr->latest_height() == addr_info_ptr->latest_height() &&

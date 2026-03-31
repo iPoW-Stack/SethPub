@@ -163,6 +163,7 @@ private:
     uint64_t latest_timeblock_height_ = 0;
     uint64_t prev_timeblock_tm_sec_ = 0;
     uint64_t latest_timeblock_tm_sec_ = 0;
+    uint64_t latest_statistic_height_ = 0;
     common::UniqueMinPriorityQueue<uint64_t> timeblock_height_pq_;
     std::shared_ptr<pools::protobuf::ToTxHeights> statistic_heights_ptr_ = nullptr;
 //     std::shared_ptr<pools::protobuf::ToTxHeights> to_tx_heights_ptr_ = nullptr;
@@ -185,7 +186,7 @@ private:
     std::condition_variable wait_con_;
     uint64_t latest_statistic_timeblock_height_ = common::kInvalidUint64; // memorize the latest timeblock height that has gathered statistic
     std::atomic<bool> destroy_ = false;
-    uint64_t step_with_nonce_[128] = { 0llu };
+    std::atomic<uint64_t> step_with_nonce_[common::kInvalidPoolIndex][128] = { 0llu };
     std::unordered_map<uint64_t, uint64_t> timeblock_height_with_nonce_;
     DISALLOW_COPY_AND_ASSIGN(BlockManager);
 };

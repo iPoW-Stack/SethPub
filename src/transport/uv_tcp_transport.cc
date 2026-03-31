@@ -182,8 +182,11 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
     msg_ptr->conn = std::make_shared<UvTcpConnection>(ex_uv_tcp);
     msg_ptr->conn->SetPeerIp(from_ip);
     msg_ptr->conn->SetPeerPort(from_port);
-    SETH_DEBUG("message coming: %s:%d, type: %d", from_ip, from_port, msg_ptr->header.type());
-    assert(from_port > 0);
+    if (from_port <= 0) {
+        SETH_ERROR("message coming: %s:%d, type: %d, invalid port", from_ip, from_port, msg_ptr->header.type());
+        return false;
+    }
+
     tcp_transport->msg_handler()->HandleMessage(msg_ptr);
     packet.Free();
     return true;
@@ -277,6 +280,7 @@ void on_new_connection(uv_stream_t* server, int status) {
         });
     }
 }
+
 
 void signal_handler(uv_signal_t* handle, int signum) {
     SETH_WARN("uv tcp server signal coming: %d", signum);
@@ -389,7 +393,7 @@ int TcpTransport::Send(
     assert(des_port > 0);
     auto tmpHeader = const_cast<transport::protobuf::Header*>(&message);
     tmpHeader->set_from_public_port(common::GlobalInfo::Instance()->config_public_port());
-    assert(message.broadcast().bloomfilter_size() < 64);
+    // assert(message.broadcast().bloomfilter_size() < 64);
     if (!message.has_hash64() || message.hash64() == 0) {
         SetMessageHash(message);
     }
@@ -613,7 +617,9 @@ void TcpTransport::RealFreeInvalidConnections() {
     while (!invalid_conns_.empty()) {
         auto* ex_uv_tcp = invalid_conns_.front();
         if (now_sec <= ex_uv_tcp->timeout + kInvalidConnectionTimeoutSec) {
-            uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
+            if (!uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp)) {
+                uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
+            }
             invalid_conns_.pop();
             continue;
         }

@@ -146,6 +146,23 @@ public:
             uint32_t local_member_idx,
             const std::string& id,
             uint32_t peer_idx,
+            const std::string& seckey,
+            db::DbWriteBatch& db_batch) {
+        std::string key;
+        key.reserve(32);
+        key.append(kBlsSwapKeyPrefex);
+        key.append((char*)&sharding_id, sizeof(sharding_id));
+        key.append((char*)&local_member_idx, sizeof(local_member_idx));
+        key.append(id);
+        key.append((char*)&peer_idx, sizeof(peer_idx));
+        db_batch.Put(key, seckey);
+    }
+
+    void SaveSwapKey(
+            uint32_t sharding_id,
+            uint32_t local_member_idx,
+            const std::string& id,
+            uint32_t peer_idx,
             const std::string& seckey) {
         std::string key;
         key.reserve(32);
@@ -488,7 +505,7 @@ public:
             uint64_t height,
             view_block::protobuf::ViewBlockItem* block) {
         std::string block_hash;
-        SETH_DEBUG("GetBlockWithHeight.");
+        SETH_DEBUG("GetBlockWithHeight: %u_%u_%lu", sharding_id, pool_index, height);
         if (!GetBlockHashWithBlockHeight(sharding_id, pool_index, height, &block_hash)) {
             return false;
         }
@@ -554,6 +571,7 @@ public:
             const std::string& val,
             db::DbWriteBatch& db_batch) {
         std::string key = kTemporaryKeyPrefix + tmp_key;
+        SETH_DEBUG("save temporary kv: %s, %s", common::Encode::HexEncode(tmp_key).c_str(), common::Encode::HexEncode(val).c_str());
         db_batch.Put(key, val);
     }
 
@@ -562,6 +580,10 @@ public:
             std::string* val) {
         std::string key = kTemporaryKeyPrefix + tmp_key;
         auto st = db_->Get(key, val);
+        SETH_DEBUG("get temporary kv: %s, status: %d, value: %s", 
+            common::Encode::HexEncode(tmp_key).c_str(), 
+            st.ok(), 
+            common::Encode::HexEncode(*val).c_str());
         return st.ok();
     }
 
@@ -1021,6 +1043,9 @@ public:
         key.append(id);
         std::string val = verfy_final_vals.SerializeAsString();
         db_batch.Put(key, val);
+        SETH_DEBUG("%s save verified g2s: local_member_idx: %u, valid_t: %u, id: %s, val: %s",
+            common::Encode::HexEncode(id).c_str(), local_member_idx, valid_t,
+            common::Encode::HexEncode(id).c_str(), ProtobufToJson(verfy_final_vals).c_str());
     }
 
     void SaveVerifiedG2s(
@@ -1039,6 +1064,10 @@ public:
         if (!st.ok()) {
             SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString());
         }
+
+        SETH_DEBUG("%s save verified g2s: local_member_idx: %u, valid_t: %u, id: %s, val: %s",
+            common::Encode::HexEncode(id).c_str(), local_member_idx, valid_t,
+            common::Encode::HexEncode(id).c_str(), ProtobufToJson(verfy_final_vals).c_str());
     }
 
     bool GetVerifiedG2s(
@@ -1052,6 +1081,9 @@ public:
         key.append((char*)&local_member_idx, sizeof(local_member_idx));
         key.append((char*)&valid_t, sizeof(valid_t));
         key.append(id);
+        SETH_DEBUG("%s get verified g2s: local_member_idx: %u, valid_t: %u, id: %s",
+            common::Encode::HexEncode(id).c_str(), local_member_idx, valid_t,
+            common::Encode::HexEncode(id).c_str());
         std::string val;
         auto st = db_->Get(key, &val);
         if (!st.ok()) {
@@ -1512,6 +1544,10 @@ public:
         std::string block_hash;
         auto st = db_->Get(key, &block_hash);
         if (!st.ok()) {
+            SETH_DEBUG("failed get elect height with block hash: %s, sharding id: %u, elect height: %lu",
+                common::Encode::HexEncode(block_hash).c_str(), 
+                sharding_id, 
+                elect_height);
             return false;
         }
         

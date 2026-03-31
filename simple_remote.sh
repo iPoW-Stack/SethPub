@@ -7,9 +7,14 @@ TARGET=$5
 FIRST_NODE_COUNT=$1
 
 CODE_PATH=`pwd`
-node_hash=$(printf "%s%d" "$node_ips" "$each_nodes_count" | md5sum | cut -d ' ' -f1)
+node_ips_array=(${node_ips//,/ })
+nodes_count=0
+for ip in "${node_ips_array[@]}"; do
+    nodes_count=$(($nodes_count + $each_nodes_count))
+done
+node_hash=$(printf "%d%d" "$nodes_count" "$each_nodes_count" | md5sum | cut -d ' ' -f1)
 
-bash cmd.sh $2 "systemctl list-units --state=active --no-legend | grep seth@ | awk '{print \$1}' | xargs -r systemctl stop; killall -9 seth"
+bash cmd.sh $2 "systemctl stop 'seth@*' 2>/dev/null; systemctl list-units --all 'seth@*' --no-legend | cut -d' ' -f1 | xargs -r -n1 sh -c 'systemctl stop \"\$0\"; systemctl disable \"\$0\"' 2>/dev/null; systemctl daemon-reload; systemctl reset-failed"
 init() {
     tmp_ips=(${node_ips//-/ })
     tmp_ips_len=(${#tmp_ips[*]})
@@ -96,11 +101,6 @@ init() {
         each_nodes_count=4
     fi
 
-    node_ips_array=(${node_ips//,/ })
-    nodes_count=0
-    for ip in "${node_ips_array[@]}"; do
-        nodes_count=$(($nodes_count + $each_nodes_count))
-    done
 
     nodes_count=$(($nodes_count - $each_nodes_count + $FIRST_NODE_COUNT))
     shard3_node_count=`wc -l /root/seth/shards3 | awk -F' ' '{print $1}'`
@@ -113,6 +113,52 @@ init() {
     rm -rf /root/nodes/seth/latest_blocks
 }
 
+get_bootstrap() {
+    node_ips_array=(${node_ips//,/ })
+    for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
+        i=1
+        for ip in "${node_ips_array[@]}"; do
+            for ((j=0; j<$each_nodes_count;j++)); do
+                tmppubkey=`sed -n "$i""p" /root/nodes/seth/pkg/shards${shard_id} | awk -F'\t' '{print $2}'`
+                port=''
+                if ((i>=100)); then
+                    port='1'$shard_id''$i
+                elif ((i>=10)); then
+                    port='1'$shard_id'0'$i
+                else
+                    port='1'$shard_id'00'$i
+                fi
+
+                if (( port > 65535 )); then
+                    (( port = (port % 60000) + 1024 ))
+                fi
+
+                node_info=$tmppubkey":"$ip":"$port":"$shard_id
+                bootstrap=$bootstrap","$node_info
+                i=$((i+1))
+            done
+        done
+    done
+# 1. 先把超长的 bootstrap 变量写入一个临时文件
+printf "%s" "$bootstrap" > /tmp/bootstrap_data.tmp
+
+# 2. 让 Python 读取文件进行替换
+/root/tools/python3.10/bin/python3 -c "
+import os
+conf_path = '/root/nodes/seth/pkg/temp/conf/seth.conf'
+with open('/tmp/bootstrap_data.tmp', 'r') as f:
+    new_val = f.read()
+with open(conf_path, 'r') as f:
+    content = f.read()
+with open(conf_path, 'w') as f:
+    f.write(content.replace('BOOTSTRAP', new_val))
+"
+
+# 3. 删除临时文件
+rm /tmp/bootstrap_data.tmp    
+echo $bootstrap
+}
+
 make_package() {
     mkdir -p /root/seth/pkgs
     rm -rf /root/nodes/seth/pkg
@@ -121,6 +167,8 @@ make_package() {
         cd /root/seth/cbuild_$TARGET && make txcli
         cp -rf /root/seth/cbuild_$TARGET/seth /root/seth/pkgs/$node_hash/seth
         cp -rf /root/seth/pkgs/$node_hash /root/nodes/seth/pkg
+        rm -rf /root/nodes/seth/pkg/temp
+        cp -rf /root/nodes/temp /root/nodes/seth/pkg
         for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
             /root/seth/cbuild_$TARGET/seth -A /root/seth/shards${shard_id} -D /root/nodes/seth/pkg/shards${shard_id}
             /root/seth/cbuild_$TARGET/seth -A  /root/seth/init_accounts${shard_id} -D /root/nodes/seth/pkg/init_accounts${shard_id}
@@ -148,23 +196,8 @@ make_package() {
         cp -rf /root/nodes/seth/pkg /root/seth/pkgs/$node_hash
     fi
 
+    get_bootstrap
     cd /root/nodes/seth/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
-}
-
-get_bootstrap() {
-    node_ips_array=(${node_ips//,/ })
-    for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
-        i=1
-        for ip in "${node_ips_array[@]}"; do
-            tmppubkey=`sed -n "$i""p" /root/nodes/seth/pkg/shards${shard_id} | awk -F'\t' '{print $2}'`
-            node_info=$tmppubkey":"$ip":1"$shard_id"00"$i
-            bootstrap=$node_info","$bootstrap
-            i=$((i+1))
-            if ((i>=10)); then
-                break
-            fi
-        done
-    done
 }
 
 check_cmd_finished() {
@@ -238,7 +271,7 @@ run_command() {
         fi
 
         leader_init_tm=$(date -u -d "+240 seconds" +%s)
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 2221 "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count $bootstrap 2 $end_shard $leader_init_tm"  > /dev/null 2>&1 &
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 2221 "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count 0 2 $end_shard $leader_init_tm"  > /dev/null 2>&1 &
         if ((start_pos==1)); then
             sleep 3
         fi
@@ -266,7 +299,7 @@ start_all_nodes() {
             start_nodes_count=$FIRST_NODE_COUNT
         fi
 
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 2221 "cd /root/pkg && bash start_cmd.sh $ip $start_pos $start_nodes_count $bootstrap 2 $end_shard "  &
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 2221 "cd /root/pkg && bash start_cmd.sh $ip $start_pos $start_nodes_count 0 2 $end_shard "  &
         if ((start_pos==1)); then
             sleep 3
         fi
@@ -316,8 +349,7 @@ init
 make_package
 clear_command
 scp_package
-get_bootstrap
-echo $bootstrap
+# get_bootstrap
 run_command
 init_mining_dir
 start_all_nodes

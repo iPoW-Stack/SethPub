@@ -35,14 +35,37 @@ build_lib() {
 }
 
 
+# 修改后的 evmone 编译部分
 if [ ! -d "$SRC_PATH/third_party/include/evmone" ]; then
     cd $SRC_PATH
-    cd third_party/evmone && git checkout master &&  git submodule update --init && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && make install
+    # 建议切换到稳定的 v0.11.0 版本，master 分支可能存在不稳定的开发代码
+    cd third_party/evmone && git fetch --tags && git checkout v0.11.0 && git submodule update --init --recursive
+    
+    # 修改编译选项：使用 -O2 避免激进优化导致的 dispatch 错误，并确保静态链接
+    rm -rf build_release
+    cmake -S . -B build_release \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DCMAKE_CXX_FLAGS="-O2 -g" \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DEVMC_INSTALL=ON \
+        -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/
+    
+    cd build_release && make -j${nproc} && make install
 fi
 
+# 修改后的 evmc 编译部分
 if [ ! -d "$SRC_PATH/third_party/include/evmc" ]; then
     cd $SRC_PATH
-    cd third_party/evmone/evmc &&  git submodule update --init && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && make install
+    # evmc 通常作为 evmone 的子模块存在，确保版本对齐
+    cd third_party/evmone/evmc && git checkout v11.0.1 && git submodule update --init
+    rm -rf build_release
+    cmake -S . -B build_release \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_CXX_FLAGS="-O2" \
+        -DETHERSCORE=OFF \
+        -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/
+        
+    cd build_release && make -j${nproc} && make install
 fi
 
 if [ ! -d "$SRC_PATH/third_party/include/sodium" ]; then

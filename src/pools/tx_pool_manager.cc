@@ -238,7 +238,8 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
 void TxPoolManager::SyncCrossPool() {
     auto now_tm_ms = common::TimeUtils::TimestampMs();
     for (uint32_t i = network::kConsensusShardBeginNetworkId;
-            i < network::kConsensusShardEndNetworkId; ++i) {
+            i <= common::GlobalInfo::Instance()->now_valid_end_shard(); ++i) {
+        assert(i < network::kServiceShardEndNetworkId);
         auto sync_count = cross_pools_[i].SyncMissingBlocks(now_tm_ms);
         uint64_t ex_height = common::kInvalidUint64;
         if (cross_pools_[i].latest_height() == common::kInvalidUint64) {

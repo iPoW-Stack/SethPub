@@ -80,16 +80,6 @@ Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
             continue;
         }
 
-        for (auto event_iter = zjc_host.recorded_logs_.begin();
-                event_iter != zjc_host.recorded_logs_.end(); ++event_iter) {
-            auto log = block_tx.add_events();
-            log->set_data((*event_iter).data);
-            for (auto topic_iter = (*event_iter).topics.begin();
-                    topic_iter != (*event_iter).topics.end(); ++topic_iter) {
-                log->add_topics(std::string((char*)(*topic_iter).bytes, sizeof((*topic_iter).bytes)));
-            }
-        }
-
         zjc_host.recorded_logs_.clear();
         // SETH_DEBUG("handle tx success: %u_%u_%lu, tx step: %d, nonce: %lu",
         //     view_block->qc().network_id(), 

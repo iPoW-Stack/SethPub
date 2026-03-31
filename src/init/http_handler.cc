@@ -8,6 +8,7 @@
 
 #include "common/encode.h"
 #include "common/string_utils.h"
+#include "consensus/hotstuff/view_block_chain.h"
 #include "contract/contract_ars.h"
 #include "contract/contract_reencryption.h"
 #include "dht/dht_key.h"
@@ -310,7 +311,7 @@ static void HttpTransaction(const httplib::Request& req, httplib::Response& http
         return;
     }
 
-    auto thread_index = common::GlobalInfo::Instance()->get_thread_index();
+    auto thread_index = -1;
     SETH_DEBUG("http handler success get http server thread index: %d, address: %s", 
         thread_index, 
         common::Encode::HexEncode(
@@ -325,7 +326,7 @@ static void HttpTransaction(const httplib::Request& req, httplib::Response& http
         return;
     }
     
-    transport::TcpTransport::Instance()->SetMessageHash(msg_ptr->header);
+    msg_ptr->header.set_hash64(common::Random::RandomUint64());
     SETH_WARN("http handler success get http server thread index: %d, address: %s, hash64: %lu", 
         thread_index, 
         common::Encode::HexEncode(
@@ -335,7 +336,11 @@ static void HttpTransaction(const httplib::Request& req, httplib::Response& http
     std::string res = std::string("ok");
     http_res.set_content(res, "text/plain");
     msg_ptr->handle_status = transport::kMessageHandle;
-    http_handler->tx_msg_map().Put(msg_ptr->msg_hash, msg_ptr);
+    {
+        std::lock_guard<std::mutex> lock(http_handler->tx_msg_map_mutex());
+        http_handler->tx_msg_map().Put(msg_ptr->msg_hash, msg_ptr);
+    }
+
     SETH_WARN("http transaction success %s, %s, nonce: %lu, txhash: %s", 
         common::Encode::HexEncode(
         http_handler->security_ptr()->GetAddress(common::Encode::HexDecode(frompk))).c_str(), 
@@ -354,17 +359,17 @@ static void QueryContract(const httplib::Request& req, httplib::Response& http_r
 
     uint64_t height = 0;
     auto contract_prepayment_id = contract_addr + from;
-    protos::AddressInfoPtr addr_info =  http_handler->acc_mgr()->GetAccountInfo(contract_prepayment_id);
-    if (!addr_info) {
-        addr_info = prefix_db->GetAddressInfo(contract_prepayment_id);
-    }
+    // protos::AddressInfoPtr addr_info =  http_handler->acc_mgr()->GetAccountInfo(contract_prepayment_id);
+    // if (!addr_info) {
+    //     addr_info = prefix_db->GetAddressInfo(contract_prepayment_id);
+    // }
 
-    if (!addr_info) {
-        std::string res = "get from prepayment failed: " + std::string(tmp_contract_addr) + ", " + std::string(tmp_from);
-        SETH_INFO("query contract param error: %s.", res.c_str());
-        http_res.set_content(res, "text/plain");
-        return;
-    }
+    // if (!addr_info) {
+    //     std::string res = "get from prepayment failed: " + std::string(tmp_contract_addr) + ", " + std::string(tmp_from);
+    //     SETH_INFO("query contract param error: %s.", res.c_str());
+    //     http_res.set_content(res, "text/plain");
+    //     return;
+    // }
 
     uint64_t prepayment = 9999999999lu;//addr_info->balance();
     auto contract_addr_info = prefix_db->GetAddressInfo(contract_addr);
@@ -387,6 +392,7 @@ static void QueryContract(const httplib::Request& req, httplib::Response& http_r
     zjc_host.contract_mgr_ = contract_mgr;
     zjc_host.my_address_ = contract_addr;
     zjc_host.tx_context_.block_gas_limit = prepayment;
+    zjc_host.view_block_chain_ = std::make_shared<hotstuff::ViewBlockChain>();
     // user caller prepayment 's gas
     uint64_t from_balance = prepayment;
     uint64_t to_balance = contract_addr_info->balance();
@@ -446,19 +452,19 @@ static void AbiQueryContract(const httplib::Request& req, httplib::Response& htt
     uint64_t height = 0;
 
     auto contract_prepayment_id = contract_addr + from;
-    protos::AddressInfoPtr addr_info =  http_handler->acc_mgr()->GetAccountInfo(contract_prepayment_id);
-    if (!addr_info) {
-        addr_info = prefix_db->GetAddressInfo(contract_prepayment_id);
-    }
+    // protos::AddressInfoPtr addr_info =  http_handler->acc_mgr()->GetAccountInfo(contract_prepayment_id);
+    // if (!addr_info) {
+    //     addr_info = prefix_db->GetAddressInfo(contract_prepayment_id);
+    // }
 
-    if (!addr_info) {
-        std::string res = "get from prepayment failed: " + std::string(tmp_contract_addr) + ", " + std::string(tmp_from);
-        http_res.set_content(res, "text/plain");
-        SETH_INFO("query contract param error: %s.", res.c_str());
-        return;
-    }
+    // if (!addr_info) {
+    //     std::string res = "get from prepayment failed: " + std::string(tmp_contract_addr) + ", " + std::string(tmp_from);
+    //     http_res.set_content(res, "text/plain");
+    //     SETH_INFO("query contract param error: %s.", res.c_str());
+    //     return;
+    // }
 
-    uint64_t prepayment = addr_info->balance();
+    uint64_t prepayment = 9999999999lu;  // addr_info->balance();
     auto contract_addr_info = prefix_db->GetAddressInfo(contract_addr);
     if (contract_addr_info == nullptr) {
         std::string res = "get contract addr failed: " + std::string(tmp_contract_addr);
@@ -530,6 +536,7 @@ static void AbiQueryContract(const httplib::Request& req, httplib::Response& htt
 
 static void QueryAccount(const httplib::Request& req, httplib::Response& http_res) {
     auto tmp_addr = req.get_param_value("address");
+    SETH_DEBUG("coming query account: %s", tmp_addr.c_str());
     if (tmp_addr.empty()) {
         std::string res = common::StringUtil::Format("param address is null");
         http_res.set_content(res, "text/plain");
@@ -1156,18 +1163,37 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
     auto tx_hash = common::Encode::HexDecode(req.get_param_value("tx_hash"));
     SETH_DEBUG("transaction receipt query, tx hash: %s", req.get_param_value("tx_hash").c_str());
     std::string res;
-    if (prefix_db->GetTemporaryKv(std::string("tx") + tx_hash, &res)) {
-        int32_t status = 0;
-        if (!common::StringUtil::ToInt32(res, &status)) {
-            status = transport::kUnkonwn;
+    auto addr = evmc::address{};
+    auto id = std::string("tx");
+    memcpy(addr.bytes, id.c_str(), id.size());
+    if (prefix_db->GetTemporaryKv(std::string((char*)addr.bytes, sizeof(addr.bytes)) + tx_hash, &res)) {
+        block::protobuf::KeyValueInfo kv_info;
+        if (kv_info.ParseFromString(res)) {
+            block::protobuf::TxHashStatus tx_status;
+            if (!tx_status.ParseFromString(kv_info.value())) {
+                res_json["status"] = transport::kUnkonwn;
+                res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
+            } else {
+                res_json = nlohmann::json::parse(HttpProtobufToJson(tx_status));
+                res_json["msg"] = transport::MessageStatusToString(res_json["status"]);;
+            }
+        } else {
+            res_json["status"] = transport::kUnkonwn;
+            res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
         }
 
-        res_json["status"] = status;
-        res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
-        http_handler->tx_msg_map().Remove(tx_hash);
+        {
+            std::lock_guard<std::mutex> lock(http_handler->tx_msg_map_mutex());
+            http_handler->tx_msg_map().Remove(tx_hash);
+        }
     } else {
         transport::MessagePtr msg_ptr = nullptr;
-        if (http_handler->tx_msg_map().Get(tx_hash, msg_ptr)) {
+        {
+            std::lock_guard<std::mutex> lock(http_handler->tx_msg_map_mutex());
+            http_handler->tx_msg_map().Get(tx_hash, msg_ptr);
+        }
+
+        if (msg_ptr) {
             res_json["status"] = (int32_t)msg_ptr->handle_status.load();
             res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
         } else {
@@ -1176,6 +1202,8 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
         }
     }
     
+    SETH_DEBUG("transaction receipt query, tx hash: %s, res: %s", 
+        req.get_param_value("tx_hash").c_str(), res_json.dump().c_str());
     http_res.set_content(res_json.dump(), "application/json");
 }
 
@@ -1231,6 +1259,9 @@ void HttpHandler::Init(
     svr.Post("/transaction_receipt", TransactionReceipt);
     http_ip_ = ip;
     http_port_ = port;
+    svr.new_task_queue = [] { 
+        return new httplib::ThreadPool(40); 
+    };
     if (!svr.is_valid()) {
         SETH_ERROR("http server invalid.");
         return;

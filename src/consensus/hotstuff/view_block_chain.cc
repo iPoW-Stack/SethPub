@@ -876,13 +876,13 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::CheckCommit(const QC& qc) {
     }
 
     auto v_block2 = v_block2_info->view_block;
-    if (v_block2->qc().view() + 1 != v_block1->qc().view()) {
+    if (v_block2->block_info().height() + 1 != v_block1->block_info().height()) {
         SETH_DEBUG("pool: %d, Failed get v block 2 ref: %s, "
-            "v_block2->qc().view() + 1 != v_block1->qc().view(): %lu, %lu",
+            "v_block2->block_info().height() + 1 != v_block1->block_info().height(): %lu, %lu",
             pool_index_,
             common::Encode::HexEncode(v_block1->parent_hash()).c_str(),
-            v_block2->qc().view(), 
-            v_block1->qc().view());
+            v_block2->block_info().height(),
+            v_block1->block_info().height());
         return nullptr;
     }
 

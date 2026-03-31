@@ -145,6 +145,18 @@ public:
         return tx_pool_[pool_index].latest_height();
     }
 
+    uint64_t root_latest_height(uint32_t pool_index) const {
+        return root_cross_pools_[pool_index].latest_height();
+    }
+
+    uint64_t cross_latest_height(uint32_t network_id) const {
+        if (network_id > common::GlobalInfo::Instance()->now_valid_end_shard()) {
+            return common::kInvalidUint64;
+        }
+
+        return cross_pools_[network_id].latest_height();
+    }
+    
     std::string latest_hash(uint32_t pool_index) const {
         return tx_pool_[pool_index].latest_hash();
     }

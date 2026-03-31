@@ -97,7 +97,10 @@ int ElectTxItem::HandleTx(
     // *view_block.mutable_block_info()->mutable_elect_statistic() = elect_statistic_;
     *view_block.mutable_block_info()->mutable_elect_block() = *elect_block_;
     view_block.mutable_block_info()->add_unique_hashs(block_tx.unique_hash());
-    zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), "0");
+    block::protobuf::TxHashStatus tx_hash_status;
+    tx_hash_status.set_status(block_tx.status());
+    auto status_val = tx_hash_status.SerializeAsString();
+    zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
     zjc_host.MergeToPrev();
     return consensus::kConsensusSuccess;
 }
