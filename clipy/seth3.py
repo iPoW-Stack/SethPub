@@ -12,7 +12,6 @@ contract ProbePool {
     uint256 public reserveSETH;
     uint256 public reserveUSDC;
 
-    // 记录兑换明细：投入、产出、以及更新后的储备
     event PoolSwap(address indexed sender, uint256 amountIn, uint256 amountOut, uint256 resSETH, uint256 resUSDC);
 
     constructor(uint256 s, uint256 u) payable {
@@ -41,7 +40,6 @@ contract ProbeTreasury {
     address public bridge;
     uint256 public totalSwaps;
 
-    // 记录金库转发情况
     event TreasuryForwarded(address indexed poolAddr, uint256 value, uint256 minOut);
 
     constructor(address p) payable {
@@ -76,7 +74,6 @@ contract ProbeBridge {
     address public treasury;
     uint256 public totalRequests;
 
-    // 记录用户发起的请求
     event BridgeRequest(address indexed user, uint256 value, uint256 minOut, uint256 requestId);
 
     constructor(address t) {
