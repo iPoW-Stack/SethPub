@@ -473,7 +473,10 @@ class SethClient:
         with oqs.Signature('ML-DSA-44') as signer:
             # If your version supports key loading (some do via .keypair or separate init)
             # Alternative that often works:
-            signature = signer.sign(txh, sk_bytes) 
+            pk, sk = signer.keypair()          # returns (public_key, secret_key) as bytes
+    
+            # Later, to sign:
+            signature = signer.sign(txh)       # only
 
         # Final conversion to hex
         sig_hex = signature.hex() if isinstance(signature, (bytes, bytearray)) else str(signature).hex()
