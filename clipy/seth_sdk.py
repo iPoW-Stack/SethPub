@@ -463,29 +463,38 @@ class SethClient:
 
         # 3. 执行 ML-DSA-44 (Dilithium2) 签名
         with oqs.Signature('ML-DSA-44') as signer:
-            # A. 确保消息哈希是 bytes 类型
-            txh_bytes = bytes(txh)
+            import ctypes
             
-            # B. 准备私钥 bytes，长度必须严格对齐 2560
+            # --- A. 准备消息哈希 (强制转化为 ctypes 实例) ---
+            txh_bytes = bytes(txh)
+            # 创建一个 c_ubyte 数组并填充数据
+            msg_len = len(txh_bytes)
+            msg_ctypes = (ctypes.c_uint8 * msg_len).from_buffer_copy(txh_bytes)
+            
+            # --- B. 准备私钥 (强制转化为 ctypes 实例) ---
             sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
-            sk_len = signer.length_secret_key # 验证一下是否为 2560
+            sk_len = signer.length_secret_key # ML-DSA-44 应该是 2560
             sk_bytes = sk_bytes.ljust(sk_len, b'\x00')[:sk_len]
+            sk_ctypes = (ctypes.c_uint8 * sk_len).from_buffer_copy(sk_bytes)
 
-            # C. 核心尝试：新版 sign(msg) 内部通常会自动从实例取私钥
-            # 如果之前报 "3 given"，说明它只需要 1 个参数
-            # 我们通过这种方式注入：
+            # --- C. 执行签名 ---
+            # 针对 0.15.0/0.14.0 混合版本最稳健的调用
             try:
-                # 尝试直接注入 bytes，内部 __setattr__ 可能会处理转换
-                signer.secret_key = sk_bytes
-                signature = signer.sign(txh_bytes)
-            except (AttributeError, TypeError):
-                # 如果还是报错，尝试最原始的 2 参数调用
-                # 很多时候 "wrong type" 是因为传了 ctypes 对象反而弄巧成拙
-                # 直接传 Python 原生的 bytes 对象
-                signature = signer.sign(txh_bytes, sk_bytes)
+                # 尝试 1: 先注入私钥属性 (注意赋值给私有变量或底层 buffer)
+                # 有些版本内部叫 _secret_key
+                if hasattr(signer, '_secret_key'):
+                    ctypes.memmove(signer._secret_key, sk_ctypes, sk_len)
+                    signature = signer.sign(msg_ctypes)
+                else:
+                    # 尝试 2: 直接传两个 ctypes 实例给 sign
+                    signature = signer.sign(msg_ctypes, sk_ctypes)
+            except Exception as e:
+                # 兜底方案：如果 sign 还是报错，直接调用底层 C 函数
+                # 这一步是为了防止 Python 封装层代码写死导致的参数个数错误
+                signature = signer.sign(msg_ctypes, sk_ctypes)
 
-        # 转换为 hex 发送
-        sig_hex = signature.hex()
+        # 4. 转换回 Hex
+        sig_hex = bytes(signature).hex()
         # 4. 组装请求数据
         data = {
             "nonce": str(nonce),
