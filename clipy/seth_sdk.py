@@ -471,12 +471,23 @@ class SethClient:
         txh = keccak.new(digest_bits=256).update(msg).digest()
 
         with oqs.Signature('ML-DSA-44') as signer:
-            # If your version supports key loading (some do via .keypair or separate init)
-            # Alternative that often works:
-            pk, sk = signer.keypair()          # returns (public_key, secret_key) as bytes
-    
-            # Later, to sign:
-            signature = signer.sign(txh)       # only
+            try:
+                # Try modern high-level API (only message)
+                signature = signer.sign(txh)
+                print("Used high-level sign()")
+            except TypeError as e:
+                if "takes 2 positional arguments" in str(e):
+                    # Low-level C-style fallback (most common cause of your error)
+                    print("High-level failed, using low-level sign() with sk")
+                    sig_buf = bytearray(3000)
+                    rc = signer.sign(sig_buf, txh, sk_bytes)   # C-style
+                    
+                    if rc not in (0, getattr(oqs, 'OQS_SUCCESS', 0)):
+                        raise RuntimeError(f"Low-level signing failed: {rc}")
+                    
+                    signature = bytes(sig_buf).rstrip(b'\x00')
+                else:
+                    raise
 
         # Final conversion to hex
         sig_hex = signature.hex() if isinstance(signature, (bytes, bytearray)) else str(signature).hex()
