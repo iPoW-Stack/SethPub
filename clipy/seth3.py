@@ -287,5 +287,5 @@ def oqs_sign_test():
         print(f"OQS test failed: {e}")
 
 if __name__ == "__main__":
-    ecdsa_sign_test()
+    # ecdsa_sign_test()
     oqs_sign_test()
