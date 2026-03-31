@@ -53,27 +53,27 @@ class MessageHandleStatus(IntEnum):
     # --- EVMC Standard Runtime Status ---
     EVMC_SUCCESS = 0                # Execution finished with success
     EVMC_FAILURE = 1                # Generic execution failure
-    EVMC_REVERT = 2                 # Execution terminated by REVERT opcode (Gas may remain, output provided)
+    EVMC_REVERT = 2                 # Execution terminated by REVERT opcode
     EVMC_OUT_OF_GAS = 3             # Execution ran out of gas
-    EVMC_INVALID_INSTRUCTION = 4    # Hit an INVALID instruction (0xfe as per EIP-141)
+    EVMC_INVALID_INSTRUCTION = 4    # Hit an INVALID instruction
     EVMC_UNDEFINED_INSTRUCTION = 5  # Encountered an undefined instruction
-    EVMC_STACK_OVERFLOW = 6         # EVM stack limit exceeded (>1024 items)
-    EVMC_STACK_UNDERFLOW = 7        # Opcode required more items than available on stack
-    EVMC_BAD_JUMP_DESTINATION = 8   # Violated jump destination restrictions (JUMPDEST)
+    EVMC_STACK_OVERFLOW = 6         # EVM stack limit exceeded
+    EVMC_STACK_UNDERFLOW = 7        # Opcode required more items than available
+    EVMC_BAD_JUMP_DESTINATION = 8   # Violated jump destination restrictions
     EVMC_INVALID_MEMORY_ACCESS = 9  # Tried to read/write outside memory bounds
-    EVMC_CALL_DEPTH_EXCEEDED = 10   # Call depth exceeded the limit (typically 1024)
+    EVMC_CALL_DEPTH_EXCEEDED = 10   # Call depth exceeded the limit
     EVMC_STATIC_MODE_VIOLATION = 11 # Restricted operation attempted in static mode
     EVMC_PRECOMPILE_FAILURE = 12    # Failure in precompiled or system contract
-    EVMC_CONTRACT_VALIDATION_FAILURE = 13 # Contract validation failed (EVM 1.5/ewasm rules)
+    EVMC_CONTRACT_VALIDATION_FAILURE = 13 # Contract validation failed
     EVMC_ARGUMENT_OUT_OF_RANGE = 14 # Argument value outside of accepted range
     EVMC_WASM_UNREACHABLE_INSTRUCTION = 15 # WASM unreachable instruction hit
-    EVMC_WASM_TRAP = 16             # WASM trap hit (e.g., division by zero)
+    EVMC_WASM_TRAP = 16             # WASM trap hit
     EVMC_INSUFFICIENT_BALANCE = 17  # Caller lacks funds for value transfer
 
-    # --- Internal Errors & Rejections (Negative Values) ---
+    # --- Internal Errors & Rejections ---
     EVMC_INTERNAL_ERROR = -1        # Generic internal EVM implementation error
-    EVMC_REJECTED = -2              # Message/code rejected by the EVM implementation
-    EVMC_OUT_OF_MEMORY = -3         # Failed to allocate memory needed for execution
+    EVMC_REJECTED = -2              # Message/code rejected by the EVM
+    EVMC_OUT_OF_MEMORY = -3         # Failed to allocate memory
 
 # --- 2. Utilities ---
 
@@ -83,20 +83,14 @@ def calc_create2_address(sender_hex: str, salt_hex: str, bytecode_hex: str) -> s
     salt_bytes = bytes.fromhex(salt_hex.replace('0x', '').lower().zfill(64))
     bytecode_bytes = bytes.fromhex(bytecode_hex.replace('0x', '').lower())
     
-    # keccak256(bytecode)
     code_hash = keccak.new(digest_bits=256).update(bytecode_bytes).digest()
-    
-    # keccak256(0xff + sender + salt + code_hash)
     input_data = bytes.fromhex("ff") + sender_bytes + salt_bytes + code_hash
     final_hash = keccak.new(digest_bits=256).update(input_data).digest()
     return final_hash[-20:].hex().lower()
 
 def compile_and_link(source: str, name: str, libs: Dict[str, str] = None):
     """Compiles Solidity and replaces Library linking placeholders."""
-    # Ensure solc is installed
-    # Compatibility fix: Use install_solc which handles the check internally in many versions
     try:
-        # This will install if missing, or do nothing if already present
         solcx.install_solc("0.8.30")
         solcx.set_solc_version("0.8.30")
     except Exception as e:
@@ -109,14 +103,11 @@ def compile_and_link(source: str, name: str, libs: Dict[str, str] = None):
         evm_version='shanghai'
     )
     
-    # Get the specific contract data
     data = compiled[f"<stdin>:{name}"]
     bytecode = data['bin']
     
-    # Handle Library Linking
     if libs:
         for lib, addr in libs.items():
-            # Placeholder format: __$hash$__
             placeholder = keccak.new(digest_bits=256).update(f"<stdin>:{lib}".encode()).hexdigest()[:34]
             bytecode = bytecode.replace(f"__${placeholder}$__", addr.replace('0x','').lower())
             
@@ -145,11 +136,12 @@ class SethMethod:
             self.contract.sender_address, self.contract.address, self.encoded_input
         )
         if not raw_hex or "error" in raw_hex.lower(): return None
-        decoded = eth_abi.decode(self.output_types, bytes.fromhex(raw_hex.replace('0x', '')))
+        raw_hex = raw_hex.replace('0x', '')
+        decoded = eth_abi.decode(self.output_types, bytes.fromhex(raw_hex))
         return decoded[0] if len(decoded) == 1 else decoded
 
     def transact(self, private_key: str, prepayment: int = 10**6) -> dict:
-        """Sends transaction, waits for receipt, and decodes Base64 data."""
+        """Sends transaction, waits for receipt, and decodes data."""
         tx_hash = self.contract.client.send_transaction_auto(
             private_key_hex=private_key,
             to_hex=self.contract.address,
@@ -172,7 +164,11 @@ class SethContract:
         if abi:
             for item in abi:
                 if item.get('type') == 'function':
-                    setattr(self.functions, item['name'], lambda i=item: lambda *a: SethMethod(self, i)(*a))
+                    # Use helper to avoid lambda closure issues in loop
+                    setattr(self.functions, item['name'], self._create_method(item))
+
+    def _create_method(self, item):
+        return lambda *args: SethMethod(self, item)(*args)
 
 class SethWeb3Mock:
     def __init__(self, host: str, port: int):
@@ -202,7 +198,6 @@ class SethClient:
         pubkey_hex = sk.verifying_key.to_string("uncompressed").hex()
         my_addr = self.get_address(private_key_hex)
         
-        # Step 8 uses a composite nonce address (to+from)
         nonce_addr = to_hex + my_addr if step == StepType.kContractExcute else my_addr
         nonce = self.get_nonce(nonce_addr) + 1
 
@@ -210,9 +205,9 @@ class SethClient:
         msg.extend(struct.pack('<Q', nonce))
         msg.extend(bytes.fromhex(pubkey_hex))
         msg.extend(bytes.fromhex(to_hex.replace('0x','')))
-        msg.extend(struct.pack('<Q', 0)) # amount
-        msg.extend(struct.pack('<Q', 5000000)) # gas_limit
-        msg.extend(struct.pack('<Q', 1)) # gas_price
+        msg.extend(struct.pack('<Q', 0)) 
+        msg.extend(struct.pack('<Q', 5000000)) 
+        msg.extend(struct.pack('<Q', 1)) 
         msg.extend(struct.pack('<Q', int(step)))
         if contract_code: msg.extend(bytes.fromhex(contract_code))
         if input_hex: msg.extend(bytes.fromhex(input_hex))
@@ -234,7 +229,6 @@ class SethClient:
         return tx_hash.hex()
 
     def wait_for_receipt(self, tx_hash: str, abi: list = None, function_name: str = None) -> dict:
-        """Polls for receipt and automatically decodes Base64 output and events."""
         while True:
             resp = requests.post(self.receipt_url, data={"tx_hash": tx_hash}).json()
             if resp.get("status") not in [10001, 10003]:
@@ -242,8 +236,6 @@ class SethClient:
             time.sleep(1)
 
     def decode_receipt(self, receipt: dict, abi: list, function_name: str = None) -> dict:
-        """Converts Base64 receipt data into native Python types."""
-        # Parse Return Value
         raw_out_b64 = receipt.get("output")
         if raw_out_b64 and function_name:
             item = next((i for i in abi if i.get('name') == function_name), None)
@@ -252,7 +244,6 @@ class SethClient:
                 decoded = eth_abi.decode([o['type'] for o in item['outputs']], raw_bytes)
                 receipt['decoded_output'] = decoded[0] if len(decoded) == 1 else decoded
 
-        # Parse Events
         raw_events = receipt.get("events", [])
         if raw_events and abi:
             decoded_events = []
@@ -304,18 +295,21 @@ if __name__ == "__main__":
     }
     """
 
-    # Deploy Workflow
+    # 1. Deploy Library
     l_bin, l_abi = compile_and_link(source, "MathLib")
-    l_addr = calc_create2_address(MY_ADDR, "20", l_bin)
-    w3.client.send_transaction_auto(PRIV_KEY, l_addr, StepType.kCreateLibrary, contract_code=l_bin, prepayment=10**7)
-    w3.client.wait_for_receipt(hashlib.sha256(b"dummy").hexdigest()) # Polling simplified
+    l_addr = calc_create2_address(MY_ADDR, "30", l_bin)
+    tx_l = w3.client.send_transaction_auto(PRIV_KEY, l_addr, StepType.kCreateLibrary, contract_code=l_bin, prepayment=10**7)
+    w3.client.wait_for_receipt(tx_l) # Use actual tx hash
+    print(f"Library deployed at: {l_addr}")
 
+    # 2. Deploy Calculator
     c_bin, c_abi = compile_and_link(source, "Calculator", libs={"MathLib": l_addr})
-    c_addr = calc_create2_address(MY_ADDR, "21", c_bin)
-    w3.client.send_transaction_auto(PRIV_KEY, c_addr, StepType.kCreateContract, contract_code=c_bin, prepayment=10**7)
-    w3.client.wait_for_receipt(hashlib.sha256(b"dummy2").hexdigest())
+    c_addr = calc_create2_address(MY_ADDR, "31", c_bin)
+    tx_c = w3.client.send_transaction_auto(PRIV_KEY, c_addr, StepType.kCreateContract, contract_code=c_bin, prepayment=10**7)
+    w3.client.wait_for_receipt(tx_c) # Use actual tx hash
+    print(f"Contract deployed at: {c_addr}")
 
-    # Web3 Interaction
+    # 3. Web3 Interaction
     calc = w3.eth.contract(address=c_addr, abi=c_abi, sender_address=MY_ADDR)
     receipt = calc.functions.doAdd(33, 66).transact(PRIV_KEY)
     
