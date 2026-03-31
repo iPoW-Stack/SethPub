@@ -102,12 +102,23 @@ class SethMethod:
         return self
 
     def call(self) -> Any:
-        """Read-only call logic."""
-        raw_hex = self.contract.client.query_contract(self.contract.sender_address, self.contract.address, self.encoded_input)
-        if not raw_hex or "error" in raw_hex.lower(): return None
-        raw_hex = raw_hex.replace('0x', '')
-        decoded = eth_abi.decode(self.output_types, bytes.fromhex(raw_hex))
-        return decoded[0] if len(decoded) == 1 else decoded
+        """Read-only call: Validates hex before decoding."""
+        raw_res = self.contract.client.query_contract(
+            self.contract.sender_address, self.contract.address, self.encoded_input
+        )
+        
+        # Defensive check: if the node returns an error string like "get address failed..."
+        if not raw_res or "error" in raw_res.lower() or "failed" in raw_res.lower():
+            print(f"DEBUG: Query failed for {self.name}. Node returned: '{raw_res}'")
+            return 0 # Or a sensible default
+        
+        try:
+            clean_hex = raw_res.replace('0x', '').strip()
+            decoded = eth_abi.decode(self.output_types, bytes.fromhex(clean_hex))
+            return decoded[0] if len(decoded) == 1 else decoded
+        except Exception as e:
+            print(f"DEBUG: Decoding failed for {self.name}. Raw: {raw_res} | Error: {e}")
+            return 0
 
     def transact(self, private_key: str, value: int = 0, prepayment: int = 10**6) -> dict:
         """Transaction logic with automatic parsing."""
@@ -207,17 +218,46 @@ class SethClient:
         requests.post(self.tx_url, data=data)
         return txh.hex()
 
-    def wait_for_receipt(self, tx_hash, abi=None, function_name=None):
+    def wait_for_receipt(self, tx_hash: str, abi: list = None, function_name: str = None) -> dict:
+        """循环轮询回执，并在获取后自动调用 decode_receipt"""
         while True:
             resp = requests.post(self.receipt_url, data={"tx_hash": tx_hash}).json()
+            
+            # 状态码 10001 (Pending) 或 10003 (Accepted) 表示还在处理中
             if resp.get("status") not in [10001, 10003]:
-                if abi and resp.get("output"):
-                    item = next((i for i in abi if i.get('name') == function_name), None)
-                    if item:
-                        raw = base64.b64decode(resp['output'])
-                        resp['decoded_output'] = eth_abi.decode([o['type'] for o in item['outputs']], raw)[0]
+                # 找到回执了！如果传入了 ABI，就进行解码
+                if abi and function_name:
+                    return self.decode_receipt(resp, abi, function_name)
                 return resp
-            time.sleep(1)
+                
+            time.sleep(1) # 每秒轮询一次
+
+    def decode_receipt(self, receipt: dict, abi: list, function_name: str = None) -> dict:
+        raw_out_b64 = receipt.get("output")
+        
+        if raw_out_b64 and function_name:
+            # 1. 从 ABI 中找到对应函数的输出类型
+            item = next((i for i in abi if i.get('name') == function_name), None)
+            
+            if item and 'outputs' in item:
+                try:
+                    # 2. 将 Base64 转换为原始字节
+                    raw_bytes = base64.b64decode(raw_out_b64)
+                    
+                    # 3. 获取输出类型列表，例如 ['uint256', 'bool']
+                    output_types = [o['type'] for o in item['outputs']]
+                    
+                    # 4. 使用 eth_abi 解码
+                    decoded = eth_abi.decode(output_types, raw_bytes)
+                    
+                    # 5. 将结果存入回执字典方便后续读取
+                    receipt['decoded_output'] = decoded[0] if len(decoded) == 1 else decoded
+                    
+                except Exception as e:
+                    print(f"Decoding error: {e}")
+                    receipt['decoded_output'] = None
+                    
+        return receipt
 
     def query_contract(self, f, a, i): return requests.post(self.query_contract_url, data={"from": f, "address": a, "input": i}).text
     def get_balance(self, a):
