@@ -461,18 +461,27 @@ class SethClient:
 
         txh = keccak.new(digest_bits=256).update(msg).digest()
 
-        # 3. 修复后的签名逻辑
-        # 使用 ML-DSA-44 (NIST 标准名，对应 Dilithium2)
+        # 3. 执行 ML-DSA-44 (Dilithium2) 签名
         with oqs.Signature('ML-DSA-44') as signer:
-            # 关键：将 hex 私钥转为 bytes
+            # 转换私钥为 bytes
             sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
             
-            # 核心修复点：使用 ctypes 将 bytes 数据填充到 signer.secret_key 缓冲区
-            import ctypes
-            ctypes.memmove(signer.secret_key, sk_bytes, len(sk_bytes))
-            
-            # 新版 API：sign 仅接受一个参数 (message_hash)
-            signature = signer.sign(txh)
+            # 核心修复点：在新版中，如果无法直接赋值，则使用原始的 sign 接口
+            # 但必须确保传入的是 bytes 对象，且长度严格匹配 (2528 字节)
+            try:
+                # 尝试新版标准调用：sign(message, secret_key)
+                # 注意：某些 0.15.0 环境下 sign 内部会处理 ctypes 转换
+                signature = signer.sign(txh, sk_bytes)
+            except TypeError:
+                # 如果报参数数量错误，说明该版本要求特殊的属性注入
+                # 这种情况下，尝试通过底层指针直接操作
+                import ctypes
+                # 获取私钥长度
+                sk_len = signer.length_secret_key
+                # 创建一个 ctypes 缓冲区并拷贝数据
+                sk_buf = (ctypes.c_uint8 * sk_len).from_buffer_copy(sk_bytes)
+                # 强制调用底层签名函数（最后的备选方案）
+                signature = signer.sign(txh, sk_buf)
 
         # 4. 组装并发送
         data = {
