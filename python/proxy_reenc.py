@@ -292,7 +292,7 @@ def run_comprehensive_proxy_demo():
     
     # 构造函数参数
     init_data = b"system_init_pbc_params"
-    contract = w3.eth.contract(abi=abi, bytecode=bytecode, sender_address=MY_ADDR).deploy({
+    contract = w3.seth.contract(abi=abi, bytecode=bytecode, sender_address=MY_ADDR).deploy({
         'from': MY_ADDR,
         'salt': secrets.token_hex(32),
         'args': [init_data]
