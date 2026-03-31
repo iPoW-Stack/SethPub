@@ -186,11 +186,8 @@ def test_oqs_contract_deploy_and_call(w3, OQS_MY, OQS_KEY, OQS_PK):
     print(f"OQS Contract Deployed at: {oqs_vault.address}")
 
     # 2. Call contract (OQS mode)
-    # Need to mount the public key on the contract object for transact to auto-fetch
-    oqs_vault.oqs_pubkey = OQS_PK 
-    
     print("Sending OQS Contract Call...")
-    receipt = oqs_vault.functions.store(12345).transact(OQS_KEY)
+    receipt = oqs_vault.functions.store(12345).transact(OQS_KEY, oqs_pubkey=OQS_PK)
     
     if receipt.get('status') == 0:
         print(f"✅ OQS Call Success! New Data: {oqs_vault.functions.data().call()}")
@@ -245,7 +242,7 @@ def test_oqs_library_with_contract(w3, OQS_MY, OQS_KEY, OQS_PK):
     # 3. Call test
     # Set contract object's public key for transact to auto-sign
     oqs_calc.oqs_pubkey = OQS_PK
-    result = oqs_calc.functions.compute(7, 8).transact(OQS_KEY)
+    result = oqs_calc.functions.compute(7, 8).transact(OQS_KEY, oqs_pubkey=OQS_PK)
     
     print(f"OQS Library Call Result (7 * 8): {result.get('decoded_output')}")
     if result.get('decoded_output') == 56:
