@@ -222,7 +222,7 @@ class SethClient:
         """循环轮询回执，并在获取后自动调用 decode_receipt"""
         while True:
             resp = requests.post(self.receipt_url, data={"tx_hash": tx_hash}).json()
-            
+            print(resp)
             # 状态码 10001 (Pending) 或 10003 (Accepted) 表示还在处理中
             if resp.get("status") not in [10001, 10003]:
                 # 找到回执了！如果传入了 ABI，就进行解码
@@ -321,6 +321,6 @@ if __name__ == "__main__":
     w3 = SethWeb3Mock(IP, PORT)
     MY = w3.client.get_address(KEY)
 
+    test_contract_call_contract(w3, MY, KEY)
     test_transfer(w3, MY, KEY)
     test_library_with_contrcat(w3, MY, KEY)
-    test_contract_call_contract(w3, MY, KEY)
