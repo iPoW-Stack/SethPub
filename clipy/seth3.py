@@ -232,7 +232,7 @@ class SethClient:
                     return self.decode_receipt(resp, abi, function_name)
                 return resp
                 
-            time.sleep(1) # 每秒轮询一次
+            time.sleep(5) # 每秒轮询一次
 
     def decode_receipt(self, receipt: dict, abi: list, function_name: str = None) -> dict:
         """
