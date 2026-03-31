@@ -44,13 +44,19 @@ class MessageHandleStatus(IntEnum):
 # --- 2. Utilities ---
 
 def calc_create2_address(sender: str, salt: str, bytecode: str) -> str:
-    """Computes CREATE2 address safely handling hex prefixes."""
     sender = sender.lower().replace('0x', '')
-    salt = str(salt).lower().replace('0x', '').zfill(64)
     bytecode = bytecode.lower().replace('0x', '')
     
+    # Ensure salt is hex; if it's a plain string like 'l1', encode it to hex
+    salt_clean = str(salt).lower().replace('0x', '')
+    try:
+        salt_bytes = bytes.fromhex(salt_clean).zfill(32)
+    except ValueError:
+        # Fallback: if not hex, hash the string to get a valid 32-byte hex salt
+        salt_bytes = keccak.new(digest_bits=256).update(str(salt).encode()).digest()
+    
     code_hash = keccak.new(digest_bits=256).update(bytes.fromhex(bytecode)).digest()
-    input_data = bytes.fromhex("ff") + bytes.fromhex(sender) + bytes.fromhex(salt) + code_hash
+    input_data = bytes.fromhex("ff") + bytes.fromhex(sender) + salt_bytes + code_hash
     return keccak.new(digest_bits=256).update(input_data).digest()[-20:].hex().lower()
 
 def compile_and_link(source: str, name: str, libs: Dict[str, str] = None):
@@ -242,21 +248,21 @@ def test_library_with_contrcat(w3, MY, KEY):
     print("\n--- TEST CASE 1: Library ---")
     src = "pragma solidity ^0.8.0; library MathLib { function add(uint a, uint b) public pure returns(uint){return a+b;} } contract Calculator { function use(uint a, uint b) public pure returns(uint){return MathLib.add(a,b);} }"
     l_bin, l_abi = compile_and_link(src, "MathLib")
-    lib = w3.eth.contract(abi=l_abi, bytecode=l_bin).deploy({'from': MY, 'salt': 'l1', 'step': StepType.kCreateLibrary}, KEY)
+    lib = w3.eth.contract(abi=l_abi, bytecode=l_bin).deploy({'from': MY, 'salt': '01', 'step': StepType.kCreateLibrary}, KEY)
     c_bin, c_abi = compile_and_link(src, "Calculator", libs={"MathLib": lib.address})
-    calc = w3.eth.contract(abi=c_abi, bytecode=c_bin).deploy({'from': MY, 'salt': 'c1'}, KEY)
+    calc = w3.eth.contract(abi=c_abi, bytecode=c_bin).deploy({'from': MY, 'salt': '02'}, KEY)
     print(f"Result: {calc.functions.use(10, 20).transact(KEY)['decoded_output']}")
 
 def test_contract_call_contract(w3, MY, KEY):
     print("\n--- TEST CASE 3: Chain Call ---")
     p_bin, p_abi = compile_and_link(PROBE_POOL_SOL, "ProbePool")
-    pool = w3.eth.contract(abi=p_abi, bytecode=p_bin).deploy({'from': MY, 'salt': 'p1', 'args': [10000, 10000]}, KEY)
+    pool = w3.eth.contract(abi=p_abi, bytecode=p_bin).deploy({'from': MY, 'salt': '03', 'args': [10000, 10000]}, KEY)
     
     t_bin, t_abi = compile_and_link(PROBE_TREASURY_SOL, "ProbeTreasury")
-    treasury = w3.eth.contract(abi=t_abi, bytecode=t_bin).deploy({'from': MY, 'salt': 't1', 'args': [to_checksum_address(pool.address)]}, KEY)
+    treasury = w3.eth.contract(abi=t_abi, bytecode=t_bin).deploy({'from': MY, 'salt': '04', 'args': [to_checksum_address(pool.address)]}, KEY)
     
     b_bin, b_abi = compile_and_link(PROBE_BRIDGE_SOL, "ProbeBridge")
-    bridge = w3.eth.contract(abi=b_abi, bytecode=b_bin).deploy({'from': MY, 'salt': 'b1', 'args': [to_checksum_address(treasury.address)]}, KEY)
+    bridge = w3.eth.contract(abi=b_abi, bytecode=b_bin).deploy({'from': MY, 'salt': '05', 'args': [to_checksum_address(treasury.address)]}, KEY)
 
     treasury.functions.setBridge(to_checksum_address(bridge.address)).transact(KEY)
     receipt = bridge.functions.request(1).transact(KEY, value=5)
