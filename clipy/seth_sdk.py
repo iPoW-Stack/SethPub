@@ -461,22 +461,35 @@ class SethClient:
 
         txh = keccak.new(digest_bits=256).update(msg).digest()
 
-        # 3. 核心签名逻辑 - 适配新版 API
+        # 3. 执行 ML-DSA-44 (Dilithium2) 签名
         with oqs.Signature('ML-DSA-44') as signer:
             import ctypes
-            sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
             
-            # 这里的 sk_bytes 长度必须是 2560 (由你的 t.py 验证得出)
+            # --- A. 准备消息哈希 (强制转化为 ctypes 实例) ---
+            txh_bytes = bytes(txh)
+            msg_len = len(txh_bytes)
+            # 创建一个 c_ubyte 数组并从 bytes 拷贝数据
+            # 这一步解决了 "byref() argument must be a ctypes instance" 报错
+            msg_ctypes = (ctypes.c_uint8 * msg_len).from_buffer_copy(txh_bytes)
+            
+            # --- B. 准备并注入私钥 ---
+            sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
+            # 确保长度为 2560 (基于你 t.py 的运行结果)
+            sk_len = 2560 
+            sk_bytes = sk_bytes.ljust(sk_len, b'\x00')[:sk_len]
+            
             # 注入私钥到内部缓冲区
             if hasattr(signer, '_secret_key'):
-                ctypes.memmove(signer._secret_key, sk_bytes, len(sk_bytes))
+                ctypes.memmove(signer._secret_key, sk_bytes, sk_len)
             else:
-                # 兼容性方案：如果是旧版暴露了 secret_key 属性
                 signer.secret_key = sk_bytes
 
-            # 执行签名：现在只需传 1 个参数 (txh)
-            # txh 必须是 bytes，如果报错就改为 (ctypes.c_uint8 * 32).from_buffer_copy(txh)
-            signature = signer.sign(txh)
+            # --- C. 执行签名 ---
+            # 现在 sign 只接受一个参数 (msg_ctypes)，符合 "2 positional arguments" 的限制
+            signature = signer.sign(msg_ctypes)
+
+        # 4. 转换回 Hex
+        sig_hex = bytes(signature).hex()
 
         # 4. 组装请求
         data = {
@@ -488,7 +501,7 @@ class SethClient:
             "gas_price": "1",
             "shard_id": "0",
             "type": str(int(step)),
-            "sign": signature.hex() 
+            "sign": sig_hex 
         }
         
         if contract_code: data["bytes_code"] = contract_code
