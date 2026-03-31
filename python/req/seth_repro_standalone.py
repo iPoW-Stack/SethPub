@@ -32,7 +32,71 @@ class MessageHandleStatus(IntEnum):
     kUnkonwn = 10008
     kRequestInvalid = 10009
 
-IN_PROGRESS = {MessageHandleStatus.kMessageHandle, MessageHandleStatus.kTxAccept, MessageHandleStatus.kRequestInvalid}
+    # 通用执行失败
+    EVMC_FAILURE = 1
+
+    # 执行被 REVERT 指令终止
+    # 此时剩余 Gas 可能非零，且可能提供输出数据
+    EVMC_REVERT = 2
+
+    # Gas 耗尽
+    EVMC_OUT_OF_GAS = 3
+
+    # 触发了 INVALID 指令 (EIP-141 定义的 0xfe)
+    EVMC_INVALID_INSTRUCTION = 4
+
+    # 遇到未定义的指令
+    EVMC_UNDEFINED_INSTRUCTION = 5
+
+    # 栈溢出 (超过 1024 限制)
+    EVMC_STACK_OVERFLOW = 6
+
+    # 栈下溢
+    EVMC_STACK_UNDERFLOW = 7
+
+    # 无效的跳转目标 (JUMPDEST 限制)
+    EVMC_BAD_JUMP_DESTINATION = 8
+
+    # 越界内存访问 (例如 RETURNDATACOPY 读取范围超过缓冲区)
+    EVMC_INVALID_MEMORY_ACCESS = 9
+
+    # 调用深度超过限制 (通常是 1024)
+    EVMC_CALL_DEPTH_EXCEEDED = 10
+
+    # 静态模式违规 (在 STATICCALL 中尝试修改状态)
+    EVMC_STATIC_MODE_VIOLATION = 11
+
+    # 预编译合约或系统合约执行失败
+    EVMC_PRECOMPILE_FAILURE = 12
+
+    # 合约校验失败 (针对 ewasm 或 EVM 1.5 规则)
+    EVMC_CONTRACT_VALIDATION_FAILURE = 13
+
+    # 方法参数超出接受范围
+    EVMC_ARGUMENT_OUT_OF_RANGE = 14
+
+    # WebAssembly unreachable 指令被触发
+    EVMC_WASM_UNREACHABLE_INSTRUCTION = 15
+
+    # WebAssembly trap (例如除零错误、校验错误等)
+    EVMC_WASM_TRAP = 16
+
+    # 余额不足以支持转账 (Insufficient funds)
+    EVMC_INSUFFICIENT_BALANCE = 17
+
+    # --- 内部错误及拒绝 (负值) ---
+
+    # EVM 实现通用内部错误
+    EVMC_INTERNAL_ERROR = -1
+
+    # EVM 拒绝执行该代码或消息
+    EVMC_REJECTED = -2
+
+    # 内存分配失败 (VM 无法申请所需内存)
+    EVMC_OUT_OF_MEMORY = -3
+
+
+IN_PROGRESS = {MessageHandleStatus.kMessageHandle, MessageHandleStatus.kTxAccept}
 PROBE_POOL_SOL = """// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
