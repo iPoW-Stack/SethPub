@@ -464,9 +464,9 @@ class SethClient:
         # Given the address uses Keccak, it's highly likely Keccak here too
         txh = keccak.new(digest_bits=256).update(msg).digest()
 
-        # 3. Execute Dilithium2 signature
+        # 3. Execute ML-DSA-44 signature
         # Synchronize server side: OQS_SIG_alg_dilithium_2
-        with oqs.Signature('Dilithium2') as signer:
+        with oqs.Signature('ML-DSA-44') as signer:
             signature = signer.sign(txh, bytes.fromhex(oqs_sk_hex.replace('0x','')))
 
         # 4. Assemble request data

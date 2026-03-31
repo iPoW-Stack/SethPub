@@ -266,10 +266,10 @@ def oqs_sign_test():
     # Base configuration
     IP, PORT = "127.0.0.1", 23001
     
-    # OQS keys (using sample Dilithium2 length Hex string here, should actually read from oqs_addrs file)
+    # OQS keys (using sample ML-DSA-44 length Hex string here, should actually read from oqs_addrs file)
     # Note: Private key length must be > 128 bits to trigger auto-switch logic in code
-    OQS_KEY = "01" * 2528  # Simulate Dilithium2 private key
-    OQS_PK = "41" * 1312   # Simulate Dilithium2 public key
+    OQS_KEY = "01" * 2528  # Simulate ML-DSA-44 private key
+    OQS_PK = "41" * 1312   # Simulate ML-DSA-44 public key
     
     w3 = SethWeb3Mock(IP, PORT)
     MY_OQS = w3.client.get_oqs_address(OQS_PK) # Use the newly added Keccak256 derivation logic
