@@ -433,7 +433,7 @@ class SethClient:
         return k.digest()[:20].hex()
 
     def send_oqs_transaction(self, oqs_sk_hex, oqs_pk_hex, to, step, amount=0, contract_code='', input_hex='', prepayment=0):
-        """发送后量子交易 - 适配 liboqs 0.15.0 新版 API"""
+        """发送后量子交易 - 修复 ctypes 类型匹配问题"""
         if not oqs:
             raise ImportError("liboqs-python is required")
             
@@ -446,7 +446,7 @@ class SethClient:
             nonce = int(r.get("nonce", 0)) + 1
         except: nonce = 1
 
-        # 2. 构造消息哈希 (Keccak256)
+        # 2. 构造待签名消息 (Keccak256)
         msg = bytearray()
         msg.extend(struct.pack('<Q', nonce))
         msg.extend(bytes.fromhex(oqs_pk_hex.replace('0x','')))
@@ -461,19 +461,23 @@ class SethClient:
 
         txh = keccak.new(digest_bits=256).update(msg).digest()
 
-        # 3. 执行 ML-DSA-44 (Dilithium2) 签名
-        # 修复点：先加载私钥，再调用 sign(txh)
+        # 3. 修复后的签名逻辑
+        # 使用 ML-DSA-44 (NIST 标准名，对应之前的 Dilithium2)
         with oqs.Signature('ML-DSA-44') as signer:
-            # 将 hex 转为 bytes
+            # 将 hex 密钥转为 bytes
             sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
             
-            # 注入私钥到实例属性中 (liboqs-python 内部会通过 ctypes 处理)
-            signer.secret_key = sk_bytes
+            # --- 核心修复点 ---
+            # 由于 signer.secret_key 是 ctypes 数组，不能直接赋值 bytes
+            # 使用 ctypes.memmove 将数据拷贝进 C 指向的内存空间
+            import ctypes
+            ctypes.memmove(signer.secret_key, sk_bytes, len(sk_bytes))
             
-            # 关键：调用 sign 时只传消息，不传私钥
+            # 新版 API：sign 仅接受一个参数 (message_hash)
+            # 它会自动使用已经注入到 signer.secret_key 中的内容进行签名
             signature = signer.sign(txh)
 
-        # 4. 组装请求数据 (保持不变)
+        # 4. 组装请求数据
         data = {
             "nonce": str(nonce),
             "pubkey": oqs_pk_hex.replace('0x',''),
