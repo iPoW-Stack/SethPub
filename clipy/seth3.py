@@ -235,65 +235,55 @@ class SethClient:
             time.sleep(5) # 每秒轮询一次
 
     def decode_receipt(self, receipt: dict, abi: list, function_name: str = None) -> dict:
-        """
-        完整的回执解码函数：支持正常返回值解析与 Revert 原因解析。
-        """
         status = receipt.get("status")
         raw_out_b64 = receipt.get("output", "")
+        raw_events = receipt.get("events", [])
         
-        # 初始化解码结果字段
         receipt['decoded_output'] = None
-        receipt['error_reason'] = None
+        receipt['decoded_events'] = []
 
-        if not raw_out_b64:
-            return receipt
-
-        try:
-            # 1. 统一进行 Base64 解码
-            raw_bytes = base64.b64decode(raw_out_b64)
-        except Exception as e:
-            print(f"Base64 decode failed: {e}")
-            return receipt
-
-        # --- 情况 A: 处理合约报错 (Revert/Fail) ---
-        if status != 0:
+        # --- 1. 解析返回值 (Output) ---
+        if status == 0 and raw_out_b64 and function_name and abi:
             try:
-                # 检查是否为标准错误签名 Error(string) -> 0x08c379a0
-                if raw_bytes.startswith(b'\x08\xc3y\xa0'):
-                    # 去掉前 4 字节的 selector，解码剩下的 string
-                    reason = eth_abi.decode(['string'], raw_bytes[4:])[0]
-                    receipt['error_reason'] = reason
-                    print(f"❌ Contract Reverted! Status: {status}, Reason: {reason}")
-                else:
-                    # 可能是 Panic(uint256) 或自定义错误，记录原始十六进制
-                    receipt['error_reason'] = f"0x{raw_bytes.hex()}"
-                    print(f"❌ Contract Failed! Status: {status}, Raw Hex: 0x{raw_bytes.hex()}")
-            except Exception as e:
-                print(f"Failed to decode error message: {e}")
-            return receipt
-
-        # --- 情况 B: 处理正常返回 (Success) ---
-        if function_name and abi:
-            try:
-                # 从 ABI 查找函数定义
-                item = next((i for i in abi if i.get('name') == function_name and i.get('type') == 'function'), None)
-                
-                if item and 'outputs' in item and len(item['outputs']) > 0:
-                    output_types = [o['type'] for o in item['outputs']]
-                    
-                    # 执行 ABI 解码
-                    decoded = eth_abi.decode(output_types, raw_bytes)
-                    
-                    # 如果只有一个返回值，直接取值；否则返回元组/列表
+                raw_bytes = base64.b64decode(raw_out_b64)
+                item = next((i for i in abi if i.get('name') == function_name), None)
+                if item and 'outputs' in item:
+                    decoded = eth_abi.decode([o['type'] for o in item['outputs']], raw_bytes)
                     receipt['decoded_output'] = decoded[0] if len(decoded) == 1 else decoded
-                    print(f"✅ Decoded Success: {function_name} -> {receipt['decoded_output']}")
-                else:
-                    # 函数没有返回值 (void)
-                    receipt['decoded_output'] = None
-            except Exception as e:
-                print(f"ABI decoding failed for {function_name}: {e}")
-                # 如果解码失败（比如长度不匹配），记录原始数据防止得出巨型数字
-                receipt['decoded_output'] = f"Decode Error: 0x{raw_bytes.hex()}"
+            except: pass
+
+        # --- 2. 解析事件 (Events) ---
+        if abi and raw_events:
+            # 先建立 topic0 -> event_abi 的映射表
+            event_map = {}
+            for item in [i for i in abi if i.get('type') == 'event']:
+                sig = f"{item['name']}({','.join([i['type'] for i in item['inputs']])})"
+                # 计算 topic0: keccak256("EventName(type1,type2)")
+                topic0 = keccak.new(digest_bits=256).update(sig.encode()).digest().hex()
+                event_map[topic0] = item
+
+            for e in raw_events:
+                try:
+                    # Seth 的 topics 是 Base64 编码的列表
+                    t0_hex = base64.b64decode(e['topics'][0]).hex()
+                    
+                    if t0_hex in event_map:
+                        spec = event_map[t0_hex]
+                        data_bytes = base64.b64decode(e['data'])
+                        
+                        # 区分 indexed 和 non-indexed 参数
+                        # 注意：Seth 简化实现中可能把所有数据都塞在 data 里，也可能部分在 topics 里
+                        # 这里假设 standard EVM 逻辑：non-indexed 在 data 中
+                        types = [i['type'] for i in spec['inputs'] if not i.get('indexed')]
+                        names = [i['name'] for i in spec['inputs'] if not i.get('indexed')]
+                        
+                        vals = eth_abi.decode(types, data_bytes)
+                        receipt['decoded_events'].append({
+                            "event": spec['name'],
+                            "args": dict(zip(names, vals))
+                        })
+                except Exception as ex:
+                    print(f"Event decode error: {ex}")
 
         return receipt
 
@@ -433,6 +423,8 @@ def test_contract_call_contract(w3, MY, KEY):
     treasury.functions.setBridge(to_checksum_address(bridge.address)).transact(KEY)
     receipt = bridge.functions.request(1).transact(KEY, value=5)
     print(f"Chain Call Result (AmountOut): {receipt.get('decoded_output')}")
+    for e in res.get('decoded_events', []):
+        print(f"🔔 Event Log: {e['event']} -> {e['args']}")
     print(f"Bridge Total Requests: {bridge.functions.totalRequests().call()}")
 
 def test_transfer(w3, MY, KEY):
