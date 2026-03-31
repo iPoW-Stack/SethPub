@@ -465,31 +465,30 @@ class SethClient:
         with oqs.Signature('ML-DSA-44') as signer:
             import ctypes
             
-            # --- A. 准备消息哈希 (txh) ---
-            # 显式转化为 c_ubyte 数组，防止 sign(txh) 报 "wrong type"
+            # --- A. 准备消息哈希 (确保是 ctypes 数组) ---
             txh_bytes = bytes.fromhex(txh.hex()) if hasattr(txh, 'hex') else txh
-            msg_len = len(txh_bytes)
-            msg_ptr = (ctypes.c_uint8 * msg_len).from_buffer_copy(txh_bytes)
+            msg_ptr = (ctypes.c_uint8 * len(txh_bytes)).from_buffer_copy(txh_bytes)
 
-            # --- B. 准备私钥 (sk) ---
+            # --- B. 准备私钥 ---
             sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
             sk_len = signer.length_secret_key # 应该是 2560
-            
-            # 补齐或截断到标准长度
             sk_bytes = sk_bytes.ljust(sk_len, b'\x00')[:sk_len]
-            sk_ptr = (ctypes.c_uint8 * sk_len).from_buffer_copy(sk_bytes)
-
-            # --- C. 注入私钥并签名 ---
-            try:
-                # 尝试通过新版推荐的属性注入（注意：必须是 c_ubyte 数组）
-                signer.secret_key = sk_ptr
-                # 调用签名，参数 1 (msg_ptr) 必须也是 ctypes 类型
+            
+            # --- C. 强行注入私钥并签名 ---
+            # 尝试定位内部私钥缓冲区（新版通常命名为 _secret_key 或在 __dict__ 中）
+            internal_sk_attr = next((attr for attr in dir(signer) if 'secret' in attr.lower()), None)
+            
+            if internal_sk_attr:
+                # 如果找到了内部属性，直接 memmove 覆盖
+                target_buf = getattr(signer, internal_sk_attr)
+                ctypes.memmove(target_buf, sk_bytes, sk_len)
+                # 调用只需 1 个参数的 sign(msg) -> 加上 self 刚好 2 个
                 signature = signer.sign(msg_ptr)
-            except (AttributeError, TypeError):
-                # 如果上面还报错，直接暴力调用签名函数（绕过封装检查）
-                # 在某些版本中，sign 接收 (bytes_like, sk_bytes_like)
-                # 但既然报了 "wrong type"，我们把两个都转成 ctypes
-                signature = signer.sign(msg_ptr, sk_ptr)
+            else:
+                # 最后的兜底：如果连内部属性都找不到，尝试直接传 2 参数调用
+                # 这里的逻辑是：如果 sign(msg) 报错 3 given，那只能说明它不认 sk 参数
+                # 我们强制使用这种方式尝试
+                signature = signer.sign(msg_ptr)
 
         sig_hex = signature.hex() if hasattr(signature, 'hex') else bytes(signature).hex()
         # 4. 组装请求数据
