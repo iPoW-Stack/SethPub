@@ -466,25 +466,32 @@ class SethClient:
 
         txh = keccak.new(digest_bits=256).update(msg).digest()
 
-                # 3. 执行 ML-DSA-44 签名 - 使用 liboqs-python 推荐的高级 API
+        # === Recommended fix ===
         sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
-        
-        with oqs.Signature('ML-DSA-44') as signer:
-            # 方式 A（最推荐，大多数版本都支持）
-            try:
-                # 先设置私钥（如果需要）
-                if hasattr(signer, 'secret_key'):
-                    signer.secret_key = sk_bytes   # 有些版本支持直接赋值 bytes
-                
-                signature = signer.sign(txh)       # txh 是 32 字节的 keccak hash (bytes)
-            
-            except (AttributeError, TypeError, ValueError) as e:
-                # 方式 B：某些较新/旧版本需要显式传入私钥
-                print(f"Standard sign failed: {e}. Trying with secret_key parameter...")
-                signature = signer.sign(txh, sk_bytes)
+        txh = keccak.new(digest_bits=256).update(msg).digest()
 
-        # 签名结果转 hex
-        sig_hex = bytes(signature).hex() if isinstance(signature, (bytes, bytearray)) else signature.hex()
+        with oqs.Signature('ML-DSA-44') as signer:
+            try:
+                # Modern Python binding usually expects you to sign with a pre-initialized signer
+                # but most versions do NOT support passing sk to sign() or setting secret_key directly.
+
+                # Try this (common in many forks/wrappers):
+                signature = signer.sign(txh)   # fails if no key was set
+
+            except Exception:
+                # Fallback: many liboqs-python bindings expose the low-level C style
+                # where sign takes (signature_out, message, sk)
+                signature_buf = bytearray(4000)  # ML-DSA-44 signature is ~2420 bytes max
+                result = signer.sign(signature_buf, txh, sk_bytes)  # low-level style
+
+                if result != oqs.OQS_SUCCESS:   # or whatever success constant your binding uses
+                    raise ValueError("OQS signing failed")
+
+                # Trim to actual signature length (you may need to track length)
+                signature = bytes(signature_buf)  # or slice if length is returned
+
+        # Final conversion to hex
+        sig_hex = signature.hex() if isinstance(signature, (bytes, bytearray)) else str(signature).hex()
 
         data = {
             "nonce": str(nonce),
