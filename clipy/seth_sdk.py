@@ -463,34 +463,29 @@ class SethClient:
 
         # 3. 执行 ML-DSA-44 (Dilithium2) 签名
         with oqs.Signature('ML-DSA-44') as signer:
-            import ctypes
+            # A. 确保消息哈希是 bytes 类型
+            txh_bytes = bytes(txh)
             
-            # --- A. 准备消息哈希 (确保是 ctypes 数组) ---
-            txh_bytes = bytes.fromhex(txh.hex()) if hasattr(txh, 'hex') else txh
-            msg_ptr = (ctypes.c_uint8 * len(txh_bytes)).from_buffer_copy(txh_bytes)
-
-            # --- B. 准备私钥 ---
+            # B. 准备私钥 bytes，长度必须严格对齐 2560
             sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
-            sk_len = signer.length_secret_key # 应该是 2560
+            sk_len = signer.length_secret_key # 验证一下是否为 2560
             sk_bytes = sk_bytes.ljust(sk_len, b'\x00')[:sk_len]
-            
-            # --- C. 强行注入私钥并签名 ---
-            # 尝试定位内部私钥缓冲区（新版通常命名为 _secret_key 或在 __dict__ 中）
-            internal_sk_attr = next((attr for attr in dir(signer) if 'secret' in attr.lower()), None)
-            
-            if internal_sk_attr:
-                # 如果找到了内部属性，直接 memmove 覆盖
-                target_buf = getattr(signer, internal_sk_attr)
-                ctypes.memmove(target_buf, sk_bytes, sk_len)
-                # 调用只需 1 个参数的 sign(msg) -> 加上 self 刚好 2 个
-                signature = signer.sign(msg_ptr)
-            else:
-                # 最后的兜底：如果连内部属性都找不到，尝试直接传 2 参数调用
-                # 这里的逻辑是：如果 sign(msg) 报错 3 given，那只能说明它不认 sk 参数
-                # 我们强制使用这种方式尝试
-                signature = signer.sign(msg_ptr)
 
-        sig_hex = signature.hex() if hasattr(signature, 'hex') else bytes(signature).hex()
+            # C. 核心尝试：新版 sign(msg) 内部通常会自动从实例取私钥
+            # 如果之前报 "3 given"，说明它只需要 1 个参数
+            # 我们通过这种方式注入：
+            try:
+                # 尝试直接注入 bytes，内部 __setattr__ 可能会处理转换
+                signer.secret_key = sk_bytes
+                signature = signer.sign(txh_bytes)
+            except (AttributeError, TypeError):
+                # 如果还是报错，尝试最原始的 2 参数调用
+                # 很多时候 "wrong type" 是因为传了 ctypes 对象反而弄巧成拙
+                # 直接传 Python 原生的 bytes 对象
+                signature = signer.sign(txh_bytes, sk_bytes)
+
+        # 转换为 hex 发送
+        sig_hex = signature.hex()
         # 4. 组装请求数据
         data = {
             "nonce": str(nonce),
