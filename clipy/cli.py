@@ -17,25 +17,25 @@ from ecdsa.util import sigencode_string_canonize
 # Preset environment
 install_solc('0.8.30')
 
-class StepType(IntEnum):
-    kNormalFrom = 0                 # 用户直接转账 (发送方)
-    kNormalTo = 1                   # 跨片确认交易 (发送方统计后的确认)
-    kConsensusRootElectShard = 2    # 分片/根网络选举交易
-    kConsensusRootTimeBlock = 3     # 时间块创建交易
-    kConsensusCreateGenesisAcount = 4 # 创世账号创建交易
-    kConsensusLocalTos = 5          # 跨片确认交易 (接收方累计后的确认)
-    kCreateContract = 6             # 合约部署/创建交易
-    kContractGasPrepayment = 7      # 设置合约调用预付 Gas
-    kContractExcute = 8             # 执行合约调用
-    kRootCreateAddress = 9          # 根网络创建新地址
-    kStatistic = 12                 # 统计类交易
-    kJoinElect = 13                 # 新节点参与选举交易
-    kCreateLibrary = 14             # 创建公共合约库 (Library)
-    kCross = 15                     # 跨片防丢块补齐交易
-    kRootCross = 16                 # 根网络跨片防丢块补齐交易
-    kPoolStatisticTag = 17          # 本轮交易池统计结束标记块
+class StepType(IntEnum): # Transaction Step Type
+    kNormalFrom = 0                 # User direct transfer (sender)
+    kNormalTo = 1                   # Cross-shard confirmation transaction (confirmation after sender's statistics)
+    kConsensusRootElectShard = 2    # Shard/Root network election transaction
+    kConsensusRootTimeBlock = 3     # Time block creation transaction
+    kConsensusCreateGenesisAcount = 4 # Genesis account creation transaction
+    kConsensusLocalTos = 5          # Cross-shard confirmation transaction (confirmation after receiver's accumulation)
+    kCreateContract = 6             # Contract deployment/creation transaction
+    kContractGasPrepayment = 7      # Set contract call prepayment Gas
+    kContractExcute = 8             # Execute contract call
+    kRootCreateAddress = 9          # Root network create new address
+    kStatistic = 12                 # Statistical transaction
+    kJoinElect = 13                 # New node participates in election transaction
+    kCreateLibrary = 14             # Create public contract library (Library)
+    kCross = 15                     # Cross-shard anti-loss block replenishment transaction
+    kRootCross = 16                 # Root network cross-shard anti-loss block replenishment transaction
+    kPoolStatisticTag = 17          # Current round transaction pool statistics end tag block
 
-class MessageHandleStatus(IntEnum):
+class MessageHandleStatus(IntEnum): # Message Handling Status
     kConsensusSuccess = 0
     kMessageHandle = 10001
     kMessageHandleError = 10002
@@ -47,6 +47,69 @@ class MessageHandleStatus(IntEnum):
     kUnkonwn = 10008
     kRequestInvalid = 10009
     kNotExists = 100010
+
+    # Generic execution failure
+    EVMC_FAILURE = 1
+
+    # Execution terminated by REVERT opcode
+    # In this case, the remaining Gas MAY be non-zero, and additional output data MAY be provided
+    EVMC_REVERT = 2
+
+    # The execution has run out of gas
+    EVMC_OUT_OF_GAS = 3
+
+    # The designated INVALID instruction has been hit (0xfe as defined in EIP-141)
+    EVMC_INVALID_INSTRUCTION = 4
+
+    # An undefined instruction has been encountered
+    EVMC_UNDEFINED_INSTRUCTION = 5
+
+    # The execution has attempted to put more items on the EVM stack than the specified limit (1024)
+    EVMC_STACK_OVERFLOW = 6
+
+    # Execution of an opcode has required more items on the EVM stack than available
+    EVMC_STACK_UNDERFLOW = 7
+
+    # Execution has violated the jump destination restrictions (JUMPDEST)
+    EVMC_BAD_JUMP_DESTINATION = 8
+
+    # Tried to read outside memory bounds (e.g., RETURNDATACOPY reading past available buffer)
+    EVMC_INVALID_MEMORY_ACCESS = 9
+
+    # Call depth has exceeded the limit (typically 1024)
+    EVMC_CALL_DEPTH_EXCEEDED = 10
+
+    # Tried to execute an operation that is restricted in static mode (state modification during STATICCALL)
+    EVMC_STATIC_MODE_VIOLATION = 11
+
+    # A call to a precompiled or system contract has ended with a failure
+    EVMC_PRECOMPILE_FAILURE = 12
+
+    # Contract validation has failed (e.g., due to EVM 1.5 jump validity, ewasm rules, etc.)
+    EVMC_CONTRACT_VALIDATION_FAILURE = 13
+
+    # An argument to a state accessing method has a value outside of the accepted range
+    EVMC_ARGUMENT_OUT_OF_RANGE = 14
+
+    # A WebAssembly `unreachable` instruction has been hit during execution
+    EVMC_WASM_UNREACHABLE_INSTRUCTION = 15
+
+    # A WebAssembly trap has been hit (e.g., division by zero, validation errors, etc.)
+    EVMC_WASM_TRAP = 16
+
+    # The caller does not have enough funds for value transfer
+    EVMC_INSUFFICIENT_BALANCE = 17
+
+    # --- Internal errors and rejections (negative values) ---
+
+    # EVM implementation generic internal error
+    EVMC_INTERNAL_ERROR = -1
+
+    # The execution of the given code and/or message has been rejected by the EVM implementation
+    EVMC_REJECTED = -2
+
+    # The VM failed to allocate the amount of memory needed for execution
+    EVMC_OUT_OF_MEMORY = -3
     
 class SethClient:
     def __init__(self, host, port):
@@ -148,10 +211,10 @@ class SethClient:
                     msg = resp.json().get("msg")
                     print(f"Transaction {tx_hash} receipt status: {status}, output: {msg}")
                     if status not in [MessageHandleStatus.kMessageHandle, MessageHandleStatus.kTxAccept]:
-                        return status == MessageHandleStatus.kConsensusSuccess
+                        return resp.json()
             except: pass
             time.sleep(5)
-        return False
+        return None
 
     def query_contract(self, from_hex, to_hex, input_hex):
         try:
@@ -195,10 +258,6 @@ def calc_create2_address(sender, salt_hex, bytecode_hex):
     raw_address = k_final.digest()
     return raw_address[-20:].hex().lower()
 
-# ==========================================
-# 修复后的 Library 编译逻辑
-# ==========================================
-
 def compile_contract_with_link(source_code, library_addresses=None):
     """
     :param library_addresses: {'MathLib': '0x...'}
@@ -207,7 +266,6 @@ def compile_contract_with_link(source_code, library_addresses=None):
     if library_addresses:
         lib_parts = []
         for lib_name, addr in library_addresses.items():
-            # 补全文件名占位符并确保 0x 前缀
             full_key = lib_name if ":" in lib_name else f"<stdin>:{lib_name}"
             clean_addr = addr if addr.startswith('0x') else '0x' + addr
             lib_parts.append(f"{full_key}={clean_addr}")
@@ -224,15 +282,15 @@ def compile_contract_with_link(source_code, library_addresses=None):
     install_solc_versions()
     return solcx.compile_source(source_code, output_values=['abi', 'bin'], **compiler_params)
 
-SETH_IP = "127.0.0.1" # 已根据日志更新 IP
+SETH_IP = "127.0.0.1" # IP updated based on logs
 SETH_PORT = 23001
 PRIVATE_KEY = "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
 
 def test_library():
     client = SethClient(SETH_IP, SETH_PORT)
     MY_ADDR = client.get_address(PRIVATE_KEY)
-
-    # --- 1. 源码定义 (已移除 import 语句) ---
+    
+    # --- 1. Source Code Definition (import statements removed) ---
     full_source = """
     // SPDX-License-Identifier: MIT
     pragma solidity ^0.8.0;
@@ -244,22 +302,22 @@ def test_library():
 
     contract Calculator {
         uint256 public lastResult;
-        // 增加了 returns (uint256)
+        // Added returns (uint256)
         function doAdd(uint256 a, uint256 b) public returns (uint256) {
             lastResult = MathLib.add(a, b);
-            return lastResult; // 将结果返回
+            return lastResult; // Return the result
         }
 
         function doDec(uint256 a, uint256 b) public returns (uint256) {
             lastResult = MathLib.dec(a, b);
-            return lastResult; // 将结果返回
+            return lastResult; // Return the result
         }
     }
     """
 
-    # --- 2. 部署 Library ---
+    # --- 2. Deploy Library ---
     print("[Task Library] Compiling and Deploying MathLib...")
-    # 提取库的单独代码进行编译
+    # Extract separate library code for compilation
     lib_source = """
     pragma solidity ^0.8.0;
     library MathLib { 
@@ -267,41 +325,44 @@ def test_library():
         function dec(uint256 a, uint256 b) public pure returns (uint256) { return a-b; } 
     }
     """
-    lib_compile = compile_contract(lib_source)
-    lib_bin = lib_compile['bin']
+    lib_compile = compile_contract(lib_source) # Assuming compile_contract is defined elsewhere or meant to be compile_solidity_contract
+    lib_bin = lib_compile['bin'] # Assuming the output structure is {'<stdin>:MathLib': {'bin': '...', 'abi': [...]}}
     
     LIB_TARGET = calc_create2_address(MY_ADDR, "01", lib_bin)
-    # 使用 step=14 (kCreateLibrary) 部署公共库，并增加预付款
+    # Use step=14 (kCreateLibrary) to deploy public library and add prepayment
     tx_lib = client.send_transaction_auto(PRIVATE_KEY, LIB_TARGET, step=StepType.kCreateLibrary, contract_code=lib_bin, prepayment=10000000)
     
-    if client.wait_for_receipt(tx_lib):
+    res_json = client.wait_for_receipt(tx_lib)
+    if res_json["status"] == MessageHandleStatus.kConsensusSuccess:
         print(f"✓ MathLib deployed at: 0x{LIB_TARGET}")
     else:
         print("✗ MathLib deployment failed, but proceeding to link...")
 
-    # --- 3. 链接并部署主合约 ---
+    # --- 3. Link and Deploy Main Contract ---
     print("[Task Contract] Linking MathLib and Deploying Calculator...")
     link_refs = {"MathLib": LIB_TARGET}
     
-    # 编译主合约字符串
+    # Compile main contract string
     contract_compiled = compile_contract_with_link(full_source, library_addresses=link_refs)
     calculator_interface = contract_compiled['<stdin>:Calculator']
     calc_bin = calculator_interface['bin']
 
     CALC_TARGET = calc_create2_address(MY_ADDR, "02", calc_bin)
     tx_calc = client.send_transaction_auto(PRIVATE_KEY, CALC_TARGET, step=StepType.kCreateContract, contract_code=calc_bin, prepayment=10000000)
-    
-    if client.wait_for_receipt(tx_calc):
+    res_json = client.wait_for_receipt(tx_calc) # Wait for the Calculator deployment transaction
+    if res_json and res_json["status"] == MessageHandleStatus.kConsensusSuccess:
         print(f"✓ Calculator deployed at: 0x{CALC_TARGET}")
 
-        # --- 4. 调用测试 ---
+        # --- 4. Call Test ---
         print("[Task Interaction] Calling Calculator.doAdd(10, 20)...")
-        input_add = get_selector("doAdd(uint256,uint256)") + eth_abi.encode(['uint256', 'uint256'], [10, 20]).hex()
-        tx_call = client.send_transaction_auto(PRIVATE_KEY, CALC_TARGET, step=StepType.kContractExcute, input_hex=input_add)
-        client.wait_for_receipt(tx_call)
-        
-        raw_res = client.query_contract(MY_ADDR, CALC_TARGET, get_selector("lastResult()"))
-        print(f"🔎 Result: {raw_res}")
+        input_add = get_selector("doAdd(uint256,uint256)") + eth_abi.encode(['uint256', 'uint256'], [10, 20]).hex() # Encode function call
+        tx_call = client.send_transaction_auto(PRIVATE_KEY, CALC_TARGET, step=StepType.kContractExcute, input_hex=input_add) # Send transaction to execute contract
+        res_json_call = client.wait_for_receipt(tx_call) # Wait for the contract call transaction
+        if res_json_call and res_json_call["status"] == MessageHandleStatus.kConsensusSuccess:
+            raw_res = client.query_contract(MY_ADDR, CALC_TARGET, get_selector("lastResult()")) # Query the contract state
+            print(f"🔎 Result: {raw_res}")
+        else:
+            print("✗ Contract call failed.")
     else:
         print("✗ Calculator deployment failed.")
 
