@@ -256,6 +256,7 @@ int ContractUserCreateCall::HandleTx(
         tx_status_str_len = 4 + evmc_res.output_size;
     } else {
         tx_status_str = new char[4];
+        uint32_t* status_arr = (uint32_t*)tx_status_str;
         status_arr[0] = block_tx.status();
     }
 
