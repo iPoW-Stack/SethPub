@@ -6,7 +6,7 @@
 #include <condition_variable>
 
 #include "nlohmann/json.hpp"
-
+#define SETH_USE_UV
 #include "common/random.h"
 #include "common/split.h"
 #include "common/string_utils.h"
@@ -576,7 +576,6 @@ int tx_main(int argc, char** argv) {
 }
 
 int gmssl_tx(const std::string& private_key, const std::string& to, uint64_t amount) {
-    LoadAllAccounts(shardnum);
     SignalRegister();
     WriteDefaultLogConf();
     transport::MultiThreadHandler net_handler;
@@ -602,7 +601,7 @@ int gmssl_tx(const std::string& private_key, const std::string& to, uint64_t amo
     }
 
     if (transport::TcpTransport::Instance()->Init(
-            "127.0.0.1:13791",
+            "127.0.0.1:13797",
             128,
             false,
             &net_handler) != 0) {
