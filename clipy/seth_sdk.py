@@ -485,7 +485,7 @@ class SethClient:
         return k.digest()[:20].hex()
     
     def send_oqs_transaction(self, oqs_sk_hex, oqs_pk_hex, to, step, amount=0, contract_code='', input_hex='', prepayment=0):
-        """发送后量子交易 - 完美适配 0.15.0/0.14.0 混合环境"""
+        """Send post-quantum transaction - perfectly adapted for 0.15.0/0.14.0 mixed environments"""
         if not oqs:
             raise ImportError("liboqs-python is required")
             
@@ -498,13 +498,13 @@ class SethClient:
         my_addr = self.get_oqs_address(oqs_pk_hex)
         nonce_addr = to + my_addr if step == StepType.kContractExcute else my_addr
         
-        # 1. 获取 Nonce
+        # 1. Get Nonce
         try:
             r = requests.post(self.query_url, data={"address": nonce_addr}).json()
             nonce = int(r.get("nonce", 0)) + 1
         except: nonce = 1
 
-        # 2. 构造消息哈希 (Keccak256)
+        # 2. Construct message hash (Keccak256)
         msg = bytearray()
         msg.extend(struct.pack('<Q', nonce))
 
@@ -530,51 +530,51 @@ class SethClient:
 
         # print(f"Valid signature {test_is_valid}")
 
-        # 3. 执行 ML-DSA-44 (Dilithium2) 签名
+        # 3. Execute ML-DSA-44 (Dilithium2) signature
         with oqs.Signature('ML-DSA-44') as signer:
             import ctypes
             
-            # A. 消息哈希：直接用原生的 bytes (让 oqs.py 内部去处理 create_string_buffer)
+            # A. Message hash: use native bytes directly (let oqs.py handle create_string_buffer internally)
             txh_bytes = bytes(txh)
             
-            # B. 私钥准备 (2560 字节)
+            # B. Secret key preparation (2560 bytes)
             sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
             sk_len = len(sk_bytes) 
             # sk_bytes = sk_bytes.ljust(sk_len, b'\x00')[:sk_len]
             
-            # C. 注入私钥并防止 free() 崩溃
-            # 我们必须把私钥放进一个名为 secret_key 的 ctypes 实例中，
-            # 因为 __exit__ 里的 free() 会对这个属性调用 byref()
+            # C. Inject secret key and prevent free() crashes
+            # We must put the secret key into a ctypes instance named secret_key,
+            # because free() in __exit__ will call byref() on this attribute
             sk_ctypes = (ctypes.c_uint8 * sk_len).from_buffer_copy(sk_bytes)
             
             try:
-                # 尝试覆盖。如果 secret_key 是 property，这可能会失败
+                # Attempt to overwrite. This might fail if secret_key is a property
                 signer.secret_key = sk_ctypes 
                 print("0 set prikey success.")
             except:
-                # 如果上面失败，说明它是只读的，我们要么改内部变量，要么强制注入
-                # 在 0.14.0 中，内部缓冲区通常就在这里
+                # If the above fails, it means it's read-only. We either modify the internal variable or force inject it
+                # In 0.14.0, the internal buffer is usually located here
                 if hasattr(signer, '_secret_key'):
                     ctypes.memmove(signer._secret_key, sk_ctypes, sk_len)
                     print("1 set prikey success.")
                 else:
-                    # 最后的绝招：直接把对象属性替换掉
+                    # The last resort: directly replace the object attribute
                     signer.__dict__['secret_key'] = sk_ctypes
                     print("2 set prikey success.")
 
-            # D. 执行签名
-            # 传 1 个参数符合 "2 positional arguments" (self + msg)
-            # 且不手动构造 ctypes 避免内部 create_string_buffer 报错
+            # D. Execute signature
+            # Passing 1 argument satisfies "2 positional arguments" (self + msg)
+            # And avoid manually constructing ctypes to prevent internal create_string_buffer errors
             signature = signer.sign(txh_bytes)
 
             is_valid = signer.verify(txh, signature, pk_bytes)
             print(f"Local Verify Test: {is_valid}, len pk: {len(pk_bytes)}, sk_len: {sk_len}")
 
-        # 4. 转换回 Hex
+        # 4. Convert back to Hex
         sig_hex = bytes(signature).hex()
 
 
-        # 4. 组装请求
+        # 4. Assemble request
         data = {
             "nonce": str(nonce),
             "pubkey": oqs_pk_hex.replace('0x',''),
@@ -593,8 +593,6 @@ class SethClient:
         
         requests.post(self.oqs_url, data=data)
         print(f"tx hash {txh.hex()}, pk: {oqs_pk_hex}, data: {data}, msg: {msg.hex()}")
-
-        
             
         return txh.hex()
 
