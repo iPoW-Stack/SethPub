@@ -721,6 +721,7 @@ int oqs_tx(const std::string& to, uint64_t amount) {
 
     std::cout << "send success." << std::endl;
     usleep(3000000lu);
+    return 0;
 }
 
 void UpdateAddressNonce() {
