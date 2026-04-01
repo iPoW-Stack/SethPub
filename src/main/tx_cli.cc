@@ -658,7 +658,7 @@ int gmssl_tx(const std::string& private_key, const std::string& to, uint64_t amo
 }
 
 int oqs_tx(const std::string& to, uint64_t amount) {
-    GetOqsKeys();
+    // GetOqsKeys();
     SignalRegister();
     WriteDefaultLogConf();
     transport::MultiThreadHandler net_handler;
@@ -697,9 +697,59 @@ int oqs_tx(const std::string& to, uint64_t amount) {
         return 1;
     }
 
+    const char* alg_name = OQS_SIG_alg_ml_dsa_44;
+    // 2. Instantiate the signer
+    OQS_SIG *sig = OQS_SIG_new(alg_name);
+    if (!sig) {
+        std::cerr << "Failed to initialize ML-DSA-44. Check if liboqs supports it." << std::endl;
+        return 1;
+    }
+
+    def ({
+        OQS_SIG_free(sig);
+    })
+
+    std::cout << "Algorithm: " << sig->method_name << std::endl;
+
+    // 3. Keypair Generation
+    std::vector<uint8_t> public_key(sig->length_public_key);
+    std::vector<uint8_t> secret_key(sig->length_secret_key);
+
+    if (OQS_SIG_keypair(sig, public_key.data(), secret_key.data()) != OQS_SUCCESS) {
+        std::cerr << "Keypair generation failed!" << std::endl;
+        OQS_SIG_free(sig);
+        return 1;
+    }
+    // print_hex("Public Key", public_key.data(), public_key.size());
+
+    // // 4. Signing
+    // std::string message = "Transaction Data for SethPub";
+    // std::vector<uint8_t> signature(sig->length_signature);
+    // size_t signature_len;
+
+    // if (OQS_SIG_sign(sig, signature.data(), &signature_len, 
+    //                 (const uint8_t*)message.c_str(), message.length(), 
+    //                 secret_key.data()) != OQS_SUCCESS) {
+    //     std::cerr << "Signing failed!" << std::endl;
+    //     OQS_SIG_free(sig);
+    //     return 1;
+    // }
+    // print_hex("Signature", signature.data(), signature_len);
+
+    // // 5. Verification
+    // if (OQS_SIG_verify(sig, (const uint8_t*)message.c_str(), message.length(), 
+    //                   signature.data(), signature_len, 
+    //                   public_key.data()) == OQS_SUCCESS) {
+    //     std::cout << "✅ Verification Success!" << std::endl;
+    // } else {
+    //     std::cout << "❌ Verification Failed!" << std::endl;
+    // }
+
+    // 6. Cleanup
+
     security::Oqs oqs;
-    auto private_key = g_oqs_prikeys[0];
-    auto public_key = g_oqs_pri_pub_map[private_key];
+    auto private_key = std::string((char*)secret_key.data(), secret_key.size());
+    auto public_key = std::string((char*)public_key.data(), public_key.size());
     oqs.SetPrivateKey(private_key, public_key);
     std::cout << "oqs address: " << common::Encode::HexEncode(oqs.GetAddress()) <<
         ", pk: " << common::Encode::HexEncode(oqs.GetPublicKey()) << std::endl;
