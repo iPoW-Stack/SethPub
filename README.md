@@ -29,11 +29,11 @@ This SDK provides a **web3.py-like** Python interface for the **Seth Blockchain*
 
 ### 🚀 Key Features
 
+- **Seth supports ML-DSA-44**: (formerly Dilithium2). The SDK automatically detects OQS keys based on their length and switches to the quantum-safe signing pipeline.
 - **Web3-Style Interaction**: Supports the familiar `contract.functions.method(args).transact()` syntax.
 - **Automated Deployment**: Integrated `CREATE2` deterministic address calculation for cross-shard address consistency.
 - **Independent Library Support**: Deploy libraries first and link them to logical contracts automatically via bytecode manipulation.
 - **Deep Receipt Parsing**: Automatically decodes transaction return values (`output`) and `events` based on ABI, with support for `Revert` reason strings.
-- **Random Salt Management**: Built-in safe random salt generation to prevent contract deployment collisions.
 
 ---
 
@@ -114,6 +114,24 @@ Query contract state variables or view/pure functions.
 # Note: Even for calls, it is recommended to specify sender_address in the Seth environment
 total = bridge.functions.totalRequests().call()
 print(f"Current total requests: {total}")
+```
+#### 6. Post-Quantum (OQS) Integration
+```python
+def oqs_sign_test():
+    # Base configuration
+    IP, PORT = "127.0.0.1", 23001
+
+    # OQS keys (using sample ML-DSA-44 length Hex string here, should actually read from oqs_addrs file)
+    # Note: Private key length must be > 128 bits to trigger auto-switch logic in code
+    OQS_KEY = "4a6393c16d..."
+    OQS_PK = "4a6393c1..."
+
+    w3 = SethWeb3Mock(IP, PORT)
+    MY_OQS = w3.client.get_oqs_address(OQS_PK)
+
+    test_oqs_transfer(w3, MY_OQS, OQS_KEY, OQS_PK)
+    test_oqs_contract_deploy_and_call(w3, MY_OQS, OQS_KEY, OQS_PK)
+    test_oqs_library_with_contract(w3, MY_OQS, OQS_KEY, OQS_PK)
 ```
 
 ## ⛏️ Start Mining
