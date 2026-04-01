@@ -211,6 +211,8 @@ static void OqsHttpTransaction(const httplib::Request& req, httplib::Response& h
     auto nonce_str = req.get_param_value("nonce");
     auto amount_str = req.get_param_value("amount");
     auto shard_id_str = req.get_param_value("shard_id");
+    auto gas_limit = req.get_param_value("gas_limit");
+    auto gas_price = req.get_param_value("gas_price");
 
     uint64_t gas_limit_val = 0;
     if (!common::StringUtil::ToUint64(gas_limit, &gas_limit_val)) {
