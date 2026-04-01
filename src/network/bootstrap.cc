@@ -71,13 +71,13 @@ int Bootstrap::Init(common::Config& config, std::shared_ptr<security::Security>&
             std::string(field_split[1], field_split.SubLen(1)),
             port,
             pubkey,
-            security->GetAddress(pubkey)));
+            security->GetAddressWithPublicKey(pubkey)));
         node_bootstrap_.push_back(std::make_shared<seth::dht::Node>(
             kNodeNetworkId,
             std::string(field_split[1], field_split.SubLen(1)),
             port,
             pubkey,
-            security->GetAddress(pubkey)));
+            security->GetAddressWithPublicKey(pubkey)));
     }
 
     if (root_bootstrap_.empty() || node_bootstrap_.empty()) {

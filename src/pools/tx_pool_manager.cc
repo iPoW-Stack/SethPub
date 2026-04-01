@@ -116,7 +116,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
     auto& tx_msg = *header.mutable_tx_proto();
     if (!IsUserTransaction(tx_msg.step())) {
         if (!msg_ptr->system_message) {
-            auto addr = security_->GetAddress(tx_msg.pubkey());
+            auto addr = security_->GetAddressWithPublicKey(tx_msg.pubkey());
             SETH_DEBUG("pools message fierwall coming is system message, "
                 "step: %u, from: %s, to: %s", (uint32_t)tx_msg.step(),
                 common::Encode::HexEncode(addr).c_str(), 
@@ -174,7 +174,10 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
                 msg_ptr->msg_hash,
                 tx_msg.pubkey(),
                 tx_msg.sign()) != security::kSecuritySuccess) {
-            SETH_ERROR("verify signature failed!");
+            SETH_ERROR("verify signature failed msg hash: %s, pk: %s, sign: %s", 
+                common::Encode::HexEncode(msg_ptr->msg_hash).c_str(),
+                common::Encode::HexEncode(tx_msg.pubkey()).c_str(),
+                common::Encode::HexEncode(tx_msg.sign()).c_str());
             msg_ptr->handle_status = transport::kTxInvalidSignature;
             return transport::kFirewallCheckError;
         }
@@ -198,10 +201,10 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
         }
 
         auto tmp_acc_ptr = acc_mgr_.lock();
-        msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(security_->GetAddress(tx_msg.pubkey()));
+        msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(security_->GetAddressWithPublicKey(tx_msg.pubkey()));
         if (msg_ptr->address_info == nullptr) {
             SETH_DEBUG("failed get account info: %s", 
-                common::Encode::HexEncode(security_->GetAddress(tx_msg.pubkey())).c_str());
+                common::Encode::HexEncode(security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str());
             msg_ptr->handle_status = transport::kTxInvalidAddress;
             return transport::kFirewallCheckError;
         }
@@ -477,17 +480,7 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
         if (IsUserTransaction(tx_msg.step())) {
             auto tmp_acc_ptr = acc_mgr_.lock();
             protos::AddressInfoPtr address_info = nullptr;
-            std::string addr;
-            if (tx_msg.pubkey().size() == 64u) {
-                security::GmSsl gmssl;
-                addr = gmssl.GetAddress(tx_msg.pubkey());
-            } else if (tx_msg.pubkey().size() > 128u) {
-                security::Oqs oqs;
-                addr = oqs.GetAddress(tx_msg.pubkey());
-            } else {
-                addr = security_->GetAddress(tx_msg.pubkey());
-            }
-
+            std::string addr = security_->GetAddressWithPublicKey(tx_msg.pubkey());
             if (tx_msg.step() == pools::protobuf::kContractExcute) {
                 addr = tx_msg.to() + addr;
             }
@@ -834,7 +827,7 @@ std::shared_ptr<address::protobuf::AddressInfo> TxPoolManager::GetAddressInfo(co
 void TxPoolManager::HandleElectTx(const transport::MessagePtr& msg_ptr) {
     auto& header = msg_ptr->header;
     auto& tx_msg = *header.mutable_tx_proto();
-    auto addr = security_->GetAddress(tx_msg.pubkey());
+    auto addr = security_->GetAddressWithPublicKey(tx_msg.pubkey());
     auto tmp_acc_ptr = acc_mgr_.lock();
     msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(addr);
     if (msg_ptr->address_info == nullptr) {
@@ -926,7 +919,7 @@ void TxPoolManager::HandleContractExcute(const transport::MessagePtr& msg_ptr) {
     }
 
     auto tmp_acc_ptr = acc_mgr_.lock();
-    auto from = security_->GetAddress(tx_msg.pubkey());
+    auto from = security_->GetAddressWithPublicKey(tx_msg.pubkey());
     auto contract_info = tmp_acc_ptr->GetAccountInfo(tx_msg.to());
     if (contract_info == nullptr) {
         SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
@@ -993,7 +986,7 @@ void TxPoolManager::HandleSetContractPrepayment(const transport::MessagePtr& msg
             tx_msg.amount(),
             tx_msg.contract_prepayment(),
             consensus::kCallContractDefaultUseGas,
-            common::Encode::HexEncode(security_->GetAddress(
+            common::Encode::HexEncode(security_->GetAddressWithPublicKey(
             msg_ptr->header.tx_proto().pubkey())).c_str(),
             common::Encode::HexEncode(msg_ptr->header.tx_proto().to()).c_str());
         return;
@@ -1006,7 +999,7 @@ bool TxPoolManager::UserTxValid(const transport::MessagePtr& msg_ptr) {
     auto tmp_acc_ptr = acc_mgr_.lock();
     if (msg_ptr->address_info == nullptr) {
         msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(
-            security_->GetAddress(tx_msg.pubkey()));
+            security_->GetAddressWithPublicKey(tx_msg.pubkey()));
     }
 
     if (msg_ptr->address_info == nullptr) {

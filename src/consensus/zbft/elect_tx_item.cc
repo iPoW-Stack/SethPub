@@ -123,7 +123,7 @@ int ElectTxItem::processElect(
     for (auto iter = members->begin(); iter != members->end(); ++iter) {
         added_nodes_.insert((*iter)->pubkey);
         SETH_DEBUG("success add now elect member: %s, %s",
-            common::Encode::HexEncode(sec_ptr_->GetAddress((*iter)->pubkey)).c_str(),
+            common::Encode::HexEncode(sec_ptr_->GetAddressWithPublicKey((*iter)->pubkey)).c_str(),
             common::Encode::HexEncode((*iter)->pubkey).c_str());
     }
 
@@ -481,7 +481,7 @@ void ElectTxItem::GetIndexNodes(
             }
         }
 
-        auto id = sec_ptr_->GetAddress(elect_statistic_.join_elect_nodes(i).pubkey());
+        auto id = sec_ptr_->GetAddressWithPublicKey(elect_statistic_.join_elect_nodes(i).pubkey());
         protos::AddressInfoPtr account_info = view_block_chain_->ChainGetAccountInfo(id);
         if (account_info == nullptr) {
             assert(false);
@@ -543,7 +543,7 @@ void ElectTxItem::MiningToken(
     uint64_t tmp_all_gas_amount = 0;
     if (!stop_mining_) {
         for (uint32_t i = 0; i < valid_nodes.size(); ++i) {
-            auto id = sec_ptr_->GetAddress(valid_nodes[i]->pubkey);
+            auto id = sec_ptr_->GetAddressWithPublicKey(valid_nodes[i]->pubkey);
             protos::AddressInfoPtr account_info = view_block_chain_->ChainGetAccountInfo(id);
             if (account_info == nullptr) {
                 SETH_DEBUG("get account info failed: %s",
@@ -724,7 +724,7 @@ int ElectTxItem::CheckWeedout(
         if (member_tx_count[i].second < direct_weedout_tx_count) {
             invalid_nodes.insert(member_tx_count[i].first);
             SETH_DEBUG("direct weedout: %s, tx count: %u, max_tx_count: %u",
-                      common::Encode::HexEncode(sec_ptr_->GetAddress((*members)[member_tx_count[i].first]->pubkey)).c_str(),
+                      common::Encode::HexEncode(sec_ptr_->GetAddressWithPublicKey((*members)[member_tx_count[i].first]->pubkey)).c_str(),
                       statistic_item.tx_count(member_tx_count[i].first), max_tx_count);
         }
     }
@@ -785,7 +785,7 @@ int ElectTxItem::CheckWeedout(
     for (auto iter = elect_nodes_to_choose.begin(); iter != elect_nodes_to_choose.end(); ++iter) {
         if (weedout_nodes.find((*iter)->index) != weedout_nodes.end()) {
             SETH_DEBUG("fts weedout: %s, tx count: %u, max_tx_count: %u",
-                      common::Encode::HexEncode(sec_ptr_->GetAddress((*members)[(*iter)->index]->pubkey)).c_str(),
+                      common::Encode::HexEncode(sec_ptr_->GetAddressWithPublicKey((*members)[(*iter)->index]->pubkey)).c_str(),
                       statistic_item.tx_count((*iter)->index), max_tx_count);
 
             continue;
@@ -800,7 +800,7 @@ int ElectTxItem::CheckWeedout(
         for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
             if (elect_nodes[i] != nullptr) {
                 cout++;
-                debugStr += common::Encode::HexEncode(sec_ptr_->GetAddress((*members)[i]->pubkey)) + " ";
+                debugStr += common::Encode::HexEncode(sec_ptr_->GetAddressWithPublicKey((*members)[i]->pubkey)) + " ";
             } else {
                 debugStr += "null ";
             }
@@ -848,7 +848,7 @@ void ElectTxItem::FtsGetNodes(
     {
         std::string ids;
         for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
-            ids += common::Encode::HexEncode(sec_ptr_->GetAddress(elect_nodes[i]->pubkey)) + ":" +
+            ids += common::Encode::HexEncode(sec_ptr_->GetAddressWithPublicKey(elect_nodes[i]->pubkey)) + ":" +
                    std::to_string(elect_nodes[i]->fts_value) + ",";
         }
 

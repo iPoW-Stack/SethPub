@@ -213,7 +213,7 @@ bool ElectManager::ProcessPrevElectMembers(
 
     uint32_t leader_count = 0;
     for (int32_t i = 0; i < in.size(); ++i) {
-        auto id = security_->GetAddress(in[i].pubkey());
+        auto id = security_->GetAddressWithPublicKey(in[i].pubkey());
         int32_t pool_idx_mod_num = leader_count;  // elect_block.prev_members().bls_pubkey(i).pool_idx_mod_num();
         if (leader_count >= expect_leader_count) {
             pool_idx_mod_num = -1;
@@ -305,7 +305,7 @@ void ElectManager::ProcessNewElectBlock(
     auto& in = elect_block.in();
     auto shard_members_ptr = std::make_shared<common::Members>();
     for (int32_t i = 0; i < in.size(); ++i) {
-        auto id = security_->GetAddress(in[i].pubkey());
+        auto id = security_->GetAddressWithPublicKey(in[i].pubkey());
         shard_members_ptr->push_back(std::make_shared<common::BftMember>(
             elect_block.shard_network_id(),
             id,

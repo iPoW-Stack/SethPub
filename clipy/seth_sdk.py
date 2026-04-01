@@ -17,6 +17,11 @@ from Crypto.Hash import keccak
 from ecdsa import SigningKey, SECP256k1
 from ecdsa.util import sigencode_string_canonize
 
+try:
+    import oqs
+except ImportError:
+    oqs = None
+
 # --- 1. Constants & Enums ---
 
 class StepType(IntEnum):
@@ -76,6 +81,58 @@ class MessageHandleStatus(IntEnum):
     EVMC_INTERNAL_ERROR = -1        # Generic internal EVM implementation error
     EVMC_REJECTED = -2              # Message/code rejected by the EVM
     EVMC_OUT_OF_MEMORY = -3         # Failed to allocate memory
+
+    kConsensusError = 5001
+    kConsensusAdded = 5002,
+    kConsensusNotExists = 5004
+    kConsensusTxAdded = 5005
+    kConsensusNoNewTxs = 5006
+    kConsensusInvalidPackage = 5007
+    kConsensusTxNotExists = 5008
+    kConsensusAccountNotExists = 5009
+    kConsensusAccountBalanceError = 5010
+    kConsensusAccountExists = 5011
+    kConsensusBlockHashError = 5012
+    kConsensusBlockHeightError = 5013
+    kConsensusPoolIndexError = 5014
+    kConsensusBlockNotExists = 5015
+    kConsensusBlockPreHashError = 5016
+    kConsensusNetwokInvalid = 5017
+    kConsensusLeaderInfoInvalid = 5018
+    kConsensusExecuteContractFailed = 5019
+    kConsensusGasUsedNotEqualToLeaderError = 5020
+    kConsensusUserSetGasLimitError = 5021
+    kConsensusCreateContractKeyError = 5022
+    kConsensusContractAddressLocked = 5023
+    kConsensusContractBytesCodeError = 5024
+    kConsensusTimeBlockHeightError = 5025
+    kConsensusElectBlockHeightError = 5026
+    kConsensusLeaderTxInfoInvalid = 5027
+    kConsensusVssRandomNotMatch = 5028
+    kConsensusWaiting = 5029
+    kConsensusOutOfGas = 5030
+    kConsensusRevert = 5031
+    kConsensusInvalidInstruction = 5032
+    kConsensusUndefinedInstruction = 5033
+    kConsensusStackOverflow = 5034
+    kConsensusStackUnderflow = 5035
+    kConsensusBadJumpDestination = 5036
+    kConsensusInvalidMemoryAccess = 5037
+    kConsensusCallDepthExceeded = 5038
+    kConsensusStaticModeViolation = 5039
+    kConsensusPrecompileFailure = 5040
+    kConsensusContractValidationFailure = 5041
+    kConsensusArgumentOutOfRange = 5042
+    kConsensusWasmRnreachableInstruction = 5043
+    kConsensusWasmTrap = 5044
+    kConsensusInsufficientBalance = 5045
+    kConsensusInternalError = 5046
+    kConsensusRejected = 5047
+    kConsensusOutOfMemory = 5048
+    kConsensusOutOfPrepayment = 5049
+    kConsensusElectNodeExists = 5050
+    kConsensusNonceInvalid = 5051
+    kConsensusJoinElectThreashTInvalid = 5052
 
 # --- 2. Utilities ---
 
@@ -138,31 +195,74 @@ class SethMethod:
         return self
 
     def call(self) -> Any:
-        """Read-only call: Validates hex before decoding."""
         raw_res = self.contract.client.query_contract(
             self.contract.sender_address, self.contract.address, self.encoded_input
         )
         
-        # Defensive check: if the node returns an error string like "get address failed..."
-        if not raw_res or "error" in raw_res.lower() or "failed" in raw_res.lower():
-            print(f"DEBUG: Query failed for {self.name}. Node returned: '{raw_res}'")
-            return 0 # Or a sensible default
-        
-        try:
-            clean_hex = raw_res.replace('0x', '').strip()
-            decoded = eth_abi.decode(self.output_types, bytes.fromhex(clean_hex))
-            return decoded[0] if len(decoded) == 1 else decoded
-        except Exception as e:
-            print(f"DEBUG: Decoding failed for {self.name}. Raw: {raw_res} | Error: {e}")
-            return 0
+        # Fallback values that won't crash .hex() or index lookups
+        # Matches (uint256, uint256, bytes32, bytes32, bool)
+        default_return = [0, 0, b'\x00'*32, b'\x00'*32, False]
 
-    def transact(self, private_key: str, value: int = 0, prepayment: int = 10**6) -> dict:
-        """Transaction logic with automatic parsing."""
-        tx_hash = self.contract.client.send_transaction_auto(
-            private_key, self.contract.address, StepType.kContractExcute, 
-            amount=value, input_hex=self.encoded_input, prepayment=prepayment
+        if not raw_res or "error" in str(raw_res).lower():
+            return default_return
+
+        try:
+            if isinstance(raw_res, bytes):
+                clean_bytes = raw_res
+            else:
+                clean_str = str(raw_res).replace('0x', '').strip()
+                clean_bytes = bytes.fromhex(clean_str)
+
+            return eth_abi.decode(self.output_types, clean_bytes)
+            
+        except Exception as e:
+            print(f"DEBUG: Decoding failed. Raw length: {len(clean_bytes) if 'clean_bytes' in locals() else 0} bytes")
+            # If it's a single return value, return 0; if it's a tuple, return our safe defaults
+            return default_return if len(self.output_types) > 1 else 0
+
+    def transact(self, private_key: str, value: int = 0, prepayment: int = 10**6, oqs_pubkey: str = None) -> dict:
+        """Transaction logic with automatic parsing. Supports OQS auto-detection."""
+        
+        # 1. Auto-detect private key type: ECDSA hex length is 64, OQS hex length is usually > 2000
+        is_oqs = len(private_key) > 128
+
+        if is_oqs:
+            # Get OQS public key: prioritize getting it from the contract object's attributes
+            # If you saved oqs_pubkey when deploying or initializing SethContract, it can be used directly here
+            if not oqs_pubkey:
+                # Alternative: If not preset, try deriving it from global/cache based on the private key (if liboqs supports it)
+                # Or throw an exception to remind the user to set the public key in the contract object
+                raise ValueError(
+                    "OQS detected by key length, but 'oqs_pubkey' is not set in SethContract. "
+                    "Please set 'contract.oqs_pubkey = ...' before calling transact."
+                )
+
+            tx_hash = self.contract.client.send_oqs_transaction(
+                private_key, 
+                oqs_pubkey, 
+                self.contract.address, 
+                StepType.kContractExcute, 
+                amount=value, 
+                input_hex=self.encoded_input, 
+                prepayment=prepayment
+            )
+        else:
+            # Execute standard ECDSA logic
+            tx_hash = self.contract.client.send_transaction_auto(
+                private_key, 
+                self.contract.address, 
+                StepType.kContractExcute, 
+                amount=value, 
+                input_hex=self.encoded_input, 
+                prepayment=prepayment
+            )
+
+        # 2. Wait for and return the receipt
+        return self.contract.client.wait_for_receipt(
+            tx_hash, 
+            abi=self.contract.abi, 
+            function_name=self.name
         )
-        return self.contract.client.wait_for_receipt(tx_hash, abi=self.contract.abi, function_name=self.name)
 
 class SethContract:
     def __init__(self, client: SethClient, address: Optional[str], abi: list, bytecode: str = None, sender_address: str = ""):
@@ -176,21 +276,52 @@ class SethContract:
         return lambda *args: SethMethod(self, item)(*args)
 
     def deploy(self, transaction: dict, private_key: str) -> SethContract:
-        """Web3-style deployment."""
+        """Web3-style deployment. Automatically detects OQS based on private_key length."""
+        # 1. Extract base parameters
         sender = transaction.get('from', self.sender_address)
         salt = str(transaction.get('salt', '0'))
         step = transaction.get('step', StepType.kCreateContract)
         amount = transaction.get('amount', 0)
         args = transaction.get('args', [])
 
+        # 2. Process bytecode and constructor arguments
         full_bytecode = self.bytecode
         if args:
             ctor = next((x for x in self.abi if x['type'] == 'constructor'), None)
             if ctor:
                 full_bytecode += eth_abi.encode([i['type'] for i in ctor['inputs']], args).hex()
 
+        # 3. Calculate deployment address
         self.address = calc_create2_address(sender, salt, full_bytecode)
-        tx_hash = self.client.send_transaction_auto(private_key, self.address, step, contract_code=full_bytecode, prepayment=10000000, amount=amount)
+
+        # 4. Automatically select transaction interface based on private key length
+        # ECDSA private key hex length is 64, OQS (e.g., Dilithium) private key hex length is usually > 2000
+        if len(private_key) > 128:
+            # Compatibility handling: attempt to get pubkey from the transaction dictionary
+            oqs_pubkey = transaction.get('pubkey')
+            if not oqs_pubkey:
+                raise ValueError("OQS deployment requires 'pubkey' inside the transaction dict.")
+                
+            tx_hash = self.client.send_oqs_transaction(
+                private_key, 
+                oqs_pubkey, 
+                self.address, 
+                step, 
+                contract_code=full_bytecode, 
+                prepayment=10000000, 
+                amount=amount
+            )
+        else:
+            tx_hash = self.client.send_transaction_auto(
+                private_key, 
+                self.address, 
+                step, 
+                contract_code=full_bytecode, 
+                prepayment=10000000, 
+                amount=amount
+            )
+
+        # 5. Wait for and return the result
         self.client.wait_for_receipt(tx_hash)
         return self
 
@@ -205,6 +336,23 @@ class SethWeb3Mock:
     def send_transaction(self, tx_dict: dict, private_key: str) -> dict:
         tx_hash = self.client.send_transaction_auto(private_key, tx_dict['to'], StepType.kNormalFrom, amount=tx_dict.get('value', 0))
         return self.client.wait_for_receipt(tx_hash)
+    
+    def send_oqs_transaction(self, tx_dict: dict, private_key: str) -> dict:
+        """Fix: Send Post-Quantum (OQS) transaction"""
+        # Must get the OQS public key from tx_dict, as OQS signature requires it
+        pubkey = tx_dict.get('pubkey')
+        if not pubkey:
+            raise ValueError("OQS transaction requires 'pubkey' in tx_dict")
+            
+        # Call the method specifically handling OQS in the client
+        tx_hash = self.client.send_oqs_transaction(
+            private_key,     # The private_key here should be the OQS private key
+            pubkey,          # OQS public key
+            tx_dict['to'], 
+            StepType.kNormalFrom, 
+            amount=tx_dict.get('value', 0)
+        )
+        return self.client.wait_for_receipt(tx_hash)
 
 # --- 4. Base Client ---
 
@@ -215,6 +363,7 @@ class SethClient:
         self.query_url = f"{self.base_url}/query_account"
         self.receipt_url = f"{self.base_url}/transaction_receipt"
         self.query_contract_url = f"{self.base_url}/query_contract"
+        self.oqs_url = f"http://{host}:{port}/oqs_transaction"
 
     def get_address(self, pk_hex):
         sk = SigningKey.from_string(bytes.fromhex(pk_hex.replace('0x', '')), curve=SECP256k1)
@@ -323,6 +472,131 @@ class SethClient:
                     print(f"Event decode error: {ex}")
 
         return receipt
+    
+    def get_oqs_address(self, pubkey_hex: str) -> str:
+        """
+        Fix: Synchronize server-side C++ logic
+        str_addr_ = common::Hash::keccak256(str_pk_).substr(0, 20)
+        """
+        pub_bytes = bytes.fromhex(pubkey_hex.replace('0x', ''))
+        # Must use Keccak256
+        k = keccak.new(digest_bits=256)
+        k.update(pub_bytes)
+        return k.digest()[:20].hex()
+    
+    def send_oqs_transaction(self, oqs_sk_hex, oqs_pk_hex, to, step, amount=0, contract_code='', input_hex='', prepayment=0):
+        """发送后量子交易 - 完美适配 0.15.0/0.14.0 混合环境"""
+        if not oqs:
+            raise ImportError("liboqs-python is required")
+            
+        # sigalg = "ML-DSA-44"
+        # oqs_signer = oqs.Signature(sigalg)
+        # oqs_verifier = oqs.Signature(sigalg)
+        # # signer_public_key = oqs_signer.generate_keypair()
+        # oqs_pk_hex = signer_public_key.hex()
+        # oqs_sk_hex = oqs_signer.export_secret_key().hex()
+        my_addr = self.get_oqs_address(oqs_pk_hex)
+        nonce_addr = to + my_addr if step == StepType.kContractExcute else my_addr
+        
+        # 1. 获取 Nonce
+        try:
+            r = requests.post(self.query_url, data={"address": nonce_addr}).json()
+            nonce = int(r.get("nonce", 0)) + 1
+        except: nonce = 1
+
+        # 2. 构造消息哈希 (Keccak256)
+        msg = bytearray()
+        msg.extend(struct.pack('<Q', nonce))
+
+        pk_bytes = bytes.fromhex(oqs_pk_hex.replace('0x',''))
+        msg.extend(pk_bytes)
+        msg.extend(bytes.fromhex(to.replace('0x','')))
+        msg.extend(struct.pack('<Q', amount))
+        msg.extend(struct.pack('<Q', 5000000)) # gas_limit
+        msg.extend(struct.pack('<Q', 1))       # gas_price
+        msg.extend(struct.pack('<Q', int(step)))
+        if contract_code: msg.extend(bytes.fromhex(contract_code))
+        if input_hex: msg.extend(bytes.fromhex(input_hex))
+        if prepayment > 0: msg.extend(struct.pack('<Q', prepayment))
+
+        txh = keccak.new(digest_bits=256).update(msg).digest()
+
+        # print(f"Signature details:{oqs_signer.details}")
+        # message = bytes(txh)
+        # signature = oqs_signer.sign(message)
+
+        # # Verifier verifies the signature
+        # test_is_valid = oqs_verifier.verify(message, signature, bytes.fromhex(oqs_pk_hex.replace('0x','')))
+
+        # print(f"Valid signature {test_is_valid}")
+
+        # 3. 执行 ML-DSA-44 (Dilithium2) 签名
+        with oqs.Signature('ML-DSA-44') as signer:
+            import ctypes
+            
+            # A. 消息哈希：直接用原生的 bytes (让 oqs.py 内部去处理 create_string_buffer)
+            txh_bytes = bytes(txh)
+            
+            # B. 私钥准备 (2560 字节)
+            sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
+            sk_len = len(sk_bytes) 
+            # sk_bytes = sk_bytes.ljust(sk_len, b'\x00')[:sk_len]
+            
+            # C. 注入私钥并防止 free() 崩溃
+            # 我们必须把私钥放进一个名为 secret_key 的 ctypes 实例中，
+            # 因为 __exit__ 里的 free() 会对这个属性调用 byref()
+            sk_ctypes = (ctypes.c_uint8 * sk_len).from_buffer_copy(sk_bytes)
+            
+            try:
+                # 尝试覆盖。如果 secret_key 是 property，这可能会失败
+                signer.secret_key = sk_ctypes 
+                print("0 set prikey success.")
+            except:
+                # 如果上面失败，说明它是只读的，我们要么改内部变量，要么强制注入
+                # 在 0.14.0 中，内部缓冲区通常就在这里
+                if hasattr(signer, '_secret_key'):
+                    ctypes.memmove(signer._secret_key, sk_ctypes, sk_len)
+                    print("1 set prikey success.")
+                else:
+                    # 最后的绝招：直接把对象属性替换掉
+                    signer.__dict__['secret_key'] = sk_ctypes
+                    print("2 set prikey success.")
+
+            # D. 执行签名
+            # 传 1 个参数符合 "2 positional arguments" (self + msg)
+            # 且不手动构造 ctypes 避免内部 create_string_buffer 报错
+            signature = signer.sign(txh_bytes)
+
+            is_valid = signer.verify(txh, signature, pk_bytes)
+            print(f"Local Verify Test: {is_valid}, len pk: {len(pk_bytes)}, sk_len: {sk_len}")
+
+        # 4. 转换回 Hex
+        sig_hex = bytes(signature).hex()
+
+
+        # 4. 组装请求
+        data = {
+            "nonce": str(nonce),
+            "pubkey": oqs_pk_hex.replace('0x',''),
+            "to": to.replace('0x',''),
+            "amount": str(amount),
+            "gas_limit": "5000000",
+            "gas_price": "1",
+            "shard_id": "0",
+            "type": str(int(step)),
+            "sign": sig_hex 
+        }
+        
+        if contract_code: data["bytes_code"] = contract_code
+        if input_hex: data["input"] = input_hex
+        if prepayment: data["pepay"] = str(prepayment)
+        
+        requests.post(self.oqs_url, data=data)
+        print(f"tx hash {txh.hex()}, pk: {oqs_pk_hex}, data: {data}, msg: {msg.hex()}")
+
+        
+            
+        return txh.hex()
 
     def query_contract(self, f, a, i):
         return requests.post(self.query_contract_url, data={"from": f, "address": a, "input": i}).text

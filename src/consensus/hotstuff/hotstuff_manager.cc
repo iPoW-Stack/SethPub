@@ -421,21 +421,11 @@ void HotstuffManager::PopPoolsMessage() {
         SETH_DEBUG("tps success handle message hash64: %lu, tx size: %d", msg_ptr->header.hash64(), txs.size());
         for (uint32_t i = 0; i < uint32_t(txs.size()); i++) {
             auto* tx = &txs[i];
-            std::string from_id;
             if (!pools::IsUserTransaction(tx->step())) {
                 continue;
             }
             
-            if (tx->pubkey().size() == 64u) {
-                security::GmSsl gmssl;
-                from_id = gmssl.GetAddress(tx->pubkey());
-            } else if (tx->pubkey().size() > 128u) {
-                security::Oqs oqs;
-                from_id = oqs.GetAddress(tx->pubkey());
-            } else {
-                from_id = security_ptr_->GetAddress(tx->pubkey());
-            }
-
+            auto from_id = security_ptr_->GetAddressWithPublicKey(tx->pubkey());
             uint32_t pool_index = common::kInvalidPoolIndex;
             protos::AddressInfoPtr address_info = nullptr;
             if (tx->step() == pools::protobuf::kContractExcute) {

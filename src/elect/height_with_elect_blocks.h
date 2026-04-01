@@ -311,7 +311,7 @@ private:
         auto shard_members_ptr = std::make_shared<common::Members>();
         auto& in = elect_block.in();
         for (int32_t i = 0; i < in.size(); ++i) {
-            auto id = security->GetAddress(in[i].pubkey());
+            auto id = security->GetAddressWithPublicKey(in[i].pubkey());
             shard_members_ptr->push_back(std::make_shared<common::BftMember>(
                 elect_block.shard_network_id(),
                 id,

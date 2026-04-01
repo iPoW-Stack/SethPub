@@ -98,7 +98,7 @@ void BlsManager::OnNewElectBlock(
     auto members = std::make_shared<common::Members>();
     auto& in = elect_block->in();
     for (int32_t i = 0; i < in.size(); ++i) {
-        auto id = security_->GetAddress(in[i].pubkey());
+        auto id = security_->GetAddressWithPublicKey(in[i].pubkey());
         members->push_back(std::make_shared<common::BftMember>(
             elect_block->shard_network_id(),
             id,

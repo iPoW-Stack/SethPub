@@ -18,6 +18,7 @@
 #include "protos/pools.pb.h"
 #include "protos/transport.pb.h"
 #include "protos/view_block.pb.h"
+#include "security/oqs/oqs.h"
 #include "transport/tcp_transport.h"
 #include "zjcvm/execution.h"
 #include "zjcvm/zjc_host.h"
@@ -65,6 +66,202 @@ static const char* GetStatus(int status) {
     return "unknown";
 }
 
+static int CreateOqsTransactionWithAttr(
+        uint64_t nonce,
+        const std::string& from_pk,
+        const std::string& to,
+        const std::string& sign,
+        uint64_t amount,
+        uint64_t gas_limit,
+        uint64_t gas_price,
+        int32_t des_net_id,
+        const httplib::Request& req,
+        transport::protobuf::Header& msg) {
+    security::Oqs oqs;
+    auto from = oqs.GetAddress(from_pk);
+    if (from.empty()) {
+        SETH_DEBUG("failed get address from pk: %s", common::Encode::HexEncode(from_pk).c_str());
+        return kAccountNotExists;
+    }
+
+    if (from == to) {
+        SETH_DEBUG("failed get address from == to: %s", common::Encode::HexEncode(from).c_str());
+        return kFromEqualToInvalid;
+    }
+
+    if (from.size() != 20 || to.size() != 20) {
+        SETH_DEBUG("failed get address size error: %lu, %lu", from.size(), to.size());
+        return kAccountNotExists;
+    }
+
+    SETH_DEBUG("OQS transaction from: %s, to: %s, nonce: %lu",
+        common::Encode::HexEncode(from).c_str(),
+        common::Encode::HexEncode(to).c_str(),
+        nonce);
+
+    dht::DhtKeyManager dht_key(des_net_id);
+    msg.set_src_sharding_id(des_net_id);
+    msg.set_des_dht_key(dht_key.StrKey());
+    msg.set_type(common::kPoolsMessage);
+    msg.set_hop_count(0);
+
+    auto new_tx = msg.mutable_tx_proto();
+    new_tx->set_nonce(nonce);
+    new_tx->set_pubkey(from_pk);
+    
+    auto step = req.get_param_value("type");
+    uint32_t step_val = 0;
+    if (!step.empty() && !common::StringUtil::ToUint32(step, &step_val)) {
+        return kHttpError;
+    }
+
+    auto contract_bytes_hex = req.get_param_value("bytes_code");
+    std::string contract_bytes;
+    if (!contract_bytes_hex.empty()) {
+        contract_bytes = common::Encode::HexDecode(contract_bytes_hex);
+        if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kContractCreate) {
+            if (common::IsContractBytescodeValid(contract_bytes) != common::ValidationStatus::SUCCESS) {
+                SETH_DEBUG("create contract not has valid code: %s", common::Encode::HexEncode(contract_bytes).c_str());
+                return kHttpError;
+            }
+        }
+    }
+
+    new_tx->set_step(static_cast<pools::protobuf::StepType>(step_val));
+    new_tx->set_to(to);
+    new_tx->set_amount(amount);
+    new_tx->set_gas_limit(gas_limit);
+    new_tx->set_gas_price(gas_price);
+    ADD_TX_DEBUG_INFO(new_tx);
+    
+    auto key = req.get_param_value("key");
+    auto val = req.get_param_value("val");
+    if (!key.empty()) {
+        new_tx->set_key(key);
+        if (!val.empty()) {
+            new_tx->set_value(val);
+        }
+    }
+
+    if (!contract_bytes.empty()) {
+        new_tx->set_contract_code(contract_bytes);
+    }
+
+    auto input = req.get_param_value("input");
+    if (!input.empty()) {
+        new_tx->set_contract_input(common::Encode::HexDecode(input));
+    }
+
+    auto pepay = req.get_param_value("pepay");
+    if (!pepay.empty()) {
+        uint64_t pepay_val = 0;
+        if (!common::StringUtil::ToUint64(pepay, &pepay_val)) {
+            SETH_WARN("get prepay failed %s", pepay.c_str());
+            return kSignatureInvalid;
+        }
+        new_tx->set_contract_prepayment(pepay_val);
+    }
+
+    if (sign.empty()) {
+        SETH_ERROR("OQS Signature is empty!");
+        return kSignatureInvalid;
+    }
+
+    try {
+        auto tx_hash = pools::GetTxMessageHash(*new_tx);
+        if (oqs.Verify(tx_hash, from_pk, sign) != security::kSecuritySuccess) {
+            SETH_ERROR("OQS verify signature failed! tx_hash: %s, pk: %s, sign: %s",
+                common::Encode::HexEncode(tx_hash).c_str(),
+                common::Encode::HexEncode(from_pk).c_str(),
+                common::Encode::HexEncode(sign).c_str());
+            return kSignatureInvalid;
+        }
+
+        new_tx->set_sign(sign);
+    } catch (const std::exception& e) {
+        SETH_ERROR("exception during oqs transaction creation: %s", e.what());
+        return kSignatureInvalid;
+    }
+
+    return kHttpSuccess;
+}
+
+static void OqsHttpTransaction(const httplib::Request& req, httplib::Response& http_res) {
+    SETH_DEBUG("OQS http transaction request received.");
+    
+    auto from_pk_hex = req.get_param_value("pubkey");
+    auto to_hex = req.get_param_value("to");
+    auto sign_hex = req.get_param_value("sign");
+    auto nonce_str = req.get_param_value("nonce");
+    auto amount_str = req.get_param_value("amount");
+    auto shard_id_str = req.get_param_value("shard_id");
+    auto gas_limit = req.get_param_value("gas_limit");
+    auto gas_price = req.get_param_value("gas_price");
+
+    uint64_t gas_limit_val = 0;
+    if (!common::StringUtil::ToUint64(gas_limit, &gas_limit_val)) {
+        std::string res = std::string("gas_limit not integer: ") + gas_limit;
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    uint64_t gas_price_val = 0;
+    if (!common::StringUtil::ToUint64(gas_price, &gas_price_val)) {
+        std::string res = std::string("gas_price not integer: ") + gas_price;
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    uint64_t nonce = 0, amount = 0;
+    int32_t shard_id = 0;
+    if (!common::StringUtil::ToUint64(nonce_str, &nonce) || 
+        !common::StringUtil::ToUint64(amount_str, &amount) ||
+        !common::StringUtil::ToInt32(shard_id_str, &shard_id)) {
+        http_res.set_content("error: invalid numeric parameters", "text/plain");
+        return;
+    }
+
+    auto msg_ptr = std::make_shared<transport::TransportMessage>();
+    int status = CreateOqsTransactionWithAttr(
+        nonce,
+        common::Encode::HexDecode(from_pk_hex),
+        common::Encode::HexDecode(to_hex),
+        common::Encode::HexDecode(sign_hex),
+        amount,
+        gas_limit_val,
+        gas_price_val,
+        shard_id,
+        req,
+        msg_ptr->header);
+
+    if (status != kHttpSuccess) {
+        http_res.set_content(std::string("transaction invalid: ") + GetStatus(status), "text/plain");
+        return;
+    }
+
+    security::Oqs oqs;
+    auto addr = oqs.GetAddress(common::Encode::HexDecode(from_pk_hex));
+    msg_ptr->msg_hash = pools::GetTxMessageHash(msg_ptr->header.tx_proto());
+    msg_ptr->address_info = http_handler->acc_mgr()->GetAccountInfo(addr);
+    
+    if (msg_ptr->address_info == nullptr) {
+        http_res.set_content("kAccountNotExists", "text/plain");
+        return;
+    }
+
+    msg_ptr->header.set_hash64(common::Random::RandomUint64());
+    http_handler->net_handler()->NewHttpServer(msg_ptr);
+    msg_ptr->handle_status = transport::kMessageHandle;
+    
+    {
+        std::lock_guard<std::mutex> lock(http_handler->tx_msg_map_mutex());
+        http_handler->tx_msg_map().Put(msg_ptr->msg_hash, msg_ptr);
+    }
+
+    http_res.set_content("ok", "text/plain");
+    SETH_INFO("OQS transaction successfully processed and broadcasted.");
+}
+
 static int CreateTransactionWithAttr(
         uint64_t nonce,
         const std::string& from_pk,
@@ -78,7 +275,7 @@ static int CreateTransactionWithAttr(
         int32_t des_net_id,
         const httplib::Request& req,
         transport::protobuf::Header& msg) {
-    auto from = http_handler->security_ptr()->GetAddress(from_pk);
+    auto from = http_handler->security_ptr()->GetAddressWithPublicKey(from_pk);
     if (from.empty()) {
         SETH_DEBUG("failed get address from pk: %s", common::Encode::HexEncode(from_pk).c_str());
         return kAccountNotExists;
@@ -315,13 +512,13 @@ static void HttpTransaction(const httplib::Request& req, httplib::Response& http
     SETH_DEBUG("http handler success get http server thread index: %d, address: %s", 
         thread_index, 
         common::Encode::HexEncode(
-            http_handler->security_ptr()->GetAddress(common::Encode::HexDecode(frompk))).c_str());
+            http_handler->security_ptr()->GetAddressWithPublicKey(common::Encode::HexDecode(frompk))).c_str());
     msg_ptr->msg_hash = pools::GetTxMessageHash(msg.tx_proto());
     msg_ptr->address_info = http_handler->acc_mgr()->GetAccountInfo(
-        http_handler->security_ptr()->GetAddress(common::Encode::HexDecode(frompk)));
+        http_handler->security_ptr()->GetAddressWithPublicKey(common::Encode::HexDecode(frompk)));
     if (msg_ptr->address_info == nullptr) {
         std::string res = std::string("address invalid: ") + common::Encode::HexEncode(
-            http_handler->security_ptr()->GetAddress(common::Encode::HexDecode(frompk)));
+            http_handler->security_ptr()->GetAddressWithPublicKey(common::Encode::HexDecode(frompk)));
         http_res.set_content(res, "text/plain");
         return;
     }
@@ -330,7 +527,7 @@ static void HttpTransaction(const httplib::Request& req, httplib::Response& http
     SETH_WARN("http handler success get http server thread index: %d, address: %s, hash64: %lu", 
         thread_index, 
         common::Encode::HexEncode(
-            http_handler->security_ptr()->GetAddress(common::Encode::HexDecode(frompk))).c_str(),
+            http_handler->security_ptr()->GetAddressWithPublicKey(common::Encode::HexDecode(frompk))).c_str(),
         msg_ptr->header.hash64());
     http_handler->net_handler()->NewHttpServer(msg_ptr);
     std::string res = std::string("ok");
@@ -343,7 +540,7 @@ static void HttpTransaction(const httplib::Request& req, httplib::Response& http
 
     SETH_WARN("http transaction success %s, %s, nonce: %lu, txhash: %s", 
         common::Encode::HexEncode(
-        http_handler->security_ptr()->GetAddress(common::Encode::HexDecode(frompk))).c_str(), 
+        http_handler->security_ptr()->GetAddressWithPublicKey(common::Encode::HexDecode(frompk))).c_str(), 
         to, nonce,
         common::Encode::HexEncode(msg_ptr->msg_hash).c_str());
 }
@@ -1241,6 +1438,7 @@ void HttpHandler::Init(
 
     svr.set_payload_max_length(512 * 1024 * 1024);
     svr.Post("/transaction", HttpTransaction);
+    svr.Post("/oqs_transaction", OqsHttpTransaction);
     svr.Post("/get_seckey_and_encrypt_data", GetSecAndEncData);
     svr.Post("/proxy_decrypt", ProxDecryption);
     svr.Post("/query_contract", QueryContract);

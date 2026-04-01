@@ -14,7 +14,7 @@ namespace security {
 class Oqs : public Security {
 public:
     Oqs() {
-        sig_ptr_ = OQS_SIG_new(OQS_SIG_alg_dilithium_2);
+        sig_ptr_ = OQS_SIG_new(OQS_SIG_alg_ml_dsa_44);
     }
 
     virtual ~Oqs() {
@@ -57,8 +57,8 @@ public:
 
 private:
     OQS_SIG* sig_ptr_ = nullptr;
-    uint8_t public_key_[OQS_SIG_dilithium_2_length_public_key];
-    uint8_t secret_key_[OQS_SIG_dilithium_2_length_secret_key];
+    uint8_t public_key_[OQS_SIG_ml_dsa_44_length_public_key];
+    uint8_t secret_key_[OQS_SIG_ml_dsa_44_length_secret_key];
     std::string str_prikey_;
     std::string str_addr_;
     std::string str_pk_;
