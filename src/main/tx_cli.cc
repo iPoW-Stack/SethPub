@@ -949,6 +949,22 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    if (argv[1][0] == '2') {
+        oqs_tx(common::Encode::HexDecode("0000000000000000000000000000000000000001"), 10000);
+        transport::TcpTransport::Instance()->Stop();
+        usleep(1000000);
+        return 0;
+    }
+
+    if (argv[1][0] == '3') {
+        gmssl_tx(
+            common::Encode::HexDecode("c4b9e7a21d5f83c0a1e4d6b9f2a1e5c8d3b7a9f0e1d2c3b4a5968778695a4b3c"), 
+            common::Encode::HexDecode("0000000000000000000000000000000000000001"), 10000);
+        transport::TcpTransport::Instance()->Stop();
+        usleep(1000000);
+        return 0;
+    }
+
     return 0;
 }
 
