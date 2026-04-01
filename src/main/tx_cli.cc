@@ -725,7 +725,6 @@ int oqs_tx(const std::string& to, uint64_t amount) {
         OQS_SIG_free(sig);
         return 1;
     }
-    print_hex("Public Key", src_public_key.data(), src_public_key.size());
 
     // 4. Signing
     std::string message = "Transaction Data for SethPub";
