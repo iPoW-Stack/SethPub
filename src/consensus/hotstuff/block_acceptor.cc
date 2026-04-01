@@ -234,7 +234,7 @@ Status BlockAcceptor::Accept(
 
     for (int32_t i = 0; i < view_block.block_info().joins_size(); i++) {
         auto& join_info = view_block.block_info().joins(i);
-        auto addr = security_ptr_->GetAddress(join_info.public_key());
+        auto addr = security_ptr_->GetAddressWithPublicKey(join_info.public_key());
         prefix_db_->SaveNodeVerificationVector(
             addr,
             join_info,
@@ -456,15 +456,7 @@ Status BlockAcceptor::addTxsToPool(
 
         // --- Serial Logic: Get Account ID (Very short time) ---
         if (pools::IsUserTransaction(tx->step())) {
-            if (tx->pubkey().size() == 64u) {
-                security::GmSsl gmssl;
-                from_id = gmssl.GetAddress(tx->pubkey());
-            } else if (tx->pubkey().size() > 128u) {
-                security::Oqs oqs;
-                from_id = oqs.GetAddress(tx->pubkey());
-            } else {
-                from_id = security_ptr_->GetAddress(tx->pubkey());
-            }
+            from_id = security_ptr_->GetAddressWithPublicKey(tx->pubkey());
         }
         
         // --- Serial Logic: DB Query & AddressInfo Retrieval (Must be serial) ---

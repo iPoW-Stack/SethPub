@@ -402,7 +402,7 @@ Status Hotstuff::Propose(
     // security::Ecdsa ecdsa;
     // for (int32_t tx_idx = 0; tx_idx < pb_pro_msg->tx_propose().txs_size(); ++tx_idx) {
     //     if (!pb_pro_msg->tx_propose().txs(tx_idx).pubkey().empty()) {
-    //         propose_debug_str += common::Encode::HexEncode(ecdsa.GetAddress(pb_pro_msg->tx_propose().txs(tx_idx).pubkey())) + "_" +
+    //         propose_debug_str += common::Encode::HexEncode(ecdsa.GetAddressWithPublicKey(pb_pro_msg->tx_propose().txs(tx_idx).pubkey())) + "_" +
     //             common::Encode::HexEncode(pb_pro_msg->tx_propose().txs(tx_idx).to())  + "_" +
     //             common::Encode::HexEncode(pb_pro_msg->tx_propose().txs(tx_idx).key())  + "_" +
     //             std::to_string(pb_pro_msg->tx_propose().txs(tx_idx).step()) + "_" +

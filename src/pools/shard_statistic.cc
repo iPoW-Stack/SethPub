@@ -314,7 +314,7 @@ bool ShardStatistic::HandleStatistic(
     auto& id_agg_bls_pk_proof_map = statistic_info_ptr->id_agg_bls_pk_proof_map;
     auto handle_joins_func = [&](const bls::protobuf::JoinElectInfo& join_info) {
         SETH_DEBUG("join elect tx comming.");
-        auto join_addr = secptr_->GetAddress(join_info.public_key());
+        auto join_addr = secptr_->GetAddressWithPublicKey(join_info.public_key());
         id_pk_map[join_addr] =join_info.public_key();
         {
             auto eiter = join_elect_stoke_map.find(view_block_ptr->qc().elect_height());
@@ -364,7 +364,7 @@ bool ShardStatistic::HandleStatistic(
         }
 
         for(auto node : elect_block.in()) {
-            auto addr = secptr_->GetAddress(node.pubkey());
+            auto addr = secptr_->GetAddressWithPublicKey(node.pubkey());
             auto acc_iter = accout_poce_info_map_.find(addr);
             if (acc_iter == accout_poce_info_map_.end()) {
                 accout_poce_info_map_[addr] = std::make_shared<AccoutPoceInfoItem>();
@@ -869,7 +869,7 @@ void ShardStatistic::addPrepareMembers2JoinStastics(
             auto inc_iter = added_id_set.find((*prepare_members)[i]->pubkey);
             if (inc_iter != added_id_set.end()) {
                 // SETH_DEBUG("id is in elect: %s", common::Encode::HexEncode(
-                //     secptr_->GetAddress((*prepare_members)[i]->pubkey)).c_str());
+                //     secptr_->GetAddressWithPublicKey((*prepare_members)[i]->pubkey)).c_str());
                 continue;
             }
 
@@ -884,7 +884,7 @@ void ShardStatistic::addPrepareMembers2JoinStastics(
             join_elect_node->set_shard(shard);
             SETH_DEBUG("add node to election prepare member: %s, %s, stoke: %lu, shard: %u, elect pos: %d",
                       common::Encode::HexEncode((*prepare_members)[i]->pubkey).c_str(),
-                      common::Encode::HexEncode(secptr_->GetAddress((*prepare_members)[i]->pubkey)).c_str(),
+                      common::Encode::HexEncode(secptr_->GetAddressWithPublicKey((*prepare_members)[i]->pubkey)).c_str(),
                       stoke, shard,
                       0);
         }
@@ -981,7 +981,7 @@ void ShardStatistic::addNewNode2JoinStatics(
         join_elect_node->set_elect_pos(0);
         SETH_DEBUG("add node to election new member: %s, %s, stoke: %lu, shard: %u, elect pos: %d",
                   common::Encode::HexEncode(pubkey).c_str(),
-                  common::Encode::HexEncode(secptr_->GetAddress(pubkey)).c_str(),
+                  common::Encode::HexEncode(secptr_->GetAddressWithPublicKey(pubkey)).c_str(),
                   iter->second, shard_iter->second,
                   0);
         SETH_DEBUG("add new elect node: %s, stoke: %lu, shard: %u",

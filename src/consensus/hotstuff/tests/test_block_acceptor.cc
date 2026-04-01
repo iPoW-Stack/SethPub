@@ -111,7 +111,7 @@ protected:
         auto account_info = std::make_shared<address::protobuf::AddressInfo>();
         account_info->set_pubkey(security_->GetPublicKeyUnCompressed());
         account_info->set_pool_index(POOL);
-        account_info->set_addr(security_->GetAddress(security_->GetPublicKeyUnCompressed()));
+        account_info->set_addr(security_->GetAddressWithPublicKey(security_->GetPublicKeyUnCompressed()));
         account_info->set_type(address::protobuf::kNormal);
         account_info->set_sharding_id(3);
         account_info->set_latest_height(0);

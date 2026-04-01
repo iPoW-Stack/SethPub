@@ -435,7 +435,7 @@ bool NetworkInit::InitLocalNetworkIdWithLatestElectBlock() {
 
         for (int32_t midx = 0; midx < elect_block.in_size(); ++midx) {
             auto& member = elect_block.in(midx);
-            if (security_->GetAddress(member.pubkey()) == security_->GetAddress()) {
+            if (security_->GetAddressWithPublicKey(member.pubkey()) == security_->GetAddress()) {
                 common::GlobalInfo::Instance()->set_network_id(i);
                 return true;
             }
@@ -477,7 +477,7 @@ void NetworkInit::InitLocalNetworkId() {
 
         auto& in = elect_block.in();
         for (int32_t member_idx = 0; member_idx < in.size(); ++member_idx) {
-            auto id = security_->GetAddress(in[member_idx].pubkey());
+            auto id = security_->GetAddressWithPublicKey(in[member_idx].pubkey());
             SETH_INFO("network: %d get member id: %s, local id: %s",
                 sharding_id, common::Encode::HexEncode(id).c_str(),
                 common::Encode::HexEncode(security_->GetAddress()).c_str()); // If the pubkey of this node is the same as the one recorded in the elect block, it will be assigned to the corresponding sharding
@@ -1175,7 +1175,7 @@ void NetworkInit::GetNetworkNodesFromConf(
     //     auto node_ptr = std::make_shared<GenisisNodeInfo>();
     //     node_ptr->prikey = sk;
     //     node_ptr->pubkey = secptr->GetPublicKey();
-    //     node_ptr->id = secptr->GetAddress(node_ptr->pubkey);
+    //     node_ptr->id = secptr->GetAddressWithPublicKey(node_ptr->pubkey);
     //     node_ptr->nonce = 0;
     //     root_genesis_nodes.push_back(node_ptr);
     //     SETH_DEBUG("root private key: %s, id: %s", 
@@ -1205,7 +1205,7 @@ void NetworkInit::GetNetworkNodesFromConf(
             auto node_ptr = std::make_shared<GenisisNodeInfo>();
             node_ptr->prikey = sk;
             node_ptr->pubkey = secptr->GetPublicKey();
-            node_ptr->id = secptr->GetAddress(node_ptr->pubkey);
+            node_ptr->id = secptr->GetAddressWithPublicKey(node_ptr->pubkey);
             node_ptr->nonce = 0;
             cons_genesis_nodes.push_back(node_ptr);   
             SETH_DEBUG("shard: %d private key: %s, id: %s", 
@@ -1472,7 +1472,7 @@ void NetworkInit::JoinInitNodes() {
 
         auto node = std::make_shared<dht::Node>();
         node->pubkey_str = common::Encode::HexDecode(items[0]);
-        node->id = security_->GetAddress(node->pubkey_str);
+        node->id = security_->GetAddressWithPublicKey(node->pubkey_str);
         node->public_ip = items[1];
         common::StringUtil::ToUint16(items[2], &node->public_port);
         common::StringUtil::ToInt32(items[3], &node->sharding_id);

@@ -547,7 +547,7 @@ void BlockManager::AddMiningToken(
             continue;
         }
 
-        auto id = security_->GetAddress(elect_block.in(i).pubkey());
+        auto id = security_->GetAddressWithPublicKey(elect_block.in(i).pubkey());
         protos::AddressInfoPtr account_info = account_mgr_->GetAccountInfo(id);
         if (account_info == nullptr ||
                 account_info->sharding_id() != common::GlobalInfo::Instance()->network_id()) {

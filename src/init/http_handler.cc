@@ -275,7 +275,7 @@ static int CreateTransactionWithAttr(
         int32_t des_net_id,
         const httplib::Request& req,
         transport::protobuf::Header& msg) {
-    auto from = http_handler->security_ptr()->GetAddress(from_pk);
+    auto from = http_handler->security_ptr()->GetAddressWithPublicKey(from_pk);
     if (from.empty()) {
         SETH_DEBUG("failed get address from pk: %s", common::Encode::HexEncode(from_pk).c_str());
         return kAccountNotExists;
@@ -512,13 +512,13 @@ static void HttpTransaction(const httplib::Request& req, httplib::Response& http
     SETH_DEBUG("http handler success get http server thread index: %d, address: %s", 
         thread_index, 
         common::Encode::HexEncode(
-            http_handler->security_ptr()->GetAddress(common::Encode::HexDecode(frompk))).c_str());
+            http_handler->security_ptr()->GetAddressWithPublicKey(common::Encode::HexDecode(frompk))).c_str());
     msg_ptr->msg_hash = pools::GetTxMessageHash(msg.tx_proto());
     msg_ptr->address_info = http_handler->acc_mgr()->GetAccountInfo(
-        http_handler->security_ptr()->GetAddress(common::Encode::HexDecode(frompk)));
+        http_handler->security_ptr()->GetAddressWithPublicKey(common::Encode::HexDecode(frompk)));
     if (msg_ptr->address_info == nullptr) {
         std::string res = std::string("address invalid: ") + common::Encode::HexEncode(
-            http_handler->security_ptr()->GetAddress(common::Encode::HexDecode(frompk)));
+            http_handler->security_ptr()->GetAddressWithPublicKey(common::Encode::HexDecode(frompk)));
         http_res.set_content(res, "text/plain");
         return;
     }
@@ -527,7 +527,7 @@ static void HttpTransaction(const httplib::Request& req, httplib::Response& http
     SETH_WARN("http handler success get http server thread index: %d, address: %s, hash64: %lu", 
         thread_index, 
         common::Encode::HexEncode(
-            http_handler->security_ptr()->GetAddress(common::Encode::HexDecode(frompk))).c_str(),
+            http_handler->security_ptr()->GetAddressWithPublicKey(common::Encode::HexDecode(frompk))).c_str(),
         msg_ptr->header.hash64());
     http_handler->net_handler()->NewHttpServer(msg_ptr);
     std::string res = std::string("ok");
@@ -540,7 +540,7 @@ static void HttpTransaction(const httplib::Request& req, httplib::Response& http
 
     SETH_WARN("http transaction success %s, %s, nonce: %lu, txhash: %s", 
         common::Encode::HexEncode(
-        http_handler->security_ptr()->GetAddress(common::Encode::HexDecode(frompk))).c_str(), 
+        http_handler->security_ptr()->GetAddressWithPublicKey(common::Encode::HexDecode(frompk))).c_str(), 
         to, nonce,
         common::Encode::HexEncode(msg_ptr->msg_hash).c_str());
 }

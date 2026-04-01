@@ -185,7 +185,7 @@ void Universal::ProcessGetNetworkNodesResponse(const transport::MessagePtr& msg_
                 res_nodes[i].public_ip(),
                 res_nodes[i].public_port(),
                 res_nodes[i].pubkey(),
-                security_->GetAddress(res_nodes[i].pubkey()));
+                security_->GetAddressWithPublicKey(res_nodes[i].pubkey()));
             wait_nodes_.push_back(node);
         }
     } while (0);
@@ -244,7 +244,7 @@ void Universal::OnNewElectBlock(
 
     auto& in = elect_block->in();
     for (int32_t i = 0; i < in.size(); ++i) {
-        auto id = security_->GetAddress(in[i].pubkey());
+        auto id = security_->GetAddressWithPublicKey(in[i].pubkey());
         new_item->id_set.insert(id);
     }
 

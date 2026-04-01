@@ -470,7 +470,7 @@ void BaseDht::ProcessBootstrapRequest(const transport::MessagePtr& msg_ptr) {
         return;
     }
 
-    auto id = security_->GetAddress(dht_msg.bootstrap_req().pubkey());
+    auto id = security_->GetAddressWithPublicKey(dht_msg.bootstrap_req().pubkey());
     DhtKeyManager dhtkey(header.src_sharding_id(), id);
     transport::protobuf::Header msg;
     DhtProto::CreateBootstrapResponse(
@@ -499,7 +499,7 @@ void BaseDht::ProcessBootstrapRequest(const transport::MessagePtr& msg_ptr) {
         dht_msg.bootstrap_req().public_ip(),
         dht_msg.bootstrap_req().public_port(),
         dht_msg.bootstrap_req().pubkey(),
-        security_->GetAddress(dht_msg.bootstrap_req().pubkey()));
+        security_->GetAddressWithPublicKey(dht_msg.bootstrap_req().pubkey()));
     msg_ptr->conn->SetPeerIp(dht_msg.bootstrap_req().public_ip());
     msg_ptr->conn->SetPeerPort(dht_msg.bootstrap_req().public_port());
     node->join_way = kJoinFromBootstrapReq;
@@ -540,7 +540,7 @@ void BaseDht::ProcessBootstrapResponse(const transport::MessagePtr& msg_ptr) {
         dht_msg.bootstrap_res().public_ip(),
         dht_msg.bootstrap_res().public_port(),
         dht_msg.bootstrap_res().pubkey(),
-        security_->GetAddress(dht_msg.bootstrap_res().pubkey()));
+        security_->GetAddressWithPublicKey(dht_msg.bootstrap_res().pubkey()));
     node->join_way = kJoinFromBootstrapRes;
     msg_ptr->conn->SetPeerIp(dht_msg.bootstrap_res().public_ip());
     msg_ptr->conn->SetPeerPort(dht_msg.bootstrap_res().public_port());
@@ -584,7 +584,7 @@ void BaseDht::ProcessRefreshNeighborsRequest(const transport::MessagePtr& msg_pt
         dht_msg.refresh_neighbors_req().public_ip(),
         dht_msg.refresh_neighbors_req().public_port(),
         dht_msg.refresh_neighbors_req().pubkey(),
-        security_->GetAddress(dht_msg.refresh_neighbors_req().pubkey()));
+        security_->GetAddressWithPublicKey(dht_msg.refresh_neighbors_req().pubkey()));
     msg_ptr->conn->SetPeerIp(dht_msg.refresh_neighbors_req().public_ip());
     msg_ptr->conn->SetPeerPort(dht_msg.refresh_neighbors_req().public_port());
     node->join_way = kJoinFromRefreshNeigberRequest;
@@ -623,7 +623,7 @@ void BaseDht::ProcessRefreshNeighborsRequest(const transport::MessagePtr& msg_pt
         }
     }
 
-    auto id = security_->GetAddress(dht_msg.refresh_neighbors_req().pubkey());
+    auto id = security_->GetAddressWithPublicKey(dht_msg.refresh_neighbors_req().pubkey());
     DhtKeyManager dhtkey(header.src_sharding_id(), id);
     auto close_nodes = DhtFunction::GetClosestNodes(
         tmp_dht,
@@ -670,7 +670,7 @@ void BaseDht::ProcessRefreshNeighborsResponse(const transport::MessagePtr& msg_p
             res_nodes[i].public_ip(),
             res_nodes[i].public_port(),
             res_nodes[i].pubkey(),
-            security_->GetAddress(res_nodes[i].pubkey()));
+            security_->GetAddressWithPublicKey(res_nodes[i].pubkey()));
         auto iter = waiting_refresh_nodes_map_.find(res_nodes[i].id());
         if (iter != waiting_refresh_nodes_map_.end()) {
             iter->second.push_back(node);
@@ -729,7 +729,7 @@ void BaseDht::Connect(
     CHECK_MEMORY_SIZE(connect_timeout_map_);
     auto msg_ptr = std::make_shared<transport::TransportMessage>();
     auto& msg = msg_ptr->header;
-    auto id = security_->GetAddress(des_pubkey);
+    auto id = security_->GetAddressWithPublicKey(des_pubkey);
     DhtKeyManager dhtkey(src_sharding_id, id);
     if (DhtProto::CreateConnectRequest(
             response,
@@ -805,7 +805,7 @@ void BaseDht::ProcessConnectRequest(const transport::MessagePtr& msg_ptr) {
         dht_msg.connect_req().public_ip(),
         dht_msg.connect_req().public_port(),
         dht_msg.connect_req().pubkey(),
-        security_->GetAddress(dht_msg.connect_req().pubkey()));
+        security_->GetAddressWithPublicKey(dht_msg.connect_req().pubkey()));
     node->join_way = kJoinFromConnect;
     msg_ptr->conn->SetPeerIp(dht_msg.connect_req().public_ip());
     msg_ptr->conn->SetPeerPort(dht_msg.connect_req().public_port());

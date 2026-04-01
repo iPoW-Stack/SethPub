@@ -18,7 +18,7 @@ int JoinElectTxItem::HandleTx(
     uint64_t from_balance = 0;
     uint64_t from_nonce = 0;
     uint64_t to_balance = 0;
-    auto tmp_id = sec_ptr_->GetAddress(from_pk_);
+    auto tmp_id = sec_ptr_->GetAddressWithPublicKey(from_pk_);
     auto& from = address_info->addr();
     if (tmp_id != from) {
         block_tx.set_status(consensus::kConsensusError);

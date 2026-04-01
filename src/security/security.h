@@ -30,6 +30,8 @@ public:
     virtual std::string UnicastAddress(const std::string& src_address) = 0;
     virtual std::string GetSign(const std::string& r, const std::string& s, uint8_t v) = 0;
 
+    std::string GetAddressWithPublicKey(const std::string& pubkey);
+
 protected:
     Security() {}
     virtual ~Security() {}
