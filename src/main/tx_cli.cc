@@ -712,7 +712,7 @@ int oqs_tx(const std::string& to, uint64_t amount) {
     std::cout << "Algorithm: " << sig->method_name << std::endl;
 
     // 3. Keypair Generation
-    std::vector<uint8_t> public_key(sig->length_public_key);
+    std::vector<uint8_t> src_public_key(sig->length_public_key);
     std::vector<uint8_t> secret_key(sig->length_secret_key);
 
     if (OQS_SIG_keypair(sig, public_key.data(), secret_key.data()) != OQS_SUCCESS) {
@@ -749,7 +749,7 @@ int oqs_tx(const std::string& to, uint64_t amount) {
 
     security::Oqs oqs;
     auto private_key = std::string((char*)secret_key.data(), secret_key.size());
-    auto public_key = std::string((char*)public_key.data(), public_key.size());
+    auto public_key = std::string((char*)src_public_key.data(), src_public_key.size());
     oqs.SetPrivateKey(private_key, public_key);
     std::cout << "oqs address: " << common::Encode::HexEncode(oqs.GetAddress()) <<
         ", pk: " << common::Encode::HexEncode(oqs.GetPublicKey()) << std::endl;
