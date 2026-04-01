@@ -581,7 +581,7 @@ int gmssl_tx(const std::string& private_key, const std::string& to, uint64_t amo
     transport::MultiThreadHandler net_handler;
     std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
     auto db_ptr = std::make_shared<db::Db>();
-    if (!db_ptr->Init("gmssl.db")) {
+    if (!db_ptr->Init("oqs.db")) {
         std::cout << "init db failed!" << std::endl;
         return 1;
     }
@@ -601,7 +601,7 @@ int gmssl_tx(const std::string& private_key, const std::string& to, uint64_t amo
     }
 
     if (transport::TcpTransport::Instance()->Init(
-            "127.0.0.1:13797",
+            "127.0.0.1:13791",
             128,
             false,
             &net_handler) != 0) {
@@ -653,6 +653,7 @@ int gmssl_tx(const std::string& private_key, const std::string& to, uint64_t amo
     }
 
     std::cout << "send success." << std::endl;
+    usleep(3000000lu);
     return 0;
 }
 
