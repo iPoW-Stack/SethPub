@@ -174,7 +174,10 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
                 msg_ptr->msg_hash,
                 tx_msg.pubkey(),
                 tx_msg.sign()) != security::kSecuritySuccess) {
-            SETH_ERROR("verify signature failed!");
+            SETH_ERROR("verify signature failed msg hash: %s, pk: %s, sign: %s", 
+                common::Encode::HexEncode(msg_ptr->msg_hash).c_str(),
+                common::Encode::HexEncode(tx_msg.pubkey()).c_str(),
+                common::Encode::HexEncode(tx_msg.sign()).c_str());
             msg_ptr->handle_status = transport::kTxInvalidSignature;
             return transport::kFirewallCheckError;
         }
