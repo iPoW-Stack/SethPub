@@ -715,7 +715,7 @@ int oqs_tx(const std::string& to, uint64_t amount) {
     std::vector<uint8_t> src_public_key(sig->length_public_key);
     std::vector<uint8_t> secret_key(sig->length_secret_key);
 
-    if (OQS_SIG_keypair(sig, public_key.data(), secret_key.data()) != OQS_SUCCESS) {
+    if (OQS_SIG_keypair(sig, src_public_key.data(), secret_key.data()) != OQS_SUCCESS) {
         std::cerr << "Keypair generation failed!" << std::endl;
         OQS_SIG_free(sig);
         return 1;
