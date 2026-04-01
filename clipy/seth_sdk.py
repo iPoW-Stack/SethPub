@@ -437,6 +437,12 @@ class SethClient:
         if not oqs:
             raise ImportError("liboqs-python is required")
             
+        sigalg = "ML-DSA-44"
+        oqs_signer = oqs.Signature(sigalg)
+        oqs_verifier = oqs.Signature(sigalg)
+        signer_public_key = oqs_signer.generate_keypair()
+        oqs_pk_hex = signer_public_key.hex()
+        oqs_sk_hex = oqs_signer.export_secret_key().hex()
         my_addr = self.get_oqs_address(oqs_pk_hex)
         nonce_addr = to + my_addr if step == StepType.kContractExcute else my_addr
         
@@ -462,6 +468,15 @@ class SethClient:
         if prepayment > 0: msg.extend(struct.pack('<Q', prepayment))
 
         txh = keccak.new(digest_bits=256).update(msg).digest()
+
+        print(f"Signature details:{oqs_signer.details}")
+        message = bytes(txh)
+        signature = oqs_signer.sign(message)
+
+        # Verifier verifies the signature
+        test_is_valid = oqs_verifier.verify(message, signature, signer_public_key)
+
+        print(f"Valid signature {test_is_valid}")
 
         # 3. 执行 ML-DSA-44 (Dilithium2) 签名
         with oqs.Signature('ML-DSA-44') as signer:
@@ -527,29 +542,7 @@ class SethClient:
         requests.post(self.oqs_url, data=data)
         print(f"tx hash {txh.hex()}, pk: {oqs_pk_hex}, data: {data}, msg: {msg.hex()}")
 
-        # Create signer and verifier with sample signature mechanisms
-        sigalg = "ML-DSA-44"
-        message= "test_message"
-        with oqs.Signature(sigalg) as signer, oqs.Signature(sigalg) as verifier:
-            print(f"Signature details:{signer.details}")
-
-            # Signer generates its keypair
-            signer_public_key = signer.generate_keypair()
-            # Optionally, the secret key can be obtained by calling export_secret_key()
-            # and the signer can later be re-instantiated with the key pair:
-            # secret_key = signer.export_secret_key()
-
-            # Store key pair, wait... (session resumption):
-            # signer = oqs.Signature(sigalg, secret_key)
-
-            # Signer signs the message
-            message = bytes(txh)
-            signature = signer.sign(message)
-
-            # Verifier verifies the signature
-            is_valid = verifier.verify(message, signature, signer_public_key)
-
-            print(f"Valid signature {is_valid}")
+        
             
         return txh.hex()
 
