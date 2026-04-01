@@ -433,82 +433,81 @@ class SethClient:
         return k.digest()[:20].hex()
     
     def send_oqs_transaction(self, oqs_sk_hex, oqs_pk_hex, to, step, amount=0, contract_code='', input_hex='', prepayment=0):
-        """发送后量子交易 - 修复内存注入与长度对齐问题"""
-        
+        """发送后量子交易 - 完美适配 0.15.0/0.14.0 混合环境"""
         if not oqs:
             raise ImportError("liboqs-python is required")
             
-        # 0. 常量定义 (ML-DSA-44 / Dilithium2)
-        SK_LEN = 2560
-        PK_LEN = 1312
-        
-        # 处理 Hex 并严格对齐长度（注意：格密码密钥补零可能导致非法密钥，生产环境需使用标准密钥）
-        sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', '')).ljust(SK_LEN, b'\x00')[:SK_LEN]
-        pk_bytes = bytes.fromhex(oqs_pk_hex.replace('0x', '')).ljust(PK_LEN, b'\x00')[:PK_LEN]
-        
         my_addr = self.get_oqs_address(oqs_pk_hex)
-        nonce_addr = to + my_addr if step == 8 else my_addr # 8 对应 StepType.kContractExcute
+        nonce_addr = to + my_addr if step == StepType.kContractExcute else my_addr
         
         # 1. 获取 Nonce
         try:
             r = requests.post(self.query_url, data={"address": nonce_addr}).json()
             nonce = int(r.get("nonce", 0)) + 1
-        except: 
-            nonce = 1
+        except: nonce = 1
 
-        # 2. 构造消息哈希 (Keccak256) - 必须与服务端 GetTxMessageHash 顺序完全一致
+        # 2. 构造消息哈希 (Keccak256)
         msg = bytearray()
-        msg.extend(struct.pack('<Q', nonce))          # uint64
-        msg.extend(pk_bytes)                          # 1312 bytes
-        msg.extend(bytes.fromhex(to.replace('0x',''))) # 20 bytes
-        msg.extend(struct.pack('<Q', amount))         # uint64
-        msg.extend(struct.pack('<Q', 5000000))        # gas_limit uint64
-        msg.extend(struct.pack('<Q', 1))              # gas_price uint64
-        msg.extend(struct.pack('<Q', int(step)))      # step uint64 (注意服务端是否为uint32)
-        
-        if contract_code: 
-            msg.extend(bytes.fromhex(contract_code))
-        if input_hex: 
-            msg.extend(bytes.fromhex(input_hex))
-            
-        # 关键点：服务端逻辑中只要 pepay 不为空就会参与计算，这里强制加上
-        msg.extend(struct.pack('<Q', prepayment))
+        msg.extend(struct.pack('<Q', nonce))
+
+        pk_bytes = bytes.fromhex(oqs_pk_hex.replace('0x',''))
+        # msg.extend(bytes.fromhex(oqs_pk_hex.replace('0x','')))
+        msg.extend(bytes.fromhex(to.replace('0x','')))
+        msg.extend(struct.pack('<Q', amount))
+        msg.extend(struct.pack('<Q', 5000000)) # gas_limit
+        msg.extend(struct.pack('<Q', 1))       # gas_price
+        msg.extend(struct.pack('<Q', int(step)))
+        if contract_code: msg.extend(bytes.fromhex(contract_code))
+        if input_hex: msg.extend(bytes.fromhex(input_hex))
+        if prepayment > 0: msg.extend(struct.pack('<Q', prepayment))
 
         txh = keccak.new(digest_bits=256).update(msg).digest()
-        txh_bytes = bytes(txh)
 
-        # 3. 执行 ML-DSA-44 签名
+        # 3. 执行 ML-DSA-44 (Dilithium2) 签名
         with oqs.Signature('ML-DSA-44') as signer:
-            # 【核心修复】真正的内存注入
-            # 获取内部私钥指针地址
-            target_addr = None
-            if hasattr(signer, '_secret_key'):
-                target_addr = signer._secret_key
-            elif hasattr(signer, 'secret_key'):
-                target_addr = signer.secret_key
+            import ctypes
             
-            if target_addr is None:
-                # 最后的保底：强制修改实例字典
-                sk_ctypes = (ctypes.c_uint8 * SK_LEN).from_buffer_copy(sk_bytes)
-                signer.__dict__['secret_key'] = sk_ctypes
-            else:
-                # 直接拷贝内存到 C 级缓冲区
-                ctypes.memmove(target_addr, sk_bytes, SK_LEN)
+            # A. 消息哈希：直接用原生的 bytes (让 oqs.py 内部去处理 create_string_buffer)
+            txh_bytes = bytes(txh)
+            
+            # B. 私钥准备 (2560 字节)
+            sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
+            sk_len = 2560 
+            sk_bytes = sk_bytes.ljust(sk_len, b'\x00')[:sk_len]
+            
+            # C. 注入私钥并防止 free() 崩溃
+            # 我们必须把私钥放进一个名为 secret_key 的 ctypes 实例中，
+            # 因为 __exit__ 里的 free() 会对这个属性调用 byref()
+            sk_ctypes = (ctypes.c_uint8 * sk_len).from_buffer_copy(sk_bytes)
+            
+            try:
+                # 尝试覆盖。如果 secret_key 是 property，这可能会失败
+                signer.secret_key = sk_ctypes 
+            except:
+                # 如果上面失败，说明它是只读的，我们要么改内部变量，要么强制注入
+                # 在 0.14.0 中，内部缓冲区通常就在这里
+                if hasattr(signer, '_secret_key'):
+                    ctypes.memmove(signer._secret_key, sk_ctypes, sk_len)
+                else:
+                    # 最后的绝招：直接把对象属性替换掉
+                    signer.__dict__['secret_key'] = sk_ctypes
 
-            # 执行签名
+            # D. 执行签名
+            # 传 1 个参数符合 "2 positional arguments" (self + msg)
+            # 且不手动构造 ctypes 避免内部 create_string_buffer 报错
             signature = signer.sign(txh_bytes)
 
-            # 4. 本地验证测试
-            is_valid = signer.verify(txh_bytes, signature, pk_bytes)
-            print(f"--- Local Verify Test: {is_valid} ---")
-            if not is_valid:
-                print("Warning: Local signature verification failed! Check if SK matches PK.")
+            is_valid = signer.verify(txh, signature, pk_bytes)
+            print(f"Local Verify Test: {is_valid}, len pk: {len(pk_bytes)}")
 
-        # 5. 组装请求数据
+        # 4. 转换回 Hex
         sig_hex = bytes(signature).hex()
+
+
+        # 4. 组装请求
         data = {
             "nonce": str(nonce),
-            "pubkey": pk_bytes.hex(), # 发送对齐后的完整公钥
+            "pubkey": oqs_pk_hex.replace('0x',''),
             "to": to.replace('0x',''),
             "amount": str(amount),
             "gas_limit": "5000000",
@@ -522,11 +521,8 @@ class SethClient:
         if input_hex: data["input"] = input_hex
         if prepayment: data["pepay"] = str(prepayment)
         
-        # 6. 提交交易
-        response = requests.post(self.oqs_url, data=data)
-        
-        print(f"Status: {response.status_code}")
-        print(f"TX Hash: {txh.hex()}")
+        requests.post(self.oqs_url, data=data)
+        print(f"tx hash {txh.hex()}, pk: {oqs_pk_hex}, data: {data}, msg: {msg.hex()}")
         return txh.hex()
 
     def query_contract(self, f, a, i):
