@@ -271,6 +271,7 @@ static inline std::string GetTxMessageHash(const pools::protobuf::TxMessage& tx_
         }
     }
 
+    SETH_DEBUG("get tx message hash: %s", common::Encode::HexEncode(message).c_str());
     return common::Hash::keccak256(message);
 }
 
