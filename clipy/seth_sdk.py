@@ -82,6 +82,58 @@ class MessageHandleStatus(IntEnum):
     EVMC_REJECTED = -2              # Message/code rejected by the EVM
     EVMC_OUT_OF_MEMORY = -3         # Failed to allocate memory
 
+    kConsensusError = 5001
+    kConsensusAdded = 5002,
+    kConsensusNotExists = 5004
+    kConsensusTxAdded = 5005
+    kConsensusNoNewTxs = 5006
+    kConsensusInvalidPackage = 5007
+    kConsensusTxNotExists = 5008
+    kConsensusAccountNotExists = 5009
+    kConsensusAccountBalanceError = 5010
+    kConsensusAccountExists = 5011
+    kConsensusBlockHashError = 5012
+    kConsensusBlockHeightError = 5013
+    kConsensusPoolIndexError = 5014
+    kConsensusBlockNotExists = 5015
+    kConsensusBlockPreHashError = 5016
+    kConsensusNetwokInvalid = 5017
+    kConsensusLeaderInfoInvalid = 5018
+    kConsensusExecuteContractFailed = 5019
+    kConsensusGasUsedNotEqualToLeaderError = 5020
+    kConsensusUserSetGasLimitError = 5021
+    kConsensusCreateContractKeyError = 5022
+    kConsensusContractAddressLocked = 5023
+    kConsensusContractBytesCodeError = 5024
+    kConsensusTimeBlockHeightError = 5025
+    kConsensusElectBlockHeightError = 5026
+    kConsensusLeaderTxInfoInvalid = 5027
+    kConsensusVssRandomNotMatch = 5028
+    kConsensusWaiting = 5029
+    kConsensusOutOfGas = 5030
+    kConsensusRevert = 5031
+    kConsensusInvalidInstruction = 5032
+    kConsensusUndefinedInstruction = 5033
+    kConsensusStackOverflow = 5034
+    kConsensusStackUnderflow = 5035
+    kConsensusBadJumpDestination = 5036
+    kConsensusInvalidMemoryAccess = 5037
+    kConsensusCallDepthExceeded = 5038
+    kConsensusStaticModeViolation = 5039
+    kConsensusPrecompileFailure = 5040
+    kConsensusContractValidationFailure = 5041
+    kConsensusArgumentOutOfRange = 5042
+    kConsensusWasmRnreachableInstruction = 5043
+    kConsensusWasmTrap = 5044
+    kConsensusInsufficientBalance = 5045
+    kConsensusInternalError = 5046
+    kConsensusRejected = 5047
+    kConsensusOutOfMemory = 5048
+    kConsensusOutOfPrepayment = 5049
+    kConsensusElectNodeExists = 5050
+    kConsensusNonceInvalid = 5051
+    kConsensusJoinElectThreashTInvalid = 5052
+
 # --- 2. Utilities ---
 
 def calc_create2_address(sender: str, salt: str, bytecode: str) -> str:

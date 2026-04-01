@@ -188,6 +188,61 @@ static inline std::string MessageStatusToString(MessageHandleStatus status) {
         case kEvmcOutOfMemory:
             return "kEvmcOutOfMemory";
 
+        case 5001: return "kConsensusError";
+        case 5002: return "kConsensusAdded";
+        case 5004: return "kConsensusNotExists";
+        case 5005: return "kConsensusTxAdded";
+        case 5006: return "kConsensusNoNewTxs";
+        case 5007: return "kConsensusInvalidPackage";
+        case 5008: return "kConsensusTxNotExists";
+        case 5009: return "kConsensusAccountNotExists";
+        case 5010: return "kConsensusAccountBalanceError";
+        case 5011: return "kConsensusAccountExists";
+        case 5012: return "kConsensusBlockHashError";
+        case 5013: return "kConsensusBlockHeightError";
+        case 5014: return "kConsensusPoolIndexError";
+        case 5015: return "kConsensusBlockNotExists";
+        case 5016: return "kConsensusBlockPreHashError";
+        case 5017: return "kConsensusNetwokInvalid";
+        case 5018: return "kConsensusLeaderInfoInvalid";
+        case 5019: return "kConsensusExecuteContractFailed";
+        case 5020: return "kConsensusGasUsedNotEqualToLeaderError";
+        case 5021: return "kConsensusUserSetGasLimitError";
+        case 5022: return "kConsensusCreateContractKeyError";
+        case 5023: return "kConsensusContractAddressLocked";
+        case 5024: return "kConsensusContractBytesCodeError";
+        case 5025: return "kConsensusTimeBlockHeightError";
+        case 5026: return "kConsensusElectBlockHeightError";
+        case 5027: return "kConsensusLeaderTxInfoInvalid";
+        case 5028: return "kConsensusVssRandomNotMatch";
+        case 5029: return "kConsensusWaiting";
+        case 5030: return "kConsensusOutOfGas";
+        case 5031: return "kConsensusRevert";
+        case 5032: return "kConsensusInvalidInstruction";
+        case 5033: return "kConsensusUndefinedInstruction";
+        case 5034: return "kConsensusStackOverflow";
+        case 5035: return "kConsensusStackUnderflow";
+        case 5036: return "kConsensusBadJumpDestination";
+        case 5037: return "kConsensusInvalidMemoryAccess";
+        case 5038: return "kConsensusCallDepthExceeded";
+        case 5039: return "kConsensusStaticModeViolation";
+        case 5040: return "kConsensusPrecompileFailure";
+        case 5041: return "kConsensusContractValidationFailure";
+        case 5042: return "kConsensusArgumentOutOfRange";
+        case 5043: return "kConsensusWasmRnreachableInstruction";
+        case 5044: return "kConsensusWasmTrap";
+
+        // --- EVMC 映射部分 ---
+        case 5045: return "kConsensusInsufficientBalance"; // 对应原 kEvmcInsufficientBalance
+        case 5046: return "kConsensusInternalError";      // 对应原 kEvmcInternalError
+        case 5047: return "kConsensusRejected";           // 对应原 kEvmcRejected
+        case 5048: return "kConsensusOutOfMemory";        // 对应原 kEvmcOutOfMemory
+        
+        // --- 跨分片与选举逻辑 ---
+        case 5049: return "kConsensusOutOfPrepayment";
+        case 5050: return "kConsensusElectNodeExists";
+        case 5051: return "kConsensusNonceInvalid";
+        case 5052: return "kConsensusJoinElectThreashTInvalid";
         default:
             return "unknown(" + std::to_string(static_cast<int32_t>(status)) + ")";
     }
