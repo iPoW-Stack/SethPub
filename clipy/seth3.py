@@ -182,7 +182,7 @@ def test_oqs_contract_deploy_and_call(w3, OQS_MY, OQS_KEY, OQS_PK):
     oqs_vault = w3.seth.contract(abi=abi, bytecode=bin, sender_address=OQS_MY)
     oqs_vault.deploy({
         'from': OQS_MY,
-        'salt': RANDOM_SALT + 'oqs01',
+        'salt': RANDOM_SALT + 'a0',
         'pubkey': OQS_PK
     }, OQS_KEY)
 
@@ -226,7 +226,7 @@ def test_oqs_library_with_contract(w3, OQS_MY, OQS_KEY, OQS_PK):
     print("[*] Deploying OQS Library...")
     oqs_lib = w3.seth.contract(abi=l_abi, bytecode=l_bin).deploy({
         'from': OQS_MY,
-        'salt': RANDOM_SALT + 'oqslib',
+        'salt': RANDOM_SALT + 'a1',
         'step': StepType.kCreateLibrary,
         'pubkey': OQS_PK
     }, OQS_KEY)
@@ -238,7 +238,7 @@ def test_oqs_library_with_contract(w3, OQS_MY, OQS_KEY, OQS_PK):
     print("[*] Deploying OQS Calculator (Linked)...")
     oqs_calc = w3.seth.contract(abi=c_abi, bytecode=c_bin).deploy({
         'from': OQS_MY,
-        'salt': RANDOM_SALT + 'oqscalc',
+        'salt': RANDOM_SALT + 'a2',
         'pubkey': OQS_PK
     }, OQS_KEY)
 
