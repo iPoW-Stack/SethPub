@@ -279,7 +279,7 @@ static inline std::string GetTxMessageHash(const pools::protobuf::TxMessage& tx_
         amount,
         gas_limit,
         gas_price,
-        tx_info.step(),
+        (uint64_t)tx_info.step(),
         tx_info.has_contract_code() ? common::Encode::HexEncode(tx_info.contract_code()).c_str() : "",
         tx_info.has_contract_input() ? common::Encode::HexEncode(tx_info.contract_input()).c_str() : "",
         tx_info.has_contract_prepayment() ? tx_info.contract_prepayment() : 0,
