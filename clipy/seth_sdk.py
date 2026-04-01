@@ -472,8 +472,8 @@ class SethClient:
             
             # B. 私钥准备 (2560 字节)
             sk_bytes = bytes.fromhex(oqs_sk_hex.replace('0x', ''))
-            sk_len = 2560 
-            sk_bytes = sk_bytes.ljust(sk_len, b'\x00')[:sk_len]
+            sk_len = len(sk_bytes) 
+            # sk_bytes = sk_bytes.ljust(sk_len, b'\x00')[:sk_len]
             
             # C. 注入私钥并防止 free() 崩溃
             # 我们必须把私钥放进一个名为 secret_key 的 ctypes 实例中，
@@ -501,7 +501,7 @@ class SethClient:
             signature = signer.sign(txh_bytes)
 
             is_valid = signer.verify(txh, signature, pk_bytes)
-            print(f"Local Verify Test: {is_valid}, len pk: {len(pk_bytes)}")
+            print(f"Local Verify Test: {is_valid}, len pk: {len(pk_bytes)}, sk_len: {sk_len}")
 
         # 4. 转换回 Hex
         sig_hex = bytes(signature).hex()
