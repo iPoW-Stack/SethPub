@@ -92,11 +92,10 @@ calc = w3.seth.contract(abi=c_abi, bytecode=c_bin).deploy({
 # 1. Sending Transactions with Value (Transact)
 In cross-contract calls (e.g., Bridge -> Treasury -> Pool), it is common to pass native tokens along the chain.
 
-# Call request method, passing 5 SETH with 10^8 prepayment gas
+# Call request method, passing 5 SETH
 receipt = bridge.functions.request(1).transact(
     private_key=PRIV_KEY, 
-    value=5, 
-    prepayment=10**8 
+    value=5
 )
 
 if receipt['status'] == 0:
