@@ -185,9 +185,10 @@ static int CreateOqsTransactionWithAttr(
         
         // 调用 OQS 验证
         if (oqs.Verify(tx_hash, from_pk, sign) != security::kSecuritySuccess) {
-            SETH_ERROR("OQS verify signature failed! tx_hash: %s, pk: %s",
+            SETH_ERROR("OQS verify signature failed! tx_hash: %s, pk: %s, sign: %s",
                 common::Encode::HexEncode(tx_hash).c_str(),
-                common::Encode::HexEncode(from_pk).c_str());
+                common::Encode::HexEncode(from_pk).c_str(),
+                common::Encode::HexEncode(sign).c_str());
             return kSignatureInvalid;
         }
 
