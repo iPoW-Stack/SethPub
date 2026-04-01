@@ -501,8 +501,12 @@ class SethClient:
             # 且不手动构造 ctypes 避免内部 create_string_buffer 报错
             signature = signer.sign(txh_bytes)
 
+            is_valid = signer.verify(txh, signature, pk_bytes)
+            print(f"Local Verify Test: {is_valid}")
+
         # 4. 转换回 Hex
         sig_hex = bytes(signature).hex()
+
 
         # 4. 组装请求
         data = {
