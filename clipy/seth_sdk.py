@@ -440,9 +440,9 @@ class SethClient:
         sigalg = "ML-DSA-44"
         oqs_signer = oqs.Signature(sigalg)
         oqs_verifier = oqs.Signature(sigalg)
-        signer_public_key = oqs_signer.generate_keypair()
-        oqs_pk_hex = signer_public_key.hex()
-        oqs_sk_hex = oqs_signer.export_secret_key().hex()
+        # signer_public_key = oqs_signer.generate_keypair()
+        # oqs_pk_hex = signer_public_key.hex()
+        # oqs_sk_hex = oqs_signer.export_secret_key().hex()
         my_addr = self.get_oqs_address(oqs_pk_hex)
         nonce_addr = to + my_addr if step == StepType.kContractExcute else my_addr
         
