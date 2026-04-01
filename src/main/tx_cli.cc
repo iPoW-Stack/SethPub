@@ -754,6 +754,7 @@ int oqs_tx(const std::string& to, uint64_t amount) {
     auto public_key = std::string((char*)src_public_key.data(), src_public_key.size());
     oqs.SetPrivateKey(private_key, public_key);
     std::cout << "oqs address: " << common::Encode::HexEncode(oqs.GetAddress()) <<
+        ", sk: " << common::Encode::HexEncode(private_key) <<
         ", pk: " << common::Encode::HexEncode(oqs.GetPublicKey()) << std::endl;
     
 
