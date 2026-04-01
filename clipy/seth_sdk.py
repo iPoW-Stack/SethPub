@@ -540,6 +540,7 @@ class SethClient:
             # signer = oqs.Signature(sigalg, secret_key)
 
             # Signer signs the message
+            message = bytes(txh)
             signature = signer.sign(message)
 
             # Verifier verifies the signature
