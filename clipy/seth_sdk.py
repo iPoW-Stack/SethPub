@@ -437,10 +437,10 @@ class SethClient:
         if not oqs:
             raise ImportError("liboqs-python is required")
             
-        sigalg = "ML-DSA-44"
-        oqs_signer = oqs.Signature(sigalg)
-        oqs_verifier = oqs.Signature(sigalg)
-        # signer_public_key = oqs_signer.generate_keypair()
+        # sigalg = "ML-DSA-44"
+        # oqs_signer = oqs.Signature(sigalg)
+        # oqs_verifier = oqs.Signature(sigalg)
+        # # signer_public_key = oqs_signer.generate_keypair()
         # oqs_pk_hex = signer_public_key.hex()
         # oqs_sk_hex = oqs_signer.export_secret_key().hex()
         my_addr = self.get_oqs_address(oqs_pk_hex)
@@ -469,14 +469,14 @@ class SethClient:
 
         txh = keccak.new(digest_bits=256).update(msg).digest()
 
-        print(f"Signature details:{oqs_signer.details}")
-        message = bytes(txh)
-        signature = oqs_signer.sign(message)
+        # print(f"Signature details:{oqs_signer.details}")
+        # message = bytes(txh)
+        # signature = oqs_signer.sign(message)
 
-        # Verifier verifies the signature
-        test_is_valid = oqs_verifier.verify(message, signature, signer_public_key)
+        # # Verifier verifies the signature
+        # test_is_valid = oqs_verifier.verify(message, signature, bytes.fromhex(oqs_pk_hex.replace('0x','')))
 
-        print(f"Valid signature {test_is_valid}")
+        # print(f"Valid signature {test_is_valid}")
 
         # 3. 执行 ML-DSA-44 (Dilithium2) 签名
         with oqs.Signature('ML-DSA-44') as signer:
