@@ -627,7 +627,7 @@ int gmssl_tx(const std::string& private_key, const std::string& to, uint64_t amo
     std::cout << "test sign: " << common::Encode::HexEncode(test_sign)
         << ", verify res: " << verify_res << std::endl;
 
-    SethSDK client(global_chain_node_ip, global_chain_node_http_port);
+    SethSDK client(global_chain_node_ip);
     int64_t nonce = client.fetchNonce(common::Encode::HexEncode(gmssl.GetAddress()));
     if (nonce <= -1) {
         nonce = 1;
@@ -638,7 +638,7 @@ int gmssl_tx(const std::string& private_key, const std::string& to, uint64_t amo
     std::cout << common::Encode::HexEncode(gmssl.GetAddress()) << ", nonce: " << nonce << std::endl;
     auto tx_msg_ptr = GmsslCreateTransactionWithAttr(
         gmssl,
-        0,
+        nonce,
         to,
         "",
         "",
@@ -711,7 +711,7 @@ int oqs_tx(const std::string& to, uint64_t amount) {
     std::cout << "test sign: " << common::Encode::HexEncode(test_sign)
         << ", verify res: " << verify_res << std::endl;
 
-    SethSDK client(global_chain_node_ip, global_chain_node_http_port);
+    SethSDK client(global_chain_node_ip);
     int64_t nonce = client.fetchNonce(common::Encode::HexEncode(oqs.GetAddress()));
     if (nonce <= -1) {
         nonce = 1;
@@ -722,7 +722,7 @@ int oqs_tx(const std::string& to, uint64_t amount) {
     std::cout << common::Encode::HexEncode(oqs.GetAddress()) << ", nonce: " << nonce << std::endl;
     auto tx_msg_ptr = OqsCreateTransactionWithAttr(
         oqs,
-        0,
+        nonce,
         to,
         "",
         "",
