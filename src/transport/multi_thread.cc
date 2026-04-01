@@ -558,8 +558,7 @@ MessagePtr MultiThreadHandler::GetMessageFromQueue(uint32_t thread_idx, bool htt
         http_server_message_queue_.pop();
         if (msg_obj != nullptr) {
             SETH_DEBUG("get msg http transaction success %s, %s, hash64: %lu, step: %d, nonce: %lu, type: %d", 
-                common::Encode::HexEncode(
-                security_->GetAddress(msg_obj->header.tx_proto().pubkey())).c_str(),
+                common::Encode::HexEncode(msg_obj->header.tx_proto().pubkey()).c_str(),
                 common::Encode::HexEncode(msg_obj->header.tx_proto().to()).c_str(),
                 msg_obj->header.hash64(),
                 (int32_t)msg_obj->header.tx_proto().step(),
