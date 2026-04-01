@@ -449,7 +449,13 @@ class SethClient:
         # 2. 构造消息哈希 (Keccak256)
         msg = bytearray()
         msg.extend(struct.pack('<Q', nonce))
-        msg.extend(bytes.fromhex(oqs_pk_hex.replace('0x','')))
+
+        pk_bytes = bytes.fromhex(oqs_pk_hex.replace('0x',''))
+        # 必须对齐到 Dilithium2 的标准长度 1312
+        pk_bytes = pk_bytes.ljust(1312, b'\x00')[:1312] 
+        msg.extend(pk_bytes)
+
+        # msg.extend(bytes.fromhex(oqs_pk_hex.replace('0x','')))
         msg.extend(bytes.fromhex(to.replace('0x','')))
         msg.extend(struct.pack('<Q', amount))
         msg.extend(struct.pack('<Q', 5000000)) # gas_limit
