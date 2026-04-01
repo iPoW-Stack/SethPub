@@ -483,14 +483,17 @@ class SethClient:
             try:
                 # 尝试覆盖。如果 secret_key 是 property，这可能会失败
                 signer.secret_key = sk_ctypes 
+                print("0 set prikey success.")
             except:
                 # 如果上面失败，说明它是只读的，我们要么改内部变量，要么强制注入
                 # 在 0.14.0 中，内部缓冲区通常就在这里
                 if hasattr(signer, '_secret_key'):
                     ctypes.memmove(signer._secret_key, sk_ctypes, sk_len)
+                    print("1 set prikey success.")
                 else:
                     # 最后的绝招：直接把对象属性替换掉
                     signer.__dict__['secret_key'] = sk_ctypes
+                    print("2 set prikey success.")
 
             # D. 执行签名
             # 传 1 个参数符合 "2 positional arguments" (self + msg)
