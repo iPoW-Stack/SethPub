@@ -212,6 +212,20 @@ static void OqsHttpTransaction(const httplib::Request& req, httplib::Response& h
     auto amount_str = req.get_param_value("amount");
     auto shard_id_str = req.get_param_value("shard_id");
 
+    uint64_t gas_limit_val = 0;
+    if (!common::StringUtil::ToUint64(gas_limit, &gas_limit_val)) {
+        std::string res = std::string("gas_limit not integer: ") + gas_limit;
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
+    uint64_t gas_price_val = 0;
+    if (!common::StringUtil::ToUint64(gas_price, &gas_price_val)) {
+        std::string res = std::string("gas_price not integer: ") + gas_price;
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
     // 基础校验
     uint64_t nonce = 0, amount = 0;
     int32_t shard_id = 0;
@@ -229,8 +243,8 @@ static void OqsHttpTransaction(const httplib::Request& req, httplib::Response& h
         common::Encode::HexDecode(to_hex),
         common::Encode::HexDecode(sign_hex),
         amount,
-        2000000, // gas_limit 默认压测值
-        1,       // gas_price
+        gas_limit_val,
+        gas_price_val,
         shard_id,
         req,
         msg_ptr->header);
