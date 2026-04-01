@@ -516,6 +516,7 @@ class SethClient:
         if prepayment: data["pepay"] = str(prepayment)
         
         requests.post(self.oqs_url, data=data)
+        print(f"tx hash {txh.hex()}")
         return txh.hex()
 
     def query_contract(self, f, a, i):
