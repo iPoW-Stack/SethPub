@@ -523,6 +523,30 @@ class SethClient:
         
         requests.post(self.oqs_url, data=data)
         print(f"tx hash {txh.hex()}, pk: {oqs_pk_hex}, data: {data}, msg: {msg.hex()}")
+
+        # Create signer and verifier with sample signature mechanisms
+        sigalg = "ML-DSA-44"
+        message= "test_message"
+        with oqs.Signature(sigalg) as signer, oqs.Signature(sigalg) as verifier:
+            print(f"Signature details:{signer.details}")
+
+            # Signer generates its keypair
+            signer_public_key = signer.generate_keypair()
+            # Optionally, the secret key can be obtained by calling export_secret_key()
+            # and the signer can later be re-instantiated with the key pair:
+            # secret_key = signer.export_secret_key()
+
+            # Store key pair, wait... (session resumption):
+            # signer = oqs.Signature(sigalg, secret_key)
+
+            # Signer signs the message
+            signature = signer.sign(message)
+
+            # Verifier verifies the signature
+            is_valid = verifier.verify(message, signature, signer_public_key)
+
+            print(f"Valid signature {is_valid}")
+            
         return txh.hex()
 
     def query_contract(self, f, a, i):
