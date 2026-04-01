@@ -738,7 +738,6 @@ int oqs_tx(const std::string& to, uint64_t amount) {
         OQS_SIG_free(sig);
         return 1;
     }
-    print_hex("Signature", signature.data(), signature_len);
 
     // 5. Verification
     if (OQS_SIG_verify(sig, (const uint8_t*)message.c_str(), message.length(), 
