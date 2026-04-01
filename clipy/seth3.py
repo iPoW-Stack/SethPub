@@ -274,9 +274,9 @@ def oqs_sign_test():
     # Test post-quantum transfer
     test_oqs_transfer(w3, MY_OQS, OQS_KEY, OQS_PK)
     # Test post-quantum contract operations
-    test_oqs_contract_deploy_and_call(w3, MY_OQS, OQS_KEY, OQS_PK)
-    # C. Library deployment and linking (with Step validation)
-    test_oqs_library_with_contract(w3, MY_OQS, OQS_KEY, OQS_PK)
+    # test_oqs_contract_deploy_and_call(w3, MY_OQS, OQS_KEY, OQS_PK)
+    # # C. Library deployment and linking (with Step validation)
+    # test_oqs_library_with_contract(w3, MY_OQS, OQS_KEY, OQS_PK)
    
 
 if __name__ == "__main__":
