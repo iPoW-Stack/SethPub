@@ -304,6 +304,11 @@ static transport::MessagePtr OqsCreateTransactionWithAttr(
         << "gas_limit: " << gas_limit << std::endl
         << std::endl;
     new_tx->set_sign(sign);
+
+    int verify_res = oqs.Verify(tx_hash, oqs.GetPublicKey(), new_tx->sign());
+    std::cout << "test sign: " << common::Encode::HexEncode(new_tx->sign())
+        << ", verify res: " << verify_res << std::endl;
+
     assert(new_tx->gas_price() > 0);
     return msg_ptr;
 }
@@ -720,32 +725,31 @@ int oqs_tx(const std::string& to, uint64_t amount) {
         OQS_SIG_free(sig);
         return 1;
     }
-    // print_hex("Public Key", public_key.data(), public_key.size());
+    print_hex("Public Key", src_public_key.data(), src_public_key.size());
 
-    // // 4. Signing
-    // std::string message = "Transaction Data for SethPub";
-    // std::vector<uint8_t> signature(sig->length_signature);
-    // size_t signature_len;
+    // 4. Signing
+    std::string message = "Transaction Data for SethPub";
+    std::vector<uint8_t> signature(sig->length_signature);
+    size_t signature_len;
 
-    // if (OQS_SIG_sign(sig, signature.data(), &signature_len, 
-    //                 (const uint8_t*)message.c_str(), message.length(), 
-    //                 secret_key.data()) != OQS_SUCCESS) {
-    //     std::cerr << "Signing failed!" << std::endl;
-    //     OQS_SIG_free(sig);
-    //     return 1;
-    // }
-    // print_hex("Signature", signature.data(), signature_len);
+    if (OQS_SIG_sign(sig, signature.data(), &signature_len, 
+                    (const uint8_t*)message.c_str(), message.length(), 
+                    secret_key.data()) != OQS_SUCCESS) {
+        std::cerr << "Signing failed!" << std::endl;
+        OQS_SIG_free(sig);
+        return 1;
+    }
+    print_hex("Signature", signature.data(), signature_len);
 
-    // // 5. Verification
-    // if (OQS_SIG_verify(sig, (const uint8_t*)message.c_str(), message.length(), 
-    //                   signature.data(), signature_len, 
-    //                   public_key.data()) == OQS_SUCCESS) {
-    //     std::cout << "✅ Verification Success!" << std::endl;
-    // } else {
-    //     std::cout << "❌ Verification Failed!" << std::endl;
-    // }
+    // 5. Verification
+    if (OQS_SIG_verify(sig, (const uint8_t*)message.c_str(), message.length(), 
+                      signature.data(), signature_len, 
+                      src_public_key.data()) == OQS_SUCCESS) {
+        std::cout << "✅ Verification Success!" << std::endl;
+    } else {
+        std::cout << "❌ Verification Failed!" << std::endl;
+    }
 
-    // 6. Cleanup
 
     security::Oqs oqs;
     auto private_key = std::string((char*)secret_key.data(), secret_key.size());
@@ -753,13 +757,7 @@ int oqs_tx(const std::string& to, uint64_t amount) {
     oqs.SetPrivateKey(private_key, public_key);
     std::cout << "oqs address: " << common::Encode::HexEncode(oqs.GetAddress()) <<
         ", pk: " << common::Encode::HexEncode(oqs.GetPublicKey()) << std::endl;
-    auto test_hash = common::Random::RandomString(32);
-    std::string test_sign;
-    auto sign_res = oqs.Sign(test_hash, &test_sign);
-    assert(sign_res == 0);
-    int verify_res = oqs.Verify(test_hash, oqs.GetPublicKey(), test_sign);
-    std::cout << "test sign: " << common::Encode::HexEncode(test_sign)
-        << ", verify res: " << verify_res << std::endl;
+    
 
     SethSDK client(global_chain_node_ip);
     int64_t nonce = client.fetchNonce(common::Encode::HexEncode(oqs.GetAddress()));
@@ -786,6 +784,8 @@ int oqs_tx(const std::string& to, uint64_t amount) {
         std::cout << "send tcp client failed!" << std::endl;
         return 1;
     }
+
+    
 
     std::cout << "send success." << std::endl;
     usleep(3000000lu);
