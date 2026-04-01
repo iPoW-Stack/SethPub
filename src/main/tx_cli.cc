@@ -6,7 +6,7 @@
 #include <condition_variable>
 
 #include "nlohmann/json.hpp"
-#define SETH_USE_UV
+#include "common/defer.h"
 #include "common/random.h"
 #include "common/split.h"
 #include "common/string_utils.h"
