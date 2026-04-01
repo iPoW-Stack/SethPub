@@ -68,18 +68,15 @@ static const char* GetStatus(int status) {
 
 static int CreateOqsTransactionWithAttr(
         uint64_t nonce,
-        const std::string& from_pk,        // 原始字节格式的 OQS 公钥
-        const std::string& to,             // 20字节地址
-        const std::string& sign,           // 原始字节格式的 OQS 签名 (对应 sign_hex)
+        const std::string& from_pk,
+        const std::string& to,
+        const std::string& sign,
         uint64_t amount,
         uint64_t gas_limit,
         uint64_t gas_price,
         int32_t des_net_id,
         const httplib::Request& req,
         transport::protobuf::Header& msg) {
-    
-    // 1. 获取地址并校验
-    // OQS 地址派生逻辑必须与 C++ 节点内部一致
     security::Oqs oqs;
     auto from = oqs.GetAddress(from_pk);
     if (from.empty()) {
@@ -92,7 +89,6 @@ static int CreateOqsTransactionWithAttr(
         return kFromEqualToInvalid;
     }
 
-    // 注意：OQS 地址长度需根据你项目的具体定义（如果是基于 SHA 截取，通常是 20 或 32 字节）
     if (from.size() != 20 || to.size() != 20) {
         SETH_DEBUG("failed get address size error: %lu, %lu", from.size(), to.size());
         return kAccountNotExists;
@@ -103,26 +99,22 @@ static int CreateOqsTransactionWithAttr(
         common::Encode::HexEncode(to).c_str(),
         nonce);
 
-    // 2. 构造 Transport Header
     dht::DhtKeyManager dht_key(des_net_id);
     msg.set_src_sharding_id(des_net_id);
     msg.set_des_dht_key(dht_key.StrKey());
     msg.set_type(common::kPoolsMessage);
     msg.set_hop_count(0);
 
-    // 3. 构造交易 Proto
     auto new_tx = msg.mutable_tx_proto();
     new_tx->set_nonce(nonce);
     new_tx->set_pubkey(from_pk);
     
-    // 处理业务类型 (type)
     auto step = req.get_param_value("type");
     uint32_t step_val = 0;
     if (!step.empty() && !common::StringUtil::ToUint32(step, &step_val)) {
         return kHttpError;
     }
 
-    // 处理合约部署逻辑
     auto contract_bytes_hex = req.get_param_value("bytes_code");
     std::string contract_bytes;
     if (!contract_bytes_hex.empty()) {
@@ -142,7 +134,6 @@ static int CreateOqsTransactionWithAttr(
     new_tx->set_gas_price(gas_price);
     ADD_TX_DEBUG_INFO(new_tx);
     
-    // 额外 Key-Value 数据
     auto key = req.get_param_value("key");
     auto val = req.get_param_value("val");
     if (!key.empty()) {
@@ -156,13 +147,11 @@ static int CreateOqsTransactionWithAttr(
         new_tx->set_contract_code(contract_bytes);
     }
 
-    // 合约输入参数
     auto input = req.get_param_value("input");
     if (!input.empty()) {
         new_tx->set_contract_input(common::Encode::HexDecode(input));
     }
 
-    // 合约预付气费 (Prepayment)
     auto pepay = req.get_param_value("pepay");
     if (!pepay.empty()) {
         uint64_t pepay_val = 0;
@@ -173,17 +162,13 @@ static int CreateOqsTransactionWithAttr(
         new_tx->set_contract_prepayment(pepay_val);
     }
 
-    // 4. OQS 签名验证 (替换掉原先的 sign_r/s/v 逻辑)
     if (sign.empty()) {
         SETH_ERROR("OQS Signature is empty!");
         return kSignatureInvalid;
     }
 
     try {
-        // 计算交易哈希
         auto tx_hash = pools::GetTxMessageHash(*new_tx);
-        
-        // 调用 OQS 验证
         if (oqs.Verify(tx_hash, from_pk, sign) != security::kSecuritySuccess) {
             SETH_ERROR("OQS verify signature failed! tx_hash: %s, pk: %s, sign: %s",
                 common::Encode::HexEncode(tx_hash).c_str(),
@@ -192,7 +177,6 @@ static int CreateOqsTransactionWithAttr(
             return kSignatureInvalid;
         }
 
-        // 验证通过，设置签名
         new_tx->set_sign(sign);
     } catch (const std::exception& e) {
         SETH_ERROR("exception during oqs transaction creation: %s", e.what());
@@ -205,7 +189,6 @@ static int CreateOqsTransactionWithAttr(
 static void OqsHttpTransaction(const httplib::Request& req, httplib::Response& http_res) {
     SETH_DEBUG("OQS http transaction request received.");
     
-    // 提取参数
     auto from_pk_hex = req.get_param_value("pubkey");
     auto to_hex = req.get_param_value("to");
     auto sign_hex = req.get_param_value("sign");
@@ -229,7 +212,6 @@ static void OqsHttpTransaction(const httplib::Request& req, httplib::Response& h
         return;
     }
 
-    // 基础校验
     uint64_t nonce = 0, amount = 0;
     int32_t shard_id = 0;
     if (!common::StringUtil::ToUint64(nonce_str, &nonce) || 
@@ -257,7 +239,6 @@ static void OqsHttpTransaction(const httplib::Request& req, httplib::Response& h
         return;
     }
 
-    // 绑定账户信息
     security::Oqs oqs;
     auto addr = oqs.GetAddress(common::Encode::HexDecode(from_pk_hex));
     msg_ptr->msg_hash = pools::GetTxMessageHash(msg_ptr->header.tx_proto());
@@ -268,11 +249,10 @@ static void OqsHttpTransaction(const httplib::Request& req, httplib::Response& h
         return;
     }
 
-    // 设置消息哈希并推送到网络层
     msg_ptr->header.set_hash64(common::Random::RandomUint64());
     http_handler->net_handler()->NewHttpServer(msg_ptr);
+    msg_ptr->handle_status = transport::kMessageHandle;
     
-    // 记录状态以供查询
     {
         std::lock_guard<std::mutex> lock(http_handler->tx_msg_map_mutex());
         http_handler->tx_msg_map().Put(msg_ptr->msg_hash, msg_ptr);
