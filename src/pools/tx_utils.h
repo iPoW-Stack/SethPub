@@ -271,7 +271,7 @@ static inline std::string GetTxMessageHash(const pools::protobuf::TxMessage& tx_
         }
     }
 
-    SETH_DEBUG("get tx message hash: %s, nonce: %lu, pk: %s, to: %s, amount: %lu, gas limit: %lu, price: %lu, step: %lu, contract code: %s, input: %s, prepay: %lu, key: %s, value: %s", 
+    SETH_DEBUG("get tx message hash: %s, nonce: %lu, pk: %s, to: %s, amount: %lu, gas limit: %lu, price: %lu, step: %lu, contract code: %s, input: %s, prepay: %lu, key: %s, value: %s, msg: %s", 
         common::Encode::HexEncode(common::Hash::keccak256(message)).c_str(),
         nonce,
         common::Encode::HexEncode(tx_info.pubkey()).c_str(),
