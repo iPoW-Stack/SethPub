@@ -705,9 +705,9 @@ int oqs_tx(const std::string& to, uint64_t amount) {
         return 1;
     }
 
-    def ({
+    defer ({
         OQS_SIG_free(sig);
-    })
+    });
 
     std::cout << "Algorithm: " << sig->method_name << std::endl;
 
