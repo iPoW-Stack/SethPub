@@ -43,7 +43,7 @@ int ContractCall::HandleTx(
     zjc_host.pre_zjc_host_ = &pre_zjc_host;
     do {
         if (from_balance <= kCallContractDefaultUseGas * block_tx.gas_price() + block_tx.amount()) {
-            block_tx.set_status(kConsensusOutOfGas);
+            block_tx.set_status(kConsensusAccountBalanceError);
             // assert(false);
             break;
         }
@@ -326,7 +326,12 @@ int ContractCall::HandleTx(
     block::protobuf::TxHashStatus tx_hash_status;
     *tx_hash_status.mutable_events() = block_tx.events();
     if (check_valid) {
-        tx_hash_status.set_status(evmc_res.status_code);
+        if (evmc_res.status_code != EVMC_SUCCESS) {
+            tx_hash_status.set_status(evmc_res.status_code);
+        } else if (block_tx.status() != kConsensusSuccess) {
+            tx_hash_status.set_status(block_tx.status());
+        }
+            
         tx_hash_status.set_output(evmc_res.output_data, evmc_res.output_size);
     } else {
         tx_hash_status.set_status(block_tx.status());

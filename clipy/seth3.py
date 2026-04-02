@@ -136,6 +136,12 @@ def test_transfer(w3, MY, KEY):
     receipt = w3.seth.send_transaction({'to': dest, 'value': 500000000}, KEY)
     print(f"Transfer Status: {receipt['status']} | Balance after: {w3.client.get_balance(dest)}")
 
+def test_prepayment(w3, contract, KEY):
+    my_address = w3.client.get_address(KEY)
+    prepayment_address = contract + my_address
+    receipt = w3.seth.send_transaction({'to': contract, 'prepayment': 500000000}, KEY)
+    print(f"Transfer Status: {receipt['status']} | Balance after: {w3.client.get_balance(prepayment_address)}")
+
 def test_oqs_transfer(w3, OQS_MY, OQS_KEY, OQS_PK):
     """Test post-quantum transfer transaction"""
     print("\n--- TEST CASE 4: OQS Standard Transfer ---")
@@ -157,8 +163,25 @@ def test_oqs_transfer(w3, OQS_MY, OQS_KEY, OQS_PK):
     print(f"OQS Transfer Status: {receipt['status']}")
     print(f"Dest Balance after: {w3.client.get_balance(dest)}")
 
+def test_oqs_prepayment(w3, contract, OQS_MY, OQS_KEY, OQS_PK):
+    """Test post-quantum transfer transaction"""
+    print("\n--- TEST CASE 4: OQS Standard Transfer ---")
+    # Construct OQS transaction dictionary, must contain pubkey
+    tx_dict = {
+        'to': contract,
+        'prepayment': 50000000,
+        'pubkey': OQS_PK
+    }
 
+    print(f"OQS Sender: {OQS_MY}")
+    prepayment_address = contract + OQS_MY
+    print(f"Dest Balance before: {w3.client.get_balance(prepayment_address)}")
 
+    # Call w3.send_oqs_transaction
+    receipt = w3.seth.send_oqs_transaction(tx_dict, OQS_KEY)
+
+    print(f"OQS Transfer Status: {receipt['status']}")
+    print(f"Dest Balance after: {w3.client.get_balance(prepayment_address)}")
 
 def test_oqs_contract_deploy_and_call(w3, OQS_MY, OQS_KEY, OQS_PK):
     """Test deploying and calling a contract using a post-quantum account"""
@@ -277,7 +300,6 @@ def oqs_sign_test():
     test_oqs_transfer(w3, MY_OQS, OQS_KEY, OQS_PK)
     test_oqs_contract_deploy_and_call(w3, MY_OQS, OQS_KEY, OQS_PK)
     test_oqs_library_with_contract(w3, MY_OQS, OQS_KEY, OQS_PK)
-
 
 if __name__ == "__main__":
     ecdsa_sign_test()
