@@ -275,6 +275,37 @@ class SethContract:
     def _create_method(self, item):
         return lambda *args: SethMethod(self, item)(*args)
 
+    def prepayment(self, amount: int, private_key: str) -> dict:
+            """
+            Exposes prepayment as a method of the contract object.
+            Example usage: contract.prepayment(1000, "0x...")
+            """
+            if not self.address:
+                raise ValueError("Contract address is not set. Deploy or bind first.")
+
+            is_oqs = len(private_key) > 128
+            
+            if is_oqs:
+                if not self.oqs_pubkey:
+                    raise ValueError("OQS detected, but 'contract.oqs_pubkey' is not set.")
+                
+                tx_hash = self.client.send_oqs_transaction(
+                    private_key, 
+                    self.oqs_pubkey, 
+                    self.address, 
+                    StepType.kContractGasPrepayment, 
+                    prepayment=amount
+                )
+            else:
+                tx_hash = self.client.send_transaction_auto(
+                    private_key, 
+                    self.address, 
+                    StepType.kContractGasPrepayment, 
+                    prepayment=amount
+                )
+                
+            return self.client.wait_for_receipt(tx_hash)
+    
     def deploy(self, transaction: dict, private_key: str) -> SethContract:
         """Web3-style deployment. Automatically detects OQS based on private_key length."""
         # 1. Extract base parameters
@@ -337,14 +368,6 @@ class SethWeb3Mock:
         tx_hash = self.client.send_transaction_auto(private_key, tx_dict['to'], StepType.kNormalFrom, amount=tx_dict.get('value', 0))
         return self.client.wait_for_receipt(tx_hash)
     
-    def prepayment(self, tx_dict: dict, private_key: str) -> dict:
-        tx_hash = self.client.send_transaction_auto(
-            private_key, 
-            tx_dict['to'], 
-            StepType.kContractGasPrepayment, 
-            prepayment=tx_dict.get('prepayment', 0))
-        return self.client.wait_for_receipt(tx_hash)
-    
     def send_oqs_transaction(self, tx_dict: dict, private_key: str) -> dict:
         """Fix: Send Post-Quantum (OQS) transaction"""
         # Must get the OQS public key from tx_dict, as OQS signature requires it
@@ -359,23 +382,6 @@ class SethWeb3Mock:
             tx_dict['to'], 
             StepType.kNormalFrom, 
             amount=tx_dict.get('value', 0)
-        )
-        return self.client.wait_for_receipt(tx_hash)
-    
-    def oqs_prepayment(self, tx_dict: dict, private_key: str) -> dict:
-        """Fix: Send Post-Quantum (OQS) transaction"""
-        # Must get the OQS public key from tx_dict, as OQS signature requires it
-        pubkey = tx_dict.get('pubkey')
-        if not pubkey:
-            raise ValueError("OQS transaction requires 'pubkey' in tx_dict")
-            
-        # Call the method specifically handling OQS in the client
-        tx_hash = self.client.send_oqs_transaction(
-            private_key,     # The private_key here should be the OQS private key
-            pubkey,          # OQS public key
-            tx_dict['to'], 
-            StepType.kNormalFrom, 
-            prepayment=tx_dict.get('prepayment', 0)
         )
         return self.client.wait_for_receipt(tx_hash)
 
