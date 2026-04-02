@@ -574,6 +574,9 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
         case pools::protobuf::kContractGasPrepayment:
             HandleSetContractPrepayment(msg_ptr);
             break;
+        case pools::protobuf::kContractGasPrepaymentWithdraw:
+            HandleSetContractPrepaymentWithdraw(msg_ptr);
+            break;
         case pools::protobuf::kRootCreateAddress: {
             if (tx_msg.to().size() != common::kUnicastAddressLength &&
                     tx_msg.to().size() != common::kUnicastAddressLength * 2) {
@@ -955,6 +958,46 @@ void TxPoolManager::HandleContractExcute(const transport::MessagePtr& msg_ptr) {
 }
 
 void TxPoolManager::HandleSetContractPrepayment(const transport::MessagePtr& msg_ptr) {
+    auto& tx_msg = msg_ptr->header.tx_proto();
+    // user can't direct call contract, pay contract prepayment and call contract direct
+    if (!tx_msg.contract_input().empty() ||
+            tx_msg.contract_prepayment() < consensus::kCallContractDefaultUseGas) {
+        SETH_DEBUG("call contract not has valid contract input"
+            "and contract prepayment invalid.");
+        return;
+    }
+
+    auto tmp_acc_ptr = acc_mgr_.lock();
+    auto contract_info = tmp_acc_ptr->GetAccountInfo(tx_msg.to());
+    if (contract_info == nullptr) {
+        msg_ptr->address_info = nullptr;
+        SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        return;
+    }
+
+    if (!UserTxValid(msg_ptr)) {
+        return;
+    }
+
+    if (msg_ptr->address_info->balance() <
+            tx_msg.amount() + tx_msg.contract_prepayment() +
+            consensus::kCallContractDefaultUseGas * tx_msg.gas_price()) {
+        SETH_DEBUG("address %s balance invalid: %lu, transfer amount: %lu, "
+            "prepayment: %lu, default call contract gas: %lu, from: %s, to: %s",
+            common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
+            msg_ptr->address_info->balance(),
+            tx_msg.amount(),
+            tx_msg.contract_prepayment(),
+            consensus::kCallContractDefaultUseGas,
+            common::Encode::HexEncode(security_->GetAddressWithPublicKey(
+            msg_ptr->header.tx_proto().pubkey())).c_str(),
+            common::Encode::HexEncode(msg_ptr->header.tx_proto().to()).c_str());
+        return;
+    }
+}
+
+
+void TxPoolManager::HandleSetContractPrepaymentWithdraw(const transport::MessagePtr& msg_ptr) {
     auto& tx_msg = msg_ptr->header.tx_proto();
     // user can't direct call contract, pay contract prepayment and call contract direct
     if (!tx_msg.contract_input().empty() ||

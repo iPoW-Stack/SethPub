@@ -500,6 +500,15 @@ void HotstuffManager::PopPoolsMessage() {
                         address_info);
                 contract_prepayment_id = tx->to() + from_id;
                 break;
+            case pools::protobuf::kContractGasPrepaymentWithdraw:
+                tx_ptr = std::make_shared<consensus::ContractPrepaymentWithdraw>(
+                        db_, 
+                        msg_ptr, i,
+                        account_mgr_, 
+                        security_ptr_, 
+                        address_info);
+                contract_prepayment_id = tx->to() + from_id;
+                break;
             case pools::protobuf::kJoinElect:
             {
                 tx_ptr = std::make_shared<consensus::JoinElectTxItem>(
@@ -593,7 +602,10 @@ void HotstuffManager::RegisterCreateTxCallbacks() {
         std::bind(&HotstuffManager::CreateContractUserCreateCallTx, this, std::placeholders::_1));
     pools_mgr_->RegisterCreateTxFunction(
         pools::protobuf::kContractGasPrepayment,
-        std::bind(&HotstuffManager::CreateContractUserCallTx, this, std::placeholders::_1));
+        std::bind(&HotstuffManager::CreateContractPrepaymentTx, this, std::placeholders::_1));
+    pools_mgr_->RegisterCreateTxFunction(
+        pools::protobuf::kContractGasPrepaymentWithdraw,
+        std::bind(&HotstuffManager::CreateContractPrepaymentWithdrawTx, this, std::placeholders::_1));
     pools_mgr_->RegisterCreateTxFunction(
         pools::protobuf::kContractExcute,
         std::bind(&HotstuffManager::CreateContractCallTx, this, std::placeholders::_1));

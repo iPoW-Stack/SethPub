@@ -9,6 +9,7 @@
 #include "consensus/hotstuff/view_block_chain.h"
 #include "consensus/zbft/contract_call.h"
 #include "consensus/zbft/contract_prepayment.h"
+#include "consensus/zbft/contract_prepayment_withdraw.h"
 #include "consensus/zbft/contract_create.h"
 #include "consensus/zbft/create_library.h"
 #include "consensus/zbft/elect_tx_item.h"
@@ -548,6 +549,11 @@ Status BlockAcceptor::addTxsToPool(
             break;
         case pools::protobuf::kContractGasPrepayment:
             tx_ptr = std::make_shared<consensus::ContractPrepayment>(
+                    db_, msg_ptr, i, account_mgr_, security_ptr_, address_info);
+            contract_prepayment_id = tx->to() + from_id;
+            break;
+        case pools::protobuf::kContractGasPrepaymentWithdraw:
+            tx_ptr = std::make_shared<consensus::ContractPrepaymentWithdraw>(
                     db_, msg_ptr, i, account_mgr_, security_ptr_, address_info);
             contract_prepayment_id = tx->to() + from_id;
             break;

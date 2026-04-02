@@ -16,6 +16,7 @@
 #include <consensus/hotstuff/view_block_chain.h>
 #include <consensus/zbft/contract_call.h>
 #include <consensus/zbft/contract_prepayment.h>
+#include <consensus/zbft/contract_prepayment_withdraw.h>
 #include <consensus/zbft/contract_create.h>
 #include <consensus/zbft/create_library.h>
 #include <consensus/zbft/cross_tx_item.h>
@@ -266,8 +267,13 @@ private:
                 msg_ptr->address_info);
     }
 
-    pools::TxItemPtr CreateContractUserCallTx(const transport::MessagePtr& msg_ptr) {
+    pools::TxItemPtr CreateContractPrepaymentTx(const transport::MessagePtr& msg_ptr) {
         return std::make_shared<ContractPrepayment>(
+                db_, msg_ptr, -1, account_mgr_, security_ptr_, msg_ptr->address_info);
+    }
+
+    pools::TxItemPtr CreateContractPrepaymentWithdrawTx(const transport::MessagePtr& msg_ptr) {
+        return std::make_shared<ContractPrepaymentWithdraw>(
                 db_, msg_ptr, -1, account_mgr_, security_ptr_, msg_ptr->address_info);
     }
 
