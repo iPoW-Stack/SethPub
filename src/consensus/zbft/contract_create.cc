@@ -253,11 +253,16 @@ int ContractUserCreateCall::HandleTx(
             log->add_topics(std::string((char*)(*topic_iter).bytes, sizeof((*topic_iter).bytes)));
         }
     }
-    
+
     block::protobuf::TxHashStatus tx_hash_status;
     *tx_hash_status.mutable_events() = block_tx.events();
     if (check_valid) {
-        tx_hash_status.set_status(evmc_res.status_code);
+        if (evmc_res.status_code != EVMC_SUCCESS) {
+            tx_hash_status.set_status(evmc_res.status_code);
+        } else if (block_tx.status() != kConsensusSuccess) {
+            tx_hash_status.set_status(block_tx.status());
+        }
+            
         tx_hash_status.set_output(evmc_res.output_data, evmc_res.output_size);
     } else {
         tx_hash_status.set_status(block_tx.status());
