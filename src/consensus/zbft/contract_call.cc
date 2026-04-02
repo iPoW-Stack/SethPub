@@ -326,9 +326,12 @@ int ContractCall::HandleTx(
     block::protobuf::TxHashStatus tx_hash_status;
     *tx_hash_status.mutable_events() = block_tx.events();
     if (check_valid) {
+        tx_hash_status.set_status(kConsensusSuccess);
         if (evmc_res.status_code != EVMC_SUCCESS) {
             tx_hash_status.set_status(evmc_res.status_code);
-        } else if (block_tx.status() != kConsensusSuccess) {
+        } 
+        
+        if (block_tx.status() != kConsensusSuccess) {
             tx_hash_status.set_status(block_tx.status());
         }
             
