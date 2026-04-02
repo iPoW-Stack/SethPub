@@ -438,15 +438,17 @@ class SethClient:
     def wait_for_receipt(self, tx_hash: str, abi: list = None, function_name: str = None) -> dict:
         """Polls for the transaction receipt and automatically calls decode_receipt once retrieved."""
         while True:
-            resp = requests.post(self.receipt_url, data={"tx_hash": tx_hash}).json()
-            print(resp)
-            
-            # Status codes 10001 (Pending) or 10003 (Accepted) indicate processing is still in progress
-            if resp.get("status") not in [10001, 10003]:
-                # Receipt found! Decode if ABI and function name are provided
-                if abi and function_name:
-                    return self.decode_receipt(resp, abi, function_name)
-                return resp
+            try:
+                resp = requests.post(self.receipt_url, data={"tx_hash": tx_hash}).json()
+                print(resp)
+                # Status codes 10001 (Pending) or 10003 (Accepted) indicate processing is still in progress
+                if resp.get("status") not in [10001, 10003]:
+                    # Receipt found! Decode if ABI and function name are provided
+                    if abi and function_name:
+                        return self.decode_receipt(resp, abi, function_name)
+                    return resp
+            except Exception as ex:
+                print(f"Receipt poll error: {ex}")
                 
             time.sleep(5)  # Poll once every 5 seconds
 
