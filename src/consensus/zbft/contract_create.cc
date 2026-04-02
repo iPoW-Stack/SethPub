@@ -51,7 +51,7 @@ int ContractUserCreateCall::HandleTx(
         }
 
         if (block_tx.gas_price() * block_tx.gas_limit() > from_balance) {
-            block_tx.set_status(kConsensusOutOfGas);
+            block_tx.set_status(kConsensusAccountBalanceError);
             break;
         }
 
