@@ -1,6 +1,8 @@
 from __future__ import annotations
 import secrets
+import time
 from eth_utils import to_checksum_address
+import requests
 
 from seth_sdk import SethWeb3Mock, StepType, compile_and_link
 
@@ -136,6 +138,12 @@ def test_transfer(w3, MY, KEY):
     receipt = w3.seth.send_transaction({'to': dest, 'value': 500000000}, KEY)
     print(f"Transfer Status: {receipt['status']} | Balance after: {w3.client.get_balance(dest)}")
 
+def test_prepayment(w3, contract, KEY):
+    my_address = w3.client.get_address(KEY)
+    prepayment_address = contract + my_address
+    receipt = w3.seth.send_transaction({'to': contract, 'prepayment': 500000000}, KEY)
+    print(f"Transfer Status: {receipt['status']} | Balance after: {w3.client.get_balance(prepayment_address)}")
+
 def test_oqs_transfer(w3, OQS_MY, OQS_KEY, OQS_PK):
     """Test post-quantum transfer transaction"""
     print("\n--- TEST CASE 4: OQS Standard Transfer ---")
@@ -157,8 +165,25 @@ def test_oqs_transfer(w3, OQS_MY, OQS_KEY, OQS_PK):
     print(f"OQS Transfer Status: {receipt['status']}")
     print(f"Dest Balance after: {w3.client.get_balance(dest)}")
 
+def test_oqs_prepayment(w3, contract, OQS_MY, OQS_KEY, OQS_PK):
+    """Test post-quantum transfer transaction"""
+    print("\n--- TEST CASE 4: OQS Standard Transfer ---")
+    # Construct OQS transaction dictionary, must contain pubkey
+    tx_dict = {
+        'to': contract,
+        'prepayment': 50000000,
+        'pubkey': OQS_PK
+    }
 
+    print(f"OQS Sender: {OQS_MY}")
+    prepayment_address = contract + OQS_MY
+    print(f"Dest Balance before: {w3.client.get_balance(prepayment_address)}")
 
+    # Call w3.send_oqs_transaction
+    receipt = w3.seth.send_oqs_transaction(tx_dict, OQS_KEY)
+
+    print(f"OQS Transfer Status: {receipt['status']}")
+    print(f"Dest Balance after: {w3.client.get_balance(prepayment_address)}")
 
 def test_oqs_contract_deploy_and_call(w3, OQS_MY, OQS_KEY, OQS_PK):
     """Test deploying and calling a contract using a post-quantum account"""
@@ -253,6 +278,137 @@ def test_oqs_library_with_contract(w3, OQS_MY, OQS_KEY, OQS_PK):
     else:
         print(f"❌ OQS Library Test Failed: {result.get('msg')}")
 
+def test_ecdsa_prepayment_full_flow(w3, MY, KEY):
+    print("\n--- TEST: ECDSA Prepayment Logic (Full Flow) ---")
+    
+    src = "pragma solidity ^0.8.0; contract Vault { uint256 public val; function set(uint256 v) public { val = v; } }"
+    bin, abi = compile_and_link(src, "Vault")
+    
+    contract = w3.seth.contract(abi=abi, bytecode=bin)
+    contract.deploy({'from': MY, 'salt': RANDOM_SALT + 'ecdsapp'}, KEY) # Use RANDOM_SALT to ensure uniqueness
+    addr = contract.address
+    print(f"Contract deployed at: {addr}")
+
+    def get_stats(target_addr):
+        resp = requests.post(w3.client.query_url, data={"address": target_addr}).json()
+        return int(resp.get("balance", 0))
+
+    initial = get_stats(addr+MY)
+    print(f"Initial Prepayment: {initial}")
+
+    # ---------------------------------------------------------
+    # Deposit 5,000,000 units of Gas prepayment
+    deposit_amount = 5000000
+    print(f"Action: Depositing {deposit_amount} to prepayment...")
+    
+    # Call the prepayment interface from the contract object
+    receipt = contract.prepayment(deposit_amount, KEY) # Use the contract object's prepayment method
+    
+    if receipt.get('status') == 0:
+        print("✅ Prepayment Tx success.")
+    else:
+        print(f"❌ Prepayment Tx failed: {receipt.get('msg')}")
+        return
+
+    # ---------------------------------------------------------
+    count = 0
+    while count < 30:
+        time.sleep(2) # Wait for consensus to settle
+        after_deposit = get_stats(addr+MY)
+        print(f"Prepayment after deposit: {after_deposit}")
+        
+        if after_deposit == initial + deposit_amount:
+            print("🚩 Verification 1: Accumulation SUCCESS!")
+            break
+        else:
+            count += 1
+            print("🚩 Verification 1: Accumulation FAILED!")
+
+    # ---------------------------------------------------------
+    print("Action: Executing contract call to consume gas...")
+    # Note: When calling transact, passing prepayment=0 means only consume existing prepayment, do not deposit more
+    call_receipt = contract.functions.set(888).transact(KEY, prepayment=0)
+    
+    time.sleep(2)
+    final_stats = get_stats(addr+MY)
+    consumed = after_deposit - final_stats
+    
+    print(f"Final Prepayment: {final_stats}")
+    print(f"Gas Consumed from Prepayment: {consumed}")
+    
+    if consumed > 0:
+        print("🚩 Verification 2: Consumption SUCCESS!")
+    else:
+        print("🚩 Verification 2: Consumption FAILED (Prepayment not used)!")
+
+def test_oqs_contract_prepayment_flow(w3, OQS_MY, OQS_KEY, OQS_PK):
+    """Verify the deposit and accumulation logic for contract prepayment."""
+    print("\n--- TEST: OQS Prepayment Accumulation ---")
+    
+    src = "pragma solidity ^0.8.0; contract OqsVault { uint256 public data; function store(uint256 v) public { data = v; } }"
+    bin, abi = compile_and_link(src, "OqsVault")
+    
+    oqs_vault = w3.seth.contract(abi=abi, bytecode=bin)
+    oqs_vault.deploy({'from': OQS_MY, 'salt': RANDOM_SALT + 'pp01', 'pubkey': OQS_PK}, OQS_KEY)
+    
+    # Get contract address
+    contract_addr = oqs_vault.address
+    print(f"Target Contract: {contract_addr}")
+
+    # --------------------------------------------------------- #
+    # Step A: Check Prepayment balance before deposit
+    # ---------------------------------------------------------
+    # Note: We are querying the prepayment value of the contract address in the state tree
+    def get_remote_prepayment(addr):
+        resp = requests.post(w3.client.query_url, data={"address": addr}).json()
+        return int(resp.get("balance", 0))
+
+    pre_pp = get_remote_prepayment(contract_addr+OQS_MY)
+    print(f"Step 1: Initial Prepayment -> {pre_pp}")
+    
+    # --------------------------------------------------------- #
+    # Step B: Execute Deposit (Prepayment)
+    # ---------------------------------------------------------
+    add_amount = 5000000
+    print(f"Step 2: Sending +{add_amount} prepayment...")
+    
+    # Use the previously modified contract.prepayment function
+    receipt = oqs_vault.prepayment(add_amount, OQS_KEY, oqs_pubkey=OQS_PK)
+    
+    if receipt.get('status') == 0:
+        print("✅ Prepayment transaction accepted.")
+    else:
+        print(f"❌ Prepayment failed: {receipt.get('msg')}")
+        return # Exit if prepayment fails
+    
+    # --------------------------------------------------------- #
+    # Step C: Check Prepayment balance after deposit and verify accumulation
+    # ---------------------------------------------------------
+    # Wait a moment for consensus to complete
+    count = 0
+    while count < 30:
+        time.sleep(2) 
+        post_pp = get_remote_prepayment(contract_addr + OQS_MY)
+        print(f"Step 3: Final Prepayment -> {post_pp}")
+
+        if post_pp == pre_pp + add_amount:
+            print(f"🎉 SUCCESS: Prepayment accumulated correctly! ({pre_pp} + {add_amount} = {post_pp})")
+            break
+        else:
+            count += 1
+            print(f"⚠️ ERROR: Accumulation mismatch! Expected {pre_pp + add_amount}, got {post_pp}")
+
+    # --------------------------------------------------------- #
+    # Step D: Send a regular contract call and observe if Prepayment is consumed
+    # ---------------------------------------------------------
+    print("Step 4: Executing contract call (should consume prepayment)...")
+    oqs_vault.functions.store(999).transact(OQS_KEY, oqs_pubkey=OQS_PK) # Passing 0 here means no additional deposit
+    
+    time.sleep(2)
+    final_pp = get_remote_prepayment(contract_addr + OQS_MY)
+    print(f"Step 5: Prepayment after execution -> {final_pp}")
+    print(f"Gas consumed from prepayment: {post_pp - final_pp}")
+    
 def ecdsa_sign_test():
     IP, PORT, KEY = "127.0.0.1", 23001, "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
     w3 = SethWeb3Mock(IP, PORT)
@@ -261,6 +417,7 @@ def ecdsa_sign_test():
     test_contract_call_contract(w3, MY, KEY)
     test_transfer(w3, MY, KEY)
     test_library_with_contrcat(w3, MY, KEY)
+    test_ecdsa_prepayment_full_flow(w3, MY, KEY)
 
 def oqs_sign_test():
     # Base configuration
@@ -277,7 +434,7 @@ def oqs_sign_test():
     test_oqs_transfer(w3, MY_OQS, OQS_KEY, OQS_PK)
     test_oqs_contract_deploy_and_call(w3, MY_OQS, OQS_KEY, OQS_PK)
     test_oqs_library_with_contract(w3, MY_OQS, OQS_KEY, OQS_PK)
-
+    test_oqs_contract_prepayment_flow(w3, MY_OQS, OQS_KEY, OQS_PK)
 
 if __name__ == "__main__":
     ecdsa_sign_test()

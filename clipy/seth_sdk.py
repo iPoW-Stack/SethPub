@@ -275,6 +275,37 @@ class SethContract:
     def _create_method(self, item):
         return lambda *args: SethMethod(self, item)(*args)
 
+    def prepayment(self, amount: int, private_key: str, oqs_pubkey: Optional[str] = None) -> dict:
+            """
+            Exposes prepayment as a method of the contract object.
+            Example usage: contract.prepayment(1000, "0x...")
+            """
+            if not self.address:
+                raise ValueError("Contract address is not set. Deploy or bind first.")
+
+            is_oqs = len(private_key) > 128
+            
+            if is_oqs:
+                if not oqs_pubkey:
+                    raise ValueError("OQS detected, but 'contract.oqs_pubkey' is not set.")
+                
+                tx_hash = self.client.send_oqs_transaction(
+                    private_key, 
+                    oqs_pubkey, 
+                    self.address, 
+                    StepType.kContractGasPrepayment, 
+                    prepayment=amount
+                )
+            else:
+                tx_hash = self.client.send_transaction_auto(
+                    private_key, 
+                    self.address, 
+                    StepType.kContractGasPrepayment, 
+                    prepayment=amount
+                )
+                
+            return self.client.wait_for_receipt(tx_hash)
+    
     def deploy(self, transaction: dict, private_key: str) -> SethContract:
         """Web3-style deployment. Automatically detects OQS based on private_key length."""
         # 1. Extract base parameters
@@ -407,15 +438,17 @@ class SethClient:
     def wait_for_receipt(self, tx_hash: str, abi: list = None, function_name: str = None) -> dict:
         """Polls for the transaction receipt and automatically calls decode_receipt once retrieved."""
         while True:
-            resp = requests.post(self.receipt_url, data={"tx_hash": tx_hash}).json()
-            print(resp)
-            
-            # Status codes 10001 (Pending) or 10003 (Accepted) indicate processing is still in progress
-            if resp.get("status") not in [10001, 10003]:
-                # Receipt found! Decode if ABI and function name are provided
-                if abi and function_name:
-                    return self.decode_receipt(resp, abi, function_name)
-                return resp
+            try:
+                resp = requests.post(self.receipt_url, data={"tx_hash": tx_hash}).json()
+                print(resp)
+                # Status codes 10001 (Pending) or 10003 (Accepted) indicate processing is still in progress
+                if resp.get("status") not in [10001, 10003]:
+                    # Receipt found! Decode if ABI and function name are provided
+                    if abi and function_name:
+                        return self.decode_receipt(resp, abi, function_name)
+                    return resp
+            except Exception as ex:
+                print(f"Receipt poll error: {ex}")
                 
             time.sleep(5)  # Poll once every 5 seconds
 

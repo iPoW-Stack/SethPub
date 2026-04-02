@@ -1365,16 +1365,27 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
     memcpy(addr.bytes, id.c_str(), id.size());
     if (prefix_db->GetTemporaryKv(std::string((char*)addr.bytes, sizeof(addr.bytes)) + tx_hash, &res)) {
         block::protobuf::KeyValueInfo kv_info;
+        SETH_DEBUG("0 transaction receipt query, tx hash: %s", req.get_param_value("tx_hash").c_str());
         if (kv_info.ParseFromString(res)) {
+        SETH_DEBUG("1 transaction receipt query, tx hash: %s", req.get_param_value("tx_hash").c_str());
             block::protobuf::TxHashStatus tx_status;
             if (!tx_status.ParseFromString(kv_info.value())) {
+        SETH_DEBUG("1 0 transaction receipt query, tx hash: %s", req.get_param_value("tx_hash").c_str());
                 res_json["status"] = transport::kUnkonwn;
                 res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
             } else {
+        SETH_DEBUG("1 1 transaction receipt query, tx hash: %s, %s", req.get_param_value("tx_hash").c_str(), HttpProtobufToJson(tx_status).c_str());
+        try {
+
                 res_json = nlohmann::json::parse(HttpProtobufToJson(tx_status));
                 res_json["msg"] = transport::MessageStatusToString(res_json["status"]);;
+        } catch (std::exception& e) {
+        SETH_DEBUG("1 2 transaction receipt query, tx hash: %s, error: %s", req.get_param_value("tx_hash").c_str(), e.what());
+
+        }
             }
         } else {
+        SETH_DEBUG("2 transaction receipt query, tx hash: %s", req.get_param_value("tx_hash").c_str());
             res_json["status"] = transport::kUnkonwn;
             res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
         }
@@ -1384,21 +1395,26 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
             http_handler->tx_msg_map().Remove(tx_hash);
         }
     } else {
+        SETH_DEBUG("3 transaction receipt query, tx hash: %s", req.get_param_value("tx_hash").c_str());
         transport::MessagePtr msg_ptr = nullptr;
         {
             std::lock_guard<std::mutex> lock(http_handler->tx_msg_map_mutex());
             http_handler->tx_msg_map().Get(tx_hash, msg_ptr);
         }
 
+        SETH_DEBUG("4 transaction receipt query, tx hash: %s", req.get_param_value("tx_hash").c_str());
         if (msg_ptr) {
+        SETH_DEBUG("4 0 transaction receipt query, tx hash: %s", req.get_param_value("tx_hash").c_str());
             res_json["status"] = (int32_t)msg_ptr->handle_status.load();
             res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
         } else {
+        SETH_DEBUG("4 1 transaction receipt query, tx hash: %s", req.get_param_value("tx_hash").c_str());
             res_json["status"] = transport::kNotExists;
             res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
         }
     }
     
+        SETH_DEBUG("5 transaction receipt query, tx hash: %s", req.get_param_value("tx_hash").c_str());
     SETH_DEBUG("transaction receipt query, tx hash: %s, res: %s", 
         req.get_param_value("tx_hash").c_str(), res_json.dump().c_str());
     http_res.set_content(res_json.dump(), "application/json");
