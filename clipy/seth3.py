@@ -314,14 +314,18 @@ def test_ecdsa_prepayment_full_flow(w3, MY, KEY):
         return
 
     # ---------------------------------------------------------
-    time.sleep(2) # Wait for consensus to settle
-    after_deposit = get_stats(addr+MY)
-    print(f"Prepayment after deposit: {after_deposit['prepayment']}")
-    
-    if after_deposit['prepayment'] == initial['prepayment'] + deposit_amount:
-        print("🚩 Verification 1: Accumulation SUCCESS!")
-    else:
-        print("🚩 Verification 1: Accumulation FAILED!")
+    count = 0
+    while count < 30:
+        time.sleep(2) # Wait for consensus to settle
+        after_deposit = get_stats(addr+MY)
+        print(f"Prepayment after deposit: {after_deposit['prepayment']}")
+        
+        if after_deposit['prepayment'] == initial['prepayment'] + deposit_amount:
+            print("🚩 Verification 1: Accumulation SUCCESS!")
+            break
+        else:
+            count += 1
+            print("🚩 Verification 1: Accumulation FAILED!")
 
     # ---------------------------------------------------------
     print("Action: Executing contract call to consume gas...")
@@ -339,7 +343,7 @@ def test_ecdsa_prepayment_full_flow(w3, MY, KEY):
         print("🚩 Verification 2: Consumption SUCCESS!")
     else:
         print("🚩 Verification 2: Consumption FAILED (Prepayment not used)!")
-        
+
 def test_oqs_contract_prepayment_flow(w3, OQS_MY, OQS_KEY, OQS_PK):
     """Verify the deposit and accumulation logic for contract prepayment."""
     print("\n--- TEST: OQS Prepayment Accumulation ---")
@@ -372,7 +376,7 @@ def test_oqs_contract_prepayment_flow(w3, OQS_MY, OQS_KEY, OQS_PK):
     print(f"Step 2: Sending +{add_amount} prepayment...")
     
     # Use the previously modified contract.prepayment function
-    receipt = oqs_vault.prepayment(add_amount, OQS_KEY)
+    receipt = oqs_vault.prepayment(add_amount, OQS_KEY, oqs_pubkey=OQS_PK)
     
     if receipt.get('status') == 0:
         print("✅ Prepayment transaction accepted.")
@@ -384,20 +388,24 @@ def test_oqs_contract_prepayment_flow(w3, OQS_MY, OQS_KEY, OQS_PK):
     # Step C: Check Prepayment balance after deposit and verify accumulation
     # ---------------------------------------------------------
     # Wait a moment for consensus to complete
-    time.sleep(2) 
-    post_pp = get_remote_prepayment(contract_addr + OQS_MY)
-    print(f"Step 3: Final Prepayment -> {post_pp}")
+    count = 0
+    while count < 30:
+        time.sleep(2) 
+        post_pp = get_remote_prepayment(contract_addr + OQS_MY)
+        print(f"Step 3: Final Prepayment -> {post_pp}")
 
-    if post_pp == pre_pp + add_amount:
-        print(f"🎉 SUCCESS: Prepayment accumulated correctly! ({pre_pp} + {add_amount} = {post_pp})")
-    else:
-        print(f"⚠️ ERROR: Accumulation mismatch! Expected {pre_pp + add_amount}, got {post_pp}")
+        if post_pp == pre_pp + add_amount:
+            print(f"🎉 SUCCESS: Prepayment accumulated correctly! ({pre_pp} + {add_amount} = {post_pp})")
+            break
+        else:
+            count += 1
+            print(f"⚠️ ERROR: Accumulation mismatch! Expected {pre_pp + add_amount}, got {post_pp}")
 
     # --------------------------------------------------------- #
     # Step D: Send a regular contract call and observe if Prepayment is consumed
     # ---------------------------------------------------------
     print("Step 4: Executing contract call (should consume prepayment)...")
-    oqs_vault.functions.store(999).transact(OQS_KEY, prepayment=0) # Passing 0 here means no additional deposit
+    oqs_vault.functions.store(999).transact(OQS_KEY, oqs_pubkey=OQS_PK) # Passing 0 here means no additional deposit
     
     time.sleep(2)
     final_pp = get_remote_prepayment(contract_addr + OQS_MY)
