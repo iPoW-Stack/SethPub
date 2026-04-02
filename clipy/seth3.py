@@ -291,13 +291,10 @@ def test_ecdsa_prepayment_full_flow(w3, MY, KEY):
 
     def get_stats(target_addr):
         resp = requests.post(w3.client.query_url, data={"address": target_addr}).json()
-        return {
-            "balance": int(resp.get("balance", 0)),
-            "prepayment": int(resp.get("prepayment", 0))
-        }
+        return int(resp.get("balance", 0))
 
     initial = get_stats(addr+MY)
-    print(f"Initial Prepayment: {initial['prepayment']}")
+    print(f"Initial Prepayment: {initial}")
 
     # ---------------------------------------------------------
     # Deposit 5,000,000 units of Gas prepayment
@@ -318,9 +315,9 @@ def test_ecdsa_prepayment_full_flow(w3, MY, KEY):
     while count < 30:
         time.sleep(2) # Wait for consensus to settle
         after_deposit = get_stats(addr+MY)
-        print(f"Prepayment after deposit: {after_deposit['prepayment']}")
+        print(f"Prepayment after deposit: {after_deposit}")
         
-        if after_deposit['prepayment'] == initial['prepayment'] + deposit_amount:
+        if after_deposit == initial + deposit_amount:
             print("🚩 Verification 1: Accumulation SUCCESS!")
             break
         else:
@@ -334,9 +331,9 @@ def test_ecdsa_prepayment_full_flow(w3, MY, KEY):
     
     time.sleep(2)
     final_stats = get_stats(addr+MY)
-    consumed = after_deposit['prepayment'] - final_stats['prepayment']
+    consumed = after_deposit - final_stats
     
-    print(f"Final Prepayment: {final_stats['prepayment']}")
+    print(f"Final Prepayment: {final_stats}")
     print(f"Gas Consumed from Prepayment: {consumed}")
     
     if consumed > 0:
@@ -364,7 +361,7 @@ def test_oqs_contract_prepayment_flow(w3, OQS_MY, OQS_KEY, OQS_PK):
     # Note: We are querying the prepayment value of the contract address in the state tree
     def get_remote_prepayment(addr):
         resp = requests.post(w3.client.query_url, data={"address": addr}).json()
-        return int(resp.get("prepayment", 0))
+        return int(resp.get("balance", 0))
 
     pre_pp = get_remote_prepayment(contract_addr+OQS_MY)
     print(f"Step 1: Initial Prepayment -> {pre_pp}")
