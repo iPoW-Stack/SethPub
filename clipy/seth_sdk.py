@@ -275,7 +275,7 @@ class SethContract:
     def _create_method(self, item):
         return lambda *args: SethMethod(self, item)(*args)
 
-    def prepayment(self, amount: int, private_key: str) -> dict:
+    def prepayment(self, amount: int, private_key: str, oqs_pubkey: Optional[str] = None) -> dict:
             """
             Exposes prepayment as a method of the contract object.
             Example usage: contract.prepayment(1000, "0x...")
@@ -286,12 +286,12 @@ class SethContract:
             is_oqs = len(private_key) > 128
             
             if is_oqs:
-                if not self.oqs_pubkey:
+                if not oqs_pubkey:
                     raise ValueError("OQS detected, but 'contract.oqs_pubkey' is not set.")
                 
                 tx_hash = self.client.send_oqs_transaction(
                     private_key, 
-                    self.oqs_pubkey, 
+                    oqs_pubkey, 
                     self.address, 
                     StepType.kContractGasPrepayment, 
                     prepayment=amount
