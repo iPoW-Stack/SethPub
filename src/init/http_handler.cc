@@ -1374,9 +1374,15 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
                 res_json["status"] = transport::kUnkonwn;
                 res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
             } else {
-        SETH_DEBUG("1 1 transaction receipt query, tx hash: %s", req.get_param_value("tx_hash").c_str());
+        SETH_DEBUG("1 1 transaction receipt query, tx hash: %s, %s", req.get_param_value("tx_hash").c_str(), HttpProtobufToJson(tx_status).c_str());
+        try {
+
                 res_json = nlohmann::json::parse(HttpProtobufToJson(tx_status));
                 res_json["msg"] = transport::MessageStatusToString(res_json["status"]);;
+        } catch (std::exception& e) {
+        SETH_DEBUG("1 2 transaction receipt query, tx hash: %s, error: %s", req.get_param_value("tx_hash").c_str(), e.what());
+
+        }
             }
         } else {
         SETH_DEBUG("2 transaction receipt query, tx hash: %s", req.get_param_value("tx_hash").c_str());
