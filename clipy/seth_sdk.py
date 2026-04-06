@@ -308,6 +308,7 @@ class SethContract:
     def __init__(self, client: SethClient, address: Optional[str], abi: list, bytecode: str = None, sender_address: str = ""):
         self.client, self.address, self.abi, self.bytecode, self.sender_address = client, address, abi, bytecode, sender_address
         self.functions = type('Functions', (), {})()
+        self.deploy_receipt = None
         if abi:
             for item in [i for i in abi if i.get('type') == 'function']:
                 setattr(self.functions, item['name'], self._create_method(item))
@@ -365,30 +366,30 @@ class SethContract:
         )
 
     def prefund(self, amount: int, private_key: str, oqs_pubkey: Optional[str] = None, gm_mode: bool = False) -> dict:
-            """
-            Exposes prefund as a method of the contract object.
-            Supports standard, OQS, and GMSSL modes.
-            """
-            if not self.address:
-                raise ValueError("Contract address is not set. Deploy or bind first.")
+        """
+        Exposes prefund as a method of the contract object.
+        Supports standard, OQS, and GMSSL modes.
+        """
+        if not self.address:
+            raise ValueError("Contract address is not set. Deploy or bind first.")
 
-            if gm_mode:
-                gm_pubkey = get_sm2_public_key(private_key)
-                tx_hash = self.client.send_gmssl_transaction(
-                    private_key, gm_pubkey, self.address, StepType.kContractGasPrefund, prefund=amount
-                )
-            elif len(private_key) > 128:
-                if not oqs_pubkey:
-                    raise ValueError("OQS detected, but 'oqs_pubkey' is not set.")
-                tx_hash = self.client.send_oqs_transaction(
-                    private_key, oqs_pubkey, self.address, StepType.kContractGasPrefund, prefund=amount
-                )
-            else:
-                tx_hash = self.client.send_transaction_auto(
-                    private_key, self.address, StepType.kContractGasPrefund, prefund=amount
-                )
-                
-            return self.client.wait_for_receipt(tx_hash)
+        if gm_mode:
+            gm_pubkey = get_sm2_public_key(private_key)
+            tx_hash = self.client.send_gmssl_transaction(
+                private_key, gm_pubkey, self.address, StepType.kContractGasPrefund, prefund=amount
+            )
+        elif len(private_key) > 128:
+            if not oqs_pubkey:
+                raise ValueError("OQS detected, but 'oqs_pubkey' is not set.")
+            tx_hash = self.client.send_oqs_transaction(
+                private_key, oqs_pubkey, self.address, StepType.kContractGasPrefund, prefund=amount
+            )
+        else:
+            tx_hash = self.client.send_transaction_auto(
+                private_key, self.address, StepType.kContractGasPrefund, prefund=amount
+            )
+            
+        return self.client.wait_for_receipt(tx_hash)
     
     def refund(self, private_key: str, oqs_pubkey: Optional[str] = None, gm_mode: bool = False) -> dict:
         if not self.address:
@@ -498,7 +499,7 @@ class SethContract:
             )
 
         # 5. Wait for and return the result
-        self.client.wait_for_receipt(tx_hash)
+        self.deploy_receipt = self.client.wait_for_receipt(tx_hash)
         return self
 
 class SethWeb3Mock:

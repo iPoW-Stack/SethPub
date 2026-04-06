@@ -491,9 +491,10 @@ def test_gmssl_contract_flow(w3, GM_KEY):
     gm_vault.deploy({
         'from': GM_MY,
         'salt': secrets.token_hex(31) + 'gm_auto',
-        'gm_pubkey': gm_pubkey
+        'gm_pubkey': gm_pubkey,
+        'gm_mode': True
     }, GM_KEY)
-    print(f"GmSSL Contract at: {gm_vault.address}")
+    print(f"GmSSL Contract at: {gm_vault.address} {gm_vault.deploy_receipt}")
 
     # 4. 预付 Gas (Prefund)
     # 利用修改后的 SDK：只需传 gm_mode=True
