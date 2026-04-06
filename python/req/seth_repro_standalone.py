@@ -410,7 +410,7 @@ class SethClient:
         if input_hex:
             data["input"] = input_hex
         if prefund > 0:
-            data["pepay"] = str(prefund)
+            data["prefund"] = str(prefund)
         r = requests.post(self.tx_url, data=data, timeout=60)
         txt = (r.text or "")[:200]
         print("  tx response:", txt)

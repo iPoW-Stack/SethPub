@@ -152,14 +152,14 @@ static int CreateOqsTransactionWithAttr(
         new_tx->set_contract_input(common::Encode::HexDecode(input));
     }
 
-    auto pepay = req.get_param_value("pepay");
-    if (!pepay.empty()) {
-        uint64_t pepay_val = 0;
-        if (!common::StringUtil::ToUint64(pepay, &pepay_val)) {
-            SETH_WARN("get prepay failed %s", pepay.c_str());
+    auto prefund = req.get_param_value("prefund");
+    if (!prefund.empty()) {
+        uint64_t prefund_val = 0;
+        if (!common::StringUtil::ToUint64(prefund, &prefund_val)) {
+            SETH_WARN("get prepay failed %s", prefund.c_str());
             return kSignatureInvalid;
         }
-        new_tx->set_contract_prefund(pepay_val);
+        new_tx->set_contract_prefund(prefund_val);
     }
 
     if (sign.empty()) {
@@ -262,6 +262,192 @@ static void OqsHttpTransaction(const httplib::Request& req, httplib::Response& h
     SETH_INFO("OQS transaction successfully processed and broadcasted.");
 }
 
+static int CreateGmTransactionWithAttr(
+        uint64_t nonce,
+        const std::string& from_pk,
+        const std::string& to,
+        const std::string& sign,
+        uint64_t amount,
+        uint64_t gas_limit,
+        uint64_t gas_price,
+        int32_t des_net_id,
+        const httplib::Request& req,
+        transport::protobuf::Header& msg) {
+    
+    // 使用国密安全组件
+    security::GmSsl gm;
+    auto from = gm.GetAddress(from_pk);
+    if (from.empty()) {
+        SETH_DEBUG("failed get gm address from pk: %s", common::Encode::HexEncode(from_pk).c_str());
+        return kAccountNotExists;
+    }
+
+    if (from == to) {
+        return kFromEqualToInvalid;
+    }
+
+    if (from.size() != 20 || to.size() != 20) {
+        return kAccountNotExists;
+    }
+
+    SETH_DEBUG("GmSSL transaction from: %s, to: %s, nonce: %lu",
+        common::Encode::HexEncode(from).c_str(),
+        common::Encode::HexEncode(to).c_str(),
+        nonce);
+
+    // 构建消息头和路由信息
+    dht::DhtKeyManager dht_key(des_net_id);
+    msg.set_src_sharding_id(des_net_id);
+    msg.set_des_dht_key(dht_key.StrKey());
+    msg.set_type(common::kPoolsMessage);
+    msg.set_hop_count(0);
+
+    auto new_tx = msg.mutable_tx_proto();
+    new_tx->set_nonce(nonce);
+    new_tx->set_pubkey(from_pk);
+    
+    // 解析交易步骤/类型 (如合约部署、转账等)
+    auto step = req.get_param_value("type");
+    uint32_t step_val = 0;
+    if (!step.empty() && !common::StringUtil::ToUint32(step, &step_val)) {
+        return kHttpError;
+    }
+
+    // 处理合约代码
+    auto contract_bytes_hex = req.get_param_value("bytes_code");
+    std::string contract_bytes;
+    if (!contract_bytes_hex.empty()) {
+        contract_bytes = common::Encode::HexDecode(contract_bytes_hex);
+        if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kContractCreate) {
+            if (common::IsContractBytescodeValid(contract_bytes) != common::ValidationStatus::SUCCESS) {
+                return kHttpError;
+            }
+        }
+    }
+
+    new_tx->set_step(static_cast<pools::protobuf::StepType>(step_val));
+    new_tx->set_to(to);
+    new_tx->set_amount(amount);
+    new_tx->set_gas_limit(gas_limit);
+    new_tx->set_gas_price(gas_price);
+    ADD_TX_DEBUG_INFO(new_tx);
+    
+    // 附加 KV 属性
+    auto key = req.get_param_value("key");
+    auto val = req.get_param_value("val");
+    if (!key.empty()) {
+        new_tx->set_key(key);
+        if (!val.empty()) new_tx->set_value(val);
+    }
+
+    if (!contract_bytes.empty()) {
+        new_tx->set_contract_code(contract_bytes);
+    }
+
+    auto input = req.get_param_value("input");
+    if (!input.empty()) {
+        new_tx->set_contract_input(common::Encode::HexDecode(input));
+    }
+
+    auto prefund = req.get_param_value("prefund");
+    if (!prefund.empty()) {
+        uint64_t prefund_val = 0;
+        if (common::StringUtil::ToUint64(prefund, &prefund_val)) {
+            new_tx->set_contract_prefund(prefund_val);
+        }
+    }
+
+    // 关键点：SM2 签名验证
+    if (sign.empty()) {
+        SETH_ERROR("GmSSL Signature is empty!");
+        return kSignatureInvalid;
+    }
+
+    try {
+        // 计算交易哈希 (SM3) 并使用 SM2 验证公钥和签名
+        auto tx_hash = pools::GetTxMessageHash(*new_tx);
+        if (gm.Verify(tx_hash, from_pk, sign) != security::kSecuritySuccess) {
+            SETH_ERROR("GmSSL verify signature failed! hash: %s", 
+                common::Encode::HexEncode(tx_hash).c_str());
+            return kSignatureInvalid;
+        }
+
+        new_tx->set_sign(sign);
+    } catch (...) {
+        return kSignatureInvalid;
+    }
+
+    return kHttpSuccess;
+}
+
+static void GmHttpTransaction(const httplib::Request& req, httplib::Response& http_res) {
+    SETH_DEBUG("GmSSL http transaction request received.");
+    
+    // 提取通用参数
+    auto from_pk_hex = req.get_param_value("pubkey");
+    auto to_hex = req.get_param_value("to");
+    auto sign_hex = req.get_param_value("sign");
+    auto nonce_str = req.get_param_value("nonce");
+    auto amount_str = req.get_param_value("amount");
+    auto shard_id_str = req.get_param_value("shard_id");
+    auto gas_limit = req.get_param_value("gas_limit");
+    auto gas_price = req.get_param_value("gas_price");
+
+    // 参数校验
+    uint64_t gas_limit_val = 0, gas_price_val = 0, nonce = 0, amount = 0;
+    int32_t shard_id = 0;
+    
+    if (!common::StringUtil::ToUint64(gas_limit, &gas_limit_val) ||
+        !common::StringUtil::ToUint64(gas_price, &gas_price_val) ||
+        !common::StringUtil::ToUint64(nonce_str, &nonce) || 
+        !common::StringUtil::ToUint64(amount_str, &amount) ||
+        !common::StringUtil::ToInt32(shard_id_str, &shard_id)) {
+        http_res.set_content("error: invalid numeric parameters", "text/plain");
+        return;
+    }
+
+    auto msg_ptr = std::make_shared<transport::TransportMessage>();
+    int status = CreateGmTransactionWithAttr(
+        nonce,
+        common::Encode::HexDecode(from_pk_hex),
+        common::Encode::HexDecode(to_hex),
+        common::Encode::HexDecode(sign_hex),
+        amount,
+        gas_limit_val,
+        gas_price_val,
+        shard_id,
+        req,
+        msg_ptr->header);
+
+    if (status != kHttpSuccess) {
+        http_res.set_content(std::string("gm transaction invalid: ") + GetStatus(status), "text/plain");
+        return;
+    }
+
+    // 获取发送者账户状态并进入交易池
+    security::GmSsl gm;
+    auto addr = gm.GetAddress(common::Encode::HexDecode(from_pk_hex));
+    msg_ptr->msg_hash = pools::GetTxMessageHash(msg_ptr->header.tx_proto());
+    msg_ptr->address_info = http_handler->acc_mgr()->GetAccountInfo(addr);
+    
+    if (msg_ptr->address_info == nullptr) {
+        http_res.set_content("kAccountNotExists", "text/plain");
+        return;
+    }
+
+    msg_ptr->header.set_hash64(common::Random::RandomUint64());
+    http_handler->net_handler()->NewHttpServer(msg_ptr);
+    msg_ptr->handle_status = transport::kMessageHandle;
+    
+    {
+        std::lock_guard<std::mutex> lock(http_handler->tx_msg_map_mutex());
+        http_handler->tx_msg_map().Put(msg_ptr->msg_hash, msg_ptr);
+    }
+
+    http_res.set_content("ok", "text/plain");
+    SETH_INFO("GmSSL transaction successfully processed.");
+}
+
 static int CreateTransactionWithAttr(
         uint64_t nonce,
         const std::string& from_pk,
@@ -346,15 +532,15 @@ static int CreateTransactionWithAttr(
         new_tx->set_contract_input(common::Encode::HexDecode(input));
     }
 
-    auto pepay = req.get_param_value("pepay");
-    if (!pepay.empty()) {
-        uint64_t pepay_val = 0;
-        if (!common::StringUtil::ToUint64(pepay, &pepay_val)) {
-            SETH_WARN("get prepay failed %s", pepay);
+    auto prefund = req.get_param_value("prefund");
+    if (!prefund.empty()) {
+        uint64_t prefund_val = 0;
+        if (!common::StringUtil::ToUint64(prefund, &prefund_val)) {
+            SETH_WARN("get prepay failed %s", prefund);
             return kSignatureInvalid;
         }
 
-        new_tx->set_contract_prefund(pepay_val);
+        new_tx->set_contract_prefund(prefund_val);
     }
 
     if (sign_r.empty() || sign_s.empty()) {
@@ -1455,6 +1641,7 @@ void HttpHandler::Init(
     svr.set_payload_max_length(512 * 1024 * 1024);
     svr.Post("/transaction", HttpTransaction);
     svr.Post("/oqs_transaction", OqsHttpTransaction);
+    svr.Post("/gm_transaction", GmHttpTransaction);
     svr.Post("/get_seckey_and_encrypt_data", GetSecAndEncData);
     svr.Post("/proxy_decrypt", ProxDecryption);
     svr.Post("/query_contract", QueryContract);

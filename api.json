@@ -25,7 +25,7 @@
 						{ "key": "sign_v", "value": "0", "type": "text" },
 						{ "key": "input", "value": "", "type": "text", "disabled": true, "description": "可选：合约输入" },
 						{ "key": "bytes_code", "value": "", "type": "text", "disabled": true, "description": "可选：合约代码" },
-						{ "key": "pepay", "value": "0", "type": "text", "disabled": true, "description": "可选：预付费" }
+						{ "key": "prefund", "value": "0", "type": "text", "disabled": true, "description": "可选：预付费" }
 					]
 				},
 				"url": {

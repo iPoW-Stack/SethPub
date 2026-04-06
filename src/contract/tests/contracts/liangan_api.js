@@ -111,7 +111,7 @@ async function create_tx(str_prikey, to, amount, gas_limit, gas_price, prepay, t
         'sign_r': sigR.toString(16),
         'sign_s': sigS.toString(16),
         'sign_v': sig.v,
-        'pepay': prepay
+        'prefund': prepay
     }
 
     var post_data = querystring.stringify(data);

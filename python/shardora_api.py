@@ -451,7 +451,7 @@ def _get_tx_params(sign, pkbytes: bytes, nonce: int, gas_limit: int, gas_price: 
         'shard_id': des_shard_id,
         'key': key,
         'val': val,
-        "pepay": prepay,
+        "prefund": prepay,
         'sign_r': sign.r,
         'sign_s': sign.s,
         'sign_v': sign.v,

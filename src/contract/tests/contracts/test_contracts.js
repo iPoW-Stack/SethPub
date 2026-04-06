@@ -178,7 +178,7 @@ function param_contract(str_prikey, tx_type, gid, to, amount, gas_limit, gas_pri
         "key": key,
         "val": value,
         "input": input,
-        "pepay": prepay,
+        "prefund": prepay,
         'sign_r': sigR.toString(16),
         'sign_s': sigS.toString(16),
         'sign_v': sig.v,
@@ -258,7 +258,7 @@ function create_tx(str_prikey, to, amount, gas_limit, gas_price, prepay, tx_type
         'sign_r': sigR.toString(16),
         'sign_s': sigS.toString(16),
         'sign_v': sig.v,
-        'pepay': prepay
+        'prefund': prepay
     }
 }
 

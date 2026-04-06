@@ -391,26 +391,26 @@ class SethContract:
             return self.client.wait_for_receipt(tx_hash)
     
     def refund(self, private_key: str, oqs_pubkey: Optional[str] = None, gm_mode: bool = False) -> dict:
-            if not self.address:
-                raise ValueError("Contract address is not set.")
+        if not self.address:
+            raise ValueError("Contract address is not set.")
 
-            if gm_mode:
-                gm_pubkey = get_sm2_public_key(private_key)
-                tx_hash = self.client.send_gmssl_transaction(
-                    private_key, gm_pubkey, self.address, StepType.kContractRefund
-                )
-            elif len(private_key) > 128:
-                if not oqs_pubkey:
-                    raise ValueError("OQS detected, but 'oqs_pubkey' is not set.")
-                tx_hash = self.client.send_oqs_transaction(
-                    private_key, oqs_pubkey, self.address, StepType.kContractRefund
-                )
-            else:
-                tx_hash = self.client.send_transaction_auto(
-                    private_key, self.address, StepType.kContractRefund
-                )
-                
-            return self.client.wait_for_receipt(tx_hash)
+        if gm_mode:
+            gm_pubkey = get_sm2_public_key(private_key)
+            tx_hash = self.client.send_gmssl_transaction(
+                private_key, gm_pubkey, self.address, StepType.kContractRefund
+            )
+        elif len(private_key) > 128:
+            if not oqs_pubkey:
+                raise ValueError("OQS detected, but 'oqs_pubkey' is not set.")
+            tx_hash = self.client.send_oqs_transaction(
+                private_key, oqs_pubkey, self.address, StepType.kContractRefund
+            )
+        else:
+            tx_hash = self.client.send_transaction_auto(
+                private_key, self.address, StepType.kContractRefund
+            )
+            
+        return self.client.wait_for_receipt(tx_hash)
     
     def get_prefund(self, user_address: str) -> int:
         """
@@ -552,6 +552,7 @@ class SethClient:
         self.receipt_url = f"{self.base_url}/transaction_receipt"
         self.query_contract_url = f"{self.base_url}/query_contract"
         self.oqs_url = f"http://{host}:{port}/oqs_transaction"
+        self.gmssl_url = f"{self.base_url}/gm_transaction"
 
     def get_address(self, pk_hex):
         sk = SigningKey.from_string(bytes.fromhex(pk_hex.replace('0x', '')), curve=SECP256k1)
@@ -587,7 +588,7 @@ class SethClient:
         data = {"nonce": str(nonce), "pubkey": pub, "to": to, "amount": str(amount), "gas_limit": "5000000", "gas_price": "1", "shard_id": "0", "type": str(int(step)), "sign_r": sig[:32].hex(), "sign_s": sig[32:64].hex(), "sign_v": "0"}
         if contract_code: data["bytes_code"] = contract_code
         if input_hex: data["input"] = input_hex
-        if prefund: data["pepay"] = str(prefund)
+        if prefund: data["prefund"] = str(prefund)
         
         requests.post(self.tx_url, data=data)
         return txh.hex()
@@ -779,7 +780,7 @@ class SethClient:
         
         if contract_code: data["bytes_code"] = contract_code
         if input_hex: data["input"] = input_hex
-        if prefund: data["pepay"] = str(prefund)
+        if prefund: data["prefund"] = str(prefund)
         
         requests.post(self.oqs_url, data=data)
         print(f"tx hash {txh.hex()}, pk: {oqs_pk_hex}, data: {data}, msg: {msg.hex()}")
@@ -878,7 +879,7 @@ class SethClient:
         }
         if contract_code: data["bytes_code"] = contract_code
         if input_hex: data["input"] = input_hex
-        if prefund: data["pepay"] = str(prefund)
+        if prefund: data["prefund"] = str(prefund)
 
-        requests.post(self.tx_url, data=data)
+        requests.post(self.gmssl_url, data=data)
         return txh_hex
