@@ -289,11 +289,7 @@ def test_ecdsa_prefund_full_flow(w3, MY, KEY):
     addr = contract.address
     print(f"Contract deployed at: {addr}")
 
-    def get_stats(target_addr):
-        resp = requests.post(w3.client.query_url, data={"address": target_addr}).json()
-        return int(resp.get("balance", 0))
-
-    initial = get_stats(addr+MY)
+    initial = contract.get_prefund(MY)
     print(f"Initial Prefund: {initial}")
 
     # ---------------------------------------------------------
@@ -314,7 +310,7 @@ def test_ecdsa_prefund_full_flow(w3, MY, KEY):
     count = 0
     while count < 30:
         time.sleep(2) # Wait for consensus to settle
-        after_deposit = get_stats(addr+MY)
+        after_deposit = contract.get_prefund(MY)
         print(f"Prefund after deposit: {after_deposit}")
         
         if after_deposit == initial + deposit_amount:
@@ -330,7 +326,7 @@ def test_ecdsa_prefund_full_flow(w3, MY, KEY):
     call_receipt = contract.functions.set(888).transact(KEY, prefund=0)
     
     time.sleep(2)
-    final_stats = get_stats(addr+MY)
+    final_stats = contract.get_prefund(MY)
     consumed = after_deposit - final_stats
     
     print(f"Final Prefund: {final_stats}")
@@ -354,16 +350,7 @@ def test_oqs_contract_prefund_flow(w3, OQS_MY, OQS_KEY, OQS_PK):
     # Get contract address
     contract_addr = oqs_vault.address
     print(f"Target Contract: {contract_addr}")
-
-    # --------------------------------------------------------- #
-    # Step A: Check Prefund balance before deposit
-    # ---------------------------------------------------------
-    # Note: We are querying the prefund value of the contract address in the state tree
-    def get_remote_prefund(addr):
-        resp = requests.post(w3.client.query_url, data={"address": addr}).json()
-        return int(resp.get("balance", 0))
-
-    pre_pp = get_remote_prefund(contract_addr+OQS_MY)
+    pre_pp = oqs_vault.get_prefund(OQS_MY)
     print(f"Step 1: Initial Prefund -> {pre_pp}")
     
     # --------------------------------------------------------- #
@@ -388,7 +375,7 @@ def test_oqs_contract_prefund_flow(w3, OQS_MY, OQS_KEY, OQS_PK):
     count = 0
     while count < 30:
         time.sleep(2) 
-        post_pp = get_remote_prefund(contract_addr + OQS_MY)
+        post_pp = oqs_vault.get_prefund(OQS_MY)
         print(f"Step 3: Final Prefund -> {post_pp}")
 
         if post_pp == pre_pp + add_amount:
@@ -405,7 +392,7 @@ def test_oqs_contract_prefund_flow(w3, OQS_MY, OQS_KEY, OQS_PK):
     oqs_vault.functions.store(999).transact(OQS_KEY, oqs_pubkey=OQS_PK) # Passing 0 here means no additional deposit
     
     time.sleep(2)
-    final_pp = get_remote_prefund(contract_addr + OQS_MY)
+    final_pp = oqs_vault.get_prefund(OQS_MY)
     print(f"Step 5: Prefund after execution -> {final_pp}")
     print(f"Gas consumed from prefund: {post_pp - final_pp}")
     

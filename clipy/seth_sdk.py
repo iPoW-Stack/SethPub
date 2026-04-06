@@ -42,6 +42,7 @@ class StepType(IntEnum):
     kCross = 15                     # Cross-shard anti-loss block replenishment
     kRootCross = 16                 # Root network cross-shard replenishment
     kPoolStatisticTag = 17          # End tag for transaction pool statistics round
+    kContractGasRefund = 18        # contract call gas refund
 
 class MessageHandleStatus(IntEnum):
     """Status codes for message handling and EVM execution."""
@@ -305,6 +306,49 @@ class SethContract:
                 )
                 
             return self.client.wait_for_receipt(tx_hash)
+    
+    def refund(self, amount: int, private_key: str, oqs_pubkey: Optional[str] = None) -> dict:
+            """
+            Exposes prefund as a method of the contract object.
+            Example usage: contract.prefund(1000, "0x...")
+            """
+            if not self.address:
+                raise ValueError("Contract address is not set. Deploy or bind first.")
+
+            is_oqs = len(private_key) > 128
+            
+            if is_oqs:
+                if not oqs_pubkey:
+                    raise ValueError("OQS detected, but 'contract.oqs_pubkey' is not set.")
+                
+                tx_hash = self.client.send_oqs_transaction(
+                    private_key, 
+                    oqs_pubkey, 
+                    self.address, 
+                    StepType.kContractGasRefund
+                )
+            else:
+                tx_hash = self.client.send_transaction_auto(
+                    private_key, 
+                    self.address, 
+                    StepType.kContractGasRefund
+                )
+                
+            return self.client.wait_for_receipt(tx_hash)
+    
+    def get_prefund(self, user_address: str) -> int:
+        """
+        Queries the prefund balance for a specific user on this contract.
+        Prepayment ID = ContractAddress + UserAddress
+        """
+        if not self.address:
+            raise ValueError("Contract address not set.")
+        
+        # Calculate the unique prepayment ID
+        prepayment_id = self.address.lower().replace('0x','') + user_address.lower().replace('0x','')
+        
+        # Query the account info for this specific ID
+        return self.client.get_prefund(prepayment_id)
     
     def deploy(self, transaction: dict, private_key: str) -> SethContract:
         """Web3-style deployment. Automatically detects OQS based on private_key length."""
@@ -629,8 +673,20 @@ class SethClient:
             
         return txh.hex()
 
+    def get_prefund(self, prepayment_id: str) -> int:
+        """Queries the prepayment field from the account status."""
+        try:
+            # The server expects the composite ID (Contract+User) as the address
+            response = requests.post(self.query_url, data={"address": prepayment_id}, timeout=5).json()
+            # In your C++ backend, this is usually stored in the 'prepayment' field of the account
+            return int(response.get("prepayment", 0))
+        except Exception as e:
+            print(f"DEBUG: Prepayment query failed for ID {prepayment_id}: {e}")
+            return 0
+        
     def query_contract(self, f, a, i):
         return requests.post(self.query_contract_url, data={"from": f, "address": a, "input": i}).text
+    
     def get_balance(self, a):
         try:
             response = requests.post(self.query_url, data={"address": a}, timeout=5)

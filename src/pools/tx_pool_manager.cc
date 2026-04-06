@@ -575,7 +575,7 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
             HandleSetContractPrefund(msg_ptr);
             break;
         case pools::protobuf::kContractRefund:
-            HandleSetContractPrefundWithdraw(msg_ptr);
+            HandleSetContractRefund(msg_ptr);
             break;
         case pools::protobuf::kRootCreateAddress: {
             if (tx_msg.to().size() != common::kUnicastAddressLength &&
@@ -997,7 +997,7 @@ void TxPoolManager::HandleSetContractPrefund(const transport::MessagePtr& msg_pt
 }
 
 
-void TxPoolManager::HandleSetContractPrefundWithdraw(const transport::MessagePtr& msg_ptr) {
+void TxPoolManager::HandleSetContractRefund(const transport::MessagePtr& msg_ptr) {
     auto& tx_msg = msg_ptr->header.tx_proto();
     // user can't direct call contract, pay contract prefund and call contract direct
     if (!tx_msg.contract_input().empty() ||
