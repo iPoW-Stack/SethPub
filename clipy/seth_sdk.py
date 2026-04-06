@@ -847,15 +847,29 @@ class SethClient:
         # 2. 构造消息二进制 (匹配 C++ 序列化顺序)
         msg = bytearray()
         msg.extend(struct.pack('<Q', nonce))
-        msg.extend(binascii.unhexlify(pub_key_hex))
-        msg.extend(binascii.unhexlify(to.replace('0x','')))
+
+        pk_bytes = bytes.fromhex(pub_key_hex.replace('0x',''))
+        msg.extend(pk_bytes)
+        msg.extend(bytes.fromhex(to.replace('0x','')))
         msg.extend(struct.pack('<Q', amount))
         msg.extend(struct.pack('<Q', 5000000)) # gas_limit
         msg.extend(struct.pack('<Q', 1))       # gas_price
         msg.extend(struct.pack('<Q', int(step)))
-        if contract_code: msg.extend(binascii.unhexlify(contract_code))
-        if input_hex: msg.extend(binascii.unhexlify(input_hex))
+        if contract_code: msg.extend(bytes.fromhex(contract_code))
+        if input_hex: msg.extend(bytes.fromhex(input_hex))
         if prefund > 0: msg.extend(struct.pack('<Q', prefund))
+
+        # msg = bytearray()
+        # msg.extend(struct.pack('<Q', nonce))
+        # msg.extend(binascii.unhexlify(pub_key_hex))
+        # msg.extend(binascii.unhexlify(to.replace('0x','')))
+        # msg.extend(struct.pack('<Q', amount))
+        # msg.extend(struct.pack('<Q', 5000000)) # gas_limit
+        # msg.extend(struct.pack('<Q', 1))       # gas_price
+        # msg.extend(struct.pack('<Q', int(step)))
+        # if contract_code: msg.extend(binascii.unhexlify(contract_code))
+        # if input_hex: msg.extend(binascii.unhexlify(input_hex))
+        # if prefund > 0: msg.extend(struct.pack('<Q', prefund))
 
         # 3. 计算 SM3 摘要作为签名对象
         txh_hex = sm3.sm3_hash(list(msg))
@@ -869,7 +883,7 @@ class SethClient:
         # 5. 组装数据并 POST
         data = {
             "nonce": str(nonce),
-            "pubkey": pub_key_hex,
+            "pubkey": pub_key_hex.replace('0x',''),
             "to": to.replace('0x',''),
             "amount": str(amount),
             "gas_limit": "5000000",
