@@ -8,7 +8,8 @@
 #include "consensus/hotstuff/types.h"
 #include "consensus/hotstuff/view_block_chain.h"
 #include "consensus/zbft/contract_call.h"
-#include "consensus/zbft/contract_prepayment.h"
+#include "consensus/zbft/contract_prefund.h"
+#include "consensus/zbft/contract_refund.h"
 #include "consensus/zbft/contract_create.h"
 #include "consensus/zbft/create_library.h"
 #include "consensus/zbft/elect_tx_item.h"
@@ -251,9 +252,9 @@ Status BlockAcceptor::Accept(
         auto* cross_to_item = view_block.mutable_block_info()->add_cross_shard_to_array();
         *cross_to_item = *iter->second;
         UpdateDesShardingId(cross_to_item, zjc_host);
-        SETH_DEBUG("success add cross to item: %s, amount: %lu, prepayment: %lu",
+        SETH_DEBUG("success add cross to item: %s, amount: %lu, prefund: %lu",
             common::Encode::HexEncode(cross_to_item->des()).c_str(),
-            cross_to_item->amount(), cross_to_item->prepayment());
+            cross_to_item->amount(), cross_to_item->prefund());
     }
 
     if (view_block.block_info().cross_shard_to_array_size() > 0) {
@@ -460,7 +461,8 @@ Status BlockAcceptor::addTxsToPool(
         }
         
         // --- Serial Logic: DB Query & AddressInfo Retrieval (Must be serial) ---
-        if (tx->step() == pools::protobuf::kContractExcute) {
+        if (tx->step() == pools::protobuf::kContractExcute ||
+                tx->step() == pools::protobuf::kContractRefund) {
             address_info = view_block_chain_->ChainGetAccountInfo(tx->to() + from_id);
             contract_address_info = view_block_chain_->ChainGetAccountInfo(tx->to());
             if (!contract_address_info) {
@@ -523,7 +525,7 @@ Status BlockAcceptor::addTxsToPool(
         }
 
         // --- Serial Logic: Object Factory Creation ---
-        std::string contract_prepayment_id;
+        std::string contract_prefund_id;
         pools::TxItemPtr tx_ptr = nullptr;
 
         switch (tx->step()) {
@@ -539,17 +541,22 @@ Status BlockAcceptor::addTxsToPool(
         case pools::protobuf::kContractCreate:
             tx_ptr = std::make_shared<consensus::ContractUserCreateCall>(
                     contract_mgr_, db_, msg_ptr, i, account_mgr_, security_ptr_, address_info);
-            contract_prepayment_id = tx->to() + from_id;
+            contract_prefund_id = tx->to() + from_id;
             break;
         case pools::protobuf::kContractExcute:
             tx_ptr = std::make_shared<consensus::ContractCall>(
                     contract_mgr_, db_, msg_ptr, i, account_mgr_, security_ptr_, contract_address_info);
-            contract_prepayment_id = tx->to() + from_id;
+            contract_prefund_id = tx->to() + from_id;
             break;
-        case pools::protobuf::kContractGasPrepayment:
-            tx_ptr = std::make_shared<consensus::ContractPrepayment>(
+        case pools::protobuf::kContractGasPrefund:
+            tx_ptr = std::make_shared<consensus::ContractPrefund>(
                     db_, msg_ptr, i, account_mgr_, security_ptr_, address_info);
-            contract_prepayment_id = tx->to() + from_id;
+            contract_prefund_id = tx->to() + from_id;
+            break;
+        case pools::protobuf::kContractRefund:
+            tx_ptr = std::make_shared<consensus::ContractRefund>(
+                    db_, msg_ptr, i, account_mgr_, security_ptr_, address_info);
+            contract_prefund_id = tx->to() + from_id;
             break;
         case pools::protobuf::kConsensusLocalTos: {
             tx_ptr = std::make_shared<consensus::ToTxLocalItem>(
@@ -658,17 +665,17 @@ Status BlockAcceptor::addTxsToPool(
             break;
         }
 
-        // Handle prepayment
-        if (!contract_prepayment_id.empty()) {
-            auto iter = prevs_balance_map.find(contract_prepayment_id);
+        // Handle prefund
+        if (!contract_prefund_id.empty()) {
+            auto iter = prevs_balance_map.find(contract_prefund_id);
             if (iter != prevs_balance_map.end()) {
                 now_balance_map[iter->first] = iter->second;
             } else {
-                address_info = view_block_chain_->ChainGetAccountInfo(contract_prepayment_id);
+                address_info = view_block_chain_->ChainGetAccountInfo(contract_prefund_id);
                 if (address_info) {
                     auto new_addr_info = std::make_shared<address::protobuf::AddressInfo>();
                     *new_addr_info = *address_info;
-                    now_balance_map[contract_prepayment_id] = new_addr_info;
+                    now_balance_map[contract_prefund_id] = new_addr_info;
                 }
             }
         }

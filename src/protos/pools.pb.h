@@ -146,7 +146,7 @@ enum StepType {
   kConsensusCreateGenesisAcount = 4,
   kConsensusLocalTos = 5,
   kContractCreate = 6,
-  kContractGasPrepayment = 7,
+  kContractGasPrefund = 7,
   kContractExcute = 8,
   kRootCreateAddress = 9,
   kStatistic = 12,
@@ -154,11 +154,12 @@ enum StepType {
   kCreateLibrary = 14,
   kCross = 15,
   kRootCross = 16,
-  kPoolStatisticTag = 17
+  kPoolStatisticTag = 17,
+  kContractRefund = 18
 };
 bool StepType_IsValid(int value);
 const StepType StepType_MIN = kNormalFrom;
-const StepType StepType_MAX = kPoolStatisticTag;
+const StepType StepType_MAX = kContractRefund;
 const int StepType_ARRAYSIZE = StepType_MAX + 1;
 
 const ::google::protobuf::EnumDescriptor* StepType_descriptor();
@@ -541,12 +542,12 @@ class ToTxMessageItem : public ::google::protobuf::Message /* @@protoc_insertion
   ::google::protobuf::uint32 sharding_id() const;
   void set_sharding_id(::google::protobuf::uint32 value);
 
-  // optional uint64 prepayment = 10;
-  bool has_prepayment() const;
-  void clear_prepayment();
-  static const int kPrepaymentFieldNumber = 10;
-  ::google::protobuf::uint64 prepayment() const;
-  void set_prepayment(::google::protobuf::uint64 value);
+  // optional uint64 prefund = 10;
+  bool has_prefund() const;
+  void clear_prefund();
+  static const int kPrefundFieldNumber = 10;
+  ::google::protobuf::uint64 prefund() const;
+  void set_prefund(::google::protobuf::uint64 value);
 
   // optional uint32 des_sharding_id = 11;
   bool has_des_sharding_id() const;
@@ -571,8 +572,8 @@ class ToTxMessageItem : public ::google::protobuf::Message /* @@protoc_insertion
   void clear_has_library_bytes();
   void set_has_from();
   void clear_has_from();
-  void set_has_prepayment();
-  void clear_has_prepayment();
+  void set_has_prefund();
+  void clear_has_prefund();
   void set_has_des_sharding_id();
   void clear_has_des_sharding_id();
 
@@ -586,7 +587,7 @@ class ToTxMessageItem : public ::google::protobuf::Message /* @@protoc_insertion
   ::google::protobuf::uint64 amount_;
   ::google::protobuf::int32 pool_index_;
   ::google::protobuf::uint32 sharding_id_;
-  ::google::protobuf::uint64 prepayment_;
+  ::google::protobuf::uint64 prefund_;
   ::google::protobuf::uint32 des_sharding_id_;
   friend struct ::protobuf_protos_2fpools_2eproto::TableStruct;
 };
@@ -3291,12 +3292,12 @@ class TxMessage : public ::google::protobuf::Message /* @@protoc_insertion_point
   ::google::protobuf::uint64 amount() const;
   void set_amount(::google::protobuf::uint64 value);
 
-  // optional uint64 contract_prepayment = 11;
-  bool has_contract_prepayment() const;
-  void clear_contract_prepayment();
-  static const int kContractPrepaymentFieldNumber = 11;
-  ::google::protobuf::uint64 contract_prepayment() const;
-  void set_contract_prepayment(::google::protobuf::uint64 value);
+  // optional uint64 contract_prefund = 11;
+  bool has_contract_prefund() const;
+  void clear_contract_prefund();
+  static const int kContractPrefundFieldNumber = 11;
+  ::google::protobuf::uint64 contract_prefund() const;
+  void set_contract_prefund(::google::protobuf::uint64 value);
 
   // optional uint64 tx_debug_timeout_seconds = 16;
   bool has_tx_debug_timeout_seconds() const;
@@ -3327,8 +3328,8 @@ class TxMessage : public ::google::protobuf::Message /* @@protoc_insertion_point
   void clear_has_amount();
   void set_has_step();
   void clear_has_step();
-  void set_has_contract_prepayment();
-  void clear_has_contract_prepayment();
+  void set_has_contract_prefund();
+  void clear_has_contract_prefund();
   void set_has_contract_code();
   void clear_has_contract_code();
   void set_has_contract_input();
@@ -3358,7 +3359,7 @@ class TxMessage : public ::google::protobuf::Message /* @@protoc_insertion_point
   ::google::protobuf::uint32 version_;
   int step_;
   ::google::protobuf::uint64 amount_;
-  ::google::protobuf::uint64 contract_prepayment_;
+  ::google::protobuf::uint64 contract_prefund_;
   ::google::protobuf::uint64 tx_debug_timeout_seconds_;
   friend struct ::protobuf_protos_2fpools_2eproto::TableStruct;
 };
@@ -3971,28 +3972,28 @@ inline void ToTxMessageItem::set_allocated_from(::std::string* from) {
   // @@protoc_insertion_point(field_set_allocated:seth.pools.protobuf.ToTxMessageItem.from)
 }
 
-// optional uint64 prepayment = 10;
-inline bool ToTxMessageItem::has_prepayment() const {
+// optional uint64 prefund = 10;
+inline bool ToTxMessageItem::has_prefund() const {
   return (_has_bits_[0] & 0x00000080u) != 0;
 }
-inline void ToTxMessageItem::set_has_prepayment() {
+inline void ToTxMessageItem::set_has_prefund() {
   _has_bits_[0] |= 0x00000080u;
 }
-inline void ToTxMessageItem::clear_has_prepayment() {
+inline void ToTxMessageItem::clear_has_prefund() {
   _has_bits_[0] &= ~0x00000080u;
 }
-inline void ToTxMessageItem::clear_prepayment() {
-  prepayment_ = GOOGLE_ULONGLONG(0);
-  clear_has_prepayment();
+inline void ToTxMessageItem::clear_prefund() {
+  prefund_ = GOOGLE_ULONGLONG(0);
+  clear_has_prefund();
 }
-inline ::google::protobuf::uint64 ToTxMessageItem::prepayment() const {
-  // @@protoc_insertion_point(field_get:seth.pools.protobuf.ToTxMessageItem.prepayment)
-  return prepayment_;
+inline ::google::protobuf::uint64 ToTxMessageItem::prefund() const {
+  // @@protoc_insertion_point(field_get:seth.pools.protobuf.ToTxMessageItem.prefund)
+  return prefund_;
 }
-inline void ToTxMessageItem::set_prepayment(::google::protobuf::uint64 value) {
-  set_has_prepayment();
-  prepayment_ = value;
-  // @@protoc_insertion_point(field_set:seth.pools.protobuf.ToTxMessageItem.prepayment)
+inline void ToTxMessageItem::set_prefund(::google::protobuf::uint64 value) {
+  set_has_prefund();
+  prefund_ = value;
+  // @@protoc_insertion_point(field_set:seth.pools.protobuf.ToTxMessageItem.prefund)
 }
 
 // optional uint32 des_sharding_id = 11;
@@ -6512,28 +6513,28 @@ inline void TxMessage::set_step(::seth::pools::protobuf::StepType value) {
   // @@protoc_insertion_point(field_set:seth.pools.protobuf.TxMessage.step)
 }
 
-// optional uint64 contract_prepayment = 11;
-inline bool TxMessage::has_contract_prepayment() const {
+// optional uint64 contract_prefund = 11;
+inline bool TxMessage::has_contract_prefund() const {
   return (_has_bits_[0] & 0x00004000u) != 0;
 }
-inline void TxMessage::set_has_contract_prepayment() {
+inline void TxMessage::set_has_contract_prefund() {
   _has_bits_[0] |= 0x00004000u;
 }
-inline void TxMessage::clear_has_contract_prepayment() {
+inline void TxMessage::clear_has_contract_prefund() {
   _has_bits_[0] &= ~0x00004000u;
 }
-inline void TxMessage::clear_contract_prepayment() {
-  contract_prepayment_ = GOOGLE_ULONGLONG(0);
-  clear_has_contract_prepayment();
+inline void TxMessage::clear_contract_prefund() {
+  contract_prefund_ = GOOGLE_ULONGLONG(0);
+  clear_has_contract_prefund();
 }
-inline ::google::protobuf::uint64 TxMessage::contract_prepayment() const {
-  // @@protoc_insertion_point(field_get:seth.pools.protobuf.TxMessage.contract_prepayment)
-  return contract_prepayment_;
+inline ::google::protobuf::uint64 TxMessage::contract_prefund() const {
+  // @@protoc_insertion_point(field_get:seth.pools.protobuf.TxMessage.contract_prefund)
+  return contract_prefund_;
 }
-inline void TxMessage::set_contract_prepayment(::google::protobuf::uint64 value) {
-  set_has_contract_prepayment();
-  contract_prepayment_ = value;
-  // @@protoc_insertion_point(field_set:seth.pools.protobuf.TxMessage.contract_prepayment)
+inline void TxMessage::set_contract_prefund(::google::protobuf::uint64 value) {
+  set_has_contract_prefund();
+  contract_prefund_ = value;
+  // @@protoc_insertion_point(field_set:seth.pools.protobuf.TxMessage.contract_prefund)
 }
 
 // optional bytes contract_code = 12;

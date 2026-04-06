@@ -581,13 +581,13 @@ function QueryContract(input) {
     QueryPostCode('/query_contract', data);
 }
 
-function Prepayment(prepay) {
+function Prefund(prepay) {
     var contract_address = fs.readFileSync('contract_address', 'utf-8');
     var data = create_tx(contract_address, 0, 100000, 1, prepay, 7);
     PostCode(data);
 }
 
-function Prepayment2(prepay) {
+function Prefund2(prepay) {
     var contract_address = fs.readFileSync('contract_address', 'utf-8');
     var data = create_tx2(contract_address, 0, 100000, 1, prepay, 7);
     PostCode(data);
@@ -612,8 +612,8 @@ if (args[0] == 0) {
 
 // 调用确权预置quota
 if (args[0] == 1) {
-    Prepayment(100000000000);
-   // Prepayment2(100000000000);
+    Prefund(100000000000);
+   // Prefund2(100000000000);
 }
 
 // 增加数据管理员

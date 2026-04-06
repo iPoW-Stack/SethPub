@@ -537,11 +537,11 @@ function sleep(ms) {
 
 
 if (args[0] == 6) {
-   Prepayment2(100000000000);
+   Prefund2(100000000000);
 }
 
 
-function Prepayment2( prepay) {
+function Prefund2( prepay) {
      var contract_address = fs.readFileSync('contract_address', 'utf-8');
      var data = create_tx3(contract_address, 0, 100000, 1, prepay, 7);
      PostCode2(data);

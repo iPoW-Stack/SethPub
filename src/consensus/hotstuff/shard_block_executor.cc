@@ -40,7 +40,7 @@ Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
             continue;
         }
 
-        if (block_tx.step() == pools::protobuf::kContractExcute) {
+        if (block_tx.step() == pools::protobuf::kContractExcute || block_tx.step() == pools::protobuf::kContractRefund) {
             block_tx.set_from(security_ptr_->GetAddressWithPublicKey(
                 (*iter)->tx_info->pubkey()));
         } else {

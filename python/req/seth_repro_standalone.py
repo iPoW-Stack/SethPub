@@ -369,7 +369,7 @@ class SethClient:
             pass
         return 0
 
-    def compute_hash(self, *, nonce, pubkey, to, amount, gas_limit, gas_price, step, contract_code="", input_hex="", prepayment=0):
+    def compute_hash(self, *, nonce, pubkey, to, amount, gas_limit, gas_price, step, contract_code="", input_hex="", prefund=0):
         msg = bytearray()
         msg.extend(self._u64(nonce))
         msg.extend(self._hb(pubkey))
@@ -382,12 +382,12 @@ class SethClient:
             msg.extend(self._hb(contract_code))
         if input_hex:
             msg.extend(self._hb(input_hex))
-        if prepayment > 0:
-            msg.extend(self._u64(prepayment))
+        if prefund > 0:
+            msg.extend(self._u64(prefund))
         h = keccak.new(digest_bits=256); h.update(msg)
         return h.digest()
 
-    def send_tx(self, pk_hex: str, to_hex: str, *, amount=0, gas_limit=5_000_000, gas_price=1, step=0, contract_code="", input_hex="", prepayment=0):
+    def send_tx(self, pk_hex: str, to_hex: str, *, amount=0, gas_limit=5_000_000, gas_price=1, step=0, contract_code="", input_hex="", prefund=0):
         pk = pk_hex[2:] if pk_hex.startswith("0x") else pk_hex
         sk = SigningKey.from_string(bytes.fromhex(pk), curve=SECP256k1)
         pub = sk.verifying_key.to_string("uncompressed").hex()
@@ -397,7 +397,7 @@ class SethClient:
         txh = self.compute_hash(
             nonce=n, pubkey=pub, to=to_hex, amount=amount,
             gas_limit=gas_limit, gas_price=gas_price, step=step,
-            contract_code=contract_code, input_hex=input_hex, prepayment=prepayment
+            contract_code=contract_code, input_hex=input_hex, prefund=prefund
         )
         sig = sk.sign_digest_deterministic(txh, hashfunc=hashlib.sha256, sigencode=sigencode_string_canonize)
         data = {
@@ -409,8 +409,8 @@ class SethClient:
             data["bytes_code"] = contract_code
         if input_hex:
             data["input"] = input_hex
-        if prepayment > 0:
-            data["pepay"] = str(prepayment)
+        if prefund > 0:
+            data["pepay"] = str(prefund)
         r = requests.post(self.tx_url, data=data, timeout=60)
         txt = (r.text or "")[:200]
         print("  tx response:", txt)
@@ -443,7 +443,7 @@ class SethClient:
 def deploy(client: SethClient, pk: str, deployer: str, code: str, salt: str, label: str, amount: int = 0):
     target = create2(deployer, salt, code)
     print(f"[Deploy] {label} -> {target}")
-    tx = client.send_tx(pk, target, step=6, contract_code=code, prepayment=10_000_000, gas_limit=5_000_000, amount=amount)
+    tx = client.send_tx(pk, target, step=6, contract_code=code, prefund=10_000_000, gas_limit=5_000_000, amount=amount)
     ok, st, _ = client.wait_receipt(tx, timeout=600)
     print(f"  receipt={ok} status={st} tx={tx}")
     return target

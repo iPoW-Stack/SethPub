@@ -292,7 +292,7 @@ public:
     bool transfer(const std::string& private_key, std::string to, uint64_t amount, 
                 int64_t nonce = -1, int step = 0, std::string contract_bytes = "", 
                 std::string input = "", std::string key = "", std::string val = "", 
-                uint64_t prepayment = 0, bool check_tx_valid = true) {
+                uint64_t prefund = 0, bool check_tx_valid = true) {
         try {
             httplib::Client cli(node_host_, node_port_);
             security::Ecdsa ecdsa;
@@ -302,7 +302,7 @@ public:
             nonce++;
             uint64_t gas_limit = 9999999lu;
             uint64_t gas_price = 1llu;
-            Sign sig = signMessage(ecdsa, nonce, to, amount, gas_limit, gas_price, step, contract_bytes, input, prepayment, key, val);
+            Sign sig = signMessage(ecdsa, nonce, to, amount, gas_limit, gas_price, step, contract_bytes, input, prefund, key, val);
             httplib::Params params;
             params.emplace("nonce", std::to_string(nonce));
             params.emplace("pubkey", common::Encode::HexEncode(ecdsa.GetPublicKey()));
@@ -314,7 +314,7 @@ public:
             params.emplace("shard_id", "3");
             params.emplace("key", key);
             params.emplace("val", val);
-            params.emplace("pepay", std::to_string(prepayment));
+            params.emplace("pepay", std::to_string(prefund));
             params.emplace("sign_r", common::Encode::HexEncode(sig.r));
             params.emplace("sign_s", common::Encode::HexEncode(sig.s));
             params.emplace("sign_v", std::to_string(sig.v));
@@ -435,9 +435,9 @@ public:
         } catch (const std::exception& e) { return {{"status", 1}, {"msg", e.what()}}; }
     }
 
-    json setGasPrepayment(const std::string& private_key, const std::string& address, uint64_t prepayment) {
-        if (client.transfer(private_key, address, 0, -1, 7, "", "", "", "", prepayment, true)) return {{"status", 0}, {"msg", "ok"}};
-        return {{"status", 1}, {"msg", "set gas prepayment failed"}};
+    json setGasPrefund(const std::string& private_key, const std::string& address, uint64_t prefund) {
+        if (client.transfer(private_key, address, 0, -1, 7, "", "", "", "", prefund, true)) return {{"status", 0}, {"msg", "ok"}};
+        return {{"status", 1}, {"msg", "set gas prefund failed"}};
     }
 
     json callFunctionSolidity(const std::string& private_key, const std::string& address, uint64_t amount, 
@@ -454,13 +454,13 @@ public:
         } catch (const std::exception& e) { return {{"status", 1}, {"msg", e.what()}}; }
     }
 
-    json deploySolidity(const std::string& private_key, const std::string& bytecode, uint64_t amount, uint64_t prepayment, 
+    json deploySolidity(const std::string& private_key, const std::string& bytecode, uint64_t amount, uint64_t prefund, 
                         int code_type, const std::vector<std::string>& fn_types, const std::vector<std::string>& fn_args) {
         try {
             if (fn_types.size() != fn_args.size()) return {{"status", 1}, {"msg", "len mismatch"}};
             std::string full_payload = bytecode + encodeArgs(fn_types, fn_args);
             std::string to_address = utils::keccak256Str(full_payload + std::to_string(rand())).substr(24);
-            if (client.transfer(private_key, to_address, amount, -1, (code_type != 0) ? 14 : 6, full_payload, "", "", "", prepayment, true)) {
+            if (client.transfer(private_key, to_address, amount, -1, (code_type != 0) ? 14 : 6, full_payload, "", "", "", prefund, true)) {
                 return {{"status", 0}, {"msg", "ok"}, {"id", to_address}};
             }
             return {{"status", 1}, {"msg", "create contract failed"}};
@@ -561,7 +561,7 @@ public:
 //         private_key, 
 //         bytecode, 
 //         0,      // amount (转账金额)
-//         50000,  // gas_prepayment (预付 Gas)
+//         50000,  // gas_prefund (预付 Gas)
 //         0,      // code_type (0=Contract)
 //         constructor_types, 
 //         constructor_args
@@ -576,17 +576,17 @@ public:
 //     std::cout << "-> Deploy Success! Contract ID: " << contract_address << std::endl;
 
 //     // -------------------------------------------------
-//     // Step 3: 设置 Gas 预付 (Set Gas Prepayment)
+//     // Step 3: 设置 Gas 预付 (Set Gas Prefund)
 //     // -------------------------------------------------
-//     std::cout << "\n[Step 3] Setting Gas Prepayment..." << std::endl;
+//     std::cout << "\n[Step 3] Setting Gas Prefund..." << std::endl;
     
-//     seth::json prepay_res = sdk.setGasPrepayment(
+//     seth::json prepay_res = sdk.setGasPrefund(
 //         private_key, 
 //         contract_address, 
 //         10000 // 补充 Gas
 //     );
 
-//     std::cout << "-> Set Prepayment: " << prepay_res["msg"] << std::endl;
+//     std::cout << "-> Set Prefund: " << prepay_res["msg"] << std::endl;
 
 //     // -------------------------------------------------
 //     // Step 4: 调用合约函数 (Call Function)

@@ -33,7 +33,7 @@ class StepType(IntEnum):
     kConsensusCreateGenesisAcount = 4 # Genesis account creation
     kConsensusLocalTos = 5          # Cross-shard confirmation (Receiver-side accumulation)
     kCreateContract = 6             # Contract deployment/creation
-    kContractGasPrepayment = 7      # Set contract call gas prepayment
+    kContractGasPrefund = 7         # Set contract call gas prefund
     kContractExcute = 8             # Execute contract call
     kRootCreateAddress = 9          # Root network address creation
     kStatistic = 12                 # Statistical transaction
@@ -42,6 +42,7 @@ class StepType(IntEnum):
     kCross = 15                     # Cross-shard anti-loss block replenishment
     kRootCross = 16                 # Root network cross-shard replenishment
     kPoolStatisticTag = 17          # End tag for transaction pool statistics round
+    kContractRefund = 18            # contract call gas refund
 
 class MessageHandleStatus(IntEnum):
     """Status codes for message handling and EVM execution."""
@@ -129,7 +130,7 @@ class MessageHandleStatus(IntEnum):
     kConsensusInternalError = 5046
     kConsensusRejected = 5047
     kConsensusOutOfMemory = 5048
-    kConsensusOutOfPrepayment = 5049
+    kConsensusOutOfPrefund = 5049
     kConsensusElectNodeExists = 5050
     kConsensusNonceInvalid = 5051
     kConsensusJoinElectThreashTInvalid = 5052
@@ -220,7 +221,7 @@ class SethMethod:
             # If it's a single return value, return 0; if it's a tuple, return our safe defaults
             return default_return if len(self.output_types) > 1 else 0
 
-    def transact(self, private_key: str, value: int = 0, prepayment: int = 10**6, oqs_pubkey: str = None) -> dict:
+    def transact(self, private_key: str, value: int = 0, prefund: int = 10**6, oqs_pubkey: str = None) -> dict:
         """Transaction logic with automatic parsing. Supports OQS auto-detection."""
         
         # 1. Auto-detect private key type: ECDSA hex length is 64, OQS hex length is usually > 2000
@@ -244,7 +245,7 @@ class SethMethod:
                 StepType.kContractExcute, 
                 amount=value, 
                 input_hex=self.encoded_input, 
-                prepayment=prepayment
+                prefund=prefund
             )
         else:
             # Execute standard ECDSA logic
@@ -254,7 +255,7 @@ class SethMethod:
                 StepType.kContractExcute, 
                 amount=value, 
                 input_hex=self.encoded_input, 
-                prepayment=prepayment
+                prefund=prefund
             )
 
         # 2. Wait for and return the receipt
@@ -275,10 +276,10 @@ class SethContract:
     def _create_method(self, item):
         return lambda *args: SethMethod(self, item)(*args)
 
-    def prepayment(self, amount: int, private_key: str, oqs_pubkey: Optional[str] = None) -> dict:
+    def prefund(self, amount: int, private_key: str, oqs_pubkey: Optional[str] = None) -> dict:
             """
-            Exposes prepayment as a method of the contract object.
-            Example usage: contract.prepayment(1000, "0x...")
+            Exposes prefund as a method of the contract object.
+            Example usage: contract.prefund(1000, "0x...")
             """
             if not self.address:
                 raise ValueError("Contract address is not set. Deploy or bind first.")
@@ -293,18 +294,60 @@ class SethContract:
                     private_key, 
                     oqs_pubkey, 
                     self.address, 
-                    StepType.kContractGasPrepayment, 
-                    prepayment=amount
+                    StepType.kContractGasPrefund, 
+                    prefund=amount
                 )
             else:
                 tx_hash = self.client.send_transaction_auto(
                     private_key, 
                     self.address, 
-                    StepType.kContractGasPrepayment, 
-                    prepayment=amount
+                    StepType.kContractGasPrefund, 
+                    prefund=amount
                 )
                 
             return self.client.wait_for_receipt(tx_hash)
+    
+    def refund(self, private_key: str, oqs_pubkey: Optional[str] = None) -> dict:
+            """
+            Exposes prefund as a method of the contract object.
+            Example usage: contract.prefund(1000, "0x...")
+            """
+            if not self.address:
+                raise ValueError("Contract address is not set. Deploy or bind first.")
+
+            is_oqs = len(private_key) > 128
+            if is_oqs:
+                if not oqs_pubkey:
+                    raise ValueError("OQS detected, but 'contract.oqs_pubkey' is not set.")
+                
+                tx_hash = self.client.send_oqs_transaction(
+                    private_key, 
+                    oqs_pubkey, 
+                    self.address, 
+                    StepType.kContractRefund
+                )
+            else:
+                tx_hash = self.client.send_transaction_auto(
+                    private_key, 
+                    self.address, 
+                    StepType.kContractRefund
+                )
+                
+            return self.client.wait_for_receipt(tx_hash)
+    
+    def get_prefund(self, user_address: str) -> int:
+        """
+        Queries the prefund balance for a specific user on this contract.
+        Prefund ID = ContractAddress + UserAddress
+        """
+        if not self.address:
+            raise ValueError("Contract address not set.")
+        
+        # Calculate the unique prefund ID
+        prefund_id = self.address.lower().replace('0x','') + user_address.lower().replace('0x','')
+        
+        # Query the account info for this specific ID
+        return self.client.get_prefund(prefund_id)
     
     def deploy(self, transaction: dict, private_key: str) -> SethContract:
         """Web3-style deployment. Automatically detects OQS based on private_key length."""
@@ -339,7 +382,7 @@ class SethContract:
                 self.address, 
                 step, 
                 contract_code=full_bytecode, 
-                prepayment=10000000, 
+                prefund=10000000, 
                 amount=amount
             )
         else:
@@ -348,7 +391,7 @@ class SethContract:
                 self.address, 
                 step, 
                 contract_code=full_bytecode, 
-                prepayment=10000000, 
+                prefund=10000000, 
                 amount=amount
             )
 
@@ -401,9 +444,9 @@ class SethClient:
         pub = sk.verifying_key.to_string("uncompressed")[1:]
         return keccak.new(digest_bits=256).update(pub).digest()[-20:].hex()
 
-    def send_transaction_auto(self, pk_hex, to, step, amount=0, contract_code='', input_hex='', prepayment=0):
+    def send_transaction_auto(self, pk_hex, to, step, amount=0, contract_code='', input_hex='', prefund=0):
         my_addr = self.get_address(pk_hex)
-        nonce_addr = to + my_addr if step == StepType.kContractExcute else my_addr
+        nonce_addr = to + my_addr if (step == StepType.kContractExcute or step == StepType.kContractRefund) else my_addr
         try:
             r = requests.post(self.query_url, data={"address": nonce_addr}).json()
             nonce = int(r.get("nonce", 0)) + 1
@@ -422,7 +465,7 @@ class SethClient:
         msg.extend(struct.pack('<Q', int(step)))
         if contract_code: msg.extend(bytes.fromhex(contract_code))
         if input_hex: msg.extend(bytes.fromhex(input_hex))
-        if prepayment > 0: msg.extend(struct.pack('<Q', prepayment))
+        if prefund > 0: msg.extend(struct.pack('<Q', prefund))
 
         txh = keccak.new(digest_bits=256).update(msg).digest()
         sig = sk.sign_digest_deterministic(txh, hashfunc=hashlib.sha256, sigencode=sigencode_string_canonize)
@@ -430,7 +473,7 @@ class SethClient:
         data = {"nonce": str(nonce), "pubkey": pub, "to": to, "amount": str(amount), "gas_limit": "5000000", "gas_price": "1", "shard_id": "0", "type": str(int(step)), "sign_r": sig[:32].hex(), "sign_s": sig[32:64].hex(), "sign_v": "0"}
         if contract_code: data["bytes_code"] = contract_code
         if input_hex: data["input"] = input_hex
-        if prepayment: data["pepay"] = str(prepayment)
+        if prefund: data["pepay"] = str(prefund)
         
         requests.post(self.tx_url, data=data)
         return txh.hex()
@@ -517,7 +560,7 @@ class SethClient:
         k.update(pub_bytes)
         return k.digest()[:20].hex()
     
-    def send_oqs_transaction(self, oqs_sk_hex, oqs_pk_hex, to, step, amount=0, contract_code='', input_hex='', prepayment=0):
+    def send_oqs_transaction(self, oqs_sk_hex, oqs_pk_hex, to, step, amount=0, contract_code='', input_hex='', prefund=0):
         """Send post-quantum transaction - perfectly adapted for 0.15.0/0.14.0 mixed environments"""
         if not oqs:
             raise ImportError("liboqs-python is required")
@@ -529,7 +572,7 @@ class SethClient:
         # oqs_pk_hex = signer_public_key.hex()
         # oqs_sk_hex = oqs_signer.export_secret_key().hex()
         my_addr = self.get_oqs_address(oqs_pk_hex)
-        nonce_addr = to + my_addr if step == StepType.kContractExcute else my_addr
+        nonce_addr = to + my_addr if (step == StepType.kContractExcute or step == StepType.kContractRefund) else my_addr
         
         # 1. Get Nonce
         try:
@@ -550,7 +593,7 @@ class SethClient:
         msg.extend(struct.pack('<Q', int(step)))
         if contract_code: msg.extend(bytes.fromhex(contract_code))
         if input_hex: msg.extend(bytes.fromhex(input_hex))
-        if prepayment > 0: msg.extend(struct.pack('<Q', prepayment))
+        if prefund > 0: msg.extend(struct.pack('<Q', prefund))
 
         txh = keccak.new(digest_bits=256).update(msg).digest()
 
@@ -622,15 +665,27 @@ class SethClient:
         
         if contract_code: data["bytes_code"] = contract_code
         if input_hex: data["input"] = input_hex
-        if prepayment: data["pepay"] = str(prepayment)
+        if prefund: data["pepay"] = str(prefund)
         
         requests.post(self.oqs_url, data=data)
         print(f"tx hash {txh.hex()}, pk: {oqs_pk_hex}, data: {data}, msg: {msg.hex()}")
             
         return txh.hex()
 
+    def get_prefund(self, prefund_id: str) -> int:
+        """Queries the prefund field from the account status."""
+        try:
+            # The server expects the composite ID (Contract+User) as the address
+            response = requests.post(self.query_url, data={"address": prefund_id}, timeout=5).json()
+            # In your C++ backend, this is usually stored in the 'prefund' field of the account
+            return int(response.get("balance", 0))
+        except Exception as e:
+            print(f"DEBUG: Prefund query failed for ID {prefund_id}: {e}")
+            return 0
+        
     def query_contract(self, f, a, i):
         return requests.post(self.query_contract_url, data={"from": f, "address": a, "input": i}).text
+    
     def get_balance(self, a):
         try:
             response = requests.post(self.query_url, data={"address": a}, timeout=5)

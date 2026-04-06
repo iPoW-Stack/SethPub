@@ -138,10 +138,10 @@ static transport::MessagePtr CreateTransactionWithAttr(
         if (key == "create_contract") {
             new_tx->set_step(pools::protobuf::kContractCreate);
             new_tx->set_contract_code(val);
-            new_tx->set_contract_prepayment(9000000000lu);
-        } else if (key == "prepayment") {
-            new_tx->set_step(pools::protobuf::kContractGasPrepayment);
-            new_tx->set_contract_prepayment(9000000000lu);
+            new_tx->set_contract_prefund(9000000000lu);
+        } else if (key == "prefund") {
+            new_tx->set_step(pools::protobuf::kContractGasPrefund);
+            new_tx->set_contract_prefund(9000000000lu);
         } else if (key == "call") {
             new_tx->set_step(pools::protobuf::kContractExcute);
             new_tx->set_contract_input(val);
@@ -205,10 +205,10 @@ static transport::MessagePtr GmsslCreateTransactionWithAttr(
         if (key == "create_contract") {
             new_tx->set_step(pools::protobuf::kContractCreate);
             new_tx->set_contract_code(val);
-            new_tx->set_contract_prepayment(9000000000lu);
-        } else if (key == "prepayment") {
-            new_tx->set_step(pools::protobuf::kContractGasPrepayment);
-            new_tx->set_contract_prepayment(9000000000lu);
+            new_tx->set_contract_prefund(9000000000lu);
+        } else if (key == "prefund") {
+            new_tx->set_step(pools::protobuf::kContractGasPrefund);
+            new_tx->set_contract_prefund(9000000000lu);
         } else if (key == "call") {
             new_tx->set_step(pools::protobuf::kContractExcute);
             new_tx->set_contract_input(val);
@@ -271,10 +271,10 @@ static transport::MessagePtr OqsCreateTransactionWithAttr(
         if (key == "create_contract") {
             new_tx->set_step(pools::protobuf::kContractCreate);
             new_tx->set_contract_code(val);
-            new_tx->set_contract_prepayment(9000000000lu);
-        } else if (key == "prepayment") {
-            new_tx->set_step(pools::protobuf::kContractGasPrepayment);
-            new_tx->set_contract_prepayment(9000000000lu);
+            new_tx->set_contract_prefund(9000000000lu);
+        } else if (key == "prefund") {
+            new_tx->set_step(pools::protobuf::kContractGasPrefund);
+            new_tx->set_contract_prefund(9000000000lu);
         } else if (key == "call") {
             new_tx->set_step(pools::protobuf::kContractExcute);
             new_tx->set_contract_input(val);
@@ -820,13 +820,13 @@ void UpdateAddressNonce(const std::string& contract_address) {
     }
 }
 
-int InitPrepayment(const std::string& contract_address) {
+int InitPrefund(const std::string& contract_address) {
     SethSDK client(kBroadcastIp);
     for (auto iter = g_prikeys.begin(); iter != g_prikeys.end(); ++iter) {
         auto prikey = common::Encode::HexEncode(*iter);
-        auto res_json = client.setGasPrepayment(prikey, contract_address, 9000000000lu);
+        auto res_json = client.setGasPrefund(prikey, contract_address, 9000000000lu);
         if (res_json["status"] != 0) {
-            std::cout << "set prepayment failed: " << contract_address << ", " << prikey << ", " << res_json.dump() << std::endl;
+            std::cout << "set prefund failed: " << contract_address << ", " << prikey << ", " << res_json.dump() << std::endl;
             return -1;
         }
     }
@@ -898,7 +898,7 @@ int call_bentchmark(int argc, char** argv) {
     }
 
     UpdateAddressNonce();
-    if (InitPrepayment(to) != 0) {
+    if (InitPrefund(to) != 0) {
         return -1;
     }
 

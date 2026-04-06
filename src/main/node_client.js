@@ -269,8 +269,8 @@ function call_contract(input, prikey, amount) {
     PostCode(data);
 }
 
-// 设置预付费 prepayment > 0
-function prepay_contract(prikey, prepayment) {
+// 设置预付费 prefund > 0
+function prepay_contract(prikey, prefund) {
     var contract_address = fs.readFileSync('contract_address', 'utf-8');
     var gid = GetValidHexString(Secp256k1.uint256(randomBytes(32)));
     var data = param_contract(
@@ -282,7 +282,7 @@ function prepay_contract(prikey, prepayment) {
         1,
         "",
         "",
-        prepayment,
+        prefund,
         prikey);
     PostCode(data);
 }

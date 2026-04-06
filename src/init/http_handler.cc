@@ -159,7 +159,7 @@ static int CreateOqsTransactionWithAttr(
             SETH_WARN("get prepay failed %s", pepay.c_str());
             return kSignatureInvalid;
         }
-        new_tx->set_contract_prepayment(pepay_val);
+        new_tx->set_contract_prefund(pepay_val);
     }
 
     if (sign.empty()) {
@@ -354,7 +354,7 @@ static int CreateTransactionWithAttr(
             return kSignatureInvalid;
         }
 
-        new_tx->set_contract_prepayment(pepay_val);
+        new_tx->set_contract_prefund(pepay_val);
     }
 
     if (sign_r.empty() || sign_s.empty()) {
@@ -555,20 +555,20 @@ static void QueryContract(const httplib::Request& req, httplib::Response& http_r
     std::string input = common::Encode::HexDecode(tmp_input);
 
     uint64_t height = 0;
-    auto contract_prepayment_id = contract_addr + from;
-    // protos::AddressInfoPtr addr_info =  http_handler->acc_mgr()->GetAccountInfo(contract_prepayment_id);
+    auto contract_prefund_id = contract_addr + from;
+    // protos::AddressInfoPtr addr_info =  http_handler->acc_mgr()->GetAccountInfo(contract_prefund_id);
     // if (!addr_info) {
-    //     addr_info = prefix_db->GetAddressInfo(contract_prepayment_id);
+    //     addr_info = prefix_db->GetAddressInfo(contract_prefund_id);
     // }
 
     // if (!addr_info) {
-    //     std::string res = "get from prepayment failed: " + std::string(tmp_contract_addr) + ", " + std::string(tmp_from);
+    //     std::string res = "get from prefund failed: " + std::string(tmp_contract_addr) + ", " + std::string(tmp_from);
     //     SETH_INFO("query contract param error: %s.", res.c_str());
     //     http_res.set_content(res, "text/plain");
     //     return;
     // }
 
-    uint64_t prepayment = 9999999999lu;//addr_info->balance();
+    uint64_t prefund = 9999999999lu;//addr_info->balance();
     auto contract_addr_info = prefix_db->GetAddressInfo(contract_addr);
     if (contract_addr_info == nullptr) {
         std::string res = "get contract addr failed: " + std::string(tmp_contract_addr);
@@ -588,10 +588,10 @@ static void QueryContract(const httplib::Request& req, httplib::Response& http_r
         chanin_id);
     zjc_host.contract_mgr_ = contract_mgr;
     zjc_host.my_address_ = contract_addr;
-    zjc_host.tx_context_.block_gas_limit = prepayment;
+    zjc_host.tx_context_.block_gas_limit = prefund;
     zjc_host.view_block_chain_ = std::make_shared<hotstuff::ViewBlockChain>();
-    // user caller prepayment 's gas
-    uint64_t from_balance = prepayment;
+    // user caller prefund 's gas
+    uint64_t from_balance = prefund;
     uint64_t to_balance = contract_addr_info->balance();
     zjc_host.AddTmpAccountBalance(
         from,
@@ -608,7 +608,7 @@ static void QueryContract(const httplib::Request& req, httplib::Response& http_r
         contract_addr,
         from,
         0,
-        prepayment,
+        prefund,
         0,
         zjcvm::kJustCall,
         zjc_host,
@@ -648,20 +648,20 @@ static void AbiQueryContract(const httplib::Request& req, httplib::Response& htt
     std::string input = common::Encode::HexDecode(tmp_input);
     uint64_t height = 0;
 
-    auto contract_prepayment_id = contract_addr + from;
-    // protos::AddressInfoPtr addr_info =  http_handler->acc_mgr()->GetAccountInfo(contract_prepayment_id);
+    auto contract_prefund_id = contract_addr + from;
+    // protos::AddressInfoPtr addr_info =  http_handler->acc_mgr()->GetAccountInfo(contract_prefund_id);
     // if (!addr_info) {
-    //     addr_info = prefix_db->GetAddressInfo(contract_prepayment_id);
+    //     addr_info = prefix_db->GetAddressInfo(contract_prefund_id);
     // }
 
     // if (!addr_info) {
-    //     std::string res = "get from prepayment failed: " + std::string(tmp_contract_addr) + ", " + std::string(tmp_from);
+    //     std::string res = "get from prefund failed: " + std::string(tmp_contract_addr) + ", " + std::string(tmp_from);
     //     http_res.set_content(res, "text/plain");
     //     SETH_INFO("query contract param error: %s.", res.c_str());
     //     return;
     // }
 
-    uint64_t prepayment = 9999999999lu;  // addr_info->balance();
+    uint64_t prefund = 9999999999lu;  // addr_info->balance();
     auto contract_addr_info = prefix_db->GetAddressInfo(contract_addr);
     if (contract_addr_info == nullptr) {
         std::string res = "get contract addr failed: " + std::string(tmp_contract_addr);
@@ -681,9 +681,9 @@ static void AbiQueryContract(const httplib::Request& req, httplib::Response& htt
         chanin_id);
     zjc_host.contract_mgr_ = contract_mgr;
     zjc_host.my_address_ = contract_addr;
-    zjc_host.tx_context_.block_gas_limit = prepayment;
-    // user caller prepayment 's gas
-    uint64_t from_balance = prepayment;
+    zjc_host.tx_context_.block_gas_limit = prefund;
+    // user caller prefund 's gas
+    uint64_t from_balance = prefund;
     uint64_t to_balance = contract_addr_info->balance();
     zjc_host.AddTmpAccountBalance(
         from,
@@ -862,7 +862,7 @@ static void GetBlockWithGid(const httplib::Request& req, httplib::Response& http
     http_res.set_content(res_json, "text/plain");
 }
 
-static void PrepaymentsValid(const httplib::Request& req, httplib::Response& http_res) {
+static void PrefundsValid(const httplib::Request& req, httplib::Response& http_res) {
     SETH_DEBUG("query account.");
     auto balance = req.get_param_value("balance");
     if (balance.empty()) {
@@ -894,7 +894,7 @@ static void PrepaymentsValid(const httplib::Request& req, httplib::Response& htt
     }
 
     nlohmann::json res_json;
-    auto tmp_res_addrs = res_json["prepayments"];
+    auto tmp_res_addrs = res_json["prefunds"];
     res_json["status"] = 0;
     res_json["msg"] = "success";
     auto addrs_splits = common::Split<1024>(tmp_addrs.c_str(), '_');
@@ -907,18 +907,18 @@ static void PrepaymentsValid(const httplib::Request& req, httplib::Response& htt
 
         uint64_t height = 0;
         uint64_t tmp_balance = 0;
-        auto contract_prepayment_id = contract_addr + addr;
-        protos::AddressInfoPtr addr_info =  http_handler->acc_mgr()->GetAccountInfo(contract_prepayment_id);
+        auto contract_prefund_id = contract_addr + addr;
+        protos::AddressInfoPtr addr_info =  http_handler->acc_mgr()->GetAccountInfo(contract_prefund_id);
         if (addr_info == nullptr) {
-            std::string res = "get address failed from db: " + contract_prepayment_id;
-            addr_info = prefix_db->GetAddressInfo(contract_prepayment_id);
+            std::string res = "get address failed from db: " + contract_prefund_id;
+            addr_info = prefix_db->GetAddressInfo(contract_prefund_id);
         }
 
         if (addr_info != nullptr && addr_info->balance() >= balance_val) {
-            res_json["prepayments"][invalid_addr_index++] = addrs_splits[i];
-            SETH_DEBUG("valid prepayment: %s, balance: %lu", addrs_splits[i], addr_info->balance());
+            res_json["prefunds"][invalid_addr_index++] = addrs_splits[i];
+            SETH_DEBUG("valid prefund: %s, balance: %lu", addrs_splits[i], addr_info->balance());
         } else {
-            SETH_DEBUG("invalid prepayment: %s, balance: %lu",
+            SETH_DEBUG("invalid prefund: %s, balance: %lu",
                 addrs_splits[i], 
                 (addr_info ? addr_info->balance() : 0));
         }
@@ -1465,7 +1465,7 @@ void HttpHandler::Init(
     svr.Post("/ars_create_sec_keys", ArsCreateSecKeys);
     svr.Post("/accounts_valid", AccountsValid);
     svr.Post("/commit_gid_valid", GidsValid);
-    svr.Post("/prepayment_valid", PrepaymentsValid);
+    svr.Post("/prefund_valid", PrefundsValid);
     svr.Post("/get_block_with_gid", GetBlockWithGid);
     svr.Post("/get_blocks", GetBlocks);
     svr.Post("/get_latest_pool_info", GetLatestPoolHeights);

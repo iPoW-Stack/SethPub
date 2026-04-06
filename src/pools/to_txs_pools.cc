@@ -433,8 +433,8 @@ int ToTxsPools::CreateToTxWithHeights(
                         amount_iter->second.set_library_bytes(to_iter->second.library_bytes());
                     }
 
-                    if (to_iter->second.prepayment() > 0) {
-                        amount_iter->second.set_prepayment(amount_iter->second.prepayment() + to_iter->second.prepayment());
+                    if (to_iter->second.prefund() > 0) {
+                        amount_iter->second.set_prefund(amount_iter->second.prefund() + to_iter->second.prefund());
                     }
                     
                     SETH_DEBUG("to block pool: %u, height: %lu, success add account "
@@ -444,7 +444,7 @@ int ToTxsPools::CreateToTxWithHeights(
                         height, common::Encode::HexEncode(to_iter->first).c_str(),
                         to_iter->second.amount(),
                         amount_iter->second.amount(),
-                        amount_iter->second.prepayment(),
+                        amount_iter->second.prefund(),
                         ProtobufToJson(to_iter->second).c_str());
                 }
             }
@@ -464,10 +464,10 @@ int ToTxsPools::CreateToTxWithHeights(
     for (auto iter = acc_amount_map.begin(); iter != acc_amount_map.end(); ++iter) {
         auto to_item = to_tx.add_tos();
         *to_item = iter->second;
-        SETH_DEBUG("set to %s amount %lu, sharding id: %u, des sharding id: %d, pool index: %d, prepayment: %lu",
+        SETH_DEBUG("set to %s amount %lu, sharding id: %u, des sharding id: %d, pool index: %d, prefund: %lu",
             common::Encode::HexEncode(to_item->des()).c_str(),
             iter->second.amount(), to_item->des_sharding_id(), 
-            sharding_id, to_item->pool_index(), to_item->prepayment());
+            sharding_id, to_item->pool_index(), to_item->prefund());
     }
 
     to_tx.set_elect_height(elect_height);

@@ -16,7 +16,7 @@ static const std::string kClickhouseStatisticTableName = "zjc_ck_statistic_table
 static const std::string kClickhouseShardStatisticTableName = "zjc_ck_shard_statistic_table";
 static const std::string kClickhousePoolStatisticTableName = "zjc_ck_pool_statistic_table";
 static const std::string kClickhouseC2cTableName = "zjc_ck_c2c_table";
-static const std::string kClickhousePrepaymentTableName = "zjc_ck_prepayment_table";
+static const std::string kClickhousePrefundTableName = "zjc_ck_prefund_table";
 static const std::string kClickhouseBlsElectInfo = "bls_elect_info";
 static const std::string kClickhouseBlsBlockInfo = "bls_block_info";
 

@@ -250,7 +250,8 @@ private:
     int TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr);
     void DispatchTx(uint32_t pool_index, const transport::MessagePtr& msg_ptr);
     void HandleCreateContractTx(const transport::MessagePtr& msg_ptr);
-    void HandleSetContractPrepayment(const transport::MessagePtr& msg_ptr);
+    void HandleSetContractPrefund(const transport::MessagePtr& msg_ptr);
+    void HandleContractRefund(const transport::MessagePtr& msg_ptr);
     void HandleNormalFromTx(const transport::MessagePtr& msg_ptr);
     void HandleContractExcute(const transport::MessagePtr& msg_ptr);
     void HandleElectTx(const transport::MessagePtr& msg_ptr);
@@ -267,7 +268,7 @@ private:
     void HandlePoolsMessage(const transport::MessagePtr& msg_ptr);
     void GetMinValidTxCount();
     uint32_t GetTxPoolIndex(const transport::MessagePtr& msg_ptr);
-    void CreateTestTxs(uint32_t pool_begin, uint32_t pool_end, uint32_t tps);
+    // void CreateTestTxs(uint32_t pool_begin, uint32_t pool_end, uint32_t tps);
     void SendTxToOtherNodes(const transport::MessagePtr& msg_ptr);
 
     static const uint32_t kPopMessageCountEachTime = 64000u;

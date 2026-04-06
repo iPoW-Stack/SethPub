@@ -13,7 +13,7 @@ int ContractCall::HandleTx(
         zjcvm::ZjchainHost& pre_zjc_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
-    // gas just consume from 's prepayment
+    // gas just consume from 's prefund
     auto btime = common::TimeUtils::TimestampMs();
     SETH_DEBUG("contract called now.");
     uint64_t from_balance = 0;
@@ -55,8 +55,8 @@ int ContractCall::HandleTx(
         }
 
         if (block_tx.amount() >= from_balance) {
-            block_tx.set_status(kConsensusOutOfPrepayment);
-            SETH_WARN("prepayent invalid user: %s, prepayment: %lu, contract: %s,"
+            block_tx.set_status(kConsensusOutOfPrefund);
+            SETH_WARN("prepayent invalid user: %s, prefund: %lu, contract: %s,"
                 "amount: %lu, gas limit: %lu, gas price: %lu",
                 common::Encode::HexEncode(block_tx.from()).c_str(),
                 from_balance,
@@ -70,7 +70,7 @@ int ContractCall::HandleTx(
         }
 
         if (kCallContractDefaultUseGas > gas_limit) {
-            block_tx.set_status(kConsensusOutOfPrepayment);
+            block_tx.set_status(kConsensusOutOfPrefund);
             break;
         }
 
@@ -90,7 +90,7 @@ int ContractCall::HandleTx(
     } else {
         new_contract_balance += block_tx.amount();
         InitHost(zjc_host, block_tx, gas_limit, block_tx.gas_price(), view_block);
-        // user caller prepayment 's gas
+        // user caller prefund 's gas
         zjc_host.AddTmpAccountBalance(
             block_tx.from(),
             from_balance);
@@ -187,7 +187,7 @@ int ContractCall::HandleTx(
                 // just dec caller_balance_add
                 int64_t dec_amount = static_cast<int64_t>(block_tx.amount()) -
                     caller_balance_add +
-                    static_cast<int64_t>(block_tx.contract_prepayment()) +
+                    static_cast<int64_t>(block_tx.contract_prefund()) +
                     static_cast<int64_t>(gas_used * block_tx.gas_price());
                 if ((int64_t)tmp_from_balance < dec_amount) {
                     block_tx.set_status(consensus::kConsensusAccountBalanceError);
@@ -285,7 +285,7 @@ int ContractCall::HandleTx(
         }
     }
     
-    // must prepayment's nonce, not caller or contract
+    // must prefund's nonce, not caller or contract
     acc_balance_map[preppayment_id]->set_balance(from_balance);
     acc_balance_map[preppayment_id]->set_nonce(block_tx.nonce());
     acc_balance_map[preppayment_id]->set_latest_height(view_block.block_info().height());

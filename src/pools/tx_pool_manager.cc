@@ -481,7 +481,8 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
             auto tmp_acc_ptr = acc_mgr_.lock();
             protos::AddressInfoPtr address_info = nullptr;
             std::string addr = security_->GetAddressWithPublicKey(tx_msg.pubkey());
-            if (tx_msg.step() == pools::protobuf::kContractExcute) {
+            if (tx_msg.step() == pools::protobuf::kContractExcute || 
+                    tx_msg.step() == pools::protobuf::kContractRefund) {
                 addr = tx_msg.to() + addr;
             }
 
@@ -571,8 +572,11 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
         case pools::protobuf::kContractCreate:
             HandleCreateContractTx(msg_ptr);
             break;
-        case pools::protobuf::kContractGasPrepayment:
-            HandleSetContractPrepayment(msg_ptr);
+        case pools::protobuf::kContractGasPrefund:
+            HandleSetContractPrefund(msg_ptr);
+            break;
+        case pools::protobuf::kContractRefund:
+            HandleContractRefund(msg_ptr);
             break;
         case pools::protobuf::kRootCreateAddress: {
             if (tx_msg.to().size() != common::kUnicastAddressLength &&
@@ -931,8 +935,8 @@ void TxPoolManager::HandleContractExcute(const transport::MessagePtr& msg_ptr) {
         return;
     }
 
-    auto prepayment_id = tx_msg.to() + from;
-    msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(prepayment_id);
+    auto prefund_id = tx_msg.to() + from;
+    msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(prefund_id);
     if (msg_ptr->address_info == nullptr) {
         SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         return;
@@ -948,19 +952,19 @@ void TxPoolManager::HandleContractExcute(const transport::MessagePtr& msg_ptr) {
     }
 
     msg_ptr->msg_hash = pools::GetTxMessageHash(tx_msg);
-    SETH_DEBUG("success add tx contract execute prepyament id: %s, prepayment: %lu, nonce: %lu",
+    SETH_DEBUG("success add tx contract execute prepyament id: %s, prefund: %lu, nonce: %lu",
         common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(), 
         msg_ptr->address_info->balance(), 
         msg_ptr->address_info->nonce());
 }
 
-void TxPoolManager::HandleSetContractPrepayment(const transport::MessagePtr& msg_ptr) {
+void TxPoolManager::HandleSetContractPrefund(const transport::MessagePtr& msg_ptr) {
     auto& tx_msg = msg_ptr->header.tx_proto();
-    // user can't direct call contract, pay contract prepayment and call contract direct
+    // user can't direct call contract, pay contract prefund and call contract direct
     if (!tx_msg.contract_input().empty() ||
-            tx_msg.contract_prepayment() < consensus::kCallContractDefaultUseGas) {
+            tx_msg.contract_prefund() < consensus::kCallContractDefaultUseGas) {
         SETH_DEBUG("call contract not has valid contract input"
-            "and contract prepayment invalid.");
+            "and contract prefund invalid.");
         return;
     }
 
@@ -977,20 +981,72 @@ void TxPoolManager::HandleSetContractPrepayment(const transport::MessagePtr& msg
     }
 
     if (msg_ptr->address_info->balance() <
-            tx_msg.amount() + tx_msg.contract_prepayment() +
+            tx_msg.amount() + tx_msg.contract_prefund() +
             consensus::kCallContractDefaultUseGas * tx_msg.gas_price()) {
         SETH_DEBUG("address %s balance invalid: %lu, transfer amount: %lu, "
-            "prepayment: %lu, default call contract gas: %lu, from: %s, to: %s",
+            "prefund: %lu, default call contract gas: %lu, from: %s, to: %s",
             common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
             msg_ptr->address_info->balance(),
             tx_msg.amount(),
-            tx_msg.contract_prepayment(),
+            tx_msg.contract_prefund(),
             consensus::kCallContractDefaultUseGas,
             common::Encode::HexEncode(security_->GetAddressWithPublicKey(
             msg_ptr->header.tx_proto().pubkey())).c_str(),
             common::Encode::HexEncode(msg_ptr->header.tx_proto().to()).c_str());
         return;
     }
+}
+
+
+void TxPoolManager::HandleContractRefund(const transport::MessagePtr& msg_ptr) {
+    auto& header = msg_ptr->header;
+    auto& tx_msg = header.tx_proto();
+    // if (tx_msg.has_key() && tx_msg.key().size() > 0) {
+    //     SETH_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+    //     return;
+    // }
+
+    if (tx_msg.gas_price() <= 0 || tx_msg.gas_limit() <= consensus::kTransferGas) {
+        SETH_DEBUG("gas price and gas limit error %lu, %lu",
+            tx_msg.gas_price(), tx_msg.gas_limit());
+        SETH_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        return;
+    }
+
+    auto tmp_acc_ptr = acc_mgr_.lock();
+    auto from = security_->GetAddressWithPublicKey(tx_msg.pubkey());
+    auto contract_info = tmp_acc_ptr->GetAccountInfo(tx_msg.to());
+    if (contract_info == nullptr) {
+        SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        return;
+    }
+
+    if (contract_info->destructed()) {
+        SETH_ERROR("contract destructed: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        return;
+    }
+
+    auto prefund_id = tx_msg.to() + from;
+    msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(prefund_id);
+    if (msg_ptr->address_info == nullptr) {
+        SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        return;
+    }
+
+    if (msg_ptr->address_info->sharding_id() != common::GlobalInfo::Instance()->network_id()) {
+        SETH_WARN("sharding error: %d, %d",
+            msg_ptr->address_info->sharding_id(),
+            common::GlobalInfo::Instance()->network_id());
+        SETH_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        msg_ptr->address_info = nullptr;
+        return;
+    }
+
+    msg_ptr->msg_hash = pools::GetTxMessageHash(tx_msg);
+    SETH_DEBUG("success add tx contract execute prepyament id: %s, prefund: %lu, nonce: %lu",
+        common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(), 
+        msg_ptr->address_info->balance(), 
+        msg_ptr->address_info->nonce());
 }
 
 bool TxPoolManager::UserTxValid(const transport::MessagePtr& msg_ptr) {
@@ -1046,14 +1102,14 @@ void TxPoolManager::HandleNormalFromTx(const transport::MessagePtr& msg_ptr) {
     // Verify that the account balance is sufficient
     TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
     if (msg_ptr->address_info->balance() <
-            tx_msg.amount() + tx_msg.contract_prepayment() +
+            tx_msg.amount() + tx_msg.contract_prefund() +
             consensus::kTransferGas * tx_msg.gas_price()) {
         SETH_INFO("address: %s balance invalid: %lu, transfer amount: %lu, "
-            "prepayment: %lu, default call contract gas: %lu",
+            "prefund: %lu, default call contract gas: %lu",
             common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
             msg_ptr->address_info->balance(),
             tx_msg.amount(),
-            tx_msg.contract_prepayment(),
+            tx_msg.contract_prefund(),
             consensus::kCallContractDefaultUseGas);
         return;
     }
@@ -1098,13 +1154,13 @@ void TxPoolManager::HandleCreateContractTx(const transport::MessagePtr& msg_ptr)
     }
 
     if (msg_ptr->address_info->balance() <
-            tx_msg.amount() + tx_msg.contract_prepayment() +
+            tx_msg.amount() + tx_msg.contract_prefund() +
             default_gas * tx_msg.gas_price()) {
         SETH_DEBUG("address balance invalid: %lu, transfer amount: %lu, "
-            "prepayment: %lu, default call contract gas: %lu, gas price: %lu",
+            "prefund: %lu, default call contract gas: %lu, gas price: %lu",
             msg_ptr->address_info->balance(),
             tx_msg.amount(),
-            tx_msg.contract_prepayment(),
+            tx_msg.contract_prefund(),
             default_gas,
             tx_msg.gas_price());
         return;
@@ -1125,115 +1181,115 @@ void TxPoolManager::BftCheckInvalidGids(
     }
 }
 
-static transport::MessagePtr CreateTransactionWithAttr(
-        std::shared_ptr<security::Security>& security,
-        uint64_t nonce,
-        const std::string& from_prikey,
-        const std::string& to,
-        const std::string& key,
-        const std::string& val,
-        uint64_t amount,
-        uint64_t gas_limit,
-        uint64_t gas_price,
-        int32_t des_net_id) {
-    auto msg_ptr = std::make_shared<transport::TransportMessage>();
-    transport::protobuf::Header& msg = msg_ptr->header;
-    dht::DhtKeyManager dht_key(des_net_id);
-    msg.set_src_sharding_id(des_net_id);
-    msg.set_des_dht_key(dht_key.StrKey());
-    msg.set_type(common::kPoolsMessage);
-    // auto* brd = msg.mutable_broadcast();
-    auto new_tx = msg.mutable_tx_proto();
-    new_tx->set_nonce(nonce);
-    new_tx->set_pubkey(security->GetPublicKeyUnCompressed());
-    new_tx->set_step(pools::protobuf::kNormalFrom);
-    new_tx->set_to(to);
-    new_tx->set_amount(amount);
-    new_tx->set_gas_limit(gas_limit);
-    new_tx->set_gas_price(gas_price);
-    if (!key.empty()) {
-        if (key == "create_contract") {
-            new_tx->set_step(pools::protobuf::kContractCreate);
-            new_tx->set_contract_code(val);
-            new_tx->set_contract_prepayment(9000000000lu);
-        } else if (key == "prepayment") {
-            new_tx->set_step(pools::protobuf::kContractGasPrepayment);
-            new_tx->set_contract_prepayment(9000000000lu);
-        } else if (key == "call") {
-            new_tx->set_step(pools::protobuf::kContractExcute);
-            new_tx->set_contract_input(val);
-        } else {
-            new_tx->set_key(key);
-            if (!val.empty()) {
-                new_tx->set_value(val);
-            }
-        }
-    }
+// static transport::MessagePtr CreateTransactionWithAttr(
+//         std::shared_ptr<security::Security>& security,
+//         uint64_t nonce,
+//         const std::string& from_prikey,
+//         const std::string& to,
+//         const std::string& key,
+//         const std::string& val,
+//         uint64_t amount,
+//         uint64_t gas_limit,
+//         uint64_t gas_price,
+//         int32_t des_net_id) {
+//     auto msg_ptr = std::make_shared<transport::TransportMessage>();
+//     transport::protobuf::Header& msg = msg_ptr->header;
+//     dht::DhtKeyManager dht_key(des_net_id);
+//     msg.set_src_sharding_id(des_net_id);
+//     msg.set_des_dht_key(dht_key.StrKey());
+//     msg.set_type(common::kPoolsMessage);
+//     // auto* brd = msg.mutable_broadcast();
+//     auto new_tx = msg.mutable_tx_proto();
+//     new_tx->set_nonce(nonce);
+//     new_tx->set_pubkey(security->GetPublicKeyUnCompressed());
+//     new_tx->set_step(pools::protobuf::kNormalFrom);
+//     new_tx->set_to(to);
+//     new_tx->set_amount(amount);
+//     new_tx->set_gas_limit(gas_limit);
+//     new_tx->set_gas_price(gas_price);
+//     if (!key.empty()) {
+//         if (key == "create_contract") {
+//             new_tx->set_step(pools::protobuf::kContractCreate);
+//             new_tx->set_contract_code(val);
+//             new_tx->set_contract_prefund(9000000000lu);
+//         } else if (key == "prefund") {
+//             new_tx->set_step(pools::protobuf::kContractGasPrefund);
+//             new_tx->set_contract_prefund(9000000000lu);
+//         } else if (key == "call") {
+//             new_tx->set_step(pools::protobuf::kContractExcute);
+//             new_tx->set_contract_input(val);
+//         } else {
+//             new_tx->set_key(key);
+//             if (!val.empty()) {
+//                 new_tx->set_value(val);
+//             }
+//         }
+//     }
 
-    transport::TcpTransport::Instance()->SetMessageHash(msg);
-    auto tx_hash = pools::GetTxMessageHash(*new_tx); // cout 输出信息
-    std::string sign;
-    if (security->Sign(tx_hash, &sign) != security::kSecuritySuccess) {
-        assert(false);
-        return nullptr;
-    }
+//     transport::TcpTransport::Instance()->SetMessageHash(msg);
+//     auto tx_hash = pools::GetTxMessageHash(*new_tx); // cout 输出信息
+//     std::string sign;
+//     if (security->Sign(tx_hash, &sign) != security::kSecuritySuccess) {
+//         assert(false);
+//         return nullptr;
+//     }
 
-    new_tx->set_sign(sign);
-    assert(new_tx->gas_price() > 0);
-    return msg_ptr;
-}
+//     new_tx->set_sign(sign);
+//     assert(new_tx->gas_price() > 0);
+//     return msg_ptr;
+// }
 
 
-static std::unordered_map<std::string, std::string> g_pri_addrs_map;
-static std::vector<std::string> g_prikeys;
-static std::vector<std::string> g_addrs;
-static std::unordered_map<std::string, std::string> g_pri_pub_map;
-static std::vector<std::string> g_oqs_prikeys;
-static std::unordered_map<std::string, std::string> g_oqs_pri_pub_map;
-static std::unordered_map<std::string, uint64_t> prikey_with_nonce;
-static std::unordered_map<std::string, std::shared_ptr<address::protobuf::AddressInfo>> address_map;
+// static std::unordered_map<std::string, std::string> g_pri_addrs_map;
+// static std::vector<std::string> g_prikeys;
+// static std::vector<std::string> g_addrs;
+// static std::unordered_map<std::string, std::string> g_pri_pub_map;
+// static std::vector<std::string> g_oqs_prikeys;
+// static std::unordered_map<std::string, std::string> g_oqs_pri_pub_map;
+// static std::unordered_map<std::string, uint64_t> prikey_with_nonce;
+// static std::unordered_map<std::string, std::shared_ptr<address::protobuf::AddressInfo>> address_map;
 
-static void LoadAllAccounts(int32_t shardnum=3) {
-    FILE* fd = fopen((std::string("/root/seth/init_accounts") + std::to_string(shardnum)).c_str(), "r");
-    if (fd == nullptr) {
-        std::cout << "invalid init acc file." << std::endl;
-        exit(1);
-    }
+// static void LoadAllAccounts(int32_t shardnum=3) {
+//     FILE* fd = fopen((std::string("/root/seth/init_accounts") + std::to_string(shardnum)).c_str(), "r");
+//     if (fd == nullptr) {
+//         std::cout << "invalid init acc file." << std::endl;
+//         exit(1);
+//     }
 
-    bool res = true;
-    std::string filed;
-    const uint32_t kMaxLen = 1024;
-    char* read_buf = new char[kMaxLen];
-    while (true) {
-        char* read_res = fgets(read_buf, kMaxLen, fd);
-        if (read_res == NULL) {
-            break;
-        }
+//     bool res = true;
+//     std::string filed;
+//     const uint32_t kMaxLen = 1024;
+//     char* read_buf = new char[kMaxLen];
+//     while (true) {
+//         char* read_res = fgets(read_buf, kMaxLen, fd);
+//         if (read_res == NULL) {
+//             break;
+//         }
 
-        std::string prikey = common::Encode::HexDecode(std::string(read_res, 64));
-        g_prikeys.push_back(prikey);
-        std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
-        security->SetPrivateKey(prikey);
-        g_pri_pub_map[prikey] = security->GetPublicKey();
-        std::string addr = security->GetAddress();
-        g_pri_addrs_map[prikey] = addr;
-        g_addrs.push_back(addr);
-        if (g_pri_addrs_map.size() >= common::kImmutablePoolSize) {
-            break;
-        }
-        std::cout << common::Encode::HexEncode(prikey) << " : " << common::Encode::HexEncode(addr) << std::endl;
-    }
+//         std::string prikey = common::Encode::HexDecode(std::string(read_res, 64));
+//         g_prikeys.push_back(prikey);
+//         std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
+//         security->SetPrivateKey(prikey);
+//         g_pri_pub_map[prikey] = security->GetPublicKey();
+//         std::string addr = security->GetAddress();
+//         g_pri_addrs_map[prikey] = addr;
+//         g_addrs.push_back(addr);
+//         if (g_pri_addrs_map.size() >= common::kImmutablePoolSize) {
+//             break;
+//         }
+//         std::cout << common::Encode::HexEncode(prikey) << " : " << common::Encode::HexEncode(addr) << std::endl;
+//     }
 
-    assert(!g_prikeys.empty());
-    while (g_prikeys.size() < common::kImmutablePoolSize) {
-        g_prikeys.push_back(g_prikeys[0]);
-    }
+//     assert(!g_prikeys.empty());
+//     while (g_prikeys.size() < common::kImmutablePoolSize) {
+//         g_prikeys.push_back(g_prikeys[0]);
+//     }
 
-    fclose(fd);
-    delete[]read_buf;
-}
+//     fclose(fd);
+//     delete[]read_buf;
+// }
 
-void TxPoolManager::CreateTestTxs(uint32_t pool_begin, uint32_t pool_end, uint32_t tps) {
+// void TxPoolManager::CreateTestTxs(uint32_t pool_begin, uint32_t pool_end, uint32_t tps) {
     // LoadAllAccounts(3);
     // std::shared_ptr<address::protobuf::AddressInfo> address_[pool_end + 1];
     // std::shared_ptr<security::Security> pool_sec[pool_end + 1];
@@ -1299,7 +1355,7 @@ void TxPoolManager::CreateTestTxs(uint32_t pool_begin, uint32_t pool_end, uint32
         
     //     usleep(kSleepTimeMs * 1000lu);
     // }
-}
+// }
 
 void TxPoolManager::DispatchTx(uint32_t pool_index, const transport::MessagePtr& msg_ptr) {
 #ifdef USE_SERVER_TEST_TRANSACTION

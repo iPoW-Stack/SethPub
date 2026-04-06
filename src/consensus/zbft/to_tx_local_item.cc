@@ -108,7 +108,7 @@ void ToTxLocalItem::CreateLocalToTx(
 
         if (amount <= 0 && 
                 to_tx_item.library_bytes().empty()) {
-            SETH_DEBUG("failed just contract set prepayment add addr: %s, to item: %s", 
+            SETH_DEBUG("failed just contract set prefund add addr: %s, to item: %s", 
                 common::Encode::HexEncode(addr).c_str(), 
                 ProtobufToJson(to_tx_item).c_str());
             return;
@@ -136,7 +136,7 @@ void ToTxLocalItem::CreateLocalToTx(
     auto addr = to_tx_item.des();
     if (to_tx_item.des().size() == common::kPreypamentAddressLength) {
         addr = addr.substr(0, common::kUnicastAddressLength);
-        new_addr_func(to_tx_item.des(), to_tx_item.prepayment());
+        new_addr_func(to_tx_item.des(), to_tx_item.prefund());
     }
     
     new_addr_func(addr, to_tx_item.amount());

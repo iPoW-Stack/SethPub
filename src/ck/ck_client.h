@@ -42,7 +42,7 @@ private:
     bool CreateStatisticTable();
     bool CreatePrivateKeyTable();
     bool CreateC2cTable();
-    bool CreatePrepaymentTable();
+    bool CreatePrefundTable();
     bool CreateBlsElectInfoTable();
     bool CreateBlsBlockInfoTable();    
     void Statistic();

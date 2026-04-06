@@ -1,4 +1,4 @@
-#include "consensus/zbft/contract_prepayment.h"
+#include "consensus/zbft/contract_prefund.h"
 
 #include "zjcvm/execution.h"
 
@@ -6,7 +6,7 @@ namespace seth {
 
 namespace consensus {
 
-int ContractPrepayment::HandleTx(
+int ContractPrefund::HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
         zjcvm::ZjchainHost& pre_zjc_host,
@@ -60,7 +60,7 @@ int ContractPrepayment::HandleTx(
 
     if (block_tx.status() == kConsensusSuccess) {
         uint64_t dec_amount = block_tx.amount() +
-            block_tx.contract_prepayment() +
+            block_tx.contract_prefund() +
             gas_used * block_tx.gas_price();
         if (from_balance >= gas_used * block_tx.gas_price()) {
             if (from_balance >= dec_amount) {
@@ -98,11 +98,11 @@ int ContractPrepayment::HandleTx(
         ProtobufToJson(*(acc_balance_map[from])).c_str());
     block_tx.set_balance(from_balance);
     block_tx.set_gas_used(gas_used);
-    SETH_DEBUG("set contract prepayment called: %d, from: %s, to: %s, amount: %lu, balance: %lu",
+    SETH_DEBUG("set contract prefund called: %d, from: %s, to: %s, amount: %lu, balance: %lu",
         block_tx.status(),
         common::Encode::HexEncode(block_tx.from()).c_str(),
         common::Encode::HexEncode(block_tx.to()).c_str(),
-        block_tx.contract_prepayment(),
+        block_tx.contract_prefund(),
         from_balance);
 
     block::protobuf::TxHashStatus tx_hash_status;
@@ -117,11 +117,11 @@ int ContractPrepayment::HandleTx(
         if (iter == pre_zjc_host.cross_to_map_.end()) {
             to_item_ptr = std::make_shared<pools::protobuf::ToTxMessageItem>();
             to_item_ptr->set_des(preypayment_id);
-            to_item_ptr->set_prepayment(block_tx.contract_prepayment());
+            to_item_ptr->set_prefund(block_tx.contract_prefund());
             pre_zjc_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
         } else {
             to_item_ptr = iter->second;
-            to_item_ptr->set_prepayment(block_tx.contract_prepayment() + to_item_ptr->prepayment());
+            to_item_ptr->set_prefund(block_tx.contract_prefund() + to_item_ptr->prefund());
         }
     }
     return kConsensusSuccess;

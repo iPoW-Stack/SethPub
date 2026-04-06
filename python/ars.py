@@ -196,19 +196,19 @@ def run_comprehensive_ars_demo():
 
     receipt = ars_contract.functions.CreateNewArs(
         ring_size, signer_count, base_id, create_params
-    ).transact(PRIV_KEY, prepayment=10**8)
+    ).transact(PRIV_KEY, prefund=10**8)
     print(f"    Status: {receipt['status']} | New Ars ID Created")
 
     # --- 4. Call SingleSign (State-dependent Write) ---
     print("\n[4] Executing: SingleSign")
     sign_params = b"single_signature_data"
-    receipt = ars_contract.functions.SingleSign(base_id, sign_params).transact(PRIV_KEY, prepayment=10**8)
+    receipt = ars_contract.functions.SingleSign(base_id, sign_params).transact(PRIV_KEY, prefund=10**8)
     print(f"    Status: {receipt['status']} (Single sign verified)")
 
     # --- 5. Call AggSign (Aggregate Signature Write) ---
     print("\n[5] Executing: AggSign")
     agg_params = b"aggregated_signature_data"
-    receipt = ars_contract.functions.AggSign(base_id, agg_params).transact(PRIV_KEY, prepayment=10**8)
+    receipt = ars_contract.functions.AggSign(base_id, agg_params).transact(PRIV_KEY, prefund=10**8)
     print(f"    Status: {receipt['status']} (Aggregate sign verified)")
 
     # --- 6. Query State (Calls) ---

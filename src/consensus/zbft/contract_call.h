@@ -51,11 +51,6 @@ private:
         block::protobuf::BlockTx& tx,
         hotstuff::BalanceAndNonceMap& dep_contract_balance_map,
         int64_t& contract_balance_add);
-    void GetTempPerpaymentBalance(
-        const view_block::protobuf::ViewBlockItem& block,
-        const block::protobuf::BlockTx& block_tx,
-        hotstuff::BalanceAndNonceMap& acc_balance_map,
-        uint64_t* balance);
 
     std::shared_ptr<protos::PrefixDb> prefix_db_ = nullptr;
     std::map<std::string, std::shared_ptr<pools::protobuf::ToTxMessageItem>> cross_to_map_;
