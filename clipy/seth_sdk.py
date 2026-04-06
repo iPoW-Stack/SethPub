@@ -146,50 +146,71 @@ class MessageHandleStatus(IntEnum):
 # --- 2. Utilities ---
 def get_sm2_public_key(private_key_hex: str) -> str:
     """
-    直接使用 gmssl 内部的曲线参数手动派生公钥 (X+Y)
-    绕过所有 CryptSM2 对象的属性限制
+    针对 gmssl 3.2.2 封装极深的情况。
+    通过提取内部私钥对象的公钥点坐标来获取 X+Y。
     """
     from gmssl import sm2
     import binascii
 
-    # 1. 获取私钥的整数形式
     pk_clean = private_key_hex.replace('0x', '')
-    d = int(pk_clean, 16)
-
-    # 2. 构造一个临时的 CryptSM2 对象，仅为了获取它初始化的 ecc 曲线参数
-    # 即使它不自动派生公钥，它的 .ecc 属性在内部类里是存在的
-    base_sm2 = sm2.CryptSM2(public_key='', private_key=pk_clean)
+    # 1. 初始化
+    sm2_crypt = sm2.CryptSM2(public_key='', private_key=pk_clean)
     
-    # 3. 关键点：gmssl 3.2.x 内部真正的曲线对象通常在 sm2 模块的私有变量或方法中
-    # 我们直接尝试从 base_sm2 获取内部的曲线计算器
-    # 如果 .ecc 不存在，说明它可能在 base_sm2.sm2_with_asn1 等地方，但数学基准不变
-    
+    # 2. 尝试从内部私钥对象直接获取点坐标
+    # 在 gmssl 3.x 中，私钥通常存储在私有变量中，并且是一个带有点信息的对象
     try:
-        # 尝试通过计算 P = dG 获取点坐标
-        # sm2 曲线基点 G
-        P = base_sm2.ecc.ecc_mul(d, base_sm2.ecc.G)
-        x_hex = hex(P.x)[2:].zfill(64)
-        y_hex = hex(P.y)[2:].zfill(64)
-        return x_hex + y_hex
-    except AttributeError:
-        # 如果连 .ecc 都没暴露，直接调用底层的 func 模块进行大数运算
-        from gmssl import func
-        # SM2 曲线参数
-        sm2_p = 'FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF'
-        sm2_a = 'FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFC'
-        sm2_gx = '32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7'
-        sm2_gy = 'BC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0'
+        # 这种方案尝试寻找隐藏在实例中的内部密钥对象
+        internal_key = None
+        if hasattr(sm2_crypt, 'private_key'):
+            # 有时是一个字节数组，有时是一个对象
+            internal_key = sm2_crypt.private_key
+            
+        # 如果内部实现了公钥导出，直接调用
+        # 注意：这是根据 3.2.2 源码逻辑猜测的隐藏导出路径
+        d = int(pk_clean, 16)
         
-        # 使用 gmssl.func 提供的底层 ecc_mul
-        # 注意：这里传的是 hex 字符串
-        res_x, res_y = func.ecc_mul(pk_clean, sm2_gx, sm2_gy, sm2_p, sm2_a)
-        return res_x.zfill(64) + res_y.zfill(64)
+        # 方案 A: 借用它的签名逻辑中必然存在的计算过程
+        # 如果以上都失败，我们使用 Python 原生的 ECC 计算 SM2 曲线
+        # 这是“终极保底”，不依赖 gmssl 的任何私有属性
+        
+        # SM2 曲线参数 (标准)
+        P = 0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF
+        A = 0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFC
+        B = 0x28E9FA9E9D9F5E344D5A9E4BCF6509A7F39789F515AB8F92DDBCBD414D940E93
+        GX = 0x32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7
+        GY = 0xBC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0
+        
+        def ecc_add(P1, P2):
+            if P1 is None: return P2
+            if P2 is None: return P1
+            x1, y1 = P1; x2, y2 = P2
+            if x1 == x2 and y1 != y2: return None
+            if x1 == x2:
+                m = (3 * x1 * x1 + A) * pow(2 * y1, P - 2, P) % P
+            else:
+                m = (y2 - y1) * pow(x2 - x1, P - 2, P) % P
+            x3 = (m * m - x1 - x2) % P
+            y3 = (m * (x1 - x3) - y1) % P
+            return x3, y3
 
-def get_seth_gm_address(pub_key_raw_hex: str) -> str:
-    """匹配 C++: common::Hash::sm3(str_pk_).substr(0, 20)"""
-    pub_bytes = binascii.unhexlify(pub_key_raw_hex)
-    hash_hex = sm3.sm3_hash(list(pub_bytes))
-    return hash_hex[:40]
+        def ecc_mul(k, G):
+            res = None
+            tmp = G
+            while k:
+                if k & 1: res = ecc_add(res, tmp)
+                tmp = ecc_add(tmp, tmp)
+                k >>= 1
+            return res
+
+        # 执行 P = dG 计算
+        pub_point = ecc_mul(d, (GX, GY))
+        x_hex = hex(pub_point[0])[2:].zfill(64)
+        y_hex = hex(pub_point[1])[2:].zfill(64)
+        
+        return x_hex + y_hex
+
+    except Exception as e:
+        raise RuntimeError(f"SM2 derivation critical failure: {str(e)}")
 
 def calc_create2_address(sender: str, salt: str, bytecode: str) -> str:
     sender = sender.lower().replace('0x', '')
