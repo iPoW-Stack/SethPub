@@ -302,6 +302,53 @@ class SethContract:
 
     def _create_method(self, item):
         return lambda *args: SethMethod(self, item)(*args)
+    
+    def transact(self, private_key: str, value: int = 0, prefund: int = 10**6, oqs_pubkey: str = None, gm_mode: bool = False) -> dict:
+        """Transaction logic with automatic parsing. Supports OQS and GMSSL auto-detection."""
+        
+        # 1. 优先级判断：国密模式 (GmSSL)
+        if gm_mode:
+            gm_pubkey = get_sm2_public_key(private_key)
+            tx_hash = self.contract.client.send_gmssl_transaction(
+                private_key, 
+                gm_pubkey, 
+                self.contract.address, 
+                StepType.kContractExcute, 
+                amount=value, 
+                input_hex=self.encoded_input, 
+                prefund=prefund
+            )
+        # 2. 自动检测 OQS (后量子)
+        elif len(private_key) > 128:
+            if not oqs_pubkey:
+                raise ValueError("OQS detected by key length, but 'oqs_pubkey' is not set.")
+
+            tx_hash = self.contract.client.send_oqs_transaction(
+                private_key, 
+                oqs_pubkey, 
+                self.contract.address, 
+                StepType.kContractExcute, 
+                amount=value, 
+                input_hex=self.encoded_input, 
+                prefund=prefund
+            )
+        # 3. 标准 ECDSA 逻辑
+        else:
+            tx_hash = self.contract.client.send_transaction_auto(
+                private_key, 
+                self.contract.address, 
+                StepType.kContractExcute, 
+                amount=value, 
+                input_hex=self.encoded_input, 
+                prefund=prefund
+            )
+
+        # 2. Wait for and return the receipt
+        return self.contract.client.wait_for_receipt(
+            tx_hash, 
+            abi=self.contract.abi, 
+            function_name=self.name
+        )
 
     def prefund(self, amount: int, private_key: str, oqs_pubkey: Optional[str] = None, gm_mode: bool = False) -> dict:
             """
@@ -366,13 +413,21 @@ class SethContract:
         return self.client.get_prefund(prefund_id)
     
     def deploy(self, transaction: dict, private_key: str) -> SethContract:
-        """Web3-style deployment. Automatically detects OQS based on private_key length."""
+        """
+        Web3-style deployment. 
+        Automatically detects OQS based on private_key length, 
+        or triggers GMSSL mode if 'gm_pubkey' is provided or 'gm_mode' is True.
+        """
         # 1. Extract base parameters
         sender = transaction.get('from', self.sender_address)
         salt = str(transaction.get('salt', '0'))
         step = transaction.get('step', StepType.kCreateContract)
         amount = transaction.get('amount', 0)
         args = transaction.get('args', [])
+        
+        # 获取国密模式标识
+        gm_mode = transaction.get('gm_mode', False)
+        gm_pubkey = transaction.get('gm_pubkey')
 
         # 2. Process bytecode and constructor arguments
         full_bytecode = self.bytecode
@@ -384,10 +439,25 @@ class SethContract:
         # 3. Calculate deployment address
         self.address = calc_create2_address(sender, salt, full_bytecode)
 
-        # 4. Automatically select transaction interface based on private key length
-        # ECDSA private key hex length is 64, OQS (e.g., Dilithium) private key hex length is usually > 2000
-        if len(private_key) > 128:
-            # Compatibility handling: attempt to get pubkey from the transaction dictionary
+        # 4. Select transaction interface
+        # 4a. 优先判定国密模式 (GmSSL)
+        if gm_mode or gm_pubkey:
+            if not gm_pubkey:
+                # 如果标记了 gm_mode 但没传公钥，则通过私钥自动派生
+                gm_pubkey = get_sm2_public_key(private_key)
+            
+            tx_hash = self.client.send_gmssl_transaction(
+                private_key, 
+                gm_pubkey, 
+                self.address, 
+                step, 
+                contract_code=full_bytecode, 
+                prefund=10000000, 
+                amount=amount
+            )
+            
+        # 4b. 判定后量子模式 (OQS) - 依据私钥长度
+        elif len(private_key) > 128:
             oqs_pubkey = transaction.get('pubkey')
             if not oqs_pubkey:
                 raise ValueError("OQS deployment requires 'pubkey' inside the transaction dict.")
@@ -401,6 +471,8 @@ class SethContract:
                 prefund=10000000, 
                 amount=amount
             )
+            
+        # 4c. 标准 ECDSA 逻辑
         else:
             tx_hash = self.client.send_transaction_auto(
                 private_key, 
