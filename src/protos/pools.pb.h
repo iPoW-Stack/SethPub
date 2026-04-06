@@ -154,11 +154,12 @@ enum StepType {
   kCreateLibrary = 14,
   kCross = 15,
   kRootCross = 16,
-  kPoolStatisticTag = 17
+  kPoolStatisticTag = 17,
+  kContractRefund = 18
 };
 bool StepType_IsValid(int value);
 const StepType StepType_MIN = kNormalFrom;
-const StepType StepType_MAX = kPoolStatisticTag;
+const StepType StepType_MAX = kContractRefund;
 const int StepType_ARRAYSIZE = StepType_MAX + 1;
 
 const ::google::protobuf::EnumDescriptor* StepType_descriptor();

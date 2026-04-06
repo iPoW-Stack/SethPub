@@ -86,6 +86,11 @@ class TxLogDefaultTypeInternal {
   ::google::protobuf::internal::ExplicitlyConstructed<TxLog>
       _instance;
 } _TxLog_default_instance_;
+class TxHashStatusDefaultTypeInternal {
+ public:
+  ::google::protobuf::internal::ExplicitlyConstructed<TxHashStatus>
+      _instance;
+} _TxHashStatus_default_instance_;
 class BlockTxDefaultTypeInternal {
  public:
   ::google::protobuf::internal::ExplicitlyConstructed<BlockTx>
@@ -281,6 +286,21 @@ static void InitDefaultsTxLog() {
 
 ::google::protobuf::internal::SCCInfo<0> scc_info_TxLog =
     {{ATOMIC_VAR_INIT(::google::protobuf::internal::SCCInfoBase::kUninitialized), 0, InitDefaultsTxLog}, {}};
+
+static void InitDefaultsTxHashStatus() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::seth::block::protobuf::_TxHashStatus_default_instance_;
+    new (ptr) ::seth::block::protobuf::TxHashStatus();
+    ::google::protobuf::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::seth::block::protobuf::TxHashStatus::InitAsDefaultInstance();
+}
+
+::google::protobuf::internal::SCCInfo<1> scc_info_TxHashStatus =
+    {{ATOMIC_VAR_INIT(::google::protobuf::internal::SCCInfoBase::kUninitialized), 1, InitDefaultsTxHashStatus}, {
+      &protobuf_protos_2fblock_2eproto::scc_info_TxLog.base,}};
 
 static void InitDefaultsBlockTx() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -746,6 +766,7 @@ void InitDefaults() {
   ::google::protobuf::internal::InitSCC(&scc_info_StorageItem.base);
   ::google::protobuf::internal::InitSCC(&scc_info_TransferItem.base);
   ::google::protobuf::internal::InitSCC(&scc_info_TxLog.base);
+  ::google::protobuf::internal::InitSCC(&scc_info_TxHashStatus.base);
   ::google::protobuf::internal::InitSCC(&scc_info_BlockTx.base);
   ::google::protobuf::internal::InitSCC(&scc_info_KeyValueInfo.base);
   ::google::protobuf::internal::InitSCC(&scc_info_ConsensusToTxsItem.base);
@@ -778,7 +799,7 @@ void InitDefaults() {
   ::google::protobuf::internal::InitSCC(&scc_info_BlockMessage.base);
 }
 
-::google::protobuf::Metadata file_level_metadata[33];
+::google::protobuf::Metadata file_level_metadata[34];
 
 const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::block::protobuf::StorageItem, _has_bits_),
@@ -808,6 +829,17 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   ~0u,  // no _weak_field_map_
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::block::protobuf::TxLog, data_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::block::protobuf::TxLog, topics_),
+  0,
+  ~0u,
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::block::protobuf::TxHashStatus, _has_bits_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::block::protobuf::TxHashStatus, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::block::protobuf::TxHashStatus, status_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::block::protobuf::TxHashStatus, output_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::block::protobuf::TxHashStatus, events_),
+  1,
   0,
   ~0u,
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::block::protobuf::BlockTx, _has_bits_),
@@ -1227,42 +1259,44 @@ static const ::google::protobuf::internal::MigrationSchema schemas[] GOOGLE_PROT
   { 0, 7, sizeof(::seth::block::protobuf::StorageItem)},
   { 9, 17, sizeof(::seth::block::protobuf::TransferItem)},
   { 20, 27, sizeof(::seth::block::protobuf::TxLog)},
-  { 29, 53, sizeof(::seth::block::protobuf::BlockTx)},
-  { 72, 81, sizeof(::seth::block::protobuf::KeyValueInfo)},
-  { 85, 94, sizeof(::seth::block::protobuf::ConsensusToTxsItem)},
-  { 98, 104, sizeof(::seth::block::protobuf::ConsensusToTxs)},
-  { 105, 133, sizeof(::seth::block::protobuf::Block)},
-  { 156, 166, sizeof(::seth::block::protobuf::GetTxBlockRequest)},
-  { 171, 177, sizeof(::seth::block::protobuf::GetTxBlockResponse)},
-  { 178, 186, sizeof(::seth::block::protobuf::AccountHeightRequest)},
-  { 189, 197, sizeof(::seth::block::protobuf::AccountHeightResponse)},
-  { 200, 208, sizeof(::seth::block::protobuf::AccountAttrRequest)},
-  { 211, 220, sizeof(::seth::block::protobuf::AccountAttrResponse)},
-  { 224, 234, sizeof(::seth::block::protobuf::UpdateVpnCountRequest)},
-  { 239, 246, sizeof(::seth::block::protobuf::VpnCountItem)},
-  { 248, 254, sizeof(::seth::block::protobuf::UpdateVpnCountResponse)},
-  { 255, 265, sizeof(::seth::block::protobuf::GetAccountInitInfoRequest)},
-  { 270, 279, sizeof(::seth::block::protobuf::GetAccountInitInfoResponse)},
-  { 283, 290, sizeof(::seth::block::protobuf::UpdateVpnActiveRequest)},
-  { 292, 300, sizeof(::seth::block::protobuf::AdRewardRequest)},
-  { 303, 311, sizeof(::seth::block::protobuf::ElectStatisticInfo)},
-  { 314, 322, sizeof(::seth::block::protobuf::StatisticInfo)},
-  { 325, 331, sizeof(::seth::block::protobuf::RefreshPoolHeightRequest)},
-  { 332, 338, sizeof(::seth::block::protobuf::RefreshPoolHeightResponse)},
-  { 339, 345, sizeof(::seth::block::protobuf::GetAccountShardRequest)},
-  { 346, 353, sizeof(::seth::block::protobuf::GetAccountShardReponse)},
-  { 355, 361, sizeof(::seth::block::protobuf::CrossShardingTosMessage)},
-  { 362, 368, sizeof(::seth::block::protobuf::CrossShardingStatisticMessage)},
-  { 369, 375, sizeof(::seth::block::protobuf::ElectBlockMessage)},
-  { 376, 384, sizeof(::seth::block::protobuf::ShardToTxMessage)},
-  { 387, 396, sizeof(::seth::block::protobuf::StatisticTxMessage)},
-  { 400, 423, sizeof(::seth::block::protobuf::BlockMessage)},
+  { 29, 37, sizeof(::seth::block::protobuf::TxHashStatus)},
+  { 40, 64, sizeof(::seth::block::protobuf::BlockTx)},
+  { 83, 92, sizeof(::seth::block::protobuf::KeyValueInfo)},
+  { 96, 105, sizeof(::seth::block::protobuf::ConsensusToTxsItem)},
+  { 109, 115, sizeof(::seth::block::protobuf::ConsensusToTxs)},
+  { 116, 144, sizeof(::seth::block::protobuf::Block)},
+  { 167, 177, sizeof(::seth::block::protobuf::GetTxBlockRequest)},
+  { 182, 188, sizeof(::seth::block::protobuf::GetTxBlockResponse)},
+  { 189, 197, sizeof(::seth::block::protobuf::AccountHeightRequest)},
+  { 200, 208, sizeof(::seth::block::protobuf::AccountHeightResponse)},
+  { 211, 219, sizeof(::seth::block::protobuf::AccountAttrRequest)},
+  { 222, 231, sizeof(::seth::block::protobuf::AccountAttrResponse)},
+  { 235, 245, sizeof(::seth::block::protobuf::UpdateVpnCountRequest)},
+  { 250, 257, sizeof(::seth::block::protobuf::VpnCountItem)},
+  { 259, 265, sizeof(::seth::block::protobuf::UpdateVpnCountResponse)},
+  { 266, 276, sizeof(::seth::block::protobuf::GetAccountInitInfoRequest)},
+  { 281, 290, sizeof(::seth::block::protobuf::GetAccountInitInfoResponse)},
+  { 294, 301, sizeof(::seth::block::protobuf::UpdateVpnActiveRequest)},
+  { 303, 311, sizeof(::seth::block::protobuf::AdRewardRequest)},
+  { 314, 322, sizeof(::seth::block::protobuf::ElectStatisticInfo)},
+  { 325, 333, sizeof(::seth::block::protobuf::StatisticInfo)},
+  { 336, 342, sizeof(::seth::block::protobuf::RefreshPoolHeightRequest)},
+  { 343, 349, sizeof(::seth::block::protobuf::RefreshPoolHeightResponse)},
+  { 350, 356, sizeof(::seth::block::protobuf::GetAccountShardRequest)},
+  { 357, 364, sizeof(::seth::block::protobuf::GetAccountShardReponse)},
+  { 366, 372, sizeof(::seth::block::protobuf::CrossShardingTosMessage)},
+  { 373, 379, sizeof(::seth::block::protobuf::CrossShardingStatisticMessage)},
+  { 380, 386, sizeof(::seth::block::protobuf::ElectBlockMessage)},
+  { 387, 395, sizeof(::seth::block::protobuf::ShardToTxMessage)},
+  { 398, 407, sizeof(::seth::block::protobuf::StatisticTxMessage)},
+  { 411, 434, sizeof(::seth::block::protobuf::BlockMessage)},
 };
 
 static ::google::protobuf::Message const * const file_default_instances[] = {
   reinterpret_cast<const ::google::protobuf::Message*>(&::seth::block::protobuf::_StorageItem_default_instance_),
   reinterpret_cast<const ::google::protobuf::Message*>(&::seth::block::protobuf::_TransferItem_default_instance_),
   reinterpret_cast<const ::google::protobuf::Message*>(&::seth::block::protobuf::_TxLog_default_instance_),
+  reinterpret_cast<const ::google::protobuf::Message*>(&::seth::block::protobuf::_TxHashStatus_default_instance_),
   reinterpret_cast<const ::google::protobuf::Message*>(&::seth::block::protobuf::_BlockTx_default_instance_),
   reinterpret_cast<const ::google::protobuf::Message*>(&::seth::block::protobuf::_KeyValueInfo_default_instance_),
   reinterpret_cast<const ::google::protobuf::Message*>(&::seth::block::protobuf::_ConsensusToTxsItem_default_instance_),
@@ -1310,7 +1344,7 @@ void protobuf_AssignDescriptorsOnce() {
 void protobuf_RegisterTypes(const ::std::string&) GOOGLE_PROTOBUF_ATTRIBUTE_COLD;
 void protobuf_RegisterTypes(const ::std::string&) {
   protobuf_AssignDescriptorsOnce();
-  ::google::protobuf::internal::RegisterAllTypes(file_level_metadata, 33);
+  ::google::protobuf::internal::RegisterAllTypes(file_level_metadata, 34);
 }
 
 void AddDescriptorsImpl() {
@@ -1323,128 +1357,131 @@ void AddDescriptorsImpl() {
       "\022\013\n\003key\030\001 \001(\014\022\r\n\005value\030\002 \001(\014\"8\n\014Transfer"
       "Item\022\014\n\004from\030\001 \001(\014\022\n\n\002to\030\002 \001(\014\022\016\n\006amount"
       "\030\003 \001(\004\"%\n\005TxLog\022\014\n\004data\030\001 \001(\014\022\016\n\006topics\030"
-      "\002 \003(\014\"\272\003\n\007BlockTx\022\r\n\005nonce\030\001 \001(\004\022\014\n\004from"
-      "\030\002 \001(\014\022\n\n\002to\030\003 \001(\014\022\016\n\006amount\030\004 \001(\004\022\021\n\tga"
-      "s_limit\030\005 \001(\004\022\020\n\010gas_used\030\006 \001(\004\022\021\n\tgas_p"
-      "rice\030\007 \001(\004\022\017\n\007balance\030\010 \001(\004\022+\n\004step\030\t \001("
-      "\0162\035.seth.pools.protobuf.StepType\022\016\n\006stat"
-      "us\030\n \001(\r\022\033\n\023contract_prefund\030\r \001(\004\022\025\n"
-      "\rcontract_code\030\016 \001(\014\022\026\n\016contract_input\030\017"
-      " \001(\014\022*\n\006events\030\020 \003(\0132\032.seth.block.protob"
-      "uf.TxLog\0226\n\010tx_debug\030\021 \003(\0132$.seth.pools."
-      "protobuf.TxDelayTestInfo\022\023\n\013unique_hash\030"
-      "\022 \001(\014\022\013\n\003key\030\023 \001(\014\022\r\n\005value\030\024 \001(\014\022\017\n\007tx_"
-      "hash\030\025 \001(\014\"H\n\014KeyValueInfo\022\014\n\004addr\030\001 \001(\014"
-      "\022\013\n\003key\030\002 \001(\014\022\r\n\005value\030\003 \001(\014\022\016\n\006height\030\004"
-      " \001(\004\"W\n\022ConsensusToTxsItem\022\n\n\002to\030\001 \001(\014\022\017"
-      "\n\007balance\030\002 \001(\004\022\025\n\rcontract_from\030\003 \001(\014\022\r"
-      "\n\005nonce\030\004 \001(\004\"F\n\016ConsensusToTxs\0224\n\003tos\030\001"
-      " \003(\0132\'.seth.block.protobuf.ConsensusToTx"
-      "sItem\"\331\007\n\005Block\022\017\n\007version\030\001 \001(\r\022\016\n\006heig"
-      "ht\030\002 \001(\004\022\032\n\022consistency_random\030\003 \001(\004\022\030\n\020"
-      "timeblock_height\030\004 \001(\004\022-\n\007tx_list\030\005 \003(\0132"
-      "\034.seth.block.protobuf.BlockTx\022\021\n\ttimesta"
-      "mp\030\006 \001(\004\022#\n\033change_leader_invalid_hashs\030"
-      "\007 \003(\014\022:\n\017key_value_array\030\010 \003(\0132!.seth.bl"
-      "ock.protobuf.KeyValueInfo\0227\n\014contract_tx"
-      "s\030\t \003(\0132!.seth.block.protobuf.TransferIt"
-      "em\0229\n\raddress_array\030\n \003(\0132\".seth.address"
-      ".protobuf.AddressInfo\022<\n\017elect_statistic"
-      "\030\013 \001(\0132#.seth.pools.protobuf.ElectStatis"
-      "tic\0224\n\013elect_block\030\014 \001(\0132\037.seth.elect.pr"
-      "otobuf.ElectBlock\0229\n\020prev_elect_block\030\r "
-      "\001(\0132\037.seth.elect.protobuf.ElectBlock\0225\n\010"
-      "local_to\030\016 \001(\0132#.seth.block.protobuf.Con"
-      "sensusToTxs\0227\n\013timer_block\030\020 \001(\0132\".seth."
-      "timeblock.protobuf.TimeBlock\0226\n\tnormal_t"
-      "o\030\022 \001(\0132#.seth.pools.protobuf.AllToTxMes"
-      "sage\022B\n\024cross_shard_to_array\030\023 \003(\0132$.set"
-      "h.pools.protobuf.ToTxMessageItem\022\035\n\025pool"
-      "_statistic_height\030\025 \001(\004\022\017\n\007all_gas\030\026 \001(\004"
-      "\022/\n\005joins\030\027 \003(\0132 .seth.bls.protobuf.Join"
-      "ElectInfo\022>\n\014pool_st_info\030\030 \001(\0132(.seth.p"
-      "ools.protobuf.PoolStatisticTxInfo\022\024\n\014uni"
-      "que_hashs\030\031 \003(\014\022\020\n\010chain_id\030\032 \001(\004\"n\n\021Get"
-      "TxBlockRequest\022\016\n\006tx_gid\030\001 \001(\014\022\022\n\nblock_"
-      "hash\030\002 \001(\014\022\014\n\004from\030\003 \001(\010\022\016\n\006height\030\004 \001(\004"
-      "\022\027\n\017account_address\030\005 \001(\014\"#\n\022GetTxBlockR"
-      "esponse\022\r\n\005block\030\001 \001(\014\"J\n\024AccountHeightR"
-      "equest\022\024\n\014account_addr\030\001 \001(\014\022\r\n\005index\030\002 "
-      "\001(\003\022\r\n\005count\030\003 \001(\005\"L\n\025AccountHeightRespo"
-      "nse\022\017\n\007heights\030\001 \003(\004\022\024\n\014account_addr\030\002 \001"
-      "(\014\022\014\n\004type\030\003 \001(\014\"G\n\022AccountAttrRequest\022\017"
-      "\n\007account\030\001 \001(\014\022\020\n\010attr_key\030\002 \001(\014\022\016\n\006hei"
-      "ght\030\003 \001(\004\"W\n\023AccountAttrResponse\022\017\n\007acco"
-      "unt\030\001 \001(\014\022\020\n\010attr_key\030\002 \001(\014\022\016\n\006height\030\003 "
-      "\001(\004\022\r\n\005block\030\004 \001(\014\"h\n\025UpdateVpnCountRequ"
-      "est\022\024\n\014account_hash\030\001 \001(\004\022\n\n\002ip\030\002 \001(\014\022\016\n"
-      "\006old_ip\030\003 \001(\014\022\013\n\003uid\030\004 \001(\014\022\020\n\010just_set\030\005"
-      " \001(\010\")\n\014VpnCountItem\022\n\n\002ip\030\001 \001(\014\022\r\n\005coun"
-      "t\030\002 \001(\r\"N\n\026UpdateVpnCountResponse\0224\n\tvpn"
-      "_nodes\030\001 \003(\0132!.seth.block.protobuf.VpnCo"
-      "untItem\"e\n\031GetAccountInitInfoRequest\022\n\n\002"
-      "id\030\001 \001(\014\022\r\n\005count\030\002 \001(\r\022\016\n\006height\030\003 \001(\004\022"
-      "\016\n\006net_id\030\004 \001(\004\022\r\n\005index\030\005 \001(\004\"|\n\032GetAcc"
-      "ountInitInfoResponse\022\017\n\007balance\030\001 \001(\004\022.\n"
-      "\nblock_list\030\002 \003(\0132\032.seth.block.protobuf."
-      "Block\022\n\n\002id\030\003 \001(\014\022\021\n\tmax_index\030\004 \001(\004\"0\n\026"
-      "UpdateVpnActiveRequest\022\n\n\002id\030\001 \001(\014\022\n\n\002ip"
-      "\030\002 \001(\014\">\n\017AdRewardRequest\022\n\n\002id\030\001 \001(\014\022\022\n"
-      "\nreward_key\030\002 \001(\014\022\013\n\003gid\030\003 \001(\014\"V\n\022ElectS"
-      "tatisticInfo\022\024\n\014elect_height\030\001 \001(\004\022\025\n\rsu"
-      "cc_tx_count\030\002 \003(\r\022\023\n\013lof_leaders\030\003 \003(\r\"\201"
-      "\001\n\rStatisticInfo\022\030\n\020timeblock_height\030\001 \001"
-      "(\004\022\024\n\014all_tx_count\030\002 \001(\r\022@\n\017elect_statis"
-      "tic\030\003 \003(\0132\'.seth.block.protobuf.ElectSta"
-      "tisticInfo\"+\n\030RefreshPoolHeightRequest\022\017"
-      "\n\007heights\030\001 \003(\004\",\n\031RefreshPoolHeightResp"
-      "onse\022\017\n\007heights\030\001 \003(\004\"$\n\026GetAccountShard"
-      "Request\022\n\n\002id\030\001 \001(\014\"6\n\026GetAccountShardRe"
-      "ponse\022\n\n\002id\030\001 \001(\014\022\020\n\010shard_id\030\002 \001(\r\"D\n\027C"
-      "rossShardingTosMessage\022)\n\005block\030\001 \001(\0132\032."
-      "seth.block.protobuf.Block\"J\n\035CrossShardi"
-      "ngStatisticMessage\022)\n\005block\030\001 \001(\0132\032.seth"
-      ".block.protobuf.Block\">\n\021ElectBlockMessa"
-      "ge\022)\n\005block\030\001 \001(\0132\032.seth.block.protobuf."
-      "Block\"S\n\020ShardToTxMessage\022\022\n\nleader_idx\030"
-      "\002 \001(\r\022\024\n\014elect_height\030\003 \001(\004\022\025\n\rleader_to"
-      "_idx\030\004 \001(\005\"\216\001\n\022StatisticTxMessage\0227\n\tsta"
-      "tistic\030\001 \001(\0132$.seth.pools.protobuf.Stati"
-      "sticTxItem\022\022\n\nleader_idx\030\002 \001(\r\022\024\n\014elect_"
-      "height\030\003 \001(\004\022\025\n\rleader_to_idx\030\004 \001(\005\"\254\t\n\014"
-      "BlockMessage\0229\n\tblock_req\030\001 \001(\0132&.seth.b"
-      "lock.protobuf.GetTxBlockRequest\022:\n\tblock"
-      "_res\030\002 \001(\0132\'.seth.block.protobuf.GetTxBl"
-      "ockResponse\022=\n\nheight_req\030\003 \001(\0132).seth.b"
-      "lock.protobuf.AccountHeightRequest\022>\n\nhe"
-      "ight_res\030\004 \001(\0132*.seth.block.protobuf.Acc"
-      "ountHeightResponse\022=\n\014acc_attr_req\030\005 \001(\013"
-      "2\'.seth.block.protobuf.AccountAttrReques"
-      "t\022>\n\014acc_attr_res\030\006 \001(\0132(.seth.block.pro"
-      "tobuf.AccountAttrResponse\022>\n\nup_vpn_req\030"
-      "\007 \001(\0132*.seth.block.protobuf.UpdateVpnCou"
-      "ntRequest\022\?\n\nup_vpn_res\030\010 \001(\0132+.seth.blo"
-      "ck.protobuf.UpdateVpnCountResponse\022H\n\020ac"
-      "count_init_req\030\t \001(\0132..seth.block.protob"
-      "uf.GetAccountInitInfoRequest\022I\n\020account_"
-      "init_res\030\n \001(\0132/.seth.block.protobuf.Get"
-      "AccountInitInfoResponse\022C\n\016vpn_active_re"
-      "q\030\013 \001(\0132+.seth.block.protobuf.UpdateVpnA"
-      "ctiveRequest\022;\n\rad_reward_req\030\014 \001(\0132$.se"
-      "th.block.protobuf.AdRewardRequest\022F\n\017ref"
-      "_heights_req\030\r \001(\0132-.seth.block.protobuf"
-      ".RefreshPoolHeightRequest\022G\n\017ref_heights"
-      "_res\030\016 \001(\0132..seth.block.protobuf.Refresh"
-      "PoolHeightResponse\022B\n\racc_shard_req\030\017 \001("
-      "\0132+.seth.block.protobuf.GetAccountShardR"
-      "equest\022B\n\racc_shard_res\030\020 \001(\0132+.seth.blo"
-      "ck.protobuf.GetAccountShardReponse\0227\n\010sh"
-      "ard_to\030\021 \001(\0132%.seth.block.protobuf.Shard"
-      "ToTxMessage\022=\n\014statistic_tx\030\022 \001(\0132\'.seth"
-      ".block.protobuf.StatisticTxMessage"
+      "\002 \003(\014\"Z\n\014TxHashStatus\022\016\n\006status\030\001 \001(\005\022\016\n"
+      "\006output\030\002 \001(\014\022*\n\006events\030\003 \003(\0132\032.seth.blo"
+      "ck.protobuf.TxLog\"\267\003\n\007BlockTx\022\r\n\005nonce\030\001"
+      " \001(\004\022\014\n\004from\030\002 \001(\014\022\n\n\002to\030\003 \001(\014\022\016\n\006amount"
+      "\030\004 \001(\004\022\021\n\tgas_limit\030\005 \001(\004\022\020\n\010gas_used\030\006 "
+      "\001(\004\022\021\n\tgas_price\030\007 \001(\004\022\017\n\007balance\030\010 \001(\004\022"
+      "+\n\004step\030\t \001(\0162\035.seth.pools.protobuf.Step"
+      "Type\022\016\n\006status\030\n \001(\r\022\030\n\020contract_prefund"
+      "\030\r \001(\004\022\025\n\rcontract_code\030\016 \001(\014\022\026\n\016contrac"
+      "t_input\030\017 \001(\014\022*\n\006events\030\020 \003(\0132\032.seth.blo"
+      "ck.protobuf.TxLog\0226\n\010tx_debug\030\021 \003(\0132$.se"
+      "th.pools.protobuf.TxDelayTestInfo\022\023\n\013uni"
+      "que_hash\030\022 \001(\014\022\013\n\003key\030\023 \001(\014\022\r\n\005value\030\024 \001"
+      "(\014\022\017\n\007tx_hash\030\025 \001(\014\"H\n\014KeyValueInfo\022\014\n\004a"
+      "ddr\030\001 \001(\014\022\013\n\003key\030\002 \001(\014\022\r\n\005value\030\003 \001(\014\022\016\n"
+      "\006height\030\004 \001(\004\"W\n\022ConsensusToTxsItem\022\n\n\002t"
+      "o\030\001 \001(\014\022\017\n\007balance\030\002 \001(\004\022\025\n\rcontract_fro"
+      "m\030\003 \001(\014\022\r\n\005nonce\030\004 \001(\004\"F\n\016ConsensusToTxs"
+      "\0224\n\003tos\030\001 \003(\0132\'.seth.block.protobuf.Cons"
+      "ensusToTxsItem\"\331\007\n\005Block\022\017\n\007version\030\001 \001("
+      "\r\022\016\n\006height\030\002 \001(\004\022\032\n\022consistency_random\030"
+      "\003 \001(\004\022\030\n\020timeblock_height\030\004 \001(\004\022-\n\007tx_li"
+      "st\030\005 \003(\0132\034.seth.block.protobuf.BlockTx\022\021"
+      "\n\ttimestamp\030\006 \001(\004\022#\n\033change_leader_inval"
+      "id_hashs\030\007 \003(\014\022:\n\017key_value_array\030\010 \003(\0132"
+      "!.seth.block.protobuf.KeyValueInfo\0227\n\014co"
+      "ntract_txs\030\t \003(\0132!.seth.block.protobuf.T"
+      "ransferItem\0229\n\raddress_array\030\n \003(\0132\".set"
+      "h.address.protobuf.AddressInfo\022<\n\017elect_"
+      "statistic\030\013 \001(\0132#.seth.pools.protobuf.El"
+      "ectStatistic\0224\n\013elect_block\030\014 \001(\0132\037.seth"
+      ".elect.protobuf.ElectBlock\0229\n\020prev_elect"
+      "_block\030\r \001(\0132\037.seth.elect.protobuf.Elect"
+      "Block\0225\n\010local_to\030\016 \001(\0132#.seth.block.pro"
+      "tobuf.ConsensusToTxs\0227\n\013timer_block\030\020 \001("
+      "\0132\".seth.timeblock.protobuf.TimeBlock\0226\n"
+      "\tnormal_to\030\022 \001(\0132#.seth.pools.protobuf.A"
+      "llToTxMessage\022B\n\024cross_shard_to_array\030\023 "
+      "\003(\0132$.seth.pools.protobuf.ToTxMessageIte"
+      "m\022\035\n\025pool_statistic_height\030\025 \001(\004\022\017\n\007all_"
+      "gas\030\026 \001(\004\022/\n\005joins\030\027 \003(\0132 .seth.bls.prot"
+      "obuf.JoinElectInfo\022>\n\014pool_st_info\030\030 \001(\013"
+      "2(.seth.pools.protobuf.PoolStatisticTxIn"
+      "fo\022\024\n\014unique_hashs\030\031 \003(\014\022\020\n\010chain_id\030\032 \001"
+      "(\004\"n\n\021GetTxBlockRequest\022\016\n\006tx_gid\030\001 \001(\014\022"
+      "\022\n\nblock_hash\030\002 \001(\014\022\014\n\004from\030\003 \001(\010\022\016\n\006hei"
+      "ght\030\004 \001(\004\022\027\n\017account_address\030\005 \001(\014\"#\n\022Ge"
+      "tTxBlockResponse\022\r\n\005block\030\001 \001(\014\"J\n\024Accou"
+      "ntHeightRequest\022\024\n\014account_addr\030\001 \001(\014\022\r\n"
+      "\005index\030\002 \001(\003\022\r\n\005count\030\003 \001(\005\"L\n\025AccountHe"
+      "ightResponse\022\017\n\007heights\030\001 \003(\004\022\024\n\014account"
+      "_addr\030\002 \001(\014\022\014\n\004type\030\003 \001(\014\"G\n\022AccountAttr"
+      "Request\022\017\n\007account\030\001 \001(\014\022\020\n\010attr_key\030\002 \001"
+      "(\014\022\016\n\006height\030\003 \001(\004\"W\n\023AccountAttrRespons"
+      "e\022\017\n\007account\030\001 \001(\014\022\020\n\010attr_key\030\002 \001(\014\022\016\n\006"
+      "height\030\003 \001(\004\022\r\n\005block\030\004 \001(\014\"h\n\025UpdateVpn"
+      "CountRequest\022\024\n\014account_hash\030\001 \001(\004\022\n\n\002ip"
+      "\030\002 \001(\014\022\016\n\006old_ip\030\003 \001(\014\022\013\n\003uid\030\004 \001(\014\022\020\n\010j"
+      "ust_set\030\005 \001(\010\")\n\014VpnCountItem\022\n\n\002ip\030\001 \001("
+      "\014\022\r\n\005count\030\002 \001(\r\"N\n\026UpdateVpnCountRespon"
+      "se\0224\n\tvpn_nodes\030\001 \003(\0132!.seth.block.proto"
+      "buf.VpnCountItem\"e\n\031GetAccountInitInfoRe"
+      "quest\022\n\n\002id\030\001 \001(\014\022\r\n\005count\030\002 \001(\r\022\016\n\006heig"
+      "ht\030\003 \001(\004\022\016\n\006net_id\030\004 \001(\004\022\r\n\005index\030\005 \001(\004\""
+      "|\n\032GetAccountInitInfoResponse\022\017\n\007balance"
+      "\030\001 \001(\004\022.\n\nblock_list\030\002 \003(\0132\032.seth.block."
+      "protobuf.Block\022\n\n\002id\030\003 \001(\014\022\021\n\tmax_index\030"
+      "\004 \001(\004\"0\n\026UpdateVpnActiveRequest\022\n\n\002id\030\001 "
+      "\001(\014\022\n\n\002ip\030\002 \001(\014\">\n\017AdRewardRequest\022\n\n\002id"
+      "\030\001 \001(\014\022\022\n\nreward_key\030\002 \001(\014\022\013\n\003gid\030\003 \001(\014\""
+      "V\n\022ElectStatisticInfo\022\024\n\014elect_height\030\001 "
+      "\001(\004\022\025\n\rsucc_tx_count\030\002 \003(\r\022\023\n\013lof_leader"
+      "s\030\003 \003(\r\"\201\001\n\rStatisticInfo\022\030\n\020timeblock_h"
+      "eight\030\001 \001(\004\022\024\n\014all_tx_count\030\002 \001(\r\022@\n\017ele"
+      "ct_statistic\030\003 \003(\0132\'.seth.block.protobuf"
+      ".ElectStatisticInfo\"+\n\030RefreshPoolHeight"
+      "Request\022\017\n\007heights\030\001 \003(\004\",\n\031RefreshPoolH"
+      "eightResponse\022\017\n\007heights\030\001 \003(\004\"$\n\026GetAcc"
+      "ountShardRequest\022\n\n\002id\030\001 \001(\014\"6\n\026GetAccou"
+      "ntShardReponse\022\n\n\002id\030\001 \001(\014\022\020\n\010shard_id\030\002"
+      " \001(\r\"D\n\027CrossShardingTosMessage\022)\n\005block"
+      "\030\001 \001(\0132\032.seth.block.protobuf.Block\"J\n\035Cr"
+      "ossShardingStatisticMessage\022)\n\005block\030\001 \001"
+      "(\0132\032.seth.block.protobuf.Block\">\n\021ElectB"
+      "lockMessage\022)\n\005block\030\001 \001(\0132\032.seth.block."
+      "protobuf.Block\"S\n\020ShardToTxMessage\022\022\n\nle"
+      "ader_idx\030\002 \001(\r\022\024\n\014elect_height\030\003 \001(\004\022\025\n\r"
+      "leader_to_idx\030\004 \001(\005\"\216\001\n\022StatisticTxMessa"
+      "ge\0227\n\tstatistic\030\001 \001(\0132$.seth.pools.proto"
+      "buf.StatisticTxItem\022\022\n\nleader_idx\030\002 \001(\r\022"
+      "\024\n\014elect_height\030\003 \001(\004\022\025\n\rleader_to_idx\030\004"
+      " \001(\005\"\254\t\n\014BlockMessage\0229\n\tblock_req\030\001 \001(\013"
+      "2&.seth.block.protobuf.GetTxBlockRequest"
+      "\022:\n\tblock_res\030\002 \001(\0132\'.seth.block.protobu"
+      "f.GetTxBlockResponse\022=\n\nheight_req\030\003 \001(\013"
+      "2).seth.block.protobuf.AccountHeightRequ"
+      "est\022>\n\nheight_res\030\004 \001(\0132*.seth.block.pro"
+      "tobuf.AccountHeightResponse\022=\n\014acc_attr_"
+      "req\030\005 \001(\0132\'.seth.block.protobuf.AccountA"
+      "ttrRequest\022>\n\014acc_attr_res\030\006 \001(\0132(.seth."
+      "block.protobuf.AccountAttrResponse\022>\n\nup"
+      "_vpn_req\030\007 \001(\0132*.seth.block.protobuf.Upd"
+      "ateVpnCountRequest\022\?\n\nup_vpn_res\030\010 \001(\0132+"
+      ".seth.block.protobuf.UpdateVpnCountRespo"
+      "nse\022H\n\020account_init_req\030\t \001(\0132..seth.blo"
+      "ck.protobuf.GetAccountInitInfoRequest\022I\n"
+      "\020account_init_res\030\n \001(\0132/.seth.block.pro"
+      "tobuf.GetAccountInitInfoResponse\022C\n\016vpn_"
+      "active_req\030\013 \001(\0132+.seth.block.protobuf.U"
+      "pdateVpnActiveRequest\022;\n\rad_reward_req\030\014"
+      " \001(\0132$.seth.block.protobuf.AdRewardReque"
+      "st\022F\n\017ref_heights_req\030\r \001(\0132-.seth.block"
+      ".protobuf.RefreshPoolHeightRequest\022G\n\017re"
+      "f_heights_res\030\016 \001(\0132..seth.block.protobu"
+      "f.RefreshPoolHeightResponse\022B\n\racc_shard"
+      "_req\030\017 \001(\0132+.seth.block.protobuf.GetAcco"
+      "untShardRequest\022B\n\racc_shard_res\030\020 \001(\0132+"
+      ".seth.block.protobuf.GetAccountShardRepo"
+      "nse\0227\n\010shard_to\030\021 \001(\0132%.seth.block.proto"
+      "buf.ShardToTxMessage\022=\n\014statistic_tx\030\022 \001"
+      "(\0132\'.seth.block.protobuf.StatisticTxMess"
+      "age"
   };
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-      descriptor, 5034);
+      descriptor, 5123);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "protos/block.proto", &protobuf_RegisterTypes);
   ::protobuf_protos_2faddress_2eproto::AddDescriptors();
@@ -2365,6 +2402,334 @@ void TxLog::InternalSwap(TxLog* other) {
 }
 
 ::google::protobuf::Metadata TxLog::GetMetadata() const {
+  protobuf_protos_2fblock_2eproto::protobuf_AssignDescriptorsOnce();
+  return ::protobuf_protos_2fblock_2eproto::file_level_metadata[kIndexInFileMessages];
+}
+
+
+// ===================================================================
+
+void TxHashStatus::InitAsDefaultInstance() {
+}
+#if !defined(_MSC_VER) || _MSC_VER >= 1900
+const int TxHashStatus::kStatusFieldNumber;
+const int TxHashStatus::kOutputFieldNumber;
+const int TxHashStatus::kEventsFieldNumber;
+#endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
+
+TxHashStatus::TxHashStatus()
+  : ::google::protobuf::Message(), _internal_metadata_(NULL) {
+  ::google::protobuf::internal::InitSCC(
+      &protobuf_protos_2fblock_2eproto::scc_info_TxHashStatus.base);
+  SharedCtor();
+  // @@protoc_insertion_point(constructor:seth.block.protobuf.TxHashStatus)
+}
+TxHashStatus::TxHashStatus(const TxHashStatus& from)
+  : ::google::protobuf::Message(),
+      _internal_metadata_(NULL),
+      _has_bits_(from._has_bits_),
+      events_(from.events_) {
+  _internal_metadata_.MergeFrom(from._internal_metadata_);
+  output_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.has_output()) {
+    output_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.output_);
+  }
+  status_ = from.status_;
+  // @@protoc_insertion_point(copy_constructor:seth.block.protobuf.TxHashStatus)
+}
+
+void TxHashStatus::SharedCtor() {
+  output_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  status_ = 0;
+}
+
+TxHashStatus::~TxHashStatus() {
+  // @@protoc_insertion_point(destructor:seth.block.protobuf.TxHashStatus)
+  SharedDtor();
+}
+
+void TxHashStatus::SharedDtor() {
+  output_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+
+void TxHashStatus::SetCachedSize(int size) const {
+  _cached_size_.Set(size);
+}
+const ::google::protobuf::Descriptor* TxHashStatus::descriptor() {
+  ::protobuf_protos_2fblock_2eproto::protobuf_AssignDescriptorsOnce();
+  return ::protobuf_protos_2fblock_2eproto::file_level_metadata[kIndexInFileMessages].descriptor;
+}
+
+const TxHashStatus& TxHashStatus::default_instance() {
+  ::google::protobuf::internal::InitSCC(&protobuf_protos_2fblock_2eproto::scc_info_TxHashStatus.base);
+  return *internal_default_instance();
+}
+
+
+void TxHashStatus::Clear() {
+// @@protoc_insertion_point(message_clear_start:seth.block.protobuf.TxHashStatus)
+  ::google::protobuf::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  events_.Clear();
+  cached_has_bits = _has_bits_[0];
+  if (cached_has_bits & 0x00000001u) {
+    output_.ClearNonDefaultToEmptyNoArena();
+  }
+  status_ = 0;
+  _has_bits_.Clear();
+  _internal_metadata_.Clear();
+}
+
+bool TxHashStatus::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!GOOGLE_PREDICT_TRUE(EXPRESSION)) goto failure
+  ::google::protobuf::uint32 tag;
+  // @@protoc_insertion_point(parse_start:seth.block.protobuf.TxHashStatus)
+  for (;;) {
+    ::std::pair<::google::protobuf::uint32, bool> p = input->ReadTagWithCutoffNoLastTag(127u);
+    tag = p.first;
+    if (!p.second) goto handle_unusual;
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // optional int32 status = 1;
+      case 1: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(8u /* 8 & 0xFF */)) {
+          set_has_status();
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::int32, ::google::protobuf::internal::WireFormatLite::TYPE_INT32>(
+                 input, &status_)));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // optional bytes output = 2;
+      case 2: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(18u /* 18 & 0xFF */)) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadBytes(
+                input, this->mutable_output()));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // repeated .seth.block.protobuf.TxLog events = 3;
+      case 3: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(26u /* 26 & 0xFF */)) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessage(
+                input, add_events()));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      default: {
+      handle_unusual:
+        if (tag == 0) {
+          goto success;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, _internal_metadata_.mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+success:
+  // @@protoc_insertion_point(parse_success:seth.block.protobuf.TxHashStatus)
+  return true;
+failure:
+  // @@protoc_insertion_point(parse_failure:seth.block.protobuf.TxHashStatus)
+  return false;
+#undef DO_
+}
+
+void TxHashStatus::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // @@protoc_insertion_point(serialize_start:seth.block.protobuf.TxHashStatus)
+  ::google::protobuf::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  cached_has_bits = _has_bits_[0];
+  // optional int32 status = 1;
+  if (cached_has_bits & 0x00000002u) {
+    ::google::protobuf::internal::WireFormatLite::WriteInt32(1, this->status(), output);
+  }
+
+  // optional bytes output = 2;
+  if (cached_has_bits & 0x00000001u) {
+    ::google::protobuf::internal::WireFormatLite::WriteBytesMaybeAliased(
+      2, this->output(), output);
+  }
+
+  // repeated .seth.block.protobuf.TxLog events = 3;
+  for (unsigned int i = 0,
+      n = static_cast<unsigned int>(this->events_size()); i < n; i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      3,
+      this->events(static_cast<int>(i)),
+      output);
+  }
+
+  if (_internal_metadata_.have_unknown_fields()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        _internal_metadata_.unknown_fields(), output);
+  }
+  // @@protoc_insertion_point(serialize_end:seth.block.protobuf.TxHashStatus)
+}
+
+::google::protobuf::uint8* TxHashStatus::InternalSerializeWithCachedSizesToArray(
+    bool deterministic, ::google::protobuf::uint8* target) const {
+  (void)deterministic; // Unused
+  // @@protoc_insertion_point(serialize_to_array_start:seth.block.protobuf.TxHashStatus)
+  ::google::protobuf::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  cached_has_bits = _has_bits_[0];
+  // optional int32 status = 1;
+  if (cached_has_bits & 0x00000002u) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteInt32ToArray(1, this->status(), target);
+  }
+
+  // optional bytes output = 2;
+  if (cached_has_bits & 0x00000001u) {
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteBytesToArray(
+        2, this->output(), target);
+  }
+
+  // repeated .seth.block.protobuf.TxLog events = 3;
+  for (unsigned int i = 0,
+      n = static_cast<unsigned int>(this->events_size()); i < n; i++) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      InternalWriteMessageToArray(
+        3, this->events(static_cast<int>(i)), deterministic, target);
+  }
+
+  if (_internal_metadata_.have_unknown_fields()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields(), target);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:seth.block.protobuf.TxHashStatus)
+  return target;
+}
+
+size_t TxHashStatus::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:seth.block.protobuf.TxHashStatus)
+  size_t total_size = 0;
+
+  if (_internal_metadata_.have_unknown_fields()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        _internal_metadata_.unknown_fields());
+  }
+  // repeated .seth.block.protobuf.TxLog events = 3;
+  {
+    unsigned int count = static_cast<unsigned int>(this->events_size());
+    total_size += 1UL * count;
+    for (unsigned int i = 0; i < count; i++) {
+      total_size +=
+        ::google::protobuf::internal::WireFormatLite::MessageSize(
+          this->events(static_cast<int>(i)));
+    }
+  }
+
+  if (_has_bits_[0 / 32] & 3u) {
+    // optional bytes output = 2;
+    if (has_output()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::BytesSize(
+          this->output());
+    }
+
+    // optional int32 status = 1;
+    if (has_status()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::Int32Size(
+          this->status());
+    }
+
+  }
+  int cached_size = ::google::protobuf::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
+}
+
+void TxHashStatus::MergeFrom(const ::google::protobuf::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:seth.block.protobuf.TxHashStatus)
+  GOOGLE_DCHECK_NE(&from, this);
+  const TxHashStatus* source =
+      ::google::protobuf::internal::DynamicCastToGenerated<const TxHashStatus>(
+          &from);
+  if (source == NULL) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:seth.block.protobuf.TxHashStatus)
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:seth.block.protobuf.TxHashStatus)
+    MergeFrom(*source);
+  }
+}
+
+void TxHashStatus::MergeFrom(const TxHashStatus& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:seth.block.protobuf.TxHashStatus)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom(from._internal_metadata_);
+  ::google::protobuf::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  events_.MergeFrom(from.events_);
+  cached_has_bits = from._has_bits_[0];
+  if (cached_has_bits & 3u) {
+    if (cached_has_bits & 0x00000001u) {
+      set_has_output();
+      output_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.output_);
+    }
+    if (cached_has_bits & 0x00000002u) {
+      status_ = from.status_;
+    }
+    _has_bits_[0] |= cached_has_bits;
+  }
+}
+
+void TxHashStatus::CopyFrom(const ::google::protobuf::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:seth.block.protobuf.TxHashStatus)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void TxHashStatus::CopyFrom(const TxHashStatus& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:seth.block.protobuf.TxHashStatus)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool TxHashStatus::IsInitialized() const {
+  return true;
+}
+
+void TxHashStatus::Swap(TxHashStatus* other) {
+  if (other == this) return;
+  InternalSwap(other);
+}
+void TxHashStatus::InternalSwap(TxHashStatus* other) {
+  using std::swap;
+  CastToBase(&events_)->InternalSwap(CastToBase(&other->events_));
+  output_.Swap(&other->output_, &::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+    GetArenaNoVirtual());
+  swap(status_, other->status_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  _internal_metadata_.Swap(&other->_internal_metadata_);
+}
+
+::google::protobuf::Metadata TxHashStatus::GetMetadata() const {
   protobuf_protos_2fblock_2eproto::protobuf_AssignDescriptorsOnce();
   return ::protobuf_protos_2fblock_2eproto::file_level_metadata[kIndexInFileMessages];
 }
@@ -14130,6 +14495,9 @@ template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::seth::block::protobuf::TransferI
 }
 template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::seth::block::protobuf::TxLog* Arena::CreateMaybeMessage< ::seth::block::protobuf::TxLog >(Arena* arena) {
   return Arena::CreateInternal< ::seth::block::protobuf::TxLog >(arena);
+}
+template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::seth::block::protobuf::TxHashStatus* Arena::CreateMaybeMessage< ::seth::block::protobuf::TxHashStatus >(Arena* arena) {
+  return Arena::CreateInternal< ::seth::block::protobuf::TxHashStatus >(arena);
 }
 template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::seth::block::protobuf::BlockTx* Arena::CreateMaybeMessage< ::seth::block::protobuf::BlockTx >(Arena* arena) {
   return Arena::CreateInternal< ::seth::block::protobuf::BlockTx >(arena);
