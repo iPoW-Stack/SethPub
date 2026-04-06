@@ -401,30 +401,36 @@ def test_oqs_contract_prefund_flow(w3, OQS_MY, OQS_KEY, OQS_PK):
     oqs_vault.refund(OQS_KEY, oqs_pubkey=OQS_PK)
  
 def test_gmssl_transfer(w3, GM_KEY):
+    """
+    测试国密标准转账
+    验证：私钥派生、SM3地址计算、SM2(R+S)签名发送
+    """
     print("\n--- TEST CASE: GmSSL Standard Transfer ---")
     dest = "0000000000000000000000000000000000000001"
     
-    # 派生公钥
+    # 1. 自动从私钥派生公钥 (SDK 内部调用 get_sm2_public_key)
     gm_pubkey = get_sm2_public_key(GM_KEY)
-    # 计算地址
-    GM_MY = get_seth_gm_address(gm_pubkey)
-
-    print(f"GmSSL Sender Address: {GM_MY}")
     
+    # 2. 自动计算国密地址 (SDK 内部调用 get_gmssl_address)
+    GM_MY = w3.client.get_gmssl_address(gm_pubkey)
+    print(f"GmSSL Sender Address: {GM_MY}")
+
+    # 3. 构造交易字典
     tx_dict = {
         'to': dest,
         'value': 10000,
-        'gm_pubkey': gm_pubkey
+        'gm_pubkey': gm_pubkey  # 传入公钥供 SDK 识别国密模式
     }
 
-    # 调用修改后的 SDK
+    # 4. 调用 SDK 显式国密接口
     print("Sending GmSSL Transfer...")
     receipt = w3.seth.send_gmssl_transaction(tx_dict, GM_KEY)
 
+    print(f"GmSSL Transfer Status: {receipt.get('status')}")
     if receipt.get('status') == 0:
-        print(f"✅ Status: {receipt['status']} (Accepted)")
+        print(f"✅ Success! New balance of {dest}: {w3.client.get_balance(dest)}")
     else:
-        print(f"❌ Status: {receipt.get('status')} | Msg: {receipt.get('msg')}")
+        print(f"❌ Failed: {receipt.get('msg')}")
 
 def test_gmssl_contract_flow(w3, GM_KEY):
     """
