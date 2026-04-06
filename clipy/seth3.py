@@ -3,6 +3,7 @@ import secrets
 import time
 from eth_utils import to_checksum_address
 import requests
+from gmssl import sm2, func
 
 from seth_sdk import SethWeb3Mock, StepType, compile_and_link
 
@@ -398,6 +399,71 @@ def test_oqs_contract_prefund_flow(w3, OQS_MY, OQS_KEY, OQS_PK):
     print(f"Gas consumed from prefund: {post_pp - final_pp}")
     oqs_vault.refund(OQS_KEY, oqs_pubkey=OQS_PK)
     
+def test_gmssl_transfer(w3, GM_KEY):
+    print("\n--- TEST CASE: GmSSL Standard Transfer ---")
+    dest = "0000000000000000000000000000000000000001"
+    
+    sm2_crypt = sm2.CryptSM2(public_key="", private_key=GM_KEY)
+    gm_pubkey = sm2_crypt.private_key_to_public_key() 
+    
+    GM_MY = w3.client.get_gmssl_address(gm_pubkey)
+
+    print(f"GmSSL Sender: {GM_MY}")
+    print(f"Dest Balance before: {w3.client.get_balance(dest)}")
+
+    tx_dict = {
+        'to': dest,
+        'value': 10000,
+        'gm_pubkey': gm_pubkey
+    }
+
+    receipt = w3.seth.send_gmssl_transaction(tx_dict, GM_KEY)
+
+    print(f"GmSSL Transfer Status: {receipt['status']}")
+    print(f"Dest Balance after: {w3.client.get_balance(dest)}")
+
+def test_gmssl_contract_deploy_and_call(w3, GM_KEY):
+    print("\n--- TEST CASE: GmSSL Contract Deploy & Call ---")
+
+    src = """
+    pragma solidity ^0.8.0;
+    contract GmVault {
+        uint256 public val;
+        function set(uint256 v) public { val = v; }
+    }
+    """
+    bin_code, abi = compile_and_link(src, "GmVault")
+    
+    sm2_crypt = sm2.CryptSM2(public_key="", private_key=GM_KEY)
+    gm_pubkey = sm2_crypt.private_key_to_public_key()
+    GM_MY = w3.client.get_gmssl_address(gm_pubkey)
+
+    gm_vault = w3.seth.contract(abi=abi, bytecode=bin_code)
+    gm_vault.deploy({
+        'from': GM_MY,
+        'salt': secrets.token_hex(31) + 'gm02',
+        'gm_pubkey': gm_pubkey
+    }, GM_KEY)
+
+    print(f"GmSSL Contract Deployed at: {gm_vault.address}")
+
+    print("Sending GmSSL Contract Call...")
+    receipt = gm_vault.functions.set(999).transact(GM_KEY, gm_pubkey=gm_pubkey)
+
+    if receipt.get('status') == 0:
+        print(f"✅ GmSSL Call Success! New Data: {gm_vault.functions.val().call()}")
+    else:
+        print(f"❌ GmSSL Call Failed: {receipt.get('msg')}")
+
+def gmssl_sign_test():
+    IP, PORT = "127.0.0.1", 23001
+    GM_KEY = "c4b9e7a21d5f83c0a1e4d6b9f2a1e5c8d3b7a9f0e1d2c3b4a5968778695a4b3c"
+    
+    w3 = SethWeb3Mock(IP, PORT)
+
+    test_gmssl_transfer(w3, GM_KEY)
+    test_gmssl_contract_deploy_and_call(w3, GM_KEY)
+
 def ecdsa_sign_test():
     IP, PORT, KEY = "127.0.0.1", 23001, "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
     w3 = SethWeb3Mock(IP, PORT)
@@ -428,3 +494,5 @@ def oqs_sign_test():
 if __name__ == "__main__":
     ecdsa_sign_test()
     oqs_sign_test()
+    gmssl_sign_test()
+ 
