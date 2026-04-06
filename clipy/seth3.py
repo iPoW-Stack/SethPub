@@ -419,30 +419,32 @@ def get_sm2_public_key(private_key_hex: str) -> str:
     
     return full_pub
 
-def get_seth_address(pub_key_hex: str) -> str:
+def get_seth_gm_address(pub_key_raw_hex: str) -> str:
     """
-    完全匹配 C++: common::Hash::sm3(str_pk_).substr(0, 20)
+    完全匹配 C++ 源码逻辑:
+    str_addr_ = common::Hash::sm3(str_pk_).substr(0, 20);
     """
-    # 将 64 字节的公钥 hex 转为 bytes
-    pub_bytes = binascii.unhexlify(pub_key_hex)
-    # 计算 SM3 哈希并取前 40 位 hex (20字节)
+    # 将 64 字节原始公钥 (X+Y) 转为字节流
+    pub_bytes = binascii.unhexlify(pub_key_raw_hex)
+    
+    # 使用 sm3 计算哈希
+    # 注意: gmssl.sm3.sm3_hash 接收 list 类型字节，返回 hex 字符串
     hash_hex = sm3.sm3_hash(list(pub_bytes))
+    
+    # 取前 20 字节 (40 个字符)
     return hash_hex[:40]
 
-# --- 修改后的测试函数 ---
-
 def test_gmssl_transfer(w3, GM_KEY):
-    """测试国密转账 (修复公钥获取问题)"""
     print("\n--- TEST CASE: GmSSL Standard Transfer ---")
     dest = "0000000000000000000000000000000000000001"
     
-    # 1. 修复：获取公钥
+    # 1. 获取 64 字节公钥 (不带 04)
     gm_pubkey = get_sm2_public_key(GM_KEY)
     
-    # 2. 获取国密地址 (对应 C++ gmssl.GetAddress())
-    GM_MY = w3.client.get_gmssl_address(gm_pubkey)
+    # 2. 修复：手动计算国密地址，不调用 w3.client.get_gmssl_address
+    GM_MY = get_seth_gm_address(gm_pubkey)
 
-    print(f"GmSSL Sender: {GM_MY}")
+    print(f"GmSSL Sender Address: {GM_MY}")
     print(f"Dest Balance before: {w3.client.get_balance(dest)}")
 
     # 3. 构造交易字典
@@ -452,14 +454,16 @@ def test_gmssl_transfer(w3, GM_KEY):
         'gm_pubkey': gm_pubkey
     }
 
-    # 4. 发起国密交易
+    # 4. 发起交易 (假设 w3.seth 支持 send_gmssl_transaction)
     receipt = w3.seth.send_gmssl_transaction(tx_dict, GM_KEY)
 
     print(f"GmSSL Transfer Status: {receipt['status']}")
+    if receipt['status'] != 0:
+        print(f"Error Msg: {receipt.get('msg')}")
     print(f"Dest Balance after: {w3.client.get_balance(dest)}")
-
+    
 def test_gmssl_contract_deploy_and_call(w3, GM_KEY):
-    """使用国密账户部署并调用合约"""
+    """使用国密账户部署并调用合约 (修复 SDK 方法缺失问题)"""
     print("\n--- TEST CASE: GmSSL Contract Deploy & Call ---")
 
     src = """
@@ -471,26 +475,38 @@ def test_gmssl_contract_deploy_and_call(w3, GM_KEY):
     """
     bin_code, abi = compile_and_link(src, "GmVault")
     
-    # 获取公钥
+    # 1. 获取 64 字节原始公钥 (X+Y)
     gm_pubkey = get_sm2_public_key(GM_KEY)
-    GM_MY = w3.client.get_gmssl_address(gm_pubkey)
+    
+    # 2. 修复：手动计算国密地址，不再调用 w3.client.get_gmssl_address
+    # 匹配 C++: common::Hash::sm3(str_pk_).substr(0, 20)
+    GM_MY = get_seth_gm_address(gm_pubkey) 
 
-    # 1. 部署合约
+    print(f"GmSSL Sender: {GM_MY}")
+
+    # 3. 部署合约
+    # 注意：在 deploy 参数中显式传入 gm_pubkey
     gm_vault = w3.seth.contract(abi=abi, bytecode=bin_code)
-    gm_vault.deploy({
-        'from': GM_MY,
-        'salt': secrets.token_hex(31) + 'gm02',
-        'gm_pubkey': gm_pubkey
-    }, GM_KEY)
+    try:
+        gm_vault.deploy({
+            'from': GM_MY,
+            'salt': secrets.token_hex(31) + 'gm02',
+            'gm_pubkey': gm_pubkey
+        }, GM_KEY)
+        print(f"GmSSL Contract Deployed at: {gm_vault.address}")
+    except Exception as e:
+        print(f"❌ Deployment failed: {e}")
+        return
 
-    print(f"GmSSL Contract Deployed at: {gm_vault.address}")
-
-    # 2. 调用合约
+    # 4. 调用合约
     print("Sending GmSSL Contract Call...")
+    # 在 transact 内部通过 gm_pubkey 触发国密签名流程
     receipt = gm_vault.functions.set(999).transact(GM_KEY, gm_pubkey=gm_pubkey)
 
     if receipt.get('status') == 0:
-        print(f"✅ GmSSL Call Success! New Data: {gm_vault.functions.val().call()}")
+        # 注意：call() 内部可能也需要处理国密地址逻辑，如果 SDK 自动处理则无需修改
+        current_val = gm_vault.functions.val().call()
+        print(f"✅ GmSSL Call Success! New Data: {current_val}")
     else:
         print(f"❌ GmSSL Call Failed: {receipt.get('msg')}")
 
