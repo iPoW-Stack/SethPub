@@ -418,11 +418,11 @@ def oqs_sign_test():
     w3 = SethWeb3Mock(IP, PORT)
     MY_OQS = w3.client.get_oqs_address(OQS_PK)
 
-    test_oqs_transfer(w3, MY_OQS, OQS_KEY, OQS_PK)
-    test_oqs_contract_deploy_and_call(w3, MY_OQS, OQS_KEY, OQS_PK)
-    test_oqs_library_with_contract(w3, MY_OQS, OQS_KEY, OQS_PK)
+    # test_oqs_transfer(w3, MY_OQS, OQS_KEY, OQS_PK)
+    # test_oqs_contract_deploy_and_call(w3, MY_OQS, OQS_KEY, OQS_PK)
+    # test_oqs_library_with_contract(w3, MY_OQS, OQS_KEY, OQS_PK)
     test_oqs_contract_prefund_flow(w3, MY_OQS, OQS_KEY, OQS_PK)
 
 if __name__ == "__main__":
     ecdsa_sign_test()
-    # oqs_sign_test()
+    oqs_sign_test()
