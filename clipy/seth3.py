@@ -3,7 +3,8 @@ import secrets
 import time
 from eth_utils import to_checksum_address
 import requests
-from gmssl import sm2, func
+import binascii
+from gmssl import sm2, sm3, func
 
 from seth_sdk import SethWeb3Mock, StepType, compile_and_link
 
@@ -401,35 +402,32 @@ def test_oqs_contract_prefund_flow(w3, OQS_MY, OQS_KEY, OQS_PK):
     
 def get_sm2_public_key(private_key_hex: str) -> str:
     """
-    手动计算 SM2 公钥 (X+Y)，完全匹配 C++ GmSsl::SetPrivateKey 逻辑
+    针对 gmssl 3.2.2 的公钥提取方案。
+    逻辑：利用 sm2 对象的 sign 逻辑或内部 key 属性提取公钥点坐标。
     """
-    # SM2 的椭圆曲线参数 (GB/T 32918)
-    # y^2 = x^3 + ax + b (mod p)
-    sm2_p = 'FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF'
-    sm2_a = 'FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFC'
-    sm2_b = '28E9FA9E9D9F5E344D5A9E4BCF6509A7F39789F515AB8F92DDBCBD414D940E93'
-    sm2_gx = '32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7'
-    sm2_gy = 'BC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0'
+    # 3.2.2 版本中，初始化时传入私钥，它会自动在内部计算出公钥
+    # 虽然没有 .ecc，但公钥点存储在 .public_key 属性中
+    sm2_crypt = sm2.CryptSM2(public_key='', private_key=private_key_hex)
     
-    # 这里的关键是：公钥 P = [d]G，即私钥乘以基点
-    # 使用 gmssl.func.ecc_mul 进行大数乘法运算
-    # 注意：func.ecc_mul 返回的是 (x, y) 的 hex 字符串
-    pub_point = func.ecc_mul(private_key_hex, sm2_gx, sm2_gy, sm2_p, sm2_a)
+    # 在 3.x 版本中，sm2_crypt.public_key 存储的是十六进制字符串
+    # 通常格式为 '04' + X + Y (共 130 字符)
+    full_pub = sm2_crypt.public_key
     
-    # 拼接 X 和 Y (各 32 字节 / 64 字符)，不加 '04'
-    # 确保每个坐标都是 64 字符长（补零）
-    x = pub_point[0].zfill(64)
-    y = pub_point[1].zfill(64)
+    # 按照 C++ 源码要求：只需要 X + Y (64字节 / 128字符)，去掉开头的 '04'
+    if full_pub.startswith('04') and len(full_pub) == 130:
+        return full_pub[2:]
     
-    return x + y
+    return full_pub
 
-# 验证地址生成逻辑 (基于你的 C++ 源码)
-from gmssl import sm3
 def get_seth_address(pub_key_hex: str) -> str:
-    # 对应 C++: common::Hash::sm3(str_pk_).substr(0, 20)
-    pub_bytes = bytes.fromhex(pub_key_hex)
+    """
+    完全匹配 C++: common::Hash::sm3(str_pk_).substr(0, 20)
+    """
+    # 将 64 字节的公钥 hex 转为 bytes
+    pub_bytes = binascii.unhexlify(pub_key_hex)
+    # 计算 SM3 哈希并取前 40 位 hex (20字节)
     hash_hex = sm3.sm3_hash(list(pub_bytes))
-    return hash_hex[:40] # 20字节 = 40位Hex
+    return hash_hex[:40]
 
 # --- 修改后的测试函数 ---
 
