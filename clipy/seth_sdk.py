@@ -446,7 +446,7 @@ class SethClient:
 
     def send_transaction_auto(self, pk_hex, to, step, amount=0, contract_code='', input_hex='', prefund=0):
         my_addr = self.get_address(pk_hex)
-        nonce_addr = to + my_addr if step == StepType.kContractExcute else my_addr
+        nonce_addr = to + my_addr if (step == StepType.kContractExcute or step == StepType.kContractRefund) else my_addr
         try:
             r = requests.post(self.query_url, data={"address": nonce_addr}).json()
             nonce = int(r.get("nonce", 0)) + 1
@@ -572,7 +572,7 @@ class SethClient:
         # oqs_pk_hex = signer_public_key.hex()
         # oqs_sk_hex = oqs_signer.export_secret_key().hex()
         my_addr = self.get_oqs_address(oqs_pk_hex)
-        nonce_addr = to + my_addr if step == StepType.kContractExcute else my_addr
+        nonce_addr = to + my_addr if (step == StepType.kContractExcute or step == StepType.kContractRefund) else my_addr
         
         # 1. Get Nonce
         try:
