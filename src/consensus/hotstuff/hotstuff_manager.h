@@ -272,8 +272,8 @@ private:
                 db_, msg_ptr, -1, account_mgr_, security_ptr_, msg_ptr->address_info);
     }
 
-    pools::TxItemPtr CreateContractPrefundWithdrawTx(const transport::MessagePtr& msg_ptr) {
-        return std::make_shared<ContractPrefundWithdraw>(
+    pools::TxItemPtr CreateContractRefundTx(const transport::MessagePtr& msg_ptr) {
+        return std::make_shared<ContractRefund>(
                 db_, msg_ptr, -1, account_mgr_, security_ptr_, msg_ptr->address_info);
     }
 

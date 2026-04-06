@@ -553,7 +553,7 @@ Status BlockAcceptor::addTxsToPool(
             contract_prefund_id = tx->to() + from_id;
             break;
         case pools::protobuf::kContractRefund:
-            tx_ptr = std::make_shared<consensus::ContractPrefundWithdraw>(
+            tx_ptr = std::make_shared<consensus::ContractRefund>(
                     db_, msg_ptr, i, account_mgr_, security_ptr_, address_info);
             contract_prefund_id = tx->to() + from_id;
             break;
