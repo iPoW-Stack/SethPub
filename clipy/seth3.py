@@ -403,9 +403,9 @@ def ecdsa_sign_test():
     w3 = SethWeb3Mock(IP, PORT)
     MY = w3.client.get_address(KEY)
 
-    # test_contract_call_contract(w3, MY, KEY)
-    # test_transfer(w3, MY, KEY)
-    # test_library_with_contrcat(w3, MY, KEY)
+    test_contract_call_contract(w3, MY, KEY)
+    test_transfer(w3, MY, KEY)
+    test_library_with_contrcat(w3, MY, KEY)
     test_ecdsa_prefund_full_flow(w3, MY, KEY)
 
 def oqs_sign_test():
