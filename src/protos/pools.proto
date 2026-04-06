@@ -21,7 +21,7 @@ enum StepType {
     kCross = 15;  // Transaction to prevent missing cross-shard blocks
     kRootCross = 16;  // Root transaction to prevent missing cross-shard blocks
     kPoolStatisticTag = 17;  // Final marker block for this round of transaction pool statistics
-    kContractGasPrefundWithdraw = 18;
+    kContractRefund = 18;
 }
 
 message ToTxHeights {

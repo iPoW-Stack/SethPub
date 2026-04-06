@@ -574,7 +574,7 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
         case pools::protobuf::kContractGasPrefund:
             HandleSetContractPrefund(msg_ptr);
             break;
-        case pools::protobuf::kContractGasPrefundWithdraw:
+        case pools::protobuf::kContractRefund:
             HandleSetContractPrefundWithdraw(msg_ptr);
             break;
         case pools::protobuf::kRootCreateAddress: {

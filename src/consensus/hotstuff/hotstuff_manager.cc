@@ -500,7 +500,7 @@ void HotstuffManager::PopPoolsMessage() {
                         address_info);
                 contract_prefund_id = tx->to() + from_id;
                 break;
-            case pools::protobuf::kContractGasPrefundWithdraw:
+            case pools::protobuf::kContractRefund:
                 tx_ptr = std::make_shared<consensus::ContractPrefundWithdraw>(
                         db_, 
                         msg_ptr, i,
@@ -604,7 +604,7 @@ void HotstuffManager::RegisterCreateTxCallbacks() {
         pools::protobuf::kContractGasPrefund,
         std::bind(&HotstuffManager::CreateContractPrefundTx, this, std::placeholders::_1));
     pools_mgr_->RegisterCreateTxFunction(
-        pools::protobuf::kContractGasPrefundWithdraw,
+        pools::protobuf::kContractRefund,
         std::bind(&HotstuffManager::CreateContractPrefundWithdrawTx, this, std::placeholders::_1));
     pools_mgr_->RegisterCreateTxFunction(
         pools::protobuf::kContractExcute,

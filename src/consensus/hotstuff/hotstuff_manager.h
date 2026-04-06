@@ -16,7 +16,7 @@
 #include <consensus/hotstuff/view_block_chain.h>
 #include <consensus/zbft/contract_call.h>
 #include <consensus/zbft/contract_prefund.h>
-#include <consensus/zbft/contract_prefund_withdraw.h>
+#include <consensus/zbft/contract_refund.h>
 #include <consensus/zbft/contract_create.h>
 #include <consensus/zbft/create_library.h>
 #include <consensus/zbft/cross_tx_item.h>

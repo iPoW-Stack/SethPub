@@ -304,7 +304,7 @@ static inline bool IsUserTransaction(uint32_t step) {
             step != pools::protobuf::kContractCreate && 
             step != pools::protobuf::kContractExcute && 
             step != pools::protobuf::kContractGasPrefund && 
-            step != pools::protobuf::kContractGasPrefundWithdraw && 
+            step != pools::protobuf::kContractRefund && 
             step != pools::protobuf::kJoinElect && 
             step != pools::protobuf::kCreateLibrary) {
         return false;
@@ -330,7 +330,7 @@ static inline bool IsTxUseFromAddress(uint32_t step) {
         case pools::protobuf::kJoinElect:
         case pools::protobuf::kNormalFrom:
         case pools::protobuf::kContractGasPrefund:
-        case pools::protobuf::kContractGasPrefundWithdraw:
+        case pools::protobuf::kContractRefund:
             return true;
         default:
             assert(false);
