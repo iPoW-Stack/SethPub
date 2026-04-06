@@ -304,10 +304,13 @@ class SethContract:
         return lambda *args: SethMethod(self, item)(*args)
     
     def transact(self, private_key: str, value: int = 0, prefund: int = 10**6, oqs_pubkey: str = None, gm_mode: bool = False) -> dict:
-        """Transaction logic with automatic parsing. Supports OQS and GMSSL auto-detection."""
-        
-        # 1. 优先级判断：国密模式 (GmSSL)
+        """
+        核心交易触发逻辑：支持 ECDSA, OQS 和 GmSSL。
+        """
+        # 1. 自动路由逻辑
+        # 优先级：GmSSL > OQS > ECDSA
         if gm_mode:
+            # 自动派生 64 字节公钥
             gm_pubkey = get_sm2_public_key(private_key)
             tx_hash = self.contract.client.send_gmssl_transaction(
                 private_key, 
@@ -318,11 +321,10 @@ class SethContract:
                 input_hex=self.encoded_input, 
                 prefund=prefund
             )
-        # 2. 自动检测 OQS (后量子)
         elif len(private_key) > 128:
+            # OQS 逻辑
             if not oqs_pubkey:
-                raise ValueError("OQS detected by key length, but 'oqs_pubkey' is not set.")
-
+                raise ValueError("OQS requires 'oqs_pubkey' or setting it in contract object.")
             tx_hash = self.contract.client.send_oqs_transaction(
                 private_key, 
                 oqs_pubkey, 
@@ -332,8 +334,8 @@ class SethContract:
                 input_hex=self.encoded_input, 
                 prefund=prefund
             )
-        # 3. 标准 ECDSA 逻辑
         else:
+            # 标准 ECDSA
             tx_hash = self.contract.client.send_transaction_auto(
                 private_key, 
                 self.contract.address, 
@@ -343,7 +345,7 @@ class SethContract:
                 prefund=prefund
             )
 
-        # 2. Wait for and return the receipt
+        # 2. 等待回执
         return self.contract.client.wait_for_receipt(
             tx_hash, 
             abi=self.contract.abi, 
