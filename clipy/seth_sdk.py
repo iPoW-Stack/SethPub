@@ -146,34 +146,50 @@ class MessageHandleStatus(IntEnum):
 # --- 2. Utilities ---
 def get_sm2_public_key(private_key_hex: str) -> str:
     """
-    通过模拟签名过程强制提取公钥 (X+Y)
-    适配 gmssl 3.2.2 无 .ecc 属性的情况
+    直接使用 gmssl 内部的曲线参数手动派生公钥 (X+Y)
+    绕过所有 CryptSM2 对象的属性限制
     """
     from gmssl import sm2
     import binascii
 
+    # 1. 获取私钥的整数形式
     pk_clean = private_key_hex.replace('0x', '')
-    # 1. 初始化，注意此时 public_key 为空
-    sm2_crypt = sm2.CryptSM2(public_key='', private_key=pk_clean)
-    
-    # 2. 触发一次内部签名计算
-    # 在 sign 过程中，库会自动根据私钥计算出公钥并赋值给 self.public_key
-    # 我们随便签一个字节即可
-    dummy_data = b'\x00'
-    sm2_crypt.sign(dummy_data, secrets.token_hex(32))
-    
-    # 3. 此时公钥已经派生到了属性中
-    full_pub = sm2_crypt.public_key
-    
-    # 4. 按照 C++ 要求提取 X+Y (去掉 '04' 前缀)
-    if full_pub.startswith('04') and len(full_pub) == 130:
-        return full_pub[2:]
-    
-    # 如果已经是 128 位，直接返回
-    if len(full_pub) == 128:
-        return full_pub
+    d = int(pk_clean, 16)
 
-    raise RuntimeError(f"Failed to derive SM2 public key. Got: {full_pub}")
+    # 2. 构造一个临时的 CryptSM2 对象，仅为了获取它初始化的 ecc 曲线参数
+    # 即使它不自动派生公钥，它的 .ecc 属性在内部类里是存在的
+    base_sm2 = sm2.CryptSM2(public_key='', private_key=pk_clean)
+    
+    # 3. 关键点：gmssl 3.2.x 内部真正的曲线对象通常在 sm2 模块的私有变量或方法中
+    # 我们直接尝试从 base_sm2 获取内部的曲线计算器
+    # 如果 .ecc 不存在，说明它可能在 base_sm2.sm2_with_asn1 等地方，但数学基准不变
+    
+    try:
+        # 尝试通过计算 P = dG 获取点坐标
+        # sm2 曲线基点 G
+        P = base_sm2.ecc.ecc_mul(d, base_sm2.ecc.G)
+        x_hex = hex(P.x)[2:].zfill(64)
+        y_hex = hex(P.y)[2:].zfill(64)
+        return x_hex + y_hex
+    except AttributeError:
+        # 如果连 .ecc 都没暴露，直接调用底层的 func 模块进行大数运算
+        from gmssl import func
+        # SM2 曲线参数
+        sm2_p = 'FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF'
+        sm2_a = 'FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFC'
+        sm2_gx = '32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7'
+        sm2_gy = 'BC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0'
+        
+        # 使用 gmssl.func 提供的底层 ecc_mul
+        # 注意：这里传的是 hex 字符串
+        res_x, res_y = func.ecc_mul(pk_clean, sm2_gx, sm2_gy, sm2_p, sm2_a)
+        return res_x.zfill(64) + res_y.zfill(64)
+
+def get_seth_gm_address(pub_key_raw_hex: str) -> str:
+    """匹配 C++: common::Hash::sm3(str_pk_).substr(0, 20)"""
+    pub_bytes = binascii.unhexlify(pub_key_raw_hex)
+    hash_hex = sm3.sm3_hash(list(pub_bytes))
+    return hash_hex[:40]
 
 def calc_create2_address(sender: str, salt: str, bytecode: str) -> str:
     sender = sender.lower().replace('0x', '')
