@@ -25,7 +25,6 @@ public:
             std::shared_ptr<security::Security>& sec_ptr,
             protos::AddressInfoPtr& addr_info)
             : TxItemBase(msg_ptr, tx_index, account_mgr, sec_ptr, addr_info) {
-        contract_mgr_ = contract_mgr;
         prefix_db_ = std::make_shared<protos::PrefixDb>(db);
     }
 
