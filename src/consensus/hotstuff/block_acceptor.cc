@@ -385,7 +385,7 @@ Status BlockAcceptor::addTxsToPool(
 
                 // Execute signature verification (Time-consuming operation)
                 const auto* tx = &txs[idx];
-                auto tx_hash = pools::GetTxMessageHash(*tx);
+                auto tx_hash = pools::GetTxMessageHash(*tx, tx->pubkey().size() == 64u);
                 bool valid = true;
 
                 if (pools::IsUserTransaction(tx_ptr->tx_info->step())) {
