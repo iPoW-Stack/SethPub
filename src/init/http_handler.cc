@@ -18,6 +18,7 @@
 #include "protos/pools.pb.h"
 #include "protos/transport.pb.h"
 #include "protos/view_block.pb.h"
+#include "security/gmssl/gmssl.h"
 #include "security/oqs/oqs.h"
 #include "transport/tcp_transport.h"
 #include "zjcvm/execution.h"
