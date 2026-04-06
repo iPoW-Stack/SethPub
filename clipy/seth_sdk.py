@@ -146,27 +146,34 @@ class MessageHandleStatus(IntEnum):
 # --- 2. Utilities ---
 def get_sm2_public_key(private_key_hex: str) -> str:
     """
-    手动计算 SM2 公钥 (X+Y)，解决初始化时不自动派生的问题
+    通过模拟签名过程强制提取公钥 (X+Y)
+    适配 gmssl 3.2.2 无 .ecc 属性的情况
     """
-    # 确保没有 0x 前缀
+    from gmssl import sm2
+    import binascii
+
     pk_clean = private_key_hex.replace('0x', '')
-    
-    # 初始化 CryptSM2 
+    # 1. 初始化，注意此时 public_key 为空
     sm2_crypt = sm2.CryptSM2(public_key='', private_key=pk_clean)
     
-    # 1. 将私钥 Hex 转为整数 d
-    d = int(pk_clean, 16)
+    # 2. 触发一次内部签名计算
+    # 在 sign 过程中，库会自动根据私钥计算出公钥并赋值给 self.public_key
+    # 我们随便签一个字节即可
+    dummy_data = b'\x00'
+    sm2_crypt.sign(dummy_data, secrets.token_hex(32))
     
-    # 2. 获取基点 G (Base Point)
-    # gmssl 内部通常将曲线参数存在内部对象中
-    # P = d * G
-    P = sm2_crypt.ecc.ecc_mul(d, sm2_crypt.ecc.G)
+    # 3. 此时公钥已经派生到了属性中
+    full_pub = sm2_crypt.public_key
     
-    # 3. 提取 X 和 Y 坐标，并补齐为 64 字符（32 字节）
-    x_hex = hex(P.x)[2:].zfill(64)
-    y_hex = hex(P.y)[2:].zfill(64)
+    # 4. 按照 C++ 要求提取 X+Y (去掉 '04' 前缀)
+    if full_pub.startswith('04') and len(full_pub) == 130:
+        return full_pub[2:]
     
-    return x_hex + y_hex
+    # 如果已经是 128 位，直接返回
+    if len(full_pub) == 128:
+        return full_pub
+
+    raise RuntimeError(f"Failed to derive SM2 public key. Got: {full_pub}")
 
 def calc_create2_address(sender: str, salt: str, bytecode: str) -> str:
     sender = sender.lower().replace('0x', '')
