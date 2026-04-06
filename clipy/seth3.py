@@ -133,12 +133,44 @@ def test_contract_call_contract(w3, MY, KEY):
 
     print(f"Bridge Total Requests: {bridge.functions.totalRequests().call()}")
 
-def test_transfer(w3, MY, KEY):
+def test_transfer(w3, MY, KEY, dest):
     print("\n--- TEST CASE 2: Standard Transfer ---")
-    dest = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
-    print(f"Balance before: {w3.client.get_balance(dest)}")
-    receipt = w3.seth.send_transaction({'to': dest, 'value': 500000000}, KEY)
-    print(f"Transfer Status: {receipt['status']} | Balance after: {w3.client.get_balance(dest)}")
+    # dest = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
+    transfer_amount = 500000000
+    
+    # 1. 记录转账前的余额
+    balance_before = w3.client.get_balance(dest)
+    print(f"Balance before: {balance_before}")
+    
+    # 2. 执行转账交易
+    receipt = w3.seth.send_transaction({'to': dest, 'value': transfer_amount}, KEY)
+    
+    # 3. 验证交易状态
+    if receipt.get('status') == 0:
+        print(f"Transfer Sent Successfully. Hash: {receipt.get('tx_hash', 'N/A')}")
+        
+        count = 0
+        while count < 30:
+            # 给节点一点同步时间（可选，取决于你的 RPC 响应速度）
+            time.sleep(2) 
+            
+            # 4. 获取转账后的余额
+            balance_after = w3.client.get_balance(dest)
+            print(f"Balance after: {balance_after}")
+            
+            # 5. 余额合法性校验逻辑
+            expected_balance = balance_before + transfer_amount
+            if balance_after == expected_balance:
+                print(f"✅ Balance Verification PASSED: {balance_before} + {transfer_amount} == {balance_after}")
+                break
+            else:
+                print(f"❌ Balance Verification FAILED!")
+                print(f"   Expected: {expected_balance}")
+                print(f"   Actual:   {balance_after}")
+
+            count += 1
+    else:
+        print(f"❌ Transfer Failed with status: {receipt.get('status')} | Msg: {receipt.get('msg')}")
 
 def test_prefund(w3, contract, KEY):
     my_address = w3.client.get_address(KEY)
@@ -481,24 +513,24 @@ def test_gmssl_contract_flow(w3, GM_KEY):
 
 def gmssl_sign_test():
     IP, PORT = "127.0.0.1", 23001
-    # 示例国密私钥
-    GM_KEY = "c4b9e7a21d5f83c0a1e4d6b9f2a1e5c8d3b7a9f0e1d2c3b4a5968778695a4b3c"
-    
     w3 = SethWeb3Mock(IP, PORT)
-
-    # 基础转账测试 (显式传公钥)
+    MY = w3.client.get_address("71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6")
+    test_transfer(
+        w3, MY, 
+        "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6", 
+        "b3d65887ec782c995b2d4b49eb1bbc0e675099b3")
+    
+    GM_KEY = "c4b9e7a21d5f83c0a1e4d6b9f2a1e5c8d3b7a9f0e1d2c3b4a5968778695a4b3c"
     test_gmssl_transfer(w3, GM_KEY)
-    
-    # 合约全流程测试 (利用 gm_mode 自动派生)
     test_gmssl_contract_flow(w3, GM_KEY)
-    
+
 def ecdsa_sign_test():
     IP, PORT, KEY = "127.0.0.1", 23001, "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
     w3 = SethWeb3Mock(IP, PORT)
     MY = w3.client.get_address(KEY)
 
     test_contract_call_contract(w3, MY, KEY)
-    test_transfer(w3, MY, KEY)
+    test_transfer(w3, MY, KEY, "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b")
     test_library_with_contrcat(w3, MY, KEY)
     test_ecdsa_prefund_full_flow(w3, MY, KEY)
 
