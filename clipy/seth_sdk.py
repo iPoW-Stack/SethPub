@@ -33,7 +33,7 @@ class StepType(IntEnum):
     kConsensusCreateGenesisAcount = 4 # Genesis account creation
     kConsensusLocalTos = 5          # Cross-shard confirmation (Receiver-side accumulation)
     kCreateContract = 6             # Contract deployment/creation
-    kContractGasPrefund = 7      # Set contract call gas prefund
+    kContractGasPrefund = 7         # Set contract call gas prefund
     kContractExcute = 8             # Execute contract call
     kRootCreateAddress = 9          # Root network address creation
     kStatistic = 12                 # Statistical transaction
@@ -42,7 +42,7 @@ class StepType(IntEnum):
     kCross = 15                     # Cross-shard anti-loss block replenishment
     kRootCross = 16                 # Root network cross-shard replenishment
     kPoolStatisticTag = 17          # End tag for transaction pool statistics round
-    kContractGasRefund = 18        # contract call gas refund
+    kContractRefund = 18            # contract call gas refund
 
 class MessageHandleStatus(IntEnum):
     """Status codes for message handling and EVM execution."""
@@ -307,7 +307,7 @@ class SethContract:
                 
             return self.client.wait_for_receipt(tx_hash)
     
-    def refund(self, amount: int, private_key: str, oqs_pubkey: Optional[str] = None) -> dict:
+    def refund(self, private_key: str, oqs_pubkey: Optional[str] = None) -> dict:
             """
             Exposes prefund as a method of the contract object.
             Example usage: contract.prefund(1000, "0x...")
@@ -316,7 +316,6 @@ class SethContract:
                 raise ValueError("Contract address is not set. Deploy or bind first.")
 
             is_oqs = len(private_key) > 128
-            
             if is_oqs:
                 if not oqs_pubkey:
                     raise ValueError("OQS detected, but 'contract.oqs_pubkey' is not set.")
@@ -325,13 +324,13 @@ class SethContract:
                     private_key, 
                     oqs_pubkey, 
                     self.address, 
-                    StepType.kContractGasRefund
+                    StepType.kContractRefund
                 )
             else:
                 tx_hash = self.client.send_transaction_auto(
                     private_key, 
                     self.address, 
-                    StepType.kContractGasRefund
+                    StepType.kContractRefund
                 )
                 
             return self.client.wait_for_receipt(tx_hash)

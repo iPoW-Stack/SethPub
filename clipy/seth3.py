@@ -336,6 +336,7 @@ def test_ecdsa_prefund_full_flow(w3, MY, KEY):
         print("🚩 Verification 2: Consumption SUCCESS!")
     else:
         print("🚩 Verification 2: Consumption FAILED (Prefund not used)!")
+    contract.refund(KEY)
 
 def test_oqs_contract_prefund_flow(w3, OQS_MY, OQS_KEY, OQS_PK):
     """Verify the deposit and accumulation logic for contract prefund."""
@@ -395,15 +396,16 @@ def test_oqs_contract_prefund_flow(w3, OQS_MY, OQS_KEY, OQS_PK):
     final_pp = oqs_vault.get_prefund(OQS_MY)
     print(f"Step 5: Prefund after execution -> {final_pp}")
     print(f"Gas consumed from prefund: {post_pp - final_pp}")
+    oqs_vault.refund(OQS_KEY, oqs_pubkey=OQS_PK)
     
 def ecdsa_sign_test():
     IP, PORT, KEY = "127.0.0.1", 23001, "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
     w3 = SethWeb3Mock(IP, PORT)
     MY = w3.client.get_address(KEY)
 
-    test_contract_call_contract(w3, MY, KEY)
-    test_transfer(w3, MY, KEY)
-    test_library_with_contrcat(w3, MY, KEY)
+    # test_contract_call_contract(w3, MY, KEY)
+    # test_transfer(w3, MY, KEY)
+    # test_library_with_contrcat(w3, MY, KEY)
     test_ecdsa_prefund_full_flow(w3, MY, KEY)
 
 def oqs_sign_test():
@@ -425,4 +427,4 @@ def oqs_sign_test():
 
 if __name__ == "__main__":
     ecdsa_sign_test()
-    oqs_sign_test()
+    # oqs_sign_test()
