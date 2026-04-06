@@ -848,8 +848,7 @@ class SethClient:
         msg = bytearray()
         msg.extend(struct.pack('<Q', nonce))
 
-        pk_bytes = bytes.fromhex(pub_key_hex.replace('0x',''))
-        msg.extend(pk_bytes)
+        msg.extend(bytes.fromhex(pub_key_hex.replace('0x','')))
         msg.extend(bytes.fromhex(to.replace('0x','')))
         msg.extend(struct.pack('<Q', amount))
         msg.extend(struct.pack('<Q', 5000000)) # gas_limit
@@ -897,4 +896,5 @@ class SethClient:
         if prefund: data["prefund"] = str(prefund)
 
         requests.post(self.gmssl_url, data=data)
+        print(f"send data: {data}")
         return txh_hex
