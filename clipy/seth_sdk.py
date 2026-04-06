@@ -461,6 +461,7 @@ class SethContract:
                 # 如果标记了 gm_mode 但没传公钥，则通过私钥自动派生
                 gm_pubkey = get_sm2_public_key(private_key)
             
+            print(f"gm_pubkey: {gm_pubkey}")
             tx_hash = self.client.send_gmssl_transaction(
                 private_key, 
                 gm_pubkey, 

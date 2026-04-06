@@ -482,6 +482,7 @@ def test_gmssl_contract_flow(w3, GM_KEY):
     
     # 2. 计算 Sender 地址用于 deploy 参数
     gm_pubkey = get_sm2_public_key(GM_KEY)
+    print(f"GmSSL Sender Address pk: {gm_pubkey}")
     GM_MY = w3.client.get_gmssl_address(gm_pubkey)
     
     # 3. 部署合约
