@@ -6,7 +6,7 @@ import requests
 import binascii
 from gmssl import sm2, sm3, func
 
-from seth_sdk import SethWeb3Mock, StepType, compile_and_link
+from seth_sdk import SethWeb3Mock, StepType, compile_and_link, get_sm2_public_key
 
 # --- 5. Main Execution ---
 PROBE_POOL_SOL = """
@@ -399,116 +399,91 @@ def test_oqs_contract_prefund_flow(w3, OQS_MY, OQS_KEY, OQS_PK):
     print(f"Step 5: Prefund after execution -> {final_pp}")
     print(f"Gas consumed from prefund: {post_pp - final_pp}")
     oqs_vault.refund(OQS_KEY, oqs_pubkey=OQS_PK)
-    
-def get_sm2_public_key(private_key_hex: str) -> str:
-    """
-    针对 gmssl 3.2.2 的公钥提取方案。
-    逻辑：利用 sm2 对象的 sign 逻辑或内部 key 属性提取公钥点坐标。
-    """
-    # 3.2.2 版本中，初始化时传入私钥，它会自动在内部计算出公钥
-    # 虽然没有 .ecc，但公钥点存储在 .public_key 属性中
-    sm2_crypt = sm2.CryptSM2(public_key='', private_key=private_key_hex)
-    
-    # 在 3.x 版本中，sm2_crypt.public_key 存储的是十六进制字符串
-    # 通常格式为 '04' + X + Y (共 130 字符)
-    full_pub = sm2_crypt.public_key
-    
-    # 按照 C++ 源码要求：只需要 X + Y (64字节 / 128字符)，去掉开头的 '04'
-    if full_pub.startswith('04') and len(full_pub) == 130:
-        return full_pub[2:]
-    
-    return full_pub
-
-def get_seth_gm_address(pub_key_raw_hex: str) -> str:
-    """
-    完全匹配 C++ 源码逻辑:
-    str_addr_ = common::Hash::sm3(str_pk_).substr(0, 20);
-    """
-    # 将 64 字节原始公钥 (X+Y) 转为字节流
-    pub_bytes = binascii.unhexlify(pub_key_raw_hex)
-    
-    # 使用 sm3 计算哈希
-    # 注意: gmssl.sm3.sm3_hash 接收 list 类型字节，返回 hex 字符串
-    hash_hex = sm3.sm3_hash(list(pub_bytes))
-    
-    # 取前 20 字节 (40 个字符)
-    return hash_hex[:40]
-
+ 
 def test_gmssl_transfer(w3, GM_KEY):
+    """
+    测试国密标准转账
+    验证：私钥派生、SM3地址计算、SM2(R+S)签名发送
+    """
     print("\n--- TEST CASE: GmSSL Standard Transfer ---")
     dest = "0000000000000000000000000000000000000001"
     
-    # 1. 获取 64 字节公钥 (不带 04)
+    # 1. 自动从私钥派生公钥 (SDK 内部调用 get_sm2_public_key)
     gm_pubkey = get_sm2_public_key(GM_KEY)
     
-    # 2. 修复：手动计算国密地址，不调用 w3.client.get_gmssl_address
-    GM_MY = get_seth_gm_address(gm_pubkey)
-
+    # 2. 自动计算国密地址 (SDK 内部调用 get_gmssl_address)
+    GM_MY = w3.client.get_gmssl_address(gm_pubkey)
     print(f"GmSSL Sender Address: {GM_MY}")
-    print(f"Dest Balance before: {w3.client.get_balance(dest)}")
 
     # 3. 构造交易字典
     tx_dict = {
         'to': dest,
         'value': 10000,
-        'gm_pubkey': gm_pubkey
+        'gm_pubkey': gm_pubkey  # 传入公钥供 SDK 识别国密模式
     }
 
-    # 4. 发起交易 (假设 w3.seth 支持 send_gmssl_transaction)
+    # 4. 调用 SDK 显式国密接口
+    print("Sending GmSSL Transfer...")
     receipt = w3.seth.send_gmssl_transaction(tx_dict, GM_KEY)
 
-    print(f"GmSSL Transfer Status: {receipt['status']}")
-    if receipt['status'] != 0:
-        print(f"Error Msg: {receipt.get('msg')}")
-    print(f"Dest Balance after: {w3.client.get_balance(dest)}")
-    
-def test_gmssl_contract_deploy_and_call(w3, GM_KEY):
-    """使用国密账户部署并调用合约 (修复 SDK 方法缺失问题)"""
-    print("\n--- TEST CASE: GmSSL Contract Deploy & Call ---")
+    print(f"GmSSL Transfer Status: {receipt.get('status')}")
+    if receipt.get('status') == 0:
+        print(f"✅ Success! New balance of {dest}: {w3.client.get_balance(dest)}")
+    else:
+        print(f"❌ Failed: {receipt.get('msg')}")
 
+def test_gmssl_contract_flow(w3, GM_KEY):
+    """
+    测试国密账户的合约全流程：部署 -> 预付Gas -> 调用
+    """
+    print("\n--- TEST CASE: GmSSL Contract Full Flow ---")
+
+    # 1. 准备合约逻辑
     src = """
     pragma solidity ^0.8.0;
     contract GmVault {
-        uint256 public val;
-        function set(uint256 v) public { val = v; }
+        uint256 public data;
+        event DataChanged(uint256 newValue);
+        function store(uint256 v) public {
+            data = v;
+            emit DataChanged(v);
+        }
     }
     """
     bin_code, abi = compile_and_link(src, "GmVault")
     
-    # 1. 获取 64 字节原始公钥 (X+Y)
+    # 2. 环境准备
     gm_pubkey = get_sm2_public_key(GM_KEY)
+    GM_MY = w3.client.get_gmssl_address(gm_pubkey)
     
-    # 2. 修复：手动计算国密地址，不再调用 w3.client.get_gmssl_address
-    # 匹配 C++: common::Hash::sm3(str_pk_).substr(0, 20)
-    GM_MY = get_seth_gm_address(gm_pubkey) 
-
-    print(f"GmSSL Sender: {GM_MY}")
-
     # 3. 部署合约
-    # 注意：在 deploy 参数中显式传入 gm_pubkey
+    print("[*] Deploying GmVault with GmSSL...")
     gm_vault = w3.seth.contract(abi=abi, bytecode=bin_code)
-    try:
-        gm_vault.deploy({
-            'from': GM_MY,
-            'salt': secrets.token_hex(31) + 'gm02',
-            'gm_pubkey': gm_pubkey
-        }, GM_KEY)
-        print(f"GmSSL Contract Deployed at: {gm_vault.address}")
-    except Exception as e:
-        print(f"❌ Deployment failed: {e}")
-        return
+    gm_vault.deploy({
+        'from': GM_MY,
+        'salt': secrets.token_hex(31) + 'gm_test',
+        'gm_pubkey': gm_pubkey
+    }, GM_KEY)
+    print(f"GmSSL Contract at: {gm_vault.address}")
 
-    # 4. 调用合约
-    print("Sending GmSSL Contract Call...")
-    # 在 transact 内部通过 gm_pubkey 触发国密签名流程
-    receipt = gm_vault.functions.set(999).transact(GM_KEY, gm_pubkey=gm_pubkey)
+    # 4. 预付 Gas (Prefund)
+    print("[*] Setting Gas Prefund...")
+    # 注意：SethContract.prefund 已经支持 gm_pubkey 参数
+    gm_vault.prefund(50000000, GM_KEY, gm_pubkey=gm_pubkey)
+
+    # 5. 调用合约 (Transact)
+    print("[*] Calling store(520) via SM2 Signature...")
+    # transact 会识别 gm_pubkey 并自动处理 SM3 摘要和 SM2 签名
+    receipt = gm_vault.functions.store(520).transact(GM_KEY, gm_pubkey=gm_pubkey)
 
     if receipt.get('status') == 0:
-        # 注意：call() 内部可能也需要处理国密地址逻辑，如果 SDK 自动处理则无需修改
-        current_val = gm_vault.functions.val().call()
-        print(f"✅ GmSSL Call Success! New Data: {current_val}")
+        # 6. 验证结果
+        result = gm_vault.functions.data().call()
+        print(f"✅ Contract Call Success! Data in vault: {result}")
+        for event in receipt.get('decoded_events', []):
+            print(f"🔔 Event: {event['event']} -> {event['args']}")
     else:
-        print(f"❌ GmSSL Call Failed: {receipt.get('msg')}")
+        print(f"❌ Contract Call Failed: {receipt.get('msg')}")
 
 def gmssl_sign_test():
     IP, PORT = "127.0.0.1", 23001
@@ -518,7 +493,7 @@ def gmssl_sign_test():
     w3 = SethWeb3Mock(IP, PORT)
 
     test_gmssl_transfer(w3, GM_KEY)
-    test_gmssl_contract_deploy_and_call(w3, GM_KEY)
+    test_gmssl_contract_flow(w3, GM_KEY)
 
 def ecdsa_sign_test():
     IP, PORT, KEY = "127.0.0.1", 23001, "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"

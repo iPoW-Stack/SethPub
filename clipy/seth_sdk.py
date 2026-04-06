@@ -6,6 +6,8 @@ import hashlib
 import json
 import time
 import base64
+import binascii
+import struct
 from enum import IntEnum
 from typing import Any, Optional, Union, Dict, List
 
@@ -16,6 +18,12 @@ from eth_utils import to_checksum_address
 from Crypto.Hash import keccak
 from ecdsa import SigningKey, SECP256k1
 from ecdsa.util import sigencode_string_canonize
+
+# GMSSL Support
+try:
+    from gmssl import sm2, sm3, func
+except ImportError:
+    sm2 = None
 
 try:
     import oqs
@@ -136,6 +144,25 @@ class MessageHandleStatus(IntEnum):
     kConsensusJoinElectThreashTInvalid = 5052
 
 # --- 2. Utilities ---
+   
+def get_sm2_public_key(private_key_hex: str) -> str:
+    """
+    针对 gmssl 3.2.2 的公钥提取方案。
+    逻辑：利用 sm2 对象的 sign 逻辑或内部 key 属性提取公钥点坐标。
+    """
+    # 3.2.2 版本中，初始化时传入私钥，它会自动在内部计算出公钥
+    # 虽然没有 .ecc，但公钥点存储在 .public_key 属性中
+    sm2_crypt = sm2.CryptSM2(public_key='', private_key=private_key_hex)
+    
+    # 在 3.x 版本中，sm2_crypt.public_key 存储的是十六进制字符串
+    # 通常格式为 '04' + X + Y (共 130 字符)
+    full_pub = sm2_crypt.public_key
+    
+    # 按照 C++ 源码要求：只需要 X + Y (64字节 / 128字符)，去掉开头的 '04'
+    if full_pub.startswith('04') and len(full_pub) == 130:
+        return full_pub[2:]
+    
+    return full_pub
 
 def calc_create2_address(sender: str, salt: str, bytecode: str) -> str:
     sender = sender.lower().replace('0x', '')
@@ -428,6 +455,18 @@ class SethWeb3Mock:
         )
         return self.client.wait_for_receipt(tx_hash)
 
+    def send_gmssl_transaction(self, tx_dict: dict, private_key: str) -> dict:
+        # 如果 tx_dict 没给公钥，则自动生成
+        pubkey = tx_dict.get('gm_pubkey')
+        if not pubkey:
+            pubkey = get_sm2_public_key(private_key)
+            
+        tx_hash = self.client.send_gmssl_transaction(
+            private_key, pubkey, tx_dict['to'], StepType.kNormalFrom,
+            amount=tx_dict.get('value', 0)
+        )
+        return self.client.wait_for_receipt(tx_hash)
+    
 # --- 4. Base Client ---
 
 class SethClient:
@@ -702,3 +741,69 @@ class SethClient:
         except Exception as e:
             print(f"DEBUG: Nonce query failed for {a}. Response text: '{response.text}'")
             return 0
+
+    def get_gmssl_address(self, pubkey_hex: str) -> str:
+        """
+        匹配 C++: str_addr_ = common::Hash::sm3(str_pk_).substr(0, 20)
+        """
+        import binascii
+        # 将 64 字节公钥转为字节流
+        pub_bytes = binascii.unhexlify(pubkey_hex.replace('0x', ''))
+        # 计算 SM3 哈希 (sm3_hash 接收 list 类型)
+        hash_hex = sm3.sm3_hash(list(pub_bytes))
+        # 取前 20 字节 (40位十六进制字符)
+        return hash_hex[:40]
+    
+    def send_gmssl_transaction(self, pri_key_hex, pub_key_hex, to, step, amount=0, contract_code='', input_hex='', prefund=0):
+        """
+        发送国密交易：构造消息 -> SM3摘要 -> SM2签名 -> 发送
+        """
+        # 1. 准备地址和 Nonce
+        my_addr = self.get_gmssl_address(pub_key_hex)
+        nonce_addr = to + my_addr if (step in [StepType.kContractExcute, StepType.kContractRefund]) else my_addr
+        
+        try:
+            r = requests.post(self.query_url, data={"address": nonce_addr}).json()
+            nonce = int(r.get("nonce", 0)) + 1
+        except: nonce = 1
+
+        # 2. 构造消息二进制 (匹配 C++ 序列化顺序)
+        msg = bytearray()
+        msg.extend(struct.pack('<Q', nonce))
+        msg.extend(binascii.unhexlify(pub_key_hex))
+        msg.extend(binascii.unhexlify(to.replace('0x','')))
+        msg.extend(struct.pack('<Q', amount))
+        msg.extend(struct.pack('<Q', 5000000)) # gas_limit
+        msg.extend(struct.pack('<Q', 1))       # gas_price
+        msg.extend(struct.pack('<Q', int(step)))
+        if contract_code: msg.extend(binascii.unhexlify(contract_code))
+        if input_hex: msg.extend(binascii.unhexlify(input_hex))
+        if prefund > 0: msg.extend(struct.pack('<Q', prefund))
+
+        # 3. 计算 SM3 摘要作为签名对象
+        txh_hex = sm3.sm3_hash(list(msg))
+        
+        # 4. SM2 签名 (R + S)
+        sm2_crypt = sm2.CryptSM2(public_key=pub_key_hex, private_key=pri_key_hex)
+        # 获取签名结果，gmssl 库直接返回 R+S 拼接的十六进制字符串
+        # 注意：这里需要根据链端对签名格式的要求，可能需要 binascii.unhexlify
+        sig_hex = sm2_crypt.sign(txh_hex, secrets.token_hex(32))
+
+        # 5. 组装数据并 POST
+        data = {
+            "nonce": str(nonce),
+            "pubkey": pub_key_hex,
+            "to": to.replace('0x',''),
+            "amount": str(amount),
+            "gas_limit": "5000000",
+            "gas_price": "1",
+            "shard_id": "0",
+            "type": str(int(step)),
+            "sign": sig_hex  # 后端 C++ 直接 memcpy(sig.r, sign.c_str(), 32)
+        }
+        if contract_code: data["bytes_code"] = contract_code
+        if input_hex: data["input"] = input_hex
+        if prefund: data["pepay"] = str(prefund)
+
+        requests.post(self.tx_url, data=data)
+        return txh_hex
