@@ -455,7 +455,7 @@ def test_gmssl_transfer(w3, GM_KEY):
 
     # 3. 发起交易
     print("Sending GmSSL Transfer...")
-    receipt = w3.seth.send_transaction(tx_dict, GM_KEY)
+    receipt = w3.seth.send_gmssl_transaction(tx_dict, GM_KEY)
 
     print(f"GmSSL Transfer Status: {receipt.get('status')}")
     if receipt.get('status') == 0:
@@ -525,7 +525,7 @@ def gmssl_sign_test():
     test_transfer(
         w3, MY, 
         "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6", 
-        "b3d65887ec782c995b2d4b49eb1bbc0e675099b3")
+        "19b46cb80e027a99ab41d60e68b8a8a096f50869")
     
     GM_KEY = "c4b9e7a21d5f83c0a1e4d6b9f2a1e5c8d3b7a9f0e1d2c3b4a5968778695a4b3c"
     test_gmssl_transfer(w3, GM_KEY)
