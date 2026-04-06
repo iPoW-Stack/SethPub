@@ -303,61 +303,50 @@ class SethContract:
     def _create_method(self, item):
         return lambda *args: SethMethod(self, item)(*args)
 
-    def prefund(self, amount: int, private_key: str, oqs_pubkey: Optional[str] = None) -> dict:
+    def prefund(self, amount: int, private_key: str, oqs_pubkey: Optional[str] = None, gm_mode: bool = False) -> dict:
             """
             Exposes prefund as a method of the contract object.
-            Example usage: contract.prefund(1000, "0x...")
+            Supports standard, OQS, and GMSSL modes.
             """
             if not self.address:
                 raise ValueError("Contract address is not set. Deploy or bind first.")
 
-            is_oqs = len(private_key) > 128
-            
-            if is_oqs:
+            if gm_mode:
+                gm_pubkey = get_sm2_public_key(private_key)
+                tx_hash = self.client.send_gmssl_transaction(
+                    private_key, gm_pubkey, self.address, StepType.kContractGasPrefund, prefund=amount
+                )
+            elif len(private_key) > 128:
                 if not oqs_pubkey:
-                    raise ValueError("OQS detected, but 'contract.oqs_pubkey' is not set.")
-                
+                    raise ValueError("OQS detected, but 'oqs_pubkey' is not set.")
                 tx_hash = self.client.send_oqs_transaction(
-                    private_key, 
-                    oqs_pubkey, 
-                    self.address, 
-                    StepType.kContractGasPrefund, 
-                    prefund=amount
+                    private_key, oqs_pubkey, self.address, StepType.kContractGasPrefund, prefund=amount
                 )
             else:
                 tx_hash = self.client.send_transaction_auto(
-                    private_key, 
-                    self.address, 
-                    StepType.kContractGasPrefund, 
-                    prefund=amount
+                    private_key, self.address, StepType.kContractGasPrefund, prefund=amount
                 )
                 
             return self.client.wait_for_receipt(tx_hash)
     
-    def refund(self, private_key: str, oqs_pubkey: Optional[str] = None) -> dict:
-            """
-            Exposes prefund as a method of the contract object.
-            Example usage: contract.prefund(1000, "0x...")
-            """
+    def refund(self, private_key: str, oqs_pubkey: Optional[str] = None, gm_mode: bool = False) -> dict:
             if not self.address:
-                raise ValueError("Contract address is not set. Deploy or bind first.")
+                raise ValueError("Contract address is not set.")
 
-            is_oqs = len(private_key) > 128
-            if is_oqs:
+            if gm_mode:
+                gm_pubkey = get_sm2_public_key(private_key)
+                tx_hash = self.client.send_gmssl_transaction(
+                    private_key, gm_pubkey, self.address, StepType.kContractRefund
+                )
+            elif len(private_key) > 128:
                 if not oqs_pubkey:
-                    raise ValueError("OQS detected, but 'contract.oqs_pubkey' is not set.")
-                
+                    raise ValueError("OQS detected, but 'oqs_pubkey' is not set.")
                 tx_hash = self.client.send_oqs_transaction(
-                    private_key, 
-                    oqs_pubkey, 
-                    self.address, 
-                    StepType.kContractRefund
+                    private_key, oqs_pubkey, self.address, StepType.kContractRefund
                 )
             else:
                 tx_hash = self.client.send_transaction_auto(
-                    private_key, 
-                    self.address, 
-                    StepType.kContractRefund
+                    private_key, self.address, StepType.kContractRefund
                 )
                 
             return self.client.wait_for_receipt(tx_hash)

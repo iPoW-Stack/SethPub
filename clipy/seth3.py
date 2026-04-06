@@ -403,87 +403,81 @@ def test_oqs_contract_prefund_flow(w3, OQS_MY, OQS_KEY, OQS_PK):
 def test_gmssl_transfer(w3, GM_KEY):
     """
     测试国密标准转账
-    验证：私钥派生、SM3地址计算、SM2(R+S)签名发送
+    利用 SDK 内部逻辑：传入 gm_pubkey 自动切换 SM2/SM3
     """
     print("\n--- TEST CASE: GmSSL Standard Transfer ---")
     dest = "0000000000000000000000000000000000000001"
     
-    # 1. 自动从私钥派生公钥 (SDK 内部调用 get_sm2_public_key)
+    # 1. 自动从私钥派生公钥和地址用于日志展示
     gm_pubkey = get_sm2_public_key(GM_KEY)
-    
-    # 2. 自动计算国密地址 (SDK 内部调用 get_gmssl_address)
+    # 调用 SDK 内部方法计算地址 (SM3 截断)
     GM_MY = w3.client.get_gmssl_address(gm_pubkey)
     print(f"GmSSL Sender Address: {GM_MY}")
 
-    # 3. 构造交易字典
+    # 2. 构造交易字典
     tx_dict = {
         'to': dest,
         'value': 10000,
-        'gm_pubkey': gm_pubkey  # 传入公钥供 SDK 识别国密模式
+        'gm_pubkey': gm_pubkey  # 触发 SDK 的 send_gmssl_transaction 逻辑
     }
 
-    # 4. 调用 SDK 显式国密接口
+    # 3. 发起交易
     print("Sending GmSSL Transfer...")
-    receipt = w3.seth.send_gmssl_transaction(tx_dict, GM_KEY)
+    receipt = w3.seth.send_transaction(tx_dict, GM_KEY)
 
     print(f"GmSSL Transfer Status: {receipt.get('status')}")
     if receipt.get('status') == 0:
-        print(f"✅ Success! New balance of {dest}: {w3.client.get_balance(dest)}")
+        print(f"✅ Success! New balance: {w3.client.get_balance(dest)}")
     else:
         print(f"❌ Failed: {receipt.get('msg')}")
 
 def test_gmssl_contract_flow(w3, GM_KEY):
     """
     测试国密账户的合约全流程：部署 -> 预付Gas -> 调用
+    完全利用 gm_mode=True 自动派生公钥
     """
-    print("\n--- TEST CASE: GmSSL Contract Full Flow ---")
+    print("\n--- TEST CASE: GmSSL Contract Full Flow (Auto-Derive) ---")
 
-    # 1. 准备合约逻辑
+    # 1. 准备合约
     src = """
     pragma solidity ^0.8.0;
     contract GmVault {
         uint256 public data;
-        event DataChanged(uint256 newValue);
-        function store(uint256 v) public {
-            data = v;
-            emit DataChanged(v);
-        }
+        function store(uint256 v) public { data = v; }
     }
     """
     bin_code, abi = compile_and_link(src, "GmVault")
     
-    # 2. 环境准备
+    # 2. 计算 Sender 地址用于 deploy 参数
     gm_pubkey = get_sm2_public_key(GM_KEY)
     GM_MY = w3.client.get_gmssl_address(gm_pubkey)
     
     # 3. 部署合约
-    print("[*] Deploying GmVault with GmSSL...")
+    # deploy 内部会判断 gm_pubkey 是否存在，如果存在则走国密
+    print("[*] Deploying GmVault via GmSSL...")
     gm_vault = w3.seth.contract(abi=abi, bytecode=bin_code)
     gm_vault.deploy({
         'from': GM_MY,
-        'salt': secrets.token_hex(31) + 'gm_test',
+        'salt': secrets.token_hex(31) + 'gm_auto',
         'gm_pubkey': gm_pubkey
     }, GM_KEY)
     print(f"GmSSL Contract at: {gm_vault.address}")
 
     # 4. 预付 Gas (Prefund)
-    print("[*] Setting Gas Prefund...")
-    # 注意：SethContract.prefund 已经支持 gm_pubkey 参数
-    gm_vault.prefund(50000000, GM_KEY, gm_pubkey=gm_pubkey)
+    # 利用修改后的 SDK：只需传 gm_mode=True
+    print("[*] Setting Gas Prefund (gm_mode=True)...")
+    gm_vault.prefund(50000000, GM_KEY, gm_mode=True)
 
     # 5. 调用合约 (Transact)
-    print("[*] Calling store(520) via SM2 Signature...")
-    # transact 会识别 gm_pubkey 并自动处理 SM3 摘要和 SM2 签名
-    receipt = gm_vault.functions.store(520).transact(GM_KEY, gm_pubkey=gm_pubkey)
+    # 利用修改后的 SDK：只需传 gm_mode=True，内部自动调 get_sm2_public_key
+    print("[*] Calling store(888) via SM2 (gm_mode=True)...")
+    receipt = gm_vault.functions.store(888).transact(GM_KEY, gm_mode=True)
 
     if receipt.get('status') == 0:
-        # 6. 验证结果
         result = gm_vault.functions.data().call()
-        print(f"✅ Contract Call Success! Data in vault: {result}")
-        for event in receipt.get('decoded_events', []):
-            print(f"🔔 Event: {event['event']} -> {event['args']}")
+        print(f"✅ Success! Data in vault: {result}")
     else:
-        print(f"❌ Contract Call Failed: {receipt.get('msg')}")
+        print(f"❌ Call Failed: {receipt.get('msg')}")
 
 def gmssl_sign_test():
     IP, PORT = "127.0.0.1", 23001
@@ -492,9 +486,12 @@ def gmssl_sign_test():
     
     w3 = SethWeb3Mock(IP, PORT)
 
+    # 基础转账测试 (显式传公钥)
     test_gmssl_transfer(w3, GM_KEY)
+    
+    # 合约全流程测试 (利用 gm_mode 自动派生)
     test_gmssl_contract_flow(w3, GM_KEY)
-
+    
 def ecdsa_sign_test():
     IP, PORT, KEY = "127.0.0.1", 23001, "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
     w3 = SethWeb3Mock(IP, PORT)
