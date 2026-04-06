@@ -782,12 +782,12 @@ class SethClient:
 
         # 3. 计算 SM3 摘要作为签名对象
         txh_hex = sm3.sm3_hash(list(msg))
-        
+        txh_bytes = binascii.unhexlify(txh_hex)
         # 4. SM2 签名 (R + S)
         sm2_crypt = sm2.CryptSM2(public_key=pub_key_hex, private_key=pri_key_hex)
         # 获取签名结果，gmssl 库直接返回 R+S 拼接的十六进制字符串
         # 注意：这里需要根据链端对签名格式的要求，可能需要 binascii.unhexlify
-        sig_hex = sm2_crypt.sign(txh_hex, secrets.token_hex(32))
+        sig_hex = sm2_crypt.sign(txh_bytes, secrets.token_hex(32))
 
         # 5. 组装数据并 POST
         data = {
