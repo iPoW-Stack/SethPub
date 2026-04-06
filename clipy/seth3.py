@@ -559,7 +559,7 @@ def oqs_sign_test():
     test_oqs_contract_prefund_flow(w3, MY_OQS, OQS_KEY, OQS_PK)
 
 if __name__ == "__main__":
-    # ecdsa_sign_test()
-    # oqs_sign_test()
+    ecdsa_sign_test()
+    oqs_sign_test()
     gmssl_sign_test()
  
