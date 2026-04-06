@@ -481,7 +481,8 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
             auto tmp_acc_ptr = acc_mgr_.lock();
             protos::AddressInfoPtr address_info = nullptr;
             std::string addr = security_->GetAddressWithPublicKey(tx_msg.pubkey());
-            if (tx_msg.step() == pools::protobuf::kContractExcute) {
+            if (tx_msg.step() == pools::protobuf::kContractExcute || 
+                    tx_msg.step() == pools::protobuf::kContractRefund) {
                 addr = tx_msg.to() + addr;
             }
 
@@ -575,7 +576,7 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
             HandleSetContractPrefund(msg_ptr);
             break;
         case pools::protobuf::kContractRefund:
-            HandleSetContractRefund(msg_ptr);
+            HandleContractRefund(msg_ptr);
             break;
         case pools::protobuf::kRootCreateAddress: {
             if (tx_msg.to().size() != common::kUnicastAddressLength &&
@@ -997,43 +998,55 @@ void TxPoolManager::HandleSetContractPrefund(const transport::MessagePtr& msg_pt
 }
 
 
-void TxPoolManager::HandleSetContractRefund(const transport::MessagePtr& msg_ptr) {
-    auto& tx_msg = msg_ptr->header.tx_proto();
-    // user can't direct call contract, pay contract prefund and call contract direct
-    if (!tx_msg.contract_input().empty() ||
-            tx_msg.contract_prefund() < consensus::kCallContractDefaultUseGas) {
-        SETH_DEBUG("call contract not has valid contract input"
-            "and contract prefund invalid.");
+void TxPoolManager::HandleContractRefund(const transport::MessagePtr& msg_ptr) {
+    auto& header = msg_ptr->header;
+    auto& tx_msg = header.tx_proto();
+    // if (tx_msg.has_key() && tx_msg.key().size() > 0) {
+    //     SETH_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+    //     return;
+    // }
+
+    if (tx_msg.gas_price() <= 0 || tx_msg.gas_limit() <= consensus::kTransferGas) {
+        SETH_DEBUG("gas price and gas limit error %lu, %lu",
+            tx_msg.gas_price(), tx_msg.gas_limit());
+        SETH_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         return;
     }
 
     auto tmp_acc_ptr = acc_mgr_.lock();
+    auto from = security_->GetAddressWithPublicKey(tx_msg.pubkey());
     auto contract_info = tmp_acc_ptr->GetAccountInfo(tx_msg.to());
     if (contract_info == nullptr) {
-        msg_ptr->address_info = nullptr;
         SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         return;
     }
 
-    if (!UserTxValid(msg_ptr)) {
+    if (contract_info->destructed()) {
+        SETH_ERROR("contract destructed: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         return;
     }
 
-    if (msg_ptr->address_info->balance() <
-            tx_msg.amount() + tx_msg.contract_prefund() +
-            consensus::kCallContractDefaultUseGas * tx_msg.gas_price()) {
-        SETH_DEBUG("address %s balance invalid: %lu, transfer amount: %lu, "
-            "prefund: %lu, default call contract gas: %lu, from: %s, to: %s",
-            common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
-            msg_ptr->address_info->balance(),
-            tx_msg.amount(),
-            tx_msg.contract_prefund(),
-            consensus::kCallContractDefaultUseGas,
-            common::Encode::HexEncode(security_->GetAddressWithPublicKey(
-            msg_ptr->header.tx_proto().pubkey())).c_str(),
-            common::Encode::HexEncode(msg_ptr->header.tx_proto().to()).c_str());
+    auto prefund_id = tx_msg.to() + from;
+    msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(prefund_id);
+    if (msg_ptr->address_info == nullptr) {
+        SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         return;
     }
+
+    if (msg_ptr->address_info->sharding_id() != common::GlobalInfo::Instance()->network_id()) {
+        SETH_WARN("sharding error: %d, %d",
+            msg_ptr->address_info->sharding_id(),
+            common::GlobalInfo::Instance()->network_id());
+        SETH_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        msg_ptr->address_info = nullptr;
+        return;
+    }
+
+    msg_ptr->msg_hash = pools::GetTxMessageHash(tx_msg);
+    SETH_DEBUG("success add tx contract execute prepyament id: %s, prefund: %lu, nonce: %lu",
+        common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(), 
+        msg_ptr->address_info->balance(), 
+        msg_ptr->address_info->nonce());
 }
 
 bool TxPoolManager::UserTxValid(const transport::MessagePtr& msg_ptr) {

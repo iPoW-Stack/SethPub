@@ -151,7 +151,8 @@ uint32_t TxPool::SyncMissingBlocks(uint64_t now_tm_ms) {
 }
 
 int TxPool::AddTx(TxItemPtr& tx_ptr) {
-    if (tx_ptr->tx_info->step() == pools::protobuf::kContractExcute) {
+    if (tx_ptr->tx_info->step() == pools::protobuf::kContractExcute || 
+            tx_ptr->tx_info->step() == pools::protobuf::kContractRefund) {
         if (tx_ptr->address_info->addr().size() != common::kPreypamentAddressLength) {
             SETH_DEBUG("trace tx pool: %d, kContractExcute "
                 "failed add tx %s, key: %s, nonce: %lu, step: %d", 
@@ -176,7 +177,8 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
         common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(), 
         tx_ptr->tx_info->nonce(),
         (int32_t)tx_ptr->tx_info->step());
-    if (tx_ptr->tx_info->step() == pools::protobuf::kContractExcute) {
+    if (tx_ptr->tx_info->step() == pools::protobuf::kContractExcute || 
+            tx_ptr->tx_info->step() == pools::protobuf::kContractRefund) {
         assert(tx_ptr->address_info->addr().size() == common::kPreypamentAddressLength);
     }
     
@@ -193,7 +195,8 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
         auto addr = IsTxUseFromAddress(tx_info.step()) ? 
             tx_info.from() : 
             tx_info.to();
-        if (tx_info.step() == pools::protobuf::kContractExcute) {
+        if (tx_info.step() == pools::protobuf::kContractExcute || 
+                tx_info.step() == pools::protobuf::kContractRefund) {
             addr = tx_info.to() + tx_info.from();
         }
 

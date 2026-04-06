@@ -322,6 +322,7 @@ static inline bool IsTxUseFromAddress(uint32_t step) {
         case pools::protobuf::kConsensusRootTimeBlock:
         case pools::protobuf::kConsensusCreateGenesisAcount:
         case pools::protobuf::kContractExcute:
+        case pools::protobuf::kContractRefund:
         case pools::protobuf::kStatistic:
         case pools::protobuf::kPoolStatisticTag:
             return false;
@@ -330,7 +331,6 @@ static inline bool IsTxUseFromAddress(uint32_t step) {
         case pools::protobuf::kJoinElect:
         case pools::protobuf::kNormalFrom:
         case pools::protobuf::kContractGasPrefund:
-        case pools::protobuf::kContractRefund:
             return true;
         default:
             assert(false);

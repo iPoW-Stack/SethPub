@@ -461,7 +461,8 @@ Status BlockAcceptor::addTxsToPool(
         }
         
         // --- Serial Logic: DB Query & AddressInfo Retrieval (Must be serial) ---
-        if (tx->step() == pools::protobuf::kContractExcute) {
+        if (tx->step() == pools::protobuf::kContractExcute ||
+                tx->step() == pools::protobuf::kContractRefund) {
             address_info = view_block_chain_->ChainGetAccountInfo(tx->to() + from_id);
             contract_address_info = view_block_chain_->ChainGetAccountInfo(tx->to());
             if (!contract_address_info) {

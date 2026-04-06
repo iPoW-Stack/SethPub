@@ -428,7 +428,8 @@ void HotstuffManager::PopPoolsMessage() {
             auto from_id = security_ptr_->GetAddressWithPublicKey(tx->pubkey());
             uint32_t pool_index = common::kInvalidPoolIndex;
             protos::AddressInfoPtr address_info = nullptr;
-            if (tx->step() == pools::protobuf::kContractExcute) {
+            if (tx->step() == pools::protobuf::kContractExcute || 
+                    tx->step() == pools::protobuf::kContractRefund) {
                 pool_index = common::GetAddressPoolIndex(tx->to());
                 auto prefund_id = tx->to() + from_id;
                 address_info = pool_hotstuff_[pool_index]->view_block_chain()->ChainGetAccountInfo(prefund_id);
