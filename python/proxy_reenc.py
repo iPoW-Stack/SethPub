@@ -310,7 +310,7 @@ def run_comprehensive_proxy_demo():
     gid_1 = secrets.token_bytes(32)
     receipt = contract.functions.CreatePrivateAndPublicKeys(
         base_id, gid_1, b"content_v1", b"params_v1"
-    ).transact(PRIV_KEY, prepayment=10**8)
+    ).transact(PRIV_KEY, prefund=10**8)
     print(f"    Status: {receipt['status']} | Events: {len(receipt.get('decoded_events', []))}")
 
     # B. CreateReEncryptionKeys

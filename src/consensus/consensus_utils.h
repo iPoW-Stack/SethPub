@@ -72,7 +72,7 @@ enum ConsensusErrorCode {
     kConsensusInternalError = 5046,
     kConsensusRejected = 5047,
     kConsensusOutOfMemory = 5048,
-    kConsensusOutOfPrepayment = 5049,
+    kConsensusOutOfPrefund = 5049,
     kConsensusElectNodeExists = 5050,
     kConsensusNonceInvalid = 5051,
     kConsensusJoinElectThreashTInvalid = 5052,

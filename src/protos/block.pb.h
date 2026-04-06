@@ -927,12 +927,12 @@ class BlockTx : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   ::google::protobuf::uint32 status() const;
   void set_status(::google::protobuf::uint32 value);
 
-  // optional uint64 contract_prepayment = 13;
-  bool has_contract_prepayment() const;
-  void clear_contract_prepayment();
-  static const int kContractPrepaymentFieldNumber = 13;
-  ::google::protobuf::uint64 contract_prepayment() const;
-  void set_contract_prepayment(::google::protobuf::uint64 value);
+  // optional uint64 contract_prefund = 13;
+  bool has_contract_prefund() const;
+  void clear_contract_prefund();
+  static const int kContractPrefundFieldNumber = 13;
+  ::google::protobuf::uint64 contract_prefund() const;
+  void set_contract_prefund(::google::protobuf::uint64 value);
 
   // @@protoc_insertion_point(class_scope:seth.block.protobuf.BlockTx)
  private:
@@ -956,8 +956,8 @@ class BlockTx : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   void clear_has_step();
   void set_has_status();
   void clear_has_status();
-  void set_has_contract_prepayment();
-  void clear_has_contract_prepayment();
+  void set_has_contract_prefund();
+  void clear_has_contract_prefund();
   void set_has_contract_code();
   void clear_has_contract_code();
   void set_has_contract_input();
@@ -992,7 +992,7 @@ class BlockTx : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   ::google::protobuf::uint64 balance_;
   int step_;
   ::google::protobuf::uint32 status_;
-  ::google::protobuf::uint64 contract_prepayment_;
+  ::google::protobuf::uint64 contract_prefund_;
   friend struct ::protobuf_protos_2fblock_2eproto::TableStruct;
 };
 // -------------------------------------------------------------------
@@ -6358,28 +6358,28 @@ inline void BlockTx::set_status(::google::protobuf::uint32 value) {
   // @@protoc_insertion_point(field_set:seth.block.protobuf.BlockTx.status)
 }
 
-// optional uint64 contract_prepayment = 13;
-inline bool BlockTx::has_contract_prepayment() const {
+// optional uint64 contract_prefund = 13;
+inline bool BlockTx::has_contract_prefund() const {
   return (_has_bits_[0] & 0x00010000u) != 0;
 }
-inline void BlockTx::set_has_contract_prepayment() {
+inline void BlockTx::set_has_contract_prefund() {
   _has_bits_[0] |= 0x00010000u;
 }
-inline void BlockTx::clear_has_contract_prepayment() {
+inline void BlockTx::clear_has_contract_prefund() {
   _has_bits_[0] &= ~0x00010000u;
 }
-inline void BlockTx::clear_contract_prepayment() {
-  contract_prepayment_ = GOOGLE_ULONGLONG(0);
-  clear_has_contract_prepayment();
+inline void BlockTx::clear_contract_prefund() {
+  contract_prefund_ = GOOGLE_ULONGLONG(0);
+  clear_has_contract_prefund();
 }
-inline ::google::protobuf::uint64 BlockTx::contract_prepayment() const {
-  // @@protoc_insertion_point(field_get:seth.block.protobuf.BlockTx.contract_prepayment)
-  return contract_prepayment_;
+inline ::google::protobuf::uint64 BlockTx::contract_prefund() const {
+  // @@protoc_insertion_point(field_get:seth.block.protobuf.BlockTx.contract_prefund)
+  return contract_prefund_;
 }
-inline void BlockTx::set_contract_prepayment(::google::protobuf::uint64 value) {
-  set_has_contract_prepayment();
-  contract_prepayment_ = value;
-  // @@protoc_insertion_point(field_set:seth.block.protobuf.BlockTx.contract_prepayment)
+inline void BlockTx::set_contract_prefund(::google::protobuf::uint64 value) {
+  set_has_contract_prefund();
+  contract_prefund_ = value;
+  // @@protoc_insertion_point(field_set:seth.block.protobuf.BlockTx.contract_prefund)
 }
 
 // optional bytes contract_code = 14;

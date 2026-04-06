@@ -430,8 +430,8 @@ void HotstuffManager::PopPoolsMessage() {
             protos::AddressInfoPtr address_info = nullptr;
             if (tx->step() == pools::protobuf::kContractExcute) {
                 pool_index = common::GetAddressPoolIndex(tx->to());
-                auto prepayment_id = tx->to() + from_id;
-                address_info = pool_hotstuff_[pool_index]->view_block_chain()->ChainGetAccountInfo(prepayment_id);
+                auto prefund_id = tx->to() + from_id;
+                address_info = pool_hotstuff_[pool_index]->view_block_chain()->ChainGetAccountInfo(prefund_id);
             } else {
                 pool_index = common::GetAddressPoolIndex(tx->to());
                 address_info = pool_hotstuff_[pool_index]->view_block_chain()->ChainGetAccountInfo(from_id);
@@ -455,7 +455,7 @@ void HotstuffManager::PopPoolsMessage() {
                 continue;
             }
 
-            std::string contract_prepayment_id;
+            std::string contract_prefund_id;
             pools::TxItemPtr tx_ptr = nullptr;
             switch (tx->step()) {
             case pools::protobuf::kNormalFrom:
@@ -471,7 +471,7 @@ void HotstuffManager::PopPoolsMessage() {
                         account_mgr_, 
                         security_ptr_, 
                         address_info);
-                contract_prepayment_id = tx->to() + from_id;
+                contract_prefund_id = tx->to() + from_id;
                 break;
             case pools::protobuf::kCreateLibrary:
                 tx_ptr = std::make_shared<consensus::CreateLibrary>(
@@ -479,7 +479,7 @@ void HotstuffManager::PopPoolsMessage() {
                         account_mgr_, 
                         security_ptr_, 
                         address_info);
-                contract_prepayment_id = tx->to() + from_id;
+                contract_prefund_id = tx->to() + from_id;
                 break;
             case pools::protobuf::kContractExcute:
                 tx_ptr = std::make_shared<consensus::ContractCall>(
@@ -489,25 +489,25 @@ void HotstuffManager::PopPoolsMessage() {
                         account_mgr_, 
                         security_ptr_, 
                         address_info);
-                contract_prepayment_id = tx->to() + from_id;
+                contract_prefund_id = tx->to() + from_id;
                 break;
-            case pools::protobuf::kContractGasPrepayment:
-                tx_ptr = std::make_shared<consensus::ContractPrepayment>(
+            case pools::protobuf::kContractGasPrefund:
+                tx_ptr = std::make_shared<consensus::ContractPrefund>(
                         db_, 
                         msg_ptr, i,
                         account_mgr_, 
                         security_ptr_, 
                         address_info);
-                contract_prepayment_id = tx->to() + from_id;
+                contract_prefund_id = tx->to() + from_id;
                 break;
-            case pools::protobuf::kContractGasPrepaymentWithdraw:
-                tx_ptr = std::make_shared<consensus::ContractPrepaymentWithdraw>(
+            case pools::protobuf::kContractGasPrefundWithdraw:
+                tx_ptr = std::make_shared<consensus::ContractPrefundWithdraw>(
                         db_, 
                         msg_ptr, i,
                         account_mgr_, 
                         security_ptr_, 
                         address_info);
-                contract_prepayment_id = tx->to() + from_id;
+                contract_prefund_id = tx->to() + from_id;
                 break;
             case pools::protobuf::kJoinElect:
             {
@@ -601,11 +601,11 @@ void HotstuffManager::RegisterCreateTxCallbacks() {
         pools::protobuf::kContractCreate,
         std::bind(&HotstuffManager::CreateContractUserCreateCallTx, this, std::placeholders::_1));
     pools_mgr_->RegisterCreateTxFunction(
-        pools::protobuf::kContractGasPrepayment,
-        std::bind(&HotstuffManager::CreateContractPrepaymentTx, this, std::placeholders::_1));
+        pools::protobuf::kContractGasPrefund,
+        std::bind(&HotstuffManager::CreateContractPrefundTx, this, std::placeholders::_1));
     pools_mgr_->RegisterCreateTxFunction(
-        pools::protobuf::kContractGasPrepaymentWithdraw,
-        std::bind(&HotstuffManager::CreateContractPrepaymentWithdrawTx, this, std::placeholders::_1));
+        pools::protobuf::kContractGasPrefundWithdraw,
+        std::bind(&HotstuffManager::CreateContractPrefundWithdrawTx, this, std::placeholders::_1));
     pools_mgr_->RegisterCreateTxFunction(
         pools::protobuf::kContractExcute,
         std::bind(&HotstuffManager::CreateContractCallTx, this, std::placeholders::_1));

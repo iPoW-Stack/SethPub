@@ -11,9 +11,9 @@ namespace seth {
 
 namespace consensus {
 
-class ContractPrepayment : public TxItemBase {
+class ContractPrefund : public TxItemBase {
 public:
-    ContractPrepayment(
+    ContractPrefund(
             std::shared_ptr<db::Db>& db,
             const transport::MessagePtr& msg_ptr,
             int32_t tx_index,
@@ -24,7 +24,7 @@ public:
         prefix_db_ = std::make_shared<protos::PrefixDb>(db);
     }
 
-    virtual ~ContractPrepayment() {}
+    virtual ~ContractPrefund() {}
     virtual int HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
@@ -35,7 +35,7 @@ public:
 private:
     std::shared_ptr<protos::PrefixDb> prefix_db_ = nullptr;
 
-    DISALLOW_COPY_AND_ASSIGN(ContractPrepayment);
+    DISALLOW_COPY_AND_ASSIGN(ContractPrefund);
 };
 
 };  // namespace consensus

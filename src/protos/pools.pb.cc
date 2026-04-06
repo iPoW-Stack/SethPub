@@ -473,7 +473,7 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::pools::protobuf::ToTxMessageItem, elect_join_g2_value_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::pools::protobuf::ToTxMessageItem, library_bytes_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::pools::protobuf::ToTxMessageItem, from_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::pools::protobuf::ToTxMessageItem, prepayment_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::pools::protobuf::ToTxMessageItem, prefund_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::pools::protobuf::ToTxMessageItem, des_sharding_id_),
   4,
   5,
@@ -709,7 +709,7 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::pools::protobuf::TxMessage, to_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::pools::protobuf::TxMessage, amount_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::pools::protobuf::TxMessage, step_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::pools::protobuf::TxMessage, contract_prepayment_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::pools::protobuf::TxMessage, contract_prefund_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::pools::protobuf::TxMessage, contract_code_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::pools::protobuf::TxMessage, contract_input_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::pools::protobuf::TxMessage, sign_),
@@ -867,7 +867,7 @@ void AddDescriptorsImpl() {
       "\013\n\003key\030\006 \001(\014\022\r\n\005value\030\007 \001(\014\022\n\n\002to\030\010 \001(\014\022"
       "\016\n\006amount\030\t \001(\004\0228\n\004step\030\n \001(\0162\035.seth.poo"
       "ls.protobuf.StepType:\013kNormalFrom\022\033\n\023con"
-      "tract_prepayment\030\013 \001(\004\022\025\n\rcontract_code\030"
+      "tract_prefund\030\013 \001(\004\022\025\n\rcontract_code\030"
       "\014 \001(\014\022\026\n\016contract_input\030\r \001(\014\022\014\n\004sign\030\016 "
       "\001(\014\0226\n\010tx_debug\030\017 \003(\0132$.seth.pools.proto"
       "buf.TxDelayTestInfo\022 \n\030tx_debug_timeout_"
@@ -876,7 +876,7 @@ void AddDescriptorsImpl() {
       "ConsensusRootElectShard\020\002\022\033\n\027kConsensusR"
       "ootTimeBlock\020\003\022!\n\035kConsensusCreateGenesi"
       "sAcount\020\004\022\026\n\022kConsensusLocalTos\020\005\022\023\n\017kCo"
-      "ntractCreate\020\006\022\032\n\026kContractGasPrepayment"
+      "ntractCreate\020\006\022\032\n\026kContractGasPrefund"
       "\020\007\022\023\n\017kContractExcute\020\010\022\026\n\022kRootCreateAd"
       "dress\020\t\022\016\n\nkStatistic\020\014\022\016\n\nkJoinElect\020\r\022"
       "\022\n\016kCreateLibrary\020\016\022\n\n\006kCross\020\017\022\016\n\nkRoot"
@@ -1437,7 +1437,7 @@ const int ToTxMessageItem::kDesFieldNumber;
 const int ToTxMessageItem::kElectJoinG2ValueFieldNumber;
 const int ToTxMessageItem::kLibraryBytesFieldNumber;
 const int ToTxMessageItem::kFromFieldNumber;
-const int ToTxMessageItem::kPrepaymentFieldNumber;
+const int ToTxMessageItem::kPrefundFieldNumber;
 const int ToTxMessageItem::kDesShardingIdFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
@@ -1534,8 +1534,8 @@ void ToTxMessageItem::Clear() {
   }
   if (cached_has_bits & 240u) {
     ::memset(&amount_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&prepayment_) -
-        reinterpret_cast<char*>(&amount_)) + sizeof(prepayment_));
+        reinterpret_cast<char*>(&prefund_) -
+        reinterpret_cast<char*>(&amount_)) + sizeof(prefund_));
   }
   des_sharding_id_ = 0u;
   _has_bits_.Clear();
@@ -1642,14 +1642,14 @@ bool ToTxMessageItem::MergePartialFromCodedStream(
         break;
       }
 
-      // optional uint64 prepayment = 10;
+      // optional uint64 prefund = 10;
       case 10: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(80u /* 80 & 0xFF */)) {
-          set_has_prepayment();
+          set_has_prefund();
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
-                 input, &prepayment_)));
+                 input, &prefund_)));
         } else {
           goto handle_unusual;
         }
@@ -1736,9 +1736,9 @@ void ToTxMessageItem::SerializeWithCachedSizes(
       9, this->from(), output);
   }
 
-  // optional uint64 prepayment = 10;
+  // optional uint64 prefund = 10;
   if (cached_has_bits & 0x00000080u) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt64(10, this->prepayment(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(10, this->prefund(), output);
   }
 
   // optional uint32 des_sharding_id = 11;
@@ -1804,9 +1804,9 @@ void ToTxMessageItem::SerializeWithCachedSizes(
         9, this->from(), target);
   }
 
-  // optional uint64 prepayment = 10;
+  // optional uint64 prefund = 10;
   if (cached_has_bits & 0x00000080u) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(10, this->prepayment(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(10, this->prefund(), target);
   }
 
   // optional uint32 des_sharding_id = 11;
@@ -1881,11 +1881,11 @@ size_t ToTxMessageItem::ByteSizeLong() const {
           this->sharding_id());
     }
 
-    // optional uint64 prepayment = 10;
-    if (has_prepayment()) {
+    // optional uint64 prefund = 10;
+    if (has_prefund()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt64Size(
-          this->prepayment());
+          this->prefund());
     }
 
   }
@@ -1951,7 +1951,7 @@ void ToTxMessageItem::MergeFrom(const ToTxMessageItem& from) {
       sharding_id_ = from.sharding_id_;
     }
     if (cached_has_bits & 0x00000080u) {
-      prepayment_ = from.prepayment_;
+      prefund_ = from.prefund_;
     }
     _has_bits_[0] |= cached_has_bits;
   }
@@ -1995,7 +1995,7 @@ void ToTxMessageItem::InternalSwap(ToTxMessageItem* other) {
   swap(amount_, other->amount_);
   swap(pool_index_, other->pool_index_);
   swap(sharding_id_, other->sharding_id_);
-  swap(prepayment_, other->prepayment_);
+  swap(prefund_, other->prefund_);
   swap(des_sharding_id_, other->des_sharding_id_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   _internal_metadata_.Swap(&other->_internal_metadata_);
@@ -7866,7 +7866,7 @@ const int TxMessage::kValueFieldNumber;
 const int TxMessage::kToFieldNumber;
 const int TxMessage::kAmountFieldNumber;
 const int TxMessage::kStepFieldNumber;
-const int TxMessage::kContractPrepaymentFieldNumber;
+const int TxMessage::kContractPrefundFieldNumber;
 const int TxMessage::kContractCodeFieldNumber;
 const int TxMessage::kContractInputFieldNumber;
 const int TxMessage::kSignFieldNumber;
@@ -8161,14 +8161,14 @@ bool TxMessage::MergePartialFromCodedStream(
         break;
       }
 
-      // optional uint64 contract_prepayment = 11;
+      // optional uint64 contract_prefund = 11;
       case 11: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(88u /* 88 & 0xFF */)) {
-          set_has_contract_prepayment();
+          set_has_contract_prefund();
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
-                 input, &contract_prepayment_)));
+                 input, &contract_prefund_)));
         } else {
           goto handle_unusual;
         }
@@ -8331,9 +8331,9 @@ void TxMessage::SerializeWithCachedSizes(
       10, this->step(), output);
   }
 
-  // optional uint64 contract_prepayment = 11;
+  // optional uint64 contract_prefund = 11;
   if (cached_has_bits & 0x00004000u) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt64(11, this->contract_prepayment(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(11, this->contract_prefund(), output);
   }
 
   // optional bytes contract_code = 12;
@@ -8448,9 +8448,9 @@ void TxMessage::SerializeWithCachedSizes(
       10, this->step(), target);
   }
 
-  // optional uint64 contract_prepayment = 11;
+  // optional uint64 contract_prefund = 11;
   if (cached_has_bits & 0x00004000u) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(11, this->contract_prepayment(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(11, this->contract_prefund(), target);
   }
 
   // optional bytes contract_code = 12;
@@ -8622,11 +8622,11 @@ size_t TxMessage::ByteSizeLong() const {
           this->amount());
     }
 
-    // optional uint64 contract_prepayment = 11;
-    if (has_contract_prepayment()) {
+    // optional uint64 contract_prefund = 11;
+    if (has_contract_prefund()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt64Size(
-          this->contract_prepayment());
+          this->contract_prefund());
     }
 
     // optional uint64 tx_debug_timeout_seconds = 16;
@@ -8720,7 +8720,7 @@ void TxMessage::MergeFrom(const TxMessage& from) {
       amount_ = from.amount_;
     }
     if (cached_has_bits & 0x00004000u) {
-      contract_prepayment_ = from.contract_prepayment_;
+      contract_prefund_ = from.contract_prefund_;
     }
     if (cached_has_bits & 0x00008000u) {
       tx_debug_timeout_seconds_ = from.tx_debug_timeout_seconds_;
@@ -8776,7 +8776,7 @@ void TxMessage::InternalSwap(TxMessage* other) {
   swap(version_, other->version_);
   swap(step_, other->step_);
   swap(amount_, other->amount_);
-  swap(contract_prepayment_, other->contract_prepayment_);
+  swap(contract_prefund_, other->contract_prefund_);
   swap(tx_debug_timeout_seconds_, other->tx_debug_timeout_seconds_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   _internal_metadata_.Swap(&other->_internal_metadata_);

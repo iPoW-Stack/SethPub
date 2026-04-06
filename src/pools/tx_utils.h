@@ -259,8 +259,8 @@ static inline std::string GetTxMessageHash(const pools::protobuf::TxMessage& tx_
         message.append(tx_info.contract_input());
     }
 
-    if (tx_info.has_contract_prepayment()) {
-        uint64_t prepay = tx_info.contract_prepayment();
+    if (tx_info.has_contract_prefund()) {
+        uint64_t prepay = tx_info.contract_prefund();
         message.append(std::string((char*)&prepay, sizeof(prepay)));
     }
 
@@ -282,7 +282,7 @@ static inline std::string GetTxMessageHash(const pools::protobuf::TxMessage& tx_
         (uint64_t)tx_info.step(),
         tx_info.has_contract_code() ? common::Encode::HexEncode(tx_info.contract_code()).c_str() : "",
         tx_info.has_contract_input() ? common::Encode::HexEncode(tx_info.contract_input()).c_str() : "",
-        tx_info.has_contract_prepayment() ? tx_info.contract_prepayment() : 0,
+        tx_info.has_contract_prefund() ? tx_info.contract_prefund() : 0,
         tx_info.has_key() ? common::Encode::HexEncode(tx_info.key()).c_str() : "",
         tx_info.has_value() ? common::Encode::HexEncode(tx_info.value()).c_str() : "",
         common::Encode::HexEncode(message).c_str());
@@ -303,8 +303,8 @@ static inline bool IsUserTransaction(uint32_t step) {
     if (step != pools::protobuf::kNormalFrom && 
             step != pools::protobuf::kContractCreate && 
             step != pools::protobuf::kContractExcute && 
-            step != pools::protobuf::kContractGasPrepayment && 
-            step != pools::protobuf::kContractGasPrepaymentWithdraw && 
+            step != pools::protobuf::kContractGasPrefund && 
+            step != pools::protobuf::kContractGasPrefundWithdraw && 
             step != pools::protobuf::kJoinElect && 
             step != pools::protobuf::kCreateLibrary) {
         return false;
@@ -329,8 +329,8 @@ static inline bool IsTxUseFromAddress(uint32_t step) {
         case pools::protobuf::kCreateLibrary:
         case pools::protobuf::kJoinElect:
         case pools::protobuf::kNormalFrom:
-        case pools::protobuf::kContractGasPrepayment:
-        case pools::protobuf::kContractGasPrepaymentWithdraw:
+        case pools::protobuf::kContractGasPrefund:
+        case pools::protobuf::kContractGasPrefundWithdraw:
             return true;
         default:
             assert(false);

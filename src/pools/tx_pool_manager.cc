@@ -571,11 +571,11 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
         case pools::protobuf::kContractCreate:
             HandleCreateContractTx(msg_ptr);
             break;
-        case pools::protobuf::kContractGasPrepayment:
-            HandleSetContractPrepayment(msg_ptr);
+        case pools::protobuf::kContractGasPrefund:
+            HandleSetContractPrefund(msg_ptr);
             break;
-        case pools::protobuf::kContractGasPrepaymentWithdraw:
-            HandleSetContractPrepaymentWithdraw(msg_ptr);
+        case pools::protobuf::kContractGasPrefundWithdraw:
+            HandleSetContractPrefundWithdraw(msg_ptr);
             break;
         case pools::protobuf::kRootCreateAddress: {
             if (tx_msg.to().size() != common::kUnicastAddressLength &&
@@ -934,8 +934,8 @@ void TxPoolManager::HandleContractExcute(const transport::MessagePtr& msg_ptr) {
         return;
     }
 
-    auto prepayment_id = tx_msg.to() + from;
-    msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(prepayment_id);
+    auto prefund_id = tx_msg.to() + from;
+    msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(prefund_id);
     if (msg_ptr->address_info == nullptr) {
         SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         return;
@@ -951,19 +951,19 @@ void TxPoolManager::HandleContractExcute(const transport::MessagePtr& msg_ptr) {
     }
 
     msg_ptr->msg_hash = pools::GetTxMessageHash(tx_msg);
-    SETH_DEBUG("success add tx contract execute prepyament id: %s, prepayment: %lu, nonce: %lu",
+    SETH_DEBUG("success add tx contract execute prepyament id: %s, prefund: %lu, nonce: %lu",
         common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(), 
         msg_ptr->address_info->balance(), 
         msg_ptr->address_info->nonce());
 }
 
-void TxPoolManager::HandleSetContractPrepayment(const transport::MessagePtr& msg_ptr) {
+void TxPoolManager::HandleSetContractPrefund(const transport::MessagePtr& msg_ptr) {
     auto& tx_msg = msg_ptr->header.tx_proto();
-    // user can't direct call contract, pay contract prepayment and call contract direct
+    // user can't direct call contract, pay contract prefund and call contract direct
     if (!tx_msg.contract_input().empty() ||
-            tx_msg.contract_prepayment() < consensus::kCallContractDefaultUseGas) {
+            tx_msg.contract_prefund() < consensus::kCallContractDefaultUseGas) {
         SETH_DEBUG("call contract not has valid contract input"
-            "and contract prepayment invalid.");
+            "and contract prefund invalid.");
         return;
     }
 
@@ -980,14 +980,14 @@ void TxPoolManager::HandleSetContractPrepayment(const transport::MessagePtr& msg
     }
 
     if (msg_ptr->address_info->balance() <
-            tx_msg.amount() + tx_msg.contract_prepayment() +
+            tx_msg.amount() + tx_msg.contract_prefund() +
             consensus::kCallContractDefaultUseGas * tx_msg.gas_price()) {
         SETH_DEBUG("address %s balance invalid: %lu, transfer amount: %lu, "
-            "prepayment: %lu, default call contract gas: %lu, from: %s, to: %s",
+            "prefund: %lu, default call contract gas: %lu, from: %s, to: %s",
             common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
             msg_ptr->address_info->balance(),
             tx_msg.amount(),
-            tx_msg.contract_prepayment(),
+            tx_msg.contract_prefund(),
             consensus::kCallContractDefaultUseGas,
             common::Encode::HexEncode(security_->GetAddressWithPublicKey(
             msg_ptr->header.tx_proto().pubkey())).c_str(),
@@ -997,13 +997,13 @@ void TxPoolManager::HandleSetContractPrepayment(const transport::MessagePtr& msg
 }
 
 
-void TxPoolManager::HandleSetContractPrepaymentWithdraw(const transport::MessagePtr& msg_ptr) {
+void TxPoolManager::HandleSetContractPrefundWithdraw(const transport::MessagePtr& msg_ptr) {
     auto& tx_msg = msg_ptr->header.tx_proto();
-    // user can't direct call contract, pay contract prepayment and call contract direct
+    // user can't direct call contract, pay contract prefund and call contract direct
     if (!tx_msg.contract_input().empty() ||
-            tx_msg.contract_prepayment() < consensus::kCallContractDefaultUseGas) {
+            tx_msg.contract_prefund() < consensus::kCallContractDefaultUseGas) {
         SETH_DEBUG("call contract not has valid contract input"
-            "and contract prepayment invalid.");
+            "and contract prefund invalid.");
         return;
     }
 
@@ -1020,14 +1020,14 @@ void TxPoolManager::HandleSetContractPrepaymentWithdraw(const transport::Message
     }
 
     if (msg_ptr->address_info->balance() <
-            tx_msg.amount() + tx_msg.contract_prepayment() +
+            tx_msg.amount() + tx_msg.contract_prefund() +
             consensus::kCallContractDefaultUseGas * tx_msg.gas_price()) {
         SETH_DEBUG("address %s balance invalid: %lu, transfer amount: %lu, "
-            "prepayment: %lu, default call contract gas: %lu, from: %s, to: %s",
+            "prefund: %lu, default call contract gas: %lu, from: %s, to: %s",
             common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
             msg_ptr->address_info->balance(),
             tx_msg.amount(),
-            tx_msg.contract_prepayment(),
+            tx_msg.contract_prefund(),
             consensus::kCallContractDefaultUseGas,
             common::Encode::HexEncode(security_->GetAddressWithPublicKey(
             msg_ptr->header.tx_proto().pubkey())).c_str(),
@@ -1089,14 +1089,14 @@ void TxPoolManager::HandleNormalFromTx(const transport::MessagePtr& msg_ptr) {
     // Verify that the account balance is sufficient
     TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
     if (msg_ptr->address_info->balance() <
-            tx_msg.amount() + tx_msg.contract_prepayment() +
+            tx_msg.amount() + tx_msg.contract_prefund() +
             consensus::kTransferGas * tx_msg.gas_price()) {
         SETH_INFO("address: %s balance invalid: %lu, transfer amount: %lu, "
-            "prepayment: %lu, default call contract gas: %lu",
+            "prefund: %lu, default call contract gas: %lu",
             common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
             msg_ptr->address_info->balance(),
             tx_msg.amount(),
-            tx_msg.contract_prepayment(),
+            tx_msg.contract_prefund(),
             consensus::kCallContractDefaultUseGas);
         return;
     }
@@ -1141,13 +1141,13 @@ void TxPoolManager::HandleCreateContractTx(const transport::MessagePtr& msg_ptr)
     }
 
     if (msg_ptr->address_info->balance() <
-            tx_msg.amount() + tx_msg.contract_prepayment() +
+            tx_msg.amount() + tx_msg.contract_prefund() +
             default_gas * tx_msg.gas_price()) {
         SETH_DEBUG("address balance invalid: %lu, transfer amount: %lu, "
-            "prepayment: %lu, default call contract gas: %lu, gas price: %lu",
+            "prefund: %lu, default call contract gas: %lu, gas price: %lu",
             msg_ptr->address_info->balance(),
             tx_msg.amount(),
-            tx_msg.contract_prepayment(),
+            tx_msg.contract_prefund(),
             default_gas,
             tx_msg.gas_price());
         return;
@@ -1198,10 +1198,10 @@ static transport::MessagePtr CreateTransactionWithAttr(
         if (key == "create_contract") {
             new_tx->set_step(pools::protobuf::kContractCreate);
             new_tx->set_contract_code(val);
-            new_tx->set_contract_prepayment(9000000000lu);
-        } else if (key == "prepayment") {
-            new_tx->set_step(pools::protobuf::kContractGasPrepayment);
-            new_tx->set_contract_prepayment(9000000000lu);
+            new_tx->set_contract_prefund(9000000000lu);
+        } else if (key == "prefund") {
+            new_tx->set_step(pools::protobuf::kContractGasPrefund);
+            new_tx->set_contract_prefund(9000000000lu);
         } else if (key == "call") {
             new_tx->set_step(pools::protobuf::kContractExcute);
             new_tx->set_contract_input(val);

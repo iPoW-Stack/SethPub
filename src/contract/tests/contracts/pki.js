@@ -303,25 +303,25 @@ function QueryContract(str_prikey, input) {
     QueryPostCode('/query_contract', data);
 }
 
-function Prepayment(str_prikey, prepay) {
+function Prefund(str_prikey, prepay) {
     var data = create_tx(str_prikey, contract_address, 0, 100000, 1, prepay, 7);
     PostCode(data);
 }
 
-function Prepayment(str_prikey, prepay) {
+function Prefund(str_prikey, prepay) {
     var data = create_tx(str_prikey, contract_address, 0, 100000, 1, prepay, 7);
     PostCode(data);
 }
 
-async function SetManagerPrepayment(contract_address) {
-    // 为管理账户设置prepayment
-    Prepayment("cefc2c33064ea7691aee3e5e4f7842935d26f3ad790d81cf015e79b78958e848", 1000000000000);
+async function SetManagerPrefund(contract_address) {
+    // 为管理账户设置prefund
+    Prefund("cefc2c33064ea7691aee3e5e4f7842935d26f3ad790d81cf015e79b78958e848", 1000000000000);
     var account1 = web3.eth.accounts.privateKeyToAccount(
         '0xcefc2c33064ea7691aee3e5e4f7842935d26f3ad790d81cf015e79b78958e848');
     var check_accounts_str = "";
     check_accounts_str += "'" + account1.address.toString('hex').toLowerCase().substring(2) + "'"; 
     var check_count = 1;
-    var cmd = `clickhouse-client --host ${node_host} --port 9000 -q "select count(distinct(user)) from zjc_ck_prepayment_table where contract='${contract_address}' and user in (${check_accounts_str});"`;
+    var cmd = `clickhouse-client --host ${node_host} --port 9000 -q "select count(distinct(user)) from zjc_ck_prefund_table where contract='${contract_address}' and user in (${check_accounts_str});"`;
     const { exec } = require('child_process');
     const execPromise = util.promisify(exec);
     // 检查合约是否创建成功
@@ -330,11 +330,11 @@ async function SetManagerPrepayment(contract_address) {
         try {
             const {stdout, stderr} = await execPromise(cmd);
             if (stdout.trim() == check_count.toString()) {
-                console.error(`${cmd} contract prepayment success: ${stdout}`);
+                console.error(`${cmd} contract prefund success: ${stdout}`);
                 break;
             }
 
-            //console.log(`${cmd} contract prepayment failed error: ${stderr} count: ${stdout}`);
+            //console.log(`${cmd} contract prefund failed error: ${stderr} count: ${stdout}`);
         } catch (error) {
             //console.log(error);
         }
@@ -344,7 +344,7 @@ async function SetManagerPrepayment(contract_address) {
     }
 
     if (try_times >= 30) {
-        console.error(`contract prepayment failed!`);
+        console.error(`contract prefund failed!`);
         return;
     }
 }
@@ -397,7 +397,7 @@ function InitC2cEnv(key, value) {
                 }
 
                 // 预设值合约调用币，并等待成功
-                SetManagerPrepayment(contract_address);
+                SetManagerPrefund(contract_address);
             }
         }
       });

@@ -55,7 +55,7 @@ int ContractUserCreateCall::HandleTx(
             break;
         }
 
-        if (block_tx.gas_price() * block_tx.gas_limit() + block_tx.contract_prepayment() > from_balance) {
+        if (block_tx.gas_price() * block_tx.gas_limit() + block_tx.contract_prefund() > from_balance) {
             block_tx.set_status(kConsensusAccountBalanceError);
             break;
         }
@@ -129,7 +129,7 @@ int ContractUserCreateCall::HandleTx(
 
     if (block_tx.status() == kConsensusSuccess) {
         int64_t dec_amount = block_tx.amount() +
-            block_tx.contract_prepayment() +
+            block_tx.contract_prefund() +
             gas_used * block_tx.gas_price();
         if (tmp_from_balance >= int64_t(gas_used * block_tx.gas_price())) {
             if (tmp_from_balance < dec_amount) {
@@ -181,7 +181,7 @@ int ContractUserCreateCall::HandleTx(
             // just dec caller_balance_add
             int64_t dec_amount = static_cast<int64_t>(block_tx.amount()) -
                 caller_balance_add +
-                static_cast<int64_t>(block_tx.contract_prepayment()) +
+                static_cast<int64_t>(block_tx.contract_prefund()) +
                 static_cast<int64_t>(gas_used * block_tx.gas_price());
             if ((int64_t)tmp_from_balance < dec_amount) {
                 block_tx.set_status(consensus::kConsensusAccountBalanceError);
@@ -207,20 +207,20 @@ int ContractUserCreateCall::HandleTx(
                 ProtobufToJson(*contract_info).c_str());
             acc_balance_map[block_tx.to()] = contract_info;
 
-            auto contract_prepayment_info = std::make_shared<address::protobuf::AddressInfo>();
-            contract_prepayment_info->set_addr(block_tx.to() + block_tx.from());
-            contract_prepayment_info->set_balance(block_tx.contract_prepayment());
-            contract_prepayment_info->set_sharding_id(view_block.qc().network_id());
-            contract_prepayment_info->set_pool_index(view_block.qc().pool_index());
-            contract_prepayment_info->set_type(address::protobuf::kNormal);
-            contract_prepayment_info->set_latest_height(view_block.block_info().height());
-            contract_prepayment_info->set_tx_index(tx_index);
-            contract_prepayment_info->set_nonce(0);
-            SETH_DEBUG("success add contract address prepayment info: %s, %s, prepayment: %lu", 
+            auto contract_prefund_info = std::make_shared<address::protobuf::AddressInfo>();
+            contract_prefund_info->set_addr(block_tx.to() + block_tx.from());
+            contract_prefund_info->set_balance(block_tx.contract_prefund());
+            contract_prefund_info->set_sharding_id(view_block.qc().network_id());
+            contract_prefund_info->set_pool_index(view_block.qc().pool_index());
+            contract_prefund_info->set_type(address::protobuf::kNormal);
+            contract_prefund_info->set_latest_height(view_block.block_info().height());
+            contract_prefund_info->set_tx_index(tx_index);
+            contract_prefund_info->set_nonce(0);
+            SETH_DEBUG("success add contract address prefund info: %s, %s, prefund: %lu", 
                 common::Encode::HexEncode(block_tx.to() + from).c_str(), 
-                ProtobufToJson(*contract_prepayment_info).c_str(),
-                block_tx.contract_prepayment());
-            acc_balance_map[block_tx.to() + from] = contract_prepayment_info;
+                ProtobufToJson(*contract_prefund_info).c_str(),
+                block_tx.contract_prefund());
+            acc_balance_map[block_tx.to() + from] = contract_prefund_info;
         } while (0);
     }
 
@@ -235,13 +235,13 @@ int ContractUserCreateCall::HandleTx(
     block_tx.set_balance(from_balance);
     block_tx.set_gas_used(gas_used);
     SETH_DEBUG("create contract called %s, user: %s, new balance: %lu, "
-        "gas used: %lu, gas_price: %lu, prepayment: %lu, amount: %lu, status: %d",
+        "gas used: %lu, gas_price: %lu, prefund: %lu, amount: %lu, status: %d",
         common::Encode::HexEncode(block_tx.to()).c_str(),
         common::Encode::HexEncode(block_tx.from()).c_str(),
         from_balance,
         gas_used,
         block_tx.gas_price(),
-        block_tx.contract_prepayment(),
+        block_tx.contract_prefund(),
         block_tx.amount(),
         block_tx.status());
     for (auto event_iter = zjc_host.recorded_logs_.begin();
@@ -290,13 +290,13 @@ int ContractUserCreateCall::HandleTx(
             to_item_ptr->set_sharding_id(view_block.qc().network_id());
             to_item_ptr->set_des_sharding_id(network::kRootCongressNetworkId);
             pre_zjc_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
-            // if (block_tx.contract_prepayment() > 0) {
-            //     to_item_ptr->set_prepayment(block_tx.contract_prepayment());
+            // if (block_tx.contract_prefund() > 0) {
+            //     to_item_ptr->set_prefund(block_tx.contract_prefund());
             // }
 
-            SETH_DEBUG("success add to tx item addr prepayment id: %s, prepayment: %lu",
+            SETH_DEBUG("success add to tx item addr prefund id: %s, prefund: %lu",
                 common::Encode::HexEncode(to_item_ptr->des()).c_str(),
-                block_tx.contract_prepayment());
+                block_tx.contract_prefund());
         }
 
         for (auto exists_iter = cross_to_map_.begin(); exists_iter != cross_to_map_.end(); ++exists_iter) {

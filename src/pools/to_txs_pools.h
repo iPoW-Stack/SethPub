@@ -52,7 +52,7 @@ private:
     void HandleCreateContractByRootFrom(
         const view_block::protobuf::ViewBlockItem& view_block,
         const block::protobuf::BlockTx& tx);
-    void HandleContractGasPrepayment(
+    void HandleContractGasPrefund(
         const view_block::protobuf::ViewBlockItem& view_block,
         const block::protobuf::BlockTx& tx);
     void HandleRootCreateAddress(
@@ -68,7 +68,7 @@ private:
         const std::string& key,
         const std::string& library_bytes,
         const std::string& from,
-        uint64_t prepayment);
+        uint64_t prefund);
     void HandleElectJoinVerifyVec(
         const std::string& verify_hash,
         std::vector<bls::protobuf::JoinElectInfo>& verify_reqs);

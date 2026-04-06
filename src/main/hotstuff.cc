@@ -89,10 +89,10 @@ static transport::MessagePtr CreateTransactionWithAttr(
         if (key == "create_contract") {
             new_tx->set_step(pools::protobuf::kContractCreate);
             new_tx->set_contract_code(val);
-            new_tx->set_contract_prepayment(9000000000lu);
-        } else if (key == "prepayment") {
-            new_tx->set_step(pools::protobuf::kContractGasPrepayment);
-            new_tx->set_contract_prepayment(9000000000lu);
+            new_tx->set_contract_prefund(9000000000lu);
+        } else if (key == "prefund") {
+            new_tx->set_step(pools::protobuf::kContractGasPrefund);
+            new_tx->set_contract_prefund(9000000000lu);
         } else if (key == "call") {
             new_tx->set_step(pools::protobuf::kContractExcute);
             new_tx->set_contract_input(val);
@@ -566,7 +566,7 @@ int contract_main(int argc, char** argv) {
     return 0;
 }
 
-int contract_set_prepayment(int argc, char** argv) {
+int contract_set_prefund(int argc, char** argv) {
     LoadAllAccounts();
     SignalRegister();
     WriteDefaultLogConf();
@@ -622,7 +622,7 @@ int contract_set_prepayment(int argc, char** argv) {
         gid,
         from_prikey,
         to,
-        "prepayment",
+        "prefund",
         "",
         100000,
         10000000,
@@ -749,7 +749,7 @@ int main(int argc, char** argv) {
         contract_main(argc, argv);
     } else if (argv[1][0] == '2') {
         if (argc > 2) {
-            contract_set_prepayment(argc, argv);
+            contract_set_prefund(argc, argv);
         }
     } else if (argv[1][0] == '3') {
         if (argc > 2) {

@@ -113,7 +113,7 @@
 			}
 		},
 		{
-			"name": "6. 验证预付 (Prepayments Valid)",
+			"name": "6. 验证预付 (Prefunds Valid)",
 			"request": {
 				"method": "POST",
 				"header": [],
@@ -126,9 +126,9 @@
 					]
 				},
 				"url": {
-					"raw": "{{host}}/prepayment_valid",
+					"raw": "{{host}}/prefund_valid",
 					"host": ["{{host}}"],
-					"path": ["prepayment_valid"]
+					"path": ["prefund_valid"]
 				}
 			}
 		},

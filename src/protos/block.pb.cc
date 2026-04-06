@@ -825,7 +825,7 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::block::protobuf::BlockTx, balance_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::block::protobuf::BlockTx, step_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::block::protobuf::BlockTx, status_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::block::protobuf::BlockTx, contract_prepayment_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::block::protobuf::BlockTx, contract_prefund_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::block::protobuf::BlockTx, contract_code_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::block::protobuf::BlockTx, contract_input_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::block::protobuf::BlockTx, events_),
@@ -1328,7 +1328,7 @@ void AddDescriptorsImpl() {
       "s_limit\030\005 \001(\004\022\020\n\010gas_used\030\006 \001(\004\022\021\n\tgas_p"
       "rice\030\007 \001(\004\022\017\n\007balance\030\010 \001(\004\022+\n\004step\030\t \001("
       "\0162\035.seth.pools.protobuf.StepType\022\016\n\006stat"
-      "us\030\n \001(\r\022\033\n\023contract_prepayment\030\r \001(\004\022\025\n"
+      "us\030\n \001(\r\022\033\n\023contract_prefund\030\r \001(\004\022\025\n"
       "\rcontract_code\030\016 \001(\014\022\026\n\016contract_input\030\017"
       " \001(\014\022*\n\006events\030\020 \003(\0132\032.seth.block.protob"
       "uf.TxLog\0226\n\010tx_debug\030\021 \003(\0132$.seth.pools."
@@ -2388,7 +2388,7 @@ const int BlockTx::kGasPriceFieldNumber;
 const int BlockTx::kBalanceFieldNumber;
 const int BlockTx::kStepFieldNumber;
 const int BlockTx::kStatusFieldNumber;
-const int BlockTx::kContractPrepaymentFieldNumber;
+const int BlockTx::kContractPrefundFieldNumber;
 const int BlockTx::kContractCodeFieldNumber;
 const int BlockTx::kContractInputFieldNumber;
 const int BlockTx::kEventsFieldNumber;
@@ -2446,8 +2446,8 @@ BlockTx::BlockTx(const BlockTx& from)
     tx_hash_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.tx_hash_);
   }
   ::memcpy(&nonce_, &from.nonce_,
-    static_cast<size_t>(reinterpret_cast<char*>(&contract_prepayment_) -
-    reinterpret_cast<char*>(&nonce_)) + sizeof(contract_prepayment_));
+    static_cast<size_t>(reinterpret_cast<char*>(&contract_prefund_) -
+    reinterpret_cast<char*>(&nonce_)) + sizeof(contract_prefund_));
   // @@protoc_insertion_point(copy_constructor:seth.block.protobuf.BlockTx)
 }
 
@@ -2461,8 +2461,8 @@ void BlockTx::SharedCtor() {
   value_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   tx_hash_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   ::memset(&nonce_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&contract_prepayment_) -
-      reinterpret_cast<char*>(&nonce_)) + sizeof(contract_prepayment_));
+      reinterpret_cast<char*>(&contract_prefund_) -
+      reinterpret_cast<char*>(&nonce_)) + sizeof(contract_prefund_));
 }
 
 BlockTx::~BlockTx() {
@@ -2535,7 +2535,7 @@ void BlockTx::Clear() {
         reinterpret_cast<char*>(&status_) -
         reinterpret_cast<char*>(&nonce_)) + sizeof(status_));
   }
-  contract_prepayment_ = GOOGLE_ULONGLONG(0);
+  contract_prefund_ = GOOGLE_ULONGLONG(0);
   _has_bits_.Clear();
   _internal_metadata_.Clear();
 }
@@ -2692,14 +2692,14 @@ bool BlockTx::MergePartialFromCodedStream(
         break;
       }
 
-      // optional uint64 contract_prepayment = 13;
+      // optional uint64 contract_prefund = 13;
       case 13: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(104u /* 104 & 0xFF */)) {
-          set_has_contract_prepayment();
+          set_has_contract_prefund();
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
-                 input, &contract_prepayment_)));
+                 input, &contract_prefund_)));
         } else {
           goto handle_unusual;
         }
@@ -2882,9 +2882,9 @@ void BlockTx::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(10, this->status(), output);
   }
 
-  // optional uint64 contract_prepayment = 13;
+  // optional uint64 contract_prefund = 13;
   if (cached_has_bits & 0x00010000u) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt64(13, this->contract_prepayment(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(13, this->contract_prefund(), output);
   }
 
   // optional bytes contract_code = 14;
@@ -3011,9 +3011,9 @@ void BlockTx::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(10, this->status(), target);
   }
 
-  // optional uint64 contract_prepayment = 13;
+  // optional uint64 contract_prefund = 13;
   if (cached_has_bits & 0x00010000u) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(13, this->contract_prepayment(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(13, this->contract_prefund(), target);
   }
 
   // optional bytes contract_code = 14;
@@ -3228,11 +3228,11 @@ size_t BlockTx::ByteSizeLong() const {
     }
 
   }
-  // optional uint64 contract_prepayment = 13;
-  if (has_contract_prepayment()) {
+  // optional uint64 contract_prefund = 13;
+  if (has_contract_prefund()) {
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::UInt64Size(
-        this->contract_prepayment());
+        this->contract_prefund());
   }
 
   int cached_size = ::google::protobuf::internal::ToCachedSize(total_size);
@@ -3327,7 +3327,7 @@ void BlockTx::MergeFrom(const BlockTx& from) {
     _has_bits_[0] |= cached_has_bits;
   }
   if (cached_has_bits & 0x00010000u) {
-    set_contract_prepayment(from.contract_prepayment());
+    set_contract_prefund(from.contract_prefund());
   }
 }
 
@@ -3381,7 +3381,7 @@ void BlockTx::InternalSwap(BlockTx* other) {
   swap(balance_, other->balance_);
   swap(step_, other->step_);
   swap(status_, other->status_);
-  swap(contract_prepayment_, other->contract_prepayment_);
+  swap(contract_prefund_, other->contract_prefund_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   _internal_metadata_.Swap(&other->_internal_metadata_);
 }

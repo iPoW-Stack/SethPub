@@ -346,7 +346,7 @@ function QueryContract(input) {
     QueryPostCode('/query_contract', data);
 }
 
-function Prepayment(prepay) {
+function Prefund(prepay) {
     var contract_address = fs.readFileSync('contract_address', 'utf-8');
     var data = create_tx(contract_address, 0, 100000, 1, prepay, 7);
     PostCode(data);
@@ -371,7 +371,7 @@ if (args[0] == 3) {
 }
 
 if (args[0] == 4) {
-    Prepayment(args[1]);
+    Prefund(args[1]);
 }
 
 // 测试event

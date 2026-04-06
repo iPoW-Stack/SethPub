@@ -19,7 +19,7 @@ class TxPoolManager;
 }
 
 namespace consensus {
-class ContractGasPrepayment;
+class ContractGasPrefund;
 }
 
 namespace block {
@@ -45,7 +45,7 @@ static std::shared_ptr<db::Db> db_ = nullptr;
 static std::shared_ptr<pools::TxPoolManager> pools_mgr_ = nullptr;
 static std::shared_ptr<sync::KeyValueSync> kv_sync_ = nullptr;
 static std::shared_ptr<block::BlockManager> block_mgr_ = nullptr;
-static std::shared_ptr<consensus::ContractGasPrepayment> gas_prepayment_ = nullptr;
+static std::shared_ptr<consensus::ContractGasPrefund> gas_prefund_ = nullptr;
 static std::shared_ptr<timeblock::TimeBlockManager> tm_block_mgr_ = nullptr;
 static std::shared_ptr<protos::PrefixDb> prefix_db_ = nullptr;
 static db::DbWriteBatch db_batch;
@@ -71,7 +71,7 @@ protected:
         elect_info_ = std::make_shared<ElectInfo>(security_, nullptr);
         vss_mgr_ = std::make_shared<vss::VssManager>(security_);
         contract_mgr_ = std::make_shared<contract::ContractManager>();
-        gas_prepayment_ = std::make_shared<consensus::ContractGasPrepayment>(db_);
+        gas_prefund_ = std::make_shared<consensus::ContractGasPrefund>(db_);
         tm_block_mgr_ = std::make_shared<timeblock::TimeBlockManager>();
         
         kv_sync_->Init(block_mgr_, db_);
@@ -86,7 +86,7 @@ protected:
                 vss_mgr_,
                 contract_mgr_,
                 db_,
-                gas_prepayment_,
+                gas_prefund_,
                 pools_mgr_,
                 block_mgr_,
                 tm_block_mgr_,

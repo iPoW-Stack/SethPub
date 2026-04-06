@@ -304,10 +304,10 @@ void BlockManager::RootHandleNormalToTx(
     auto& block = view_block.block_info();
     for (int32_t i = 0; i < to_txs.tos_size(); ++i) {
         auto tos_item = to_txs.tos(i);
-        SETH_DEBUG("to tx new address %s, amount: %lu, prepayment: %lu, nonce: %lu",
+        SETH_DEBUG("to tx new address %s, amount: %lu, prefund: %lu, nonce: %lu",
             common::Encode::HexEncode(tos_item.des()).c_str(),
             tos_item.amount(),
-            tos_item.prepayment(),
+            tos_item.prefund(),
             0);
 
         auto msg_ptr = std::make_shared<transport::TransportMessage>();
@@ -454,12 +454,12 @@ void BlockManager::HandleRootCrossShardTx(const view_block::protobuf::ViewBlockI
         // dispatch to txs to tx pool
         auto to_tx = block_item.cross_shard_to_array(i);
         SETH_DEBUG("handle root cross shard to tx: %s, des: %s, "
-            "des shard: %u, local: %u, amount: %lu, prepayment: %lu",
+            "des shard: %u, local: %u, amount: %lu, prefund: %lu",
             ProtobufToJson(to_tx).c_str(),
             common::Encode::HexEncode(to_tx.des()).c_str(),
             to_tx.des_sharding_id(),
             common::GlobalInfo::Instance()->network_id(),
-            to_tx.amount(), to_tx.prepayment());
+            to_tx.amount(), to_tx.prefund());
         if (to_tx.des_sharding_id() != common::GlobalInfo::Instance()->network_id()) {
             continue;
         }

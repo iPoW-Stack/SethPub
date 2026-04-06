@@ -239,7 +239,7 @@ static inline std::string MessageStatusToString(MessageHandleStatus status) {
         case 5048: return "kConsensusOutOfMemory";        // 对应原 kEvmcOutOfMemory
         
         // --- 跨分片与选举逻辑 ---
-        case 5049: return "kConsensusOutOfPrepayment";
+        case 5049: return "kConsensusOutOfPrefund";
         case 5050: return "kConsensusElectNodeExists";
         case 5051: return "kConsensusNonceInvalid";
         case 5052: return "kConsensusJoinElectThreashTInvalid";

@@ -67,7 +67,7 @@
 //     ws::protobuf::WsMessage ws_tx_res;
 //     GetTxs(ws_tx_res);
 //     GetC2cs(ws_tx_res);
-//     GetPrepayment(ws_tx_res);
+//     GetPrefund(ws_tx_res);
 //     CheckC2cStatus(ws_tx_res);
 //     if (ws_tx_res.txs_size() > 0 || ws_tx_res.has_init_info()) {
 //         // std::lock_guard<std::mutex> g(refresh_hdls_mutex_);
@@ -187,10 +187,10 @@
 //     }
 // }
 
-// void WsServer::GetPrepayment(ws::protobuf::WsMessage& ws_tx_res) {
-//     std::string cmd = "select user, prepayment, height from zjc_ck_prepayment_table where contract = '" + 
+// void WsServer::GetPrefund(ws::protobuf::WsMessage& ws_tx_res) {
+//     std::string cmd = "select user, prefund, height from zjc_ck_prefund_table where contract = '" + 
 //         c2c_contract_addr() + 
-//         "' and height > " + std::to_string(latest_prepayment_height_) + " limit 1000;";
+//         "' and height > " + std::to_string(latest_prefund_height_) + " limit 1000;";
 //     try {
 //         clickhouse::Client ck_client0(clickhouse::ClientOptions().
 //             SetHost(common::GlobalInfo::Instance()->ck_host()).
@@ -201,24 +201,24 @@
 //             SETH_INFO("run cmd: %s, get count: %d", cmd.c_str(), ck_block.GetRowCount());
 //             for (uint32_t i = 0; i < ck_block.GetRowCount(); ++i) {
 //                 std::string user = common::Encode::HexDecode(std::string(ck_block[0]->As<clickhouse::ColumnString>()->At(i)));
-//                 auto prepayment = ck_block[1]->As<clickhouse::ColumnUInt64>()->At(i);
+//                 auto prefund = ck_block[1]->As<clickhouse::ColumnUInt64>()->At(i);
 //                 auto height = ck_block[2]->As<clickhouse::ColumnUInt64>()->At(i);
-//                 if (latest_prepayment_height_ < height) {
-//                     latest_prepayment_height_ = height;
+//                 if (latest_prefund_height_ < height) {
+//                     latest_prefund_height_ = height;
 //                 }
 
 //                 auto user_info = std::make_shared<UserInfoItem>();
 //                 user_info->id = user;
-//                 user_info->prepayment = prepayment;
+//                 user_info->prefund = prefund;
 //                 user_info_queue_.push(user_info);
 //                 {
 //                     std::lock_guard g(sell_map_mutex_);
 //                     auto iter = sell_map_.find(user_info->id);
 //                     if (iter != sell_map_.end()) {
-//                         if (iter->second->status() == ws::protobuf::kSellWaitingPrepayment ||
-//                                 iter->second->status() == ws::protobuf::kSellTxPrepaymentError) {
-//                             if (iter->second->all() <= prepayment) {
-//                                 iter->second->set_status(ws::protobuf::kSellPrepayment);
+//                         if (iter->second->status() == ws::protobuf::kSellWaitingPrefund ||
+//                                 iter->second->status() == ws::protobuf::kSellTxPrefundError) {
+//                             if (iter->second->all() <= prefund) {
+//                                 iter->second->set_status(ws::protobuf::kSellPrefund);
 //                                 prefix_db_->SaveSellout(user, *iter->second);
 //                                 auto* sellinfo = ws_tx_res.mutable_init_info()->mutable_c2c()->add_sells();
 //                                 *sellinfo = *iter->second;
@@ -227,8 +227,8 @@
 //                     }
 //                 }
 
-//                 SETH_INFO("new prepayment coming: %s, %lu, %lu", 
-//                     common::Encode::HexEncode(user_info->id).c_str(), prepayment, height);
+//                 SETH_INFO("new prefund coming: %s, %lu, %lu", 
+//                     common::Encode::HexEncode(user_info->id).c_str(), prefund, height);
 //             }
 //         });
 //     } catch (std::exception& e) {
@@ -394,21 +394,21 @@
 //             continue;
 //         }
 
-//         if (old_status >= ws::protobuf::kSellTxPrepaymentError) {
+//         if (old_status >= ws::protobuf::kSellTxPrefundError) {
 //             continue;
 //         }
 
 //         // if (old_status == ws::protobuf::kSellReleased && iter->second->seller() == common::Encode::HexDecode("4d20fc0bb62f67fb29ec13036ce3a84ddebc10e7")) {
-//         //     iter->second->set_status(ws::protobuf::kSellWaitingPrepayment);
+//         //     iter->second->set_status(ws::protobuf::kSellWaitingPrefund);
 //         //     iter->second->set_timestamp(now_tm);
 //         // }
 
-//         if (old_status == ws::protobuf::kSellWaitingPrepayment) {
+//         if (old_status == ws::protobuf::kSellWaitingPrefund) {
 //             if (iter->second->timestamp() + 4 * c2c_timeout_ms() > now_tm) {
 //                 continue;
 //             }
 
-//             iter->second->set_status(ws::protobuf::kSellTxPrepaymentError);
+//             iter->second->set_status(ws::protobuf::kSellTxPrefundError);
 //         }
 
 //         if (old_status == ws::protobuf::kSellWaitingCreate) {
@@ -722,8 +722,8 @@
 //         message.append(tx_info.contract_input());
 //     }
 
-//     if (tx_info.has_contract_prepayment()) {
-//         uint64_t prepay = tx_info.contract_prepayment();
+//     if (tx_info.has_contract_prefund()) {
+//         uint64_t prepay = tx_info.contract_prefund();
 //         message.append(std::string((char*)&prepay, sizeof(prepay)));
 //     }
 
@@ -785,8 +785,8 @@
 //         new_tx->set_contract_input(tx_info.contract_input());
 //     }
 
-//     if (tx_info.contract_prepayment() > 0) {
-//         new_tx->set_contract_prepayment(tx_info.contract_prepayment());
+//     if (tx_info.contract_prefund() > 0) {
+//         new_tx->set_contract_prefund(tx_info.contract_prefund());
 //     }
 
 //     int32_t tmp_sign_v = tx_info.signv()[0];
@@ -849,23 +849,23 @@
 
 //     PopUserInfo();
 //     auto seller = security_->GetAddress(tx.pubkey());
-//     auto prepayment_iter = contract_prepayment_.find(seller);
-//     if (prepayment_iter == contract_prepayment_.end()) {
-//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prepayment.");
-//         SETH_DEBUG("new c2c sell invalid amount prepayment not exists: %s.", 
+//     auto prefund_iter = contract_prefund_.find(seller);
+//     if (prefund_iter == contract_prefund_.end()) {
+//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prefund.");
+//         SETH_DEBUG("new c2c sell invalid amount prefund not exists: %s.", 
 //             common::Encode::HexEncode(seller).c_str());
 //         return;
 //     }
 
-//     if (tx.amount() + 10000000lu > prepayment_iter->second) {
-//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prepayment.");
-//         SETH_DEBUG("new c2c sell invalid amount: %lu, prepayment: %lu", tx.amount(), prepayment_iter->second);
+//     if (tx.amount() + 10000000lu > prefund_iter->second) {
+//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prefund.");
+//         SETH_DEBUG("new c2c sell invalid amount: %lu, prefund: %lu", tx.amount(), prefund_iter->second);
 //         return;
 //     }
 
-//     if (prepayment_iter->second < min_c2c_prepayment()) {
-//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid prepayment");
-//         SETH_DEBUG("new c2c sell invalid prepayment.");
+//     if (prefund_iter->second < min_c2c_prefund()) {
+//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid prefund");
+//         SETH_DEBUG("new c2c sell invalid prefund.");
 //         return;
 //     }
 
@@ -885,7 +885,7 @@
 //         return;
 //     }
 
-//     if (sell_ptr->status() != ws::protobuf::kSellPrepayment && 
+//     if (sell_ptr->status() != ws::protobuf::kSellPrefund && 
 //             sell_ptr->status() != ws::protobuf::kSellTxCreateError) {
 //         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid sell, status invalid");
 //         SETH_DEBUG("new c2c sell invalid sell, status invalid");
@@ -1026,17 +1026,17 @@
 //             CHECK_MEMORY_SIZE(user_balance_);
 //         }
 
-//         if (user_info->prepayment > 0) {
-//             contract_prepayment_[user_info->id] = user_info->prepayment;
-//             CHECK_MEMORY_SIZE(contract_prepayment_);
+//         if (user_info->prefund > 0) {
+//             contract_prefund_[user_info->id] = user_info->prefund;
+//             CHECK_MEMORY_SIZE(contract_prefund_);
 //         }
 
 //         SETH_DEBUG("update balance %s, %lu, %lu", 
-//             common::Encode::HexEncode(user_info->id).c_str(), user_info->balance, user_info->prepayment);
+//             common::Encode::HexEncode(user_info->id).c_str(), user_info->balance, user_info->prefund);
 //     }
 // }
 
-// void WsServer::C2cPrepayment(websocketpp::connection_hdl hdl, const std::string& encode_msg) {
+// void WsServer::C2cPrefund(websocketpp::connection_hdl hdl, const std::string& encode_msg) {
 //     SETH_DEBUG("new c2c sell comming.");
 //     auto msg = common::Encode::HexDecode(encode_msg);
 //     ws::protobuf::InitInfo c2c_msg;
@@ -1066,9 +1066,9 @@
 //         return;
 //     }
 
-//     if (tx.contract_prepayment() < min_c2c_prepayment()) {
-//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid prepayment");
-//         SETH_DEBUG("new c2c sell invalid prepayment.");
+//     if (tx.contract_prefund() < min_c2c_prefund()) {
+//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid prefund");
+//         SETH_DEBUG("new c2c sell invalid prefund.");
 //         return;
 //     }
 
@@ -1081,9 +1081,9 @@
 //         return;
 //     }
 
-//     if (tx.contract_prepayment() > biter->second) {
+//     if (tx.contract_prefund() > biter->second) {
 //         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid balance");
-//         SETH_DEBUG("new c2c sell invalid balance: %lu, %lu", tx.contract_prepayment(), biter->second);
+//         SETH_DEBUG("new c2c sell invalid balance: %lu, %lu", tx.contract_prefund(), biter->second);
 //         return;
 //     }
 
@@ -1132,9 +1132,9 @@
 //     sell_ptr->set_contract(tx.to());
 //     sell_ptr->set_username(tmp_sell.username());
 //     sell_ptr->set_seller(seller);
-//     sell_ptr->set_all(tx.contract_prepayment());
+//     sell_ptr->set_all(tx.contract_prefund());
 //     sell_ptr->set_price(tmp_sell.price());
-//     sell_ptr->set_status(ws::protobuf::kSellWaitingPrepayment);
+//     sell_ptr->set_status(ws::protobuf::kSellWaitingPrefund);
 //     sell_ptr->set_create_timestamp(common::TimeUtils::TimestampMs());
 //     auto* receivable = sell_ptr->mutable_receivable();
 //     *receivable = tmp_sell.receivable();
@@ -1148,9 +1148,9 @@
 //         return;
 //     }
 
-//     if (tx.amount() + 1000000llu > tx.contract_prepayment()) {
-//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid prepayment!");
-//         SETH_DEBUG("new c2c sell invalid sell, invalid prepayment.");
+//     if (tx.amount() + 1000000llu > tx.contract_prefund()) {
+//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid prefund!");
+//         SETH_DEBUG("new c2c sell invalid sell, invalid prefund.");
 //         return;
 //     }
 
@@ -1183,7 +1183,7 @@
 //         CHECK_MEMORY_SIZE(sell_map_);
 //     }
     
-//     C2cResponse(hdl, c2c_msg.msg_id(), ws::protobuf::kSellWaitingPrepayment, "ok");
+//     C2cResponse(hdl, c2c_msg.msg_id(), ws::protobuf::kSellWaitingPrefund, "ok");
 //     SETH_INFO("create new sell success create tm: %lu, seller: %s, username: %s, all: %lu, price: %lu, receivable size: %d",
 //         sell_ptr->create_timestamp(), 
 //         common::Encode::HexEncode(seller).c_str(), 
@@ -1219,17 +1219,17 @@
 //     auto& tx = c2c_msg.tx();
 //     PopUserInfo();
 //     auto seller = security_->GetAddress(tx.pubkey());
-//     auto prepayment_iter = contract_prepayment_.find(seller);
-//     if (prepayment_iter == contract_prepayment_.end()) {
-//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prepayment.");
-//         SETH_DEBUG("cancel c2c sell invalid amount prepayment not exists: %s.", 
+//     auto prefund_iter = contract_prefund_.find(seller);
+//     if (prefund_iter == contract_prefund_.end()) {
+//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prefund.");
+//         SETH_DEBUG("cancel c2c sell invalid amount prefund not exists: %s.", 
 //             common::Encode::HexEncode(seller).c_str());
 //         return;
 //     }
 
-//     if (1000000lu > prepayment_iter->second) {
-//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prepayment.");
-//         SETH_DEBUG("cancel c2c sell invalid amount: %lu, prepayment: %lu", tx.amount(), prepayment_iter->second);
+//     if (1000000lu > prefund_iter->second) {
+//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prefund.");
+//         SETH_DEBUG("cancel c2c sell invalid amount: %lu, prefund: %lu", tx.amount(), prefund_iter->second);
 //         return;
 //     }
 
@@ -1325,17 +1325,17 @@
 //     auto& tx = c2c_msg.tx();
 //     PopUserInfo();
 //     auto seller = c2c_msg.c2c().sell().seller();
-//     auto prepayment_iter = contract_prepayment_.find(seller);
-//     if (prepayment_iter == contract_prepayment_.end()) {
-//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prepayment.");
-//         SETH_DEBUG("manager cancel c2c sell invalid amount prepayment not exists: %s.", 
+//     auto prefund_iter = contract_prefund_.find(seller);
+//     if (prefund_iter == contract_prefund_.end()) {
+//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prefund.");
+//         SETH_DEBUG("manager cancel c2c sell invalid amount prefund not exists: %s.", 
 //             common::Encode::HexEncode(seller).c_str());
 //         return;
 //     }
 
-//     if (1000000lu > prepayment_iter->second) {
-//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prepayment.");
-//         SETH_DEBUG("manager cancel c2c sell invalid amount: %lu, prepayment: %lu", tx.amount(), prepayment_iter->second);
+//     if (1000000lu > prefund_iter->second) {
+//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prefund.");
+//         SETH_DEBUG("manager cancel c2c sell invalid amount: %lu, prefund: %lu", tx.amount(), prefund_iter->second);
 //         return;
 //     }
 
@@ -1445,7 +1445,7 @@
 
 //     if (tx.amount() + consensus::kTransferGas > biter->second) {
 //         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid balance");
-//         SETH_DEBUG("new transaction invalid balance: %lu, %lu", tx.contract_prepayment(), biter->second);
+//         SETH_DEBUG("new transaction invalid balance: %lu, %lu", tx.contract_prefund(), biter->second);
 //         return;
 //     }
 
@@ -1716,10 +1716,10 @@
 //         return;
 //     }
 
-//     auto prepayment_iter = contract_prepayment_.find(seller);
-//     if (prepayment_iter == contract_prepayment_.end()) {
-//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prepayment.");
-//         SETH_DEBUG("confirm order invalid amount prepayment not exists: %s.", 
+//     auto prefund_iter = contract_prefund_.find(seller);
+//     if (prefund_iter == contract_prefund_.end()) {
+//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prefund.");
+//         SETH_DEBUG("confirm order invalid amount prefund not exists: %s.", 
 //             common::Encode::HexEncode(seller).c_str());
 //         return;
 //     }
@@ -1731,9 +1731,9 @@
 //     }
 
 //     auto confirm_amount = c2c_msg.c2c().order().amount();
-//     if (100000lu > prepayment_iter->second) {
-//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prepayment.");
-//         SETH_DEBUG("confirm order invalid amount: %lu, prepayment: %lu", 100000lu, prepayment_iter->second);
+//     if (100000lu > prefund_iter->second) {
+//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prefund.");
+//         SETH_DEBUG("confirm order invalid amount: %lu, prefund: %lu", 100000lu, prefund_iter->second);
 //         return;
 //     }
 
@@ -1835,17 +1835,17 @@
 //     auto& tx = c2c_msg.tx();
 //     PopUserInfo();
 //     auto seller = c2c_msg.c2c().sell().seller();
-//     auto prepayment_iter = contract_prepayment_.find(seller);
-//     if (prepayment_iter == contract_prepayment_.end()) {
-//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prepayment.");
-//         SETH_DEBUG("manager cancel force c2c sell invalid amount prepayment not exists: %s.", 
+//     auto prefund_iter = contract_prefund_.find(seller);
+//     if (prefund_iter == contract_prefund_.end()) {
+//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prefund.");
+//         SETH_DEBUG("manager cancel force c2c sell invalid amount prefund not exists: %s.", 
 //             common::Encode::HexEncode(seller).c_str());
 //         return;
 //     }
 
-//     if (1000000lu > prepayment_iter->second) {
-//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prepayment.");
-//         SETH_DEBUG("manager cancel force c2c sell invalid amount: %lu, prepayment: %lu", tx.amount(), prepayment_iter->second);
+//     if (1000000lu > prefund_iter->second) {
+//         C2cResponse(hdl, c2c_msg.msg_id(), -1, "invalid amount and prefund.");
+//         SETH_DEBUG("manager cancel force c2c sell invalid amount: %lu, prefund: %lu", tx.amount(), prefund_iter->second);
 //         return;
 //     }
 
@@ -2162,8 +2162,8 @@
 //         "mgrcancelsellforce", 
 //         std::bind(&WsServer::C2cManagerCancelForceSell, this, std::placeholders::_1, std::placeholders::_2));
 //     ws_server_.RegisterCallback(
-//         "prepayment", 
-//         std::bind(&WsServer::C2cPrepayment, this, std::placeholders::_1, std::placeholders::_2));
+//         "prefund", 
+//         std::bind(&WsServer::C2cPrefund, this, std::placeholders::_1, std::placeholders::_2));
 //     ws_server_.RegisterCallback(
 //         "status", 
 //         std::bind(&WsServer::C2cStatus, this, std::placeholders::_1, std::placeholders::_2));

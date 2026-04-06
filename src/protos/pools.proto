@@ -12,7 +12,7 @@ enum StepType {
     kConsensusCreateGenesisAcount = 4;  // Genesis account transaction
     kConsensusLocalTos = 5;  // Cross-shard confirmation transaction (cumulative transaction from the 'to' side)
     kContractCreate = 6;  // Contract creation transaction
-    kContractGasPrepayment = 7;  // Set prepayment for contract calls
+    kContractGasPrefund = 7;  // Set prefund for contract calls
     kContractExcute = 8;  // Execute contract
     kRootCreateAddress = 9;  // Create new address in root network
     kStatistic = 12;  // Statistical transaction
@@ -21,7 +21,7 @@ enum StepType {
     kCross = 15;  // Transaction to prevent missing cross-shard blocks
     kRootCross = 16;  // Root transaction to prevent missing cross-shard blocks
     kPoolStatisticTag = 17;  // Final marker block for this round of transaction pool statistics
-    kContractGasPrepaymentWithdraw = 18;
+    kContractGasPrefundWithdraw = 18;
 }
 
 message ToTxHeights {
@@ -42,7 +42,7 @@ message ToTxMessageItem {
     optional bytes elect_join_g2_value = 6;
     optional bytes library_bytes = 8;
     optional bytes from = 9;
-    optional uint64 prepayment = 10;
+    optional uint64 prefund = 10;
     optional uint32 des_sharding_id = 11;
 }
 
@@ -170,7 +170,7 @@ message TxMessage {
     optional bytes to = 8;
     optional uint64 amount = 9;
     optional StepType step = 10 [default=kNormalFrom];
-    optional uint64 contract_prepayment = 11;
+    optional uint64 contract_prefund = 11;
     optional bytes contract_code = 12;
     optional bytes contract_input = 13;
     optional bytes sign = 14;

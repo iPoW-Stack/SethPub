@@ -214,7 +214,7 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
                 prepay_user->Append(common::Encode::HexEncode(user));
                 prepay_height->Append(block_item->height());
                 prepay_amount->Append(tx.balance());
-                SETH_DEBUG("success add prepayment contract: %s, address: %s, nonce: %lu, balance: %lu",
+                SETH_DEBUG("success add prefund contract: %s, address: %s, nonce: %lu, balance: %lu",
                     common::Encode::HexEncode(contract).c_str(), 
                     common::Encode::HexEncode(user).c_str(), 
                     tx.nonce(), 
@@ -275,7 +275,7 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
                     prepay_user->Append(common::Encode::HexEncode(user));
                     prepay_height->Append(block_item->height());
                     prepay_amount->Append(to_txs.tos(to_tx_idx).balance());
-                    SETH_DEBUG("success add prepayment contract: %s, address: %s, nonce: %lu, balance: %lu",
+                    SETH_DEBUG("success add prefund contract: %s, address: %s, nonce: %lu, balance: %lu",
                         common::Encode::HexEncode(contract).c_str(), 
                         common::Encode::HexEncode(user).c_str(), 
                         tx.nonce(), 
@@ -351,7 +351,7 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
     // ck_client.Execute(std::string("optimize TABLE ") + kClickhouseAccountTableName + " FINAL");
     // ck_client.Execute(std::string("optimize TABLE ") + kClickhouseAccountKvTableName + " FINAL");
     // ck_client.Execute(std::string("optimize TABLE ") + kClickhouseC2cTableName + " FINAL");
-    // ck_client.Execute(std::string("optimize TABLE ") + kClickhousePrepaymentTableName + " FINAL");
+    // ck_client.Execute(std::string("optimize TABLE ") + kClickhousePrefundTableName + " FINAL");
 #ifndef NDEBUG
     for (int32_t i = 0; i < tx_list.size(); ++i) {
         SETH_DEBUG("ck success new block coming sharding id: %u_%d_%lu, "
@@ -465,7 +465,7 @@ void ClickHouseClient::FlushToCkWithData() try {
 
             prepay.AppendColumn("contract", prepay_contract);
             prepay.AppendColumn("user", prepay_user);
-            prepay.AppendColumn("prepayment", prepay_amount);
+            prepay.AppendColumn("prefund", prepay_amount);
             prepay.AppendColumn("height", prepay_height);
 
             uint32_t idx = 0;
@@ -479,7 +479,7 @@ void ClickHouseClient::FlushToCkWithData() try {
             ck_client.Insert(kClickhouseAccountTableName, accounts);
             ck_client.Insert(kClickhouseAccountKvTableName, account_attrs);
             ck_client.Insert(kClickhouseC2cTableName, c2cs);
-            ck_client.Insert(kClickhousePrepaymentTableName, prepay);
+            ck_client.Insert(kClickhousePrefundTableName, prepay);
         }
 
         HandleBlsMessage();
@@ -505,7 +505,7 @@ bool ClickHouseClient::QueryContract(const std::string& from, const std::string&
     zjc_host.contract_mgr_ = contract_mgr_;
     zjc_host.my_address_ = contract_addr;
     zjc_host.tx_context_.block_gas_limit = 10000000000lu;
-    // user caller prepayment 's gas
+    // user caller prefund 's gas
     uint64_t from_balance = 10000000000lu;
     auto contract_addr_info = prefix_db_->GetAddressInfo(contract_addr);
     if (contract_addr_info == nullptr) {
@@ -755,12 +755,12 @@ bool ClickHouseClient::CreateC2cTable() {
     return true;
 }
 
-bool ClickHouseClient::CreatePrepaymentTable() {
-    std::string create_cmd = std::string("CREATE TABLE if not exists ") + kClickhousePrepaymentTableName + " ( "
+bool ClickHouseClient::CreatePrefundTable() {
+    std::string create_cmd = std::string("CREATE TABLE if not exists ") + kClickhousePrefundTableName + " ( "
         "`id` UInt64 COMMENT 'id' CODEC(T64, LZ4), "
         "`contract` String COMMENT 'contract' CODEC(LZ4), "
         "`user` String COMMENT 'user' CODEC(LZ4), "
-        "`prepayment` UInt64 COMMENT 'prepayment' CODEC(LZ4), "
+        "`prefund` UInt64 COMMENT 'prefund' CODEC(LZ4), "
         "`height` UInt64 COMMENT 'height' CODEC(LZ4), "
         "`update` DateTime DEFAULT now() COMMENT 'update' "
         ") "
@@ -1043,7 +1043,7 @@ bool ClickHouseClient::CreateTable(bool statistic, std::shared_ptr<db::Db> db_pt
     CreateStatisticTable();
     CreatePrivateKeyTable();
     CreateC2cTable();
-    CreatePrepaymentTable();
+    CreatePrefundTable();
     CreateBlsElectInfoTable();
     CreateBlsBlockInfoTable();    
     if (statistic) {

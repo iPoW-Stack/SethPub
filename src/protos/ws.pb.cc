@@ -442,7 +442,7 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::ws::protobuf::TxMessage, to_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::ws::protobuf::TxMessage, amount_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::ws::protobuf::TxMessage, step_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::ws::protobuf::TxMessage, contract_prepayment_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::ws::protobuf::TxMessage, contract_prefund_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::ws::protobuf::TxMessage, contract_code_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::ws::protobuf::TxMessage, contract_input_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::ws::protobuf::TxMessage, signr_),
@@ -623,7 +623,7 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::ws::protobuf::C2cMessage, report_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::ws::protobuf::C2cMessage, sells_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::ws::protobuf::C2cMessage, get_sell_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::ws::protobuf::C2cMessage, prepayment_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::ws::protobuf::C2cMessage, prefund_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::ws::protobuf::C2cMessage, c2c_addr_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::ws::protobuf::C2cMessage, user_order_info_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::ws::protobuf::C2cMessage, appeal_),
@@ -799,7 +799,7 @@ void AddDescriptorsImpl() {
       "gas_price\030\005 \001(\004\022\013\n\003key\030\006 \001(\014\022\r\n\005value\030\007 "
       "\001(\014\022\n\n\002to\030\010 \001(\014\022\016\n\006amount\030\t \001(\004\0225\n\004step\030"
       "\n \001(\0162\032.seth.ws.protobuf.StepType:\013kNorm"
-      "alFrom\022\033\n\023contract_prepayment\030\013 \001(\004\022\025\n\rc"
+      "alFrom\022\033\n\023contract_prefund\030\013 \001(\004\022\025\n\rc"
       "ontract_code\030\014 \001(\014\022\026\n\016contract_input\030\r \001"
       "(\014\022\r\n\005signr\030\016 \001(\014\022\r\n\005signs\030\017 \001(\014\022\r\n\005sign"
       "v\030\020 \001(\014\"z\n\tOrderInfo\022\r\n\005buyer\030\001 \001(\014\022(\n\006s"
@@ -838,7 +838,7 @@ void AddDescriptorsImpl() {
       "uf.NewOrder\022-\n\006report\030\003 \001(\0132\035.seth.ws.pr"
       "otobuf.BuyerReport\022)\n\005sells\030\004 \003(\0132\032.seth"
       ".ws.protobuf.SellInfo\022+\n\010get_sell\030\005 \001(\0132"
-      "\031.seth.ws.protobuf.GetSell\022\022\n\nprepayment"
+      "\031.seth.ws.protobuf.GetSell\022\022\n\nprefund"
       "\030\006 \001(\004\022\020\n\010c2c_addr\030\007 \001(\014\0223\n\017user_order_i"
       "nfo\030\010 \001(\0132\032.seth.ws.protobuf.SellInfo\022(\n"
       "\006appeal\030\t \001(\0132\030.seth.ws.protobuf.Appeal\""
@@ -878,7 +878,7 @@ void AddDescriptorsImpl() {
       "nseOutOfBindwidth\020\004\022\020\n\014kTransaction\020\005\022\016\n"
       "\nkC2cTxList\020\006\022\024\n\020kC2cUserSellInfo\020\007\022\017\n\013k"
       "C2cNewSell\020\010\022\020\n\014kC2cNewOrder\020\t\022\017\n\013kC2cCo"
-      "nfirm\020\n\022\022\n\016kC2cPrepayment\020\013\022\024\n\020kC2cRefre"
+      "nfirm\020\n\022\022\n\016kC2cPrefund\020\013\022\024\n\020kC2cRefre"
       "shLocal\020\014\022\023\n\017kC2cCancelOrder\020\r\022\022\n\016kC2cCa"
       "ncelSell\020\016\022\026\n\022kC2cManagerRecover\020\017\022\031\n\025kC"
       "2cManagerCancelSell\020\020*\222\001\n\013ReceiveType\022\013\n"
@@ -893,11 +893,11 @@ void AddDescriptorsImpl() {
       "nceled\020\t\022\033\n\027kSellUserWaitingRelease\020\n\022\025\n"
       "\021kSellUserReleased\020\013\022\036\n\032kSellManagerWait"
       "ingRelease\020\014\022\030\n\024kSellManagerReleased\020\r\022\023"
-      "\n\017kSellPrepayment\020\016\022\032\n\026kSellWaitingPrepa"
+      "\n\017kSellPrefund\020\016\022\032\n\026kSellWaitingPrepa"
       "yment\020\017\022\031\n\025kSellWaitingConfirmTx\020\020\022\036\n\032kS"
       "ellForceReleaseWaitingTx\020\021\022\026\n\022kSellForce"
       "Released\020\022\022\024\n\020kReportedByOrder\020\023\022\032\n\026kSel"
-      "lTxPrepaymentError\020}\022\026\n\022kSellTxCreateErr"
+      "lTxPrefundError\020}\022\026\n\022kSellTxCreateErr"
       "or\020~\022\033\n\027kSellTxUserReleaseError\020\177\022\037\n\032kSe"
       "llTxManagerReleaseError\020\200\001\022\037\n\032kSellWaiti"
       "ngConfirmTxError\020\201\001\022$\n\037kSellForceRelease"
@@ -1056,7 +1056,7 @@ const int TxMessage::kValueFieldNumber;
 const int TxMessage::kToFieldNumber;
 const int TxMessage::kAmountFieldNumber;
 const int TxMessage::kStepFieldNumber;
-const int TxMessage::kContractPrepaymentFieldNumber;
+const int TxMessage::kContractPrefundFieldNumber;
 const int TxMessage::kContractCodeFieldNumber;
 const int TxMessage::kContractInputFieldNumber;
 const int TxMessage::kSignrFieldNumber;
@@ -1113,8 +1113,8 @@ TxMessage::TxMessage(const TxMessage& from)
     signv_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.signv_);
   }
   ::memcpy(&nonce_, &from.nonce_,
-    static_cast<size_t>(reinterpret_cast<char*>(&contract_prepayment_) -
-    reinterpret_cast<char*>(&nonce_)) + sizeof(contract_prepayment_));
+    static_cast<size_t>(reinterpret_cast<char*>(&contract_prefund_) -
+    reinterpret_cast<char*>(&nonce_)) + sizeof(contract_prefund_));
   // @@protoc_insertion_point(copy_constructor:seth.ws.protobuf.TxMessage)
 }
 
@@ -1129,8 +1129,8 @@ void TxMessage::SharedCtor() {
   signs_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   signv_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   ::memset(&nonce_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&contract_prepayment_) -
-      reinterpret_cast<char*>(&nonce_)) + sizeof(contract_prepayment_));
+      reinterpret_cast<char*>(&contract_prefund_) -
+      reinterpret_cast<char*>(&nonce_)) + sizeof(contract_prefund_));
 }
 
 TxMessage::~TxMessage() {
@@ -1202,8 +1202,8 @@ void TxMessage::Clear() {
   }
   if (cached_has_bits & 65024u) {
     ::memset(&nonce_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&contract_prepayment_) -
-        reinterpret_cast<char*>(&nonce_)) + sizeof(contract_prepayment_));
+        reinterpret_cast<char*>(&contract_prefund_) -
+        reinterpret_cast<char*>(&nonce_)) + sizeof(contract_prefund_));
   }
   _has_bits_.Clear();
   _internal_metadata_.Clear();
@@ -1357,14 +1357,14 @@ bool TxMessage::MergePartialFromCodedStream(
         break;
       }
 
-      // optional uint64 contract_prepayment = 11;
+      // optional uint64 contract_prefund = 11;
       case 11: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(88u /* 88 & 0xFF */)) {
-          set_has_contract_prepayment();
+          set_has_contract_prefund();
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
-                 input, &contract_prepayment_)));
+                 input, &contract_prefund_)));
         } else {
           goto handle_unusual;
         }
@@ -1513,9 +1513,9 @@ void TxMessage::SerializeWithCachedSizes(
       10, this->step(), output);
   }
 
-  // optional uint64 contract_prepayment = 11;
+  // optional uint64 contract_prefund = 11;
   if (cached_has_bits & 0x00008000u) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt64(11, this->contract_prepayment(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(11, this->contract_prefund(), output);
   }
 
   // optional bytes contract_code = 12;
@@ -1622,9 +1622,9 @@ void TxMessage::SerializeWithCachedSizes(
       10, this->step(), target);
   }
 
-  // optional uint64 contract_prepayment = 11;
+  // optional uint64 contract_prefund = 11;
   if (cached_has_bits & 0x00008000u) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(11, this->contract_prepayment(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(11, this->contract_prefund(), target);
   }
 
   // optional bytes contract_code = 12;
@@ -1786,11 +1786,11 @@ size_t TxMessage::ByteSizeLong() const {
           this->amount());
     }
 
-    // optional uint64 contract_prepayment = 11;
-    if (has_contract_prepayment()) {
+    // optional uint64 contract_prefund = 11;
+    if (has_contract_prefund()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt64Size(
-          this->contract_prepayment());
+          this->contract_prefund());
     }
 
   }
@@ -1880,7 +1880,7 @@ void TxMessage::MergeFrom(const TxMessage& from) {
       amount_ = from.amount_;
     }
     if (cached_has_bits & 0x00008000u) {
-      contract_prepayment_ = from.contract_prepayment_;
+      contract_prefund_ = from.contract_prefund_;
     }
     _has_bits_[0] |= cached_has_bits;
   }
@@ -1934,7 +1934,7 @@ void TxMessage::InternalSwap(TxMessage* other) {
   swap(version_, other->version_);
   swap(step_, other->step_);
   swap(amount_, other->amount_);
-  swap(contract_prepayment_, other->contract_prepayment_);
+  swap(contract_prefund_, other->contract_prefund_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   _internal_metadata_.Swap(&other->_internal_metadata_);
 }
@@ -5992,7 +5992,7 @@ const int C2cMessage::kOrderFieldNumber;
 const int C2cMessage::kReportFieldNumber;
 const int C2cMessage::kSellsFieldNumber;
 const int C2cMessage::kGetSellFieldNumber;
-const int C2cMessage::kPrepaymentFieldNumber;
+const int C2cMessage::kPrefundFieldNumber;
 const int C2cMessage::kC2CAddrFieldNumber;
 const int C2cMessage::kUserOrderInfoFieldNumber;
 const int C2cMessage::kAppealFieldNumber;
@@ -6045,15 +6045,15 @@ C2cMessage::C2cMessage(const C2cMessage& from)
   } else {
     appeal_ = NULL;
   }
-  prepayment_ = from.prepayment_;
+  prefund_ = from.prefund_;
   // @@protoc_insertion_point(copy_constructor:seth.ws.protobuf.C2cMessage)
 }
 
 void C2cMessage::SharedCtor() {
   c2c_addr_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   ::memset(&sell_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&prepayment_) -
-      reinterpret_cast<char*>(&sell_)) + sizeof(prepayment_));
+      reinterpret_cast<char*>(&prefund_) -
+      reinterpret_cast<char*>(&sell_)) + sizeof(prefund_));
 }
 
 C2cMessage::~C2cMessage() {
@@ -6122,7 +6122,7 @@ void C2cMessage::Clear() {
       appeal_->Clear();
     }
   }
-  prepayment_ = GOOGLE_ULONGLONG(0);
+  prefund_ = GOOGLE_ULONGLONG(0);
   _has_bits_.Clear();
   _internal_metadata_.Clear();
 }
@@ -6197,14 +6197,14 @@ bool C2cMessage::MergePartialFromCodedStream(
         break;
       }
 
-      // optional uint64 prepayment = 6;
+      // optional uint64 prefund = 6;
       case 6: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(48u /* 48 & 0xFF */)) {
-          set_has_prepayment();
+          set_has_prefund();
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
-                 input, &prepayment_)));
+                 input, &prefund_)));
         } else {
           goto handle_unusual;
         }
@@ -6307,9 +6307,9 @@ void C2cMessage::SerializeWithCachedSizes(
       5, this->_internal_get_sell(), output);
   }
 
-  // optional uint64 prepayment = 6;
+  // optional uint64 prefund = 6;
   if (cached_has_bits & 0x00000080u) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt64(6, this->prepayment(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(6, this->prefund(), output);
   }
 
   // optional bytes c2c_addr = 7;
@@ -6381,9 +6381,9 @@ void C2cMessage::SerializeWithCachedSizes(
         5, this->_internal_get_sell(), deterministic, target);
   }
 
-  // optional uint64 prepayment = 6;
+  // optional uint64 prefund = 6;
   if (cached_has_bits & 0x00000080u) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(6, this->prepayment(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(6, this->prefund(), target);
   }
 
   // optional bytes c2c_addr = 7;
@@ -6485,11 +6485,11 @@ size_t C2cMessage::ByteSizeLong() const {
           *appeal_);
     }
 
-    // optional uint64 prepayment = 6;
-    if (has_prepayment()) {
+    // optional uint64 prefund = 6;
+    if (has_prefund()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt64Size(
-          this->prepayment());
+          this->prefund());
     }
 
   }
@@ -6546,7 +6546,7 @@ void C2cMessage::MergeFrom(const C2cMessage& from) {
       mutable_appeal()->::seth::ws::protobuf::Appeal::MergeFrom(from.appeal());
     }
     if (cached_has_bits & 0x00000080u) {
-      prepayment_ = from.prepayment_;
+      prefund_ = from.prefund_;
     }
     _has_bits_[0] |= cached_has_bits;
   }
@@ -6585,7 +6585,7 @@ void C2cMessage::InternalSwap(C2cMessage* other) {
   swap(get_sell_, other->get_sell_);
   swap(user_order_info_, other->user_order_info_);
   swap(appeal_, other->appeal_);
-  swap(prepayment_, other->prepayment_);
+  swap(prefund_, other->prefund_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   _internal_metadata_.Swap(&other->_internal_metadata_);
 }

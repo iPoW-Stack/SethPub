@@ -110,8 +110,8 @@ int RootToTxItem::HandleTx(
                 to_item_ptr->set_library_bytes(block_tx.contract_code());
             }
 
-            if (block_tx.contract_prepayment() > 0) {
-                to_item_ptr->set_prepayment(block_tx.contract_prepayment() + to_item_ptr->prepayment());
+            if (block_tx.contract_prefund() > 0) {
+                to_item_ptr->set_prefund(block_tx.contract_prefund() + to_item_ptr->prefund());
             }
         }
 
