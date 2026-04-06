@@ -339,16 +339,16 @@ class SethContract:
     def get_prefund(self, user_address: str) -> int:
         """
         Queries the prefund balance for a specific user on this contract.
-        Prepayment ID = ContractAddress + UserAddress
+        Prefund ID = ContractAddress + UserAddress
         """
         if not self.address:
             raise ValueError("Contract address not set.")
         
-        # Calculate the unique prepayment ID
-        prepayment_id = self.address.lower().replace('0x','') + user_address.lower().replace('0x','')
+        # Calculate the unique prefund ID
+        prefund_id = self.address.lower().replace('0x','') + user_address.lower().replace('0x','')
         
         # Query the account info for this specific ID
-        return self.client.get_prefund(prepayment_id)
+        return self.client.get_prefund(prefund_id)
     
     def deploy(self, transaction: dict, private_key: str) -> SethContract:
         """Web3-style deployment. Automatically detects OQS based on private_key length."""
@@ -673,15 +673,15 @@ class SethClient:
             
         return txh.hex()
 
-    def get_prefund(self, prepayment_id: str) -> int:
-        """Queries the prepayment field from the account status."""
+    def get_prefund(self, prefund_id: str) -> int:
+        """Queries the prefund field from the account status."""
         try:
             # The server expects the composite ID (Contract+User) as the address
-            response = requests.post(self.query_url, data={"address": prepayment_id}, timeout=5).json()
-            # In your C++ backend, this is usually stored in the 'prepayment' field of the account
-            return int(response.get("prepayment", 0))
+            response = requests.post(self.query_url, data={"address": prefund_id}, timeout=5).json()
+            # In your C++ backend, this is usually stored in the 'prefund' field of the account
+            return int(response.get("balance", 0))
         except Exception as e:
-            print(f"DEBUG: Prepayment query failed for ID {prepayment_id}: {e}")
+            print(f"DEBUG: Prefund query failed for ID {prefund_id}: {e}")
             return 0
         
     def query_contract(self, f, a, i):
