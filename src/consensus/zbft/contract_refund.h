@@ -18,7 +18,6 @@ namespace consensus {
 class ContractRefund : public TxItemBase {
 public:
     ContractRefund(
-            std::shared_ptr<contract::ContractManager>& contract_mgr,
             std::shared_ptr<db::Db>& db,
             const transport::MessagePtr& msg_ptr,
             int32_t tx_index,
