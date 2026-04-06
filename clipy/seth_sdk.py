@@ -248,21 +248,32 @@ class SethMethod:
             # If it's a single return value, return 0; if it's a tuple, return our safe defaults
             return default_return if len(self.output_types) > 1 else 0
 
-    def transact(self, private_key: str, value: int = 0, prefund: int = 10**6, oqs_pubkey: str = None) -> dict:
-        """Transaction logic with automatic parsing. Supports OQS auto-detection."""
+    def transact(self, private_key: str, value: int = 0, prefund: int = 10**6, oqs_pubkey: str = None, gm_mode: bool = False) -> dict:
+        """
+        Transaction logic with automatic parsing. 
+        Supports GMSSL (via gm_mode), OQS (auto-detection), and standard ECDSA.
+        """
         
-        # 1. Auto-detect private key type: ECDSA hex length is 64, OQS hex length is usually > 2000
-        is_oqs = len(private_key) > 128
-
-        if is_oqs:
-            # Get OQS public key: prioritize getting it from the contract object's attributes
-            # If you saved oqs_pubkey when deploying or initializing SethContract, it can be used directly here
+        # 1. 优先判定国密模式 (GmSSL)
+        if gm_mode:
+            # 自动从私钥派生 64 字节公钥 (X+Y)
+            gm_pubkey = get_sm2_public_key(private_key)
+            tx_hash = self.contract.client.send_gmssl_transaction(
+                private_key, 
+                gm_pubkey, 
+                self.contract.address, 
+                StepType.kContractExcute, 
+                amount=value, 
+                input_hex=self.encoded_input, 
+                prefund=prefund
+            )
+            
+        # 2. 判定后量子模式 (OQS) - 依据私钥长度
+        elif len(private_key) > 128:
             if not oqs_pubkey:
-                # Alternative: If not preset, try deriving it from global/cache based on the private key (if liboqs supports it)
-                # Or throw an exception to remind the user to set the public key in the contract object
                 raise ValueError(
-                    "OQS detected by key length, but 'oqs_pubkey' is not set in SethContract. "
-                    "Please set 'contract.oqs_pubkey = ...' before calling transact."
+                    "OQS detected by key length, but 'oqs_pubkey' is not set. "
+                    "Please provide it in the method call."
                 )
 
             tx_hash = self.contract.client.send_oqs_transaction(
@@ -274,8 +285,9 @@ class SethMethod:
                 input_hex=self.encoded_input, 
                 prefund=prefund
             )
+            
+        # 3. 执行标准 ECDSA 逻辑
         else:
-            # Execute standard ECDSA logic
             tx_hash = self.contract.client.send_transaction_auto(
                 private_key, 
                 self.contract.address, 
@@ -285,13 +297,13 @@ class SethMethod:
                 prefund=prefund
             )
 
-        # 2. Wait for and return the receipt
+        # 4. 等待并返回回执
         return self.contract.client.wait_for_receipt(
             tx_hash, 
             abi=self.contract.abi, 
             function_name=self.name
         )
-
+    
 class SethContract:
     def __init__(self, client: SethClient, address: Optional[str], abi: list, bytecode: str = None, sender_address: str = ""):
         self.client, self.address, self.abi, self.bytecode, self.sender_address = client, address, abi, bytecode, sender_address
