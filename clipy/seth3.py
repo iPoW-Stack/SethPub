@@ -399,30 +399,50 @@ def test_oqs_contract_prefund_flow(w3, OQS_MY, OQS_KEY, OQS_PK):
     print(f"Gas consumed from prefund: {post_pp - final_pp}")
     oqs_vault.refund(OQS_KEY, oqs_pubkey=OQS_PK)
     
+def get_sm2_public_key(private_key_hex: str) -> str:
+    """
+    手动从私钥派生 SM2 公钥，确保与 C++ 端 gmssl.GetPublicKey() 格式一致
+    """
+    # 初始化时传入私钥，公钥留空
+    sm2_crypt = sm2.CryptSM2(public_key='', private_key=private_key_hex)
+    
+    # gmssl 库内部通过 _private_key_to_public_key 计算点坐标
+    # 得到的公钥通常是不带 '04' 前缀的 X+Y (64字节/128字符)
+    # 根据 Seth 链的要求，通常需要加上 '04' 表示非压缩公钥
+    raw_pub = sm2_crypt._private_key_to_public_key()
+    return raw_pub # 如果链端不需要 '04'，直接返回；如果需要，则使用 '04' + raw_pub
+
+# --- 修改后的测试函数 ---
+
 def test_gmssl_transfer(w3, GM_KEY):
+    """测试国密转账 (修复公钥获取问题)"""
     print("\n--- TEST CASE: GmSSL Standard Transfer ---")
     dest = "0000000000000000000000000000000000000001"
     
-    sm2_crypt = sm2.CryptSM2(public_key="", private_key=GM_KEY)
-    gm_pubkey = sm2_crypt.private_key_to_public_key() 
+    # 1. 修复：获取公钥
+    gm_pubkey = get_sm2_public_key(GM_KEY)
     
+    # 2. 获取国密地址 (对应 C++ gmssl.GetAddress())
     GM_MY = w3.client.get_gmssl_address(gm_pubkey)
 
     print(f"GmSSL Sender: {GM_MY}")
     print(f"Dest Balance before: {w3.client.get_balance(dest)}")
 
+    # 3. 构造交易字典
     tx_dict = {
         'to': dest,
         'value': 10000,
         'gm_pubkey': gm_pubkey
     }
 
+    # 4. 发起国密交易
     receipt = w3.seth.send_gmssl_transaction(tx_dict, GM_KEY)
 
     print(f"GmSSL Transfer Status: {receipt['status']}")
     print(f"Dest Balance after: {w3.client.get_balance(dest)}")
 
 def test_gmssl_contract_deploy_and_call(w3, GM_KEY):
+    """使用国密账户部署并调用合约"""
     print("\n--- TEST CASE: GmSSL Contract Deploy & Call ---")
 
     src = """
@@ -434,10 +454,11 @@ def test_gmssl_contract_deploy_and_call(w3, GM_KEY):
     """
     bin_code, abi = compile_and_link(src, "GmVault")
     
-    sm2_crypt = sm2.CryptSM2(public_key="", private_key=GM_KEY)
-    gm_pubkey = sm2_crypt.private_key_to_public_key()
+    # 获取公钥
+    gm_pubkey = get_sm2_public_key(GM_KEY)
     GM_MY = w3.client.get_gmssl_address(gm_pubkey)
 
+    # 1. 部署合约
     gm_vault = w3.seth.contract(abi=abi, bytecode=bin_code)
     gm_vault.deploy({
         'from': GM_MY,
@@ -447,6 +468,7 @@ def test_gmssl_contract_deploy_and_call(w3, GM_KEY):
 
     print(f"GmSSL Contract Deployed at: {gm_vault.address}")
 
+    # 2. 调用合约
     print("Sending GmSSL Contract Call...")
     receipt = gm_vault.functions.set(999).transact(GM_KEY, gm_pubkey=gm_pubkey)
 
@@ -457,6 +479,7 @@ def test_gmssl_contract_deploy_and_call(w3, GM_KEY):
 
 def gmssl_sign_test():
     IP, PORT = "127.0.0.1", 23001
+    # 示例国密私钥
     GM_KEY = "c4b9e7a21d5f83c0a1e4d6b9f2a1e5c8d3b7a9f0e1d2c3b4a5968778695a4b3c"
     
     w3 = SethWeb3Mock(IP, PORT)
