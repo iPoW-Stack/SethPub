@@ -401,16 +401,35 @@ def test_oqs_contract_prefund_flow(w3, OQS_MY, OQS_KEY, OQS_PK):
     
 def get_sm2_public_key(private_key_hex: str) -> str:
     """
-    手动从私钥派生 SM2 公钥，确保与 C++ 端 gmssl.GetPublicKey() 格式一致
+    手动计算 SM2 公钥 (X+Y)，完全匹配 C++ GmSsl::SetPrivateKey 逻辑
     """
-    # 初始化时传入私钥，公钥留空
-    sm2_crypt = sm2.CryptSM2(public_key='', private_key=private_key_hex)
+    # SM2 的椭圆曲线参数 (GB/T 32918)
+    # y^2 = x^3 + ax + b (mod p)
+    sm2_p = 'FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF'
+    sm2_a = 'FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFC'
+    sm2_b = '28E9FA9E9D9F5E344D5A9E4BCF6509A7F39789F515AB8F92DDBCBD414D940E93'
+    sm2_gx = '32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7'
+    sm2_gy = 'BC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0'
     
-    # gmssl 库内部通过 _private_key_to_public_key 计算点坐标
-    # 得到的公钥通常是不带 '04' 前缀的 X+Y (64字节/128字符)
-    # 根据 Seth 链的要求，通常需要加上 '04' 表示非压缩公钥
-    raw_pub = sm2_crypt._private_key_to_public_key()
-    return raw_pub # 如果链端不需要 '04'，直接返回；如果需要，则使用 '04' + raw_pub
+    # 这里的关键是：公钥 P = [d]G，即私钥乘以基点
+    # 使用 gmssl.func.ecc_mul 进行大数乘法运算
+    # 注意：func.ecc_mul 返回的是 (x, y) 的 hex 字符串
+    pub_point = func.ecc_mul(private_key_hex, sm2_gx, sm2_gy, sm2_p, sm2_a)
+    
+    # 拼接 X 和 Y (各 32 字节 / 64 字符)，不加 '04'
+    # 确保每个坐标都是 64 字符长（补零）
+    x = pub_point[0].zfill(64)
+    y = pub_point[1].zfill(64)
+    
+    return x + y
+
+# 验证地址生成逻辑 (基于你的 C++ 源码)
+from gmssl import sm3
+def get_seth_address(pub_key_hex: str) -> str:
+    # 对应 C++: common::Hash::sm3(str_pk_).substr(0, 20)
+    pub_bytes = bytes.fromhex(pub_key_hex)
+    hash_hex = sm3.sm3_hash(list(pub_bytes))
+    return hash_hex[:40] # 20字节 = 40位Hex
 
 # --- 修改后的测试函数 ---
 
