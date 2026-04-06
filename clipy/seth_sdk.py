@@ -144,25 +144,29 @@ class MessageHandleStatus(IntEnum):
     kConsensusJoinElectThreashTInvalid = 5052
 
 # --- 2. Utilities ---
-   
 def get_sm2_public_key(private_key_hex: str) -> str:
     """
-    针对 gmssl 3.2.2 的公钥提取方案。
-    逻辑：利用 sm2 对象的 sign 逻辑或内部 key 属性提取公钥点坐标。
+    手动计算 SM2 公钥 (X+Y)，解决初始化时不自动派生的问题
     """
-    # 3.2.2 版本中，初始化时传入私钥，它会自动在内部计算出公钥
-    # 虽然没有 .ecc，但公钥点存储在 .public_key 属性中
-    sm2_crypt = sm2.CryptSM2(public_key='', private_key=private_key_hex)
+    # 确保没有 0x 前缀
+    pk_clean = private_key_hex.replace('0x', '')
     
-    # 在 3.x 版本中，sm2_crypt.public_key 存储的是十六进制字符串
-    # 通常格式为 '04' + X + Y (共 130 字符)
-    full_pub = sm2_crypt.public_key
+    # 初始化 CryptSM2 
+    sm2_crypt = sm2.CryptSM2(public_key='', private_key=pk_clean)
     
-    # 按照 C++ 源码要求：只需要 X + Y (64字节 / 128字符)，去掉开头的 '04'
-    if full_pub.startswith('04') and len(full_pub) == 130:
-        return full_pub[2:]
+    # 1. 将私钥 Hex 转为整数 d
+    d = int(pk_clean, 16)
     
-    return full_pub
+    # 2. 获取基点 G (Base Point)
+    # gmssl 内部通常将曲线参数存在内部对象中
+    # P = d * G
+    P = sm2_crypt.ecc.ecc_mul(d, sm2_crypt.ecc.G)
+    
+    # 3. 提取 X 和 Y 坐标，并补齐为 64 字符（32 字节）
+    x_hex = hex(P.x)[2:].zfill(64)
+    y_hex = hex(P.y)[2:].zfill(64)
+    
+    return x_hex + y_hex
 
 def calc_create2_address(sender: str, salt: str, bytecode: str) -> str:
     sender = sender.lower().replace('0x', '')
