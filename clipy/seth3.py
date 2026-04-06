@@ -427,4 +427,4 @@ def oqs_sign_test():
 
 if __name__ == "__main__":
     ecdsa_sign_test()
-    # oqs_sign_test()
+    oqs_sign_test()
