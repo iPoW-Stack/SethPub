@@ -204,8 +204,8 @@ void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
         SETH_DEBUG("get packet data: %d", (packet != nullptr));
         while (packet != nullptr) {
             OnClientPacket(ex_uv_tcp, *packet);
-            packet = ex_uv_tcp->msg_decoder->GetPacket();
             packet->Free();
+            packet = ex_uv_tcp->msg_decoder->GetPacket();
         }
     } else {
         tcp_transport->FreeConnection(ex_uv_tcp);
