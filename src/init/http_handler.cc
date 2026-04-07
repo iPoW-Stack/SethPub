@@ -727,7 +727,7 @@ static void QueryContract(const httplib::Request& req, httplib::Response& http_r
     auto tmp_input = req.get_param_value("input");
     auto tmp_from = req.get_param_value("from");
     std::string from = common::Encode::HexDecode(tmp_from);
-    if (from.empty()) {
+    if (from.size() != common::kUnicastAddressLength) {
         from = common::Encode::HexDecode(std::string('0', 40));
     }
 
@@ -824,10 +824,10 @@ static void AbiQueryContract(const httplib::Request& req, httplib::Response& htt
     auto tmp_input = req.get_param_value("input");
     auto tmp_from = req.get_param_value("from");
     std::string from = common::Encode::HexDecode(tmp_from);
-    if (from.empty()) {
+    if (from.size() != common::kUnicastAddressLength) {
         from = common::Encode::HexDecode(std::string('0', 40));
     }
-    
+
     std::string contract_addr = common::Encode::HexDecode(tmp_contract_addr);
     std::string input = common::Encode::HexDecode(tmp_input);
     uint64_t height = 0;
