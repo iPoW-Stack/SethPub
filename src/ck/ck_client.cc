@@ -498,7 +498,7 @@ bool ClickHouseClient::QueryContract(const std::string& from, const std::string&
     zjc_host.tx_context_.block_coinbase = evmc::address{};
     zjc_host.tx_context_.block_number = 0;
     zjc_host.tx_context_.block_timestamp = 0;
-    uint64_t chanin_id = 0;
+    uint64_t chanin_id = hotstuff::kGlobalChainId;
     zjcvm::Uint64ToEvmcBytes32(
         zjc_host.tx_context_.chain_id,
         chanin_id);

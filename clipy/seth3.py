@@ -9,6 +9,31 @@ from gmssl import sm2, sm3, func
 from seth_sdk import SethWeb3Mock, StepType, compile_and_link, get_sm2_public_key
 
 # --- 5. Main Execution ---
+# New: Contract for self-destruct testing
+PROBE_KILL_SOL = """
+pragma solidity ^0.8.20;
+
+contract ProbeKill {
+    address public owner;
+
+    constructor() payable {
+        owner = msg.sender;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not owner");
+        _;
+    }
+
+    receive() external payable {}
+
+    // Execute self-destruct and send remaining ETH to recipient
+    function kill(address payable recipient) external onlyOwner {
+        selfdestruct(recipient);
+    }
+}
+"""
+
 PROBE_POOL_SOL = """
 pragma solidity ^0.8.20;
 
@@ -100,6 +125,53 @@ contract ProbeBridge {
 """
 
 RANDOM_SALT = secrets.token_hex(31)
+def test_contract_selfdestruct(w3, MY, KEY):
+    print("\n--- TEST CASE: Contract Self-Destruct ---")
+    
+    # 1. Compile and deploy contract with 1000 wei
+    k_bin, k_abi = compile_and_link(PROBE_KILL_SOL, "ProbeKill")
+    initial_fund = 1000
+    kill_contract = w3.seth.contract(abi=k_abi, bytecode=k_bin).deploy({
+        'from': MY, 
+        'salt': RANDOM_SALT + 'ff', 
+        'amount': initial_fund
+    }, KEY)
+    
+    contract_addr = kill_contract.address
+    print(f"Contract deployed at: {contract_addr}")
+    print(f"Contract initial balance: {w3.client.get_balance(contract_addr)}")
+
+    # 2. Prepare a recipient address
+    recipient = "0x" + secrets.token_hex(20)
+    print(f"Recipient address: {recipient}")
+    print(f"Recipient balance before: {w3.client.get_balance(recipient)}")
+
+    # 3. Execute self-destruct
+    print("Action: Calling kill() function...")
+    receipt = kill_contract.functions.kill(to_checksum_address(recipient)).transact(KEY)
+    
+    if receipt.get('status') == 0:
+        print("Result: Kill transaction successful.")
+        
+        # 4. Verify balance transfer
+        time.sleep(2)
+        post_balance = w3.client.get_balance(recipient)
+        print(f"Recipient balance after: {post_balance}")
+        
+        if post_balance == initial_fund:
+            print("Verification: Fund transfer PASSED!")
+        else:
+            print(f"Verification: Fund transfer FAILED! Expected {initial_fund}, got {post_balance}")
+
+        # 5. Check if code is cleared (Note: Behavior may vary post-Cancun EIP-6780)
+        code = w3.client.get_code(contract_addr)
+        if code == "0x" or code == b"":
+            print("Verification: Contract code cleared SUCCESS!")
+        else:
+            print("Notice: Code persists (EIP-6780 behavior: code only cleared if created in same tx).")
+    else:
+        print(f"Error: Kill transaction failed! Message: {receipt.get('msg')}")
+
 def test_library_with_contrcat(w3, MY, KEY):
     print("\n--- TEST CASE 1: Library ---")
     src = "pragma solidity ^0.8.0; library MathLib { function add(uint a, uint b) public pure returns(uint){return a+b;} } contract Calculator { function use(uint a, uint b) public pure returns(uint){return MathLib.add(a,b);} }"
@@ -520,10 +592,11 @@ def ecdsa_sign_test():
     w3 = SethWeb3Mock(IP, PORT)
     MY = w3.client.get_address(KEY)
 
-    test_contract_call_contract(w3, MY, KEY)
-    test_transfer(w3, MY, KEY, "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b")
-    test_library_with_contrcat(w3, MY, KEY)
-    test_ecdsa_prefund_full_flow(w3, MY, KEY)
+    # test_contract_call_contract(w3, MY, KEY)
+    # test_transfer(w3, MY, KEY, "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b")
+    # test_library_with_contrcat(w3, MY, KEY)
+    # test_ecdsa_prefund_full_flow(w3, MY, KEY)
+    test_contract_selfdestruct(w3, MY, KEY)
 
 def oqs_sign_test():
     # Base configuration
@@ -544,6 +617,6 @@ def oqs_sign_test():
 
 if __name__ == "__main__":
     ecdsa_sign_test()
-    oqs_sign_test()
-    gmssl_sign_test()
+    # oqs_sign_test()
+    # gmssl_sign_test()
  

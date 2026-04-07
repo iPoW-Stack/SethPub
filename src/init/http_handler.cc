@@ -758,7 +758,7 @@ static void QueryContract(const httplib::Request& req, httplib::Response& http_r
     zjc_host.tx_context_.block_coinbase = evmc::address{};
     zjc_host.tx_context_.block_number = 0;
     zjc_host.tx_context_.block_timestamp = 0;
-    uint64_t chanin_id = 0;
+    uint64_t chanin_id = hotstuff::kGlobalChainId;
     zjcvm::Uint64ToEvmcBytes32(
         zjc_host.tx_context_.chain_id,
         chanin_id);
@@ -851,7 +851,7 @@ static void AbiQueryContract(const httplib::Request& req, httplib::Response& htt
     zjc_host.tx_context_.block_coinbase = evmc::address{};
     zjc_host.tx_context_.block_number = 0;
     zjc_host.tx_context_.block_timestamp = 0;
-    uint64_t chanin_id = 0;
+    uint64_t chanin_id = hotstuff::kGlobalChainId;
     zjcvm::Uint64ToEvmcBytes32(
         zjc_host.tx_context_.chain_id,
         chanin_id);
