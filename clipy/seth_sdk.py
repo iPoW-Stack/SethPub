@@ -299,9 +299,7 @@ class SethMethod:
         
         # 1. Prioritize GmSSL mode determination
         if gm_mode:
-            # 自动从私钥派生 64 字节公钥 (X+Y)
             gm_pubkey = get_sm2_public_key(private_key)
-            tx_hash = self.contract.client.send_gmssl_transaction(
             tx_hash = self.contract.client.send_gmssl_transaction( # Automatically derive 64-byte public key (X+Y)
                 private_key, 
                 gm_pubkey, 
@@ -329,7 +327,6 @@ class SethMethod:
                 input_hex=self.encoded_input, 
                 prefund=prefund
             )
-            
         # 3. Execute standard ECDSA logic
         else:
             tx_hash = self.contract.client.send_transaction_auto(
