@@ -26,6 +26,7 @@ contract DeployedContract {
 contract Create2Factory {
     event Deployed(address addr, uint256 salt);
     event DeployFailed(uint256 salt, string reason); 
+    event TestDeployed(address addr, uint256 salt, bytes);
     
     function deploy(uint256 salt) external returns (address addr) {
         // 1. 获取要部署合约的 creation code (包含构造函数和运行字节码)
@@ -61,14 +62,13 @@ contract Create2Factory {
         return addr;
     }
 
-    function getAddress(uint256 salt) public view returns (address) {
-        // 自动获取字节码用于计算
+    function getAddress(uint256 salt, address deployer) public view returns (address) {
         bytes memory bytecode = type(DeployedContract).creationCode;
         
         bytes32 hash = keccak256(
             abi.encodePacked(
                 bytes1(0xff),
-                address(this),
+                deployer,           // 将 address(this) 替换为传入的变量
                 bytes32(salt),
                 keccak256(bytecode)
             )
@@ -230,7 +230,7 @@ def test_create2_assembly_deployment(w3, MY, KEY):
     # 4. 预测地址
     # 方式 A: 调用合约内置的 getAddress 视图函数进行预测
     # 修改后的合约 getAddress(uint256 salt) 只有一个参数
-    predicted_addr = factory.functions.getAddress(test_salt_int).call()[0]
+    predicted_addr = factory.functions.getAddress(test_salt_int, MY).call()[0]
     print(f"Predicted Address: {predicted_addr}")
 
     # 5. 执行部署
