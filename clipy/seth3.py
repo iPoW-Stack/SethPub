@@ -142,7 +142,7 @@ def test_contract_selfdestruct(w3, MY, KEY):
     print(f"Contract initial balance: {w3.client.get_balance(contract_addr)}")
 
     # 2. Prepare a recipient address
-    recipient = "0x" + secrets.token_hex(20)
+    recipient = secrets.token_hex(20)
     print(f"Recipient address: {recipient}")
     print(f"Recipient balance before: {w3.client.get_balance(recipient)}")
 
