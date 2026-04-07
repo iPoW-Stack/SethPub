@@ -45,6 +45,7 @@ contract Create2Factory {
                 saltBytes            // 盐值
             )
 
+            emit Deployed(addr, salt);
             // 如果地址为 0，说明部署失败（例如：由于 salt 重复）
             if iszero(extcodesize(addr)) {
                 revert(0, 0)
