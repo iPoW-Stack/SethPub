@@ -1541,7 +1541,7 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
     if (prefix_db->GetTemporaryKv(std::string((char*)addr.bytes, sizeof(addr.bytes)) + tx_hash, &res)) {
         block::protobuf::KeyValueInfo kv_info;
         if (kv_info.ParseFromString(res)) {
-            block::protobuf::TxHashStatus tx_hash_status;
+            block::protobuf::TxHashStatus tx_status;
             if (!tx_status.ParseFromString(kv_info.value())) {
                 res_json["status"] = transport::kUnkonwn;
                 res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
