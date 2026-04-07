@@ -21,12 +21,14 @@ int ContractCreate2::call(
     // 标准 Create2 基础 Gas 是 32000，且每 32 字节 init_code 额外消耗 6 Gas
     uint64_t dynamic_gas = 32000 + (param.data.size() - 32) / 32 * 6;
     if (gas < dynamic_gas) {
+        SETH_ERROR("CREATE2 gas_left < dynamic_gas, %lu, %lu", res->gas_left, dynamic_gas);
         return kContractError;
     }
 
     // 2. 参数解析
     // data 布局: [32字节 Salt][N字节 InitCode]
     if (param.data.size() < 32) {
+        SETH_ERROR("CREATE2 param data size < 32, %lu", param.data.size());
         return kContractError;
     }
 
