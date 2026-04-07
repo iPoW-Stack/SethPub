@@ -228,8 +228,8 @@ def test_create2_assembly_deployment(w3, MY, KEY):
     print(f"Predicted Address: {predicted_addr}")
 
     # 5. 执行部署
-    print(f"[*] Executing factory.deploy({test_salt_int})...")
     receipt = factory.functions.deploy(test_salt_int).transact(KEY)
+    print(f"[*] Executing factory.deploy({test_salt_int}), receipt:{receipt}")
     
     if receipt.get('status') == 0:
         # 6. 从 Event 中提取实际部署地址进行校验
