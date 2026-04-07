@@ -81,7 +81,7 @@ int ContractCreate2::call(
 
     memcpy(res->create_address.bytes, new_address.data(), 20);
     res->status_code = EVMC_SUCCESS;
-    res->gas_left = dynamic_gas;   // 扣除实际消耗的 Gas
+    res->gas_left -= dynamic_gas;   // 扣除实际消耗的 Gas
 
     SETH_DEBUG("CREATE2 success - predicted_address: %s, sender: %s, salt: %s, "
         "init_code_len: %lu, gas: %lu, gas left: %lu, dy gas: %lu",
