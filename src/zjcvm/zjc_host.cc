@@ -465,6 +465,12 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
         }
     }
     
+    SETH_DEBUG("success host call kind: %u, from: %s, to: %s, amount: %lu, "
+        "gas limit: %lu, gas left: %lu, status: %d, outdata: %s",
+        (int32_t)msg.kind, common::Encode::HexEncode(params.from).c_str(), 
+        common::Encode::HexEncode(params.to).c_str(), params.value, params.gas, 
+        evmc_res.gas_left, evmc_res.status_code,
+        common::Encode::HexEncode(std::string((char*)evmc_res.output_data, evmc_res.output_size)).c_str());
     return evmc_res;
 }
 
