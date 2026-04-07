@@ -33,6 +33,10 @@ struct CallParameters {
     uint64_t gas;
     std::string data;
     OnOpFunc on_op;
+    evmc_bytes32 create2_salt;
+    evmc_address code_address;
+    const uint8_t* code;
+    size_t code_size;
     zjcvm::ZjchainHost* zjc_host;
 };
 

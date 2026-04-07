@@ -373,6 +373,7 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
     // params.to = msg.kind == EVMC_CALL ? params.code_address : my_address_;
     params.data = std::string((char*)msg.input_data, msg.input_size);
     params.on_op = {};
+    params.create2_salt = msg.create2_salt;
     evmc_result call_result = {};
     evmc::Result evmc_res{ call_result };
     evmc_result* raw_result = (evmc_result*)&evmc_res;
