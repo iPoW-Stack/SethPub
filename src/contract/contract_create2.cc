@@ -65,14 +65,22 @@ int ContractCreate2::call(
     // 注意：evmc_result 的 output 应该按照协议规范填充
     res->output_size = 20; 
     uint8_t* out = new uint8_t[20];
-    memcpy(out, predicted_address.data(), 20);
+    memcpy(out, predicted_address.c_str(), predicted_address.size());
     res->output_data = out;
 
     // 5. 更新状态
     res->status_code = EVMC_SUCCESS;
     // 减去实际消耗的 Gas
     res->gas_left -= dynamic_gas;
+    memcpy(res->create_address.bytes,
+        create_address_.c_str(),
+        sizeof(res->create_address.bytes));
 
+    SETH_DEBUG("CREATE2 predicted address: %s, from: %s, salt: %s, final_hash: %s",
+        common::Encode::HexEncode(predicted_address).c_str(),
+        common::Encode::HexEncode(param.from).c_str(),
+        common::Encode::HexEncode(salt).c_str(),
+        common::Encode::HexEncode(final_hash).c_str());
     return kContractSuccess;
 }
 
