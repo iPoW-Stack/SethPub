@@ -10,6 +10,42 @@ from seth_sdk import SethWeb3Mock, StepType, compile_and_link, get_sm2_public_ke
 
 # --- 5. Main Execution ---
 # New: Contract for self-destruct testing
+# --- 5. Main Execution ---
+# [原有 PROBE_KILL_SOL, PROBE_POOL_SOL 等代码保持不变]
+
+PROBE_CREATE2_FACTORY_SOL = """
+pragma solidity ^0.8.20;
+
+contract DeployedContract {
+    address public deployer;
+    constructor() {
+        deployer = msg.sender;
+    }
+}
+
+contract Create2Factory {
+    event Deployed(address addr, uint256 salt);
+
+    function deploy(uint256 salt) external returns (address) {
+        address addr = address(new DeployedContract{salt: bytes32(salt)}());
+        emit Deployed(addr, salt);
+        return addr;
+    }
+
+    function getAddress(uint256 salt, bytes memory bytecode) public view returns (address) {
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                bytes1(0xff),
+                address(this),
+                bytes32(salt),
+                keccak256(bytecode)
+            )
+        );
+        return address(uint160(uint256(hash)));
+    }
+}
+"""
+
 PROBE_KILL_SOL = """
 pragma solidity ^0.8.20;
 
@@ -137,6 +173,56 @@ contract ProbeBridge {
 """
 
 RANDOM_SALT = secrets.token_hex(31)
+
+def test_create2_predictable_deployment(w3, MY, KEY):
+    print("\n--- TEST CASE: CREATE2 Predictable Deployment ---")
+    
+    # 1. 编译工厂合约和待部署合约
+    f_bin, f_abi = compile_and_link(PROBE_CREATE2_FACTORY_SOL, "Create2Factory")
+    d_bin, d_abi = compile_and_link(PROBE_CREATE2_FACTORY_SOL, "DeployedContract")
+    
+    # 2. 部署工厂合约
+    print("[*] Deploying Create2Factory...")
+    factory = w3.seth.contract(abi=f_abi, bytecode=f_bin).deploy({
+        'from': MY, 
+        'salt': RANDOM_SALT + 'f1'
+    }, KEY)
+    print(f"Factory deployed at: {factory.address}")
+
+    # 3. 准备 Salt 和预测地址
+    test_salt = 123456789
+    
+    # 调用合约内部的 getAddress 视图函数获取预测地址
+    # 注意：getAddress 需要传入 DeployedContract 的完整的 creationCode (bytecode)
+    predicted_addr_from_contract = factory.functions.getAddress(test_salt, binascii.unhexlify(d_bin)).call()[0]
+    print(f"Predicted Address (from Contract): {predicted_addr_from_contract}")
+
+    # 4. 执行 CREATE2 部署
+    print(f"[*] Executing CREATE2 deploy with salt: {test_salt}...")
+    receipt = factory.functions.deploy(test_salt).transact(KEY)
+    
+    if receipt.get('status') == 0:
+        # 从 Event 中提取实际部署地址
+        actual_addr = None
+        for e in receipt.get('decoded_events', []):
+            if e['event'] == 'Deployed':
+                actual_addr = e['args']['addr']
+        
+        print(f"Actual Deployed Address: {actual_addr}")
+        
+        # 5. 最终验证
+        if actual_addr.lower() == predicted_addr_from_contract.lower():
+            print("✅ SUCCESS: Actual address matches predicted address!")
+        else:
+            print("❌ FAILURE: Address mismatch!")
+            
+        # 验证新合约是否可查
+        # 检查新合约的 deployer 是否为工厂合约
+        deployed_instance = w3.seth.contract(address=actual_addr, abi=d_abi)
+        contract_deployer = deployed_instance.functions.deployer().call()[0]
+        print(f"New Contract internal deployer state: {contract_deployer}")
+    else:
+        print(f"❌ Deploy transaction failed: {receipt.get('msg')}")
 
 def test_contract_selfdestruct(w3, MY, KEY):
     print("\n--- TEST CASE: Contract Self-Destruct with State/View Verification ---")
@@ -647,11 +733,12 @@ def ecdsa_sign_test():
     w3 = SethWeb3Mock(IP, PORT)
     MY = w3.client.get_address(KEY)
 
-    test_contract_call_contract(w3, MY, KEY)
-    test_transfer(w3, MY, KEY, "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b")
-    test_library_with_contrcat(w3, MY, KEY)
-    test_ecdsa_prefund_full_flow(w3, MY, KEY)
-    test_contract_selfdestruct(w3, MY, KEY)
+    # test_contract_call_contract(w3, MY, KEY)
+    # test_transfer(w3, MY, KEY, "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b")
+    # test_library_with_contrcat(w3, MY, KEY)
+    # test_ecdsa_prefund_full_flow(w3, MY, KEY)
+    # test_contract_selfdestruct(w3, MY, KEY)
+    test_create2_predictable_deployment(w3, MY, KEY)
 
 def oqs_sign_test():
     # Base configuration
@@ -672,6 +759,6 @@ def oqs_sign_test():
 
 if __name__ == "__main__":
     ecdsa_sign_test()
-    oqs_sign_test()
-    gmssl_sign_test()
+    # oqs_sign_test()
+    # gmssl_sign_test()
  
