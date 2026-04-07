@@ -142,12 +142,11 @@ class MessageHandleStatus(IntEnum):
     kConsensusElectNodeExists = 5050
     kConsensusNonceInvalid = 5051
     kConsensusJoinElectThreashTInvalid = 5052
+    kConsensusContractDestructed = 5053
 
 # --- 2. Utilities ---
 def get_sm2_public_key(private_key_hex: str) -> str:
     """
-    针对 gmssl 3.2.2 封装极深的情况。
-    通过提取内部私钥对象的公钥点坐标来获取 X+Y。
     Handles the deeply encapsulated gmssl 3.2.2 case.
     Obtains X+Y by extracting the public key point coordinates from the internal private key object.
     """
@@ -592,7 +591,7 @@ class SethClient:
         self.tx_url = f"{self.base_url}/transaction"
         self.query_url = f"{self.base_url}/query_account"
         self.receipt_url = f"{self.base_url}/transaction_receipt"
-        self.query_contract_url = f"{self.base_url}/query_contract"
+        self.query_contract_url = f"{self.base_url}/abi_query_contract"
         self.oqs_url = f"http://{host}:{port}/oqs_transaction"
         self.gmssl_url = f"{self.base_url}/gm_transaction"
 

@@ -175,14 +175,15 @@ Status BlockAcceptor::Accept(
 
         auto* addr_info = view_block.mutable_block_info()->add_address_array();
         *addr_info = *iter->second;
-        SETH_DEBUG("%u_%u_%lu_%lu, success addr info: %s, balance: %lu, nonce: %lu", 
+        SETH_DEBUG("%u_%u_%lu_%lu, success addr info: %s, balance: %lu, nonce: %lu, destrcuted: %d", 
             view_block.qc().network_id(),
             view_block.qc().pool_index(),
             view_block.block_info().height(),
             view_block.qc().view(),
             common::Encode::HexEncode(addr_info->addr()).c_str(), 
             addr_info->balance(),
-            addr_info->nonce());
+            addr_info->nonce(),
+            addr_info->destructed());
         prefix_db_->AddAddressInfo(addr_info->addr(), *addr_info, zjc_host.db_batch_);
     }
 

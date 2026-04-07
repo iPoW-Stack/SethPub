@@ -51,6 +51,13 @@ int CheckTransactionValid(
         const pools::protobuf::TxMessage& tx_info,
         uint64_t* now_nonce) {
     if (pools::IsUserTransaction(tx_info.step())) {
+        if (tx_info.step() == pools::protobuf::kContractExcute) {
+            auto contract_address_info = view_block_chain->ChainGetAccountInfo(tx_info.to());
+            if (contract_address_info == nullptr || contract_address_info->destructed()) {
+                return 3;
+            }
+        }
+
         return view_block_chain->CheckTxNonceValid(
             addr_info.addr(), 
             tx_info.nonce(), 

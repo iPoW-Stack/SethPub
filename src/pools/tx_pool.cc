@@ -6,6 +6,7 @@
 #include "common/utils.h"
 #include "common/time_utils.h"
 #include "common/global_info.h"
+#include "consensus/consensus_utils.h"
 #include "db/db.h"
 #include "network/network_utils.h"
 #include "pools/tx_pool_manager.h"
@@ -397,6 +398,12 @@ void TxPool::GetTxSyncToLeader(
                         *tx_ptr->tx_info,
                         &now_nonce);
                 if (res != 0) {
+                    if (res == 3) {
+                        nonce_iter->second->msg_ptr->handle_status = seth::transport::MessageHandleStatus(consensus::kConsensusContractDestructed);
+                        iter->second.erase(nonce_iter);
+                        break;
+                    }
+
                     if (res > 0) {
                         continue;
                     }
@@ -605,6 +612,12 @@ void TxPool::TempGetTxIdempotently(
                         (tx_ptr->tx_info->nonce() + iter->second.size()),
                         res);
                     if (res != 0) {
+                        if (res == 3) {
+                            nonce_iter->second->msg_ptr->handle_status = seth::transport::MessageHandleStatus(consensus::kConsensusContractDestructed);
+                            iter->second.erase(nonce_iter);
+                            break;
+                        }
+                        
                         if (!IsUserTransaction(tx_ptr->tx_info->step())) {
                             if (nonce_iter == iter->second.end()) {
                                 SETH_DEBUG("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s, "

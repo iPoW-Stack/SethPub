@@ -727,11 +727,15 @@ static void QueryContract(const httplib::Request& req, httplib::Response& http_r
     auto tmp_input = req.get_param_value("input");
     auto tmp_from = req.get_param_value("from");
     std::string from = common::Encode::HexDecode(tmp_from);
+    if (from.size() != common::kUnicastAddressLength) {
+        from = common::Encode::HexDecode(std::string(common::kUnicastAddressLength * 2, '0'));
+    }
+
     std::string contract_addr = common::Encode::HexDecode(tmp_contract_addr);
     std::string input = common::Encode::HexDecode(tmp_input);
 
     uint64_t height = 0;
-    auto contract_prefund_id = contract_addr + from;
+    // auto contract_prefund_id = contract_addr + from;
     // protos::AddressInfoPtr addr_info =  http_handler->acc_mgr()->GetAccountInfo(contract_prefund_id);
     // if (!addr_info) {
     //     addr_info = prefix_db->GetAddressInfo(contract_prefund_id);
@@ -758,7 +762,7 @@ static void QueryContract(const httplib::Request& req, httplib::Response& http_r
     zjc_host.tx_context_.block_coinbase = evmc::address{};
     zjc_host.tx_context_.block_number = 0;
     zjc_host.tx_context_.block_timestamp = 0;
-    uint64_t chanin_id = 0;
+    uint64_t chanin_id = hotstuff::kGlobalChainId;
     zjcvm::Uint64ToEvmcBytes32(
         zjc_host.tx_context_.chain_id,
         chanin_id);
@@ -813,6 +817,43 @@ static void QueryContract(const httplib::Request& req, httplib::Response& http_r
     SETH_INFO("query contract success data: %s", http_res_str.c_str());
 }
 
+/**
+ * Helper function: Encodes a string into pure EVM ABI string format (no selector).
+ * Layout (Standard ABI for a single 'string' return):
+ * [0:32]  - Offset: 0x00...0020 (Points to the start of the length field)
+ * [32:64] - Length: 0x00...00LL (The actual byte length of the string)
+ * [64:]   - Data: The string content, right-padded with '\0' to a 32-byte boundary
+ */
+static std::string EncodeEvmError(const std::string& msg) {
+    std::string encoded;
+    encoded.reserve(64 + ((msg.size() + 31) / 32) * 32);
+
+    // 1. Offset (32 bytes)
+    // For a single return value of type string, the offset is always 32 (0x20)
+    uint8_t offset[32] = {0};
+    offset[31] = 0x20; 
+    encoded.append((char*)offset, 32);
+
+    // 2. Length (32-byte Big-endian uint256)
+    uint8_t len_bytes[32] = {0};
+    uint32_t msg_len = static_cast<uint32_t>(msg.size());
+    for (int i = 0; i < 4; ++i) {
+        len_bytes[31 - i] = (msg_len >> (i * 8)) & 0xFF;
+    }
+    encoded.append((char*)len_bytes, 32);
+
+    // 3. Actual string data
+    encoded.append(msg);
+
+    // 4. Padding (Right-pad with zeros to 32-byte boundary)
+    if (msg.size() % 32 != 0) {
+        size_t padding_size = 32 - (msg.size() % 32);
+        encoded.append(padding_size, '\0');
+    }
+
+    // Return Hex encoded string with "0x" prefix
+    return "0x" + common::Encode::HexEncode(encoded);
+}
 
 static void AbiQueryContract(const httplib::Request& req, httplib::Response& http_res) {
     SETH_DEBUG("query contract coming.");
@@ -820,11 +861,15 @@ static void AbiQueryContract(const httplib::Request& req, httplib::Response& htt
     auto tmp_input = req.get_param_value("input");
     auto tmp_from = req.get_param_value("from");
     std::string from = common::Encode::HexDecode(tmp_from);
+    if (from.size() != common::kUnicastAddressLength) {
+        from = common::Encode::HexDecode(std::string(common::kUnicastAddressLength * 2, '0'));
+    }
+
     std::string contract_addr = common::Encode::HexDecode(tmp_contract_addr);
     std::string input = common::Encode::HexDecode(tmp_input);
     uint64_t height = 0;
 
-    auto contract_prefund_id = contract_addr + from;
+    // auto contract_prefund_id = contract_addr + from;
     // protos::AddressInfoPtr addr_info =  http_handler->acc_mgr()->GetAccountInfo(contract_prefund_id);
     // if (!addr_info) {
     //     addr_info = prefix_db->GetAddressInfo(contract_prefund_id);
@@ -841,7 +886,14 @@ static void AbiQueryContract(const httplib::Request& req, httplib::Response& htt
     auto contract_addr_info = prefix_db->GetAddressInfo(contract_addr);
     if (contract_addr_info == nullptr) {
         std::string res = "get contract addr failed: " + std::string(tmp_contract_addr);
-        http_res.set_content(res, "text/plain");
+        http_res.set_content(EncodeEvmError(res), "text/plain");
+        SETH_INFO("query contract param error: %s.", res.c_str());
+        return;
+    }
+
+    if (contract_addr_info->destructed()) {
+        std::string res = "get contract addr destructed!";
+        http_res.set_content(EncodeEvmError(res), "text/plain");
         SETH_INFO("query contract param error: %s.", res.c_str());
         return;
     }
@@ -851,7 +903,7 @@ static void AbiQueryContract(const httplib::Request& req, httplib::Response& htt
     zjc_host.tx_context_.block_coinbase = evmc::address{};
     zjc_host.tx_context_.block_number = 0;
     zjc_host.tx_context_.block_timestamp = 0;
-    uint64_t chanin_id = 0;
+    uint64_t chanin_id = hotstuff::kGlobalChainId;
     zjcvm::Uint64ToEvmcBytes32(
         zjc_host.tx_context_.chain_id,
         chanin_id);
@@ -885,7 +937,7 @@ static void AbiQueryContract(const httplib::Request& req, httplib::Response& htt
         std::string res = "query contract failed: " + 
             std::to_string(result.status_code) + 
             ", exec_res: " + std::to_string(exec_res);
-        http_res.set_content(res, "text/plain");
+        http_res.set_content(EncodeEvmError(res), "text/plain");
         SETH_INFO("query contract error: %s.", res.c_str());
         return;
     }
@@ -1354,7 +1406,7 @@ static void ArsCreateSecKeys(const httplib::Request& req, httplib::Response& htt
 }
 
 static void QueryInit(const httplib::Request& req, httplib::Response& http_res) {
-    auto thread_index = common::GlobalInfo::Instance()->get_thread_index();
+    auto thread_index = 0;//common::GlobalInfo::Instance()->get_thread_index();
     std::string res = "ok";
     http_res.set_content(res, "text/plain");
     SETH_DEBUG("sunccess init http ser: %d", thread_index);

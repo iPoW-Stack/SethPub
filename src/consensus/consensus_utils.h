@@ -23,7 +23,7 @@ typedef std::function<void(
     std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block,
     db::DbWriteBatch& db_batch)> BlockCacheCallback;
 
-enum ConsensusErrorCode {
+enum ConsensusErrorCode : int32_t {
     kConsensusSuccess = 0,
     kConsensusError = 5001,
     kConsensusAdded = 5002,
@@ -76,6 +76,7 @@ enum ConsensusErrorCode {
     kConsensusElectNodeExists = 5050,
     kConsensusNonceInvalid = 5051,
     kConsensusJoinElectThreashTInvalid = 5052,
+    kConsensusContractDestructed = 5053,
 };
 
 enum BftStatus : int32_t {
