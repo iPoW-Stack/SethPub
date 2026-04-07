@@ -154,9 +154,15 @@ def test_contract_selfdestruct(w3, MY, KEY):
         print("Result: Kill transaction successful.")
         
         # 4. Verify balance transfer
-        time.sleep(2)
-        post_balance = w3.client.get_balance(recipient)
-        print(f"Recipient balance after: {post_balance}")
+        count = 0
+        while count < 30:
+            time.sleep(2)
+            post_balance = w3.client.get_balance(recipient)
+            if post_balance == initial_fund:
+                break
+
+            print(f"Recipient balance after: {post_balance}")
+            count += 1
         
         if post_balance == initial_fund:
             print("Verification: Fund transfer PASSED!")
