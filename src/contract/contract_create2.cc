@@ -72,7 +72,7 @@ int ContractCreate2::call(
     // 5. 更新状态
     res->status_code = EVMC_SUCCESS;
     // 减去实际消耗的 Gas
-    res->gas_left -= dynamic_gas;
+    res->gas_left -= gas_cast_;
     memcpy(res->create_address.bytes,
         create_address_.c_str(),
         sizeof(res->create_address.bytes));
