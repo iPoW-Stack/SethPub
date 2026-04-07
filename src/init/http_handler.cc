@@ -817,6 +817,44 @@ static void QueryContract(const httplib::Request& req, httplib::Response& http_r
     SETH_INFO("query contract success data: %s", http_res_str.c_str());
 }
 
+/**
+ * Helper function: Encodes a string into the EVM Error(string) ABI format.
+ * Format: 
+ * 1. 4-byte selector: keccak256("Error(string)") -> 0x08c379a0
+ * 2. 32-byte offset: Location of the string data (0x20)
+ * 3. 32-byte length: Actual length of the error string
+ * 4. Data: The string content, padded to 32-byte boundary
+ */
+static std::string EncodeEvmError(const std::string& error_msg) {
+    // 1. Function selector for Error(string)
+    std::string encoded = common::Encode::HexDecode("08c379a0");
+
+    // 2. Data offset (0x20 = 32 bytes)
+    uint8_t offset[32] = {0};
+    offset[31] = 0x20;
+    encoded.append((char*)offset, 32);
+
+    // 3. String length (Encoded as 32-byte uint256)
+    uint8_t len_bytes[32] = {0};
+    uint32_t msg_len = (uint32_t)error_msg.size();
+    // Big-endian encoding
+    for (int i = 0; i < 4; ++i) {
+        len_bytes[31 - i] = (msg_len >> (i * 8)) & 0xFF;
+    }
+    encoded.append((char*)len_bytes, 32);
+
+    // 4. Actual string data
+    encoded.append(error_msg);
+
+    // 5. Padding to maintain 32-byte alignment
+    size_t padding = (32 - (error_msg.size() % 32)) % 32;
+    if (padding > 0) {
+        encoded.append(padding, '\0');
+    }
+
+    // Return Hex encoded string for HTTP response
+    return common::Encode::HexEncode(encoded);
+}
 
 static void AbiQueryContract(const httplib::Request& req, httplib::Response& http_res) {
     SETH_DEBUG("query contract coming.");
@@ -849,14 +887,14 @@ static void AbiQueryContract(const httplib::Request& req, httplib::Response& htt
     auto contract_addr_info = prefix_db->GetAddressInfo(contract_addr);
     if (contract_addr_info == nullptr) {
         std::string res = "get contract addr failed: " + std::string(tmp_contract_addr);
-        http_res.set_content(res, "text/plain");
+        http_res.set_content(EncodeEvmError(res), "text/plain");
         SETH_INFO("query contract param error: %s.", res.c_str());
         return;
     }
 
     if (contract_addr_info->destructed()) {
         std::string res = "get contract addr destructed!";
-        http_res.set_content(res, "text/plain");
+        http_res.set_content(EncodeEvmError(res), "text/plain");
         SETH_INFO("query contract param error: %s.", res.c_str());
         return;
     }
@@ -900,7 +938,7 @@ static void AbiQueryContract(const httplib::Request& req, httplib::Response& htt
         std::string res = "query contract failed: " + 
             std::to_string(result.status_code) + 
             ", exec_res: " + std::to_string(exec_res);
-        http_res.set_content(res, "text/plain");
+        http_res.set_content(EncodeEvmError(res), "text/plain");
         SETH_INFO("query contract error: %s.", res.c_str());
         return;
     }
