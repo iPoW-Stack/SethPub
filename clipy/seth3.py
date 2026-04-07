@@ -27,12 +27,39 @@ contract Create2Factory {
     event Deployed(address addr, uint256 salt);
 
     function deploy(uint256 salt) external returns (address) {
-        address addr = address(new DeployedContract{salt: bytes32(salt)}());
+        // 1. 获取要部署合约的 creation code (包含构造函数和运行字节码)
+        bytes memory bytecode = type(DeployedContract).creationCode;
+        bytes32 saltBytes = bytes32(salt);
+        address addr;
+
+        // 2. 使用内联汇编直接调用 eth 内置的 create2 指令
+        // create2(v, p, n, s) 
+        // v: 发送的以太币数量 (wei)
+        // p: 内存中字节码开始的位置
+        // n: 字节码的大小
+        // s: salt (盐值)
+        assembly {
+            addr := create2(
+                0,                   // 不发送以太币
+                add(bytecode, 0x20), // 略过前32字节（该位置存储的是数组长度）
+                mload(bytecode),     // 字节码的实际长度
+                saltBytes            // 盐值
+            )
+
+            // 如果地址为 0，说明部署失败（例如：由于 salt 重复）
+            if iszero(extcodesize(addr)) {
+                revert(0, 0)
+            }
+        }
+
         emit Deployed(addr, salt);
         return addr;
     }
 
-    function getAddress(uint256 salt, bytes memory bytecode) public view returns (address) {
+    function getAddress(uint256 salt) public view returns (address) {
+        // 自动获取字节码用于计算
+        bytes memory bytecode = type(DeployedContract).creationCode;
+        
         bytes32 hash = keccak256(
             abi.encodePacked(
                 bytes1(0xff),
@@ -174,35 +201,39 @@ contract ProbeBridge {
 
 RANDOM_SALT = secrets.token_hex(31)
 
-def test_create2_predictable_deployment(w3, MY, KEY):
-    print("\n--- TEST CASE: CREATE2 Predictable Deployment ---")
+def test_create2_assembly_deployment(w3, MY, KEY):
+    print("\n--- TEST CASE: CREATE2 Assembly Predictable Deployment ---")
     
-    # 1. 编译工厂合约和待部署合约
+    # 1. 编译工厂合约（DeployedContract 已经嵌套在同一 SOL 源码中）
+    # 注意：因为 DeployedContract 在 factory 内部被引用，编译 Create2Factory 即可
     f_bin, f_abi = compile_and_link(PROBE_CREATE2_FACTORY_SOL, "Create2Factory")
     d_bin, d_abi = compile_and_link(PROBE_CREATE2_FACTORY_SOL, "DeployedContract")
     
     # 2. 部署工厂合约
-    print("[*] Deploying Create2Factory...")
+    print("[*] Deploying Create2Factory (Assembly version)...")
+    factory_salt = secrets.token_hex(31) + 'f2'
     factory = w3.seth.contract(abi=f_abi, bytecode=f_bin).deploy({
         'from': MY, 
-        'salt': RANDOM_SALT + 'f1'
+        'salt': factory_salt
     }, KEY)
     print(f"Factory deployed at: {factory.address}")
 
-    # 3. 准备 Salt 和预测地址
-    test_salt = 123456789
+    # 3. 准备测试 Salt
+    # 在 Solidity 中 bytes32(uint256) 会进行补位，这里我们选一个简单的数字
+    test_salt_int = 88888888
     
-    # 调用合约内部的 getAddress 视图函数获取预测地址
-    # 注意：getAddress 需要传入 DeployedContract 的完整的 creationCode (bytecode)
-    predicted_addr_from_contract = factory.functions.getAddress(test_salt, binascii.unhexlify(d_bin)).call()[0]
-    print(f"Predicted Address (from Contract): {predicted_addr_from_contract}")
+    # 4. 预测地址
+    # 方式 A: 调用合约内置的 getAddress 视图函数进行预测
+    # 修改后的合约 getAddress(uint256 salt) 只有一个参数
+    predicted_addr = factory.functions.getAddress(test_salt_int).call()[0]
+    print(f"Predicted Address: {predicted_addr}")
 
-    # 4. 执行 CREATE2 部署
-    print(f"[*] Executing CREATE2 deploy with salt: {test_salt}...")
-    receipt = factory.functions.deploy(test_salt).transact(KEY)
+    # 5. 执行部署
+    print(f"[*] Executing factory.deploy({test_salt_int})...")
+    receipt = factory.functions.deploy(test_salt_int).transact(KEY)
     
     if receipt.get('status') == 0:
-        # 从 Event 中提取实际部署地址
+        # 6. 从 Event 中提取实际部署地址进行校验
         actual_addr = None
         for e in receipt.get('decoded_events', []):
             if e['event'] == 'Deployed':
@@ -210,17 +241,19 @@ def test_create2_predictable_deployment(w3, MY, KEY):
         
         print(f"Actual Deployed Address: {actual_addr}")
         
-        # 5. 最终验证
-        if actual_addr.lower() == predicted_addr_from_contract.lower():
-            print("✅ SUCCESS: Actual address matches predicted address!")
-        else:
-            print("❌ FAILURE: Address mismatch!")
+        # 7. 最终验证
+        if actual_addr and actual_addr.lower() == predicted_addr.lower():
+            print("✅ SUCCESS: Assembly CREATE2 address matches prediction!")
             
-        # 验证新合约是否可查
-        # 检查新合约的 deployer 是否为工厂合约
-        deployed_instance = w3.seth.contract(address=actual_addr, abi=d_abi)
-        contract_deployer = deployed_instance.functions.deployer().call()[0]
-        print(f"New Contract internal deployer state: {contract_deployer}")
+            # 验证新合约的功能
+            deployed_instance = w3.seth.contract(address=actual_addr, abi=d_abi)
+            deployer_in_state = deployed_instance.functions.deployer().call()[0]
+            print(f"Verification: DeployedContract.deployer = {deployer_in_state}")
+            
+            if deployer_in_state.lower() == factory.address.lower():
+                print("✅ Verification: Deployer is indeed the Factory contract.")
+        else:
+            print("❌ FAILURE: Address mismatch or Event not found!")
     else:
         print(f"❌ Deploy transaction failed: {receipt.get('msg')}")
 
@@ -738,7 +771,7 @@ def ecdsa_sign_test():
     # test_library_with_contrcat(w3, MY, KEY)
     # test_ecdsa_prefund_full_flow(w3, MY, KEY)
     # test_contract_selfdestruct(w3, MY, KEY)
-    test_create2_predictable_deployment(w3, MY, KEY)
+    test_create2_assembly_deployment(w3, MY, KEY)
 
 def oqs_sign_test():
     # Base configuration
