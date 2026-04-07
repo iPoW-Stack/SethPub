@@ -19,9 +19,8 @@ int ContractCreate2::call(
     
     // 1. 严格的 Gas 检查与动态扣费
     // 标准 Create2 基础 Gas 是 32000，且每 32 字节 init_code 额外消耗 6 Gas
-    uint64_t dynamic_gas = 32000 + (param.data.size() - 32) / 32 * 6;
-    if (gas < dynamic_gas) {
-        SETH_ERROR("CREATE2 gas_left < dynamic_gas, %lu, %lu", res->gas_left, dynamic_gas);
+    if (res->gas_left < gas_cast_) {
+        SETH_ERROR("CREATE2 gas_left < dynamic_gas, %lu, %lu", res->gas_left, gas_cast_);
         return kContractError;
     }
 
