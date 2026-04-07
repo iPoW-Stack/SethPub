@@ -144,7 +144,7 @@ def test_contract_selfdestruct(w3, MY, KEY):
     # 1. Compile and Deploy
     k_bin, k_abi = compile_and_link(PROBE_KILL_SOL, "ProbeKill")
     initial_fund = 2000
-    kill_contract = w3.seth.contract(abi=k_abi, bytecode=k_bin).deploy({
+    kill_contract = w3.seth.contract(abi=k_abi, bytecode=k_bin, sender_address=MY).deploy({
         'from': MY, 
         'salt': RANDOM_SALT + 'kill_v2', 
         'amount': initial_fund
@@ -188,14 +188,8 @@ def test_contract_selfdestruct(w3, MY, KEY):
             if post_balance == initial_fund:
                 break
 
-            print(f"Recipient balance after: {post_balance}")
             count += 1
         
-        if post_balance == initial_fund:
-            print("Verification: Fund transfer PASSED!")
-        else:
-            print(f"Verification: Fund transfer FAILED! Expected {initial_fund}, got {post_balance}")
-
         # # 5. Check if code is cleared (Note: Behavior may vary post-Cancun EIP-6780)
         # code = w3.client.get_code(contract_addr)
         # if code == "0x" or code == b"":
