@@ -592,7 +592,7 @@ class SethClient:
         self.tx_url = f"{self.base_url}/transaction"
         self.query_url = f"{self.base_url}/query_account"
         self.receipt_url = f"{self.base_url}/transaction_receipt"
-        self.query_contract_url = f"{self.base_url}/query_contract"
+        self.query_contract_url = f"{self.base_url}/abi_query_contract"
         self.oqs_url = f"http://{host}:{port}/oqs_transaction"
         self.gmssl_url = f"{self.base_url}/gm_transaction"
 
