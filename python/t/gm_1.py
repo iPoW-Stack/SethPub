@@ -575,7 +575,11 @@ def oqs_sign_test():
     test_oqs_contract_prefund_flow(w3, MY_OQS, OQS_KEY, OQS_PK)
 
 if __name__ == "__main__":
-    ecdsa_sign_test()
-    oqs_sign_test()
-    gmssl_sign_test()
+    IP, PORT = "127.0.0.1", 23001
+    w3 = SethWeb3Mock(IP, PORT)
+    MY = w3.client.get_address("71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6")
+    test_transfer(
+        w3, MY, 
+        "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6", 
+        "19b46cb80e027a99ab41d60e68b8a8a096f50869")
  

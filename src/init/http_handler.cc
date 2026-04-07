@@ -274,8 +274,6 @@ static int CreateGmTransactionWithAttr(
         int32_t des_net_id,
         const httplib::Request& req,
         transport::protobuf::Header& msg) {
-    
-    // 使用国密安全组件
     security::GmSsl gm;
     auto from = gm.GetAddress(from_pk);
     if (from.empty()) {
@@ -296,7 +294,6 @@ static int CreateGmTransactionWithAttr(
         common::Encode::HexEncode(to).c_str(),
         nonce);
 
-    // 构建消息头和路由信息
     dht::DhtKeyManager dht_key(des_net_id);
     msg.set_src_sharding_id(des_net_id);
     msg.set_des_dht_key(dht_key.StrKey());
@@ -307,14 +304,12 @@ static int CreateGmTransactionWithAttr(
     new_tx->set_nonce(nonce);
     new_tx->set_pubkey(from_pk);
     
-    // 解析交易步骤/类型 (如合约部署、转账等)
     auto step = req.get_param_value("type");
     uint32_t step_val = 0;
     if (!step.empty() && !common::StringUtil::ToUint32(step, &step_val)) {
         return kHttpError;
     }
 
-    // 处理合约代码
     auto contract_bytes_hex = req.get_param_value("bytes_code");
     std::string contract_bytes;
     if (!contract_bytes_hex.empty()) {
@@ -333,7 +328,6 @@ static int CreateGmTransactionWithAttr(
     new_tx->set_gas_price(gas_price);
     ADD_TX_DEBUG_INFO(new_tx);
     
-    // 附加 KV 属性
     auto key = req.get_param_value("key");
     auto val = req.get_param_value("val");
     if (!key.empty()) {
@@ -358,14 +352,12 @@ static int CreateGmTransactionWithAttr(
         }
     }
 
-    // 关键点：SM2 签名验证
     if (sign.empty()) {
         SETH_ERROR("GmSSL Signature is empty!");
         return kSignatureInvalid;
     }
 
     try {
-        // 计算交易哈希 (SM3) 并使用 SM2 验证公钥和签名
         auto tx_hash = pools::GetTxMessageHash(*new_tx);
         if (gm.Verify(tx_hash, from_pk, sign) != security::kSecuritySuccess) {
             SETH_ERROR("GmSSL verify signature failed! hash: %s", 
@@ -384,7 +376,6 @@ static int CreateGmTransactionWithAttr(
 static void GmHttpTransaction(const httplib::Request& req, httplib::Response& http_res) {
     SETH_DEBUG("GmSSL http transaction request received.");
     
-    // 提取通用参数
     auto from_pk_hex = req.get_param_value("pubkey");
     auto to_hex = req.get_param_value("to");
     auto sign_hex = req.get_param_value("sign");
@@ -394,7 +385,6 @@ static void GmHttpTransaction(const httplib::Request& req, httplib::Response& ht
     auto gas_limit = req.get_param_value("gas_limit");
     auto gas_price = req.get_param_value("gas_price");
 
-    // 参数校验
     uint64_t gas_limit_val = 0, gas_price_val = 0, nonce = 0, amount = 0;
     int32_t shard_id = 0;
     
@@ -425,7 +415,6 @@ static void GmHttpTransaction(const httplib::Request& req, httplib::Response& ht
         return;
     }
 
-    // 获取发送者账户状态并进入交易池
     security::GmSsl gm;
     auto addr = gm.GetAddress(common::Encode::HexDecode(from_pk_hex));
     msg_ptr->msg_hash = pools::GetTxMessageHash(msg_ptr->header.tx_proto());
