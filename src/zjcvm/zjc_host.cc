@@ -283,7 +283,7 @@ size_t ZjchainHost::get_code_size(const evmc::address& addr) const noexcept {
     protos::AddressInfoPtr acc_info = view_block_chain_->ChainGetAccountInfo(id);
     if (acc_info == nullptr) {
         SETH_ERROR("failed get contract bytes code size: %s", common::Encode::HexEncode(id).c_str());
-        assert(false);
+        // assert(false);
         return 0;
     }
 
