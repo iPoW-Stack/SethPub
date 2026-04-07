@@ -14,24 +14,30 @@ from seth_sdk import SethWeb3Mock, StepType, compile_and_link, get_sm2_public_ke
 # [原有 PROBE_KILL_SOL, PROBE_POOL_SOL 等代码保持不变]
 
 PROBE_CREATE2_FACTORY_SOL = """
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
+
+contract DeployedContract {
+    address public deployer;
+    constructor() {
+        deployer = msg.sender;
+    }
+}
 
 contract Create2Factory {
-    event Deployed(address indexed addr, uint256 indexed salt);
-    event DeployFailed(uint256 salt, string reason);   // 新增，便于调试
-
-    // 要部署的目标合约（示例）
-    // contract DeployedContract {
-    //     constructor(address owner) { ... }
-    // }
-
+    event Deployed(address addr, uint256 salt);
+    event DeployFailed(uint256 salt, string reason); 
+    
     function deploy(uint256 salt) external returns (address addr) {
+        // 1. 获取要部署合约的 creation code (包含构造函数和运行字节码)
         bytes memory bytecode = type(DeployedContract).creationCode;
-        
-        // 如果 DeployedContract 有构造函数参数，需要在这里拼接
-        // bytes memory initCode = abi.encodePacked(bytecode, abi.encode(arg1, arg2));
+        bytes32 saltBytes = bytes32(salt);
 
+        // 2. 使用内联汇编直接调用 eth 内置的 create2 指令
+        // create2(v, p, n, s) 
+        // v: 发送的以太币数量 (wei)
+        // p: 内存中字节码开始的位置
+        // n: 字节码的大小
+        // s: salt (盐值)
         assembly {
             addr := create2(
                 0,                          // 不发送 ETH
@@ -55,17 +61,15 @@ contract Create2Factory {
         return addr;
     }
 
-    // ====================== 预计算地址（强烈推荐） ======================
-    function computeAddress(uint256 salt) external view returns (address) {
+    function getAddress(uint256 salt) public view returns (address) {
+        // 自动获取字节码用于计算
         bytes memory bytecode = type(DeployedContract).creationCode;
-        // 如果有构造函数参数：
-        // bytes memory bytecode = abi.encodePacked(type(DeployedContract).creationCode, abi.encode(arg1));
-
+        
         bytes32 hash = keccak256(
             abi.encodePacked(
                 bytes1(0xff),
                 address(this),
-                salt,
+                bytes32(salt),
                 keccak256(bytecode)
             )
         );
