@@ -155,33 +155,20 @@ def get_sm2_public_key(private_key_hex: str) -> str:
     import binascii
 
     pk_clean = private_key_hex.replace('0x', '')
-    # 1. 初始化
-    # 1. Initialization
     sm2_crypt = sm2.CryptSM2(public_key='', private_key=pk_clean)
     
-    # 2. 尝试从内部私钥对象直接获取点坐标
-    # 在 gmssl 3.x 中，私钥通常存储在私有变量中，并且是一个带有点信息的对象
     # 2. Attempt to directly get point coordinates from the internal private key object
     # In gmssl 3.x, the private key is usually stored in a private variable and is an object with point information
     try:
-        # 这种方案尝试寻找隐藏在实例中的内部密钥对象
         internal_key = None
         if hasattr(sm2_crypt, 'private_key'):
-            # 有时是一个字节数组，有时是一个对象
             internal_key = sm2_crypt.private_key
             
-        # 如果内部实现了公钥导出，直接调用
-        # 注意：这是根据 3.2.2 源码逻辑猜测的隐藏导出路径
         # If public key export is implemented internally, call it directly
         # Note: This is a guessed hidden export path based on gmssl 3.2.2 source code logic
         d = int(pk_clean, 16)
         
-        # 方案 A: 借用它的签名逻辑中必然存在的计算过程
         # Approach A: Leverage the calculation process that must exist in its signing logic
-        # 如果以上都失败，我们使用 Python 原生的 ECC 计算 SM2 曲线
-        # 这是“终极保底”，不依赖 gmssl 的任何私有属性
-        
-        # SM2 曲线参数 (标准)
         P = 0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF
         A = 0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFC
         B = 0x28E9FA9E9D9F5E344D5A9E4BCF6509A7F39789F515AB8F92DDBCBD414D940E93
@@ -210,7 +197,6 @@ def get_sm2_public_key(private_key_hex: str) -> str:
                 k >>= 1
             return res
 
-        # 执行 P = dG 计算
         # Execute P = dG calculation
         pub_point = ecc_mul(d, (GX, GY))
         x_hex = hex(pub_point[0])[2:].zfill(64)
@@ -311,7 +297,6 @@ class SethMethod:
         Supports GMSSL (via gm_mode), OQS (auto-detection), and standard ECDSA.
         """
         
-        # 1. 优先判定国密模式 (GmSSL)
         # 1. Prioritize GmSSL mode determination
         if gm_mode:
             # 自动从私钥派生 64 字节公钥 (X+Y)
@@ -327,7 +312,6 @@ class SethMethod:
                 prefund=prefund
             )
             
-        # 2. 判定后量子模式 (OQS) - 依据私钥长度
         # 2. Determine Post-Quantum mode (OQS) - based on private key length
         elif len(private_key) > 128:
             if not oqs_pubkey:
@@ -346,7 +330,6 @@ class SethMethod:
                 prefund=prefund
             )
             
-        # 3. 执行标准 ECDSA 逻辑
         # 3. Execute standard ECDSA logic
         else:
             tx_hash = self.contract.client.send_transaction_auto(
@@ -358,7 +341,6 @@ class SethMethod:
                 prefund=prefund
             )
 
-        # 4. 等待并返回回执
         # 4. Wait for and return the receipt
         return self.contract.client.wait_for_receipt(
             tx_hash, 
@@ -383,12 +365,9 @@ class SethContract:
         核心交易触发逻辑：支持 ECDSA, OQS 和 GmSSL。
         Core transaction triggering logic: supports ECDSA, OQS, and GmSSL.
         """
-        # 1. 自动路由逻辑
-        # 优先级：GmSSL > OQS > ECDSA
         # 1. Automatic routing logic
         # Priority: GmSSL > OQS > ECDSA
         if gm_mode:
-            # 自动派生 64 字节公钥
             # Automatically derive 64-byte public key
             gm_pubkey = get_sm2_public_key(private_key)
             tx_hash = self.contract.client.send_gmssl_transaction(
@@ -400,9 +379,7 @@ class SethContract:
                 input_hex=self.encoded_input, 
                 prefund=prefund
             )
-        elif len(private_key) > 128:
         elif len(private_key) > 128: # OQS logic
-            # OQS 逻辑
             if not oqs_pubkey:
                 raise ValueError("OQS requires 'oqs_pubkey' or setting it in contract object.")
             tx_hash = self.contract.client.send_oqs_transaction(
@@ -414,9 +391,7 @@ class SethContract:
                 input_hex=self.encoded_input, 
                 prefund=prefund
             )
-        else:
         else: # Standard ECDSA
-            # 标准 ECDSA
             tx_hash = self.contract.client.send_transaction_auto(
                 private_key, 
                 self.contract.address, 
@@ -426,7 +401,6 @@ class SethContract:
                 prefund=prefund
             )
 
-        # 2. 等待回执
         # 2. Wait for receipt
         return self.contract.client.wait_for_receipt(
             tx_hash, 
@@ -509,7 +483,6 @@ class SethContract:
         amount = transaction.get('amount', 0)
         args = transaction.get('args', [])
         
-        # 获取国密模式标识
         # Get GmSSL mode identifier
         gm_mode = transaction.get('gm_mode', False)
         gm_pubkey = transaction.get('gm_pubkey')
@@ -525,11 +498,9 @@ class SethContract:
         self.address = calc_create2_address(sender, salt, full_bytecode)
 
         # 4. Select transaction interface
-        # 4a. 优先判定国密模式 (GmSSL)
         # 4a. Prioritize GmSSL mode determination
         if gm_mode or gm_pubkey:
             if not gm_pubkey:
-                # 如果标记了 gm_mode 但没传公钥，则通过私钥自动派生
                 # If gm_mode is marked but no public key is provided, it is automatically derived from the private key
                 gm_pubkey = get_sm2_public_key(private_key)
             
@@ -544,7 +515,6 @@ class SethContract:
                 amount=amount
             )
             
-        # 4b. 判定后量子模式 (OQS) - 依据私钥长度
         # 4b. Determine Post-Quantum mode (OQS) - based on private key length
         elif len(private_key) > 128:
             oqs_pubkey = transaction.get('pubkey')
@@ -561,7 +531,6 @@ class SethContract:
                 amount=amount
             )
             
-        # 4c. 标准 ECDSA 逻辑
         # 4c. Standard ECDSA logic
         else:
             tx_hash = self.client.send_transaction_auto(
@@ -607,7 +576,6 @@ class SethWeb3Mock:
         return self.client.wait_for_receipt(tx_hash)
 
     def send_gmssl_transaction(self, tx_dict: dict, private_key: str) -> dict:
-        # 如果 tx_dict 没给公钥，则自动生成
         # If tx_dict does not provide a public key, it is automatically generated
         pubkey = tx_dict.get('gm_pubkey')
         if not pubkey:
@@ -900,18 +868,14 @@ class SethClient:
         匹配 C++: str_addr_ = common::Hash::sm3(str_pk_).substr(0, 20)
         """
         import binascii
-        # 将 64 字节公钥转为字节流
         pub_bytes = binascii.unhexlify(pubkey_hex.replace('0x', ''))
-        # 计算 SM3 哈希 (sm3_hash 接收 list 类型)
         hash_hex = sm3.sm3_hash(list(pub_bytes))
-        # 取前 20 字节 (40位十六进制字符)
         return hash_hex[:40]
     
     def send_gmssl_transaction(self, pri_key_hex, pub_key_hex, to, step, amount=0, contract_code='', input_hex='', prefund=0):
         """
         发送国密交易：构造消息 -> SM3摘要 -> SM2签名 -> 发送
         """
-        # 1. 准备地址和 Nonce
         my_addr = self.get_gmssl_address(pub_key_hex)
         nonce_addr = to + my_addr if (step in [StepType.kContractExcute, StepType.kContractRefund]) else my_addr
         
@@ -920,7 +884,6 @@ class SethClient:
             nonce = int(r.get("nonce", 0)) + 1
         except: nonce = 1
 
-        # 2. 构造消息二进制 (匹配 C++ 序列化顺序)
         msg = bytearray()
         msg.extend(struct.pack('<Q', nonce))
 
@@ -946,19 +909,14 @@ class SethClient:
         # if input_hex: msg.extend(binascii.unhexlify(input_hex))
         # if prefund > 0: msg.extend(struct.pack('<Q', prefund))
 
-        # 3. 计算 SM3 摘要作为签名对象
         # 3. Calculate SM3 digest as signing object
         txh_hex = sm3.sm3_hash(list(msg))
         txh_bytes = binascii.unhexlify(txh_hex)
-        # 4. SM2 签名 (R + S)
         # 4. SM2 Signature (R + S)
         sm2_crypt = sm2.CryptSM2(public_key=pub_key_hex, private_key=pri_key_hex)
-        # 获取签名结果，gmssl 库直接返回 R+S 拼接的十六进制字符串
         # Get signature result, gmssl library directly returns R+S concatenated hex string
-        # 注意：这里需要根据链端对签名格式的要求，可能需要 binascii.unhexlify
         sig_hex = sm2_crypt.sign(txh_bytes, secrets.token_hex(32))
 
-        # 5. 组装数据并 POST
         data = {
             "nonce": str(nonce),
             "pubkey": pub_key_hex.replace('0x',''),
@@ -976,7 +934,5 @@ class SethClient:
         if prefund: data["prefund"] = str(prefund)
 
         requests.post(self.gmssl_url, data=data)
-        print(f"send data: {data}")
-        requests.post(self.gmssl_url, data=data) # Send data
-        print(f"send data: {data}") # Print sent data
         return txh_hex
+
