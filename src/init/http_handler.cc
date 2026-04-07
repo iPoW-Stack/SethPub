@@ -1407,7 +1407,7 @@ static void ArsCreateSecKeys(const httplib::Request& req, httplib::Response& htt
 }
 
 static void QueryInit(const httplib::Request& req, httplib::Response& http_res) {
-    auto thread_index = common::GlobalInfo::Instance()->get_thread_index();
+    auto thread_index = 0;//common::GlobalInfo::Instance()->get_thread_index();
     std::string res = "ok";
     http_res.set_content(res, "text/plain");
     SETH_DEBUG("sunccess init http ser: %d", thread_index);
