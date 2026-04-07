@@ -25,11 +25,10 @@ contract DeployedContract {
 
 contract Create2Factory {
     event Deployed(address addr, uint256 salt);
-    function deploy(uint256 salt) external returns (address) {
+    function deploy(uint256 salt) external returns (address addr) {
         // 1. 获取要部署合约的 creation code (包含构造函数和运行字节码)
         bytes memory bytecode = type(DeployedContract).creationCode;
         bytes32 saltBytes = bytes32(salt);
-        address addr;
 
         // 2. 使用内联汇编直接调用 eth 内置的 create2 指令
         // create2(v, p, n, s) 
@@ -39,17 +38,21 @@ contract Create2Factory {
         // s: salt (盐值)
         assembly {
             addr := create2(
-                0,                   // 不发送以太币
-                add(bytecode, 0x20), // 略过前32字节（该位置存储的是数组长度）
-                mload(bytecode),     // 字节码的实际长度
-                saltBytes            // 盐值
+                0,                          // 不发送 ETH
+                add(bytecode, 0x20),        // 跳过长度字段
+                mload(bytecode),            // 字节码长度
+                salt                        // salt
             )
+        }
 
-            emit Deployed(addr, salt);
-            // 如果地址为 0，说明部署失败（例如：由于 salt 重复）
-            if iszero(extcodesize(addr)) {
-                revert(0, 0)
-            }
+        if (addr == address(0)) {
+            emit DeployFailed(salt, "Create2 deployment failed (addr=0)");
+            revert("Create2: Failed on deploy");
+        }
+
+        // 额外检查：确认代码真的部署成功（防止极少数极端情况）
+        if (addr.code.length == 0) {
+            revert("Create2: Deployed but code is empty");
         }
 
         emit Deployed(addr, salt);
