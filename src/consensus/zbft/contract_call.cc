@@ -280,7 +280,7 @@ int ContractCall::HandleTx(
         }
     }
 
-    if (!acc_balance_map[block_tx.to()]->destructed()) {
+    // if (!acc_balance_map[block_tx.to()]->destructed()) {
         acc_balance_map[block_tx.to()]->set_nonce(0);
         acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
         acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
@@ -289,7 +289,7 @@ int ContractCall::HandleTx(
         } else {
             acc_balance_map[block_tx.to()]->set_balance(src_to_balance);
         }
-    }
+    // }
     
     // must prefund's nonce, not caller or contract
     acc_balance_map[preppayment_id]->set_balance(from_balance);
