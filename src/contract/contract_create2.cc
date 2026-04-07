@@ -24,8 +24,8 @@ int ContractCreate2::call(
     }
 
     // 2. 提取 Salt 和 InitCode
-    std::string salt = param.data.substr(4, 32);
-    std::string init_code = param.data.substr(36);
+    std::string salt = param.data.substr(0, 32);
+    std::string init_code = param.data.substr(32);
 
     // 3. 动态 Gas 计算（严格符合 EIP-1014）
     // base = 32000

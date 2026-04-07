@@ -377,10 +377,13 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
     evmc::Result evmc_res{ call_result };
     evmc_result* raw_result = (evmc_result*)&evmc_res;
     raw_result->gas_left = msg.gas;
-    SETH_DEBUG("host called kind: %u, from: %s, to: %s, amount: %lu, gas limit: %lu, input_data: %s",
+    SETH_DEBUG("host called kind: %u, from: %s, to: %s, amount: %lu, gas limit: %lu, input_data: %s, salt: %lu, code: %s",
         (int32_t)msg.kind, common::Encode::HexEncode(params.from).c_str(), 
         common::Encode::HexEncode(params.to).c_str(), params.value, params.gas,
-        common::Encode::HexEncode(params.data).c_str());
+        common::Encode::HexEncode(params.data).c_str(),
+        EvmcBytes32ToUint64(msg.create2_salt),
+        common::Encode::HexEncode(std::string((char*)msg.code, msg.code_size)).c_str());
+
     if (contract_mgr_->call(
             params,
             gas_price_,
