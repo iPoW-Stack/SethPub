@@ -854,7 +854,7 @@ static std::string EncodeEvmError(const std::string& error_msg) {
 
     // Return Hex encoded string. 
     // IMPORTANT: Most EVM clients expect a "0x" prefix!
-    return "0x" + common::Encode::HexEncode(encoded);
+    return common::Encode::HexEncode(encoded);
 }
 
 static void AbiQueryContract(const httplib::Request& req, httplib::Response& http_res) {
