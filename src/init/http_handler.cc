@@ -854,6 +854,13 @@ static void AbiQueryContract(const httplib::Request& req, httplib::Response& htt
         return;
     }
 
+    if (contract_addr_info->destructed()) {
+        std::string res = "get contract addr destructed!";
+        http_res.set_content(res, "text/plain");
+        SETH_INFO("query contract param error: %s.", res.c_str());
+        return;
+    }
+
     zjcvm::ZjchainHost zjc_host;
     zjc_host.tx_context_.tx_origin = evmc::address{};
     zjc_host.tx_context_.block_coinbase = evmc::address{};

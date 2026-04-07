@@ -42,6 +42,12 @@ int ContractCall::HandleTx(
     zjc_host.tx_context_ = pre_zjc_host.tx_context_;
     zjc_host.pre_zjc_host_ = &pre_zjc_host;
     do {
+        if (address_info->destructed()) {
+            block_tx.set_status(kConsensusContractDestructed);
+            // assert(false);
+            break;
+        }
+
         if (from_balance <= kCallContractDefaultUseGas * block_tx.gas_price() + block_tx.amount()) {
             block_tx.set_status(kConsensusAccountBalanceError);
             // assert(false);
