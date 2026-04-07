@@ -15,9 +15,11 @@ pragma solidity ^0.8.20;
 
 contract ProbeKill {
     address public owner;
+    string public message;
 
     constructor() payable {
         owner = msg.sender;
+        message = "Initialized";
     }
 
     modifier onlyOwner() {
@@ -25,9 +27,19 @@ contract ProbeKill {
         _;
     }
 
+    // New: State-changing function (Requires consensus)
+    function setMessage(string memory _m) external onlyOwner {
+        message = _m;
+    }
+
+    // New: View function (Query only)
+    function getMessage() external view returns (string memory) {
+        return message;
+    }
+
     receive() external payable {}
 
-    // Execute self-destruct and send remaining ETH to recipient
+    // Execute self-destruct and transfer remaining ETH
     function kill(address payable recipient) external onlyOwner {
         selfdestruct(recipient);
     }
@@ -125,6 +137,103 @@ contract ProbeBridge {
 """
 
 RANDOM_SALT = secrets.token_hex(31)
+
+def test_contract_selfdestruct(w3, MY, KEY):
+    print("\n--- TEST CASE: Contract Self-Destruct with State/View Verification ---")
+    
+    # 1. Compile and Deploy
+    k_bin, k_abi = compile_and_link(PROBE_KILL_SOL, "ProbeKill")
+    initial_fund = 2000
+    kill_contract = w3.seth.contract(abi=k_abi, bytecode=k_bin).deploy({
+        'from': MY, 
+        'salt': RANDOM_SALT + 'kill_v2', 
+        'amount': initial_fund
+    }, KEY)
+    
+    contract_addr = kill_contract.address
+    print(f"Contract deployed at: {contract_addr}")
+
+    # --- Phase A: Verification Before Destruction ---
+    print("\n[Phase A: Before Kill]")
+    # Test View Function
+    orig_msg = kill_contract.functions.getMessage().call()
+    print(f"Initial Message (View): {orig_msg}")
+
+    # Test Consensus-based Function (State-changing)
+    new_text = "Consensus Reached"
+    print(f"Action: Setting message to '{new_text}'...")
+    tx_receipt = kill_contract.functions.setMessage(new_text).transact(KEY)
+    
+    if tx_receipt.get('status') == 0:
+        updated_msg = kill_contract.functions.getMessage().call()
+        print(f"Updated Message (View): {updated_msg}")
+    else:
+        print(f"Error: setMessage failed: {tx_receipt.get('msg')}")
+
+    # --- Phase B: Execution of Self-Destruct ---
+    recipient = to_checksum_address("0x" + secrets.token_hex(20))
+    print(f"\n[Phase B: Kill]")
+    print(f"Action: Calling kill() to recipient {recipient}...")
+    kill_receipt = kill_contract.functions.kill(recipient).transact(KEY)
+    print(f"Kill Transaction Status: {kill_receipt.get('status')}")
+
+    if kill_receipt.get('status') == 0:
+        print("Result: Kill transaction successful.")
+        
+        # 4. Verify balance transfer
+        count = 0
+        while count < 30:
+            time.sleep(2)
+            post_balance = w3.client.get_balance(recipient)
+            if post_balance == initial_fund:
+                break
+
+            print(f"Recipient balance after: {post_balance}")
+            count += 1
+        
+        if post_balance == initial_fund:
+            print("Verification: Fund transfer PASSED!")
+        else:
+            print(f"Verification: Fund transfer FAILED! Expected {initial_fund}, got {post_balance}")
+
+        # # 5. Check if code is cleared (Note: Behavior may vary post-Cancun EIP-6780)
+        # code = w3.client.get_code(contract_addr)
+        # if code == "0x" or code == b"":
+        #     print("Verification: Contract code cleared SUCCESS!")
+        # else:
+        #     print("Notice: Code persists (EIP-6780 behavior: code only cleared if created in same tx).")
+    else:
+        print(f"Error: Kill transaction failed! Message: {kill_receipt.get('msg')}")
+
+    # --- Phase C: Verification After Destruction ---
+    print("\n[Phase C: After Kill]")
+    
+    # 1. Verify View Function Behavior
+    # Expected: After destruction, code is cleared. Query returns default value (empty string "").
+    try:
+        post_kill_msg = kill_contract.functions.getMessage().call()
+        print(f"Post-Kill Message (View): '{post_kill_msg}' (Expected: Empty String)")
+    except Exception as e:
+        print(f"Post-Kill View call failed (expected behavior): {e}")
+
+    # 2. Verify State-changing Function Behavior
+    # Expected: Transaction may "succeed" as an EOA transfer, but no logic/storage is updated.
+    print("Action: Attempting to call setMessage after destruction...")
+    post_tx = kill_contract.functions.setMessage("Attempting update post-kill").transact(KEY)
+    print(f"Post-Kill Tx Status: {post_tx.get('status')} (May succeed, but logic is inactive)")
+
+    # 3. Verify Balance and Code Status
+    final_recipient_bal = w3.client.get_balance(recipient)
+    print(f"Recipient Final Balance: {final_recipient_bal} (Expected >= {initial_fund})")
+    
+    # code = w3.client.get_code(contract_addr)
+    # if code in ["0x", b"", "0x0"]:
+    #     print("✅ SUCCESS: Contract code has been cleared from state.")
+    # else:
+    #     # Note: Under EIP-6780 (Cancun), code only clears if created and killed in the same tx.
+    #     print(f"⚠️ NOTICE: Code still exists (Length: {len(code)} bytes). Likely EIP-6780 behavior.")
+
+
 def test_contract_selfdestruct(w3, MY, KEY):
     print("\n--- TEST CASE: Contract Self-Destruct ---")
     
