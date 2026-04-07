@@ -70,6 +70,10 @@ protected:
         zjc_host.tx_context_.block_gas_limit = gas_limit;
         zjc_host.tx_context_.block_number = view_block.block_info().height();
         zjc_host.tx_context_.block_timestamp = view_block.block_info().timestamp();
+        uint64_t chain_id = hotstuff::kGlobalChainId;
+        zjcvm::Uint64ToEvmcBytes32(
+            zjc_host.tx_context_.chain_id,
+            chain_id);
         SETH_DEBUG("init host, block number: %lu, timestamp: %lu, gas limit: %lu, "
             "gas price: %lu, from: %s, to: %s",
             zjc_host.tx_context_.block_number, zjc_host.tx_context_.block_timestamp,

@@ -19,7 +19,7 @@ Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
     zjc_host.tx_context_.block_coinbase = evmc::address{};
     zjc_host.tx_context_.block_number = block.height();
     zjc_host.tx_context_.block_timestamp = block.timestamp() / 1000;
-    uint64_t chain_id = (((uint64_t)view_block->qc().network_id()) << 32 | (uint64_t)view_block->qc().pool_index());
+    uint64_t chain_id = hotstuff::kGlobalChainId;
     zjcvm::Uint64ToEvmcBytes32(
         zjc_host.tx_context_.chain_id,
         chain_id);
