@@ -818,43 +818,41 @@ static void QueryContract(const httplib::Request& req, httplib::Response& http_r
 }
 
 /**
- * Helper function: Encodes a string into the EVM Error(string) ABI format.
- * Format: 
- * 1. 4-byte selector: keccak256("Error(string)") -> 0x08c379a0
- * 2. 32-byte offset: Location of the string data (0x20)
- * 3. 32-byte length: Actual length of the error string
- * 4. Data: The string content, padded to 32-byte boundary
+ * Helper function: Encodes a string into pure EVM ABI string format (no selector).
+ * Layout (Standard ABI for a single 'string' return):
+ * [0:32]  - Offset: 0x00...0020 (Points to the start of the length field)
+ * [32:64] - Length: 0x00...00LL (The actual byte length of the string)
+ * [64:]   - Data: The string content, right-padded with '\0' to a 32-byte boundary
  */
-static std::string EncodeEvmError(const std::string& error_msg) {
-    // 1. Selector for Error(string): keccak256("Error(string)")[:4]
-    std::string encoded = common::Encode::HexDecode("08c379a0");
+static std::string EncodeEvmError(const std::string& msg) {
+    std::string encoded;
+    encoded.reserve(64 + ((msg.size() + 31) / 32) * 32);
 
-    // 2. Data offset (32 bytes) -> Value: 32 (0x20)
-    // This points to where the length segment starts
+    // 1. Offset (32 bytes)
+    // For a single return value of type string, the offset is always 32 (0x20)
     uint8_t offset[32] = {0};
-    offset[31] = 0x20;
+    offset[31] = 0x20; 
     encoded.append((char*)offset, 32);
 
-    // 3. String length (32-byte big-endian uint256)
+    // 2. Length (32-byte Big-endian uint256)
     uint8_t len_bytes[32] = {0};
-    uint32_t msg_len = (uint32_t)error_msg.size();
+    uint32_t msg_len = static_cast<uint32_t>(msg.size());
     for (int i = 0; i < 4; ++i) {
         len_bytes[31 - i] = (msg_len >> (i * 8)) & 0xFF;
     }
     encoded.append((char*)len_bytes, 32);
 
-    // 4. Actual string data
-    encoded.append(error_msg);
+    // 3. Actual string data
+    encoded.append(msg);
 
-    // 5. Padding (Right-pad with zeros to 32-byte boundary)
-    size_t padding = (32 - (error_msg.size() % 32)) % 32;
-    if (padding > 0) {
-        encoded.append(padding, '\0');
+    // 4. Padding (Right-pad with zeros to 32-byte boundary)
+    if (msg.size() % 32 != 0) {
+        size_t padding_size = 32 - (msg.size() % 32);
+        encoded.append(padding_size, '\0');
     }
 
-    // Return Hex encoded string. 
-    // IMPORTANT: Most EVM clients expect a "0x" prefix!
-    return common::Encode::HexEncode(encoded);
+    // Return Hex encoded string with "0x" prefix
+    return "0x" + common::Encode::HexEncode(encoded);
 }
 
 static void AbiQueryContract(const httplib::Request& req, httplib::Response& http_res) {
