@@ -923,7 +923,6 @@ class SethClient:
             "gas_price": "1",
             "shard_id": "0",
             "type": str(int(step)),
-            "sign": sig_hex  # 后端 C++ 直接 memcpy(sig.r, sign.c_str(), 32)
             "sign": sig_hex  # Backend C++ directly memcpy(sig.r, sign.c_str(), 32)
         }
         if contract_code: data["bytes_code"] = contract_code
