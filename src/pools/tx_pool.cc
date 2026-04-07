@@ -397,6 +397,11 @@ void TxPool::GetTxSyncToLeader(
                         *tx_ptr->tx_info,
                         &now_nonce);
                 if (res != 0) {
+                    if (res == 3) {
+                        iter->second.erase(nonce_iter);
+                        break;
+                    }
+
                     if (res > 0) {
                         continue;
                     }
@@ -605,6 +610,11 @@ void TxPool::TempGetTxIdempotently(
                         (tx_ptr->tx_info->nonce() + iter->second.size()),
                         res);
                     if (res != 0) {
+                        if (res == 3) {
+                            iter->second.erase(nonce_iter);
+                            break;
+                        }
+                        
                         if (!IsUserTransaction(tx_ptr->tx_info->step())) {
                             if (nonce_iter == iter->second.end()) {
                                 SETH_DEBUG("trace tx pool: %d, tx_key invalid addr: %s, nonce: %lu, unique hash: %s, "
