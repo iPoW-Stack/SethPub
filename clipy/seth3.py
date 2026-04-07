@@ -157,7 +157,7 @@ def test_contract_selfdestruct(w3, MY, KEY):
     print("\n[Phase A: Before Kill]")
     # Test View Function
     orig_msg = kill_contract.functions.getMessage().call()
-    print(f"Initial Message (View): {orig_msg}")
+    print(f"Initial Message (View): {orig_msg[0]}")
 
     # Test Consensus-based Function (State-changing)
     new_text = "Consensus Reached"
@@ -166,7 +166,7 @@ def test_contract_selfdestruct(w3, MY, KEY):
     
     if tx_receipt.get('status') == 0:
         updated_msg = kill_contract.functions.getMessage().call()
-        print(f"Updated Message (View): {updated_msg}")
+        print(f"Updated Message (View): {updated_msg[0]}")
     else:
         print(f"Error: setMessage failed: {tx_receipt.get('msg')}")
 
@@ -206,7 +206,7 @@ def test_contract_selfdestruct(w3, MY, KEY):
     # Expected: After destruction, code is cleared. Query returns default value (empty string "").
     try:
         post_kill_msg = kill_contract.functions.getMessage().call()
-        print(f"Post-Kill Message (View): '{post_kill_msg}' (Expected: Empty String)")
+        print(f"Post-Kill Message (View): '{post_kill_msg[0]}' (Expected: Empty String)")
     except Exception as e:
         print(f"Post-Kill View call failed (expected behavior): {e}")
 
