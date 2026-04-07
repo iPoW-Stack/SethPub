@@ -398,6 +398,7 @@ void TxPool::GetTxSyncToLeader(
                         &now_nonce);
                 if (res != 0) {
                     if (res == 3) {
+                        nonce_iter->second->msg_ptr->handle_status = consensus::kConsensusContractDestructed;
                         iter->second.erase(nonce_iter);
                         break;
                     }
@@ -611,6 +612,7 @@ void TxPool::TempGetTxIdempotently(
                         res);
                     if (res != 0) {
                         if (res == 3) {
+                            nonce_iter->second->msg_ptr->handle_status = consensus::kConsensusContractDestructed;
                             iter->second.erase(nonce_iter);
                             break;
                         }

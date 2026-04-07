@@ -243,6 +243,7 @@ static inline std::string MessageStatusToString(MessageHandleStatus status) {
         case 5050: return "kConsensusElectNodeExists";
         case 5051: return "kConsensusNonceInvalid";
         case 5052: return "kConsensusJoinElectThreashTInvalid";
+        case 5053: return "kConsensusContractDestructed";
         default:
             return "unknown(" + std::to_string(static_cast<int32_t>(status)) + ")";
     }
