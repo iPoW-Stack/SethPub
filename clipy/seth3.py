@@ -171,7 +171,7 @@ def test_contract_selfdestruct(w3, MY, KEY):
         print(f"Error: setMessage failed: {tx_receipt.get('msg')}")
 
     # --- Phase B: Execution of Self-Destruct ---
-    recipient = to_checksum_address("0x" + secrets.token_hex(20))
+    recipient = to_checksum_address("0x" + secrets.token_hex(20)).replace('0x', '')
     print(f"\n[Phase B: Kill]")
     print(f"Action: Calling kill() to recipient {recipient}...")
     kill_receipt = kill_contract.functions.kill(recipient).transact(KEY)
