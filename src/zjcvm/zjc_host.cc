@@ -377,9 +377,10 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
     evmc::Result evmc_res{ call_result };
     evmc_result* raw_result = (evmc_result*)&evmc_res;
     raw_result->gas_left = msg.gas;
-    SETH_DEBUG("host called kind: %u, from: %s, to: %s, amount: %lu, gas limit: %lu",
+    SETH_DEBUG("host called kind: %u, from: %s, to: %s, amount: %lu, gas limit: %lu, input_data: %s",
         (int32_t)msg.kind, common::Encode::HexEncode(params.from).c_str(), 
-        common::Encode::HexEncode(params.to).c_str(), params.value, params.gas);
+        common::Encode::HexEncode(params.to).c_str(), params.value, params.gas,
+        common::Encode::HexEncode(params.data).c_str());
     if (contract_mgr_->call(
             params,
             gas_price_,
@@ -466,11 +467,12 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
     }
     
     SETH_DEBUG("success host call kind: %u, from: %s, to: %s, amount: %lu, "
-        "gas limit: %lu, gas left: %lu, status: %d, outdata: %s",
+        "gas limit: %lu, gas left: %lu, status: %d, outdata: %s, input: %s",
         (int32_t)msg.kind, common::Encode::HexEncode(params.from).c_str(), 
         common::Encode::HexEncode(params.to).c_str(), params.value, params.gas, 
         evmc_res.gas_left, (int32_t)evmc_res.status_code,
-        common::Encode::HexEncode(std::string((char*)evmc_res.output_data, evmc_res.output_size)).c_str());
+        common::Encode::HexEncode(std::string((char*)evmc_res.output_data, evmc_res.output_size)).c_str(),
+        common::Encode::HexEncode(params.data).c_str());
     return evmc_res;
 }
 

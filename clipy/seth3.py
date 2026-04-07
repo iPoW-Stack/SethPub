@@ -44,7 +44,7 @@ contract Create2Factory {
                 0,                          // 不发送 ETH
                 add(bytecode, 0x20),        // 跳过长度字段
                 mload(bytecode),            // 字节码长度
-                salt                        // salt
+                saltBytes                        // salt
             )
         }
 
