@@ -826,18 +826,18 @@ static void QueryContract(const httplib::Request& req, httplib::Response& http_r
  * 4. Data: The string content, padded to 32-byte boundary
  */
 static std::string EncodeEvmError(const std::string& error_msg) {
-    // 1. Function selector for Error(string)
+    // 1. Selector for Error(string): keccak256("Error(string)")[:4]
     std::string encoded = common::Encode::HexDecode("08c379a0");
 
-    // 2. Data offset (0x20 = 32 bytes)
+    // 2. Data offset (32 bytes) -> Value: 32 (0x20)
+    // This points to where the length segment starts
     uint8_t offset[32] = {0};
     offset[31] = 0x20;
     encoded.append((char*)offset, 32);
 
-    // 3. String length (Encoded as 32-byte uint256)
+    // 3. String length (32-byte big-endian uint256)
     uint8_t len_bytes[32] = {0};
     uint32_t msg_len = (uint32_t)error_msg.size();
-    // Big-endian encoding
     for (int i = 0; i < 4; ++i) {
         len_bytes[31 - i] = (msg_len >> (i * 8)) & 0xFF;
     }
@@ -846,14 +846,15 @@ static std::string EncodeEvmError(const std::string& error_msg) {
     // 4. Actual string data
     encoded.append(error_msg);
 
-    // 5. Padding to maintain 32-byte alignment
+    // 5. Padding (Right-pad with zeros to 32-byte boundary)
     size_t padding = (32 - (error_msg.size() % 32)) % 32;
     if (padding > 0) {
         encoded.append(padding, '\0');
     }
 
-    // Return Hex encoded string for HTTP response
-    return common::Encode::HexEncode(encoded);
+    // Return Hex encoded string. 
+    // IMPORTANT: Most EVM clients expect a "0x" prefix!
+    return "0x" + common::Encode::HexEncode(encoded);
 }
 
 static void AbiQueryContract(const httplib::Request& req, httplib::Response& http_res) {
