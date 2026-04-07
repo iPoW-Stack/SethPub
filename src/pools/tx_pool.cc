@@ -6,6 +6,7 @@
 #include "common/utils.h"
 #include "common/time_utils.h"
 #include "common/global_info.h"
+#include "consensus/consensus_utils.h"
 #include "db/db.h"
 #include "network/network_utils.h"
 #include "pools/tx_pool_manager.h"
