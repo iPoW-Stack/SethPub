@@ -52,7 +52,7 @@ int CheckTransactionValid(
         uint64_t* now_nonce) {
     if (pools::IsUserTransaction(tx_info.step())) {
         if (tx_info.step() == pools::protobuf::kContractExcute) {
-            auto contract_address_info = view_block_chain->GetAddressInfo(tx_info.to());
+            auto contract_address_info = view_block_chain->ChainGetAccountInfo(tx_info.to());
             if (contract_address_info == nullptr || contract_address_info->destrcuted()) {
                 return 3;
             }
