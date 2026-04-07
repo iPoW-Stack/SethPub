@@ -347,9 +347,10 @@ int ContractCall::HandleTx(
     }
 
     auto status_val = tx_hash_status.SerializeAsString();
-    SETH_DEBUG("call contract status: %d, rel: %d, output: %s, from: %s, to: %s", 
+    SETH_DEBUG("call contract status: %d, rel: %d, txhash: %s, output: %s, from: %s, to: %s", 
         (int32_t)evmc_res.status_code, 
         tx_hash_status.status(),
+        common::Encode::HexEncode(block_tx.tx_hash()).c_str(),
         ProtobufToJson(tx_hash_status).c_str(),
         common::Encode::HexEncode(block_tx.from()).c_str(),
         common::Encode::HexEncode(block_tx.to()).c_str());

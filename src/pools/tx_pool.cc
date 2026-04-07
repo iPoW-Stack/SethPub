@@ -162,6 +162,7 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
                 common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(), 
                 tx_ptr->tx_info->nonce(),
                 (int32_t)tx_ptr->tx_info->step());
+            tx_ptr->msg_ptr->handle_status = seth::transport::MessageHandleStatus::kRequestInvalid;
             return kPoolsError;
         }
     }
@@ -356,6 +357,9 @@ void TxPool::GetTxSyncToLeader(
                 common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
                 tx_ptr->address_info->nonce(), 
                 tx_ptr->tx_info->nonce());
+            if (tx_ptr->msg_ptr) {
+                tx_ptr->msg_ptr->handle_status = seth::transport::MessageHandleStatus::kTxUserNonceInvalid;
+            }
             continue;
         }
 
@@ -369,6 +373,9 @@ void TxPool::GetTxSyncToLeader(
                     common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
                     tx_ptr->address_info->nonce(), 
                     tx_ptr->tx_info->nonce());
+                if (tx_ptr->msg_ptr) {
+                    tx_ptr->msg_ptr->handle_status = seth::transport::MessageHandleStatus::kTxUserNonceInvalid;
+                }
                 continue;
             }
         }
@@ -512,6 +519,9 @@ void TxPool::TempGetTxIdempotently(
                 common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
                 tx_ptr->address_info->nonce(), 
                 tx_ptr->tx_info->nonce());
+            if (tx_ptr->msg_ptr) {
+                tx_ptr->msg_ptr->handle_status = seth::transport::MessageHandleStatus::kTxUserNonceInvalid;
+            }
             continue;
         }
 
@@ -524,6 +534,9 @@ void TxPool::TempGetTxIdempotently(
                     common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
                     tx_ptr->address_info->nonce(), 
                     tx_ptr->tx_info->nonce());
+                if (tx_ptr->msg_ptr) {
+                    tx_ptr->msg_ptr->handle_status = seth::transport::MessageHandleStatus::kTxUserNonceInvalid;
+                }
                 continue;
             }
         }
