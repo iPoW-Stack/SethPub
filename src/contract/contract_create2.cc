@@ -16,75 +16,82 @@ int ContractCreate2::call(
         uint64_t gas,
         const std::string& origin_address,
         evmc_result* res) {
-    
-    // 1. 严格的 Gas 检查与动态扣费
-    // 标准 Create2 基础 Gas 是 32000，且每 32 字节 init_code 额外消耗 6 Gas
-    if (res->gas_left < gas_cast_) {
-        SETH_ERROR("CREATE2 gas_left < dynamic_gas, %lu, %lu", res->gas_left, gas_cast_);
-        return kContractError;
-    }
 
-    // 2. 参数解析
-    // data 布局: [32字节 Salt][N字节 InitCode]
+    // 1. 参数检查
     if (param.data.size() < 32) {
-        SETH_ERROR("CREATE2 param data size < 32, %lu", param.data.size());
+        SETH_ERROR("CREATE2 param data size < 32, size=%lu", param.data.size());
         return kContractError;
     }
 
-    std::string salt = param.data.substr(0, 32);      // 已经是 32 字节
-    std::string init_code = param.data.substr(32);    // 剩下的所有数据
+    // 2. 提取 Salt 和 InitCode
+    std::string salt = param.data.substr(0, 32);
+    std::string init_code = param.data.substr(32);
 
-    // 3. 计算地址逻辑 (EIP-1014)
-    // 核心公式: keccak256(0xff ++ address ++ salt ++ keccak256(init_code))[12:]
-    
-    // A. 计算 init_code 的哈希
+    // 3. 动态 Gas 计算（严格符合 EIP-1014）
+    // base = 32000
+    // hash_cost = 6 * ceil(init_code.size() / 32)
+    size_t word_count = (init_code.size() + 31) / 32;
+    uint64_t dynamic_gas = 32000 + 6 * word_count;
+
+    if (res->gas_left < dynamic_gas) {  // 使用传入的 gas 参数进行检查
+        SETH_ERROR("CREATE2 insufficient gas: provided=%lu, required=%lu", res->gas_left, dynamic_gas);
+        return kContractError;
+    }
+
+    // 4. 计算 CREATE2 地址 (EIP-1014)
+    // keccak256(0xff + sender(20) + salt(32) + keccak256(init_code)(32))
     std::string code_hash = common::Hash::keccak256(init_code);
 
-    // B. 准备 85 字节的 Buffer (1 + 20 + 32 + 32)
     std::string buffer;
-    buffer.reserve(85); 
-    buffer.push_back(static_cast<char>(0xff));         // 1 字节前缀
-    
-    // 重要：确保部署者地址是 20 字节二进制（如果 param.from 包含 padding，需处理）
-    if (param.from.size() > 20) {
-        buffer.append(param.from.substr(param.from.size() - 20)); 
-    } else {
-        buffer.append(param.from); 
+    buffer.reserve(85);
+    buffer.push_back(static_cast<char>(0xff));                    // 1 byte
+
+    // 确保 sender 是 20 字节（从 param.from 取最后 20 字节）
+    std::string sender = param.from.size() >= 20 
+                       ? param.from.substr(param.from.size() - 20) 
+                       : param.from;
+    if (sender.size() < 20) {
+        sender = std::string(20 - sender.size(), '\0') + sender;  // 左补零（极少发生）
     }
+    buffer.append(sender);
 
-    buffer.append(salt);                               // 32 字节盐
-    buffer.append(code_hash);                          // 32 字节代码哈希
+    buffer.append(salt);                                          // 32 bytes
+    buffer.append(code_hash);                                     // 32 bytes
 
-    // C. 执行最终哈希
     std::string final_hash = common::Hash::keccak256(buffer);
-    
-    // D. 截断：Keccak 输出 32 字节，取最后 20 字节作为地址
-    // 假设 hash 输出是 binary string，偏移 12 字节开始取
-    std::string predicted_address = final_hash.substr(12, 20);
 
-    // 4. 设置返回结果
-    // 注意：evmc_result 的 output 应该按照协议规范填充
+    // 取最后 20 字节作为新合约地址
+    std::string new_address = final_hash.substr(12, 20);
+
+    // 5. 设置 evmc_result 返回值
+    // 返回 32 字节地址（左边 12 字节为 0，右边 20 字节为地址）—— 符合多数预计算场景预期
     res->output_data = new uint8_t[32];
     memset((void*)res->output_data, 0, 32);
-    memcpy((void*)res->output_data, predicted_address.c_str(), predicted_address.size());
+    memcpy((void*)res->output_data + 12, new_address.data(), 20);
     res->output_size = 32;
-    memcpy(res->create_address.bytes,
-        create_address_.c_str(),
-        sizeof(res->create_address.bytes));
 
-    // 5. 更新状态
+    // 设置 create_address（如果上层需要记录实际创建的地址）
+    if (create_address_.size() >= 20) {
+        memcpy(res->create_address.bytes,
+               create_address_.data() + (create_address_.size() - 20),
+               20);
+    } else {
+        memset(res->create_address.bytes, 0, 20);
+    }
+
     res->status_code = EVMC_SUCCESS;
-    // 减去实际消耗的 Gas
-    res->gas_left -= gas_cast_;
-    memcpy(res->create_address.bytes,
-        create_address_.c_str(),
-        sizeof(res->create_address.bytes));
+    res->gas_left = dynamic_gas;   // 扣除实际消耗的 Gas
 
-    SETH_DEBUG("CREATE2 predicted address: %s, from: %s, salt: %s, final_hash: %s",
-        common::Encode::HexEncode(predicted_address).c_str(),
-        common::Encode::HexEncode(param.from).c_str(),
+    SETH_DEBUG("CREATE2 success - predicted_address: %s, sender: %s, salt: %s, "
+        "init_code_len: %lu, gas: %lu, gas left: %lu, dy gas: %lu",
+        common::Encode::HexEncode(new_address).c_str(),
+        common::Encode::HexEncode(sender).c_str(),
         common::Encode::HexEncode(salt).c_str(),
-        common::Encode::HexEncode(final_hash).c_str());
+        init_code.size(),
+        gas,
+        res->gas_left,
+        dynamic_gas);
+
     return kContractSuccess;
 }
 
