@@ -120,7 +120,6 @@ def test_gmssl_transfer(w3, GM_KEY):
     }
 
     print("Sending GmSSL Transfer...")
-    receipt = w3.seth.send_gmssl_transaction(tx_dict, GM_KEY)
     receipt = w3.seth.send_gmssl_transaction(tx_dict, GM_KEY) # 3. Initiate transaction
 
     print(f"GmSSL Transfer Status: {receipt.get('status')}")
