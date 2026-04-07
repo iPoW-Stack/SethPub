@@ -279,6 +279,11 @@ evmc::uint256be ZjchainHost::get_balance(const evmc::address& addr) const noexce
 
 size_t ZjchainHost::get_code_size(const evmc::address& addr) const noexcept {
     std::string id = std::string((char*)addr.bytes, sizeof(addr.bytes));
+    auto pre_addr = common::Encode::HexDecode("00000000000000000000000000000000000000");
+    if (memcmp(id.c_str(), pre_addr.c_str(), pre_addr.size()) == 0) {
+        return 1;
+    }
+
     SETH_DEBUG("now get contract bytes code size: %s", common::Encode::HexEncode(id).c_str());
     protos::AddressInfoPtr acc_info = view_block_chain_->ChainGetAccountInfo(id);
     if (acc_info == nullptr) {
