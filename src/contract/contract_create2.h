@@ -21,7 +21,7 @@ public:
 
 private:
     // CREATE2 的基础消耗通常比 Ecrecover 高，包含哈希计算开销
-    uint64_t gas_cast_{ 32000llu }; 
+    int64_t gas_cast_{ 32000ll }; 
 
     DISALLOW_COPY_AND_ASSIGN(ContractCreate2);
 };

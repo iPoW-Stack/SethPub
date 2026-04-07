@@ -64,10 +64,13 @@ int ContractCreate2::call(
 
     // 4. 设置返回结果
     // 注意：evmc_result 的 output 应该按照协议规范填充
-    res->output_size = 20; 
-    uint8_t* out = new uint8_t[20];
-    memcpy(out, predicted_address.c_str(), predicted_address.size());
-    res->output_data = out;
+    res->output_data = new uint8_t[32];
+    memset((void*)res->output_data, 0, 32);
+    memcpy((void*)res->output_data, predicted_address.c_str(), predicted_address.size());
+    res->output_size = 32;
+    memcpy(res->create_address.bytes,
+        create_address_.c_str(),
+        sizeof(res->create_address.bytes));
 
     // 5. 更新状态
     res->status_code = EVMC_SUCCESS;
