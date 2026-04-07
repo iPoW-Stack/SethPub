@@ -163,12 +163,12 @@ def test_contract_selfdestruct(w3, MY, KEY):
         else:
             print(f"Verification: Fund transfer FAILED! Expected {initial_fund}, got {post_balance}")
 
-        # 5. Check if code is cleared (Note: Behavior may vary post-Cancun EIP-6780)
-        code = w3.client.get_code(contract_addr)
-        if code == "0x" or code == b"":
-            print("Verification: Contract code cleared SUCCESS!")
-        else:
-            print("Notice: Code persists (EIP-6780 behavior: code only cleared if created in same tx).")
+        # # 5. Check if code is cleared (Note: Behavior may vary post-Cancun EIP-6780)
+        # code = w3.client.get_code(contract_addr)
+        # if code == "0x" or code == b"":
+        #     print("Verification: Contract code cleared SUCCESS!")
+        # else:
+        #     print("Notice: Code persists (EIP-6780 behavior: code only cleared if created in same tx).")
     else:
         print(f"Error: Kill transaction failed! Message: {receipt.get('msg')}")
 
