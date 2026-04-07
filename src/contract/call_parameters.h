@@ -2,6 +2,8 @@
 
 #include <functional>
 
+#include <evmc/evmc.h>
+
 #include "contract/contract_utils.h"
 
 namespace seth {
