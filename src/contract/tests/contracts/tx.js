@@ -136,7 +136,7 @@ function create_tx(to, amount, gas_limit, gas_price, prepay, tx_type) {
         'sign_r': sigR.toString(16),
         'sign_s': sigS.toString(16),
         'sign_v': sig.v,
-        'pepay': prepay
+        'prefund': prepay
     }
 }
 

@@ -137,21 +137,33 @@ def test_transfer(w3, MY, KEY, dest):
     print("\n--- TEST CASE 2: Standard Transfer ---")
     # dest = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
     transfer_amount = 500000000
+    
+    # 1. 记录转账前的余额
+    balance_before = w3.client.get_balance(dest)
     balance_before = w3.client.get_balance(dest) # 1. Record balance before transfer
     print(f"Balance before: {balance_before}")
     
+    # 2. 执行转账交易
+    receipt = w3.seth.send_transaction({'to': dest, 'value': transfer_amount}, KEY)
     receipt = w3.seth.send_transaction({'to': dest, 'value': transfer_amount}, KEY) # 2. Execute transfer transaction
     
+    # 3. 验证交易状态
+    if receipt.get('status') == 0:
     if receipt.get('status') == 0: # 3. Verify transaction status
         print(f"Transfer Sent Successfully. Hash: {receipt.get('tx_hash', 'N/A')}")
         
         count = 0
         while count < 30:
+            # 给节点一点同步时间（可选，取决于你的 RPC 响应速度）
+            time.sleep(2) 
             time.sleep(2) # Give the node some synchronization time (optional, depends on your RPC response speed)
             
+            # 4. 获取转账后的余额
+            balance_after = w3.client.get_balance(dest)
             balance_after = w3.client.get_balance(dest) # 4. Get balance after transfer
             print(f"Balance after: {balance_after}")
             
+            # 5. 余额合法性校验逻辑
             expected_balance = balance_before + transfer_amount
             if balance_after == expected_balance:
                 print(f"✅ Balance Verification PASSED: {balance_before} + {transfer_amount} == {balance_after}")
@@ -427,23 +439,32 @@ def test_oqs_contract_prefund_flow(w3, OQS_MY, OQS_KEY, OQS_PK):
  
 def test_gmssl_transfer(w3, GM_KEY):
     """
+    测试国密标准转账
+    利用 SDK 内部逻辑：传入 gm_pubkey 自动切换 SM2/SM3
     Test GmSSL standard transfer
     Utilizes SDK internal logic: passing gm_pubkey automatically switches between SM2/SM3
     """
     print("\n--- TEST CASE: GmSSL Standard Transfer ---")
     dest = "0000000000000000000000000000000000000001"
     
+    # 1. 自动从私钥派生公钥和地址用于日志展示
     gm_pubkey = get_sm2_public_key(GM_KEY)
+    # 调用 SDK 内部方法计算地址 (SM3 截断)
+    GM_MY = w3.client.get_gmssl_address(gm_pubkey)
     GM_MY = w3.client.get_gmssl_address(gm_pubkey) # Call SDK internal method to calculate address (SM3 truncation)
     print(f"GmSSL Sender Address: {GM_MY}")
 
+    # 2. 构造交易字典
+    tx_dict = {
     tx_dict = { # 2. Construct transaction dictionary
         'to': dest,
         'value': 10000,
         'gm_pubkey': gm_pubkey  # 触发 SDK 的 send_gmssl_transaction 逻辑
     }
 
+    # 3. 发起交易
     print("Sending GmSSL Transfer...")
+    receipt = w3.seth.send_gmssl_transaction(tx_dict, GM_KEY)
     receipt = w3.seth.send_gmssl_transaction(tx_dict, GM_KEY) # 3. Initiate transaction
 
     print(f"GmSSL Transfer Status: {receipt.get('status')}")
@@ -454,11 +475,14 @@ def test_gmssl_transfer(w3, GM_KEY):
 
 def test_gmssl_contract_flow(w3, GM_KEY):
     """
+    测试国密账户的合约全流程：部署 -> 预付Gas -> 调用
+    完全利用 gm_mode=True 自动派生公钥
     Test the full contract flow for GmSSL accounts: Deploy -> Prefund Gas -> Call
     Fully utilizes gm_mode=True to automatically derive public key
     """
     print("\n--- TEST CASE: GmSSL Contract Full Flow (Auto-Derive) ---")
 
+    # 1. 准备合约
     src = """
     pragma solidity ^0.8.0;
     contract GmVault {
@@ -468,12 +492,15 @@ def test_gmssl_contract_flow(w3, GM_KEY):
     """
     bin_code, abi = compile_and_link(src, "GmVault")
     
+    # 2. 计算 Sender 地址用于 deploy 参数
     # 2. Calculate Sender address for deploy parameters
     gm_pubkey = get_sm2_public_key(GM_KEY)
     GM_MY = w3.client.get_gmssl_address(gm_pubkey)
     
     print(f"GmSSL Sender Address pk: {gm_pubkey}, GM_MY: {GM_MY}")
+    # 3. 部署合约
     # 3. Deploy contract
+    # deploy 内部会判断 gm_pubkey 是否存在，如果存在则走国密
     print("[*] Deploying GmVault via GmSSL...")
     gm_vault = w3.seth.contract(abi=abi, bytecode=bin_code)
     gm_vault.deploy({
@@ -489,10 +516,15 @@ def test_gmssl_contract_flow(w3, GM_KEY):
 
     print(f"GmSSL Contract at: {gm_vault.address}")
 
+    # 4. 预付 Gas (Prefund)
     # 4. Prefund Gas
+    # 利用修改后的 SDK：只需传 gm_mode=True
     print("[*] Setting Gas Prefund (gm_mode=True)...")
     gm_vault.prefund(50000000, GM_KEY, gm_mode=True)
+
+    # 5. 调用合约 (Transact)
     # 5. Call Contract (Transact)
+    # 利用修改后的 SDK：只需传 gm_mode=True，内部自动调 get_sm2_public_key
     print("[*] Calling store(888) via SM2 (gm_mode=True)...")
     receipt = gm_vault.functions.store(888).transact(GM_KEY, gm_mode=True)
 

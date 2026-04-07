@@ -152,7 +152,7 @@ function param_contract(tx_type, gid, to, amount, gas_limit, gas_price, contract
         'attrs_size': 4,
         "bytes_code": contract_bytes,
         "input": input,
-        "pepay": prepay,
+        "prefund": prepay,
         'sign_r': sigR.toString(16),
         'sign_s': sigS.toString(16),
         'sign_v': sig.v,

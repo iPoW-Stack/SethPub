@@ -188,7 +188,6 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
     }
 
     tcp_transport->msg_handler()->HandleMessage(msg_ptr);
-    packet.Free();
     return true;
 }
 
@@ -206,12 +205,13 @@ void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
         while (packet != nullptr) {
             OnClientPacket(ex_uv_tcp, *packet);
             packet = ex_uv_tcp->msg_decoder->GetPacket();
+            packet->Free();
         }
     } else {
         tcp_transport->FreeConnection(ex_uv_tcp);
     }
 
-    free(buf->base);
+    delete[] buf->base;
 }
 
 void on_connect(uv_connect_t* connection, int status) {
@@ -289,7 +289,9 @@ void signal_handler(uv_signal_t* handle, int signum) {
         if (!uv_is_closing(handle)) {
             uv_close(handle, [](uv_handle_t* h) {
                 if (uv_handle_get_type(h) == UV_TCP) {
-                    delete reinterpret_cast<ex_uv_tcp_t*>(h->data);
+                    auto tmp_ex_uv_tcp = reinterpret_cast<ex_uv_tcp_t*>(h->data);
+                    delete tmp_ex_uv_tcp->msg_decoder;
+                    free(tmp_ex_uv_tcp);
                 }
             });
         }

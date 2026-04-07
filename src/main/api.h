@@ -314,7 +314,7 @@ public:
             params.emplace("shard_id", "3");
             params.emplace("key", key);
             params.emplace("val", val);
-            params.emplace("pepay", std::to_string(prefund));
+            params.emplace("prefund", std::to_string(prefund));
             params.emplace("sign_r", common::Encode::HexEncode(sig.r));
             params.emplace("sign_s", common::Encode::HexEncode(sig.s));
             params.emplace("sign_v", std::to_string(sig.v));

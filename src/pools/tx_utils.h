@@ -271,8 +271,15 @@ static inline std::string GetTxMessageHash(const pools::protobuf::TxMessage& tx_
         }
     }
 
+    std::string tx_hash;
+    if (tx_info.pubkey().size() == 64u) {
+        tx_hash = common::Hash::sm3(message);
+    } else {
+        tx_hash = common::Hash::keccak256(message);
+    }
+
     SETH_DEBUG("get tx message hash: %s, nonce: %lu, pk: %s, to: %s, amount: %lu, gas limit: %lu, price: %lu, step: %lu, contract code: %s, input: %s, prepay: %lu, key: %s, value: %s, msg: %s", 
-        common::Encode::HexEncode(common::Hash::keccak256(message)).c_str(),
+        common::Encode::HexEncode(tx_hash).c_str(),
         nonce,
         common::Encode::HexEncode(tx_info.pubkey()).c_str(),
         common::Encode::HexEncode(tx_info.to()).c_str(),
@@ -286,7 +293,7 @@ static inline std::string GetTxMessageHash(const pools::protobuf::TxMessage& tx_
         tx_info.has_key() ? common::Encode::HexEncode(tx_info.key()).c_str() : "",
         tx_info.has_value() ? common::Encode::HexEncode(tx_info.value()).c_str() : "",
         common::Encode::HexEncode(message).c_str());
-    return common::Hash::keccak256(message);
+    return tx_hash;
 }
 
 static inline bool IsRootNode() {
