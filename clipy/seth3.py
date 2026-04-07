@@ -25,7 +25,6 @@ contract DeployedContract {
 
 contract Create2Factory {
     event Deployed(address addr, uint256 salt);
-
     function deploy(uint256 salt) external returns (address) {
         // 1. 获取要部署合约的 creation code (包含构造函数和运行字节码)
         bytes memory bytecode = type(DeployedContract).creationCode;
