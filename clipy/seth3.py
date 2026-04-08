@@ -222,7 +222,7 @@ def test_create2_assembly_deployment(w3, MY, KEY):
 
     test_salt_int = 88888888
     
-    predicted_addr = factory.functions.getAddress(test_salt_int).call()[0]
+    predicted_addr = factory.functions.getAddress(test_salt_int).call()[0].replace('0x', '').lower()
     print(f"Predicted Address: {predicted_addr}")
 
     receipt = factory.functions.deploy(test_salt_int).transact(KEY)
@@ -232,11 +232,11 @@ def test_create2_assembly_deployment(w3, MY, KEY):
         actual_addr = None
         for e in receipt.get('decoded_events', []):
             if e['event'] == 'Deployed':
-                actual_addr = e['args']['addr']
+                actual_addr = e['args']['addr'].replace('0x', '').lower()
         
         print(f"Actual Deployed Address: {actual_addr}")
         
-        if actual_addr and actual_addr.lower() == predicted_addr.lower():
+        if actual_addr and actual_addr == predicted_addr:
             print("✅ SUCCESS: Assembly CREATE2 address matches prediction!")
             deployed_instance = w3.seth.contract(address=actual_addr, abi=d_abi)
             deployer_in_state = deployed_instance.functions.deployer().call()[0]
