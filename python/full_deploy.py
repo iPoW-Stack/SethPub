@@ -215,17 +215,17 @@ if __name__ == "__main__":
 
     # 1. Deploy Factory
     print("[1] Deploy V3 Factory...")
-    factory_addr, ok = deploy_contract("Factory", "01", factory_bin)
+    factory_addr, ok = deploy_contract("Factory", "11", factory_bin)
     if not ok: exit(1)
 
     # 2. Deploy WSETH9
     print("\n[2] Deploy WSETH9...")
-    wseth9_addr, ok = deploy_contract("WSETH9", "02", wseth9_bin)
+    wseth9_addr, ok = deploy_contract("WSETH9", "12", wseth9_bin)
     if not ok: exit(1)
 
     # 3. Deploy sUSDC
     print("\n[3] Deploy sUSDC...")
-    susdc_addr, ok = deploy_contract("sUSDC", "03", susdc_bin)
+    susdc_addr, ok = deploy_contract("sUSDC", "13", susdc_bin)
     if not ok: exit(1)
 
     # 4. addMinter
@@ -244,9 +244,9 @@ if __name__ == "__main__":
     print(f"\n  token0: {token0}  ({'sUSDC' if token0==susdc_addr else 'WSETH9'})")
     print(f"  token1: {token1}  ({'WSETH9' if token1==wseth9_addr else 'sUSDC'})")
 
-    # 6. deployPool (Factory 内部 new，不需要 CREATE2)
-    print("\n[6] Factory.deployPool(token0, token1, fee)...")
-    call_contract("deployPool", factory_addr, "deployPool(address,address,uint24)",
+    # 6. createPool
+    print("\n[6] Factory.createPool(token0, token1, fee)...")
+    call_contract("createPool", factory_addr, "createPool(address,address,uint24)",
                   ["address","address","uint24"],
                   [to_checksum_address("0x"+token0), to_checksum_address("0x"+token1), FEE],
                   prepayment=30_000_000)
