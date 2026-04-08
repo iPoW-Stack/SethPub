@@ -195,7 +195,7 @@ public:
         auto addr = evmc::address{};
         memcpy(addr.bytes, id.c_str(), id.size());
         create2_accounts_[addr] = MockedAccount();
-        create2_accounts_[addr].code = code;
+        create2_accounts_[addr].code = evmc::bytes({code.begin(), code.end()});
         create2_accounts_[addr].set_balance(balance);
     }
 
