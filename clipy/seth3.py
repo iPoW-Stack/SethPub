@@ -239,10 +239,10 @@ def test_create2_assembly_deployment(w3, MY, KEY):
         if actual_addr and actual_addr == predicted_addr:
             print("✅ SUCCESS: Assembly CREATE2 address matches prediction!")
             deployed_instance = w3.seth.contract(address=actual_addr, abi=d_abi)
-            deployer_in_state = deployed_instance.functions.deployer().call()[0]
+            deployer_in_state = deployed_instance.functions.deployer().call()[0].replace('0x', '').lower()
             print(f"Verification: DeployedContract.deployer = {deployer_in_state}")
             
-            if deployer_in_state.lower() == factory.address.lower():
+            if deployer_in_state == factory.address:
                 print("✅ Verification: Deployer is indeed the Factory contract.")
         else:
             print("❌ FAILURE: Address mismatch or Event not found!")
