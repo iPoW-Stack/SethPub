@@ -197,7 +197,7 @@ int Execution::execute(
         if (call_mode == kCreate2) {
             msg.kind = EVMC_CREATE2;
         }
-        
+
         *out_res = evm_.execute(
             host,
             rev,
@@ -220,7 +220,7 @@ int Execution::execute(
         }
 
         host.create_bytes_code_ = std::string((char*)out_res->output_data, out_res->output_size);
-        if (call_mode == kJustCreate) {
+        if (call_mode == kJustCreate || call_mode == kCreate2) {
             return kZjcvmSuccess;
         }
 
