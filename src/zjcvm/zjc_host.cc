@@ -287,6 +287,11 @@ size_t ZjchainHost::get_code_size(const evmc::address& addr) const noexcept {
     SETH_DEBUG("now get contract bytes code size: %s", common::Encode::HexEncode(id).c_str());
     protos::AddressInfoPtr acc_info = view_block_chain_->ChainGetAccountInfo(id);
     if (acc_info == nullptr) {
+        auto iter = create2_map_.find(id);
+        if (iter != create2_map_.end()) {
+            return iter->second.size();
+        }
+        
         SETH_ERROR("failed get contract bytes code size: %s", common::Encode::HexEncode(id).c_str());
         // assert(false);
         return 0;
@@ -385,11 +390,42 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
         EvmcBytes32ToUint64(msg.create2_salt),
         "");
 
-    if (contract_mgr_->call(
+    int call_res = contract_mgr_->call(
             params,
             gas_price_,
             origin_address_,
-            raw_result) != contract::kContractNotExists) {
+            raw_result);
+    if (call_res != contract::kContractNotExists) {
+        if (call_res == contract::kContractSuccess && param.code_address == contract::kContractCreate2) {
+            std::string id((char*)raw_result->output_data + 12, 20);
+            auto params2 = params;
+            params2.to = id;
+            SETH_DEBUG("get call bytes code success: %s, field: %s, value: %s",
+                common::Encode::HexEncode(id).c_str(),
+                protos::kFieldBytesCode.c_str(),
+                common::Encode::HexEncode(params2.data).c_str());
+            evmc_result call_result2 = {};
+            evmc::Result evmc_res2{ call_result2 };
+            evmc_result* raw_result2 = (evmc_result*)&evmc_res2;
+            int res_status = zjcvm::Execution::Instance()->execute(
+                params2.data,
+                "",
+                params2.from,
+                params2.to,
+                origin_address_,
+                params2.apparent_value,
+                params2.gas,
+                depth_,
+                zjcvm::kCreate2,
+                *this,
+                &evmc_res2);
+            evmc_res.gas_left = evmc_res2.gas_left;
+            if (res_status != consensus::kConsensusSuccess || evmc_res2.status_code != EVMC_SUCCESS) {
+                return evmc_res2;
+            }
+
+            AddCreate2Contract(addr, std::string((char*)evmc_res2->output_data, evmc_res2->output_size));
+        }
         SETH_DEBUG("call default contract failed: %s", common::Encode::HexEncode(origin_address_).c_str());
     } else {
         std::string id = params.code_address;

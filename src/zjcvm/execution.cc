@@ -192,8 +192,12 @@ int Execution::execute(
         msg.gas,
         bytes_code.size(),
         common::Encode::HexEncode(str_input).c_str());
-    if (call_mode == kJustCreate || call_mode == kCreateAndCall) {
+    if (call_mode == kJustCreate || call_mode == kCreateAndCall || call_mode == kCreate2) {
         msg.kind = EVMC_CREATE;
+        if (call_mode == kCreate2) {
+            msg.kind = EVMC_CREATE2;
+        }
+        
         *out_res = evm_.execute(
             host,
             rev,
