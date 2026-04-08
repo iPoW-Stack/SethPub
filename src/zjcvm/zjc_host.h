@@ -185,9 +185,19 @@ public:
         pre_zjc_host_->tx_context_ = tx_context_;
     }
 
-    void AddCreate2Contract(const std::string& addr, const std::string& code) {
-        create2_map_[addr] = code;
+    evmc::uint256be get_balance(const std::string& id) {
+        auto addr = evmc::address{};
+        memcpy(addr.bytes, id.c_str(), id.size());
+        return get_balance(addr);
     }
+
+    void AddCreate2Contract(const std::string& id, const std::string& code) {
+        auto addr = evmc::address{};
+        memcpy(addr.bytes, id.c_str(), id.size());
+        accounts_[addr] = MockedAccount();
+        accounts_[addr].code = code;
+    }
+
     // void SavePrevStorages(const std::string& key, const std::string& val, bool cover) {
         // if (!cover) {
         //     auto iter = prev_storages_map_.find(key);
@@ -218,7 +228,6 @@ public:
     uint64_t view_ = 0;
     bool contract_to_call_dirty_ = false;
     std::map<std::string, std::map<std::string, uint64_t>> to_account_value_;
-    std::map<std::string, std::string> create2_map_;
 
     // block's all tx shared
     std::map<evmc::address, MockedAccount> accounts_;
