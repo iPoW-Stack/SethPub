@@ -10,6 +10,65 @@ from seth_sdk import SethWeb3Mock, StepType, compile_and_link, get_sm2_public_ke
 
 # --- 5. Main Execution ---
 # New: Contract for self-destruct testing
+
+PROBE_CREATE2_FACTORY_SOL = """
+pragma solidity ^0.8.20;
+
+contract DeployedContract {
+    address public deployer;
+    constructor() payable {
+        deployer = msg.sender;
+    }
+}
+
+contract Create2Factory {
+    event Deployed(address addr, uint256 salt);
+    event DeployFailed(uint256 salt, string reason); 
+    event TestDeployed(address addr, uint256 salt, bytes);
+    constructor() payable {
+    }
+
+    function deploy(uint256 salt) external payable returns (address addr) {
+        bytes memory bytecode = type(DeployedContract).creationCode;
+        bytes32 saltBytes = bytes32(salt);
+        assembly {
+            addr := create2(
+                10000000,
+                add(bytecode, 0x20),
+                mload(bytecode),
+                saltBytes
+            )
+        }
+
+        if (addr == address(0)) {
+            emit DeployFailed(salt, "Create2 deployment failed (addr=0)");
+            revert("Create2: Failed on deploy");
+        }
+
+        if (addr.code.length == 0) {
+            revert("Create2: Deployed but code is empty");
+        }
+
+        emit Deployed(addr, salt);
+        return addr;
+    }
+
+    function getAddress(uint256 salt) public view returns (address) {
+        bytes memory bytecode = type(DeployedContract).creationCode;
+        
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                bytes1(0xff),
+                address(this),
+                bytes32(salt),
+                keccak256(bytecode)
+            )
+        );
+        return address(uint160(uint256(hash)));
+    }
+}
+"""
+
 PROBE_KILL_SOL = """
 pragma solidity ^0.8.20;
 
@@ -137,6 +196,50 @@ contract ProbeBridge {
 """
 
 RANDOM_SALT = secrets.token_hex(31)
+
+def test_create2_assembly_deployment(w3, MY, KEY):
+    print("\n--- TEST CASE: CREATE2 Assembly Predictable Deployment ---")
+    
+    f_bin, f_abi = compile_and_link(PROBE_CREATE2_FACTORY_SOL, "Create2Factory")
+    d_bin, d_abi = compile_and_link(PROBE_CREATE2_FACTORY_SOL, "DeployedContract")
+    
+    print("[*] Deploying Create2Factory (Assembly version)...")
+    factory_salt = secrets.token_hex(31) + 'f2'
+    factory = w3.seth.contract(abi=f_abi, bytecode=f_bin).deploy({
+        'from': MY, 
+        'salt': factory_salt,
+        'amount': 100000000
+    }, KEY)
+    print(f"Factory deployed at: {factory.address}")
+
+    test_salt_int = 88888888
+    
+    predicted_addr = factory.functions.getAddress(test_salt_int).call()[0].replace('0x', '').lower()
+    print(f"Predicted Address: {predicted_addr}")
+
+    receipt = factory.functions.deploy(test_salt_int).transact(KEY)
+    print(f"[*] Executing factory.deploy({test_salt_int}), receipt:{receipt}")
+    
+    if receipt.get('status') == 0:
+        actual_addr = None
+        for e in receipt.get('decoded_events', []):
+            if e['event'] == 'Deployed':
+                actual_addr = e['args']['addr'].replace('0x', '').lower()
+        
+        print(f"Actual Deployed Address: {actual_addr}")
+        
+        if actual_addr and actual_addr == predicted_addr:
+            print("✅ SUCCESS: Assembly CREATE2 address matches prediction!")
+            deployed_instance = w3.seth.contract(address=actual_addr, abi=d_abi)
+            deployer_in_state = deployed_instance.functions.deployer().call()[0].replace('0x', '').lower()
+            print(f"Verification: DeployedContract.deployer = {deployer_in_state}")
+            
+            if deployer_in_state == factory.address:
+                print("✅ Verification: Deployer is indeed the Factory contract.")
+        else:
+            print("❌ FAILURE: Address mismatch or Event not found!")
+    else:
+        print(f"❌ Deploy transaction failed: {receipt.get('msg')}")
 
 def test_contract_selfdestruct(w3, MY, KEY):
     print("\n--- TEST CASE: Contract Self-Destruct with State/View Verification ---")
@@ -652,6 +755,7 @@ def ecdsa_sign_test():
     test_library_with_contrcat(w3, MY, KEY)
     test_ecdsa_prefund_full_flow(w3, MY, KEY)
     test_contract_selfdestruct(w3, MY, KEY)
+    test_create2_assembly_deployment(w3, MY, KEY)
 
 def oqs_sign_test():
     # Base configuration

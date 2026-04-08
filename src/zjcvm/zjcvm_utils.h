@@ -23,6 +23,7 @@ enum ContractCallMode {
     kJustCall = 0,
     kJustCreate = 1,
     kCreateAndCall = 2,
+    kCreate2 = 3,
 };
 
 static const std::string kContractHead = common::Encode::HexDecode("60806040");

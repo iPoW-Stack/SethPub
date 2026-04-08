@@ -347,15 +347,34 @@ int ContractCall::HandleTx(
     }
 
     auto status_val = tx_hash_status.SerializeAsString();
-    SETH_DEBUG("call contract status: %d, rel: %d, output: %s, from: %s, to: %s", 
+    SETH_DEBUG("call contract status: %d, rel: %d, txhash: %s, output: %s, from: %s, to: %s", 
         (int32_t)evmc_res.status_code, 
         tx_hash_status.status(),
+        common::Encode::HexEncode(block_tx.tx_hash()).c_str(),
         ProtobufToJson(tx_hash_status).c_str(),
         common::Encode::HexEncode(block_tx.from()).c_str(),
         common::Encode::HexEncode(block_tx.to()).c_str());
     if (block_tx.status() == kConsensusSuccess) {
         for (auto iter = dep_contract_balance_map.begin(); iter != dep_contract_balance_map.end(); ++iter) {
             acc_balance_map[iter->first] = iter->second;
+        }
+
+        for (auto iter = zjc_host.create2_accounts_.begin();
+                iter != zjc_host.create2_accounts_.end(); ++iter) {
+            auto contract_info = std::make_shared<address::protobuf::AddressInfo>();
+            auto id = std::string((char*)iter->first.bytes, sizeof(iter->first.bytes));
+            contract_info->set_addr(id);
+            contract_info->set_balance(zjcvm::EvmcBytes32ToUint64(iter->second.balance));
+            contract_info->set_sharding_id(view_block.qc().network_id());
+            contract_info->set_pool_index(view_block.qc().pool_index());
+            contract_info->set_type(address::protobuf::kNormal);
+            contract_info->set_bytes_code(
+                reinterpret_cast<const void*>(iter->second.code.data()), 
+                iter->second.code.size());
+            contract_info->set_latest_height(view_block.block_info().height());
+            contract_info->set_tx_index(tx_index);
+            contract_info->set_nonce(0);
+            acc_balance_map[id] = contract_info;
         }
 
         zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);

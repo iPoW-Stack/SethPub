@@ -2,6 +2,8 @@
 
 #include <functional>
 
+#include <evmc/evmc.h>
+
 #include "contract/contract_utils.h"
 
 namespace seth {
@@ -33,6 +35,9 @@ struct CallParameters {
     uint64_t gas;
     std::string data;
     OnOpFunc on_op;
+    evmc_bytes32 create2_salt;
+    const uint8_t* code;
+    size_t code_size;
     zjcvm::ZjchainHost* zjc_host;
 };
 

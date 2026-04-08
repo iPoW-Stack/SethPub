@@ -25,6 +25,7 @@ enum CallContractStep {
     kCallStepContractFinal = 2,
 };
 
+static const std::string kContractCreate2 = common::Encode::HexDecode("0000000000000000000000000000000000000000");
 static const std::string kContractEcrecover = common::Encode::HexDecode("0000000000000000000000000000000000000001");
 static const std::string kContractSha256 = common::Encode::HexDecode("0000000000000000000000000000000000000002");
 static const std::string kContractRipemd160 = common::Encode::HexDecode("0000000000000000000000000000000000000003");

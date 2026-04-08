@@ -192,8 +192,12 @@ int Execution::execute(
         msg.gas,
         bytes_code.size(),
         common::Encode::HexEncode(str_input).c_str());
-    if (call_mode == kJustCreate || call_mode == kCreateAndCall) {
+    if (call_mode == kJustCreate || call_mode == kCreateAndCall || call_mode == kCreate2) {
         msg.kind = EVMC_CREATE;
+        if (call_mode == kCreate2) {
+            msg.kind = EVMC_CREATE2;
+        }
+
         *out_res = evm_.execute(
             host,
             rev,
@@ -216,7 +220,7 @@ int Execution::execute(
         }
 
         host.create_bytes_code_ = std::string((char*)out_res->output_data, out_res->output_size);
-        if (call_mode == kJustCreate) {
+        if (call_mode == kJustCreate || call_mode == kCreate2) {
             return kZjcvmSuccess;
         }
 

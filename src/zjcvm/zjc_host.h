@@ -184,6 +184,21 @@ public:
 
         pre_zjc_host_->tx_context_ = tx_context_;
     }
+
+    evmc::uint256be get_balance(const std::string& id) {
+        auto addr = evmc::address{};
+        memcpy(addr.bytes, id.c_str(), id.size());
+        return get_balance(addr);
+    }
+
+    void AddCreate2Contract(const std::string& id, const std::string& code, uint64_t balance) {
+        auto addr = evmc::address{};
+        memcpy(addr.bytes, id.c_str(), id.size());
+        create2_accounts_[addr] = MockedAccount();
+        create2_accounts_[addr].code = evmc::bytes({code.begin(), code.end()});
+        create2_accounts_[addr].set_balance(balance);
+    }
+
     // void SavePrevStorages(const std::string& key, const std::string& val, bool cover) {
         // if (!cover) {
         //     auto iter = prev_storages_map_.find(key);
@@ -217,6 +232,7 @@ public:
 
     // block's all tx shared
     std::map<evmc::address, MockedAccount> accounts_;
+    std::map<evmc::address, MockedAccount> create2_accounts_;
     std::unordered_map<evmc::address, evmc::uint256be> account_balance_;
     std::map<std::string, std::shared_ptr<pools::protobuf::ToTxMessageItem>> cross_to_map_;
 

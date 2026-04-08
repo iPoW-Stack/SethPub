@@ -249,12 +249,12 @@ public:
 private:
     int TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr);
     void DispatchTx(uint32_t pool_index, const transport::MessagePtr& msg_ptr);
-    void HandleCreateContractTx(const transport::MessagePtr& msg_ptr);
-    void HandleSetContractPrefund(const transport::MessagePtr& msg_ptr);
-    void HandleContractRefund(const transport::MessagePtr& msg_ptr);
-    void HandleNormalFromTx(const transport::MessagePtr& msg_ptr);
-    void HandleContractExcute(const transport::MessagePtr& msg_ptr);
-    void HandleElectTx(const transport::MessagePtr& msg_ptr);
+    int32_t HandleCreateContractTx(const transport::MessagePtr& msg_ptr);
+    int32_t HandleSetContractPrefund(const transport::MessagePtr& msg_ptr);
+    int32_t HandleContractRefund(const transport::MessagePtr& msg_ptr);
+    int32_t HandleNormalFromTx(const transport::MessagePtr& msg_ptr);
+    int32_t HandleContractExcute(const transport::MessagePtr& msg_ptr);
+    int32_t HandleElectTx(const transport::MessagePtr& msg_ptr);
     bool UserTxValid(const transport::MessagePtr& msg_ptr);
     void ConsensusTimerMessage();
     void SyncPoolsMaxHeight();
