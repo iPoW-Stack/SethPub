@@ -291,7 +291,7 @@ size_t ZjchainHost::get_code_size(const evmc::address& addr) const noexcept {
         if (iter != create2_map_.end()) {
             return iter->second.size();
         }
-        
+
         SETH_ERROR("failed get contract bytes code size: %s", common::Encode::HexEncode(id).c_str());
         // assert(false);
         return 0;
@@ -396,7 +396,7 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
             origin_address_,
             raw_result);
     if (call_res != contract::kContractNotExists) {
-        if (call_res == contract::kContractSuccess && param.code_address == contract::kContractCreate2) {
+        if (call_res == contract::kContractSuccess && params.code_address == contract::kContractCreate2) {
             std::string id((char*)raw_result->output_data + 12, 20);
             auto params2 = params;
             params2.to = id;
@@ -424,7 +424,7 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
                 return evmc_res2;
             }
 
-            AddCreate2Contract(addr, std::string((char*)evmc_res2->output_data, evmc_res2->output_size));
+            AddCreate2Contract(id, std::string((char*)evmc_res2.output_data, evmc_res2.output_size));
         }
         SETH_DEBUG("call default contract failed: %s", common::Encode::HexEncode(origin_address_).c_str());
     } else {
