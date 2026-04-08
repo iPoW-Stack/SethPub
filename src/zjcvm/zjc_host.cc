@@ -435,22 +435,6 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
                         return evmc_res;
                     }
 
-                    auto sender_iter = to_account_value_.find(params2.from);
-                    if (sender_iter == to_account_value_.end()) {
-                        to_account_value_[params2.from] = std::map<std::string, uint64_t>();
-                        to_account_value_[params2.from][params2.to] = params2.value;
-                        CHECK_MEMORY_SIZE(to_account_value_);
-                        CHECK_MEMORY_SIZE(to_account_value_[params2.from]);
-                    } else {
-                        auto iter = sender_iter->second.find(params2.to);
-                        if (iter != sender_iter->second.end()) {
-                            sender_iter->second[params2.to] += params2.value;
-                        } else {
-                            sender_iter->second[params2.to] = params2.value;
-                        }
-                    }
-
-                    evmc_res.status_code = EVMC_SUCCESS;
                     SETH_DEBUG("craete2 contract transfer from: %s, to: %s, from_balance: %lu, amount: %lu",
                         common::Encode::HexEncode(params2.from).c_str(),
                         common::Encode::HexEncode(params2.to).c_str(),
@@ -459,7 +443,7 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
                 }
             }
 
-            AddCreate2Contract(id, std::string((char*)evmc_res2.output_data, evmc_res2.output_size));
+            AddCreate2Contract(id, std::string((char*)evmc_res2.output_data, evmc_res2.output_size), params2.value);
         }
         SETH_DEBUG("call default contract failed: %s", common::Encode::HexEncode(origin_address_).c_str());
     } else {
