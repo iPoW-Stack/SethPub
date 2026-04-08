@@ -10,8 +10,6 @@ from seth_sdk import SethWeb3Mock, StepType, compile_and_link, get_sm2_public_ke
 
 # --- 5. Main Execution ---
 # New: Contract for self-destruct testing
-# --- 5. Main Execution ---
-# [原有 PROBE_KILL_SOL, PROBE_POOL_SOL 等代码保持不变]
 
 PROBE_CREATE2_FACTORY_SOL = """
 pragma solidity ^0.8.20;
@@ -29,22 +27,14 @@ contract Create2Factory {
     event TestDeployed(address addr, uint256 salt, bytes);
     
     function deploy(uint256 salt) external returns (address addr) {
-        // 1. 获取要部署合约的 creation code (包含构造函数和运行字节码)
         bytes memory bytecode = type(DeployedContract).creationCode;
         bytes32 saltBytes = bytes32(salt);
-
-        // 2. 使用内联汇编直接调用 eth 内置的 create2 指令
-        // create2(v, p, n, s) 
-        // v: 发送的以太币数量 (wei)
-        // p: 内存中字节码开始的位置
-        // n: 字节码的大小
-        // s: salt (盐值)
         assembly {
             addr := create2(
-                0,                          // 不发送 ETH
-                add(bytecode, 0x20),        // 跳过长度字段
-                mload(bytecode),            // 字节码长度
-                saltBytes                        // salt
+                10000000,
+                add(bytecode, 0x20),
+                mload(bytecode),
+                saltBytes
             )
         }
 
@@ -53,7 +43,6 @@ contract Create2Factory {
             revert("Create2: Failed on deploy");
         }
 
-        // 额外检查：确认代码真的部署成功（防止极少数极端情况）
         if (addr.code.length == 0) {
             revert("Create2: Deployed but code is empty");
         }
@@ -68,7 +57,7 @@ contract Create2Factory {
         bytes32 hash = keccak256(
             abi.encodePacked(
                 bytes1(0xff),
-                address(this),           // 将 address(this) 替换为传入的变量
+                address(this),
                 bytes32(salt),
                 keccak256(bytecode)
             )
@@ -216,7 +205,8 @@ def test_create2_assembly_deployment(w3, MY, KEY):
     factory_salt = secrets.token_hex(31) + 'f2'
     factory = w3.seth.contract(abi=f_abi, bytecode=f_bin).deploy({
         'from': MY, 
-        'salt': factory_salt
+        'salt': factory_salt,
+        'amount': 100000000
     }, KEY)
     print(f"Factory deployed at: {factory.address}")
 
