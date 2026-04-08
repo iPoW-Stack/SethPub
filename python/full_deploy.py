@@ -324,6 +324,7 @@ if __name__ == "__main__":
 
     # slot0
     raw = query_contract(sender, pool_addr, get_selector("slot0()"))
+    print(f"get slot0: {raw}")
     if raw and len(raw.strip().replace("0x","")) >= 64:
         stored = int(raw.strip().lower().replace("0x","")[:64], 16)
         price  = (stored / 2**96) ** 2
