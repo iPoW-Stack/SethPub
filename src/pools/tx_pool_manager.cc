@@ -561,22 +561,23 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
             common::Encode::HexEncode(tx_msg.to()).c_str(),
             (int32_t)tx_msg.step(),
             tx_msg.nonce());
+        int32_t handle_status = transport::kMessageHandle;
         switch (tx_msg.step()) {
         case pools::protobuf::kJoinElect:
-            HandleElectTx(msg_ptr);
+            handle_status = HandleElectTx(msg_ptr);
             break;
         case pools::protobuf::kNormalFrom:
-            HandleNormalFromTx(msg_ptr);
+            handle_status = HandleNormalFromTx(msg_ptr);
             break;
         case pools::protobuf::kCreateLibrary:
         case pools::protobuf::kContractCreate:
-            HandleCreateContractTx(msg_ptr);
+            handle_status = HandleCreateContractTx(msg_ptr);
             break;
         case pools::protobuf::kContractGasPrefund:
-            HandleSetContractPrefund(msg_ptr);
+            handle_status = HandleSetContractPrefund(msg_ptr);
             break;
         case pools::protobuf::kContractRefund:
-            HandleContractRefund(msg_ptr);
+            handle_status = HandleContractRefund(msg_ptr);
             break;
         case pools::protobuf::kRootCreateAddress: {
             if (tx_msg.to().size() != common::kUnicastAddressLength &&
@@ -600,7 +601,7 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
             break;
         }
         case pools::protobuf::kContractExcute:
-            HandleContractExcute(msg_ptr);
+            handle_status = HandleContractExcute(msg_ptr);
             break;
         case pools::protobuf::kConsensusLocalTos: {
             pool_index = common::GetAddressPoolIndex(tx_msg.to());
@@ -632,10 +633,16 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
             break;
         }
 
+        if (handle_status != transport::kMessageHandle) {
+            msg_ptr->handle_status = transport::kTxInvalidAddress;
+        }
+
         if (pool_index == common::kInvalidPoolIndex) {
             if (msg_ptr->address_info == nullptr) {
                 SETH_INFO("invalid tx step: %d, address invalid.", (int32_t)tx_msg.step());
-                msg_ptr->handle_status = transport::kTxInvalidAddress;
+                if (handle_status == transport::kMessageHandle) {
+                    msg_ptr->handle_status = transport::kTxInvalidAddress;
+                }
                 return;
             }
 
@@ -828,7 +835,7 @@ std::shared_ptr<address::protobuf::AddressInfo> TxPoolManager::GetAddressInfo(co
     return tmp_acc_ptr->GetAccountInfo(address);
 }
 
-void TxPoolManager::HandleElectTx(const transport::MessagePtr& msg_ptr) {
+int32_t TxPoolManager::HandleElectTx(const transport::MessagePtr& msg_ptr) {
     auto& header = msg_ptr->header;
     auto& tx_msg = *header.mutable_tx_proto();
     auto addr = security_->GetAddressWithPublicKey(tx_msg.pubkey());
@@ -836,13 +843,12 @@ void TxPoolManager::HandleElectTx(const transport::MessagePtr& msg_ptr) {
     msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(addr);
     if (msg_ptr->address_info == nullptr) {
         SETH_WARN("no address info: %s", common::Encode::HexEncode(addr).c_str());
-        msg_ptr->handle_status = transport::kTxInvalidAddress;
-        return;
+        return transport::kTxInvalidAddress;
     }
 
     if (msg_ptr->address_info->addr() == tx_msg.to()) {
         assert(false);
-        return;
+        return transport::kTxInvalidAddress;
     }
 
     if (msg_ptr->address_info->balance() < consensus::kJoinElectGas) {
@@ -850,21 +856,20 @@ void TxPoolManager::HandleElectTx(const transport::MessagePtr& msg_ptr) {
             common::Encode::HexEncode(addr).c_str(), 
             msg_ptr->address_info->balance(), 
             consensus::kJoinElectGas);
-        msg_ptr->handle_status = transport::kTxInvalidAddress;
-        return;
+        return transport::kTxInvalidAddress;
     }
 
     if (msg_ptr->address_info->sharding_id() != common::GlobalInfo::Instance()->network_id()) {
         SETH_WARN("sharding error: %d, %d",
             msg_ptr->address_info->sharding_id(),
             common::GlobalInfo::Instance()->network_id());
-        return;
+        return transport::kTxInvalidAddress;
     }
 
     if (!tx_msg.has_key() || tx_msg.key() != protos::kJoinElectVerifyG2) {
         SETH_DEBUG("key size error now: %d, max: %d.",
             tx_msg.key().size(), kTxStorageKeyMaxSize);
-        return;
+        return transport::kRequestInvalid;
     }
 
     auto msg_hash = pools::GetTxMessageHash(tx_msg);
@@ -879,7 +884,7 @@ void TxPoolManager::HandleElectTx(const transport::MessagePtr& msg_ptr) {
     bls::protobuf::JoinElectInfo join_info;
     if (!join_info.ParseFromString(tx_msg.value())) {
         SETH_WARN("join_info parse failed address info: %s", common::Encode::HexEncode(addr).c_str());
-        return;
+        return transport::kRequestInvalid;
     }
 
     uint32_t tmp_shard = join_info.shard_id();
@@ -887,7 +892,7 @@ void TxPoolManager::HandleElectTx(const transport::MessagePtr& msg_ptr) {
         if (tmp_shard != msg_ptr->address_info->sharding_id()) {
             SETH_DEBUG("join des shard error: %d,  %d.",
                 tmp_shard, msg_ptr->address_info->sharding_id());
-            return;
+        return transport::kRequestInvalid;
         }
     }
 
@@ -898,16 +903,16 @@ void TxPoolManager::HandleElectTx(const transport::MessagePtr& msg_ptr) {
             "join_info.g2_req().verify_vec_size() != t %u : %u",
             tmp_shard, msg_ptr->address_info->sharding_id(),
             join_info.g2_req().verify_vec_size(), t);
-        return;
+        return transport::kRequestInvalid;
     }
     
     SETH_DEBUG("elect tx msg hash is %s", 
         common::Encode::HexEncode(msg_ptr->msg_hash).c_str());
     msg_ptr->msg_hash = msg_hash;
-    msg_ptr->handle_status = transport::kMessageHandle;
+    return transport::kMessageHandle;
 }
 
-void TxPoolManager::HandleContractExcute(const transport::MessagePtr& msg_ptr) {
+int32_t TxPoolManager::HandleContractExcute(const transport::MessagePtr& msg_ptr) {
     auto& header = msg_ptr->header;
     auto& tx_msg = header.tx_proto();
     // if (tx_msg.has_key() && tx_msg.key().size() > 0) {
@@ -919,7 +924,7 @@ void TxPoolManager::HandleContractExcute(const transport::MessagePtr& msg_ptr) {
         SETH_DEBUG("gas price and gas limit error %lu, %lu",
             tx_msg.gas_price(), tx_msg.gas_limit());
         SETH_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
-        return;
+        return consensus::kConsensusOutOfGas;
     }
 
     auto tmp_acc_ptr = acc_mgr_.lock();
@@ -927,19 +932,19 @@ void TxPoolManager::HandleContractExcute(const transport::MessagePtr& msg_ptr) {
     auto contract_info = tmp_acc_ptr->GetAccountInfo(tx_msg.to());
     if (contract_info == nullptr) {
         SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
-        return;
+        return consensus::kConsensusContractNotExists;
     }
 
     if (contract_info->destructed()) {
         SETH_ERROR("contract destructed: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
-        return;
+        return consensus::kConsensusContractDestructed;
     }
 
     auto prefund_id = tx_msg.to() + from;
     msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(prefund_id);
     if (msg_ptr->address_info == nullptr) {
         SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
-        return;
+        return consensus::kConsensusContractPrefundNotExists;
     }
 
     if (msg_ptr->address_info->sharding_id() != common::GlobalInfo::Instance()->network_id()) {
@@ -948,7 +953,7 @@ void TxPoolManager::HandleContractExcute(const transport::MessagePtr& msg_ptr) {
             common::GlobalInfo::Instance()->network_id());
         SETH_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         msg_ptr->address_info = nullptr;
-        return;
+        return transport::kTxInvalidAddress;
     }
 
     msg_ptr->msg_hash = pools::GetTxMessageHash(tx_msg);
@@ -956,16 +961,17 @@ void TxPoolManager::HandleContractExcute(const transport::MessagePtr& msg_ptr) {
         common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(), 
         msg_ptr->address_info->balance(), 
         msg_ptr->address_info->nonce());
+    return transport::kMessageHandle;
 }
 
-void TxPoolManager::HandleSetContractPrefund(const transport::MessagePtr& msg_ptr) {
+int32_t TxPoolManager::HandleSetContractPrefund(const transport::MessagePtr& msg_ptr) {
     auto& tx_msg = msg_ptr->header.tx_proto();
     // user can't direct call contract, pay contract prefund and call contract direct
     if (!tx_msg.contract_input().empty() ||
             tx_msg.contract_prefund() < consensus::kCallContractDefaultUseGas) {
         SETH_DEBUG("call contract not has valid contract input"
             "and contract prefund invalid.");
-        return;
+        return transport::kRequestInvalid;
     }
 
     auto tmp_acc_ptr = acc_mgr_.lock();
@@ -973,11 +979,11 @@ void TxPoolManager::HandleSetContractPrefund(const transport::MessagePtr& msg_pt
     if (contract_info == nullptr) {
         msg_ptr->address_info = nullptr;
         SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
-        return;
+        return consensus::kConsensusContractNotExists;
     }
 
     if (!UserTxValid(msg_ptr)) {
-        return;
+        return transport::kTxInvalidAddress;
     }
 
     if (msg_ptr->address_info->balance() <
@@ -993,12 +999,14 @@ void TxPoolManager::HandleSetContractPrefund(const transport::MessagePtr& msg_pt
             common::Encode::HexEncode(security_->GetAddressWithPublicKey(
             msg_ptr->header.tx_proto().pubkey())).c_str(),
             common::Encode::HexEncode(msg_ptr->header.tx_proto().to()).c_str());
-        return;
+        return consensus::kConsensusAccountBalanceError;
     }
+
+    return transport::kMessageHandle;
 }
 
 
-void TxPoolManager::HandleContractRefund(const transport::MessagePtr& msg_ptr) {
+int32_t TxPoolManager::HandleContractRefund(const transport::MessagePtr& msg_ptr) {
     auto& header = msg_ptr->header;
     auto& tx_msg = header.tx_proto();
     // if (tx_msg.has_key() && tx_msg.key().size() > 0) {
@@ -1010,7 +1018,7 @@ void TxPoolManager::HandleContractRefund(const transport::MessagePtr& msg_ptr) {
         SETH_DEBUG("gas price and gas limit error %lu, %lu",
             tx_msg.gas_price(), tx_msg.gas_limit());
         SETH_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
-        return;
+        return consensus::kConsensusOutOfGas;
     }
 
     auto tmp_acc_ptr = acc_mgr_.lock();
@@ -1018,19 +1026,19 @@ void TxPoolManager::HandleContractRefund(const transport::MessagePtr& msg_ptr) {
     auto contract_info = tmp_acc_ptr->GetAccountInfo(tx_msg.to());
     if (contract_info == nullptr) {
         SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
-        return;
+        return consensus::kConsensusContractNotExists;
     }
 
     if (contract_info->destructed()) {
         SETH_ERROR("contract destructed: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
-        return;
+        return consensus::kConsensusContractDestructed;
     }
 
     auto prefund_id = tx_msg.to() + from;
     msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(prefund_id);
     if (msg_ptr->address_info == nullptr) {
         SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
-        return;
+        return consensus::kConsensusContractPrefundNotExists;
     }
 
     if (msg_ptr->address_info->sharding_id() != common::GlobalInfo::Instance()->network_id()) {
@@ -1039,7 +1047,7 @@ void TxPoolManager::HandleContractRefund(const transport::MessagePtr& msg_ptr) {
             common::GlobalInfo::Instance()->network_id());
         SETH_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         msg_ptr->address_info = nullptr;
-        return;
+        return transport::kTxInvalidAddress;
     }
 
     msg_ptr->msg_hash = pools::GetTxMessageHash(tx_msg);
@@ -1047,6 +1055,7 @@ void TxPoolManager::HandleContractRefund(const transport::MessagePtr& msg_ptr) {
         common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(), 
         msg_ptr->address_info->balance(), 
         msg_ptr->address_info->nonce());
+    return transport::kMessageHandle;
 }
 
 bool TxPoolManager::UserTxValid(const transport::MessagePtr& msg_ptr) {
@@ -1091,12 +1100,12 @@ bool TxPoolManager::UserTxValid(const transport::MessagePtr& msg_ptr) {
     return true;
 }
 
-void TxPoolManager::HandleNormalFromTx(const transport::MessagePtr& msg_ptr) {
+int32_t TxPoolManager::HandleNormalFromTx(const transport::MessagePtr& msg_ptr) {
     auto& tx_msg = msg_ptr->header.tx_proto();
     TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
     if (!UserTxValid(msg_ptr)) {
 //         assert(false);
-        return;
+        return transport::kTxInvalidAddress;
     }
 
     // Verify that the account balance is sufficient
@@ -1111,26 +1120,27 @@ void TxPoolManager::HandleNormalFromTx(const transport::MessagePtr& msg_ptr) {
             tx_msg.amount(),
             tx_msg.contract_prefund(),
             consensus::kCallContractDefaultUseGas);
-        return;
+        return consensus::kConsensusAccountBalanceError;
     }
 
     ADD_TX_DEBUG_INFO(msg_ptr->header.mutable_tx_proto());
     TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
+    return transport::kMessageHandle;
 }
 
-void TxPoolManager::HandleCreateContractTx(const transport::MessagePtr& msg_ptr) {
+int32_t TxPoolManager::HandleCreateContractTx(const transport::MessagePtr& msg_ptr) {
     auto& tx_msg = msg_ptr->header.tx_proto();
     if (!tx_msg.has_contract_code() || tx_msg.contract_code().size() <= 128u) {
         SETH_DEBUG("create contract not has valid contract code: %s",
             common::Encode::HexEncode(tx_msg.contract_code()).c_str());
-        return;
+        return transport::kRequestInvalid;
     }
 
     uint64_t default_gas = consensus::kCallContractDefaultUseGas +
         tx_msg.value().size() * consensus::kKeyValueStorageEachBytes;
     if (tx_msg.step() == pools::protobuf::kContractCreate) {
         if (common::IsContractBytescodeValid(tx_msg.contract_code()) != common::ValidationStatus::SUCCESS) {
-            return;
+            return consensus::kConsensusContractBytesCodeError;
         }
     } else {
         // all shards will save the library.
@@ -1142,7 +1152,7 @@ void TxPoolManager::HandleCreateContractTx(const transport::MessagePtr& msg_ptr)
 
     if (!UserTxValid(msg_ptr)) {
         SETH_ERROR("create contract error!");
-        return;
+        return transport::kTxInvalidAddress;
     }
 
     SETH_DEBUG("create contract address: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
@@ -1150,7 +1160,7 @@ void TxPoolManager::HandleCreateContractTx(const transport::MessagePtr& msg_ptr)
     protos::AddressInfoPtr contract_info = tmp_acc_ptr->GetAccountInfo(tx_msg.to());
     if (contract_info != nullptr) {
         SETH_WARN("contract address exists: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
-        return;
+        return consensus::kConsensusContractAddressLocked;
     }
 
     if (msg_ptr->address_info->balance() <
@@ -1163,8 +1173,10 @@ void TxPoolManager::HandleCreateContractTx(const transport::MessagePtr& msg_ptr)
             tx_msg.contract_prefund(),
             default_gas,
             tx_msg.gas_price());
-        return;
+        return consensus::kConsensusAccountBalanceError;
     }
+
+    return transport::kMessageHandle;
 }
 
 void TxPoolManager::BftCheckInvalidGids(
