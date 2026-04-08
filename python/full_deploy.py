@@ -11,7 +11,7 @@
   9. Pool.initialize(sqrtPriceX96)
  10. 验证所有状态
 """
-import os, struct, hashlib, time, math
+import os, struct, hashlib, time, math, sys
 import solcx
 from solcx import compile_source, compile_files, install_solc
 import requests
@@ -20,6 +20,7 @@ from ecdsa import SigningKey, SECP256k1
 from ecdsa.util import sigencode_string_canonize
 import eth_abi
 from eth_utils import to_checksum_address
+from seth_sdk import SethWeb3Mock, StepType, compile_and_link, get_sm2_public_key
 
 HOST        = os.getenv("SETH_HOST",    "35.197.170.240")
 PORT        = int(os.getenv("SETH_PORT", "23001"))
@@ -258,6 +259,42 @@ if __name__ == "__main__":
                          [to_checksum_address("0x"+token0), to_checksum_address("0x"+token1), FEE]).hex())
     pool_addr = raw.strip().lower().replace("0x","")[-40:] if raw else None
     print(f"  Pool addr: {pool_addr}")
+
+
+    w3 = SethWeb3Mock(HOST, PORT)
+    MY = w3.client.get_address(PRIVATE_KEY)
+    contract = w3.seth.contract(address=pool_addr, sender_address=MY)
+    initial = contract.get_prefund(MY)
+    print(f"Initial Prefund: {initial}")
+    deposit_amount = 5000000
+    print(f"Action: Depositing {deposit_amount} to prefund...")
+    
+    # Call the prefund interface from the contract object
+    receipt = contract.prefund(deposit_amount, PRIVATE_KEY) # Use the contract object's prefund method
+    
+    if receipt.get('status') == 0:
+        print("✅ Prefund Tx success.")
+    else:
+        print(f"❌ Prefund Tx failed: {receipt.get('msg')}")
+        sys.exit(1)
+
+    # ---------------------------------------------------------
+    count = 0
+    while count < 30:
+        time.sleep(2) # Wait for consensus to settle
+        after_deposit = contract.get_prefund(MY)
+        print(f"Prefund after deposit: {after_deposit}")
+        
+        if after_deposit == initial + deposit_amount:
+            print("🚩 Verification 1: Accumulation SUCCESS!")
+            break
+        else:
+            count += 1
+            print("🚩 Verification 1: Accumulation FAILED!")
+
+    if count == 30:
+        print(f"❌ Prefund Tx failed: {after_deposit.get('msg')}")
+        sys.exit(1)
 
     # 7. initialize
     print("\n[7] Pool.initialize(sqrtPriceX96)...")
