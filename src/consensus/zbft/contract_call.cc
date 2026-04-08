@@ -368,7 +368,9 @@ int ContractCall::HandleTx(
             contract_info->set_sharding_id(view_block.qc().network_id());
             contract_info->set_pool_index(view_block.qc().pool_index());
             contract_info->set_type(address::protobuf::kNormal);
-            contract_info->set_bytes_code(iter->second.code);
+            contract_info->set_bytes_code(
+                reinterpret_cast<const void*>(iter->second.code.data()), 
+                iter->second.code.size());
             contract_info->set_latest_height(view_block.block_info().height());
             contract_info->set_tx_index(tx_index);
             contract_info->set_nonce(0);
