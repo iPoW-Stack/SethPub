@@ -16,7 +16,7 @@ pragma solidity ^0.8.20;
 
 contract DeployedContract {
     address public deployer;
-    constructor() {
+    constructor() payable {
         deployer = msg.sender;
     }
 }
@@ -25,8 +25,10 @@ contract Create2Factory {
     event Deployed(address addr, uint256 salt);
     event DeployFailed(uint256 salt, string reason); 
     event TestDeployed(address addr, uint256 salt, bytes);
-    
-    function deploy(uint256 salt) external returns (address addr) {
+    constructor() payable {
+    }
+
+    function deploy(uint256 salt) external payable returns (address addr) {
         bytes memory bytecode = type(DeployedContract).creationCode;
         bytes32 saltBytes = bytes32(salt);
         assembly {
