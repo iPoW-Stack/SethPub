@@ -169,6 +169,9 @@ make_package() {
         cp -rf /root/seth/pkgs/$node_hash /root/nodes/seth/pkg
         rm -rf /root/nodes/seth/pkg/temp
         cp -rf /root/nodes/temp /root/nodes/seth/pkg
+        # Always refresh scripts so latest placeholder substitutions take effect.
+        cp /root/seth/temp_cmd.sh /root/nodes/seth/pkg
+        cp /root/seth/start_cmd.sh /root/nodes/seth/pkg
         for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
             /root/seth/cbuild_$TARGET/seth -A /root/seth/shards${shard_id} -D /root/nodes/seth/pkg/shards${shard_id}
             /root/seth/cbuild_$TARGET/seth -A  /root/seth/init_accounts${shard_id} -D /root/nodes/seth/pkg/init_accounts${shard_id}
