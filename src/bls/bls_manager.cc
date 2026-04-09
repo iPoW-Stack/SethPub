@@ -60,7 +60,7 @@ void BlsManager::PoolTimerMessage() {
             common::GlobalInfo::Instance()->sharding_min_nodes_count()) {
         PopFinishMessage();
         // auto tmp_bls = waiting_bls_.load();
-        // auto now_tm_ms = common::TimeUtils::TimestampMs();
+        auto now_tm_ms = common::TimeUtils::TimestampMs();
         // // SETH_WARN("BlsManager handle message begin.");
         // if (tmp_bls != nullptr) {
         //     tmp_bls->TimerMessage();
