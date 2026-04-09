@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.8)
 aux_source_directory(./ init_src)
 add_library(init STATIC ${init_src})
 
-target_link_libraries(init PRIVATE block network)
+target_link_libraries(init PRIVATE block network websocket)
 target_compile_definitions(init PRIVATE
     REPLACE_WHITEBOX_PK=${REPLACE_WHITEBOX_PK}
     REPLACE_WHITEBOX_SK=${REPLACE_WHITEBOX_SK}

@@ -774,8 +774,241 @@ def oqs_sign_test():
     test_oqs_library_with_contract(w3, MY_OQS, OQS_KEY, OQS_PK)
     test_oqs_contract_prefund_flow(w3, MY_OQS, OQS_KEY, OQS_PK)
 
+
+# -----------------------------------------------------------------------------
+# WebSocket txhash subscription demo
+#
+# Usage:
+#   1. Send a transaction and obtain its tx_hash.
+#   2. Call subscribe_txhash(ws_ip, ws_port, tx_hash) to wait for the on-chain
+#      confirmation pushed by the server.
+#
+# Server message format (binary frame):
+#   [1 byte: type_len][type_len bytes: type]["subscribe:<txhash>" or "unsubscribe:<txhash>"]
+# Server push (text frame): JSON string
+# -----------------------------------------------------------------------------
+
+import threading
+import websocket  # pip install websocket-client
+
+
+def _build_ws_msg(type_str: str, payload: str) -> bytes:
+    """Pack a message per the server protocol: [1-byte type_len][type][payload]."""
+    t = type_str.encode()
+    p = payload.encode()
+    return bytes([len(t)]) + t + p
+
+
+def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120) -> dict | None:
+    """
+    Subscribe to a single txhash and block until the push is received or timeout.
+
+    Args:
+        ws_ip    : WebSocket server IP (matches config key tx_ws_ip).
+        ws_port  : WebSocket server port (matches config key tx_ws_port).
+        tx_hash  : Transaction hash to subscribe to (hex string).
+        timeout  : Maximum wait time in seconds (default 120).
+
+    Returns:
+        Transaction detail dict on success, None on timeout.
+    """
+    url = f"ws://{ws_ip}:{ws_port}"
+    result: dict | None = None
+    done = threading.Event()
+
+    def on_open(ws):
+        msg = _build_ws_msg("tx", f"subscribe:{tx_hash}")
+        ws.send(msg, websocket.ABNF.OPCODE_BINARY)
+        print(f"[WS] Subscribed to txhash: {tx_hash}")
+
+    def on_message(ws, raw):
+        nonlocal result
+        try:
+            data = json.loads(raw)
+        except Exception:
+            print(f"[WS] Non-JSON message received: {raw}")
+            return
+
+        # Ignore subscribe/unsubscribe acknowledgements.
+        if "status" in data and data.get("status") in ("subscribed", "unsubscribed"):
+            print(f"[WS] Server ack: {data}")
+            return
+
+        if "error" in data:
+            print(f"[WS] Server error: {data}")
+            return
+
+        # Real transaction push.
+        if data.get("tx_hash", "").lower() == tx_hash.lower():
+            result = data
+            print(f"[WS] Transaction confirmed: {json.dumps(data, indent=2)}")
+            ws.send(_build_ws_msg("tx", f"unsubscribe:{tx_hash}"), websocket.ABNF.OPCODE_BINARY)
+            ws.close()
+            done.set()
+
+    def on_error(ws, err):
+        print(f"[WS] Error: {err}")
+        done.set()
+
+    def on_close(ws, code, msg):
+        print(f"[WS] Connection closed, code={code}")
+        done.set()
+
+    ws_app = websocket.WebSocketApp(
+        url,
+        on_open=on_open,
+        on_message=on_message,
+        on_error=on_error,
+        on_close=on_close,
+    )
+
+    t = threading.Thread(target=ws_app.run_forever, daemon=True)
+    t.start()
+
+    if not done.wait(timeout=timeout):
+        print(f"[WS] Timeout ({timeout}s): no confirmation received for txhash={tx_hash}")
+        ws_app.close()
+
+    return result
+
+
+def subscribe_multiple_txhashes(
+    ws_ip: str, ws_port: int, tx_hashes: list[str], timeout: int = 120
+) -> dict[str, dict]:
+    """
+    Subscribe to multiple txhashes simultaneously and block until all are confirmed
+    or timeout is reached.
+
+    Returns:
+        {txhash: transaction detail dict} for every hash that was confirmed.
+        Unconfirmed hashes are absent from the result.
+    """
+    url = f"ws://{ws_ip}:{ws_port}"
+    pending = set(h.lower() for h in tx_hashes)
+    results: dict[str, dict] = {}
+    done = threading.Event()
+
+    def on_open(ws):
+        for h in tx_hashes:
+            ws.send(_build_ws_msg("tx", f"subscribe:{h}"), websocket.ABNF.OPCODE_BINARY)
+        print(f"[WS] Subscribed to {len(tx_hashes)} txhash(es)")
+
+    def on_message(ws, raw):
+        try:
+            data = json.loads(raw)
+        except Exception:
+            return
+
+        if "status" in data or "error" in data:
+            return
+
+        h = data.get("tx_hash", "").lower()
+        if h in pending:
+            results[h] = data
+            pending.discard(h)
+            ws.send(_build_ws_msg("tx", f"unsubscribe:{h}"), websocket.ABNF.OPCODE_BINARY)
+            print(f"[WS] [{len(results)}/{len(tx_hashes)}] Confirmed: {h}")
+            if not pending:
+                ws.close()
+                done.set()
+
+    def on_error(ws, err):
+        print(f"[WS] Error: {err}")
+        done.set()
+
+    def on_close(ws, code, msg):
+        done.set()
+
+    ws_app = websocket.WebSocketApp(
+        url,
+        on_open=on_open,
+        on_message=on_message,
+        on_error=on_error,
+        on_close=on_close,
+    )
+
+    t = threading.Thread(target=ws_app.run_forever, daemon=True)
+    t.start()
+
+    if not done.wait(timeout=timeout):
+        print(f"[WS] Timeout: {len(pending)} txhash(es) still unconfirmed: {pending}")
+        ws_app.close()
+
+    return results
+
+
+def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
+    """
+    Full demo: send a transfer -> subscribe to txhash -> wait for on-chain push.
+    """
+    print("\n" + "=" * 60)
+    print("  WebSocket txhash Subscription Demo")
+    print("=" * 60)
+
+    IP, HTTP_PORT = ws_ip, 23001
+    KEY = "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
+    DEST = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
+
+    w3 = SethWeb3Mock(IP, HTTP_PORT)
+    MY = w3.client.get_address(KEY)
+    print(f"Sender  : {MY}")
+    print(f"Receiver: {DEST}")
+
+    # 1. Build and submit the transaction without waiting for a receipt.
+    from ecdsa import SigningKey, SECP256k1
+    from ecdsa.util import sigencode_string_canonize
+    from Crypto.Hash import keccak as _keccak
+    import struct as _struct
+
+    client = w3.client
+    nonce_resp = requests.post(client.query_url, data={"address": MY}).json()
+    nonce = int(nonce_resp.get("nonce", 0)) + 1
+
+    sk = SigningKey.from_string(bytes.fromhex(KEY), curve=SECP256k1)
+    pub = sk.verifying_key.to_string("uncompressed").hex()
+    amount = 100000
+
+    msg = bytearray()
+    msg.extend(_struct.pack('<Q', nonce))
+    msg.extend(bytes.fromhex(pub))
+    msg.extend(bytes.fromhex(DEST))
+    msg.extend(_struct.pack('<Q', amount))
+    msg.extend(_struct.pack('<Q', 5000000))
+    msg.extend(_struct.pack('<Q', 1))
+    msg.extend(_struct.pack('<Q', int(StepType.kNormalFrom)))
+
+    txh = _keccak.new(digest_bits=256).update(msg).digest()
+    sig = sk.sign_digest_deterministic(txh, hashfunc=__import__('hashlib').sha256,
+                                       sigencode=sigencode_string_canonize)
+
+    data = {
+        "nonce": str(nonce), "pubkey": pub, "to": DEST,
+        "amount": str(amount), "gas_limit": "5000000", "gas_price": "1",
+        "shard_id": "0", "type": str(int(StepType.kNormalFrom)),
+        "sign_r": sig[:32].hex(), "sign_s": sig[32:64].hex(), "sign_v": "0",
+    }
+    requests.post(client.tx_url, data=data)
+    tx_hash = txh.hex()
+    print(f"\nTransaction submitted, tx_hash: {tx_hash}")
+    print("Subscribing via WebSocket, waiting for on-chain confirmation...\n")
+
+    # 2. Subscribe and wait for the server push.
+    receipt = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=120)
+
+    if receipt:
+        print(f"\nTransaction confirmed on-chain!")
+        print(f"  block_height : {receipt.get('block_height')}")
+        print(f"  network_id   : {receipt.get('network_id')}")
+        print(f"  status       : {receipt.get('status')}")
+        print(f"  gas_used     : {receipt.get('gas_used')}")
+    else:
+        print("\nTimeout: no confirmation received. Check that the node is running "
+              "and tx_ws_port is configured correctly.")
+
+
 if __name__ == "__main__":
     ecdsa_sign_test()
     oqs_sign_test()
     gmssl_sign_test()
+    # demo_ws_subscribe("127.0.0.1", 23100)  # uncomment to run the WebSocket subscription demo
  

@@ -281,6 +281,11 @@ int NetworkInit::Init(int argc, char** argv) {
         return kInitError;
     }
 
+    if (InitWsServer() != kInitSuccess) {
+        INIT_ERROR("InitWsServer failed!");
+        return kInitError;
+    }
+
     SETH_INFO("init 7");
     if (InitCommand() != kInitSuccess) {
         INIT_ERROR("InitCommand failed!");
@@ -353,6 +358,19 @@ int NetworkInit::InitWsServer() {
     //         return kInitSuccess;
     //     }
     // }
+
+    // Start the tx-subscription WebSocket service.
+    std::string ws_ip = "0.0.0.0";
+    uint16_t ws_port = 0;
+    conf_.Get("seth", "tx_ws_ip", ws_ip);
+    conf_.Get("seth", "tx_ws_port", ws_port);
+    if (ws_port > 0) {
+        if (tx_ws_server_.Init(ws_ip, ws_port) != 0) {
+            INIT_ERROR("[TxWsServer] init failed on %s:%u", ws_ip.c_str(), ws_port);
+            return kInitError;
+        }
+        SETH_INFO("[TxWsServer] tx subscription websocket started on %s:%u", ws_ip.c_str(), ws_port);
+    }
 
     return kInitSuccess;
 }
@@ -1335,6 +1353,9 @@ bool NetworkInit::DbNewBlockCallback(
             break;
         }
     }
+
+    // Push transaction details to WebSocket clients subscribed to the matching txhash.
+    tx_ws_server_.OnNewBlock(*view_block);
 
     return true;
 }

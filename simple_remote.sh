@@ -338,6 +338,8 @@ http_port = 24009
 local_port = 14009
 net_id = 3
 leader_change_init_tm=0
+tx_ws_ip = 0.0.0.0
+tx_ws_port = 34009
 EOF
 
     echo "Mining directory initialized at $mining_path"
