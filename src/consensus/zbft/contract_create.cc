@@ -85,7 +85,7 @@ int ContractUserCreateCall::HandleTx(
         // get caller prepaid gas
         zjc_host.AddTmpAccountBalance(
             block_tx.from(),
-            from_balance);
+            tmp_from_balance);
         zjc_host.AddTmpAccountBalance(
             block_tx.to(),
             block_tx.amount());
@@ -101,15 +101,15 @@ int ContractUserCreateCall::HandleTx(
                 (int32_t)evmc_res.status_code,
                 gas_used,
                 block_tx.gas_price(),
-                from_balance);
+                tmp_from_balance);
         }
 
         if (evmc_res.gas_left > (int64_t)block_tx.gas_limit()) {
             gas_used = block_tx.gas_limit();
         }
 
-        if (from_balance > gas_used * block_tx.gas_price()) {
-            from_balance -= gas_used * block_tx.gas_price();
+        if (tmp_from_balance > gas_used * block_tx.gas_price()) {
+            tmp_from_balance -= gas_used * block_tx.gas_price();
             gas_used = 0;
             gas_used += (tx_info->key().size() + tx_info->value().size()) *
                 consensus::kKeyValueStorageEachBytes;
@@ -118,12 +118,12 @@ int ContractUserCreateCall::HandleTx(
                 tx_info->value().c_str());
             if (block_tx.gas_limit() < gas_used) {
                 block_tx.set_status(consensus::kConsensusUserSetGasLimitError);
-                SETH_DEBUG("1 balance error: %lu, %lu, %lu", from_balance, block_tx.gas_limit(), gas_used);
+                SETH_DEBUG("1 balance error: %lu, %lu, %lu", tmp_from_balance, block_tx.gas_limit(), gas_used);
             }
         } else {
             block_tx.set_status(consensus::kConsensusAccountBalanceError);
-            SETH_ERROR("leader balance error: %llu, %llu", from_balance, gas_used * block_tx.gas_price());
-            from_balance = 0;
+            SETH_ERROR("leader balance error: %llu, %llu", tmp_from_balance, gas_used * block_tx.gas_price());
+            tmp_from_balance = 0;
         }
     }
 
