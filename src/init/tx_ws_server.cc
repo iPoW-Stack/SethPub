@@ -1,18 +1,16 @@
 #include "init/tx_ws_server.h"
 
 #include <arpa/inet.h>
-#include <cassert>
 #include <cstring>
 #include <sstream>
 
-#include "common/encode.h"
-#include "common/log.h"
-
-// SHA-1 + Base64 for WebSocket handshake (no extra deps – inline impl)
 #include <openssl/sha.h>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/buffer.h>
+
+#include "common/encode.h"
+#include "common/log.h"
 
 namespace seth {
 namespace init {
@@ -23,7 +21,7 @@ static const std::string kWsMagic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
 TxWsServer::~TxWsServer() {
     if (running_.load()) {
-        uv_async_send(&async_);   // wake loop so it can exit
+        uv_async_send(&async_);
         if (loop_thread_.joinable()) loop_thread_.join();
         uv_loop_close(loop_);
         delete loop_;
@@ -55,13 +53,13 @@ int TxWsServer::Init(const std::string& ip, uint16_t port) {
         return 1;
     }
 
-    // async handle lets OnNewBlock wake the loop from any thread
     uv_async_init(loop_, &async_, OnAsync);
     async_.data = this;
 
     running_.store(true);
     loop_thread_ = std::thread(&TxWsServer::RunLoop, this);
-    SETH_INFO("[TxWsServer] listening on %s:%u", ip.c_str(), port);
+    SETH_INFO("[TxWsServer] listening on %s:%u (private loop, isolated from TcpTransport)",
+              ip.c_str(), port);
     return 0;
 }
 
@@ -70,7 +68,7 @@ void TxWsServer::RunLoop() {
     running_.store(false);
 }
 
-// ── OnNewBlock (called from consensus thread) ─────────────────────────────────
+// ── OnNewBlock (consensus thread) ────────────────────────────────────────────
 
 void TxWsServer::OnNewBlock(const view_block::protobuf::ViewBlockItem& vb) {
     const auto& block = vb.block_info();
@@ -96,8 +94,6 @@ void TxWsServer::OnNewBlock(const view_block::protobuf::ViewBlockItem& vb) {
                       hex.c_str(), it->second.size());
         }
     }
-
-    // wake the libuv loop to drain pending_pushes_
     uv_async_send(&async_);
 }
 
@@ -111,15 +107,14 @@ void TxWsServer::OnAsync(uv_async_t* handle) {
         pushes.swap(self->pending_pushes_);
     }
     for (auto& [c, frame] : pushes) {
-        // conn may have been closed already
-        if (self->conn_to_hashes_.count(c) == 0) continue;
+        if (self->conn_to_hashes_.count(c) == 0) continue;  // already closed
         self->EnqueueFrame(c, frame);
     }
 }
 
 void TxWsServer::OnNewConnection(uv_stream_t* srv, int status) {
     if (status < 0) {
-        SETH_ERROR("[TxWsServer] new connection error: %s", uv_strerror(status));
+        SETH_ERROR("[TxWsServer] accept error: %s", uv_strerror(status));
         return;
     }
     auto* self = static_cast<TxWsServer*>(srv->data);
@@ -130,18 +125,17 @@ void TxWsServer::OnNewConnection(uv_stream_t* srv, int status) {
     c->tcp.data = c;
 
     if (uv_accept(srv, reinterpret_cast<uv_stream_t*>(&c->tcp)) == 0) {
-        // register in conn_to_hashes_ so we can detect live conns
         {
             std::lock_guard<std::mutex> lk(self->mutex_);
-            self->conn_to_hashes_[c];   // insert empty set
+            self->conn_to_hashes_[c];   // register with empty set
         }
         uv_read_start(reinterpret_cast<uv_stream_t*>(&c->tcp), OnAlloc, OnRead);
     } else {
-        uv_close(reinterpret_cast<uv_handle_t*>(&c->tcp), OnClose);
+        delete c;
     }
 }
 
-void TxWsServer::OnAlloc(uv_handle_t* /*handle*/, size_t suggested, uv_buf_t* buf) {
+void TxWsServer::OnAlloc(uv_handle_t* /*h*/, size_t suggested, uv_buf_t* buf) {
     buf->base = new char[suggested];
     buf->len  = suggested;
 }
@@ -157,19 +151,18 @@ void TxWsServer::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 }
 
 void TxWsServer::OnWrite(uv_write_t* req, int /*status*/) {
-    auto* c = static_cast<Conn*>(req->data);
-    delete[] static_cast<char*>(req->handle->data);  // free the buffer copy
-    req->handle->data = nullptr;
-    delete req;
+    auto* wr = reinterpret_cast<WriteReq*>(req);
+    Conn* c = wr->conn;
+    delete[] wr->buf;
+    delete wr;
 
     c->write_pending = false;
-    // flush next queued frame if any
     c->server->FlushConn(c);
 }
 
 void TxWsServer::OnClose(uv_handle_t* handle) {
-    auto* c = static_cast<Conn*>(handle->data);
-    if (c) delete c;
+    // Conn was already deleted in CloseConn; handle->data is null there.
+    (void)handle;
 }
 
 // ── HTTP Upgrade ──────────────────────────────────────────────────────────────
@@ -180,16 +173,16 @@ void TxWsServer::HandleRawData(Conn* c, const char* data, ssize_t len) {
         TryHttpUpgrade(c);
         return;
     }
-    // WebSocket frames may arrive in multiple reads; process all complete frames.
+    // Decode all complete WebSocket frames from read_buf.
     while (true) {
         const auto& buf = c->read_buf;
         if (buf.size() < 2) break;
 
         uint8_t b0 = static_cast<uint8_t>(buf[0]);
         uint8_t b1 = static_cast<uint8_t>(buf[1]);
-        bool masked = (b1 & 0x80) != 0;
+        bool    masked      = (b1 & 0x80) != 0;
         uint64_t payload_len = b1 & 0x7f;
-        size_t header_len = 2;
+        size_t   header_len  = 2;
 
         if (payload_len == 126) {
             if (buf.size() < 4) break;
@@ -205,63 +198,55 @@ void TxWsServer::HandleRawData(Conn* c, const char* data, ssize_t len) {
         }
 
         size_t mask_len = masked ? 4 : 0;
-        size_t total = header_len + mask_len + payload_len;
+        size_t total    = header_len + mask_len + static_cast<size_t>(payload_len);
         if (buf.size() < total) break;
 
-        // opcode
         uint8_t opcode = b0 & 0x0f;
         if (opcode == 0x8) { CloseConn(c); return; }  // close frame
 
-        if (opcode == 0x1 || opcode == 0x2) {  // text or binary
-            std::string payload(buf.data() + header_len + mask_len, payload_len);
+        if (opcode == 0x1 || opcode == 0x2) {
+            std::string payload(buf.data() + header_len + mask_len,
+                                static_cast<size_t>(payload_len));
             if (masked) {
                 const char* mask = buf.data() + header_len;
-                for (size_t i = 0; i < payload_len; ++i)
+                for (size_t i = 0; i < static_cast<size_t>(payload_len); ++i)
                     payload[i] ^= mask[i % 4];
             }
             HandleWsFrame(c, payload);
         }
-
         c->read_buf.erase(0, total);
     }
 }
 
 bool TxWsServer::TryHttpUpgrade(Conn* c) {
-    // Look for end of HTTP headers
     auto pos = c->read_buf.find("\r\n\r\n");
     if (pos == std::string::npos) return false;
 
     std::string headers = c->read_buf.substr(0, pos + 4);
     c->read_buf.erase(0, pos + 4);
 
-    // Extract Sec-WebSocket-Key
-    std::string key;
     auto kpos = headers.find("Sec-WebSocket-Key:");
     if (kpos == std::string::npos) { CloseConn(c); return false; }
     kpos += 18;
     while (kpos < headers.size() && headers[kpos] == ' ') ++kpos;
     auto epos = headers.find("\r\n", kpos);
     if (epos == std::string::npos) { CloseConn(c); return false; }
-    key = headers.substr(kpos, epos - kpos);
+    std::string key = headers.substr(kpos, epos - kpos);
 
-    std::string accept = WsAcceptKey(key);
     std::string response =
         "HTTP/1.1 101 Switching Protocols\r\n"
         "Upgrade: websocket\r\n"
         "Connection: Upgrade\r\n"
-        "Sec-WebSocket-Accept: " + accept + "\r\n\r\n";
+        "Sec-WebSocket-Accept: " + WsAcceptKey(key) + "\r\n\r\n";
 
     c->upgraded = true;
 
-    // send upgrade response
-    auto* req = new uv_write_t{};
-    char* buf_copy = new char[response.size()];
-    memcpy(buf_copy, response.data(), response.size());
-    req->data = c;
-    req->handle = reinterpret_cast<uv_stream_t*>(&c->tcp);
-    req->handle->data = buf_copy;
-    uv_buf_t wbuf = uv_buf_init(buf_copy, static_cast<unsigned>(response.size()));
-    uv_write(req, reinterpret_cast<uv_stream_t*>(&c->tcp), &wbuf, 1, OnWrite);
+    auto* wr  = new WriteReq{};
+    wr->conn  = c;
+    wr->buf   = new char[response.size()];
+    memcpy(wr->buf, response.data(), response.size());
+    uv_buf_t wbuf = uv_buf_init(wr->buf, static_cast<unsigned>(response.size()));
+    uv_write(&wr->req, reinterpret_cast<uv_stream_t*>(&c->tcp), &wbuf, 1, OnWrite);
     return true;
 }
 
@@ -273,10 +258,7 @@ void TxWsServer::HandleWsFrame(Conn* c, const std::string& payload) {
 
     if (payload.rfind(kSub, 0) == 0) {
         std::string hash = payload.substr(kSub.size());
-        if (hash.empty()) {
-            EnqueueFrame(c, R"({"error":"empty txhash"})");
-            return;
-        }
+        if (hash.empty()) { EnqueueFrame(c, R"({"error":"empty txhash"})"); return; }
         {
             std::lock_guard<std::mutex> lk(mutex_);
             hash_to_conns_[hash].insert(c);
@@ -310,21 +292,20 @@ void TxWsServer::CloseConn(Conn* c) {
     {
         std::lock_guard<std::mutex> lk(mutex_);
         auto it = conn_to_hashes_.find(c);
-        if (it != conn_to_hashes_.end()) {
-            for (const auto& h : it->second) {
-                auto hit = hash_to_conns_.find(h);
-                if (hit != hash_to_conns_.end()) {
-                    hit->second.erase(c);
-                    if (hit->second.empty()) hash_to_conns_.erase(hit);
-                }
+        if (it == conn_to_hashes_.end()) return;  // already cleaned
+        for (const auto& h : it->second) {
+            auto hit = hash_to_conns_.find(h);
+            if (hit != hash_to_conns_.end()) {
+                hit->second.erase(c);
+                if (hit->second.empty()) hash_to_conns_.erase(hit);
             }
-            conn_to_hashes_.erase(it);
         }
+        conn_to_hashes_.erase(it);
     }
-    c->tcp.data = nullptr;  // prevent OnClose from double-deleting
+    c->tcp.data = nullptr;
     uv_close(reinterpret_cast<uv_handle_t*>(&c->tcp),
              [](uv_handle_t* h) { delete static_cast<Conn*>(h->data); });
-    SETH_INFO("[TxWsServer] connection closed, subscriptions cleaned");
+    SETH_INFO("[TxWsServer] connection closed");
 }
 
 // ── Send helpers ──────────────────────────────────────────────────────────────
@@ -340,22 +321,19 @@ void TxWsServer::FlushConn(Conn* c) {
     c->send_queue.erase(c->send_queue.begin());
 
     c->write_pending = true;
-    auto* req = new uv_write_t{};
-    char* buf_copy = new char[frame.size()];
-    memcpy(buf_copy, frame.data(), frame.size());
-    req->data = c;
-    req->handle = reinterpret_cast<uv_stream_t*>(&c->tcp);
-    req->handle->data = buf_copy;
-    uv_buf_t wbuf = uv_buf_init(buf_copy, static_cast<unsigned>(frame.size()));
-    uv_write(req, reinterpret_cast<uv_stream_t*>(&c->tcp), &wbuf, 1, OnWrite);
+    auto* wr  = new WriteReq{};
+    wr->conn  = c;
+    wr->buf   = new char[frame.size()];
+    memcpy(wr->buf, frame.data(), frame.size());
+    uv_buf_t wbuf = uv_buf_init(wr->buf, static_cast<unsigned>(frame.size()));
+    uv_write(&wr->req, reinterpret_cast<uv_stream_t*>(&c->tcp), &wbuf, 1, OnWrite);
 }
 
 // ── WebSocket frame builder ───────────────────────────────────────────────────
 
 std::string TxWsServer::MakeTextFrame(const std::string& payload) {
     std::string frame;
-    frame.push_back(static_cast<char>(0x81));  // FIN + opcode text
-
+    frame.push_back(static_cast<char>(0x81));  // FIN + text opcode
     size_t len = payload.size();
     if (len <= 125) {
         frame.push_back(static_cast<char>(len));
@@ -372,15 +350,13 @@ std::string TxWsServer::MakeTextFrame(const std::string& payload) {
     return frame;
 }
 
-// ── WebSocket handshake key ───────────────────────────────────────────────────
+// ── WebSocket handshake ───────────────────────────────────────────────────────
 
 std::string TxWsServer::WsAcceptKey(const std::string& client_key) {
     std::string combined = client_key + kWsMagic;
     unsigned char sha1[SHA_DIGEST_LENGTH];
     SHA1(reinterpret_cast<const unsigned char*>(combined.data()),
          combined.size(), sha1);
-
-    // base64 encode
     BIO* b64  = BIO_new(BIO_f_base64());
     BIO* bmem = BIO_new(BIO_s_mem());
     b64 = BIO_push(b64, bmem);
@@ -401,7 +377,6 @@ std::string TxWsServer::BuildTxJson(
         const block::protobuf::BlockTx& tx) {
     const auto& block = vb.block_info();
     const auto& qc    = vb.qc();
-
     std::ostringstream o;
     o << "{"
       << "\"tx_hash\":\""    << common::Encode::HexEncode(tx.tx_hash()) << "\","
