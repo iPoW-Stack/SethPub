@@ -1483,6 +1483,7 @@ void NetworkInit::JoinInitNodes() {
             network::DhtManager::Instance()->Join(node);
         }
 
+        node->join_way = dht::kJoinFromInit;
         network::UniversalManager::Instance()->Join(node);
     }
 }

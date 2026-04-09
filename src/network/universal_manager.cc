@@ -208,6 +208,17 @@ void UniversalManager::DropNode(const std::string& ip, uint16_t port) {
 }
 
 void UniversalManager::Join(const dht::NodePtr& node) {
+    if (node->join_way == dht::kJoinFromInit) {
+        auto dht_ptr = dhts_[kUniversalNetworkId].load();
+        auto node_ptr = std::make_shared<dht::Node>(
+            node->sharding_id,
+            node->public_ip,
+            node->public_port,
+            node->pubkey_str,
+            node->id);
+        dht_ptr->Join(node_ptr);
+    }
+
     auto dht_ptr = dhts_[kNodeNetworkId].load();
     if (dht_ptr != nullptr) {
         dht_ptr->UniversalJoin(node);
