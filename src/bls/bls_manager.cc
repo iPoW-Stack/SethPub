@@ -48,7 +48,7 @@ BlsManager::BlsManager(
     network::Route::Instance()->RegisterMessage(
         common::kBlsMessage,
         std::bind(&BlsManager::HandleMessage, this, std::placeholders::_1));
-    // bls_tick_.CutOff(1000000lu, std::bind(&BlsManager::TimerMessage, this));
+    bls_tick_.CutOff(10000000lu, std::bind(&BlsManager::TimerMessage, this));
     dkg_cache_ = std::make_shared<DkgCache>(prefix_db_);
 }
 
@@ -59,12 +59,12 @@ void BlsManager::PoolTimerMessage() {
             common::GlobalInfo::Instance()->network_id()) >=
             common::GlobalInfo::Instance()->sharding_min_nodes_count()) {
         PopFinishMessage();
-        auto tmp_bls = waiting_bls_.load();
-        auto now_tm_ms = common::TimeUtils::TimestampMs();
-        // SETH_WARN("BlsManager handle message begin.");
-        if (tmp_bls != nullptr) {
-            tmp_bls->TimerMessage();
-        }
+        // auto tmp_bls = waiting_bls_.load();
+        // auto now_tm_ms = common::TimeUtils::TimestampMs();
+        // // SETH_WARN("BlsManager handle message begin.");
+        // if (tmp_bls != nullptr) {
+        //     tmp_bls->TimerMessage();
+        // }
 
         auto etime = common::TimeUtils::TimestampMs();
         if (etime - now_tm_ms >= 10) {
@@ -73,6 +73,17 @@ void BlsManager::PoolTimerMessage() {
     }
 
     // bls_tick_.CutOff(100000lu, std::bind(&BlsManager::TimerMessage, this));
+}
+
+void BlsManager::TimerMessage() {
+    auto tmp_bls = waiting_bls_.load();
+    auto now_tm_ms = common::TimeUtils::TimestampMs();
+    // SETH_WARN("BlsManager handle message begin.");
+    if (tmp_bls != nullptr) {
+        tmp_bls->TimerMessage();
+    }
+
+    bls_tick_.CutOff(100000lu, std::bind(&BlsManager::TimerMessage, this));
 }
 
 void BlsManager::OnNewElectBlock(

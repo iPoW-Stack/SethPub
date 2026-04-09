@@ -225,6 +225,11 @@ void KeyValueSync::PopItems() {
     std::map<uint32_t, sync::protobuf::SyncMessage> sync_dht_map;
     bool stop = false;
     auto now_tm = common::TimeUtils::TimestampUs();
+    if (prev_sent_sync_tm_ms_ + kSyncTimeoutPeriodUs > now_tm) {
+        return;
+    }
+
+    prev_sent_sync_tm_ms_ = now_tm;
     uint32_t synced_count = 0;
     for (uint8_t thread_idx = 0; thread_idx < common::kMaxThreadCount; ++thread_idx) {
         while (true) {

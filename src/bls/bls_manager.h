@@ -139,6 +139,7 @@ private:
         elect::protobuf::PrevMembers* prev_members);
     void PopFinishMessage();
     int CheckFinishMessageValid(const transport::MessagePtr& msg_ptr);
+    void TimerMessage();
 
     std::atomic<std::shared_ptr<bls::BlsDkg>> waiting_bls_{ nullptr };
     uint64_t max_height_{ common::kInvalidUint64 };
