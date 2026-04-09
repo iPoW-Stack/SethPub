@@ -224,7 +224,6 @@ set(LINK_ARGS
     security
     common
     protos
-    websocket
     ${LINK_PTHREAD}
     ${LINK_DL}
     ${LINK_RT}
@@ -270,7 +269,6 @@ add_subdirectory(${SRC_DIR}/ck ck)
 add_subdirectory(${SRC_DIR}/vss vss)
 add_subdirectory(${SRC_DIR}/sync sync)
 add_subdirectory(${SRC_DIR}/pki pki)
-add_subdirectory(${SRC_DIR}/websocket websocket)
 
 # Tests (Consider wrapping in 'if(BUILD_TESTING)' to speed up Release builds if tests aren't needed)
 add_subdirectory(${SRC_DIR}/common/tests common_test)

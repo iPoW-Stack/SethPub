@@ -1,202 +1,444 @@
 #include "init/tx_ws_server.h"
 
+#include <arpa/inet.h>
+#include <cassert>
+#include <cstring>
 #include <sstream>
 
 #include "common/encode.h"
 #include "common/log.h"
 
-namespace seth {
+// SHA-1 + Base64 for WebSocket handshake (no extra deps – inline impl)
+#include <openssl/sha.h>
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/buffer.h>
 
+namespace seth {
 namespace init {
 
-static const std::string kSubscribePrefix   = "subscribe:";
-static const std::string kUnsubscribePrefix = "unsubscribe:";
+static const std::string kWsMagic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
-// --- Init -------------------------------------------------------------------
+// ── destructor ───────────────────────────────────────────────────────────────
+
+TxWsServer::~TxWsServer() {
+    if (running_.load()) {
+        uv_async_send(&async_);   // wake loop so it can exit
+        if (loop_thread_.joinable()) loop_thread_.join();
+        uv_loop_close(loop_);
+        delete loop_;
+    }
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
 
 int TxWsServer::Init(const std::string& ip, uint16_t port) {
-    // Register the close callback so subscriptions are cleaned up on disconnect.
-    auto close_cb = [this](websocketpp::connection_hdl hdl) {
-        OnClose(hdl);
-    };
+    loop_ = new uv_loop_t;
+    uv_loop_init(loop_);
+    loop_->data = this;
 
-    if (ws_server_.Init(ip.c_str(), port, close_cb) != 0) {
-        SETH_ERROR("[TxWsServer] websocket init failed on %s:%u", ip.c_str(), port);
+    uv_tcp_init(loop_, &server_tcp_);
+    server_tcp_.data = this;
+
+    sockaddr_in addr{};
+    uv_ip4_addr(ip.c_str(), port, &addr);
+
+    int r = uv_tcp_bind(&server_tcp_, reinterpret_cast<const sockaddr*>(&addr), 0);
+    if (r != 0) {
+        SETH_ERROR("[TxWsServer] bind failed on %s:%u: %s", ip.c_str(), port, uv_strerror(r));
         return 1;
     }
 
-    // Register message handler under type "tx".
-    // The WebSocketServer protocol requires the first byte to be the type length,
-    // followed by the type string, then the payload (e.g. "subscribe:<hash>").
-    ws_server_.RegisterCallback("tx", [this](websocketpp::connection_hdl hdl, const std::string& msg) {
-        OnMessage(hdl, msg);
-    });
+    r = uv_listen(reinterpret_cast<uv_stream_t*>(&server_tcp_), 128, OnNewConnection);
+    if (r != 0) {
+        SETH_ERROR("[TxWsServer] listen failed: %s", uv_strerror(r));
+        return 1;
+    }
 
-    ws_server_.Start();
-    SETH_INFO("[TxWsServer] started on %s:%u", ip.c_str(), port);
+    // async handle lets OnNewBlock wake the loop from any thread
+    uv_async_init(loop_, &async_, OnAsync);
+    async_.data = this;
+
+    running_.store(true);
+    loop_thread_ = std::thread(&TxWsServer::RunLoop, this);
+    SETH_INFO("[TxWsServer] listening on %s:%u", ip.c_str(), port);
     return 0;
 }
 
-// --- New block --------------------------------------------------------------
+void TxWsServer::RunLoop() {
+    uv_run(loop_, UV_RUN_DEFAULT);
+    running_.store(false);
+}
 
-void TxWsServer::OnNewBlock(const view_block::protobuf::ViewBlockItem& view_block) {
-    const auto& block = view_block.block_info();
-    if (block.tx_list_size() == 0) {
-        return;
+// ── OnNewBlock (called from consensus thread) ─────────────────────────────────
+
+void TxWsServer::OnNewBlock(const view_block::protobuf::ViewBlockItem& vb) {
+    const auto& block = vb.block_info();
+    if (block.tx_list_size() == 0) return;
+
+    {
+        std::lock_guard<std::mutex> lk(mutex_);
+        if (hash_to_conns_.empty()) return;
+
+        for (int i = 0; i < block.tx_list_size(); ++i) {
+            const auto& tx = block.tx_list(i);
+            if (!tx.has_tx_hash() || tx.tx_hash().empty()) continue;
+
+            std::string hex = common::Encode::HexEncode(tx.tx_hash());
+            auto it = hash_to_conns_.find(hex);
+            if (it == hash_to_conns_.end() || it->second.empty()) continue;
+
+            std::string frame = MakeTextFrame(BuildTxJson(vb, tx));
+            for (Conn* c : it->second) {
+                pending_pushes_.emplace_back(c, frame);
+            }
+            SETH_INFO("[TxWsServer] queued push for tx %s to %zu client(s)",
+                      hex.c_str(), it->second.size());
+        }
     }
 
-    std::lock_guard<std::mutex> lock(sub_mutex_);
-    if (hash_to_hdls_.empty()) {
-        return;
+    // wake the libuv loop to drain pending_pushes_
+    uv_async_send(&async_);
+}
+
+// ── libuv callbacks ───────────────────────────────────────────────────────────
+
+void TxWsServer::OnAsync(uv_async_t* handle) {
+    auto* self = static_cast<TxWsServer*>(handle->data);
+    std::vector<std::pair<Conn*, std::string>> pushes;
+    {
+        std::lock_guard<std::mutex> lk(self->mutex_);
+        pushes.swap(self->pending_pushes_);
     }
-
-    for (int i = 0; i < block.tx_list_size(); ++i) {
-        const auto& tx = block.tx_list(i);
-        if (!tx.has_tx_hash() || tx.tx_hash().empty()) {
-            continue;
-        }
-
-        std::string hex_hash = common::Encode::HexEncode(tx.tx_hash());
-        auto it = hash_to_hdls_.find(hex_hash);
-        if (it == hash_to_hdls_.end() || it->second.empty()) {
-            continue;
-        }
-
-        std::string json = BuildTxJson(view_block, tx);
-        for (const auto& hdl_ptr : it->second) {
-            websocketpp::connection_hdl hdl = hdl_ptr;
-            ws_server_.Send(hdl, json);
-        }
-
-        SETH_INFO("[TxWsServer] pushed tx %s to %zu subscriber(s)",
-            hex_hash.c_str(), it->second.size());
+    for (auto& [c, frame] : pushes) {
+        // conn may have been closed already
+        if (self->conn_to_hashes_.count(c) == 0) continue;
+        self->EnqueueFrame(c, frame);
     }
 }
 
-// --- Message handler --------------------------------------------------------
-
-void TxWsServer::OnMessage(websocketpp::connection_hdl hdl, const std::string& msg) {
-    auto hdl_ptr = hdl.lock();
-    if (!hdl_ptr) {
+void TxWsServer::OnNewConnection(uv_stream_t* srv, int status) {
+    if (status < 0) {
+        SETH_ERROR("[TxWsServer] new connection error: %s", uv_strerror(status));
         return;
     }
+    auto* self = static_cast<TxWsServer*>(srv->data);
 
-    if (msg.rfind(kSubscribePrefix, 0) == 0) {
-        std::string hash = msg.substr(kSubscribePrefix.size());
+    auto* c = new Conn{};
+    c->server = self;
+    uv_tcp_init(self->loop_, &c->tcp);
+    c->tcp.data = c;
+
+    if (uv_accept(srv, reinterpret_cast<uv_stream_t*>(&c->tcp)) == 0) {
+        // register in conn_to_hashes_ so we can detect live conns
+        {
+            std::lock_guard<std::mutex> lk(self->mutex_);
+            self->conn_to_hashes_[c];   // insert empty set
+        }
+        uv_read_start(reinterpret_cast<uv_stream_t*>(&c->tcp), OnAlloc, OnRead);
+    } else {
+        uv_close(reinterpret_cast<uv_handle_t*>(&c->tcp), OnClose);
+    }
+}
+
+void TxWsServer::OnAlloc(uv_handle_t* /*handle*/, size_t suggested, uv_buf_t* buf) {
+    buf->base = new char[suggested];
+    buf->len  = suggested;
+}
+
+void TxWsServer::OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
+    auto* c = static_cast<Conn*>(stream->data);
+    if (nread > 0) {
+        c->server->HandleRawData(c, buf->base, nread);
+    } else if (nread < 0) {
+        c->server->CloseConn(c);
+    }
+    delete[] buf->base;
+}
+
+void TxWsServer::OnWrite(uv_write_t* req, int /*status*/) {
+    auto* c = static_cast<Conn*>(req->data);
+    delete[] static_cast<char*>(req->handle->data);  // free the buffer copy
+    req->handle->data = nullptr;
+    delete req;
+
+    c->write_pending = false;
+    // flush next queued frame if any
+    c->server->FlushConn(c);
+}
+
+void TxWsServer::OnClose(uv_handle_t* handle) {
+    auto* c = static_cast<Conn*>(handle->data);
+    if (c) delete c;
+}
+
+// ── HTTP Upgrade ──────────────────────────────────────────────────────────────
+
+void TxWsServer::HandleRawData(Conn* c, const char* data, ssize_t len) {
+    c->read_buf.append(data, len);
+    if (!c->upgraded) {
+        TryHttpUpgrade(c);
+        return;
+    }
+    // WebSocket frames may arrive in multiple reads; process all complete frames.
+    while (true) {
+        const auto& buf = c->read_buf;
+        if (buf.size() < 2) break;
+
+        uint8_t b0 = static_cast<uint8_t>(buf[0]);
+        uint8_t b1 = static_cast<uint8_t>(buf[1]);
+        bool masked = (b1 & 0x80) != 0;
+        uint64_t payload_len = b1 & 0x7f;
+        size_t header_len = 2;
+
+        if (payload_len == 126) {
+            if (buf.size() < 4) break;
+            payload_len = (static_cast<uint8_t>(buf[2]) << 8) |
+                           static_cast<uint8_t>(buf[3]);
+            header_len = 4;
+        } else if (payload_len == 127) {
+            if (buf.size() < 10) break;
+            payload_len = 0;
+            for (int i = 0; i < 8; ++i)
+                payload_len = (payload_len << 8) | static_cast<uint8_t>(buf[2 + i]);
+            header_len = 10;
+        }
+
+        size_t mask_len = masked ? 4 : 0;
+        size_t total = header_len + mask_len + payload_len;
+        if (buf.size() < total) break;
+
+        // opcode
+        uint8_t opcode = b0 & 0x0f;
+        if (opcode == 0x8) { CloseConn(c); return; }  // close frame
+
+        if (opcode == 0x1 || opcode == 0x2) {  // text or binary
+            std::string payload(buf.data() + header_len + mask_len, payload_len);
+            if (masked) {
+                const char* mask = buf.data() + header_len;
+                for (size_t i = 0; i < payload_len; ++i)
+                    payload[i] ^= mask[i % 4];
+            }
+            HandleWsFrame(c, payload);
+        }
+
+        c->read_buf.erase(0, total);
+    }
+}
+
+bool TxWsServer::TryHttpUpgrade(Conn* c) {
+    // Look for end of HTTP headers
+    auto pos = c->read_buf.find("\r\n\r\n");
+    if (pos == std::string::npos) return false;
+
+    std::string headers = c->read_buf.substr(0, pos + 4);
+    c->read_buf.erase(0, pos + 4);
+
+    // Extract Sec-WebSocket-Key
+    std::string key;
+    auto kpos = headers.find("Sec-WebSocket-Key:");
+    if (kpos == std::string::npos) { CloseConn(c); return false; }
+    kpos += 18;
+    while (kpos < headers.size() && headers[kpos] == ' ') ++kpos;
+    auto epos = headers.find("\r\n", kpos);
+    if (epos == std::string::npos) { CloseConn(c); return false; }
+    key = headers.substr(kpos, epos - kpos);
+
+    std::string accept = WsAcceptKey(key);
+    std::string response =
+        "HTTP/1.1 101 Switching Protocols\r\n"
+        "Upgrade: websocket\r\n"
+        "Connection: Upgrade\r\n"
+        "Sec-WebSocket-Accept: " + accept + "\r\n\r\n";
+
+    c->upgraded = true;
+
+    // send upgrade response
+    auto* req = new uv_write_t{};
+    char* buf_copy = new char[response.size()];
+    memcpy(buf_copy, response.data(), response.size());
+    req->data = c;
+    req->handle = reinterpret_cast<uv_stream_t*>(&c->tcp);
+    req->handle->data = buf_copy;
+    uv_buf_t wbuf = uv_buf_init(buf_copy, static_cast<unsigned>(response.size()));
+    uv_write(req, reinterpret_cast<uv_stream_t*>(&c->tcp), &wbuf, 1, OnWrite);
+    return true;
+}
+
+// ── WebSocket frame handling ──────────────────────────────────────────────────
+
+void TxWsServer::HandleWsFrame(Conn* c, const std::string& payload) {
+    static const std::string kSub   = "subscribe:";
+    static const std::string kUnsub = "unsubscribe:";
+
+    if (payload.rfind(kSub, 0) == 0) {
+        std::string hash = payload.substr(kSub.size());
         if (hash.empty()) {
-            ws_server_.Send(hdl, R"({"error":"empty txhash"})");
+            EnqueueFrame(c, R"({"error":"empty txhash"})");
             return;
         }
+        {
+            std::lock_guard<std::mutex> lk(mutex_);
+            hash_to_conns_[hash].insert(c);
+            conn_to_hashes_[c].insert(hash);
+            c->subscriptions.insert(hash);
+        }
+        SETH_INFO("[TxWsServer] subscribed txhash: %s", hash.c_str());
+        EnqueueFrame(c, R"({"status":"subscribed","txhash":")" + hash + R"("})");
 
-        std::lock_guard<std::mutex> lock(sub_mutex_);
-        hash_to_hdls_[hash].insert(hdl_ptr);
-        hdl_to_hashes_[hdl_ptr].insert(hash);
-        SETH_INFO("[TxWsServer] client subscribed txhash: %s", hash.c_str());
-        ws_server_.Send(hdl, R"({"status":"subscribed","txhash":")" + hash + R"("})");
-
-    } else if (msg.rfind(kUnsubscribePrefix, 0) == 0) {
-        std::string hash = msg.substr(kUnsubscribePrefix.size());
-
-        std::lock_guard<std::mutex> lock(sub_mutex_);
-        auto hit = hash_to_hdls_.find(hash);
-        if (hit != hash_to_hdls_.end()) {
-            hit->second.erase(hdl_ptr);
-            if (hit->second.empty()) {
-                hash_to_hdls_.erase(hit);
+    } else if (payload.rfind(kUnsub, 0) == 0) {
+        std::string hash = payload.substr(kUnsub.size());
+        {
+            std::lock_guard<std::mutex> lk(mutex_);
+            auto hit = hash_to_conns_.find(hash);
+            if (hit != hash_to_conns_.end()) {
+                hit->second.erase(c);
+                if (hit->second.empty()) hash_to_conns_.erase(hit);
             }
+            conn_to_hashes_[c].erase(hash);
+            c->subscriptions.erase(hash);
         }
-
-        auto cit = hdl_to_hashes_.find(hdl_ptr);
-        if (cit != hdl_to_hashes_.end()) {
-            cit->second.erase(hash);
-        }
-
-        SETH_INFO("[TxWsServer] client unsubscribed txhash: %s", hash.c_str());
-        ws_server_.Send(hdl, R"({"status":"unsubscribed","txhash":")" + hash + R"("})");
+        SETH_INFO("[TxWsServer] unsubscribed txhash: %s", hash.c_str());
+        EnqueueFrame(c, R"({"status":"unsubscribed","txhash":")" + hash + R"("})");
 
     } else {
-        ws_server_.Send(hdl, R"({"error":"unknown command"})");
+        EnqueueFrame(c, R"({"error":"unknown command"})");
     }
 }
 
-// --- Connection close cleanup -----------------------------------------------
-
-void TxWsServer::OnClose(websocketpp::connection_hdl hdl) {
-    auto hdl_ptr = hdl.lock();
-    if (!hdl_ptr) {
-        return;
-    }
-
-    std::lock_guard<std::mutex> lock(sub_mutex_);
-    auto cit = hdl_to_hashes_.find(hdl_ptr);
-    if (cit == hdl_to_hashes_.end()) {
-        return;
-    }
-
-    for (const auto& hash : cit->second) {
-        auto hit = hash_to_hdls_.find(hash);
-        if (hit != hash_to_hdls_.end()) {
-            hit->second.erase(hdl_ptr);
-            if (hit->second.empty()) {
-                hash_to_hdls_.erase(hit);
+void TxWsServer::CloseConn(Conn* c) {
+    {
+        std::lock_guard<std::mutex> lk(mutex_);
+        auto it = conn_to_hashes_.find(c);
+        if (it != conn_to_hashes_.end()) {
+            for (const auto& h : it->second) {
+                auto hit = hash_to_conns_.find(h);
+                if (hit != hash_to_conns_.end()) {
+                    hit->second.erase(c);
+                    if (hit->second.empty()) hash_to_conns_.erase(hit);
+                }
             }
+            conn_to_hashes_.erase(it);
         }
     }
-
-    hdl_to_hashes_.erase(cit);
-    SETH_INFO("[TxWsServer] client disconnected, subscriptions cleaned");
+    c->tcp.data = nullptr;  // prevent OnClose from double-deleting
+    uv_close(reinterpret_cast<uv_handle_t*>(&c->tcp),
+             [](uv_handle_t* h) { delete static_cast<Conn*>(h->data); });
+    SETH_INFO("[TxWsServer] connection closed, subscriptions cleaned");
 }
 
-// --- Build transaction JSON -------------------------------------------------
+// ── Send helpers ──────────────────────────────────────────────────────────────
+
+void TxWsServer::EnqueueFrame(Conn* c, const std::string& json) {
+    c->send_queue.push_back(MakeTextFrame(json));
+    if (!c->write_pending) FlushConn(c);
+}
+
+void TxWsServer::FlushConn(Conn* c) {
+    if (c->send_queue.empty() || c->write_pending) return;
+    std::string frame = std::move(c->send_queue.front());
+    c->send_queue.erase(c->send_queue.begin());
+
+    c->write_pending = true;
+    auto* req = new uv_write_t{};
+    char* buf_copy = new char[frame.size()];
+    memcpy(buf_copy, frame.data(), frame.size());
+    req->data = c;
+    req->handle = reinterpret_cast<uv_stream_t*>(&c->tcp);
+    req->handle->data = buf_copy;
+    uv_buf_t wbuf = uv_buf_init(buf_copy, static_cast<unsigned>(frame.size()));
+    uv_write(req, reinterpret_cast<uv_stream_t*>(&c->tcp), &wbuf, 1, OnWrite);
+}
+
+// ── WebSocket frame builder ───────────────────────────────────────────────────
+
+std::string TxWsServer::MakeTextFrame(const std::string& payload) {
+    std::string frame;
+    frame.push_back(static_cast<char>(0x81));  // FIN + opcode text
+
+    size_t len = payload.size();
+    if (len <= 125) {
+        frame.push_back(static_cast<char>(len));
+    } else if (len <= 65535) {
+        frame.push_back(static_cast<char>(126));
+        frame.push_back(static_cast<char>((len >> 8) & 0xff));
+        frame.push_back(static_cast<char>(len & 0xff));
+    } else {
+        frame.push_back(static_cast<char>(127));
+        for (int i = 7; i >= 0; --i)
+            frame.push_back(static_cast<char>((len >> (8 * i)) & 0xff));
+    }
+    frame.append(payload);
+    return frame;
+}
+
+// ── WebSocket handshake key ───────────────────────────────────────────────────
+
+std::string TxWsServer::WsAcceptKey(const std::string& client_key) {
+    std::string combined = client_key + kWsMagic;
+    unsigned char sha1[SHA_DIGEST_LENGTH];
+    SHA1(reinterpret_cast<const unsigned char*>(combined.data()),
+         combined.size(), sha1);
+
+    // base64 encode
+    BIO* b64  = BIO_new(BIO_f_base64());
+    BIO* bmem = BIO_new(BIO_s_mem());
+    b64 = BIO_push(b64, bmem);
+    BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
+    BIO_write(b64, sha1, SHA_DIGEST_LENGTH);
+    BIO_flush(b64);
+    BUF_MEM* bptr;
+    BIO_get_mem_ptr(b64, &bptr);
+    std::string result(bptr->data, bptr->length);
+    BIO_free_all(b64);
+    return result;
+}
+
+// ── JSON builder ──────────────────────────────────────────────────────────────
 
 std::string TxWsServer::BuildTxJson(
-        const view_block::protobuf::ViewBlockItem& view_block,
+        const view_block::protobuf::ViewBlockItem& vb,
         const block::protobuf::BlockTx& tx) {
-    const auto& block = view_block.block_info();
-    const auto& qc    = view_block.qc();
+    const auto& block = vb.block_info();
+    const auto& qc    = vb.qc();
 
-    // Hand-written JSON to avoid pulling in extra dependencies.
-    std::ostringstream oss;
-    oss << "{"
-        << "\"tx_hash\":\""    << common::Encode::HexEncode(tx.tx_hash())   << "\","
-        << "\"from\":\""       << common::Encode::HexEncode(tx.from())      << "\","
-        << "\"to\":\""         << common::Encode::HexEncode(tx.to())        << "\","
-        << "\"amount\":"       << tx.amount()                               << ","
-        << "\"gas_used\":"     << tx.gas_used()                             << ","
-        << "\"gas_price\":"    << tx.gas_price()                            << ","
-        << "\"status\":"       << tx.status()                               << ","
-        << "\"step\":"         << static_cast<int>(tx.step())               << ","
-        << "\"nonce\":"        << tx.nonce()                                << ","
-        << "\"block_height\":" << block.height()                            << ","
-        << "\"network_id\":"   << qc.network_id()                           << ","
-        << "\"pool_index\":"   << qc.pool_index()                           << ","
-        << "\"timestamp\":"    << block.timestamp();
+    std::ostringstream o;
+    o << "{"
+      << "\"tx_hash\":\""    << common::Encode::HexEncode(tx.tx_hash()) << "\","
+      << "\"from\":\""       << common::Encode::HexEncode(tx.from())    << "\","
+      << "\"to\":\""         << common::Encode::HexEncode(tx.to())      << "\","
+      << "\"amount\":"       << tx.amount()                             << ","
+      << "\"gas_used\":"     << tx.gas_used()                           << ","
+      << "\"gas_price\":"    << tx.gas_price()                          << ","
+      << "\"status\":"       << tx.status()                             << ","
+      << "\"step\":"         << static_cast<int>(tx.step())             << ","
+      << "\"nonce\":"        << tx.nonce()                              << ","
+      << "\"block_height\":" << block.height()                          << ","
+      << "\"network_id\":"   << qc.network_id()                         << ","
+      << "\"pool_index\":"   << qc.pool_index()                         << ","
+      << "\"timestamp\":"    << block.timestamp();
 
-    if (tx.has_contract_input() && !tx.contract_input().empty()) {
-        oss << ",\"contract_input\":\""
-            << common::Encode::HexEncode(tx.contract_input()) << "\"";
-    }
+    if (tx.has_contract_input() && !tx.contract_input().empty())
+        o << ",\"contract_input\":\"" << common::Encode::HexEncode(tx.contract_input()) << "\"";
 
     if (tx.events_size() > 0) {
-        oss << ",\"events\":[";
+        o << ",\"events\":[";
         for (int i = 0; i < tx.events_size(); ++i) {
-            if (i > 0) oss << ",";
+            if (i) o << ",";
             const auto& ev = tx.events(i);
-            oss << "{\"data\":\"" << common::Encode::HexEncode(ev.data()) << "\","
-                << "\"topics\":[";
+            o << "{\"data\":\"" << common::Encode::HexEncode(ev.data()) << "\","
+              << "\"topics\":[";
             for (int j = 0; j < ev.topics_size(); ++j) {
-                if (j > 0) oss << ",";
-                oss << "\"" << common::Encode::HexEncode(ev.topics(j)) << "\"";
+                if (j) o << ",";
+                o << "\"" << common::Encode::HexEncode(ev.topics(j)) << "\"";
             }
-            oss << "]}";
+            o << "]}";
         }
-        oss << "]";
+        o << "]";
     }
-
-    oss << "}";
-    return oss.str();
+    o << "}";
+    return o.str();
 }
 
 }  // namespace init
-
 }  // namespace seth
