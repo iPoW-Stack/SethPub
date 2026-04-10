@@ -71,6 +71,7 @@ void TxWsServer::RunLoop() {
 // ── OnNewBlock (consensus thread) ────────────────────────────────────────────
 
 void TxWsServer::OnNewBlock(std::shared_ptr<view_block::protobuf::ViewBlockItem> view_block) {
+    if (!running_.load(std::memory_order_acquire)) return;
     if (!view_block || view_block->block_info().tx_list_size() == 0) return;
     block_queue_.push(std::move(view_block));
     uv_async_send(&async_);
