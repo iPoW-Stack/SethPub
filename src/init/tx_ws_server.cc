@@ -70,30 +70,9 @@ void TxWsServer::RunLoop() {
 
 // ── OnNewBlock (consensus thread) ────────────────────────────────────────────
 
-void TxWsServer::OnNewBlock(const view_block::protobuf::ViewBlockItem& vb) {
-    const auto& block = vb.block_info();
-    if (block.tx_list_size() == 0) return;
-
-    {
-        std::lock_guard<std::mutex> lk(mutex_);
-        if (hash_to_conns_.empty()) return;
-
-        for (int i = 0; i < block.tx_list_size(); ++i) {
-            const auto& tx = block.tx_list(i);
-            if (!tx.has_tx_hash() || tx.tx_hash().empty()) continue;
-
-            std::string hex = common::Encode::HexEncode(tx.tx_hash());
-            auto it = hash_to_conns_.find(hex);
-            if (it == hash_to_conns_.end() || it->second.empty()) continue;
-
-            std::string frame = MakeTextFrame(BuildTxJson(vb, tx));
-            for (Conn* c : it->second) {
-                pending_pushes_.emplace_back(c, frame);
-            }
-            SETH_INFO("[TxWsServer] queued push for tx %s to %zu client(s)",
-                      hex.c_str(), it->second.size());
-        }
-    }
+void TxWsServer::OnNewBlock(std::shared_ptr<view_block::protobuf::ViewBlockItem> view_block) {
+    if (!view_block || view_block->block_info().tx_list_size() == 0) return;
+    block_queue_.push(std::move(view_block));
     uv_async_send(&async_);
 }
 
@@ -101,14 +80,32 @@ void TxWsServer::OnNewBlock(const view_block::protobuf::ViewBlockItem& vb) {
 
 void TxWsServer::OnAsync(uv_async_t* handle) {
     auto* self = static_cast<TxWsServer*>(handle->data);
-    std::vector<std::pair<Conn*, std::string>> pushes;
-    {
-        std::lock_guard<std::mutex> lk(self->mutex_);
-        pushes.swap(self->pending_pushes_);
-    }
-    for (auto& [c, frame] : pushes) {
-        if (self->conn_to_hashes_.count(c) == 0) continue;  // already closed
-        self->EnqueueFrame(c, frame);
+
+    std::shared_ptr<view_block::protobuf::ViewBlockItem> vb;
+    while (self->block_queue_.pop(&vb)) {
+        const auto& block = vb->block_info();
+        for (int i = 0; i < block.tx_list_size(); ++i) {
+            const auto& tx = block.tx_list(i);
+            if (!tx.has_tx_hash() || tx.tx_hash().empty()) continue;
+
+            std::string hex = common::Encode::HexEncode(tx.tx_hash());
+
+            std::unordered_set<Conn*> conns;
+            {
+                std::lock_guard<std::mutex> lk(self->mutex_);
+                auto it = self->hash_to_conns_.find(hex);
+                if (it == self->hash_to_conns_.end() || it->second.empty()) continue;
+                conns = it->second;
+            }
+
+            std::string frame = MakeTextFrame(BuildTxJson(*vb, tx));
+            for (Conn* c : conns) {
+                if (self->conn_to_hashes_.count(c) == 0) continue;
+                self->EnqueueFrame(c, frame);
+            }
+            SETH_INFO("[TxWsServer] pushed tx %s to %zu client(s)",
+                      hex.c_str(), conns.size());
+        }
     }
 }
 
@@ -395,6 +392,9 @@ std::string TxWsServer::BuildTxJson(
 
     if (tx.has_contract_input() && !tx.contract_input().empty())
         o << ",\"contract_input\":\"" << common::Encode::HexEncode(tx.contract_input()) << "\"";
+
+    if (tx.has_output() && !tx.output().empty())
+        o << ",\"output\":\"" << common::Encode::HexEncode(tx.output()) << "\"";
 
     if (tx.events_size() > 0) {
         o << ",\"events\":[";

@@ -1058,7 +1058,8 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
         receipt = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=120)
         if receipt:
             print(f"  ✅ block={receipt.get('block_height')}  "
-                  f"status={receipt.get('status')}  gas={receipt.get('gas_used')}")
+                  f"status={receipt.get('status')}  gas={receipt.get('gas_used')}"
+                  + (f"  output={receipt['output']}" if receipt.get('output') else ""))
         else:
             print(f"  ⏰ Timeout waiting for {tx_hash}")
             receipt = {}

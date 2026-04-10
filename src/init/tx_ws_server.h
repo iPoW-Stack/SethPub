@@ -11,6 +11,7 @@
 
 #include <uv.h>
 
+#include "common/thread_safe_queue.h"
 #include "common/utils.h"
 #include "protos/view_block.pb.h"
 
@@ -37,8 +38,9 @@ public:
     int Init(const std::string& ip, uint16_t port);
 
     // Called from any thread when a new block is committed.
-    // Iterates tx_list and pushes JSON to matching subscribers.
-    void OnNewBlock(const view_block::protobuf::ViewBlockItem& view_block);
+    // Enqueues the block; the libuv loop thread drains the queue and pushes
+    // JSON frames to matching subscribers.
+    void OnNewBlock(std::shared_ptr<view_block::protobuf::ViewBlockItem> view_block);
 
 private:
     // ── per-connection state ──────────────────────────────────────────────
@@ -90,10 +92,15 @@ private:
     std::thread loop_thread_;
     std::atomic<bool> running_{false};
 
+    // Cross-thread block queue: OnNewBlock (any thread) pushes here;
+    // OnAsync (libuv loop thread) drains and broadcasts.
+    common::ThreadSafeQueue<
+        std::shared_ptr<view_block::protobuf::ViewBlockItem>, 4096> block_queue_;
+
+    // Subscription maps — accessed only from the libuv loop thread, no lock needed.
     std::mutex mutex_;
     std::unordered_map<std::string, std::unordered_set<Conn*>> hash_to_conns_;
     std::unordered_map<Conn*, std::unordered_set<std::string>> conn_to_hashes_;
-    std::vector<std::pair<Conn*, std::string>> pending_pushes_;
 
     DISALLOW_COPY_AND_ASSIGN(TxWsServer);
 };

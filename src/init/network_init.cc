@@ -1355,7 +1355,7 @@ bool NetworkInit::DbNewBlockCallback(
     }
 
     // Push transaction details to WebSocket clients subscribed to the matching txhash.
-    tx_ws_server_.OnNewBlock(*view_block);
+    tx_ws_server_.OnNewBlock(view_block);
 
     return true;
 }

@@ -159,6 +159,7 @@ public:
             }
                 
             tx_hash_status.set_output(evmc_res.output_data, evmc_res.output_size);
+            block_tx.set_output(evmc_res.output_data, evmc_res.output_size);
         } else {
             tx_hash_status.set_status(block_tx.status());
         }
