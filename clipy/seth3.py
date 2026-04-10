@@ -792,11 +792,11 @@ import threading
 import websocket  # pip install websocket-client
 
 
-def _build_ws_msg(type_str: str, payload: str) -> bytes:
-    """Pack a message per the server protocol: [1-byte type_len][type][payload]."""
-    t = type_str.encode()
-    p = payload.encode()
-    return bytes([len(t)]) + t + p
+def _build_ws_msg(action: str, tx_hash: str) -> str:
+    """Build a subscribe/unsubscribe command for TxWsServer.
+    Wire format (text frame payload): 'subscribe:<txhash>' / 'unsubscribe:<txhash>'
+    """
+    return f"{action}:{tx_hash}"
 
 
 def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120) -> dict | None:
@@ -817,8 +817,8 @@ def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120)
     done = threading.Event()
 
     def on_open(ws):
-        msg = _build_ws_msg("tx", f"subscribe:{tx_hash}")
-        ws.send(msg, websocket.ABNF.OPCODE_BINARY)
+        msg = _build_ws_msg("subscribe", tx_hash)
+        ws.send(msg)
         print(f"[WS] Subscribed to txhash: {tx_hash}")
 
     def on_message(ws, raw):
@@ -835,14 +835,17 @@ def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120)
             return
 
         if "error" in data:
+            # Server rejected the command — no point waiting further.
             print(f"[WS] Server error: {data}")
+            ws.close()
+            done.set()
             return
 
         # Real transaction push.
         if data.get("tx_hash", "").lower() == tx_hash.lower():
             result = data
             print(f"[WS] Transaction confirmed: {json.dumps(data, indent=2)}")
-            ws.send(_build_ws_msg("tx", f"unsubscribe:{tx_hash}"), websocket.ABNF.OPCODE_BINARY)
+            ws.send(_build_ws_msg("unsubscribe", tx_hash))
             ws.close()
             done.set()
 
@@ -890,7 +893,7 @@ def subscribe_multiple_txhashes(
 
     def on_open(ws):
         for h in tx_hashes:
-            ws.send(_build_ws_msg("tx", f"subscribe:{h}"), websocket.ABNF.OPCODE_BINARY)
+            ws.send(_build_ws_msg("subscribe", h))
         print(f"[WS] Subscribed to {len(tx_hashes)} txhash(es)")
 
     def on_message(ws, raw):
@@ -899,14 +902,21 @@ def subscribe_multiple_txhashes(
         except Exception:
             return
 
-        if "status" in data or "error" in data:
+        if "status" in data:
+            return
+
+        if "error" in data:
+            # Server rejected the command — close and surface the error.
+            print(f"[WS] Server error: {data}")
+            ws.close()
+            done.set()
             return
 
         h = data.get("tx_hash", "").lower()
         if h in pending:
             results[h] = data
             pending.discard(h)
-            ws.send(_build_ws_msg("tx", f"unsubscribe:{h}"), websocket.ABNF.OPCODE_BINARY)
+            ws.send(_build_ws_msg("unsubscribe", h))
             print(f"[WS] [{len(results)}/{len(tx_hashes)}] Confirmed: {h}")
             if not pending:
                 ws.close()
