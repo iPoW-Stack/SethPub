@@ -133,6 +133,10 @@ make_package() {
         cd /root/seth/cbuild_$TARGET && make txcli
         cp -rf /root/seth/cbuild_$TARGET/seth /root/seth/pkgs/$node_hash/seth
         cp -rf /root/seth/pkgs/$node_hash /root/nodes/seth/pkg
+        rm -rf /root/nodes/seth/pkg/temp
+        cp -rf /root/nodes/temp /root/nodes/seth/pkg
+        cp /root/seth/temp_cmd.sh /root/nodes/seth/pkg
+        cp /root/seth/start_cmd.sh /root/nodes/seth/pkg
         for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
             /root/seth/cbuild_$TARGET/seth -A /root/seth/shards${shard_id} -D /root/nodes/seth/pkg/shards${shard_id}
             /root/seth/cbuild_$TARGET/seth -A  /root/seth/init_accounts${shard_id} -D /root/nodes/seth/pkg/init_accounts${shard_id}
@@ -170,15 +174,42 @@ get_bootstrap() {
     for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
         i=1
         for ip in "${node_ips_array[@]}"; do
-            tmppubkey=`sed -n "$i""p" /root/nodes/seth/pkg/shards${shard_id} | awk -F'\t' '{print $2}'`
-            node_info=$tmppubkey":"$ip":1"$shard_id"00"$i
-            bootstrap=$node_info","$bootstrap
-            i=$((i+1))
-            if ((i>=10)); then
-                break
-            fi
+            for ((j=0; j<$each_nodes_count; j++)); do
+                tmppubkey=`sed -n "$i""p" /root/nodes/seth/pkg/shards${shard_id} | awk -F'\t' '{print $2}'`
+                port=''
+                if ((i>=100)); then
+                    port='1'$shard_id''$i
+                elif ((i>=10)); then
+                    port='1'$shard_id'0'$i
+                else
+                    port='1'$shard_id'00'$i
+                fi
+
+                if (( port > 65535 )); then
+                    (( port = (port % 60000) + 1024 ))
+                fi
+
+                node_info=$tmppubkey":"$ip":"$port":"$shard_id
+                bootstrap=$bootstrap","$node_info
+                i=$((i+1))
+            done
         done
     done
+
+    # Write bootstrap into the conf template via Python (handles long strings safely)
+    printf "%s" "$bootstrap" > /tmp/bootstrap_data.tmp
+    /root/tools/python3.10/bin/python3 -c "
+import os
+conf_path = '/root/nodes/seth/pkg/temp/conf/seth.conf'
+with open('/tmp/bootstrap_data.tmp', 'r') as f:
+    new_val = f.read()
+with open(conf_path, 'r') as f:
+    content = f.read()
+with open(conf_path, 'w') as f:
+    f.write(content.replace('BOOTSTRAP', new_val))
+"
+    rm /tmp/bootstrap_data.tmp
+    echo $bootstrap
 }
 
 check_cmd_finished() {
