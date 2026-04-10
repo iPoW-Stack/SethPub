@@ -1242,8 +1242,8 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     print("=" * 60)
 
 if __name__ == "__main__":
-    # ecdsa_sign_test()
-    # oqs_sign_test()
-    # gmssl_sign_test()
+    ecdsa_sign_test()
+    oqs_sign_test()
+    gmssl_sign_test()
     demo_ws_subscribe("127.0.0.1", 33001)  # uncomment to run the WebSocket subscription demo
  
