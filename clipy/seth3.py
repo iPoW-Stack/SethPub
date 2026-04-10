@@ -824,7 +824,8 @@ def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120)
     def on_message(ws, raw):
         nonlocal result
         try:
-            data = json.loads(raw)
+            text = raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
+            data = json.loads(text)
         except Exception:
             print(f"[WS] Non-JSON message received: {raw}")
             return
@@ -850,8 +851,32 @@ def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120)
             done.set()
 
     def on_error(ws, err):
+        # websocket-client may surface raw bytes as an error when it cannot
+        # decode a frame internally; try to parse them as a WS text frame.
+        if isinstance(err, (bytes, bytearray)):
+            _parse_raw_frame(ws, err)
+            return
         print(f"[WS] Error: {err}")
         done.set()
+
+    def _parse_raw_frame(ws, data: bytes):
+        """Best-effort decode of a raw WebSocket text frame passed via on_error."""
+        try:
+            # Standard WS text frame: 0x81, then 1-3 length bytes, then payload.
+            if len(data) < 2 or (data[0] & 0x0f) != 0x1:
+                return
+            b1 = data[1] & 0x7f
+            if b1 <= 125:
+                payload = data[2:2 + b1]
+            elif b1 == 126:
+                length = (data[2] << 8) | data[3]
+                payload = data[4:4 + length]
+            else:
+                length = int.from_bytes(data[2:10], "big")
+                payload = data[10:10 + length]
+            on_message(ws, payload)
+        except Exception:
+            pass
 
     def on_close(ws, code, msg):
         print(f"[WS] Connection closed, code={code}")
@@ -865,7 +890,7 @@ def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120)
         on_close=on_close,
     )
 
-    t = threading.Thread(target=ws_app.run_forever, daemon=True)
+    t = threading.Thread(target=lambda: ws_app.run_forever(skip_utf8_validation=True), daemon=True)
     t.start()
 
     if not done.wait(timeout=timeout):
@@ -898,7 +923,8 @@ def subscribe_multiple_txhashes(
 
     def on_message(ws, raw):
         try:
-            data = json.loads(raw)
+            text = raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
+            data = json.loads(text)
         except Exception:
             return
 
@@ -923,6 +949,9 @@ def subscribe_multiple_txhashes(
                 done.set()
 
     def on_error(ws, err):
+        if isinstance(err, (bytes, bytearray)):
+            on_message(ws, err)
+            return
         print(f"[WS] Error: {err}")
         done.set()
 
@@ -937,7 +966,7 @@ def subscribe_multiple_txhashes(
         on_close=on_close,
     )
 
-    t = threading.Thread(target=ws_app.run_forever, daemon=True)
+    t = threading.Thread(target=lambda: ws_app.run_forever(skip_utf8_validation=True), daemon=True)
     t.start()
 
     if not done.wait(timeout=timeout):
