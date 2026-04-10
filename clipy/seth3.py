@@ -1053,23 +1053,15 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     print(f"Receiver: {DEST}")
 
     # ── WS-aware wait_for_receipt patch ──────────────────────────────────────
-    _orig_wait = w3.client.wait_for_receipt
-
     def _patched_wait(tx_hash, **kw):
         print(f"  tx_hash : {tx_hash}")
-        ws_done = threading.Event()
-        ws_result = [None]
-
-        def _ws():
-            ws_result[0] = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=120)
-            ws_done.set()
-
-        threading.Thread(target=_ws, daemon=True).start()
-        receipt = _orig_wait(tx_hash, **kw)
-        ws_done.wait(timeout=10)
-        r = ws_result[0] or receipt
-        print(f"  ✅ block={r.get('block_height')}  "
-              f"status={r.get('status')}  gas={r.get('gas_used')}")
+        receipt = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=120)
+        if receipt:
+            print(f"  ✅ block={receipt.get('block_height')}  "
+                  f"status={receipt.get('status')}  gas={receipt.get('gas_used')}")
+        else:
+            print(f"  ⏰ Timeout waiting for {tx_hash}")
+            receipt = {}
         return receipt
 
     w3.client.wait_for_receipt = _patched_wait
@@ -1168,11 +1160,9 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     print("\n[TX] factory.deploy(88888888)")
     factory.functions.deploy(88888888).transact(KEY)
 
-    w3.client.wait_for_receipt = _orig_wait  # restore
     print("\n" + "=" * 60)
     print("  Demo complete.")
     print("=" * 60)
-
 
 if __name__ == "__main__":
     # ecdsa_sign_test()
