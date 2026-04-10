@@ -792,7 +792,40 @@ import threading
 import websocket  # pip install websocket-client
 
 
-def _build_ws_msg(action: str, tx_hash: str) -> str:
+def _decode_ws_payload(raw) -> str | None:
+    """
+    Extract the text payload from whatever websocket-client hands us.
+    - str  → return as-is
+    - bytes that start with a valid WS text-frame header → strip the header
+    - bytes that are plain UTF-8 (no frame header) → decode directly
+    Returns None if the data cannot be interpreted as text.
+    """
+    if isinstance(raw, str):
+        return raw
+    if not isinstance(raw, (bytes, bytearray)):
+        return None
+    # Detect WS text frame: first byte = 0x81 (FIN + opcode 1)
+    if len(raw) >= 2 and raw[0] == 0x81:
+        b1 = raw[1] & 0x7f
+        if b1 <= 125:
+            payload = raw[2:2 + b1]
+        elif b1 == 126 and len(raw) >= 4:
+            length = (raw[2] << 8) | raw[3]
+            payload = raw[4:4 + length]
+        elif b1 == 127 and len(raw) >= 10:
+            length = int.from_bytes(raw[2:10], "big")
+            payload = raw[10:10 + length]
+        else:
+            payload = raw
+        try:
+            return payload.decode("utf-8")
+        except Exception:
+            return None
+    # Plain UTF-8 bytes (no frame header)
+    try:
+        return raw.decode("utf-8")
+    except Exception:
+        return None
     """Build a subscribe/unsubscribe command for TxWsServer.
     Wire format (text frame payload): 'subscribe:<txhash>' / 'unsubscribe:<txhash>'
     """
@@ -823,11 +856,14 @@ def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120)
 
     def on_message(ws, raw):
         nonlocal result
+        text = _decode_ws_payload(raw)
+        if text is None:
+            print(f"[WS] Undecodable message: {raw!r}")
+            return
         try:
-            text = raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
             data = json.loads(text)
         except Exception:
-            print(f"[WS] Non-JSON message received: {raw}")
+            print(f"[WS] Non-JSON message received: {text!r}")
             return
 
         # Ignore subscribe/unsubscribe acknowledgements.
@@ -851,32 +887,11 @@ def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120)
             done.set()
 
     def on_error(ws, err):
-        # websocket-client may surface raw bytes as an error when it cannot
-        # decode a frame internally; try to parse them as a WS text frame.
         if isinstance(err, (bytes, bytearray)):
-            _parse_raw_frame(ws, err)
+            on_message(ws, err)
             return
         print(f"[WS] Error: {err}")
         done.set()
-
-    def _parse_raw_frame(ws, data: bytes):
-        """Best-effort decode of a raw WebSocket text frame passed via on_error."""
-        try:
-            # Standard WS text frame: 0x81, then 1-3 length bytes, then payload.
-            if len(data) < 2 or (data[0] & 0x0f) != 0x1:
-                return
-            b1 = data[1] & 0x7f
-            if b1 <= 125:
-                payload = data[2:2 + b1]
-            elif b1 == 126:
-                length = (data[2] << 8) | data[3]
-                payload = data[4:4 + length]
-            else:
-                length = int.from_bytes(data[2:10], "big")
-                payload = data[10:10 + length]
-            on_message(ws, payload)
-        except Exception:
-            pass
 
     def on_close(ws, code, msg):
         print(f"[WS] Connection closed, code={code}")
@@ -922,8 +937,10 @@ def subscribe_multiple_txhashes(
         print(f"[WS] Subscribed to {len(tx_hashes)} txhash(es)")
 
     def on_message(ws, raw):
+        text = _decode_ws_payload(raw)
+        if text is None:
+            return
         try:
-            text = raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
             data = json.loads(text)
         except Exception:
             return
@@ -1046,8 +1063,8 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
 
 
 if __name__ == "__main__":
-    ecdsa_sign_test()
-    oqs_sign_test()
-    gmssl_sign_test()
-    # demo_ws_subscribe("127.0.0.1", 23100)  # uncomment to run the WebSocket subscription demo
+    # ecdsa_sign_test()
+    # oqs_sign_test()
+    # gmssl_sign_test()
+    demo_ws_subscribe("127.0.0.1", 33001)  # uncomment to run the WebSocket subscription demo
  
