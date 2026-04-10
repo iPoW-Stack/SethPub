@@ -826,6 +826,9 @@ def _decode_ws_payload(raw) -> str | None:
         return raw.decode("utf-8")
     except Exception:
         return None
+
+
+def _build_ws_msg(action: str, tx_hash: str) -> str:
     """Build a subscribe/unsubscribe command for TxWsServer.
     Wire format (text frame payload): 'subscribe:<txhash>' / 'unsubscribe:<txhash>'
     """
