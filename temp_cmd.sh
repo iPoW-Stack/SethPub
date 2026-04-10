@@ -41,15 +41,19 @@ deploy_nodes() {
 
             port0=''
             port1=''
+            port2=''
             if ((i>=100)); then
                 port0='1'$shard_id''$i
                 port1='2'$shard_id''$i
+                port2='3'$shard_id''$i
             elif ((i>=10)); then
                 port0='1'$shard_id'0'$i
                 port1='2'$shard_id'0'$i
+                port2='3'$shard_id'0'$i
             else
                 port0='1'$shard_id'00'$i
                 port1='2'$shard_id'00'$i
+                port2='3'$shard_id'00'$i
             fi
 
             if (( port0 > 65535 )); then
@@ -60,8 +64,13 @@ deploy_nodes() {
                 (( port1 = (port1 % 60000) + 1024 ))
             fi
 
+            if (( port2 > 65535 )); then
+                (( port2 = (port2 % 60000) + 1024 ))
+            fi
+
             sed -i 's/HTTP_PORT/'$port1'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
             sed -i 's/LOCAL_PORT/'$port0'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
+            sed -i 's/TX_WS_PORT/'$port2'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
 
             echo /root/seths/s$shard_id'_'$i/seth
             ln /root/pkg/seth /root/seths/s$shard_id'_'$i/seth

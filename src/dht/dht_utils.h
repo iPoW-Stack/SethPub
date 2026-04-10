@@ -65,6 +65,7 @@ enum NodeJoinWay : int32_t {
     kJoinFromConnect,
     kJoinFromDetection,
     kJoinFromUniversal,
+    kJoinFromInit,
 };
 
 static const uint32_t kDhtNearestNodesCount = 16u;

@@ -18,6 +18,7 @@
 #include "init/http_handler.h"
 #include "init/init_utils.h"
 // #include "init/ws_server.h"
+#include "init/tx_ws_server.h"
 #include "pools/shard_statistic.h"
 #include "pools/tx_pool_manager.h"
 #include "protos/elect.pb.h"
@@ -121,6 +122,7 @@ private:
     // 是否还需要发送一次 JoinElect
     bool another_join_elect_msg_needed_ = false;
     // WsServer ws_server_;
+    TxWsServer tx_ws_server_;
     common::ThreadSafeQueue<std::shared_ptr<view_block::protobuf::ViewBlockItem>> new_blocks_queue_[common::kMaxThreadCount];
     std::mutex new_blocks_mutex_;
     std::condition_variable new_blocks_cv_;

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import json
 import secrets
 import time
 from eth_utils import to_checksum_address
@@ -774,8 +775,475 @@ def oqs_sign_test():
     test_oqs_library_with_contract(w3, MY_OQS, OQS_KEY, OQS_PK)
     test_oqs_contract_prefund_flow(w3, MY_OQS, OQS_KEY, OQS_PK)
 
+
+# -----------------------------------------------------------------------------
+# WebSocket txhash subscription demo
+#
+# Usage:
+#   1. Send a transaction and obtain its tx_hash.
+#   2. Call subscribe_txhash(ws_ip, ws_port, tx_hash) to wait for the on-chain
+#      confirmation pushed by the server.
+#
+# Server message format (binary frame):
+#   [1 byte: type_len][type_len bytes: type]["subscribe:<txhash>" or "unsubscribe:<txhash>"]
+# Server push (text frame): JSON string
+# -----------------------------------------------------------------------------
+
+import threading
+import websocket  # pip install websocket-client
+
+
+def _decode_ws_payload(raw) -> str | None:
+    """
+    Extract the text payload from whatever websocket-client hands us.
+    - str  → return as-is
+    - bytes that start with a valid WS text-frame header → strip the header
+    - bytes that are plain UTF-8 (no frame header) → decode directly
+    Returns None if the data cannot be interpreted as text.
+    """
+    if isinstance(raw, str):
+        return raw
+    if not isinstance(raw, (bytes, bytearray)):
+        return None
+    # Detect WS text frame: first byte = 0x81 (FIN + opcode 1)
+    if len(raw) >= 2 and raw[0] == 0x81:
+        b1 = raw[1] & 0x7f
+        if b1 <= 125:
+            payload = raw[2:2 + b1]
+        elif b1 == 126 and len(raw) >= 4:
+            length = (raw[2] << 8) | raw[3]
+            payload = raw[4:4 + length]
+        elif b1 == 127 and len(raw) >= 10:
+            length = int.from_bytes(raw[2:10], "big")
+            payload = raw[10:10 + length]
+        else:
+            payload = raw
+        try:
+            return payload.decode("utf-8")
+        except Exception:
+            return None
+    # Plain UTF-8 bytes (no frame header)
+    try:
+        return raw.decode("utf-8")
+    except Exception:
+        return None
+
+
+def _decode_ws_receipt(receipt: dict, abi: list, function_name: str = None) -> dict:
+    """
+    Decode output and events from a WS-pushed receipt.
+
+    WS receipt fields differ from HTTP receipt:
+      - output   : hex string  (HexEncode)
+      - events[] : {"data": hex, "topics": [hex, ...]}
+
+    HTTP receipt uses base64 for the same fields, so we cannot reuse
+    decode_receipt() directly.
+    """
+    from Crypto.Hash import keccak as _keccak
+    import eth_abi as _eth_abi
+
+    receipt['decoded_output'] = None
+    receipt['decoded_events'] = []
+
+    if not abi:
+        return receipt
+
+    # ── 1. Decode output ─────────────────────────────────────────────────────
+    raw_out_hex = receipt.get("output", "")
+    if receipt.get("status") == 0 and raw_out_hex and function_name:
+        try:
+            raw_bytes = bytes.fromhex(raw_out_hex)
+            item = next((i for i in abi if i.get('name') == function_name), None)
+            if item and item.get('outputs'):
+                decoded = _eth_abi.decode([o['type'] for o in item['outputs']], raw_bytes)
+                receipt['decoded_output'] = decoded[0] if len(decoded) == 1 else decoded
+        except Exception as e:
+            print(f"[WS] output decode error: {e}")
+
+    # ── 2. Decode events ─────────────────────────────────────────────────────
+    raw_events = receipt.get("events", [])
+    if not raw_events:
+        return receipt
+
+    # Build topic0 → event ABI map
+    event_map = {}
+    for item in [i for i in abi if i.get('type') == 'event']:
+        sig = f"{item['name']}({','.join(i['type'] for i in item['inputs'])})"
+        topic0 = _keccak.new(digest_bits=256).update(sig.encode()).digest().hex()
+        event_map[topic0] = item
+
+    for e in raw_events:
+        try:
+            topics = e.get('topics', [])
+            if not topics:
+                continue
+            t0_hex = topics[0]  # already hex from WS
+            if t0_hex not in event_map:
+                continue
+            spec = event_map[t0_hex]
+            data_bytes = bytes.fromhex(e.get('data', ''))
+            types = [i['type'] for i in spec['inputs'] if not i.get('indexed')]
+            names = [i['name'] for i in spec['inputs'] if not i.get('indexed')]
+            vals = _eth_abi.decode(types, data_bytes)
+            receipt['decoded_events'].append({
+                "event": spec['name'],
+                "args": dict(zip(names, vals)),
+            })
+        except Exception as ex:
+            print(f"[WS] event decode error: {ex}")
+
+    return receipt
+
+
+def _build_ws_msg(action: str, tx_hash: str) -> str:
+    """Build a subscribe/unsubscribe command for TxWsServer.
+    Wire format (text frame payload): 'subscribe:<txhash>' / 'unsubscribe:<txhash>'
+    """
+    return f"{action}:{tx_hash}"
+
+
+def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120,
+                     abi: list = None, function_name: str = None) -> dict | None:
+    """
+    Subscribe to a single txhash and block until the push is received or timeout.
+
+    Args:
+        ws_ip         : WebSocket server IP.
+        ws_port       : WebSocket server port.
+        tx_hash       : Transaction hash to subscribe to (hex string).
+        timeout       : Maximum wait time in seconds (default 120).
+        abi           : Contract ABI for decoding output/events (optional).
+        function_name : Name of the called function for output decoding (optional).
+
+    Returns:
+        Transaction detail dict (with decoded_output / decoded_events) on success,
+        None on timeout.
+    """
+    url = f"ws://{ws_ip}:{ws_port}"
+    result: dict | None = None
+    done = threading.Event()
+
+    def on_open(ws):
+        msg = _build_ws_msg("subscribe", tx_hash)
+        ws.send(msg)
+        print(f"[WS] Subscribed to txhash: {tx_hash}")
+
+    def on_message(ws, raw):
+        nonlocal result
+        text = _decode_ws_payload(raw)
+        if text is None:
+            print(f"[WS] Undecodable message: {raw!r}")
+            return
+        try:
+            data = json.loads(text.strip().lstrip('\ufeff'))
+            if isinstance(data, str):
+                data = json.loads(data)
+        except Exception as e:
+            print(f"[WS] Non-JSON message received: {text!r}, error: {e}")
+            return
+
+        if not isinstance(data, dict):
+            return
+
+        # Ignore subscribe/unsubscribe acknowledgements.
+        if data.get("status") in ("subscribed", "unsubscribed"):
+            print(f"[WS] Server ack: {data}")
+            return
+
+        if "error" in data:
+            print(f"[WS] Server error: {data}")
+            ws.close()
+            done.set()
+            return
+
+        # Real transaction push.
+        if data.get("tx_hash", "").lower() == tx_hash.lower():
+            _decode_ws_receipt(data, abi, function_name)
+            result = data
+            print(f"[WS] Transaction confirmed: {json.dumps(data, indent=2)}")
+            ws.send(_build_ws_msg("unsubscribe", tx_hash))
+            ws.close()
+            done.set()
+
+    def on_error(ws, err):
+        if isinstance(err, (bytes, bytearray)):
+            on_message(ws, err)
+            return
+        print(f"[WS] Error: {err}")
+        done.set()
+
+    def on_close(ws, code, msg):
+        print(f"[WS] Connection closed, code={code}")
+        done.set()
+
+    ws_app = websocket.WebSocketApp(
+        url,
+        on_open=on_open,
+        on_message=on_message,
+        on_error=on_error,
+        on_close=on_close,
+    )
+
+    t = threading.Thread(target=lambda: ws_app.run_forever(skip_utf8_validation=True), daemon=True)
+    t.start()
+
+    if not done.wait(timeout=timeout):
+        print(f"[WS] Timeout ({timeout}s): no confirmation received for txhash={tx_hash}")
+        ws_app.close()
+
+    return result
+
+
+def subscribe_multiple_txhashes(
+    ws_ip: str, ws_port: int, tx_hashes: list[str], timeout: int = 120,
+    abi: list = None
+) -> dict[str, dict]:
+    """
+    Subscribe to multiple txhashes simultaneously and block until all are confirmed
+    or timeout is reached.
+
+    Returns:
+        {txhash: transaction detail dict} for every hash that was confirmed.
+        Unconfirmed hashes are absent from the result.
+    """
+    url = f"ws://{ws_ip}:{ws_port}"
+    pending = set(h.lower() for h in tx_hashes)
+    results: dict[str, dict] = {}
+    done = threading.Event()
+
+    def on_open(ws):
+        for h in tx_hashes:
+            ws.send(_build_ws_msg("subscribe", h))
+        print(f"[WS] Subscribed to {len(tx_hashes)} txhash(es)")
+
+    def on_message(ws, raw):
+        text = _decode_ws_payload(raw)
+        if text is None:
+            return
+        try:
+            data = json.loads(text.strip().lstrip('\ufeff'))
+            if isinstance(data, str):
+                data = json.loads(data)
+        except Exception:
+            return
+
+        if not isinstance(data, dict):
+            return
+
+        if data.get("status") in ("subscribed", "unsubscribed"):
+            return
+
+        if "error" in data:
+            # Server rejected the command — close and surface the error.
+            print(f"[WS] Server error: {data}")
+            ws.close()
+            done.set()
+            return
+
+        h = data.get("tx_hash", "").lower()
+        if h in pending:
+            _decode_ws_receipt(data, abi)
+            results[h] = data
+            pending.discard(h)
+            ws.send(_build_ws_msg("unsubscribe", h))
+            print(f"[WS] [{len(results)}/{len(tx_hashes)}] Confirmed: {h}")
+            if not pending:
+                ws.close()
+                done.set()
+
+    def on_error(ws, err):
+        if isinstance(err, (bytes, bytearray)):
+            on_message(ws, err)
+            return
+        print(f"[WS] Error: {err}")
+        done.set()
+
+    def on_close(ws, code, msg):
+        done.set()
+
+    ws_app = websocket.WebSocketApp(
+        url,
+        on_open=on_open,
+        on_message=on_message,
+        on_error=on_error,
+        on_close=on_close,
+    )
+
+    t = threading.Thread(target=lambda: ws_app.run_forever(skip_utf8_validation=True), daemon=True)
+    t.start()
+
+    if not done.wait(timeout=timeout):
+        print(f"[WS] Timeout: {len(pending)} txhash(es) still unconfirmed: {pending}")
+        ws_app.close()
+
+    return results
+
+
+def _ws_send_and_wait(w3, ws_ip, ws_port, desc, send_fn) -> dict | None:
+    """
+    Helper: call send_fn() to submit a tx (returns tx_hash str or receipt dict),
+    then subscribe via WebSocket and wait for on-chain confirmation.
+    send_fn must return either a hex tx_hash string or a dict with 'tx_hash' key.
+    """
+    print(f"\n[TX] {desc}")
+    raw = send_fn()
+    if raw is None:
+        print(f"  ❌ send_fn returned None, skipping WS wait.")
+        return None
+    tx_hash = raw if isinstance(raw, str) else raw.get("tx_hash", "")
+    if not tx_hash:
+        print(f"  ❌ No tx_hash returned, skipping WS wait.")
+        return None
+    print(f"  tx_hash: {tx_hash}")
+    receipt = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=120)
+    if receipt:
+        print(f"  ✅ Confirmed  block={receipt.get('block_height')}  "
+              f"status={receipt.get('status')}  gas={receipt.get('gas_used')}")
+    else:
+        print(f"  ⏰ Timeout waiting for {tx_hash}")
+    return receipt
+
+
+def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
+    """
+    Full demo: replicate all contract-related transactions from ecdsa_sign_test,
+    subscribing to each tx_hash via WebSocket for on-chain confirmation.
+
+    Strategy: monkey-patch client.wait_for_receipt to intercept tx_hash,
+    start a background WS subscription, then let the original polling finish.
+    """
+    print("\n" + "=" * 60)
+    print("  WebSocket txhash Subscription Demo")
+    print("=" * 60)
+
+    IP, HTTP_PORT = ws_ip, 23001
+    KEY = "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
+    DEST = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
+
+    w3 = SethWeb3Mock(IP, HTTP_PORT)
+    MY = w3.client.get_address(KEY)
+    print(f"Sender  : {MY}")
+    print(f"Receiver: {DEST}")
+
+    # ── WS-aware wait_for_receipt patch ──────────────────────────────────────
+    def _patched_wait(tx_hash, abi=None, function_name=None, **kw):
+        print(f"  tx_hash : {tx_hash}")
+        receipt = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=120,
+                                   abi=abi, function_name=function_name)
+        if receipt:
+            print(f"  ✅ block={receipt.get('block_height')}  "
+                  f"status={receipt.get('status')}  gas={receipt.get('gas_used')}"
+                  + (f"  output={receipt.get('decoded_output')}" if receipt.get('decoded_output') is not None else "")
+                  + (f"  events={receipt.get('decoded_events')}" if receipt.get('decoded_events') else ""))
+        else:
+            print(f"  ⏰ Timeout waiting for {tx_hash}")
+            receipt = {}
+        return receipt
+
+    w3.client.wait_for_receipt = _patched_wait
+
+    def section(title):
+        print("\n" + "─" * 50)
+        print(title)
+        print("─" * 50)
+
+    # ── 1. Standard transfer ──────────────────────────────────────────────────
+    section("1. Standard Transfer")
+    print("\n[TX] Transfer 100000 → DEST")
+    w3.seth.send_transaction({'to': DEST, 'value': 100000}, KEY)
+
+    # ── 2. Library + Calculator ───────────────────────────────────────────────
+    section("2. Library with Contract")
+    src_lib = ("pragma solidity ^0.8.0; "
+               "library MathLib { function add(uint a, uint b) public pure returns(uint){return a+b;} } "
+               "contract Calculator { function use(uint a, uint b) public pure returns(uint){return MathLib.add(a,b);} }")
+    l_bin, l_abi = compile_and_link(src_lib, "MathLib")
+    lib = w3.seth.contract(abi=l_abi, bytecode=l_bin)
+    print("\n[TX] Deploy MathLib")
+    lib.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws01', 'step': StepType.kCreateLibrary}, KEY)
+
+    c_bin_linked, c_abi = compile_and_link(src_lib, "Calculator", libs={"MathLib": lib.address})
+    calc = w3.seth.contract(abi=c_abi, bytecode=c_bin_linked)
+    print("\n[TX] Deploy Calculator")
+    calc.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws02'}, KEY)
+
+    print("\n[TX] Calculator.use(10, 20)")
+    calc.functions.use(10, 20).transact(KEY)
+
+    # ── 3. Contract-calls-contract (chain call) ───────────────────────────────
+    section("3. Contract Call Contract (Chain Call)")
+    p_bin, p_abi = compile_and_link(PROBE_POOL_SOL, "ProbePool")
+    pool = w3.seth.contract(abi=p_abi, bytecode=p_bin)
+    print("\n[TX] Deploy ProbePool")
+    pool.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws03', 'args': [10000, 10000], 'amount': 5000000}, KEY)
+
+    t_bin, t_abi = compile_and_link(PROBE_TREASURY_SOL, "ProbeTreasury")
+    treasury = w3.seth.contract(abi=t_abi, bytecode=t_bin)
+    print("\n[TX] Deploy ProbeTreasury")
+    treasury.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws04',
+                     'args': [to_checksum_address(pool.address)], 'amount': 5000000}, KEY)
+
+    b_bin, b_abi = compile_and_link(PROBE_BRIDGE_SOL, "ProbeBridge")
+    bridge = w3.seth.contract(abi=b_abi, bytecode=b_bin, sender_address=MY)
+    print("\n[TX] Deploy ProbeBridge")
+    bridge.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws05',
+                   'args': [to_checksum_address(treasury.address)]}, KEY)
+
+    print("\n[TX] treasury.setBridge(bridge)")
+    treasury.functions.setBridge(to_checksum_address(bridge.address)).transact(KEY)
+
+    print("\n[TX] bridge.request(1)")
+    bridge.functions.request(1).transact(KEY, value=5)
+
+    # ── 4. Prefund full flow ──────────────────────────────────────────────────
+    section("4. Prefund Full Flow")
+    src_vault = "pragma solidity ^0.8.0; contract Vault { uint256 public val; function set(uint256 v) public { val = v; } }"
+    v_bin, v_abi = compile_and_link(src_vault, "Vault")
+    vault = w3.seth.contract(abi=v_abi, bytecode=v_bin)
+    print("\n[TX] Deploy Vault")
+    vault.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws06'}, KEY)
+
+    print("\n[TX] Vault.prefund(5000000)")
+    vault.prefund(5000000, KEY)
+
+    print("\n[TX] Vault.set(888)")
+    vault.functions.set(888).transact(KEY, prefund=0)
+
+    print("\n[TX] Vault.refund")
+    vault.refund(KEY)
+
+    # ── 5. Self-destruct ──────────────────────────────────────────────────────
+    section("5. Contract Self-Destruct")
+    k_bin, k_abi = compile_and_link(PROBE_KILL_SOL, "ProbeKill")
+    kill_contract = w3.seth.contract(abi=k_abi, bytecode=k_bin, sender_address=MY)
+    print("\n[TX] Deploy ProbeKill")
+    kill_contract.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws07kill', 'amount': 2000}, KEY)
+
+    print("\n[TX] ProbeKill.setMessage('hello')")
+    kill_contract.functions.setMessage("hello").transact(KEY)
+
+    recipient = secrets.token_hex(20)
+    print(f"\n[TX] ProbeKill.kill({recipient})")
+    kill_contract.functions.kill(recipient).transact(KEY)
+
+    # ── 6. CREATE2 assembly deployment ───────────────────────────────────────
+    section("6. CREATE2 Assembly Deployment")
+    f_bin, f_abi = compile_and_link(PROBE_CREATE2_FACTORY_SOL, "Create2Factory")
+    factory = w3.seth.contract(abi=f_abi, bytecode=f_bin)
+    print("\n[TX] Deploy Create2Factory")
+    factory.deploy({'from': MY, 'salt': secrets.token_hex(31) + 'f2', 'amount': 100000000}, KEY)
+
+    print("\n[TX] factory.deploy(88888888)")
+    factory.functions.deploy(88888888).transact(KEY)
+
+    print("\n" + "=" * 60)
+    print("  Demo complete.")
+    print("=" * 60)
+
 if __name__ == "__main__":
     ecdsa_sign_test()
     oqs_sign_test()
     gmssl_sign_test()
+    demo_ws_subscribe("127.0.0.1", 33001)  # uncomment to run the WebSocket subscription demo
  

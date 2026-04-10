@@ -179,6 +179,7 @@ private:
     std::mutex wait_mutex_;
     std::condition_variable wait_con_;
     uint64_t prev_sync_tm_ms_ = 0;
+    uint64_t prev_sent_sync_tm_ms_ = 0;
 
     DISALLOW_COPY_AND_ASSIGN(KeyValueSync);
 };

@@ -51,6 +51,7 @@ message BlockTx {
     optional bytes key = 19;
     optional bytes value = 20;
     optional bytes tx_hash = 21;
+    optional bytes output = 22;
 }
 
 message KeyValueInfo {

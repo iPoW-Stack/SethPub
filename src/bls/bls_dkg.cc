@@ -1034,9 +1034,10 @@ void BlsDkg::BroadcastFinish(const common::Bitmap& bitmap) {
         common::Encode::HexEncode(sign_hash).c_str(), 
         common_pk->x_c0().c_str(), msg_ptr->header.hash64());
     network::Route::Instance()->Send(msg_ptr);
-    if (common::GlobalInfo::Instance()->network_id() == network::kRootCongressNetworkId) {
-        bls_mgr_->HandleMessage(msg_ptr);
-    }
+    transport::TcpTransport::Instance()->AddLocalMessage(msg_ptr);
+    // if (common::GlobalInfo::Instance()->network_id() == network::kRootCongressNetworkId) {
+    //     bls_mgr_->HandleMessage(msg_ptr);
+    // }
 #endif
     SETH_DEBUG("test 5 4");
     FlushToCk(common_public_key_);

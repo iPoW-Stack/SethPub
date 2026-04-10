@@ -111,7 +111,20 @@ bool TimeBlockManager::CheckLeaderTimeblockTxValid(
         return false;
     }
 
+    uint64_t now_tm_sec = common::TimeUtils::TimestampSeconds();
     uint64_t new_time_block_tm = latest_time_block_tm_ + common::kTimeBlockCreatePeriodSeconds;
+    while (new_time_block_tm < now_tm_sec && now_tm_sec - new_time_block_tm >= 30lu) {
+        new_time_block_tm += common::kTimeBlockCreatePeriodSeconds;
+    }
+
+    auto tm_hash = common::Hash::keccak256(std::to_string(new_time_block_tm));
+    if (tx_item.key() != tm_hash) {
+        SETH_WARN("TimeBlock key mismatch, expected: %s, actual: %s",
+            common::Encode::HexEncode(tm_hash).c_str(),
+            common::Encode::HexEncode(tx_item.key()).c_str());
+        return false;
+    }
+
     if (timer_block.timestamp() != new_time_block_tm && latest_time_block_height_ != 0) {
         SETH_WARN("TimeBlock timestamp mismatch, expected: %lu, actual: %lu",
             new_time_block_tm, timer_block.timestamp());
@@ -177,7 +190,7 @@ pools::TxItemPtr TimeBlockManager::tmblock_tx_ptr(
         timer_block.set_nonce(account_info->nonce() + 1);
         tx_info->set_value(SerializeDeterministic(timer_block));
         tx_info->set_to(account_info->addr());
-        tx_info->set_key(common::Hash::keccak256(tx_info->value()));
+        tx_info->set_key(common::Hash::keccak256(std::to_string(new_time_block_tm)));
         tx_info->set_nonce(account_info->nonce() + 1);
         uint64_t now_nonce = 0ll;
         if (tx_valid_func(*account_info, *tx_info, &now_nonce) != 0) {
