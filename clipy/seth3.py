@@ -829,6 +829,73 @@ def _decode_ws_payload(raw) -> str | None:
         return None
 
 
+def _decode_ws_receipt(receipt: dict, abi: list, function_name: str = None) -> dict:
+    """
+    Decode output and events from a WS-pushed receipt.
+
+    WS receipt fields differ from HTTP receipt:
+      - output   : hex string  (HexEncode)
+      - events[] : {"data": hex, "topics": [hex, ...]}
+
+    HTTP receipt uses base64 for the same fields, so we cannot reuse
+    decode_receipt() directly.
+    """
+    from Crypto.Hash import keccak as _keccak
+    import eth_abi as _eth_abi
+
+    receipt['decoded_output'] = None
+    receipt['decoded_events'] = []
+
+    if not abi:
+        return receipt
+
+    # ── 1. Decode output ─────────────────────────────────────────────────────
+    raw_out_hex = receipt.get("output", "")
+    if receipt.get("status") == 0 and raw_out_hex and function_name:
+        try:
+            raw_bytes = bytes.fromhex(raw_out_hex)
+            item = next((i for i in abi if i.get('name') == function_name), None)
+            if item and item.get('outputs'):
+                decoded = _eth_abi.decode([o['type'] for o in item['outputs']], raw_bytes)
+                receipt['decoded_output'] = decoded[0] if len(decoded) == 1 else decoded
+        except Exception as e:
+            print(f"[WS] output decode error: {e}")
+
+    # ── 2. Decode events ─────────────────────────────────────────────────────
+    raw_events = receipt.get("events", [])
+    if not raw_events:
+        return receipt
+
+    # Build topic0 → event ABI map
+    event_map = {}
+    for item in [i for i in abi if i.get('type') == 'event']:
+        sig = f"{item['name']}({','.join(i['type'] for i in item['inputs'])})"
+        topic0 = _keccak.new(digest_bits=256).update(sig.encode()).digest().hex()
+        event_map[topic0] = item
+
+    for e in raw_events:
+        try:
+            topics = e.get('topics', [])
+            if not topics:
+                continue
+            t0_hex = topics[0]  # already hex from WS
+            if t0_hex not in event_map:
+                continue
+            spec = event_map[t0_hex]
+            data_bytes = bytes.fromhex(e.get('data', ''))
+            types = [i['type'] for i in spec['inputs'] if not i.get('indexed')]
+            names = [i['name'] for i in spec['inputs'] if not i.get('indexed')]
+            vals = _eth_abi.decode(types, data_bytes)
+            receipt['decoded_events'].append({
+                "event": spec['name'],
+                "args": dict(zip(names, vals)),
+            })
+        except Exception as ex:
+            print(f"[WS] event decode error: {ex}")
+
+    return receipt
+
+
 def _build_ws_msg(action: str, tx_hash: str) -> str:
     """Build a subscribe/unsubscribe command for TxWsServer.
     Wire format (text frame payload): 'subscribe:<txhash>' / 'unsubscribe:<txhash>'
@@ -836,18 +903,22 @@ def _build_ws_msg(action: str, tx_hash: str) -> str:
     return f"{action}:{tx_hash}"
 
 
-def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120) -> dict | None:
+def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120,
+                     abi: list = None, function_name: str = None) -> dict | None:
     """
     Subscribe to a single txhash and block until the push is received or timeout.
 
     Args:
-        ws_ip    : WebSocket server IP (matches config key tx_ws_ip).
-        ws_port  : WebSocket server port (matches config key tx_ws_port).
-        tx_hash  : Transaction hash to subscribe to (hex string).
-        timeout  : Maximum wait time in seconds (default 120).
+        ws_ip         : WebSocket server IP.
+        ws_port       : WebSocket server port.
+        tx_hash       : Transaction hash to subscribe to (hex string).
+        timeout       : Maximum wait time in seconds (default 120).
+        abi           : Contract ABI for decoding output/events (optional).
+        function_name : Name of the called function for output decoding (optional).
 
     Returns:
-        Transaction detail dict on success, None on timeout.
+        Transaction detail dict (with decoded_output / decoded_events) on success,
+        None on timeout.
     """
     url = f"ws://{ws_ip}:{ws_port}"
     result: dict | None = None
@@ -888,6 +959,7 @@ def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120)
 
         # Real transaction push.
         if data.get("tx_hash", "").lower() == tx_hash.lower():
+            _decode_ws_receipt(data, abi, function_name)
             result = data
             print(f"[WS] Transaction confirmed: {json.dumps(data, indent=2)}")
             ws.send(_build_ws_msg("unsubscribe", tx_hash))
@@ -924,7 +996,8 @@ def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120)
 
 
 def subscribe_multiple_txhashes(
-    ws_ip: str, ws_port: int, tx_hashes: list[str], timeout: int = 120
+    ws_ip: str, ws_port: int, tx_hashes: list[str], timeout: int = 120,
+    abi: list = None
 ) -> dict[str, dict]:
     """
     Subscribe to multiple txhashes simultaneously and block until all are confirmed
@@ -970,6 +1043,7 @@ def subscribe_multiple_txhashes(
 
         h = data.get("tx_hash", "").lower()
         if h in pending:
+            _decode_ws_receipt(data, abi)
             results[h] = data
             pending.discard(h)
             ws.send(_build_ws_msg("unsubscribe", h))
@@ -1053,13 +1127,15 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     print(f"Receiver: {DEST}")
 
     # ── WS-aware wait_for_receipt patch ──────────────────────────────────────
-    def _patched_wait(tx_hash, **kw):
+    def _patched_wait(tx_hash, abi=None, function_name=None, **kw):
         print(f"  tx_hash : {tx_hash}")
-        receipt = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=120)
+        receipt = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=120,
+                                   abi=abi, function_name=function_name)
         if receipt:
             print(f"  ✅ block={receipt.get('block_height')}  "
                   f"status={receipt.get('status')}  gas={receipt.get('gas_used')}"
-                  + (f"  output={receipt['output']}" if receipt.get('output') else ""))
+                  + (f"  output={receipt.get('decoded_output')}" if receipt.get('decoded_output') is not None else "")
+                  + (f"  events={receipt.get('decoded_events')}" if receipt.get('decoded_events') else ""))
         else:
             print(f"  ⏰ Timeout waiting for {tx_hash}")
             receipt = {}
