@@ -864,18 +864,22 @@ def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120)
             print(f"[WS] Undecodable message: {raw!r}")
             return
         try:
-            data = json.loads(text)
-        except Exception:
-            print(f"[WS] Non-JSON message received: {text!r}")
+            data = json.loads(text.strip().lstrip('\ufeff'))
+            if isinstance(data, str):
+                data = json.loads(data)
+        except Exception as e:
+            print(f"[WS] Non-JSON message received: {text!r}, error: {e}")
+            return
+
+        if not isinstance(data, dict):
             return
 
         # Ignore subscribe/unsubscribe acknowledgements.
-        if "status" in data and data.get("status") in ("subscribed", "unsubscribed"):
+        if data.get("status") in ("subscribed", "unsubscribed"):
             print(f"[WS] Server ack: {data}")
             return
 
         if "error" in data:
-            # Server rejected the command — no point waiting further.
             print(f"[WS] Server error: {data}")
             ws.close()
             done.set()
@@ -944,11 +948,16 @@ def subscribe_multiple_txhashes(
         if text is None:
             return
         try:
-            data = json.loads(text)
+            data = json.loads(text.strip().lstrip('\ufeff'))
+            if isinstance(data, str):
+                data = json.loads(data)
         except Exception:
             return
 
-        if "status" in data:
+        if not isinstance(data, dict):
+            return
+
+        if data.get("status") in ("subscribed", "unsubscribed"):
             return
 
         if "error" in data:
