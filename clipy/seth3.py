@@ -1035,6 +1035,9 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     """
     Full demo: replicate all contract-related transactions from ecdsa_sign_test,
     subscribing to each tx_hash via WebSocket for on-chain confirmation.
+
+    Strategy: monkey-patch client.wait_for_receipt to intercept tx_hash,
+    start a background WS subscription, then let the original polling finish.
     """
     print("\n" + "=" * 60)
     print("  WebSocket txhash Subscription Demo")
@@ -1049,116 +1052,123 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     print(f"Sender  : {MY}")
     print(f"Receiver: {DEST}")
 
-    def ws(desc, fn):
-        return _ws_send_and_wait(w3, ws_ip, ws_port, desc, fn)
+    # ── WS-aware wait_for_receipt patch ──────────────────────────────────────
+    _orig_wait = w3.client.wait_for_receipt
+
+    def _patched_wait(tx_hash, **kw):
+        print(f"  tx_hash : {tx_hash}")
+        ws_done = threading.Event()
+        ws_result = [None]
+
+        def _ws():
+            ws_result[0] = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=120)
+            ws_done.set()
+
+        threading.Thread(target=_ws, daemon=True).start()
+        receipt = _orig_wait(tx_hash, **kw)
+        ws_done.wait(timeout=10)
+        r = ws_result[0] or receipt
+        print(f"  ✅ block={r.get('block_height')}  "
+              f"status={r.get('status')}  gas={r.get('gas_used')}")
+        return receipt
+
+    w3.client.wait_for_receipt = _patched_wait
+
+    def section(title):
+        print("\n" + "─" * 50)
+        print(title)
+        print("─" * 50)
 
     # ── 1. Standard transfer ──────────────────────────────────────────────────
-    print("\n" + "─" * 50)
-    print("1. Standard Transfer")
-    print("─" * 50)
-    ws("Transfer 100000 → DEST",
-       lambda: w3.seth.send_transaction({'to': DEST, 'value': 100000}, KEY).get('tx_hash'))
+    section("1. Standard Transfer")
+    print("\n[TX] Transfer 100000 → DEST")
+    w3.seth.send_transaction({'to': DEST, 'value': 100000}, KEY)
 
     # ── 2. Library + Calculator ───────────────────────────────────────────────
-    print("\n" + "─" * 50)
-    print("2. Library with Contract")
-    print("─" * 50)
+    section("2. Library with Contract")
     src_lib = ("pragma solidity ^0.8.0; "
                "library MathLib { function add(uint a, uint b) public pure returns(uint){return a+b;} } "
                "contract Calculator { function use(uint a, uint b) public pure returns(uint){return MathLib.add(a,b);} }")
     l_bin, l_abi = compile_and_link(src_lib, "MathLib")
-    c_bin, c_abi = compile_and_link(src_lib, "Calculator")
-
     lib = w3.seth.contract(abi=l_abi, bytecode=l_bin)
-    ws("Deploy MathLib",
-       lambda: lib.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws01', 'step': StepType.kCreateLibrary}, KEY).get('tx_hash') if not lib.address else None)
-    if not lib.address:
-        lib.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws01', 'step': StepType.kCreateLibrary}, KEY)
+    print("\n[TX] Deploy MathLib")
+    lib.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws01', 'step': StepType.kCreateLibrary}, KEY)
 
-    c_bin_linked, _ = compile_and_link(src_lib, "Calculator", libs={"MathLib": lib.address})
+    c_bin_linked, c_abi = compile_and_link(src_lib, "Calculator", libs={"MathLib": lib.address})
     calc = w3.seth.contract(abi=c_abi, bytecode=c_bin_linked)
-    ws("Deploy Calculator",
-       lambda: calc.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws02'}, KEY).get('tx_hash') if not calc.address else None)
-    if not calc.address:
-        calc.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws02'}, KEY)
+    print("\n[TX] Deploy Calculator")
+    calc.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws02'}, KEY)
 
-    ws("Calculator.use(10, 20)",
-       lambda: calc.functions.use(10, 20).transact(KEY).get('tx_hash'))
+    print("\n[TX] Calculator.use(10, 20)")
+    calc.functions.use(10, 20).transact(KEY)
 
     # ── 3. Contract-calls-contract (chain call) ───────────────────────────────
-    print("\n" + "─" * 50)
-    print("3. Contract Call Contract (Chain Call)")
-    print("─" * 50)
+    section("3. Contract Call Contract (Chain Call)")
     p_bin, p_abi = compile_and_link(PROBE_POOL_SOL, "ProbePool")
     pool = w3.seth.contract(abi=p_abi, bytecode=p_bin)
-    ws("Deploy ProbePool",
-       lambda: pool.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws03', 'args': [10000, 10000], 'amount': 5000000}, KEY).get('tx_hash'))
+    print("\n[TX] Deploy ProbePool")
+    pool.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws03', 'args': [10000, 10000], 'amount': 5000000}, KEY)
 
     t_bin, t_abi = compile_and_link(PROBE_TREASURY_SOL, "ProbeTreasury")
     treasury = w3.seth.contract(abi=t_abi, bytecode=t_bin)
-    ws("Deploy ProbeTreasury",
-       lambda: treasury.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws04',
-                                'args': [to_checksum_address(pool.address)], 'amount': 5000000}, KEY).get('tx_hash'))
+    print("\n[TX] Deploy ProbeTreasury")
+    treasury.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws04',
+                     'args': [to_checksum_address(pool.address)], 'amount': 5000000}, KEY)
 
     b_bin, b_abi = compile_and_link(PROBE_BRIDGE_SOL, "ProbeBridge")
     bridge = w3.seth.contract(abi=b_abi, bytecode=b_bin, sender_address=MY)
-    ws("Deploy ProbeBridge",
-       lambda: bridge.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws05',
-                              'args': [to_checksum_address(treasury.address)]}, KEY).get('tx_hash'))
+    print("\n[TX] Deploy ProbeBridge")
+    bridge.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws05',
+                   'args': [to_checksum_address(treasury.address)]}, KEY)
 
-    ws("treasury.setBridge(bridge)",
-       lambda: treasury.functions.setBridge(to_checksum_address(bridge.address)).transact(KEY).get('tx_hash'))
+    print("\n[TX] treasury.setBridge(bridge)")
+    treasury.functions.setBridge(to_checksum_address(bridge.address)).transact(KEY)
 
-    ws("bridge.request(1)",
-       lambda: bridge.functions.request(1).transact(KEY, value=5).get('tx_hash'))
+    print("\n[TX] bridge.request(1)")
+    bridge.functions.request(1).transact(KEY, value=5)
 
     # ── 4. Prefund full flow ──────────────────────────────────────────────────
-    print("\n" + "─" * 50)
-    print("4. Prefund Full Flow")
-    print("─" * 50)
+    section("4. Prefund Full Flow")
     src_vault = "pragma solidity ^0.8.0; contract Vault { uint256 public val; function set(uint256 v) public { val = v; } }"
     v_bin, v_abi = compile_and_link(src_vault, "Vault")
     vault = w3.seth.contract(abi=v_abi, bytecode=v_bin)
-    ws("Deploy Vault",
-       lambda: vault.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws06'}, KEY).get('tx_hash'))
+    print("\n[TX] Deploy Vault")
+    vault.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws06'}, KEY)
 
-    ws("Vault prefund(5000000)",
-       lambda: vault.prefund(5000000, KEY).get('tx_hash'))
+    print("\n[TX] Vault.prefund(5000000)")
+    vault.prefund(5000000, KEY)
 
-    ws("Vault.set(888)",
-       lambda: vault.functions.set(888).transact(KEY, prefund=0).get('tx_hash'))
+    print("\n[TX] Vault.set(888)")
+    vault.functions.set(888).transact(KEY, prefund=0)
 
-    ws("Vault refund",
-       lambda: vault.refund(KEY).get('tx_hash'))
+    print("\n[TX] Vault.refund")
+    vault.refund(KEY)
 
     # ── 5. Self-destruct ──────────────────────────────────────────────────────
-    print("\n" + "─" * 50)
-    print("5. Contract Self-Destruct")
-    print("─" * 50)
+    section("5. Contract Self-Destruct")
     k_bin, k_abi = compile_and_link(PROBE_KILL_SOL, "ProbeKill")
     kill_contract = w3.seth.contract(abi=k_abi, bytecode=k_bin, sender_address=MY)
-    ws("Deploy ProbeKill",
-       lambda: kill_contract.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws07kill', 'amount': 2000}, KEY).get('tx_hash'))
+    print("\n[TX] Deploy ProbeKill")
+    kill_contract.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws07kill', 'amount': 2000}, KEY)
 
-    ws("ProbeKill.setMessage('hello')",
-       lambda: kill_contract.functions.setMessage("hello").transact(KEY).get('tx_hash'))
+    print("\n[TX] ProbeKill.setMessage('hello')")
+    kill_contract.functions.setMessage("hello").transact(KEY)
 
     recipient = secrets.token_hex(20)
-    ws(f"ProbeKill.kill({recipient})",
-       lambda: kill_contract.functions.kill(recipient).transact(KEY).get('tx_hash'))
+    print(f"\n[TX] ProbeKill.kill({recipient})")
+    kill_contract.functions.kill(recipient).transact(KEY)
 
     # ── 6. CREATE2 assembly deployment ───────────────────────────────────────
-    print("\n" + "─" * 50)
-    print("6. CREATE2 Assembly Deployment")
-    print("─" * 50)
+    section("6. CREATE2 Assembly Deployment")
     f_bin, f_abi = compile_and_link(PROBE_CREATE2_FACTORY_SOL, "Create2Factory")
     factory = w3.seth.contract(abi=f_abi, bytecode=f_bin)
-    ws("Deploy Create2Factory",
-       lambda: factory.deploy({'from': MY, 'salt': secrets.token_hex(31) + 'f2', 'amount': 100000000}, KEY).get('tx_hash'))
+    print("\n[TX] Deploy Create2Factory")
+    factory.deploy({'from': MY, 'salt': secrets.token_hex(31) + 'f2', 'amount': 100000000}, KEY)
 
-    ws("factory.deploy(88888888)",
-       lambda: factory.functions.deploy(88888888).transact(KEY).get('tx_hash'))
+    print("\n[TX] factory.deploy(88888888)")
+    factory.functions.deploy(88888888).transact(KEY)
 
+    w3.client.wait_for_receipt = _orig_wait  # restore
     print("\n" + "=" * 60)
     print("  Demo complete.")
     print("=" * 60)
