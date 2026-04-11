@@ -80,6 +80,17 @@ deploy_nodes() {
             ln /root/pkg/log4cpp.properties /root/seths/s$shard_id'_'$i/conf/log4cpp.properties
             mkdir -p /root/seths/s$shard_id'_'$i/log
             cp -rf /root/pkg/shard_db_$shard_id /root/seths/s$shard_id'_'$i/db
+            
+            # Generate self-signed SSL certificate for HTTPS server
+            echo "Generating SSL certificate for node s$shard_id'_'$i"
+            openssl req -x509 -newkey rsa:2048 -nodes \
+                -keyout /root/seths/s$shard_id'_'$i/server-key.pem \
+                -out /root/seths/s$shard_id'_'$i/server-cert.pem \
+                -days 365 \
+                -subj "/C=CN/ST=State/L=City/O=Seth/OU=Node/CN=$local_ip" \
+                2>/dev/null
+            chmod 600 /root/seths/s$shard_id'_'$i/server-key.pem
+            chmod 644 /root/seths/s$shard_id'_'$i/server-cert.pem
         done
     done
 }
