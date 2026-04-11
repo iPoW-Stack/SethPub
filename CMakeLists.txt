@@ -108,6 +108,7 @@ include_directories(SYSTEM
     ${DEP_DIR}/include/uv
     ${DEP_DIR}/include/sslib
     ${DEP_DIR}/include/uWebSockets
+    ${DEP_DIR}/include/uSockets
     ${DEP_DIR}/libbls/deps/deps_inst/x86_or_x64/include/
     ${CURL_INCLUDE_DIRS}
 )
