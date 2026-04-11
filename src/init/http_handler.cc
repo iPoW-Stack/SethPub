@@ -1963,12 +1963,12 @@ void HttpHandler::Run() {
                    ->end(uws_res.content());
             }
         });
-    }).listen(http_ip_ == "0.0.0.0" ? "" : http_ip_, http_port_, [this](auto *listen_socket) {
+    }).listen("0.0.0.0", http_port_, [this](auto *listen_socket) {
         if (listen_socket) {
-            SETH_INFO("HTTPS server listening on %s:%d", http_ip_.c_str(), http_port_);
+            SETH_INFO("HTTPS server listening on 0.0.0.0:%d", http_port_);
             running_ = true;
         } else {
-            SETH_ERROR("Failed to listen on %s:%d", http_ip_.c_str(), http_port_);
+            SETH_ERROR("Failed to listen on 0.0.0.0:%d", http_port_);
         }
     }).run();
     
