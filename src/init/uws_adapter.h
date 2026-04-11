@@ -92,6 +92,12 @@ public:
         content_type_ = content_type;
     }
 
+    // Explicit overload for const char* to avoid ambiguity
+    void set_content(const char* content, const char* content_type) {
+        content_ = std::string(content);
+        content_type_ = std::string(content_type);
+    }
+
     void set_content(const nlohmann::json& json, const std::string& content_type) {
         content_ = json.dump();
         content_type_ = content_type;

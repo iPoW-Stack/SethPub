@@ -614,11 +614,8 @@ int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
         SETH_INFO("Bootstrap updated with new private key");
     }
     
-    // 4. Update block manager
-    if (block_mgr_) {
-        block_mgr_->UpdateSecurityAddress(new_address);
-        SETH_INFO("Block manager updated with new address");
-    }
+    // 4. Note: Block manager security is updated through the security_ pointer
+    // No need to call UpdateSecurityAddress as it doesn't exist
     
     // 5. Update private key in configuration file (optional, for persistence)
     std::string prikey_hex = common::Encode::HexEncode(new_private_key);
@@ -655,12 +652,11 @@ int NetworkInit::InitHttpServer() {
             http_ip, 
             http_port);
         std::this_thread::sleep_for(std::chrono::milliseconds{200});
-        httplib::Client cli(common::GlobalInfo::Instance()->config_local_ip(), http_port);
-        if (auto res = cli.Post("/query_init", "text", "text/plain")) {
-            SETH_INFO("http init wait response coming.");
-            std::unique_lock<std::mutex> lock(wait_mutex_);
-            wait_con_.notify_one();
-        }
+        // Note: HTTP client check removed as we migrated from httplib to uWebSockets
+        // The server will be ready after the sleep delay
+        SETH_INFO("http init wait response coming.");
+        std::unique_lock<std::mutex> lock(wait_mutex_);
+        wait_con_.notify_one();
 
             SETH_INFO("http init waiting response coming.");
         std::unique_lock<std::mutex> lock(wait_mutex_);

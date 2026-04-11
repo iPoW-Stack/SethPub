@@ -56,6 +56,9 @@ public:
         private_key_update_callback_ = callback;
     }
     
+    // Public access to private key update callback
+    std::function<int(const std::string&)> private_key_update_callback_;
+    
 private:
     void Run();
 
@@ -72,7 +75,6 @@ private:
     common::LRUMap<std::string, transport::MessagePtr> tx_msg_map_{10240};
     std::mutex tx_msg_map_mutex_;
     std::atomic<bool> running_{false};
-    std::function<int(const std::string&)> private_key_update_callback_;
 
     DISALLOW_COPY_AND_ASSIGN(HttpHandler);
 };
