@@ -587,13 +587,18 @@ class SethWeb3Mock:
 
 class SethClient:
     def __init__(self, host, port):
-        self.base_url = f"http://{host}:{port}"
+        self.base_url = f"https://{host}:{port}"
         self.tx_url = f"{self.base_url}/transaction"
         self.query_url = f"{self.base_url}/query_account"
         self.receipt_url = f"{self.base_url}/transaction_receipt"
         self.query_contract_url = f"{self.base_url}/abi_query_contract"
-        self.oqs_url = f"http://{host}:{port}/oqs_transaction"
+        self.oqs_url = f"https://{host}:{port}/oqs_transaction"
         self.gmssl_url = f"{self.base_url}/gm_transaction"
+        # Disable SSL verification for self-signed certificates
+        self.verify_ssl = False
+        # Suppress SSL warnings
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     def get_address(self, pk_hex):
         sk = SigningKey.from_string(bytes.fromhex(pk_hex.replace('0x', '')), curve=SECP256k1)
@@ -604,7 +609,7 @@ class SethClient:
         my_addr = self.get_address(pk_hex)
         nonce_addr = to + my_addr if (step == StepType.kContractExcute or step == StepType.kContractRefund) else my_addr
         try:
-            r = requests.post(self.query_url, data={"address": nonce_addr}).json()
+            r = requests.post(self.query_url, data={"address": nonce_addr}, verify=self.verify_ssl).json()
             nonce = int(r.get("nonce", 0)) + 1
         except: nonce = 1
 
@@ -631,14 +636,14 @@ class SethClient:
         if input_hex: data["input"] = input_hex
         if prefund: data["prefund"] = str(prefund)
         
-        requests.post(self.tx_url, data=data)
+        requests.post(self.tx_url, data=data, verify=self.verify_ssl)
         return txh.hex()
 
     def wait_for_receipt(self, tx_hash: str, abi: list = None, function_name: str = None) -> dict:
         """Polls for the transaction receipt and automatically calls decode_receipt once retrieved."""
         while True:
             try:
-                resp = requests.post(self.receipt_url, data={"tx_hash": tx_hash}).json()
+                resp = requests.post(self.receipt_url, data={"tx_hash": tx_hash}, verify=self.verify_ssl).json()
                 print(resp)
                 # Status codes 10001 (Pending) or 10003 (Accepted) indicate processing is still in progress
                 if resp.get("status") not in [10001, 10003]:
@@ -732,7 +737,7 @@ class SethClient:
         
         # 1. Get Nonce
         try:
-            r = requests.post(self.query_url, data={"address": nonce_addr}).json()
+            r = requests.post(self.query_url, data={"address": nonce_addr}, verify=self.verify_ssl).json()
             nonce = int(r.get("nonce", 0)) + 1
         except: nonce = 1
 
@@ -823,7 +828,7 @@ class SethClient:
         if input_hex: data["input"] = input_hex
         if prefund: data["prefund"] = str(prefund)
         
-        requests.post(self.oqs_url, data=data)
+        requests.post(self.oqs_url, data=data, verify=self.verify_ssl)
         print(f"tx hash {txh.hex()}, pk: {oqs_pk_hex}, data: {data}, msg: {msg.hex()}")
             
         return txh.hex()
@@ -832,7 +837,7 @@ class SethClient:
         """Queries the prefund field from the account status."""
         try:
             # The server expects the composite ID (Contract+User) as the address
-            response = requests.post(self.query_url, data={"address": prefund_id}, timeout=5).json()
+            response = requests.post(self.query_url, data={"address": prefund_id}, timeout=5, verify=self.verify_ssl).json()
             # In your C++ backend, this is usually stored in the 'prefund' field of the account
             return int(response.get("balance", 0))
         except Exception as e:
@@ -840,11 +845,11 @@ class SethClient:
             return 0
         
     def query_contract(self, f, a, i):
-        return requests.post(self.query_contract_url, data={"from": f, "address": a, "input": i}).text
+        return requests.post(self.query_contract_url, data={"from": f, "address": a, "input": i}, verify=self.verify_ssl).text
     
     def get_balance(self, a):
         try:
-            response = requests.post(self.query_url, data={"address": a}, timeout=5)
+            response = requests.post(self.query_url, data={"address": a}, timeout=5, verify=self.verify_ssl)
             # Check if the response is actually JSON
             return int(response.json().get("balance", 0))
         except Exception as e:
@@ -853,7 +858,7 @@ class SethClient:
 
     def get_nonce(self, a):
         try:
-            response = requests.post(self.query_url, data={"address": a}, timeout=5)
+            response = requests.post(self.query_url, data={"address": a}, timeout=5, verify=self.verify_ssl)
             return int(response.json().get("nonce", 0))
         except Exception as e:
             print(f"DEBUG: Nonce query failed for {a}. Response text: '{response.text}'")
@@ -876,7 +881,7 @@ class SethClient:
         nonce_addr = to + my_addr if (step in [StepType.kContractExcute, StepType.kContractRefund]) else my_addr
         
         try:
-            r = requests.post(self.query_url, data={"address": nonce_addr}).json()
+            r = requests.post(self.query_url, data={"address": nonce_addr}, verify=self.verify_ssl).json()
             nonce = int(r.get("nonce", 0)) + 1
         except: nonce = 1
 
@@ -928,6 +933,6 @@ class SethClient:
         if input_hex: data["input"] = input_hex
         if prefund: data["prefund"] = str(prefund)
 
-        requests.post(self.gmssl_url, data=data)
+        requests.post(self.gmssl_url, data=data, verify=self.verify_ssl)
         return txh_hex
 
