@@ -494,10 +494,10 @@ public:
 }
 
 // int main() {
-//     // 1. 初始化 SDK 实例
+//     // 1. Initialize SDK instance
 //     seth::SethSDK sdk;
     
-//     // 初始化随机种子 (用于模拟生成地址)
+//     // Initialize random seed (for simulating address generation)
 //     srand(time(0));
 
 //     std::cout << "=============================================" << std::endl;
@@ -505,11 +505,11 @@ public:
 //     std::cout << "=============================================" << std::endl;
 
 //     // -------------------------------------------------
-//     // 场景配置: 模拟账户和合约源码
+//     // Scenario configuration: Simulate account and contract source code
 //     // -------------------------------------------------
-//     std::string private_key = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"; // 32字节 Hex 私钥
+//     std::string private_key = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"; // 32-byte Hex private key
     
-//     // 一个简单的存储合约，包含构造函数、写方法和读方法
+//     // A simple storage contract with constructor, write method and read method
 //     std::string source_code = R"(
 //         contract SimpleStorage {
 //             uint256 public storedData;
@@ -531,7 +531,7 @@ public:
 //     )";
 
 //     // -------------------------------------------------
-//     // Step 1: 编译 Solidity (Compile)
+//     // Step 1: Compile Solidity
 //     // -------------------------------------------------
 //     std::cout << "\n[Step 1] Compiling Solidity..." << std::endl;
 //     seth::json compile_res = sdk.compileSolidity(source_code);
@@ -542,15 +542,15 @@ public:
 //     }
     
 //     std::string bytecode = compile_res["bytecode"];
-//     // 注意：compileSolidity 返回的 abi 是 JSON 对象，我们需要 dump 成字符串给 queryContractWithABI 使用
+//     // Note: The abi returned by compileSolidity is a JSON object, we need to dump it to a string for use with queryContractWithABI
 //     std::string abi_json_str = compile_res["abi"].dump(); 
     
 //     std::cout << "-> Compilation Success!" << std::endl;
 //     std::cout << "-> Bytecode Length: " << bytecode.length() << std::endl;
 
 //     // -------------------------------------------------
-//     // Step 2: 部署合约 (Deploy)
-//     // 构造函数参数: (uint256: 12345, string: "SethAdmin")
+//     // Step 2: Deploy Contract
+//     // Constructor parameters: (uint256: 12345, string: "SethAdmin")
 //     // -------------------------------------------------
 //     std::cout << "\n[Step 2] Deploying Contract..." << std::endl;
     
@@ -576,21 +576,21 @@ public:
 //     std::cout << "-> Deploy Success! Contract ID: " << contract_address << std::endl;
 
 //     // -------------------------------------------------
-//     // Step 3: 设置 Gas 预付 (Set Gas Prefund)
+//     // Step 3: Set Gas Prefund
 //     // -------------------------------------------------
 //     std::cout << "\n[Step 3] Setting Gas Prefund..." << std::endl;
     
 //     seth::json prepay_res = sdk.setGasPrefund(
 //         private_key, 
 //         contract_address, 
-//         10000 // 补充 Gas
+//         10000 // Supplement Gas
 //     );
 
 //     std::cout << "-> Set Prefund: " << prepay_res["msg"] << std::endl;
 
 //     // -------------------------------------------------
-//     // Step 4: 调用合约函数 (Call Function)
-//     // 调用 set(88888) 修改状态
+//     // Step 4: Call Contract Function
+//     // Call set(88888) to modify state
 //     // -------------------------------------------------
 //     std::cout << "\n[Step 4] Calling function 'set(88888)'..." << std::endl;
     
@@ -609,12 +609,12 @@ public:
 //     std::cout << "-> Call Result: " << call_res["msg"] << std::endl;
 
 //     // -------------------------------------------------
-//     // Step 5: 查询合约 - 方式 A (手动指定返回类型)
-//     // 查询 ownerName (期待返回 string)
+//     // Step 5: Query Contract - Method A (Manually specify return type)
+//     // Query ownerName (expect to return string)
 //     // -------------------------------------------------
 //     std::cout << "\n[Step 5A] Querying 'ownerName' (Manual Decode)..." << std::endl;
     
-//     // ownerName 是 public 变量，会自动生成 getter
+//     // ownerName is a public variable, getter is automatically generated
 //     seth::json query_res_manual = sdk.queryFunctionSolidity(
 //         private_key,
 //         contract_address,

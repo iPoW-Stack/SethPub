@@ -15,6 +15,69 @@
 Ensure your development environment meets the following specifications:
 * **GCC/G++**: 13.0 or higher
 * **CMake**: 3.25.1 or higher
+* **OpenSSL**: 1.1.1 or higher (for HTTPS support)
+
+### 2. HTTPS Server Setup (New!)
+
+Seth now uses **uWebSockets** with **HTTPS** for enhanced security and performance.
+
+#### Quick Setup
+```bash
+# One-command setup (installs dependencies, generates certificates, and builds)
+./quick_start.sh
+
+# Start the HTTPS server
+cd build && ./seth
+```
+
+#### Manual Setup
+```bash
+# 1. Install uWebSockets
+./install_uwebsockets.sh
+
+# 2. Generate SSL certificates
+openssl req -x509 -newkey rsa:4096 -keyout server-key.pem \
+    -out server-cert.pem -days 365 -nodes \
+    -subj "/C=CN/ST=State/L=City/O=Organization/CN=localhost"
+
+# 3. Build the project
+mkdir -p build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make seth -j$(nproc)
+
+# 4. Run the server
+./seth
+```
+
+#### Test HTTPS Connection
+```bash
+# Using curl
+curl -k https://localhost:8080/query_init
+
+# Using Python test client
+python3 test_https_client.py
+```
+
+For detailed migration information, see:
+- 📖 [HTTPS Migration Guide](HTTPS_MIGRATION.md)
+- 📖 [Build Guide](BUILD_GUIDE.md)
+- 📖 [Migration Summary](MIGRATION_SUMMARY.md)
+- 📖 [Update Private Key API](UPDATE_PRIVATE_KEY_API.md) - 🆕 Dynamic private key update
+
+### 3. Dynamic Private Key Update (New!)
+
+Seth now supports updating the node's private key at runtime without restarting:
+
+```bash
+# Update private key via HTTPS API
+curl -k -X POST https://localhost:8080/update_private_key \
+  -d "private_key=<your_hex_private_key>"
+
+# Or use the Python test script
+python3 test_update_private_key.py <your_hex_private_key>
+```
+
+See [UPDATE_PRIVATE_KEY_API.md](UPDATE_PRIVATE_KEY_API.md) for complete documentation.
 
 ## Run customized network
       bash build_third.sh

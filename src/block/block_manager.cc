@@ -383,7 +383,7 @@ void BlockManager::AddNewBlock(
         (ck_client_ != nullptr));
     assert(view_block_item->qc().elect_height() >= 1);
     account_mgr_->AddNewBlock(*view_block_item);
-    // 当前节点和 block 分配的 shard 不同，要跨分片交易
+    // Current node and block assigned shard are different, need cross-shard transaction
     if (!network::IsSameToLocalShard(view_block_item->qc().network_id())) {
         pools_mgr_->OnNewCrossBlock(view_block_item);
         SETH_DEBUG("new cross block coming: %u, %u, %lu",
@@ -503,7 +503,7 @@ void BlockManager::CreateLocalToTx(
     tx->set_to(msg_ptr->address_info->addr());
     tx->set_step(pools::protobuf::kConsensusLocalTos);
     tx->set_gas_limit(0);
-    tx->set_amount(0); // 具体 amount 在 kv 中
+    tx->set_amount(0); // Specific amount is in kv
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
     tx->set_nonce(++step_with_nonce_[pool_index][tx->step()]);
     pools_mgr_->AddPoolMessage(msg_ptr);

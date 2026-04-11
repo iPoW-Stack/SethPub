@@ -88,6 +88,7 @@ private:
     bool InitLocalNetworkIdWithLatestElectBlock();
     void SaveCrossBlockToEachShard();
     void JoinInitNodes();
+    int UpdatePrivateKey(const std::string& new_private_key);
         
     static const uint32_t kInvalidPoolFactor = 50u;  // 50%
     static const uint32_t kMinValodPoolCount = 4u;  // 64 must finish all

@@ -551,6 +551,87 @@ int NetworkInit::InitSecurity() {
     return kInitSuccess;
 }
 
+int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
+    SETH_INFO("Updating private key...");
+    
+    if (new_private_key.empty()) {
+        SETH_ERROR("New private key is empty!");
+        return kInitError;
+    }
+    
+    // Create new security object to verify private key
+    auto new_security = std::make_shared<security::Ecdsa>();
+    
+    // Determine if decryption is needed based on private key length
+    if (new_private_key.size() == security::kPrivateKeySize) {
+        // Raw private key (32 bytes)
+        if (new_security->SetPrivateKey(new_private_key) != security::kSecuritySuccess) { 
+            SETH_ERROR("Failed to set new private key (raw format)!");
+            return kInitError;
+        }
+    } else {
+        // Encrypted private key, needs decryption first
+        if (security::KeyManager::Instance().Initialize(new_private_key) != security::kSecuritySuccess) {
+            SETH_ERROR("Failed to initialize KeyManager with new private key!");
+            return kInitError;
+        }
+
+        if (new_security->SetPrivateKey(
+                (const char*)security::KeyManager::Instance().GetProtectedKey(), 
+                security::KeyManager::Instance().GetKeyLength()) != security::kSecuritySuccess) { 
+            SETH_ERROR("Failed to set new private key (encrypted format)!");
+            return kInitError;
+        }
+    }
+    
+    // Get new address
+    std::string new_address = new_security->GetAddress();
+    std::string old_address = security_->GetAddress();
+    
+    SETH_INFO("Private key update: old address: %s, new address: %s",
+        common::Encode::HexEncode(old_address).c_str(),
+        common::Encode::HexEncode(new_address).c_str());
+    
+    // Update security_ object
+    security_ = new_security;
+    
+    // Notify related components that private key has been updated
+    // 1. Update network route
+    if (network::Route::Instance()) {
+        network::Route::Instance()->Init(security_);
+        SETH_INFO("Network route updated with new private key");
+    }
+    
+    // 2. Update universal manager
+    if (network::UniversalManager::Instance()) {
+        network::UniversalManager::Instance()->Init(security_, db_, account_mgr_);
+        SETH_INFO("Universal manager updated with new private key");
+    }
+    
+    // 3. Update bootstrap
+    if (network::Bootstrap::Instance()) {
+        network::Bootstrap::Instance()->Init(conf_, security_);
+        SETH_INFO("Bootstrap updated with new private key");
+    }
+    
+    // 4. Update block manager
+    if (block_mgr_) {
+        block_mgr_->UpdateSecurityAddress(new_address);
+        SETH_INFO("Block manager updated with new address");
+    }
+    
+    // 5. Update private key in configuration file (optional, for persistence)
+    std::string prikey_hex = common::Encode::HexEncode(new_private_key);
+    if (conf_.Set("seth", "prikey", prikey_hex)) {
+        SETH_INFO("Configuration updated with new private key");
+    }
+    
+    SETH_INFO("Private key updated successfully! New address: %s",
+        common::Encode::HexEncode(new_address).c_str());
+    
+    return kInitSuccess;
+}
+
 static std::condition_variable wait_con_;
 static std::mutex wait_mutex_;
 
@@ -559,6 +640,12 @@ int NetworkInit::InitHttpServer() {
     uint16_t http_port = 0;
     conf_.Get("seth", "http_ip", http_ip);
     if (conf_.Get("seth", "http_port", http_port) && http_port != 0) {
+        // Set private key update callback
+        http_handler_.SetPrivateKeyUpdateCallback(
+            [this](const std::string& new_private_key) -> int {
+                return this->UpdatePrivateKey(new_private_key);
+            });
+        
         http_handler_.Init(
             account_mgr_, 
             &net_handler_, 
@@ -723,12 +810,12 @@ int NetworkInit::InitConfigWithArgs(int argc, char** argv) {
         std::string line;
         uint32_t count = 0;
         while (std::getline(infile, line)) {
-            // 1. 去除行尾可能存在的 \r (处理 Windows/DOS 格式文件)
+            // 1. Remove possible \r at end of line (handle Windows/DOS format files)
             if (!line.empty() && line.back() == '\r') {
                 line.pop_back();
             }
 
-            // 2. 严格空行检查：跳过完全没有任何内容的行
+            // 2. Strict empty line check: skip lines with no content at all
             if (line.empty()) continue;
 
             size_t tab_pos = line.find('\t');

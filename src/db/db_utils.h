@@ -18,7 +18,7 @@ static const char kDbFieldLinkLetter = '\x01';
 // class MyWriteBatchHandler : public TmpDbWriteBatch::Handler {
 // public:
 //     MyWriteBatchHandler() {}
-//     // 重写 Handle方法，处理每个操作
+//     // Override Handle method to process each operation
 //     virtual void Put(const DbSlice& key, const DbSlice& value) override {
 //         SETH_DEBUG("Put operation: Key=%s, Value=%s", 
 //             common::Encode::HexEncode(key.ToString()).c_str(), common::Encode::HexEncode(value.ToString()).c_str());

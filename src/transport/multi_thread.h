@@ -124,7 +124,7 @@ private:
 
     std::vector<ThreadHandlerPtr> thread_vec_;
     bool inited_{ false };
-    common::LRUSet<uint64_t> unique_message_sets2_{ 102400 }; // 10M+ 左右，10000 tps 情况下能够忍受 10s 消息延迟
+    common::LRUSet<uint64_t> unique_message_sets2_{ 102400 }; // ~10M+ size, can tolerate 10s message delay at 10000 tps
     common::ThreadSafeQueue<MessagePtr>** threads_message_queues_;
     std::queue<MessagePtr> http_server_message_queue_;
     std::mutex http_server_message_queue_mutex_;

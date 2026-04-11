@@ -94,10 +94,10 @@ static void WriteDefaultLogConf() {
     // auto logger = spdlog::basic_logger_mt("sync_file", "log/seth.log", false);
     spdlog::set_default_logger(logger);
 
-    // 关键：强制设置全局 pattern
+    // Critical: Force set global pattern
     spdlog::set_pattern("%Y-%m-%d %H:%M:%S.%e [thread %t] %-5l [%n] %v%$");
 
-    // 额外保险：遍历所有 sink 重新设置（防止被覆盖）
+    // Extra insurance: Iterate through all sinks and reset (prevent override)
     for (auto& sink : logger->sinks()) {
         sink->set_pattern("%Y-%m-%d %H:%M:%S.%e [thread %t] %-5l [%n] %v%$");
     }

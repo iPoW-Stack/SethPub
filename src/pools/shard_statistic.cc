@@ -799,7 +799,7 @@ int ShardStatistic::StatisticWithHeights(
             statistic_info_ptr->id_pk_map.end());
     }
 
-    // 为当前委员会的节点填充共识工作的奖励信息
+    // Fill reward information for consensus work of current committee nodes
     setElectStatistics(height_node_collect_info_map, now_elect_members, elect_statistic, is_root);
     addNewNode2JoinStatics(
         join_elect_stoke_map,
@@ -943,7 +943,7 @@ void ShardStatistic::addNewNode2JoinStatics(
             }
 
             if (added_id_set.count(node_id) > 0) {
-                // 说明节点是之前的委员会成员 。
+                // Indicates that the node is a member of the previous committee.
                 SETH_DEBUG("not added id: %s", common::Encode::HexEncode(node_id).c_str());
                 continue;
             }
