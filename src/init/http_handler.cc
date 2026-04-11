@@ -2,6 +2,8 @@
 #include "init/uws_adapter.h"
 
 #include <functional>
+#include <fstream>
+#include <vector>
 
 #include <cpppbc/GT.h>
 #include <cpppbc/Pairing.h>
@@ -1961,7 +1963,7 @@ void HttpHandler::Run() {
                    ->end(uws_res.content());
             }
         });
-    }).listen(http_ip_, http_port_, [this](auto *listen_socket) {
+    }).listen(http_ip_ == "0.0.0.0" ? "" : http_ip_, http_port_, [this](auto *listen_socket) {
         if (listen_socket) {
             SETH_INFO("HTTPS server listening on %s:%d", http_ip_.c_str(), http_port_);
             running_ = true;
@@ -1991,8 +1993,45 @@ void HttpHandler::Init(
     http_port_ = port;
     
     // Set certificate and key file paths
-    cert_file_ = "server-cert.pem";
-    key_file_ = "server-key.pem";
+    // Try multiple locations for certificate files
+    std::vector<std::string> cert_paths = {
+        "server-cert.pem",           // Current directory
+        "../server-cert.pem",        // Parent directory
+        "../../server-cert.pem",     // Grandparent directory
+        "/root/seth/server-cert.pem" // Absolute path
+    };
+    
+    std::vector<std::string> key_paths = {
+        "server-key.pem",
+        "../server-key.pem",
+        "../../server-key.pem",
+        "/root/seth/server-key.pem"
+    };
+    
+    // Find certificate file
+    for (const auto& path : cert_paths) {
+        std::ifstream f(path);
+        if (f.good()) {
+            cert_file_ = path;
+            SETH_INFO("Found certificate file: %s", path.c_str());
+            break;
+        }
+    }
+    
+    // Find key file
+    for (const auto& path : key_paths) {
+        std::ifstream f(path);
+        if (f.good()) {
+            key_file_ = path;
+            SETH_INFO("Found key file: %s", path.c_str());
+            break;
+        }
+    }
+    
+    if (cert_file_.empty() || key_file_.empty()) {
+        SETH_ERROR("Certificate or key file not found! cert: %s, key: %s", 
+                   cert_file_.c_str(), key_file_.c_str());
+    }
 
     http_svr_thread_ = std::make_shared<std::thread>(std::bind(&HttpHandler::Run, this));
 }
