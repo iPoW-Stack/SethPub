@@ -245,9 +245,8 @@ if [ ! -d "$SRC_PATH/third_party/include/uWebSockets" ]; then
     make clean
     WITH_OPENSSL=1 make -j${nproc}
     
-    # Install uSockets
-    mkdir -p $SRC_PATH/third_party/include/uSockets
-    cp src/*.h $SRC_PATH/third_party/include/uSockets/
+    # Install uSockets - headers go directly to include/ (not in subdirectory)
+    cp src/*.h $SRC_PATH/third_party/include/
     cp uSockets.a $SRC_PATH/third_party/lib/libuSockets.a
     
     # Now build uWebSockets (header-only library)
