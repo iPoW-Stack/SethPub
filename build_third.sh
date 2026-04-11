@@ -226,5 +226,47 @@ if [ ! -f "$SRC_PATH/third_party/include/httplib.h" ]; then
     cd third_party/httplib && cp ./httplib.h $SRC_PATH/third_party/include/
 fi
 
+# Build uWebSockets and uSockets
+if [ ! -d "$SRC_PATH/third_party/include/uWebSockets" ]; then
+    echo "Building uWebSockets..."
+    cd $SRC_PATH
+    
+    # First build uSockets (dependency of uWebSockets)
+    if [ ! -d "third_party/uSockets" ]; then
+        cd third_party
+        git clone https://github.com/uNetworking/uSockets.git
+        cd uSockets
+        git checkout v0.8.8
+    else
+        cd third_party/uSockets
+    fi
+    
+    # Build uSockets with SSL support
+    make clean
+    WITH_OPENSSL=1 make -j${nproc}
+    
+    # Install uSockets
+    mkdir -p $SRC_PATH/third_party/include/uSockets
+    cp src/*.h $SRC_PATH/third_party/include/uSockets/
+    cp uSockets.a $SRC_PATH/third_party/lib/libuSockets.a
+    
+    # Now build uWebSockets (header-only library)
+    cd $SRC_PATH
+    if [ ! -d "third_party/uWebSockets" ]; then
+        cd third_party
+        git clone https://github.com/uNetworking/uWebSockets.git
+        cd uWebSockets
+        git checkout v20.64.0
+    else
+        cd third_party/uWebSockets
+    fi
+    
+    # Install uWebSockets headers
+    mkdir -p $SRC_PATH/third_party/include/uWebSockets
+    cp src/*.h $SRC_PATH/third_party/include/uWebSockets/
+    
+    echo "uWebSockets installation completed!"
+fi
+
 cd $SRC_PATH
 rm -rf third_party/lib/lib*.so* third_party/lib64/lib*.so*
