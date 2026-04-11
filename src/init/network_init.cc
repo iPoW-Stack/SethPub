@@ -595,29 +595,14 @@ int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
     // Update security_ object
     security_ = new_security;
     
-    // Notify related components that private key has been updated
-    // 1. Update network route
-    if (network::Route::Instance()) {
-        network::Route::Instance()->Init(security_);
-        SETH_INFO("Network route updated with new private key");
-    }
+    // NOTE: We do NOT call Init() on Route, UniversalManager, or Bootstrap
+    // because they create new threads which would terminate the old running threads.
+    // These components will automatically use the updated security_ pointer
+    // since they hold shared_ptr references to it.
     
-    // 2. Update universal manager
-    if (network::UniversalManager::Instance()) {
-        network::UniversalManager::Instance()->Init(security_, db_, account_mgr_);
-        SETH_INFO("Universal manager updated with new private key");
-    }
+    SETH_INFO("Security object updated with new private key");
     
-    // 3. Update bootstrap
-    if (network::Bootstrap::Instance()) {
-        network::Bootstrap::Instance()->Init(conf_, security_);
-        SETH_INFO("Bootstrap updated with new private key");
-    }
-    
-    // 4. Note: Block manager security is updated through the security_ pointer
-    // No need to call UpdateSecurityAddress as it doesn't exist
-    
-    // 5. Update private key in configuration file (optional, for persistence)
+    // Update private key in configuration file (optional, for persistence)
     std::string prikey_hex = common::Encode::HexEncode(new_private_key);
     if (conf_.Set("seth", "prikey", prikey_hex)) {
         SETH_INFO("Configuration updated with new private key");
