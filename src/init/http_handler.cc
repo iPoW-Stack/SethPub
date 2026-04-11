@@ -1698,272 +1698,78 @@ HttpHandler::~HttpHandler() {
 void HttpHandler::Run() {
     SETH_INFO("HTTPS server starting on %s:%d", http_ip_.c_str(), http_port_);
     
+    // Helper to safely handle requests with exception protection
+    auto safeHandler = [](auto handler, const char* endpoint) {
+        return [handler, endpoint](auto *res, auto *req) {
+            auto body = std::make_shared<std::string>();
+            auto responded = std::make_shared<bool>(false);
+            
+            res->onAborted([responded]() {
+                *responded = true;
+            });
+            
+            res->onData([res, req, body, handler, endpoint, responded](std::string_view data, bool last) {
+                if (*responded) return;
+                
+                try {
+                    body->append(data.data(), data.size());
+                    if (last) {
+                        UWSRequest uws_req(req, *body);
+                        UWSResponse uws_res;
+                        handler(uws_req, uws_res);
+                        
+                        if (!*responded) {
+                            res->writeStatus("200 OK")
+                               ->writeHeader("Content-Type", uws_res.content_type())
+                               ->end(uws_res.content());
+                            *responded = true;
+                        }
+                    }
+                } catch (const std::exception& e) {
+                    SETH_ERROR("Exception in %s: %s", endpoint, e.what());
+                    if (!*responded) {
+                        res->writeStatus("500 Internal Server Error")
+                           ->end("Internal server error");
+                        *responded = true;
+                    }
+                } catch (...) {
+                    SETH_ERROR("Unknown exception in %s", endpoint);
+                    if (!*responded) {
+                        res->writeStatus("500 Internal Server Error")
+                           ->end("Internal server error");
+                        *responded = true;
+                    }
+                }
+            });
+        };
+    };
+    
     // Create SSL App with certificate and key
     uWS::SSLApp({
         .key_file_name = key_file_.c_str(),
         .cert_file_name = cert_file_.c_str(),
         .passphrase = ""
-    }).post("/transaction", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                HttpTransaction(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/oqs_transaction", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                OqsHttpTransaction(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/gm_transaction", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                GmHttpTransaction(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/get_seckey_and_encrypt_data", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                GetSecAndEncData(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/proxy_decrypt", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                ProxDecryption(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/query_contract", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                QueryContract(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/abi_query_contract", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                AbiQueryContract(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/query_account", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                QueryAccount(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/query_init", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                QueryInit(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/get_proxy_reenc_info", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                GetProxyReencInfo(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/ars_create_sec_keys", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                ArsCreateSecKeys(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/accounts_valid", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                AccountsValid(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/commit_gid_valid", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                GidsValid(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/prefund_valid", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                PrefundsValid(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/get_block_with_gid", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                GetBlockWithGid(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/get_blocks", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                GetBlocks(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/get_latest_pool_info", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                GetLatestPoolHeights(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/get_block_with_hash", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                GetBlockWithHash(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/transaction_receipt", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                TransactionReceipt(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).post("/update_private_key", [](auto *res, auto *req) {
-        auto body = std::make_shared<std::string>();
-        res->onData([res, req, body](std::string_view data, bool last) {
-            body->append(data.data(), data.size());
-            if (last) {
-                UWSRequest uws_req(req, *body);
-                UWSResponse uws_res;
-                UpdatePrivateKey(uws_req, uws_res);
-                res->writeStatus("200 OK")
-                   ->writeHeader("Content-Type", uws_res.content_type())
-                   ->end(uws_res.content());
-            }
-        });
-    }).listen("0.0.0.0", http_port_, [this](auto *listen_socket) {
+    }).post("/transaction", safeHandler(HttpTransaction, "/transaction")
+    ).post("/oqs_transaction", safeHandler(OqsHttpTransaction, "/oqs_transaction")
+    ).post("/gm_transaction", safeHandler(GmHttpTransaction, "/gm_transaction")
+    ).post("/get_seckey_and_encrypt_data", safeHandler(GetSecAndEncData, "/get_seckey_and_encrypt_data")
+    ).post("/proxy_decrypt", safeHandler(ProxDecryption, "/proxy_decrypt")
+    ).post("/query_contract", safeHandler(QueryContract, "/query_contract")
+    ).post("/abi_query_contract", safeHandler(AbiQueryContract, "/abi_query_contract")
+    ).post("/query_account", safeHandler(QueryAccount, "/query_account")
+    ).post("/query_init", safeHandler(QueryInit, "/query_init")
+    ).post("/get_proxy_reenc_info", safeHandler(GetProxyReencInfo, "/get_proxy_reenc_info")
+    ).post("/ars_create_sec_keys", safeHandler(ArsCreateSecKeys, "/ars_create_sec_keys")
+    ).post("/accounts_valid", safeHandler(AccountsValid, "/accounts_valid")
+    ).post("/commit_gid_valid", safeHandler(GidsValid, "/commit_gid_valid")
+    ).post("/prefund_valid", safeHandler(PrefundsValid, "/prefund_valid")
+    ).post("/get_block_with_gid", safeHandler(GetBlockWithGid, "/get_block_with_gid")
+    ).post("/get_blocks", safeHandler(GetBlocks, "/get_blocks")
+    ).post("/get_latest_pool_info", safeHandler(GetLatestPoolHeights, "/get_latest_pool_info")
+    ).post("/get_block_with_hash", safeHandler(GetBlockWithHash, "/get_block_with_hash")
+    ).post("/transaction_receipt", safeHandler(TransactionReceipt, "/transaction_receipt")
+    ).post("/update_private_key", safeHandler(UpdatePrivateKey, "/update_private_key")
+    ).listen("0.0.0.0", http_port_, [this](auto *listen_socket) {
         if (listen_socket) {
             SETH_INFO("HTTPS server listening on 0.0.0.0:%d", http_port_);
             running_ = true;
