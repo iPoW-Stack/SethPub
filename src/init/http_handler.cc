@@ -191,7 +191,7 @@ static int CreateOqsTransactionWithAttr(
 }
 
 static void OqsHttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
-    if (new_http_handler == nullptr) {
+    if (http_handler->net_handler() == nullptr) {
         std::string res = std::string("node not ready!");
         http_res.set_content(res, "text/plain");
         return;
@@ -383,7 +383,7 @@ static int CreateGmTransactionWithAttr(
 }
 
 static void GmHttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
-    if (new_http_handler == nullptr) {
+    if (http_handler->net_handler() == nullptr) {
         std::string res = std::string("node not ready!");
         http_res.set_content(res, "text/plain");
         return;
@@ -615,7 +615,7 @@ static inline std::string HttpProtobufToJson(
 }
 
 static void HttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
-    if (new_http_handler == nullptr) {
+    if (http_handler->net_handler() == nullptr) {
         std::string res = std::string("node not ready!");
         http_res.set_content(res, "text/plain");
         return;
