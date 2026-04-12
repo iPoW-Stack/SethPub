@@ -23,6 +23,7 @@ TcpTransport* tcp_transport = nullptr;
 uv_tcp_t* socket;
 uv_os_sock_t sock;
 static uv_async_t async_handle;
+std::atomic<bool> uv_transport_inited = false;
 
 struct connect_ex_t {
     uv_connect_t uv_conn;
@@ -424,6 +425,10 @@ void TcpTransport::Output() {
 void TcpTransport::AddLocalMessage(transport::MessagePtr msg_ptr) {
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     local_messages_[thread_idx].push(msg_ptr);
+    if (!uv_transport_inited) {
+        return;
+    }
+    
     uv_async_send(&async_handle);
 }
 
@@ -593,6 +598,7 @@ void TcpTransport::Run() {
     SETH_DEBUG("init uv tcp transport success: %s", ip_port_.c_str());
     uv_async_init(loop, &async_handle, uv_async_cb);
     output_thread_ = std::make_shared<std::thread>(&TcpTransport::Output, this);
+    uv_transport_inited = true;
     while (true) {
         if (uv_run(loop, UV_RUN_DEFAULT) != 0) {
             SETH_ERROR("uv run failed!");
