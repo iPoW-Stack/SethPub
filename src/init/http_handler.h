@@ -39,6 +39,14 @@ public:
         return net_handler_;
     }
 
+    void set_net_handler(transport::MultiThreadHandler* net_handler) {
+        net_handler_ = net_handler;
+    }
+
+    void set_contract_mgr(std::shared_ptr<contract::ContractManager> contract_mgr) {
+        contract_mgr_ = contract_mgr;
+    }
+
     std::shared_ptr<block::AccountManager> acc_mgr() {
         return acc_mgr_;
     }

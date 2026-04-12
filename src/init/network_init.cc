@@ -107,15 +107,11 @@ int NetworkInit::Init(int argc, char** argv) {
         INIT_INFO("Please send POST request to http://%s:%d/update_private_key with private_key parameter",
             common::GlobalInfo::Instance()->config_local_ip().c_str(),
             common::GlobalInfo::Instance()->http_port());
-        
+        security_ = nullptr;
         // Wait for private key to be updated
         WaitForPrivateKeyUpdate();
-        
         INIT_INFO("Private key received, continuing initialization...");
-        
-        // Now re-initialize security with the received private key
-        security_init_result = InitSecurity();
-        if (security_init_result != kInitSuccess) {
+        if (!security_) {
             INIT_ERROR("InitSecurity failed after receiving private key!");
             return kInitError;
         }
@@ -595,7 +591,11 @@ int NetworkInit::InitSecurity() {
 
 int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
     SETH_INFO("Updating private key...");
-    
+    if (http_private_key_inited_) {
+        SETH_ERROR("Private key already inited!");
+        return kInitError;
+    }
+
     if (new_private_key.empty()) {
         SETH_ERROR("New private key is empty!");
         return kInitError;
@@ -642,14 +642,14 @@ int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
             common::Encode::HexEncode(new_address).c_str());
     }
     
-    // Update private key in configuration file (for persistence)
-    std::string prikey_hex = common::Encode::HexEncode(new_private_key);
-    if (conf_.Set("seth", "prikey", prikey_hex)) {
-        SETH_INFO("Configuration updated with new private key");
-    } else {
-        SETH_ERROR("Failed to update configuration with new private key");
-        return kInitError;
-    }
+    // // Update private key in configuration file (for persistence)
+    // std::string prikey_hex = common::Encode::HexEncode(new_private_key);
+    // if (conf_.Set("seth", "prikey", prikey_hex)) {
+    //     SETH_INFO("Configuration updated with new private key");
+    // } else {
+    //     SETH_ERROR("Failed to update configuration with new private key");
+    //     return kInitError;
+    // }
     
     if (is_initial_setup) {
         // For initial setup, just notify the waiting thread
@@ -661,18 +661,18 @@ int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
             std::lock_guard<std::mutex> lock(private_key_wait_mutex_);
             private_key_received_ = true;
         }
+        http_private_key_inited_ = true;
         private_key_wait_cv_.notify_one();
-    } else {
-        // For runtime update, update the security_ object directly
-        security_ = new_security;
-        
-        // NOTE: We do NOT call Init() on Route, UniversalManager, or Bootstrap
-        // because they create new threads which would terminate the old running threads.
-        // These components will automatically use the updated security_ pointer
-        // since they hold shared_ptr references to it.
-        
-        SETH_INFO("Security object updated with new private key");
-    }
+    } 
+
+    security_ = new_security;
+    
+    // NOTE: We do NOT call Init() on Route, UniversalManager, or Bootstrap
+    // because they create new threads which would terminate the old running threads.
+    // These components will automatically use the updated security_ pointer
+    // since they hold shared_ptr references to it.
+    
+    SETH_INFO("Security object updated with new private key");
     
     SETH_INFO("Private key updated successfully! New address: %s",
         common::Encode::HexEncode(new_address).c_str());
@@ -734,19 +734,20 @@ int NetworkInit::InitHttpServer() {
     conf_.Get("seth", "http_ip", http_ip);
     if (conf_.Get("seth", "http_port", http_port) && http_port != 0) {
         // Set private key update callback
-        http_handler_.SetPrivateKeyUpdateCallback(
-            [this](const std::string& new_private_key) -> int {
-                return this->UpdatePrivateKey(new_private_key);
-            });
-        
-        http_handler_.Init(
-            account_mgr_, 
-            &net_handler_, 
-            security_, 
-            prefix_db_, 
-            contract_mgr_, 
-            http_ip, 
-            http_port);
+        // http_handler_.SetPrivateKeyUpdateCallback(
+        //     [this](const std::string& new_private_key) -> int {
+        //         return this->UpdatePrivateKey(new_private_key);
+        //     });
+        http_handler_.set_net_handler(&net_handler_);
+        http_handler_.set_contract_mgr(contract_mgr_);
+        // http_handler_.Init(
+        //     account_mgr_, 
+        //     &net_handler_, 
+        //     security_, 
+        //     prefix_db_, 
+        //     contract_mgr_, 
+        //     http_ip, 
+        //     http_port);
         std::this_thread::sleep_for(std::chrono::milliseconds{200});
         // Note: HTTP client check removed as we migrated from httplib to uWebSockets
         // The server will be ready after the sleep delay

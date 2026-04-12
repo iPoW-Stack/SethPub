@@ -129,6 +129,7 @@ private:
     common::ThreadSafeQueue<std::shared_ptr<view_block::protobuf::ViewBlockItem>> new_blocks_queue_[common::kMaxThreadCount];
     std::mutex new_blocks_mutex_;
     std::condition_variable new_blocks_cv_;
+    std::atomic<bool> http_private_key_inited_ = false;
     
     // Private key waiting mechanism
     std::mutex private_key_wait_mutex_;

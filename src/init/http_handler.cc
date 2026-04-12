@@ -191,6 +191,12 @@ static int CreateOqsTransactionWithAttr(
 }
 
 static void OqsHttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
+    if (new_http_handler == nullptr) {
+        std::string res = std::string("node not ready!");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
     SETH_DEBUG("OQS http transaction request received.");
     
     auto from_pk_hex = req.get_param_value("pubkey");
@@ -377,6 +383,12 @@ static int CreateGmTransactionWithAttr(
 }
 
 static void GmHttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
+    if (new_http_handler == nullptr) {
+        std::string res = std::string("node not ready!");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
     SETH_DEBUG("GmSSL http transaction request received.");
     
     auto from_pk_hex = req.get_param_value("pubkey");
@@ -603,6 +615,12 @@ static inline std::string HttpProtobufToJson(
 }
 
 static void HttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
+    if (new_http_handler == nullptr) {
+        std::string res = std::string("node not ready!");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
     SETH_DEBUG("http transaction coming.");
     auto nonce_str = req.get_param_value("nonce");
     auto frompk = req.get_param_value("pubkey");
