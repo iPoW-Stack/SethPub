@@ -680,10 +680,10 @@ int NetworkInit::InitHttpServerForPrivateKeyWait() {
     // Initialize HTTP handler with minimal components
     http_handler_.Init(
         account_mgr_, 
-        nullptr,  // net_handler not needed yet
+        &net_handler_,
         security_, 
         prefix_db_, 
-        nullptr,  // contract_mgr not needed yet
+        contract_mgr_,
         http_ip, 
         http_port);
     
