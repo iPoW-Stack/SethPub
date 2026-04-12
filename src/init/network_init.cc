@@ -82,21 +82,58 @@ int NetworkInit::Init(int argc, char** argv) {
         return kInitError;
     }
 
-    if (InitSecurity() != kInitSuccess) {
+    int security_init_result = InitSecurity();
+    if (security_init_result == kInitWaitingForPrivateKey) {
+        INIT_WARN("Private key not found, starting HTTP server to wait for UpdatePrivateKey...");
+        
+        // Initialize minimal components needed for HTTP server
+        std::string db_path = "./db";
+        conf_.Get("seth", "db_path", db_path);
+        db_ = std::make_shared<db::Db>();
+        if (!db_->Init(db_path)) {
+            INIT_ERROR("init db failed!");
+            return kInitError;
+        }
+        
+        prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
+        
+        // Create a temporary security object for HTTP server initialization
+        security_ = std::make_shared<security::Ecdsa>();
+        
+        // Initialize HTTP server with private key update callback
+        if (InitHttpServerForPrivateKeyWait() != kInitSuccess) {
+            INIT_ERROR("InitHttpServerForPrivateKeyWait failed!");
+            return kInitError;
+        }
+        
+        INIT_INFO("HTTP server started, waiting for private key update via /update_private_key endpoint...");
+        INIT_INFO("Please send POST request to http://%s:%d/update_private_key with private_key parameter",
+            common::GlobalInfo::Instance()->config_local_ip().c_str(),
+            common::GlobalInfo::Instance()->http_port());
+        
+        // Wait for private key to be updated
+        WaitForPrivateKeyUpdate();
+        
+        INIT_INFO("Private key received, continuing initialization...");
+    } else if (security_init_result != kInitSuccess) {
         INIT_ERROR("InitSecurity failed!");
         return kInitError;
     }
 
     std::string db_path = "./db";
     conf_.Get("seth", "db_path", db_path);
-    db_ = std::make_shared<db::Db>();
-    if (!db_->Init(db_path)) {
-        INIT_ERROR("init db failed!");
-        return kInitError;
+    if (!db_) {
+        db_ = std::make_shared<db::Db>();
+        if (!db_->Init(db_path)) {
+            INIT_ERROR("init db failed!");
+            return kInitError;
+        }
     }
 
     common::Ip::Instance();
-    prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
+    if (!prefix_db_) {
+        prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
+    }
     SETH_DEBUG("init 0 1");
     contract_mgr_ = std::make_shared<contract::ContractManager>();
     contract_mgr_->Init(security_);
@@ -519,9 +556,10 @@ void NetworkInit::InitLocalNetworkId() {
 
 int NetworkInit::InitSecurity() {
     std::string prikey;
-    if (!conf_.Get("seth", "prikey", prikey)) {
-        INIT_ERROR("get private key from config failed!");
-        return kInitError;
+    if (!conf_.Get("seth", "prikey", prikey) || prikey.empty()) {
+        INIT_WARN("Private key is empty or not found in config, waiting for UpdatePrivateKey...");
+        // Return a special status to indicate we need to wait for private key update
+        return kInitWaitingForPrivateKey;
     }
     SETH_DEBUG("prikey1: %s", prikey.c_str());
     SETH_DEBUG("prikey2: %s", common::Encode::HexEncode(common::Encode::HexDecode(prikey)).c_str());
@@ -602,7 +640,7 @@ int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
     
     SETH_INFO("Security object updated with new private key");
     
-    // Update private key in configuration file (optional, for persistence)
+    // Update private key in configuration file (for persistence)
     std::string prikey_hex = common::Encode::HexEncode(new_private_key);
     if (conf_.Set("seth", "prikey", prikey_hex)) {
         SETH_INFO("Configuration updated with new private key");
@@ -611,7 +649,55 @@ int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
     SETH_INFO("Private key updated successfully! New address: %s",
         common::Encode::HexEncode(new_address).c_str());
     
+    // Notify waiting thread that private key has been received
+    {
+        std::lock_guard<std::mutex> lock(private_key_wait_mutex_);
+        private_key_received_ = true;
+    }
+    private_key_wait_cv_.notify_one();
+    
     return kInitSuccess;
+}
+
+int NetworkInit::InitHttpServerForPrivateKeyWait() {
+    std::string http_ip = "0.0.0.0";
+    uint16_t http_port = 0;
+    conf_.Get("seth", "http_ip", http_ip);
+    if (!conf_.Get("seth", "http_port", http_port) || http_port == 0) {
+        INIT_ERROR("HTTP port not configured, cannot wait for private key update!");
+        return kInitError;
+    }
+    
+    // Create minimal account manager for HTTP handler
+    account_mgr_ = std::make_shared<block::AccountManager>();
+    
+    // Set private key update callback
+    http_handler_.SetPrivateKeyUpdateCallback(
+        [this](const std::string& new_private_key) -> int {
+            return this->UpdatePrivateKey(new_private_key);
+        });
+    
+    // Initialize HTTP handler with minimal components
+    http_handler_.Init(
+        account_mgr_, 
+        nullptr,  // net_handler not needed yet
+        security_, 
+        prefix_db_, 
+        nullptr,  // contract_mgr not needed yet
+        http_ip, 
+        http_port);
+    
+    std::this_thread::sleep_for(std::chrono::milliseconds{200});
+    SETH_INFO("HTTP server initialized for private key waiting on %s:%u", http_ip.c_str(), http_port);
+    
+    return kInitSuccess;
+}
+
+void NetworkInit::WaitForPrivateKeyUpdate() {
+    INIT_INFO("Waiting for private key update...");
+    std::unique_lock<std::mutex> lock(private_key_wait_mutex_);
+    private_key_wait_cv_.wait(lock, [this] { return private_key_received_.load(); });
+    INIT_INFO("Private key received, resuming initialization...");
 }
 
 static std::condition_variable wait_con_;
