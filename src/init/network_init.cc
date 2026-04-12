@@ -401,7 +401,7 @@ int NetworkInit::InitWsServer() {
     uint16_t ws_port = 0;
     conf_.Get("seth", "tx_ws_ip", ws_ip);
     conf_.Get("seth", "tx_ws_port", ws_port);
-    SETH_DEBUG("now init tx ws server.");
+    SETH_DEBUG("now init tx ws server: %d", ws_port);
     if (ws_port > 0) {
         if (tx_ws_server_.Init(ws_ip, ws_port) != 0) {
             INIT_ERROR("[TxWsServer] init failed on %s:%u", ws_ip.c_str(), ws_port);
