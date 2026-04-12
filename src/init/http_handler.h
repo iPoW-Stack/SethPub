@@ -23,11 +23,11 @@ public:
     HttpHandler();
     ~HttpHandler();
     void Init(
-        std::shared_ptr<block::AccountManager>& acc_mgr,
+        std::shared_ptr<block::AccountManager> acc_mgr,
         transport::MultiThreadHandler* net_handler,
-        std::shared_ptr<security::Security>& security_ptr,
-        std::shared_ptr<protos::PrefixDb>& tmp_prefix_db,
-        std::shared_ptr<contract::ContractManager>& tmp_contract_mgr,
+        std::shared_ptr<security::Security> security_ptr,
+        std::shared_ptr<protos::PrefixDb> tmp_prefix_db,
+        std::shared_ptr<contract::ContractManager> tmp_contract_mgr,
         const std::string& ip,
         uint16_t port);
 
