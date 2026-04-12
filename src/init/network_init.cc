@@ -97,9 +97,6 @@ int NetworkInit::Init(int argc, char** argv) {
         
         prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
         
-        // Create a temporary security object for HTTP server initialization
-        security_ = std::make_shared<security::Ecdsa>();
-        
         // Initialize HTTP server with private key update callback
         if (InitHttpServerForPrivateKeyWait() != kInitSuccess) {
             INIT_ERROR("InitHttpServerForPrivateKeyWait failed!");
@@ -115,6 +112,13 @@ int NetworkInit::Init(int argc, char** argv) {
         WaitForPrivateKeyUpdate();
         
         INIT_INFO("Private key received, continuing initialization...");
+        
+        // Now re-initialize security with the received private key
+        security_init_result = InitSecurity();
+        if (security_init_result != kInitSuccess) {
+            INIT_ERROR("InitSecurity failed after receiving private key!");
+            return kInitError;
+        }
     } else if (security_init_result != kInitSuccess) {
         INIT_ERROR("InitSecurity failed!");
         return kInitError;
@@ -624,37 +628,54 @@ int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
     
     // Get new address
     std::string new_address = new_security->GetAddress();
-    std::string old_address = security_->GetAddress();
     
-    SETH_INFO("Private key update: old address: %s, new address: %s",
-        common::Encode::HexEncode(old_address).c_str(),
-        common::Encode::HexEncode(new_address).c_str());
+    // Check if this is initial private key setup or update
+    bool is_initial_setup = (security_ == nullptr || private_key_received_ == false);
     
-    // Update security_ object
-    security_ = new_security;
-    
-    // NOTE: We do NOT call Init() on Route, UniversalManager, or Bootstrap
-    // because they create new threads which would terminate the old running threads.
-    // These components will automatically use the updated security_ pointer
-    // since they hold shared_ptr references to it.
-    
-    SETH_INFO("Security object updated with new private key");
+    if (!is_initial_setup) {
+        std::string old_address = security_->GetAddress();
+        SETH_INFO("Private key update: old address: %s, new address: %s",
+            common::Encode::HexEncode(old_address).c_str(),
+            common::Encode::HexEncode(new_address).c_str());
+    } else {
+        SETH_INFO("Initial private key setup: new address: %s",
+            common::Encode::HexEncode(new_address).c_str());
+    }
     
     // Update private key in configuration file (for persistence)
     std::string prikey_hex = common::Encode::HexEncode(new_private_key);
     if (conf_.Set("seth", "prikey", prikey_hex)) {
         SETH_INFO("Configuration updated with new private key");
+    } else {
+        SETH_ERROR("Failed to update configuration with new private key");
+        return kInitError;
+    }
+    
+    if (is_initial_setup) {
+        // For initial setup, just notify the waiting thread
+        // The security_ object will be properly initialized by InitSecurity() after wait returns
+        SETH_INFO("Private key received for initial setup");
+        
+        // Notify waiting thread that private key has been received
+        {
+            std::lock_guard<std::mutex> lock(private_key_wait_mutex_);
+            private_key_received_ = true;
+        }
+        private_key_wait_cv_.notify_one();
+    } else {
+        // For runtime update, update the security_ object directly
+        security_ = new_security;
+        
+        // NOTE: We do NOT call Init() on Route, UniversalManager, or Bootstrap
+        // because they create new threads which would terminate the old running threads.
+        // These components will automatically use the updated security_ pointer
+        // since they hold shared_ptr references to it.
+        
+        SETH_INFO("Security object updated with new private key");
     }
     
     SETH_INFO("Private key updated successfully! New address: %s",
         common::Encode::HexEncode(new_address).c_str());
-    
-    // Notify waiting thread that private key has been received
-    {
-        std::lock_guard<std::mutex> lock(private_key_wait_mutex_);
-        private_key_received_ = true;
-    }
-    private_key_wait_cv_.notify_one();
     
     return kInitSuccess;
 }
@@ -671,6 +692,10 @@ int NetworkInit::InitHttpServerForPrivateKeyWait() {
     // Create minimal account manager for HTTP handler
     account_mgr_ = std::make_shared<block::AccountManager>();
     
+    // Create a temporary empty security object just for HTTP handler initialization
+    // This will be replaced with the real one after private key is received
+    auto temp_security = std::make_shared<security::Ecdsa>();
+    
     // Set private key update callback
     http_handler_.SetPrivateKeyUpdateCallback(
         [this](const std::string& new_private_key) -> int {
@@ -680,10 +705,10 @@ int NetworkInit::InitHttpServerForPrivateKeyWait() {
     // Initialize HTTP handler with minimal components
     http_handler_.Init(
         account_mgr_, 
-        &net_handler_,
-        security_, 
+        nullptr,  // net_handler not initialized yet
+        temp_security,  // temporary security object
         prefix_db_, 
-        contract_mgr_,
+        nullptr,  // contract_mgr not initialized yet
         http_ip, 
         http_port);
     
