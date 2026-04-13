@@ -33,6 +33,9 @@ static inline void SetTxStatus(
             };
         }
     }
+
+    SETH_DEBUG("set tx status: %d, hash: %s, msg_ptr->status_notify_cb: %d", 
+        status, common::Encode::HexEncode(msg_ptr->msg_hash).c_str(), (msg_ptr->status_notify_cb != nullptr));
     msg_ptr->set_status(status);
 }
     
