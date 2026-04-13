@@ -533,7 +533,7 @@ private:
         return elect_item->Members();
     }
 
-    void SyncLocalTxToLeader(common::BftMemberPtr leader);
+    void SyncLocalTxToLeader(const transport::MessagePtr& msg_ptr, common::BftMemberPtr leader);
 
     static const uint64_t kLatestPoposeSendTxToLeaderPeriodMs = 10000lu;
 

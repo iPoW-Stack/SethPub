@@ -2308,7 +2308,7 @@ void Hotstuff::TryRecoverFromStuck(
     }
 
     if (leader->index != local_idx) {
-        SyncLocalTxToLeader(leader);
+        SyncLocalTxToLeader(msg_ptr, leader);
         return;
     }
 
@@ -2370,7 +2370,7 @@ void Hotstuff::TryRecoverFromStuck(
     }
 }
 
-void Hotstuff::SyncLocalTxToLeader(common::BftMemberPtr leader) {
+void Hotstuff::SyncLocalTxToLeader(const transport::MessagePtr& msg_ptr, common::BftMemberPtr leader) {
     if (!has_user_tx_tag_) {
         // SETH_DEBUG("pool: %u not has_user_tx_tag_.", pool_idx_);
         return;
