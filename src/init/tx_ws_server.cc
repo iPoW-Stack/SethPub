@@ -434,6 +434,7 @@ std::string TxWsServer::BuildTxJson(
       << "\"step\":"         << static_cast<int>(tx.step())             << ","
       << "\"nonce\":"        << tx.nonce()                              << ","
       << "\"block_height\":" << block.height()                          << ","
+      << "\"chainid\":" << block.chain_id()                             << ","
       << "\"network_id\":"   << qc.network_id()                         << ","
       << "\"pool_index\":"   << qc.pool_index()                         << ","
       << "\"timestamp\":"    << block.timestamp();
