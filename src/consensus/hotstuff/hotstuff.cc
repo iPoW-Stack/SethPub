@@ -1521,7 +1521,7 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    prev_recover_check_tm_ms_ = 0;
+    // prev_recover_check_tm_ms_ = 0;
     return Status::kSuccess;
 }
 
@@ -2320,11 +2320,11 @@ void Hotstuff::TryRecoverFromStuck(
         return;
     }
 
-    if (prev_recover_check_tm_ms_ + 3000lu > now_tm_ms) {
-        return;
-    }
+    // if (prev_recover_check_tm_ms_ + 3000lu > now_tm_ms) {
+    //     return;
+    // }
 
-    prev_recover_check_tm_ms_ = now_tm_ms;
+    // prev_recover_check_tm_ms_ = now_tm_ms;
     // auto stuck_st = IsStuck();
     // if (stuck_st != 0) {
     //     if (stuck_st != 1) {
