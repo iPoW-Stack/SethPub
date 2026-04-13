@@ -1129,21 +1129,28 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     # ── WS-aware wait_for_receipt patch ──────────────────────────────────────
     def _patched_wait(tx_hash, abi=None, function_name=None, **kw):
         print(f"  tx_hash : {tx_hash}")
+        t0 = time.time()
         receipt = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=120,
                                    abi=abi, function_name=function_name)
+        t1 = time.time()
         if receipt:
-            print(f"  ✅ block={receipt.get('block_height')}  "
+            print(f"  ✅ [Time: {t1 - t0:.2f}s] block={receipt.get('block_height')}  "
                   f"status={receipt.get('status')}  gas={receipt.get('gas_used')}"
                   + (f"  output={receipt.get('decoded_output')}" if receipt.get('decoded_output') is not None else "")
                   + (f"  events={receipt.get('decoded_events')}" if receipt.get('decoded_events') else ""))
         else:
-            print(f"  ⏰ Timeout waiting for {tx_hash}")
+            print(f"  ⏰ Timeout waiting for {tx_hash} after {t1 - t0:.2f}s")
             receipt = {}
         return receipt
 
     w3.client.wait_for_receipt = _patched_wait
 
+    section_start_time = [None]
     def section(title):
+        now = time.time()
+        if section_start_time[0] is not None:
+            print(f"\n  [Test Case Time] Previous test case took: {now - section_start_time[0]:.2f} seconds")
+        section_start_time[0] = now
         print("\n" + "─" * 50)
         print(title)
         print("─" * 50)
