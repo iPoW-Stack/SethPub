@@ -472,6 +472,29 @@ Status BlockAcceptor::addTxsToPool(
                 verify_results[i] = -1; // Mark as failed
                 continue;
             }
+        } else if (tx->step() == pools::protobuf::kConsensusLocalTos) {
+            pools::protobuf::ToTxMessageItem to_tx_item;
+            if (!to_tx_item.ParseFromString(tx_info->value())) {
+                block_tx.set_status(kConsensusError);
+                SETH_WARN("local get to txs info failed: %s, unique: %s",
+                    common::Encode::HexEncode(tx_info->value()).c_str(),
+                    common::Encode::HexEncode(tx_info->key()).c_str());
+                verify_results[i] = -1; // Mark as failed
+                continue;
+            }
+
+            auto iter = prevs_balance_map.find(to_tx_item.des());
+            if (iter != prevs_balance_map.end()) {
+                assert(iter->first.size() == common::kUnicastAddressLength ||
+                    iter->first.size() == common::kPreypamentAddressLength);
+                now_balance_map[iter->first] = iter->second;
+            } else {
+                auto new_addr_info = std::make_shared<address::protobuf::AddressInfo>();
+                *new_addr_info = *address_info;
+                assert(to_tx_item.des().size() == common::kUnicastAddressLength || 
+                    to_tx_item.des().size() == common::kPreypamentAddressLength);
+                now_balance_map[to_tx_item.des()] = new_addr_info;
+            }
         } else {
             if (pools::IsUserTransaction(tx->step())) {
                 address_info = view_block_chain_->ChainGetAccountInfo(from_id);
