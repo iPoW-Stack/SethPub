@@ -411,7 +411,7 @@ private:
         }
         
         auto prev_qc_timestamp_sec = (high_view_block->block_info().timestamp() / 1000lu);
-        auto now = common::TimeUtils::TimestampSeconds();
+        auto now = get_consensus_timestamp(30);
         auto timeout = static_cast<uint64_t>(
             common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
         auto elapsed = now - prev_qc_timestamp_sec;
@@ -474,6 +474,15 @@ private:
             *out_view);
         pool_tx_leader_.store((*members)[leader_idx % members->size()]);
         return (*members)[leader_idx % members->size()];
+    }
+
+    inline uint64_t get_consensus_timestamp(uint64_t window_size) {
+        auto now = std::chrono::system_clock::now();
+        auto duration = now.time_since_epoch();
+        uint64_t current_utc = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
+        uint64_t consensus_time = (current_utc / window_size) * window_size;
+
+        return consensus_time;
     }
 
     inline common::BftMemberPtr GetMember(uint32_t member_index) const {
