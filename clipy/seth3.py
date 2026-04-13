@@ -1137,10 +1137,13 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
                                    abi=abi, function_name=function_name)
         t1 = time.time()
         duration = t1 - t0
-        tx_times.append((current_tx_name[0], tx_hash, duration))
+        
+        status = receipt.get('status', 'Timeout') if receipt else 'Timeout'
+        tx_times.append((current_tx_name[0], tx_hash, duration, status))
+        
         if receipt:
             print(f"  ✅ [Time: {duration:.2f}s] block={receipt.get('block_height')}  "
-                  f"status={receipt.get('status')}  gas={receipt.get('gas_used')}"
+                  f"status={status}  gas={receipt.get('gas_used')}"
                   + (f"  output={receipt.get('decoded_output')}" if receipt.get('decoded_output') is not None else "")
                   + (f"  events={receipt.get('decoded_events')}" if receipt.get('decoded_events') else ""))
         else:
@@ -1252,8 +1255,8 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     print("  WebSocket Subscription Tx Latency Summary")
     print("=" * 60)
     total_time = 0
-    for tx_name, tx_hash, duration in tx_times:
-        print(f"  - {tx_name:<40} : {duration:.2f} seconds")
+    for tx_name, tx_hash, duration, status in tx_times:
+        print(f"  - {tx_name:<40} : {duration:>5.2f}s  (Status: {status})")
         total_time += duration
     print("-" * 60)
     if tx_times:
