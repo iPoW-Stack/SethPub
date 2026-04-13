@@ -687,7 +687,8 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
     auto leader = GetLeader(
         view_item.qc().leader_idx(), 
         msg_ptr->header.hotstuff().pro_msg().tc(), 
-        &out_view);
+        &out_view,
+        pro_msg_wrap->view_block_ptr->block_info().timestamp());
     if (!leader) {
         SETH_INFO("pool: %d, propose message no leader info, leader idx: %u, tc view: %lu, "
             "propose_debug: %s",
@@ -2411,11 +2412,11 @@ void Hotstuff::SyncLocalTxToLeader(
     hotstuff_msg->set_pool_index(pool_idx_);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     SendMsgToLeader(leader, trans_msg, PRE_RESET_TIMER);
-    // SETH_DEBUG("pool: %d, send prereset msg from: %lu to: %lu, "
-    //     "has_single_tx: %d, tx size: %u, hash: %lu",
-    //     pool_idx_, pre_rst_timer_msg->replica_idx(), 
-    //     leader->index, has_system_tx, txs->size(),
-    //     trans_msg->header.hash64());
+    SETH_DEBUG("pool: %d, send prereset msg from: %lu to: %lu, "
+        "has_single_tx: %d, tx size: %u, hash: %lu",
+        pool_idx_, pre_rst_timer_msg->replica_idx(), 
+        leader->index, has_system_tx, txs->size(),
+        trans_msg->header.hash64());
     ADD_DEBUG_PROCESS_TIMESTAMP();
 }
 

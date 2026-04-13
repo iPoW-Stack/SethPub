@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cstdlib>
 #include <consensus/hotstuff/crypto.h>
 #include "consensus/consensus_utils.h"
 #include <consensus/hotstuff/block_acceptor.h>
@@ -316,6 +318,7 @@ private:
             uint32_t new_leader_idx, 
             const view_block::protobuf::QcItem& leader_latest_qc, 
             View* out_view,
+            int64_t leader_tm_sec = 0,
             bool debug = true) {
         // auto members = elect_item->valid_leaders();
         pool_tx_leader_.store(nullptr);
@@ -411,7 +414,13 @@ private:
         }
         
         auto prev_qc_timestamp_sec = (high_view_block->block_info().timestamp() / 1000lu);
-        auto now = get_consensus_timestamp(30);
+        int64_t now = get_consensus_timestamp(30);
+        if (leader_tm_sec != 0) {
+            if (std::abs(leader_tm_sec - common::TimeUtils::TimestampSeconds()) < 15) {
+                now = leader_tm_sec;
+            }
+        }
+
         auto timeout = static_cast<uint64_t>(
             common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
         auto elapsed = now - prev_qc_timestamp_sec;
