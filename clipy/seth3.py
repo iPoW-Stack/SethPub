@@ -903,7 +903,7 @@ def _build_ws_msg(action: str, tx_hash: str) -> str:
     return f"{action}:{tx_hash}"
 
 
-def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120,
+def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 35,
                      abi: list = None, function_name: str = None) -> dict | None:
     """
     Subscribe to a single txhash and block until the push is received or timeout.
@@ -912,7 +912,7 @@ def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120,
         ws_ip         : WebSocket server IP.
         ws_port       : WebSocket server port.
         tx_hash       : Transaction hash to subscribe to (hex string).
-        timeout       : Maximum wait time in seconds (default 120).
+        timeout       : Maximum wait time in seconds (default 35).
         abi           : Contract ABI for decoding output/events (optional).
         function_name : Name of the called function for output decoding (optional).
 
@@ -996,7 +996,7 @@ def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120,
 
 
 def subscribe_multiple_txhashes(
-    ws_ip: str, ws_port: int, tx_hashes: list[str], timeout: int = 120,
+    ws_ip: str, ws_port: int, tx_hashes: list[str], timeout: int = 35,
     abi: list = None
 ) -> dict[str, dict]:
     """
@@ -1096,7 +1096,7 @@ def _ws_send_and_wait(w3, ws_ip, ws_port, desc, send_fn) -> dict | None:
         print(f"  ❌ No tx_hash returned, skipping WS wait.")
         return None
     print(f"  tx_hash: {tx_hash}")
-    receipt = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=120)
+    receipt = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=35)
     if receipt:
         print(f"  ✅ Confirmed  block={receipt.get('block_height')}  "
               f"status={receipt.get('status')}  gas={receipt.get('gas_used')}")
@@ -1133,7 +1133,7 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     def _patched_wait(tx_hash, abi=None, function_name=None, **kw):
         print(f"  tx_hash : {tx_hash}")
         t0 = time.time()
-        receipt = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=120,
+        receipt = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=35,
                                    abi=abi, function_name=function_name)
         t1 = time.time()
         duration = t1 - t0
