@@ -1127,36 +1127,29 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     print(f"Receiver: {DEST}")
 
     # ── WS-aware wait_for_receipt patch ──────────────────────────────────────
+    tx_times = []
+
     def _patched_wait(tx_hash, abi=None, function_name=None, **kw):
         print(f"  tx_hash : {tx_hash}")
         t0 = time.time()
         receipt = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=120,
                                    abi=abi, function_name=function_name)
         t1 = time.time()
+        duration = t1 - t0
+        tx_times.append((tx_hash, duration))
         if receipt:
-            print(f"  ✅ [Time: {t1 - t0:.2f}s] block={receipt.get('block_height')}  "
+            print(f"  ✅ [Time: {duration:.2f}s] block={receipt.get('block_height')}  "
                   f"status={receipt.get('status')}  gas={receipt.get('gas_used')}"
                   + (f"  output={receipt.get('decoded_output')}" if receipt.get('decoded_output') is not None else "")
                   + (f"  events={receipt.get('decoded_events')}" if receipt.get('decoded_events') else ""))
         else:
-            print(f"  ⏰ Timeout waiting for {tx_hash} after {t1 - t0:.2f}s")
+            print(f"  ⏰ Timeout waiting for {tx_hash} after {duration:.2f}s")
             receipt = {}
         return receipt
 
     w3.client.wait_for_receipt = _patched_wait
 
-    section_start_time = [None]
-    current_section = [None]
-    section_times = []
-
     def section(title):
-        now = time.time()
-        if section_start_time[0] is not None:
-            duration = now - section_start_time[0]
-            section_times.append((current_section[0], duration))
-            print(f"\n  [Test Case Time] Previous test case took: {duration:.2f} seconds")
-        section_start_time[0] = now
-        current_section[0] = title
         print("\n" + "─" * 50)
         print(title)
         print("─" * 50)
@@ -1250,20 +1243,17 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     print("\n[TX] factory.deploy(88888888)")
     factory.functions.deploy(88888888).transact(KEY)
 
-    if section_start_time[0] is not None:
-        duration = time.time() - section_start_time[0]
-        section_times.append((current_section[0], duration))
-        print(f"\n  [Test Case Time] Last test case took: {duration:.2f} seconds")
-
     print("\n" + "=" * 60)
-    print("  WebSocket Subscription Demo Time Summary")
+    print("  WebSocket Subscription Tx Latency Summary")
     print("=" * 60)
     total_time = 0
-    for title, duration in section_times:
-        print(f"  - {title:<40} : {duration:.2f} seconds")
+    for tx_hash, duration in tx_times:
+        print(f"  - {tx_hash} : {duration:.2f} seconds")
         total_time += duration
     print("-" * 60)
-    print(f"  Total Demo Execution Time:                 {total_time:.2f} seconds")
+    if tx_times:
+        print(f"  Average Tx Latency:                        {total_time / len(tx_times):.2f} seconds")
+    print(f"  Total Wait Time:                           {total_time:.2f} seconds")
 
     print("\n" + "=" * 60)
     print("  Demo complete.")
