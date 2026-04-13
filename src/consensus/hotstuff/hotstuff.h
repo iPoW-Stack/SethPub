@@ -315,7 +315,8 @@ private:
     common::BftMemberPtr GetLeader(
             uint32_t new_leader_idx, 
             const view_block::protobuf::QcItem& leader_latest_qc, 
-            View* out_view) {
+            View* out_view,
+            bool debug = true) {
         // auto members = elect_item->valid_leaders();
         pool_tx_leader_.store(nullptr);
         auto members = Members(common::GlobalInfo::Instance()->network_id());
@@ -344,6 +345,7 @@ private:
             
             // *out_view += 1;
             
+            if (debug)
             SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is equal with high view block qc view: %lu, "
                 "high_view_block->qc().elect_height(): %lu, latest_elect_height_: %lu, out view: %lu, "
                 "last_stable_leader_member_index_: %u, new_leader_idx: %u, leader_latest_qc.leader_idx(): %u",
@@ -360,6 +362,7 @@ private:
         if (last_stable_leader_member_index_ == new_leader_idx) {
             do {
                 if (leader_latest_qc.view() != high_view_block->qc().view()) {
+            if (debug)
                     SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is not equal with high view block qc view: %lu",
                         pool_idx_, leader_latest_qc.view(), high_view_block->qc().view());
                     break;
@@ -376,6 +379,7 @@ private:
                 // }
 
                 // *out_view += 1;
+                if (debug)
                 SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is equal with high view block qc view: %lu, "
                     "high_view_block->qc().elect_height(): %lu, latest_elect_height_: %lu, out view: %lu, "
                     "last_stable_leader_member_index_: %u, new_leader_idx: %u, leader_latest_qc.leader_idx(): %u",
@@ -392,6 +396,7 @@ private:
 
         auto high_view_block_info = view_block_chain_->Get(leader_latest_qc.view_block_hash());
         if (high_view_block_info == nullptr || high_view_block_info->view_block == nullptr) {
+            if (debug)
             SETH_DEBUG("pool: %u, leader_latest_qc view: %lu, view_block_hash: %s "
                 "not found in view block chain", 
                 pool_idx_, leader_latest_qc.view(), leader_latest_qc.view_block_hash().c_str());
@@ -411,6 +416,7 @@ private:
             common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
         auto elapsed = now - prev_qc_timestamp_sec;
         if (elapsed < timeout) {
+            if (debug)
             SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, consecutive_failures: %d, now: %u, block tm: %lu, "
                 "last_stable_leader_member_index: %d, get leader index: %u, latest_elect_height: %lu, out view: %lu", 
                 pool_idx_, high_view_block->qc().view(), elapsed, timeout, consecutive_failures_,
@@ -445,6 +451,7 @@ private:
             *out_view = high_view_block->qc().view() + k + 1;
         }
 
+        if (debug)
         SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
             "consecutive_failures: %d, now: %u, block tm: %lu, "
             "last_stable_leader_member_index: %d, get leader index: %u, "

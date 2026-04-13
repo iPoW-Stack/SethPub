@@ -2299,9 +2299,7 @@ void Hotstuff::TryRecoverFromStuck(
 
     auto local_idx = GetLocalMemberIdx();
     View out_view = 0;
-    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view);
-    SETH_DEBUG("pool index: %d, GetLeader return leader: %d, out_view: %lu, local_idx: %d",
-        pool_idx_, leader ? leader->index : -1, out_view, local_idx);
+    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view, false);
     if (!leader) {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
         return;
@@ -2320,6 +2318,8 @@ void Hotstuff::TryRecoverFromStuck(
         return;
     }
 
+    SETH_DEBUG("pool index: %d, GetLeader return leader: %d, out_view: %lu, local_idx: %d",
+        pool_idx_, leader ? leader->index : -1, out_view, local_idx);
     // if (prev_recover_check_tm_ms_ + 3000lu > now_tm_ms) {
     //     return;
     // }
