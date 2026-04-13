@@ -199,7 +199,6 @@ get_bootstrap() {
     # Write bootstrap into the conf template via Python (handles long strings safely)
     printf "%s" "$bootstrap" > /tmp/bootstrap_data.tmp
     /root/tools/python3.10/bin/python3 -c "
-import os
 conf_path = '/root/nodes/seth/pkg/temp/conf/seth.conf'
 with open('/tmp/bootstrap_data.tmp', 'r') as f:
     new_val = f.read()
@@ -210,6 +209,9 @@ with open(conf_path, 'w') as f:
 "
     rm /tmp/bootstrap_data.tmp
     echo $bootstrap
+
+    # Re-pack after BOOTSTRAP has been written into the conf
+    cd /root/nodes/seth/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
 }
 
 check_cmd_finished() {
@@ -324,8 +326,8 @@ killall -9 sshpass
 init
 make_package
 clear_command
-scp_package
 get_bootstrap
 echo $bootstrap
+scp_package
 run_command
 start_all_nodes
