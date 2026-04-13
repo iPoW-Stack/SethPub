@@ -65,7 +65,7 @@ void PkiClAgka::Simulate(bool honest) {
   auto start = std::chrono::steady_clock::now();
   // Setup();
   auto end = std::chrono::steady_clock::now();
-  // 计算时间差
+  // Calculate time difference
   // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   // std::cout << "Stage1 Setup duration:" << duration.count() << std::endl;
   // std::cout << duration.count() << std::endl;
@@ -747,7 +747,7 @@ PlainText PkiClAgka::Dec(CipherText& cipher, DecodeKey& dk) {
   G2 pair = pair1 * pair2;
   std::string plain = xor_strings(cipher.c3, pp.H4(pair));
   // auto end = std::chrono::steady_clock::now();
-  // 计算时间差
+  // Calculate time difference
   // auto duration =
   //     std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   // std::cout << "duration:" << duration.count() << std::endl;
@@ -771,7 +771,7 @@ void PkiClAgka::init_id_list(const int& n) {
   id_list.resize(n);
   
   for (auto i = 0; i < n; ++i) {  
-        id_list[i] = "Alice_" + std::to_string(i + 1); // 生成不同的字符串  
+        id_list[i] = "Alice_" + std::to_string(i + 1); // Generate different strings  
   }
 }
 
@@ -780,7 +780,7 @@ void PkiClAgka::init_cert_list(const int& n) {
   cert_list.resize(n);
   
   for (auto i = 0; i < n; ++i) {  
-        cert_list[i] = "Cert_" + std::to_string(i + 1); // 生成不同的字符串  
+        cert_list[i] = "Cert_" + std::to_string(i + 1); // Generate different strings  
   }
 }
 

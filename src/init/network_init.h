@@ -48,6 +48,8 @@ private:
     int InitNetworkSingleton();
     int InitCommand();
     int InitHttpServer();
+    int InitHttpServerForPrivateKeyWait();
+    void WaitForPrivateKeyUpdate();
     int InitSecurity();
     int CheckJoinWaitingPool();
     int GenesisCmd(common::ParserArgs& parser_arg);
@@ -88,6 +90,7 @@ private:
     bool InitLocalNetworkIdWithLatestElectBlock();
     void SaveCrossBlockToEachShard();
     void JoinInitNodes();
+    int UpdatePrivateKey(const std::string& new_private_key);
         
     static const uint32_t kInvalidPoolFactor = 50u;  // 50%
     static const uint32_t kMinValodPoolCount = 4u;  // 64 must finish all
@@ -126,6 +129,12 @@ private:
     common::ThreadSafeQueue<std::shared_ptr<view_block::protobuf::ViewBlockItem>> new_blocks_queue_[common::kMaxThreadCount];
     std::mutex new_blocks_mutex_;
     std::condition_variable new_blocks_cv_;
+    std::atomic<bool> http_private_key_inited_ = false;
+    
+    // Private key waiting mechanism
+    std::mutex private_key_wait_mutex_;
+    std::condition_variable private_key_wait_cv_;
+    std::atomic<bool> private_key_received_{false};
 
     DISALLOW_COPY_AND_ASSIGN(NetworkInit);
 };

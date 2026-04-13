@@ -232,13 +232,13 @@ static inline std::string MessageStatusToString(MessageHandleStatus status) {
         case 5043: return "kConsensusWasmRnreachableInstruction";
         case 5044: return "kConsensusWasmTrap";
 
-        // --- EVMC 映射部分 ---
-        case 5045: return "kConsensusInsufficientBalance"; // 对应原 kEvmcInsufficientBalance
-        case 5046: return "kConsensusInternalError";      // 对应原 kEvmcInternalError
-        case 5047: return "kConsensusRejected";           // 对应原 kEvmcRejected
-        case 5048: return "kConsensusOutOfMemory";        // 对应原 kEvmcOutOfMemory
+        // --- EVMC mapping section ---
+        case 5045: return "kConsensusInsufficientBalance"; // Corresponds to original kEvmcInsufficientBalance
+        case 5046: return "kConsensusInternalError";      // Corresponds to original kEvmcInternalError
+        case 5047: return "kConsensusRejected";           // Corresponds to original kEvmcRejected
+        case 5048: return "kConsensusOutOfMemory";        // Corresponds to original kEvmcOutOfMemory
         
-        // --- 跨分片与选举逻辑 ---
+        // --- Cross-shard and election logic ---
         case 5049: return "kConsensusOutOfPrefund";
         case 5050: return "kConsensusElectNodeExists";
         case 5051: return "kConsensusNonceInvalid";

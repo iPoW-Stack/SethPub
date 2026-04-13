@@ -290,7 +290,7 @@ int BaseDht::Bootstrap(
             continue;
         }
 
-        // 构造一条 bootstrap message
+        // Construct a bootstrap message
         auto msg_ptr = std::make_shared<transport::TransportMessage>();
         auto& msg = msg_ptr->header;
         DhtKeyManager dhtkey(local_node_->sharding_id, boot_nodes[i]->id);

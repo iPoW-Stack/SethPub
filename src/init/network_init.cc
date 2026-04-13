@@ -82,21 +82,57 @@ int NetworkInit::Init(int argc, char** argv) {
         return kInitError;
     }
 
-    if (InitSecurity() != kInitSuccess) {
+    int security_init_result = InitSecurity();
+    if (security_init_result == kInitWaitingForPrivateKey) {
+        INIT_WARN("Private key not found, starting HTTP server to wait for UpdatePrivateKey...");
+        
+        // Initialize minimal components needed for HTTP server
+        std::string db_path = "./db";
+        conf_.Get("seth", "db_path", db_path);
+        db_ = std::make_shared<db::Db>();
+        if (!db_->Init(db_path)) {
+            INIT_ERROR("init db failed!");
+            return kInitError;
+        }
+        
+        prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
+        // Initialize HTTP server with private key update callback
+        if (InitHttpServerForPrivateKeyWait() != kInitSuccess) {
+            INIT_ERROR("InitHttpServerForPrivateKeyWait failed!");
+            return kInitError;
+        }
+        
+        INIT_INFO("HTTP server started, waiting for private key update via /update_private_key endpoint...");
+        INIT_INFO("Please send POST request to http://%s:%d/update_private_key with private_key parameter",
+            common::GlobalInfo::Instance()->config_local_ip().c_str(),
+            common::GlobalInfo::Instance()->http_port());
+        security_ = nullptr;
+        // Wait for private key to be updated
+        WaitForPrivateKeyUpdate();
+        INIT_INFO("Private key received, continuing initialization...");
+        if (!security_) {
+            INIT_ERROR("InitSecurity failed after receiving private key!");
+            return kInitError;
+        }
+    } else if (security_init_result != kInitSuccess) {
         INIT_ERROR("InitSecurity failed!");
         return kInitError;
     }
 
     std::string db_path = "./db";
     conf_.Get("seth", "db_path", db_path);
-    db_ = std::make_shared<db::Db>();
-    if (!db_->Init(db_path)) {
-        INIT_ERROR("init db failed!");
-        return kInitError;
+    if (!db_) {
+        db_ = std::make_shared<db::Db>();
+        if (!db_->Init(db_path)) {
+            INIT_ERROR("init db failed!");
+            return kInitError;
+        }
     }
 
     common::Ip::Instance();
-    prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
+    if (!prefix_db_) {
+        prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
+    }
     SETH_DEBUG("init 0 1");
     contract_mgr_ = std::make_shared<contract::ContractManager>();
     contract_mgr_->Init(security_);
@@ -364,6 +400,7 @@ int NetworkInit::InitWsServer() {
     uint16_t ws_port = 0;
     conf_.Get("seth", "tx_ws_ip", ws_ip);
     conf_.Get("seth", "tx_ws_port", ws_port);
+    SETH_DEBUG("now init tx ws server: %d", ws_port);
     if (ws_port > 0) {
         if (tx_ws_server_.Init(ws_ip, ws_port) != 0) {
             INIT_ERROR("[TxWsServer] init failed on %s:%u", ws_ip.c_str(), ws_port);
@@ -519,9 +556,10 @@ void NetworkInit::InitLocalNetworkId() {
 
 int NetworkInit::InitSecurity() {
     std::string prikey;
-    if (!conf_.Get("seth", "prikey", prikey)) {
-        INIT_ERROR("get private key from config failed!");
-        return kInitError;
+    if (!conf_.Get("seth", "prikey", prikey) || prikey.empty()) {
+        INIT_WARN("Private key is empty or not found in config, waiting for UpdatePrivateKey...");
+        // Return a special status to indicate we need to wait for private key update
+        return kInitWaitingForPrivateKey;
     }
     SETH_DEBUG("prikey1: %s", prikey.c_str());
     SETH_DEBUG("prikey2: %s", common::Encode::HexEncode(common::Encode::HexDecode(prikey)).c_str());
@@ -551,6 +589,142 @@ int NetworkInit::InitSecurity() {
     return kInitSuccess;
 }
 
+int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
+    SETH_INFO("Updating private key...");
+    if (http_private_key_inited_) {
+        SETH_ERROR("Private key already inited!");
+        return kInitError;
+    }
+
+    if (new_private_key.empty()) {
+        SETH_ERROR("New private key is empty!");
+        return kInitError;
+    }
+    
+    // Create new security object to verify private key
+    auto new_security = std::make_shared<security::Ecdsa>();
+    
+    // Determine if decryption is needed based on private key length
+    if (new_private_key.size() == security::kPrivateKeySize) {
+        // Raw private key (32 bytes)
+        if (new_security->SetPrivateKey(new_private_key) != security::kSecuritySuccess) { 
+            SETH_ERROR("Failed to set new private key (raw format)!");
+            return kInitError;
+        }
+    } else {
+        // Encrypted private key, needs decryption first
+        if (security::KeyManager::Instance().Initialize(new_private_key) != security::kSecuritySuccess) {
+            SETH_ERROR("Failed to initialize KeyManager with new private key!");
+            return kInitError;
+        }
+
+        if (new_security->SetPrivateKey(
+                (const char*)security::KeyManager::Instance().GetProtectedKey(), 
+                security::KeyManager::Instance().GetKeyLength()) != security::kSecuritySuccess) { 
+            SETH_ERROR("Failed to set new private key (encrypted format)!");
+            return kInitError;
+        }
+    }
+    
+    // Get new address
+    std::string new_address = new_security->GetAddress();
+    
+    // Check if this is initial private key setup or update
+    bool is_initial_setup = (security_ == nullptr || private_key_received_ == false);
+    
+    if (!is_initial_setup) {
+        std::string old_address = security_->GetAddress();
+        SETH_INFO("Private key update: old address: %s, new address: %s",
+            common::Encode::HexEncode(old_address).c_str(),
+            common::Encode::HexEncode(new_address).c_str());
+    } else {
+        SETH_INFO("Initial private key setup: new address: %s",
+            common::Encode::HexEncode(new_address).c_str());
+    }
+    
+    // // Update private key in configuration file (for persistence)
+    // std::string prikey_hex = common::Encode::HexEncode(new_private_key);
+    // if (conf_.Set("seth", "prikey", prikey_hex)) {
+    //     SETH_INFO("Configuration updated with new private key");
+    // } else {
+    //     SETH_ERROR("Failed to update configuration with new private key");
+    //     return kInitError;
+    // }
+    
+    if (is_initial_setup) {
+        // For initial setup, just notify the waiting thread
+        // The security_ object will be properly initialized by InitSecurity() after wait returns
+        SETH_INFO("Private key received for initial setup");
+        
+        // Notify waiting thread that private key has been received
+        {
+            std::lock_guard<std::mutex> lock(private_key_wait_mutex_);
+            private_key_received_ = true;
+        }
+        http_private_key_inited_ = true;
+        private_key_wait_cv_.notify_one();
+    } 
+
+    security_ = new_security;
+    
+    // NOTE: We do NOT call Init() on Route, UniversalManager, or Bootstrap
+    // because they create new threads which would terminate the old running threads.
+    // These components will automatically use the updated security_ pointer
+    // since they hold shared_ptr references to it.
+    
+    SETH_INFO("Security object updated with new private key");
+    
+    SETH_INFO("Private key updated successfully! New address: %s",
+        common::Encode::HexEncode(new_address).c_str());
+    
+    return kInitSuccess;
+}
+
+int NetworkInit::InitHttpServerForPrivateKeyWait() {
+    std::string http_ip = "0.0.0.0";
+    uint16_t http_port = 0;
+    conf_.Get("seth", "http_ip", http_ip);
+    if (!conf_.Get("seth", "http_port", http_port) || http_port == 0) {
+        INIT_ERROR("HTTP port not configured, cannot wait for private key update!");
+        return kInitError;
+    }
+    
+    // Create minimal account manager for HTTP handler
+    account_mgr_ = std::make_shared<block::AccountManager>();
+    
+    // Create a temporary empty security object just for HTTP handler initialization
+    // This will be replaced with the real one after private key is received
+    auto temp_security = std::make_shared<security::Ecdsa>();
+    
+    // Set private key update callback
+    http_handler_.SetPrivateKeyUpdateCallback(
+        [this](const std::string& new_private_key) -> int {
+            return this->UpdatePrivateKey(new_private_key);
+        });
+    
+    // Initialize HTTP handler with minimal components
+    http_handler_.Init(
+        account_mgr_, 
+        nullptr,  // net_handler not initialized yet
+        temp_security,  // temporary security object
+        prefix_db_, 
+        nullptr,  // contract_mgr not initialized yet
+        http_ip, 
+        http_port);
+    
+    std::this_thread::sleep_for(std::chrono::milliseconds{200});
+    SETH_INFO("HTTP server initialized for private key waiting on %s:%u", http_ip.c_str(), http_port);
+    
+    return kInitSuccess;
+}
+
+void NetworkInit::WaitForPrivateKeyUpdate() {
+    INIT_INFO("Waiting for private key update...");
+    std::unique_lock<std::mutex> lock(private_key_wait_mutex_);
+    private_key_wait_cv_.wait(lock, [this] { return private_key_received_.load(); });
+    INIT_INFO("Private key received, resuming initialization...");
+}
+
 static std::condition_variable wait_con_;
 static std::mutex wait_mutex_;
 
@@ -559,26 +733,40 @@ int NetworkInit::InitHttpServer() {
     uint16_t http_port = 0;
     conf_.Get("seth", "http_ip", http_ip);
     if (conf_.Get("seth", "http_port", http_port) && http_port != 0) {
-        http_handler_.Init(
-            account_mgr_, 
-            &net_handler_, 
-            security_, 
-            prefix_db_, 
-            contract_mgr_, 
-            http_ip, 
-            http_port);
+        if (private_key_received_) {
+            http_handler_.set_net_handler(&net_handler_);
+            http_handler_.set_contract_mgr(contract_mgr_);
+        } else {
+            http_handler_.SetPrivateKeyUpdateCallback(
+                [this](const std::string& new_private_key) -> int {
+                    return this->UpdatePrivateKey(new_private_key);
+                });
+            http_handler_.Init(
+                account_mgr_, 
+                &net_handler_, 
+                security_, 
+                prefix_db_, 
+                contract_mgr_, 
+                http_ip, 
+                http_port);
+            private_key_received_ = true;
+        }
+       
         std::this_thread::sleep_for(std::chrono::milliseconds{200});
-        httplib::Client cli(common::GlobalInfo::Instance()->config_local_ip(), http_port);
-        if (auto res = cli.Post("/query_init", "text", "text/plain")) {
-            SETH_INFO("http init wait response coming.");
+        // Note: HTTP client check removed as we migrated from httplib to uWebSockets
+        // The server will be ready after the sleep delay
+        SETH_INFO("http init wait response coming.");
+        {
             std::unique_lock<std::mutex> lock(wait_mutex_);
             wait_con_.notify_one();
         }
 
-            SETH_INFO("http init waiting response coming.");
-        std::unique_lock<std::mutex> lock(wait_mutex_);
-        wait_con_.wait_for(lock, std::chrono::milliseconds(10000));
-            SETH_INFO("http init waiting response coming success.");
+        SETH_INFO("http init waiting response coming.");
+        {
+            std::unique_lock<std::mutex> lock(wait_mutex_);
+            wait_con_.wait_for(lock, std::chrono::milliseconds(10000));
+        }
+        SETH_INFO("http init waiting response coming success.");
     }
 
     return kInitSuccess;
@@ -723,12 +911,12 @@ int NetworkInit::InitConfigWithArgs(int argc, char** argv) {
         std::string line;
         uint32_t count = 0;
         while (std::getline(infile, line)) {
-            // 1. 去除行尾可能存在的 \r (处理 Windows/DOS 格式文件)
+            // 1. Remove possible \r at end of line (handle Windows/DOS format files)
             if (!line.empty() && line.back() == '\r') {
                 line.pop_back();
             }
 
-            // 2. 严格空行检查：跳过完全没有任何内容的行
+            // 2. Strict empty line check: skip lines with no content at all
             if (line.empty()) continue;
 
             size_t tab_pos = line.find('\t');

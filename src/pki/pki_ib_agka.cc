@@ -714,7 +714,7 @@ PlainText PkiIbAgka::Dec(CipherText& cipher, DecodeKey& dk) {
   G2 pair = pair1 * pair2;
   std::string plain = xor_strings(cipher.c3, pp.H3(pair));
   auto end = std::chrono::steady_clock::now();
-  // 计算时间差
+  // Calculate time difference
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   fmt::println("Dec Time: {}", duration.count());

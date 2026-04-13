@@ -533,6 +533,11 @@ private:
         return elect_item->Members();
     }
 
+    void SyncLocalTxToLeader(
+        const transport::MessagePtr& msg_ptr, 
+        common::BftMemberPtr leader, 
+        bool has_system_tx);
+
     static const uint64_t kLatestPoposeSendTxToLeaderPeriodMs = 10000lu;
 
     std::shared_ptr<block::BlockManager> block_mgr_;

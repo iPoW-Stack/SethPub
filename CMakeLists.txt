@@ -107,6 +107,8 @@ include_directories(SYSTEM
     ${DEP_DIR}/include/geoip
     ${DEP_DIR}/include/uv
     ${DEP_DIR}/include/sslib
+    ${DEP_DIR}/include/uWebSockets
+    ${DEP_DIR}/include/uSockets
     ${DEP_DIR}/libbls/deps/deps_inst/x86_or_x64/include/
     ${CURL_INCLUDE_DIRS}
 )
@@ -233,6 +235,10 @@ set(LINK_ARGS
     pthread
     gmp # Big number library, performance critical
     tcmalloc # Memory allocator, critical for multi-threaded performance
+    uSockets # uWebSockets dependency
+    z # zlib for uWebSockets
+    ssl # OpenSSL for HTTPS
+    crypto # OpenSSL crypto
     #-static-libstdc++
     #-static
 )

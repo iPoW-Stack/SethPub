@@ -190,11 +190,14 @@ Status Hotstuff::Propose(
     if (pre_v_block->qc().leader_idx() != last_stable_leader_member_index_ && laste_vote_prev_view_tm_.Get(
             pre_v_block->qc().view(), view_prev_vote_tm)) {
         auto now_tm = common::TimeUtils::TimestampMs();
-        if (view_prev_vote_tm + 25000lu >= now_tm) {
-            SETH_DEBUG("view: %lu, view_prev_vote_tm: %lu, now_tm: %lu, not timeout", 
+        if (view_prev_vote_tm + 300lu >= now_tm) {
+            SETH_DEBUG("view: %lu, view_prev_vote_tm: %lu, now_tm: %lu, not timeout, "
+                "pre_v_block->qc().leader_idx(): %u, last_stable_leader_member_index_: %u ", 
                 pre_v_block->qc().view(), 
                 view_prev_vote_tm,
-                now_tm);
+                now_tm,
+                pre_v_block->qc().leader_idx(),
+                last_stable_leader_member_index_.load());
             return Status::kError;
         }
     }
@@ -1518,6 +1521,7 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
+    prev_recover_check_tm_ms_ = 0;
     return Status::kSuccess;
 }
 
@@ -2293,6 +2297,21 @@ void Hotstuff::TryRecoverFromStuck(
         // }
     }
 
+    auto local_idx = GetLocalMemberIdx();
+    View out_view = 0;
+    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view);
+    SETH_DEBUG("pool index: %d, GetLeader return leader: %d, out_view: %lu, local_idx: %d",
+        pool_idx_, leader ? leader->index : -1, out_view, local_idx);
+    if (!leader) {
+        SETH_DEBUG("pool index: %d, no leader", pool_idx_);
+        return;
+    }
+
+    if (leader->index != local_idx) {
+        SyncLocalTxToLeader(msg_ptr, leader, has_system_tx);
+        return;
+    }
+
     if (now_tm_ms < latest_propose_msg_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs) {
         // SETH_WARN("pool: %u now_tm_ms < latest_propose_msg_tm_ms_ + "
         //     "kLatestPoposeSendTxToLeaderPeriodMs: %lu, %lu",
@@ -2313,15 +2332,6 @@ void Hotstuff::TryRecoverFromStuck(
     //     }
     //     return;
     // }
-
-    auto local_idx = GetLocalMemberIdx();
-    View out_view = 0;
-    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view);
-    if (!leader) {
-        SETH_DEBUG("pool index: %d, no leader", pool_idx_);
-        return;
-    }
-    
     SETH_DEBUG("pool index: %d, found leader: %d, local_index: %d",
         pool_idx_, leader->index, local_idx);
     if (leader && leader->index == local_idx) {
@@ -2358,7 +2368,12 @@ void Hotstuff::TryRecoverFromStuck(
 
         return;
     }
+}
 
+void Hotstuff::SyncLocalTxToLeader(
+        const transport::MessagePtr& msg_ptr, 
+        common::BftMemberPtr leader, 
+        bool has_system_tx) {
     if (!has_user_tx_tag_) {
         // SETH_DEBUG("pool: %u not has_user_tx_tag_.", pool_idx_);
         return;

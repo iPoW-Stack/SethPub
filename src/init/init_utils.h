@@ -26,6 +26,7 @@ namespace init {
 enum InitErrorCode {
     kInitSuccess = 0,
     kInitError = 1,
+    kInitWaitingForPrivateKey = 2,
 };
 
 struct RotatitionVersionInfo {

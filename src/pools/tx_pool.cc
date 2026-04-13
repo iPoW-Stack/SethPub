@@ -172,6 +172,7 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
         tx_ptr->tx_key = pools::GetTxMessageHash(*tx_ptr->tx_info);
     }
 
+    tx_ptr->elect_height = latest_elect_height_;
     added_txs_.push(tx_ptr);
     SETH_DEBUG("trace tx pool: %d, success add tx %s, key: %s, nonce: %lu, step: %d", 
         pool_index_,
@@ -395,7 +396,12 @@ void TxPool::GetTxSyncToLeader(
         for (auto nonce_iter = iter->second.begin(); nonce_iter != iter->second.end(); ++nonce_iter) {
             auto tx_ptr = nonce_iter->second;
             if (tx_ptr->synced_leaders_.Valid(leader_idx)) {
-                continue;
+                if (tx_ptr->elect_height == latest_elect_height_) {
+                    continue;
+                }
+
+                tx_ptr->synced_leaders_.clear();
+                tx_ptr->elect_height = latest_elect_height_;
             }
 
             if (valid_nonce == common::kInvalidUint64) {

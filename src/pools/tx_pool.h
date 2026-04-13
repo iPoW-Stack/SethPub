@@ -68,6 +68,17 @@ public:
             const uint64_t timestamp);
     void SyncBlock();
     void TxOver(view_block::protobuf::ViewBlockItem& view_block);
+
+    void OnNewElectBlock(uint32_t sharding_id, uint64_t elect_height) {
+        if (!network::IsSameToLocalShard(sharding_id)) {
+            return;
+        }
+
+        if (elect_height > latest_elect_height_) {
+            latest_elect_height_ = elect_height;
+        }
+    }
+
     bool PoolChainIsFull(uint64_t height) const {
         if (latest_height_ < height) {
             SETH_DEBUG("pool: %d, check pool chain is full height: %lu, latest_height_: %lu", 
@@ -247,6 +258,7 @@ private:
     std::map<std::string, std::map<uint64_t, TxItemPtr>> consensus_tx_map_;
     uint32_t consensus_tx_map_count_ = 0;
     std::atomic<bool> has_missing_height_ = true;
+    std::atomic<uint64_t> latest_elect_height_ = 0;
 
 // TODO: just test
     db::DbWriteBatch added_gids_batch_;

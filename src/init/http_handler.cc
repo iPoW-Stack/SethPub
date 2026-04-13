@@ -1,6 +1,9 @@
 #include "init/http_handler.h"
+#include "init/uws_adapter.h"
 
 #include <functional>
+#include <fstream>
+#include <vector>
 
 #include <cpppbc/GT.h>
 #include <cpppbc/Pairing.h>
@@ -76,7 +79,7 @@ static int CreateOqsTransactionWithAttr(
         uint64_t gas_limit,
         uint64_t gas_price,
         int32_t des_net_id,
-        const httplib::Request& req,
+        const UWSRequest& req,
         transport::protobuf::Header& msg) {
     security::Oqs oqs;
     auto from = oqs.GetAddress(from_pk);
@@ -187,7 +190,13 @@ static int CreateOqsTransactionWithAttr(
     return kHttpSuccess;
 }
 
-static void OqsHttpTransaction(const httplib::Request& req, httplib::Response& http_res) {
+static void OqsHttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
+    if (http_handler->net_handler() == nullptr) {
+        std::string res = std::string("node not ready!");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
     SETH_DEBUG("OQS http transaction request received.");
     
     auto from_pk_hex = req.get_param_value("pubkey");
@@ -272,7 +281,7 @@ static int CreateGmTransactionWithAttr(
         uint64_t gas_limit,
         uint64_t gas_price,
         int32_t des_net_id,
-        const httplib::Request& req,
+        const UWSRequest& req,
         transport::protobuf::Header& msg) {
     security::GmSsl gm;
     auto from = gm.GetAddress(from_pk);
@@ -373,7 +382,13 @@ static int CreateGmTransactionWithAttr(
     return kHttpSuccess;
 }
 
-static void GmHttpTransaction(const httplib::Request& req, httplib::Response& http_res) {
+static void GmHttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
+    if (http_handler->net_handler() == nullptr) {
+        std::string res = std::string("node not ready!");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
     SETH_DEBUG("GmSSL http transaction request received.");
     
     auto from_pk_hex = req.get_param_value("pubkey");
@@ -449,7 +464,7 @@ static int CreateTransactionWithAttr(
         uint64_t gas_limit,
         uint64_t gas_price,
         int32_t des_net_id,
-        const httplib::Request& req,
+        const UWSRequest& req,
         transport::protobuf::Header& msg) {
     auto from = http_handler->security_ptr()->GetAddressWithPublicKey(from_pk);
     if (from.empty()) {
@@ -599,7 +614,13 @@ static inline std::string HttpProtobufToJson(
     return json_str;
 }
 
-static void HttpTransaction(const httplib::Request& req, httplib::Response& http_res) {
+static void HttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
+    if (http_handler->net_handler() == nullptr) {
+        std::string res = std::string("node not ready!");
+        http_res.set_content(res, "text/plain");
+        return;
+    }
+
     SETH_DEBUG("http transaction coming.");
     auto nonce_str = req.get_param_value("nonce");
     auto frompk = req.get_param_value("pubkey");
@@ -721,7 +742,7 @@ static void HttpTransaction(const httplib::Request& req, httplib::Response& http
         common::Encode::HexEncode(msg_ptr->msg_hash).c_str());
 }
 
-static void QueryContract(const httplib::Request& req, httplib::Response& http_res) {
+static void QueryContract(const UWSRequest& req, UWSResponse& http_res) {
     SETH_DEBUG("query contract coming.");
     auto tmp_contract_addr = req.get_param_value("address");
     auto tmp_input = req.get_param_value("input");
@@ -855,7 +876,7 @@ static std::string EncodeEvmError(const std::string& msg) {
     return "0x" + common::Encode::HexEncode(encoded);
 }
 
-static void AbiQueryContract(const httplib::Request& req, httplib::Response& http_res) {
+static void AbiQueryContract(const UWSRequest& req, UWSResponse& http_res) {
     SETH_DEBUG("query contract coming.");
     auto tmp_contract_addr = req.get_param_value("address");
     auto tmp_input = req.get_param_value("input");
@@ -959,7 +980,7 @@ static void AbiQueryContract(const httplib::Request& req, httplib::Response& htt
     SETH_INFO("query contract success data: %s", hex_data.c_str());
 }
 
-static void QueryAccount(const httplib::Request& req, httplib::Response& http_res) {
+static void QueryAccount(const UWSRequest& req, UWSResponse& http_res) {
     auto tmp_addr = req.get_param_value("address");
     SETH_DEBUG("coming query account: %s", tmp_addr.c_str());
     if (tmp_addr.empty()) {
@@ -996,7 +1017,7 @@ static void QueryAccount(const httplib::Request& req, httplib::Response& http_re
     SETH_DEBUG("%s", json_str.c_str());
 }
 
-static void AccountsValid(const httplib::Request& req, httplib::Response& http_res) {
+static void AccountsValid(const UWSRequest& req, UWSResponse& http_res) {
     SETH_DEBUG("query account.");
     auto balance = req.get_param_value("balance");
     uint64_t balance_val = 0;
@@ -1049,7 +1070,7 @@ static void AccountsValid(const httplib::Request& req, httplib::Response& http_r
     http_res.set_content(json_str, "text/plain");
 }
 
-static void GetBlockWithGid(const httplib::Request& req, httplib::Response& http_res) {
+static void GetBlockWithGid(const UWSRequest& req, UWSResponse& http_res) {
     SETH_DEBUG("query account.");
     auto addr = req.get_param_value("addr");
     if (addr.empty()) {
@@ -1090,7 +1111,7 @@ static void GetBlockWithGid(const httplib::Request& req, httplib::Response& http
     http_res.set_content(res_json, "text/plain");
 }
 
-static void PrefundsValid(const httplib::Request& req, httplib::Response& http_res) {
+static void PrefundsValid(const UWSRequest& req, UWSResponse& http_res) {
     SETH_DEBUG("query account.");
     auto balance = req.get_param_value("balance");
     if (balance.empty()) {
@@ -1156,7 +1177,7 @@ static void PrefundsValid(const httplib::Request& req, httplib::Response& http_r
     http_res.set_content(json_str, "text/plain");
 }
 
-static void GidsValid(const httplib::Request& req, httplib::Response& http_res) {
+static void GidsValid(const UWSRequest& req, UWSResponse& http_res) {
     auto tmp_gids = req.get_param_value("gids");
     if (tmp_gids.empty()) {
         std::string res = common::StringUtil::Format("param gids is null");
@@ -1188,7 +1209,7 @@ static void GidsValid(const httplib::Request& req, httplib::Response& http_res) 
     http_res.set_content(json_str, "text/plain");
 }
 
-static void GetProxyReencInfo(const httplib::Request& req, httplib::Response& http_res) {
+static void GetProxyReencInfo(const UWSRequest& req, UWSResponse& http_res) {
     auto id = req.get_param_value("id");
     if (id.empty()) {
         std::string res = common::StringUtil::Format("param address is null");
@@ -1248,7 +1269,7 @@ static void GetProxyReencInfo(const httplib::Request& req, httplib::Response& ht
 }
 
 
-static void GetSecAndEncData(const httplib::Request& req, httplib::Response& http_res) {
+static void GetSecAndEncData(const UWSRequest& req, UWSResponse& http_res) {
     SETH_DEBUG("http transaction coming.");
     contract::ContractReEncryption prox_renc;
     zjcvm::ZjchainHost zjc_host;
@@ -1294,7 +1315,7 @@ static void GetSecAndEncData(const httplib::Request& req, httplib::Response& htt
     http_res.set_content(json_str, "text/plain");
 }
 
-static void ProxDecryption(const httplib::Request& req, httplib::Response& http_res) {
+static void ProxDecryption(const UWSRequest& req, UWSResponse& http_res) {
     SETH_WARN("ProxDecryption coming 0.");
     contract::ContractReEncryption prox_renc;
     zjcvm::ZjchainHost zjc_host;
@@ -1347,7 +1368,7 @@ static void ProxDecryption(const httplib::Request& req, httplib::Response& http_
     SETH_WARN("ProxDecryption coming 4.");
 }
 
-static void ArsCreateSecKeys(const httplib::Request& req, httplib::Response& http_res) {
+static void ArsCreateSecKeys(const UWSRequest& req, UWSResponse& http_res) {
     SETH_WARN("ArsCreateSecKeys coming 0.");
     auto keys = req.get_param_value("keys");
     if (keys.empty()) {
@@ -1405,14 +1426,14 @@ static void ArsCreateSecKeys(const httplib::Request& req, httplib::Response& htt
     SETH_WARN("ArsCreateSecKeys coming 4.");
 }
 
-static void QueryInit(const httplib::Request& req, httplib::Response& http_res) {
+static void QueryInit(const UWSRequest& req, UWSResponse& http_res) {
     auto thread_index = 0;//common::GlobalInfo::Instance()->get_thread_index();
     std::string res = "ok";
     http_res.set_content(res, "text/plain");
     SETH_DEBUG("sunccess init http ser: %d", thread_index);
 }
 
-static void GetBlocks(const httplib::Request& req, httplib::Response& http_res) {
+static void GetBlocks(const UWSRequest& req, UWSResponse& http_res) {
     auto network = req.get_param_value("network");
     if (network.empty()) {
         std::string res = common::StringUtil::Format("param network is null");
@@ -1488,7 +1509,7 @@ static void GetBlocks(const httplib::Request& req, httplib::Response& http_res) 
     http_res.set_content(json_str, "text/plain");
 }
 
-static void GetLatestPoolHeights(const httplib::Request& req, httplib::Response& http_res) {
+static void GetLatestPoolHeights(const UWSRequest& req, UWSResponse& http_res) {
     auto network = req.get_param_value("network");
     if (network.empty()) {
         std::string res = common::StringUtil::Format("param network is null");
@@ -1526,7 +1547,7 @@ static void GetLatestPoolHeights(const httplib::Request& req, httplib::Response&
     http_res.set_content(json_str, "text/plain");
 }
 
-static void GetBlockWithHash(const httplib::Request& req, httplib::Response& http_res) {
+static void GetBlockWithHash(const UWSRequest& req, UWSResponse& http_res) {
     nlohmann::json res_json;
     res_json["status"] = 0;
     res_json["blocks"] = nlohmann::json::array();
@@ -1574,7 +1595,7 @@ static void GetBlockWithHash(const httplib::Request& req, httplib::Response& htt
     http_res.set_content(res_json.dump(), "application/json");
 }
 
-static void TransactionReceipt(const httplib::Request& req, httplib::Response& http_res) {
+static void TransactionReceipt(const UWSRequest& req, UWSResponse& http_res) {
     nlohmann::json res_json;
     res_json["status"] = transport::kUnkonwn;
     res_json["msg"] = transport::MessageStatusToString(res_json["status"]);
@@ -1635,29 +1656,155 @@ static void TransactionReceipt(const httplib::Request& req, httplib::Response& h
     http_res.set_content(res_json.dump(), "application/json");
 }
 
+static void UpdatePrivateKey(const UWSRequest& req, UWSResponse& http_res) {
+    SETH_INFO("Update private key request received.");
+    
+    nlohmann::json res_json;
+    res_json["status"] = 1;
+    res_json["msg"] = "failed";
+    
+    // Get private key parameter
+    auto private_key_hex = req.get_param_value("private_key");
+    if (private_key_hex.empty()) {
+        res_json["msg"] = "private_key parameter is required";
+        http_res.set_content(res_json.dump(), "application/json");
+        SETH_ERROR("Update private key failed: private_key parameter is empty");
+        return;
+    }
+    
+    // Decode private key
+    std::string private_key = common::Encode::HexDecode(private_key_hex);
+    if (private_key.empty()) {
+        res_json["msg"] = "invalid private_key format (must be hex)";
+        http_res.set_content(res_json.dump(), "application/json");
+        SETH_ERROR("Update private key failed: invalid hex format");
+        return;
+    }
+    
+    // Call callback function to update private key
+    if (!http_handler->private_key_update_callback_) {
+        res_json["msg"] = "private key update callback not set";
+        http_res.set_content(res_json.dump(), "application/json");
+        SETH_ERROR("Update private key failed: callback not set");
+        return;
+    }
+    
+    int result = http_handler->private_key_update_callback_(private_key);
+    if (result == 0) {
+        res_json["status"] = 0;
+        res_json["msg"] = "success";
+        SETH_INFO("Private key updated successfully");
+    } else {
+        res_json["msg"] = "failed to update private key";
+        SETH_ERROR("Update private key failed: callback returned error %d", result);
+    }
+    
+    http_res.set_content(res_json.dump(), "application/json");
+}
+
 HttpHandler::HttpHandler() {
     http_handler = this;
 }
 
 HttpHandler::~HttpHandler() {
-    if (http_svr_thread_) {
-        svr.stop();
+    running_ = false;
+    if (http_svr_thread_ && http_svr_thread_->joinable()) {
         http_svr_thread_->join();
     }
 }
 
 void HttpHandler::Run() {
-    SETH_INFO("http server now listen!");
-    svr.listen(http_ip_, http_port_);
-    SETH_INFO("http server now listen over!");
+    SETH_INFO("HTTPS server starting on %s:%d", http_ip_.c_str(), http_port_);
+    
+    // Helper to safely handle requests with exception protection
+    auto safeHandler = [](auto handler, const char* endpoint) {
+        return [handler, endpoint](auto *res, auto *req) {
+            auto body = std::make_shared<std::string>();
+            auto responded = std::make_shared<bool>(false);
+            
+            res->onAborted([responded]() {
+                *responded = true;
+            });
+            
+            res->onData([res, req, body, handler, endpoint, responded](std::string_view data, bool last) {
+                if (*responded) return;
+                
+                try {
+                    body->append(data.data(), data.size());
+                    if (last) {
+                        UWSRequest uws_req(req, *body);
+                        UWSResponse uws_res;
+                        handler(uws_req, uws_res);
+                        
+                        if (!*responded) {
+                            res->writeStatus("200 OK")
+                               ->writeHeader("Content-Type", uws_res.content_type())
+                               ->end(uws_res.content());
+                            *responded = true;
+                        }
+                    }
+                } catch (const std::exception& e) {
+                    SETH_ERROR("Exception in %s: %s", endpoint, e.what());
+                    if (!*responded) {
+                        res->writeStatus("500 Internal Server Error")
+                           ->end("Internal server error");
+                        *responded = true;
+                    }
+                } catch (...) {
+                    SETH_ERROR("Unknown exception in %s", endpoint);
+                    if (!*responded) {
+                        res->writeStatus("500 Internal Server Error")
+                           ->end("Internal server error");
+                        *responded = true;
+                    }
+                }
+            });
+        };
+    };
+    
+    // Create SSL App with certificate and key
+    uWS::SSLApp({
+        .key_file_name = key_file_.c_str(),
+        .cert_file_name = cert_file_.c_str(),
+        .passphrase = ""
+    }).post("/transaction", safeHandler(HttpTransaction, "/transaction")
+    ).post("/oqs_transaction", safeHandler(OqsHttpTransaction, "/oqs_transaction")
+    ).post("/gm_transaction", safeHandler(GmHttpTransaction, "/gm_transaction")
+    ).post("/get_seckey_and_encrypt_data", safeHandler(GetSecAndEncData, "/get_seckey_and_encrypt_data")
+    ).post("/proxy_decrypt", safeHandler(ProxDecryption, "/proxy_decrypt")
+    ).post("/query_contract", safeHandler(QueryContract, "/query_contract")
+    ).post("/abi_query_contract", safeHandler(AbiQueryContract, "/abi_query_contract")
+    ).post("/query_account", safeHandler(QueryAccount, "/query_account")
+    ).post("/query_init", safeHandler(QueryInit, "/query_init")
+    ).post("/get_proxy_reenc_info", safeHandler(GetProxyReencInfo, "/get_proxy_reenc_info")
+    ).post("/ars_create_sec_keys", safeHandler(ArsCreateSecKeys, "/ars_create_sec_keys")
+    ).post("/accounts_valid", safeHandler(AccountsValid, "/accounts_valid")
+    ).post("/commit_gid_valid", safeHandler(GidsValid, "/commit_gid_valid")
+    ).post("/prefund_valid", safeHandler(PrefundsValid, "/prefund_valid")
+    ).post("/get_block_with_gid", safeHandler(GetBlockWithGid, "/get_block_with_gid")
+    ).post("/get_blocks", safeHandler(GetBlocks, "/get_blocks")
+    ).post("/get_latest_pool_info", safeHandler(GetLatestPoolHeights, "/get_latest_pool_info")
+    ).post("/get_block_with_hash", safeHandler(GetBlockWithHash, "/get_block_with_hash")
+    ).post("/transaction_receipt", safeHandler(TransactionReceipt, "/transaction_receipt")
+    ).post("/update_private_key", safeHandler(UpdatePrivateKey, "/update_private_key")
+    ).listen("0.0.0.0", http_port_, [this](auto *listen_socket) {
+        if (listen_socket) {
+            SETH_INFO("HTTPS server listening on 0.0.0.0:%d", http_port_);
+            running_ = true;
+        } else {
+            SETH_ERROR("Failed to listen on 0.0.0.0:%d", http_port_);
+        }
+    }).run();
+    
+    SETH_INFO("HTTPS server stopped");
 }
 
 void HttpHandler::Init(
-        std::shared_ptr<block::AccountManager>& acc_mgr,
+        std::shared_ptr<block::AccountManager> acc_mgr,
         transport::MultiThreadHandler* net_handler,
-        std::shared_ptr<security::Security>& security_ptr,
-        std::shared_ptr<protos::PrefixDb>& tmp_prefix_db,
-        std::shared_ptr<contract::ContractManager>& tmp_contract_mgr,
+        std::shared_ptr<security::Security> security_ptr,
+        std::shared_ptr<protos::PrefixDb> tmp_prefix_db,
+        std::shared_ptr<contract::ContractManager> tmp_contract_mgr,
         const std::string& ip,
         uint16_t port) {
     acc_mgr_ = acc_mgr;
@@ -1666,35 +1813,48 @@ void HttpHandler::Init(
     secptr = security_ptr;
     prefix_db = tmp_prefix_db;
     contract_mgr = tmp_contract_mgr;
-
-    svr.set_payload_max_length(512 * 1024 * 1024);
-    svr.Post("/transaction", HttpTransaction);
-    svr.Post("/oqs_transaction", OqsHttpTransaction);
-    svr.Post("/gm_transaction", GmHttpTransaction);
-    svr.Post("/get_seckey_and_encrypt_data", GetSecAndEncData);
-    svr.Post("/proxy_decrypt", ProxDecryption);
-    svr.Post("/query_contract", QueryContract);
-    svr.Post("/abi_query_contract", AbiQueryContract);
-    svr.Post("/query_account", QueryAccount);
-    svr.Post("/query_init", QueryInit);
-    svr.Post("/get_proxy_reenc_info", GetProxyReencInfo);
-    svr.Post("/ars_create_sec_keys", ArsCreateSecKeys);
-    svr.Post("/accounts_valid", AccountsValid);
-    svr.Post("/commit_gid_valid", GidsValid);
-    svr.Post("/prefund_valid", PrefundsValid);
-    svr.Post("/get_block_with_gid", GetBlockWithGid);
-    svr.Post("/get_blocks", GetBlocks);
-    svr.Post("/get_latest_pool_info", GetLatestPoolHeights);
-    svr.Post("/get_block_with_hash", GetBlockWithHash);
-    svr.Post("/transaction_receipt", TransactionReceipt);
     http_ip_ = ip;
     http_port_ = port;
-    svr.new_task_queue = [] { 
-        return new httplib::ThreadPool(40); 
+    
+    // Set certificate and key file paths
+    // Try multiple locations for certificate files
+    std::vector<std::string> cert_paths = {
+        "server-cert.pem",           // Current directory
+        "../server-cert.pem",        // Parent directory
+        "../../server-cert.pem",     // Grandparent directory
+        "/root/seth/server-cert.pem" // Absolute path
     };
-    if (!svr.is_valid()) {
-        SETH_ERROR("http server invalid.");
-        return;
+    
+    std::vector<std::string> key_paths = {
+        "server-key.pem",
+        "../server-key.pem",
+        "../../server-key.pem",
+        "/root/seth/server-key.pem"
+    };
+    
+    // Find certificate file
+    for (const auto& path : cert_paths) {
+        std::ifstream f(path);
+        if (f.good()) {
+            cert_file_ = path;
+            SETH_INFO("Found certificate file: %s", path.c_str());
+            break;
+        }
+    }
+    
+    // Find key file
+    for (const auto& path : key_paths) {
+        std::ifstream f(path);
+        if (f.good()) {
+            key_file_ = path;
+            SETH_INFO("Found key file: %s", path.c_str());
+            break;
+        }
+    }
+    
+    if (cert_file_.empty() || key_file_.empty()) {
+        SETH_ERROR("Certificate or key file not found! cert: %s, key: %s", 
+                   cert_file_.c_str(), key_file_.c_str());
     }
 
     http_svr_thread_ = std::make_shared<std::thread>(std::bind(&HttpHandler::Run, this));

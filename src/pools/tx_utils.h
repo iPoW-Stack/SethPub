@@ -415,6 +415,7 @@ public:
     int32_t tx_info_index;
     common::Bitmap synced_leaders_;
     bool sign_verified;
+    uint64_t elect_height = 0llu;
 };
 
 typedef std::shared_ptr<TxItem> TxItemPtr;
