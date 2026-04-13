@@ -632,8 +632,12 @@ void TxPool::TempGetTxIdempotently(
                         res);
                     if (res != 0) {
                         if (res == 3) {
-                            nonce_iter->second->msg_ptr->handle_status = seth::transport::MessageHandleStatus(consensus::kConsensusContractDestructed);
-                            iter->second.erase(nonce_iter);
+                            tx_ptr->msg_ptr->handle_status = seth::transport::MessageHandleStatus(consensus::kConsensusContractDestructed);
+                            // nonce_iter was already incremented; erase the previous element (tx_ptr's entry)
+                            auto erase_iter = iter->second.find(tx_ptr->tx_info->nonce());
+                            if (erase_iter != iter->second.end()) {
+                                iter->second.erase(erase_iter);
+                            }
                             break;
                         }
                         
