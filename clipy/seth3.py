@@ -1253,7 +1253,7 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     print("=" * 60)
     total_time = 0
     for tx_name, tx_hash, duration in tx_times:
-        print(f"  - [{tx_name}] {tx_hash} : {duration:.2f} seconds")
+        print(f"  - {tx_name:<40} : {duration:.2f} seconds")
         total_time += duration
     print("-" * 60)
     if tx_times:
