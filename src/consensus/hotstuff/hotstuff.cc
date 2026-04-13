@@ -2297,6 +2297,21 @@ void Hotstuff::TryRecoverFromStuck(
         // }
     }
 
+    auto local_idx = GetLocalMemberIdx();
+    View out_view = 0;
+    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view);
+    SETH_DEBUG("pool index: %d, GetLeader return leader: %d, out_view: %lu, local_idx: %d",
+        pool_idx_, leader ? leader->index : -1, out_view, local_idx);
+    if (!leader) {
+        SETH_DEBUG("pool index: %d, no leader", pool_idx_);
+        return;
+    }
+
+    if (leader->index != local_idx) {
+        SyncLocalTxToLeader(leader);
+        return;
+    }
+
     if (now_tm_ms < latest_propose_msg_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs) {
         // SETH_WARN("pool: %u now_tm_ms < latest_propose_msg_tm_ms_ + "
         //     "kLatestPoposeSendTxToLeaderPeriodMs: %lu, %lu",
@@ -2317,17 +2332,6 @@ void Hotstuff::TryRecoverFromStuck(
     //     }
     //     return;
     // }
-
-    auto local_idx = GetLocalMemberIdx();
-    View out_view = 0;
-    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view);
-    SETH_DEBUG("pool index: %d, GetLeader return leader: %d, out_view: %lu, local_idx: %d",
-        pool_idx_, leader ? leader->index : -1, out_view, local_idx);
-    if (!leader) {
-        SETH_DEBUG("pool index: %d, no leader", pool_idx_);
-        return;
-    }
-    
     SETH_DEBUG("pool index: %d, found leader: %d, local_index: %d",
         pool_idx_, leader->index, local_idx);
     if (leader && leader->index == local_idx) {
@@ -2364,7 +2368,9 @@ void Hotstuff::TryRecoverFromStuck(
 
         return;
     }
+}
 
+void Hotstuff::SyncLocalTxToLeader(common::BftMemberPtr leader) {
     if (!has_user_tx_tag_) {
         // SETH_DEBUG("pool: %u not has_user_tx_tag_.", pool_idx_);
         return;
