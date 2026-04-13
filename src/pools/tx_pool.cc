@@ -162,7 +162,7 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
                 common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(), 
                 tx_ptr->tx_info->nonce(),
                 (int32_t)tx_ptr->tx_info->step());
-            tx_ptr->msg_ptr->handle_status = seth::transport::MessageHandleStatus::kRequestInvalid;
+            tx_ptr->msg_ptr->set_status(seth::transport::MessageHandleStatus::kRequestInvalid);
             return kPoolsError;
         }
     }
@@ -359,7 +359,7 @@ void TxPool::GetTxSyncToLeader(
                 tx_ptr->address_info->nonce(), 
                 tx_ptr->tx_info->nonce());
             if (tx_ptr->msg_ptr) {
-                tx_ptr->msg_ptr->handle_status = seth::transport::MessageHandleStatus::kTxUserNonceInvalid;
+                tx_ptr->msg_ptr->set_status(seth::transport::MessageHandleStatus::kTxUserNonceInvalid);
             }
             continue;
         }
@@ -375,7 +375,7 @@ void TxPool::GetTxSyncToLeader(
                     tx_ptr->address_info->nonce(), 
                     tx_ptr->tx_info->nonce());
                 if (tx_ptr->msg_ptr) {
-                    tx_ptr->msg_ptr->handle_status = seth::transport::MessageHandleStatus::kTxUserNonceInvalid;
+                    tx_ptr->msg_ptr->set_status(seth::transport::MessageHandleStatus::kTxUserNonceInvalid);
                 }
                 continue;
             }
@@ -412,7 +412,15 @@ void TxPool::GetTxSyncToLeader(
                         &now_nonce);
                 if (res != 0) {
                     if (res == 3) {
-                        nonce_iter->second->msg_ptr->handle_status = seth::transport::MessageHandleStatus(consensus::kConsensusContractDestructed);
+                        nonce_iter->second->msg_ptr->set_status(seth::transport::MessageHandleStatus(consensus::kConsensusContractDestructed));
+                        SETH_DEBUG("trace tx invalid tx, pool: %d, tx_key invalid: %s, res: %d, from: %s, to: %s, nonce: %lu, step: %u",
+                            pool_index_,
+                            common::Encode::HexEncode(tx_ptr->tx_key).c_str(),
+                            res,
+                            common::Encode::HexEncode(tx_ptr->tx_info->from()).c_str(),
+                            common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
+                            tx_ptr->tx_info->nonce(),
+                            (int32_t)tx_ptr->tx_info->step());
                         iter->second.erase(nonce_iter);
                         break;
                     }
@@ -526,7 +534,7 @@ void TxPool::TempGetTxIdempotently(
                 tx_ptr->address_info->nonce(), 
                 tx_ptr->tx_info->nonce());
             if (tx_ptr->msg_ptr) {
-                tx_ptr->msg_ptr->handle_status = seth::transport::MessageHandleStatus::kTxUserNonceInvalid;
+                tx_ptr->msg_ptr->set_status(seth::transport::MessageHandleStatus::kTxUserNonceInvalid);
             }
             continue;
         }
@@ -541,7 +549,7 @@ void TxPool::TempGetTxIdempotently(
                     tx_ptr->address_info->nonce(), 
                     tx_ptr->tx_info->nonce());
                 if (tx_ptr->msg_ptr) {
-                    tx_ptr->msg_ptr->handle_status = seth::transport::MessageHandleStatus::kTxUserNonceInvalid;
+                    tx_ptr->msg_ptr->set_status(seth::transport::MessageHandleStatus::kTxUserNonceInvalid);
                 }
                 continue;
             }
@@ -632,8 +640,16 @@ void TxPool::TempGetTxIdempotently(
                         res);
                     if (res != 0) {
                         if (res == 3) {
-                            tx_ptr->msg_ptr->handle_status = seth::transport::MessageHandleStatus(consensus::kConsensusContractDestructed);
+                            tx_ptr->msg_ptr->set_status(seth::transport::MessageHandleStatus(consensus::kConsensusContractDestructed));
                             // nonce_iter was already incremented; erase the previous element (tx_ptr's entry)
+                            SETH_DEBUG("trace tx invalid tx, pool: %d, tx_key invalid: %s, res: %d, from: %s, to: %s, nonce: %lu, step: %u",
+                                pool_index_,
+                                common::Encode::HexEncode(tx_ptr->tx_key).c_str(),
+                                res,
+                                common::Encode::HexEncode(tx_ptr->tx_info->from()).c_str(),
+                                common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
+                                tx_ptr->tx_info->nonce(),
+                                (int32_t)tx_ptr->tx_info->step());
                             auto erase_iter = iter->second.find(tx_ptr->tx_info->nonce());
                             if (erase_iter != iter->second.end()) {
                                 iter->second.erase(erase_iter);

@@ -25,16 +25,6 @@ namespace seth {
 
 namespace pools {
 
-// Notify WS subscribers of a terminal tx status (anything except pending states).
-static inline void NotifyTxStatus(
-        const TxPoolManager::TxStatusCallback& cb,
-        const transport::MessagePtr& msg_ptr,
-        transport::MessageHandleStatus status) {
-    if (!cb || msg_ptr->msg_hash.empty()) return;
-    if (status == transport::kMessageHandle || status == transport::kTxAccept) return;
-    cb(common::Encode::HexEncode(msg_ptr->msg_hash), status);
-}
-
 TxPoolManager::TxPoolManager(
         std::shared_ptr<security::Security>& security,
         std::shared_ptr<db::Db>& db,
@@ -147,18 +137,26 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
             tx_msg.sign().empty() || tx_msg.pubkey().empty()) {
         SETH_DEBUG("pools check firewall message failed, invalid sign or pk. sign: %d, pk: %d, hash64: %lu", 
             tx_msg.sign().size(), tx_msg.pubkey().size(), header.hash64());
-        msg_ptr->handle_status = transport::kTxInvalidSignature;
+        msg_ptr->set_status(transport::kTxInvalidSignature);
         return transport::kFirewallCheckError;
     }
 
     if (!account_tx_qps_check_.check(tx_msg.pubkey())) {
         SETH_DEBUG("pools check firewall message failed, invalid qps limit pk: %d, hash64: %lu", 
             tx_msg.pubkey().size(), header.hash64());
-        msg_ptr->handle_status = transport::kTxUserNonceInvalid;
+        msg_ptr->set_status(transport::kTxUserNonceInvalid);
         return transport::kFirewallCheckError;
     }
 
     msg_ptr->msg_hash = pools::GetTxMessageHash(tx_msg);
+    // Inject WS notify callback now that msg_hash is known.
+    if (tx_status_cb_) {
+        auto cb = tx_status_cb_;
+        msg_ptr->status_notify_cb = [cb](const std::string& hash, transport::MessageHandleStatus s) {
+            cb(common::Encode::HexEncode(hash), s);
+        };
+    }
+
     if (tx_msg.pubkey().size() == 64u) {
         security::GmSsl gmssl;
         if (gmssl.Verify(
@@ -166,7 +164,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
                 tx_msg.pubkey(),
                 tx_msg.sign()) != security::kSecuritySuccess) {
             SETH_ERROR("verify signature failed!");
-            msg_ptr->handle_status = transport::kTxInvalidSignature;
+            msg_ptr->set_status(transport::kTxInvalidSignature);
             return transport::kFirewallCheckError;
         }
 
@@ -175,8 +173,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
         if (msg_ptr->address_info == nullptr) {
             SETH_DEBUG("failed get account info: %s", 
                 common::Encode::HexEncode(gmssl.GetAddress(tx_msg.pubkey())).c_str());
-            msg_ptr->handle_status = transport::kTxInvalidAddress;
-            NotifyTxStatus(tx_status_cb_, msg_ptr, transport::kTxInvalidAddress);
+            msg_ptr->set_status(transport::kTxInvalidAddress);
             return transport::kFirewallCheckError;
         }
     } else if (tx_msg.pubkey().size() > 128u) {
@@ -189,8 +186,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
                 common::Encode::HexEncode(msg_ptr->msg_hash).c_str(),
                 common::Encode::HexEncode(tx_msg.pubkey()).c_str(),
                 common::Encode::HexEncode(tx_msg.sign()).c_str());
-            msg_ptr->handle_status = transport::kTxInvalidSignature;
-            NotifyTxStatus(tx_status_cb_, msg_ptr, transport::kTxInvalidSignature);
+            msg_ptr->set_status(transport::kTxInvalidSignature);
             return transport::kFirewallCheckError;
         }
 
@@ -199,8 +195,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
         if (msg_ptr->address_info == nullptr) {
             SETH_DEBUG("failed get account info: %s", 
                 common::Encode::HexEncode(oqs.GetAddress(tx_msg.pubkey())).c_str());
-            msg_ptr->handle_status = transport::kTxInvalidAddress;
-            NotifyTxStatus(tx_status_cb_, msg_ptr, transport::kTxInvalidAddress);
+            msg_ptr->set_status(transport::kTxInvalidAddress);
             return transport::kFirewallCheckError;
         }
     } else {
@@ -209,8 +204,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
                 tx_msg.pubkey(),
                 tx_msg.sign()) != security::kSecuritySuccess) {
             SETH_ERROR("verify signature failed!");
-            msg_ptr->handle_status = transport::kTxInvalidSignature;
-            NotifyTxStatus(tx_status_cb_, msg_ptr, transport::kTxInvalidSignature);
+            msg_ptr->set_status(transport::kTxInvalidSignature);
             return transport::kFirewallCheckError;
         }
 
@@ -219,8 +213,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
         if (msg_ptr->address_info == nullptr) {
             SETH_DEBUG("failed get account info: %s", 
                 common::Encode::HexEncode(security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str());
-            msg_ptr->handle_status = transport::kTxInvalidAddress;
-            NotifyTxStatus(tx_status_cb_, msg_ptr, transport::kTxInvalidAddress);
+            msg_ptr->set_status(transport::kTxInvalidAddress);
             return transport::kFirewallCheckError;
         }
     }
@@ -503,21 +496,18 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
 
             address_info = tmp_acc_ptr->GetAccountInfo(addr);
             if (!address_info) {
-                msg_ptr->handle_status = transport::kTxInvalidAddress;
+                msg_ptr->set_status(transport::kTxInvalidAddress);
                 return;
             }
 
-            // if (tx_pool_[address_info->pool_index()].all_tx_size() >= 
-            //         common::GlobalInfo::Instance()->each_tx_pool_max_txs()) {
                 if (!NewTxValid(address_info->pool_index(), address_info->addr(), tx_msg.nonce())) {
                     SETH_INFO("add failed extend %u, %u, all valid: %u", 
                         tx_pool_[address_info->pool_index()].all_tx_size(), 
                         common::GlobalInfo::Instance()->each_tx_pool_max_txs(), 
                         tx_pool_[address_info->pool_index()].all_tx_size());
-                    msg_ptr->handle_status = transport::kTxUserNonceInvalid;
+                    msg_ptr->set_status(transport::kTxUserNonceInvalid);
                     return;
                 }
-            // }
 
             msg_ptr->address_info = address_info;
 #ifndef NDEBUG
@@ -649,16 +639,14 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
         }
 
         if (handle_status != transport::kMessageHandle) {
-            msg_ptr->handle_status = transport::kTxInvalidAddress;
-            NotifyTxStatus(tx_status_cb_, msg_ptr, transport::kTxInvalidAddress);
+            msg_ptr->set_status(transport::kTxInvalidAddress);
         }
 
         if (pool_index == common::kInvalidPoolIndex) {
             if (msg_ptr->address_info == nullptr) {
                 SETH_INFO("invalid tx step: %d, address invalid.", (int32_t)tx_msg.step());
                 if (handle_status == transport::kMessageHandle) {
-                    msg_ptr->handle_status = transport::kTxInvalidAddress;
-                    NotifyTxStatus(tx_status_cb_, msg_ptr, transport::kTxInvalidAddress);
+                    msg_ptr->set_status(transport::kTxInvalidAddress);
                 }
                 return;
             }
@@ -1400,8 +1388,7 @@ void TxPoolManager::DispatchTx(uint32_t pool_index, const transport::MessagePtr&
     if (item_functions_[msg_ptr->header.tx_proto().step()] == nullptr) {
         SETH_DEBUG("not registered step : %d", (int32_t)msg_ptr->header.tx_proto().step());
         assert(false);
-        msg_ptr->handle_status = transport::kUnkonwn;
-        NotifyTxStatus(tx_status_cb_, msg_ptr, transport::kUnkonwn);
+        msg_ptr->set_status(transport::kUnkonwn);
         return;
     }
 
@@ -1409,8 +1396,7 @@ void TxPoolManager::DispatchTx(uint32_t pool_index, const transport::MessagePtr&
     pools::TxItemPtr tx_ptr = item_functions_[msg_ptr->header.tx_proto().step()](msg_ptr);
     if (tx_ptr == nullptr) {
         assert(false);
-        msg_ptr->handle_status = transport::kUnkonwn;
-        NotifyTxStatus(tx_status_cb_, msg_ptr, transport::kUnkonwn);
+        msg_ptr->set_status(transport::kUnkonwn);
         return;
     }
 
@@ -1427,7 +1413,7 @@ void TxPoolManager::DispatchTx(uint32_t pool_index, const transport::MessagePtr&
         tx_ptr->tx_info->nonce(),
         common::Encode::HexEncode(msg_ptr->header.tx_proto().pubkey()).c_str(),
         common::Encode::HexEncode(msg_ptr->header.tx_proto().to()).c_str());
-    msg_ptr->handle_status = transport::kTxAccept;
+    msg_ptr->set_status(transport::kTxAccept);
 }
 
 void TxPoolManager::GetTxSyncToLeader(
