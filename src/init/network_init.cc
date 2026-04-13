@@ -96,7 +96,6 @@ int NetworkInit::Init(int argc, char** argv) {
         }
         
         prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
-        
         // Initialize HTTP server with private key update callback
         if (InitHttpServerForPrivateKeyWait() != kInitSuccess) {
             INIT_ERROR("InitHttpServerForPrivateKeyWait failed!");
@@ -734,21 +733,25 @@ int NetworkInit::InitHttpServer() {
     uint16_t http_port = 0;
     conf_.Get("seth", "http_ip", http_ip);
     if (conf_.Get("seth", "http_port", http_port) && http_port != 0) {
-        // Set private key update callback
-        // http_handler_.SetPrivateKeyUpdateCallback(
-        //     [this](const std::string& new_private_key) -> int {
-        //         return this->UpdatePrivateKey(new_private_key);
-        //     });
-        http_handler_.set_net_handler(&net_handler_);
-        http_handler_.set_contract_mgr(contract_mgr_);
-        // http_handler_.Init(
-        //     account_mgr_, 
-        //     &net_handler_, 
-        //     security_, 
-        //     prefix_db_, 
-        //     contract_mgr_, 
-        //     http_ip, 
-        //     http_port);
+        if (private_key_received_) {
+            http_handler_.set_net_handler(&net_handler_);
+            http_handler_.set_contract_mgr(contract_mgr_);
+        } else {
+            http_handler_.SetPrivateKeyUpdateCallback(
+                [this](const std::string& new_private_key) -> int {
+                    return this->UpdatePrivateKey(new_private_key);
+                });
+            http_handler_.Init(
+                account_mgr_, 
+                &net_handler_, 
+                security_, 
+                prefix_db_, 
+                contract_mgr_, 
+                http_ip, 
+                http_port);
+            private_key_received_ = true;
+        }
+       
         std::this_thread::sleep_for(std::chrono::milliseconds{200});
         // Note: HTTP client check removed as we migrated from httplib to uWebSockets
         // The server will be ready after the sleep delay
