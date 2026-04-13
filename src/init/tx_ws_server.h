@@ -14,6 +14,7 @@
 #include "common/thread_safe_queue.h"
 #include "common/utils.h"
 #include "protos/view_block.pb.h"
+#include "transport/transport_utils.h"
 
 namespace seth {
 
@@ -36,6 +37,12 @@ public:
 
     // Start listening on ip:port in a dedicated background thread.
     int Init(const std::string& ip, uint16_t port);
+
+    // Called from any thread when a tx reaches a terminal error status
+    // (anything other than kMessageHandle / kTxAccept).
+    // Pushes a JSON error frame to all subscribers of tx_hash_hex.
+    void OnTxStatusChange(const std::string& tx_hash_hex,
+                          transport::MessageHandleStatus status);
 
     // Called from any thread when a new block is committed.
     // Enqueues the block; the libuv loop thread drains the queue and pushes
@@ -96,6 +103,14 @@ private:
     // OnAsync (libuv loop thread) drains and broadcasts.
     common::ThreadSafeQueue<
         std::shared_ptr<view_block::protobuf::ViewBlockItem>, 4096> block_queue_;
+
+    // Cross-thread status-change queue: OnTxStatusChange (any thread) pushes here;
+    // OnAsync (libuv loop thread) drains and pushes error frames to subscribers.
+    struct TxStatusItem {
+        std::string tx_hash_hex;
+        transport::MessageHandleStatus status;
+    };
+    common::ThreadSafeQueue<TxStatusItem, 4096> status_queue_;
 
     // Subscription maps — accessed only from the libuv loop thread, no lock needed.
     std::mutex mutex_;

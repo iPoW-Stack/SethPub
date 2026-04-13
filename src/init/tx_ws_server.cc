@@ -77,11 +77,44 @@ void TxWsServer::OnNewBlock(std::shared_ptr<view_block::protobuf::ViewBlockItem>
     uv_async_send(&async_);
 }
 
+void TxWsServer::OnTxStatusChange(const std::string& tx_hash_hex,
+                                   transport::MessageHandleStatus status) {
+    if (!running_.load(std::memory_order_acquire)) return;
+    if (tx_hash_hex.empty()) return;
+    status_queue_.push({tx_hash_hex, status});
+    uv_async_send(&async_);
+}
+
 // ── libuv callbacks ───────────────────────────────────────────────────────────
 
 void TxWsServer::OnAsync(uv_async_t* handle) {
     auto* self = static_cast<TxWsServer*>(handle->data);
 
+    // ── drain status-change queue (tx rejected/invalid before block) ─────────
+    TxStatusItem item;
+    while (self->status_queue_.pop(&item)) {
+        std::unordered_set<Conn*> conns;
+        {
+            std::lock_guard<std::mutex> lk(self->mutex_);
+            auto it = self->hash_to_conns_.find(item.tx_hash_hex);
+            if (it == self->hash_to_conns_.end() || it->second.empty()) continue;
+            conns = it->second;
+        }
+        std::ostringstream o;
+        o << "{\"tx_hash\":\"" << item.tx_hash_hex << "\","
+          << "\"status\":"     << static_cast<int32_t>(item.status) << ","
+          << "\"msg\":\""      << transport::MessageStatusToString(item.status) << "\"}";
+        std::string frame = MakeTextFrame(o.str());
+        for (Conn* c : conns) {
+            if (self->conn_to_hashes_.count(c) == 0) continue;
+            self->EnqueueFrame(c, frame);
+        }
+        SETH_INFO("[TxWsServer] pushed status %s for tx %s to %zu client(s)",
+                  transport::MessageStatusToString(item.status).c_str(),
+                  item.tx_hash_hex.c_str(), conns.size());
+    }
+
+    // ── drain block queue ─────────────────────────────────────────────────────
     std::shared_ptr<view_block::protobuf::ViewBlockItem> vb;
     while (self->block_queue_.pop(&vb)) {
         const auto& block = vb->block_info();
