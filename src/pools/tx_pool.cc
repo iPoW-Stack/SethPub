@@ -401,7 +401,7 @@ void TxPool::GetTxSyncToLeader(
                 }
 
                 tx_ptr->synced_leaders_.clear();
-                tx_ptr->elect_height = latest_elect_height_
+                tx_ptr->elect_height = latest_elect_height_;
             }
 
             if (valid_nonce == common::kInvalidUint64) {
