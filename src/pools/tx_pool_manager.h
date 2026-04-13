@@ -73,6 +73,7 @@ public:
     // (anything other than kMessageHandle / kTxAccept).
     using TxStatusCallback = std::function<void(const std::string&, transport::MessageHandleStatus)>;
     void SetTxStatusCallback(TxStatusCallback cb) { tx_status_cb_ = std::move(cb); }
+    const TxStatusCallback& GetTxStatusCallback() const { return tx_status_cb_; }
 
     bool NewTxValid(uint32_t pool_index, const std::string& addr, uint64_t nonce) {
         return tx_pool_[pool_index].NewTxValid(addr, nonce);

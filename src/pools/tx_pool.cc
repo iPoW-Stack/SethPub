@@ -15,6 +15,26 @@
 namespace seth {
 
 namespace pools {
+
+// Ensure msg_ptr->status_notify_cb is populated before calling set_status.
+// Txs that arrived via network sync (not HTTP) never passed FirewallCheckMessage,
+// so their status_notify_cb is empty. Fill it from the pool manager's callback.
+static inline void SetTxStatus(
+        TxPoolManager* mgr,
+        const transport::MessagePtr& msg_ptr,
+        transport::MessageHandleStatus status) {
+    if (msg_ptr == nullptr) return;
+    if (!msg_ptr->status_notify_cb && mgr != nullptr) {
+        auto cb = mgr->GetTxStatusCallback();
+        if (cb && !msg_ptr->msg_hash.empty()) {
+            msg_ptr->status_notify_cb = [cb](const std::string& hash,
+                                              transport::MessageHandleStatus s) {
+                cb(common::Encode::HexEncode(hash), s);
+            };
+        }
+    }
+    msg_ptr->set_status(status);
+}
     
 TxPool::TxPool() {}
 
@@ -162,7 +182,7 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
                 common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(), 
                 tx_ptr->tx_info->nonce(),
                 (int32_t)tx_ptr->tx_info->step());
-            tx_ptr->msg_ptr->set_status(seth::transport::MessageHandleStatus::kRequestInvalid);
+            SetTxStatus(pools_mgr_, tx_ptr->msg_ptr, seth::transport::MessageHandleStatus::kRequestInvalid);
             return kPoolsError;
         }
     }
@@ -359,7 +379,7 @@ void TxPool::GetTxSyncToLeader(
                 tx_ptr->address_info->nonce(), 
                 tx_ptr->tx_info->nonce());
             if (tx_ptr->msg_ptr) {
-                tx_ptr->msg_ptr->set_status(seth::transport::MessageHandleStatus::kTxUserNonceInvalid);
+                SetTxStatus(pools_mgr_, tx_ptr->msg_ptr, seth::transport::MessageHandleStatus::kTxUserNonceInvalid);
             }
             continue;
         }
@@ -375,7 +395,7 @@ void TxPool::GetTxSyncToLeader(
                     tx_ptr->address_info->nonce(), 
                     tx_ptr->tx_info->nonce());
                 if (tx_ptr->msg_ptr) {
-                    tx_ptr->msg_ptr->set_status(seth::transport::MessageHandleStatus::kTxUserNonceInvalid);
+                    SetTxStatus(pools_mgr_, tx_ptr->msg_ptr, seth::transport::MessageHandleStatus::kTxUserNonceInvalid);
                 }
                 continue;
             }
@@ -412,7 +432,7 @@ void TxPool::GetTxSyncToLeader(
                         &now_nonce);
                 if (res != 0) {
                     if (res == 3) {
-                        nonce_iter->second->msg_ptr->set_status(seth::transport::MessageHandleStatus(consensus::kConsensusContractDestructed));
+                        SetTxStatus(pools_mgr_, nonce_iter->second->msg_ptr, seth::transport::MessageHandleStatus(consensus::kTxUserNonceInvalid));
                         SETH_DEBUG("trace tx invalid tx, pool: %d, tx_key invalid: %s, res: %d, from: %s, to: %s, nonce: %lu, step: %u",
                             pool_index_,
                             common::Encode::HexEncode(tx_ptr->tx_key).c_str(),
@@ -534,7 +554,7 @@ void TxPool::TempGetTxIdempotently(
                 tx_ptr->address_info->nonce(), 
                 tx_ptr->tx_info->nonce());
             if (tx_ptr->msg_ptr) {
-                tx_ptr->msg_ptr->set_status(seth::transport::MessageHandleStatus::kTxUserNonceInvalid);
+                SetTxStatus(pools_mgr_, tx_ptr->msg_ptr, seth::transport::MessageHandleStatus::kTxUserNonceInvalid);
             }
             continue;
         }
@@ -549,7 +569,7 @@ void TxPool::TempGetTxIdempotently(
                     tx_ptr->address_info->nonce(), 
                     tx_ptr->tx_info->nonce());
                 if (tx_ptr->msg_ptr) {
-                    tx_ptr->msg_ptr->set_status(seth::transport::MessageHandleStatus::kTxUserNonceInvalid);
+                    SetTxStatus(pools_mgr_, tx_ptr->msg_ptr, seth::transport::MessageHandleStatus::kTxUserNonceInvalid);
                 }
                 continue;
             }
@@ -640,7 +660,7 @@ void TxPool::TempGetTxIdempotently(
                         res);
                     if (res != 0) {
                         if (res == 3) {
-                            tx_ptr->msg_ptr->set_status(seth::transport::MessageHandleStatus(consensus::kConsensusContractDestructed));
+                            SetTxStatus(pools_mgr_, tx_ptr->msg_ptr, seth::transport::MessageHandleStatus(consensus::kTxUserNonceInvalid));
                             // nonce_iter was already incremented; erase the previous element (tx_ptr's entry)
                             SETH_DEBUG("trace tx invalid tx, pool: %d, tx_key invalid: %s, res: %d, from: %s, to: %s, nonce: %lu, step: %u",
                                 pool_index_,
