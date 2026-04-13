@@ -488,11 +488,14 @@ Status BlockAcceptor::addTxsToPool(
                     iter->first.size() == common::kPreypamentAddressLength);
                 now_balance_map[iter->first] = iter->second;
             } else {
-                auto new_addr_info = std::make_shared<address::protobuf::AddressInfo>();
-                *new_addr_info = *address_info;
-                assert(to_tx_item.des().size() == common::kUnicastAddressLength || 
-                    to_tx_item.des().size() == common::kPreypamentAddressLength);
-                now_balance_map[to_tx_item.des()] = new_addr_info;
+                address_info = view_block_chain_->ChainGetAccountInfo(to_tx_item.des());
+                if (address_info != nullptr) {
+                    auto new_addr_info = std::make_shared<address::protobuf::AddressInfo>();
+                    *new_addr_info = *address_info;
+                    assert(to_tx_item.des().size() == common::kUnicastAddressLength || 
+                        to_tx_item.des().size() == common::kPreypamentAddressLength);
+                    now_balance_map[to_tx_item.des()] = new_addr_info;
+                }
             }
         } else {
             if (pools::IsUserTransaction(tx->step())) {
