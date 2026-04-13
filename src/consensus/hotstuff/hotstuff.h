@@ -413,7 +413,7 @@ private:
             *out_view = high_view_block->qc().view() + 1;
         }
         
-        auto prev_qc_timestamp_sec = (high_view_block->block_info().timestamp() / 1000lu);
+        int64_t prev_qc_timestamp_sec = (high_view_block->block_info().timestamp() / 1000lu);
         int64_t now = get_consensus_timestamp(30);
         if (leader_tm_sec != 0) {
             if (std::abs(leader_tm_sec - common::TimeUtils::TimestampSeconds()) < 15) {
@@ -421,9 +421,9 @@ private:
             }
         }
 
-        auto timeout = static_cast<uint64_t>(
+        int64_t timeout = static_cast<int64_t>(
             common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
-        auto elapsed = now - prev_qc_timestamp_sec;
+        int64_t elapsed = now - prev_qc_timestamp_sec;
         if (elapsed < timeout) {
             if (debug)
             SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, consecutive_failures: %d, now: %u, block tm: %lu, "
