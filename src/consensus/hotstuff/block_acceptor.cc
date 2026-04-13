@@ -497,6 +497,8 @@ Status BlockAcceptor::addTxsToPool(
                     now_balance_map[to_tx_item.des()] = new_addr_info;
                 }
             }
+
+            address_info = account_mgr_->pools_address_info(tx->step(), pool_idx());
         } else {
             if (pools::IsUserTransaction(tx->step())) {
                 address_info = view_block_chain_->ChainGetAccountInfo(from_id);
