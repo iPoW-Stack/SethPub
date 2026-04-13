@@ -282,7 +282,6 @@ Status Hotstuff::Propose(
         }
 
         auto broadcast = tmp_msg_ptr->header.mutable_broadcast();
-        auto brd_param = header.mutable_broadcast();
         broadcast::SetDefaultBroadcastParam(broadcast);        auto* hotstuff_msg = tmp_msg_ptr->header.mutable_hotstuff();
         if (tc != nullptr) {
             auto* pb_pro_msg = hotstuff_msg->mutable_pro_msg();
