@@ -1235,7 +1235,7 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     kill_contract.functions.setMessage("hello").transact(KEY)
 
     recipient = secrets.token_hex(20)
-    log_tx(f"ProbeKill.kill({recipient})")
+    log_tx(f"ProbeKill.kill")
     kill_contract.functions.kill(recipient).transact(KEY)
 
     # ── 6. CREATE2 assembly deployment ───────────────────────────────────────
