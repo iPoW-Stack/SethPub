@@ -1146,11 +1146,17 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     w3.client.wait_for_receipt = _patched_wait
 
     section_start_time = [None]
+    current_section = [None]
+    section_times = []
+
     def section(title):
         now = time.time()
         if section_start_time[0] is not None:
-            print(f"\n  [Test Case Time] Previous test case took: {now - section_start_time[0]:.2f} seconds")
+            duration = now - section_start_time[0]
+            section_times.append((current_section[0], duration))
+            print(f"\n  [Test Case Time] Previous test case took: {duration:.2f} seconds")
         section_start_time[0] = now
+        current_section[0] = title
         print("\n" + "─" * 50)
         print(title)
         print("─" * 50)
@@ -1243,6 +1249,21 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
 
     print("\n[TX] factory.deploy(88888888)")
     factory.functions.deploy(88888888).transact(KEY)
+
+    if section_start_time[0] is not None:
+        duration = time.time() - section_start_time[0]
+        section_times.append((current_section[0], duration))
+        print(f"\n  [Test Case Time] Last test case took: {duration:.2f} seconds")
+
+    print("\n" + "=" * 60)
+    print("  WebSocket Subscription Demo Time Summary")
+    print("=" * 60)
+    total_time = 0
+    for title, duration in section_times:
+        print(f"  - {title:<40} : {duration:.2f} seconds")
+        total_time += duration
+    print("-" * 60)
+    print(f"  Total Demo Execution Time:                 {total_time:.2f} seconds")
 
     print("\n" + "=" * 60)
     print("  Demo complete.")
