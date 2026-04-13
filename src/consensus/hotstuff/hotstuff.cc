@@ -190,7 +190,7 @@ Status Hotstuff::Propose(
     if (pre_v_block->qc().leader_idx() != last_stable_leader_member_index_ && laste_vote_prev_view_tm_.Get(
             pre_v_block->qc().view(), view_prev_vote_tm)) {
         auto now_tm = common::TimeUtils::TimestampMs();
-        if (view_prev_vote_tm + 3000lu >= now_tm) {
+        if (view_prev_vote_tm + 300lu >= now_tm) {
             SETH_DEBUG("view: %lu, view_prev_vote_tm: %lu, now_tm: %lu, not timeout, "
                 "pre_v_block->qc().leader_idx(): %u, last_stable_leader_member_index_: %u ", 
                 pre_v_block->qc().view(), 
