@@ -1521,6 +1521,7 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
+    prev_recover_check_tm_ms_ = 0;
     return Status::kSuccess;
 }
 
