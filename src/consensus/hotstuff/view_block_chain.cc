@@ -390,14 +390,14 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) const {
         auto view_block_info_ptr = it->second;
         if (view_block_info_ptr->view_block) {
             auto& view_block = *view_block_info_ptr->view_block;
-            SETH_DEBUG("get block hash: %s, view block hash: %s, %u_%u_%lu, sign x: %s, parent hash: %s",
-                common::Encode::HexEncode(hash).c_str(), 
-                common::Encode::HexEncode(view_block.qc().view_block_hash()).c_str(),
-                view_block.qc().network_id(),
-                view_block.qc().pool_index(),
-                view_block.qc().view(),
-                common::Encode::HexEncode(view_block.qc().sign_x()).c_str(),
-                common::Encode::HexEncode(view_block.parent_hash()).c_str());
+            // SETH_DEBUG("get block hash: %s, view block hash: %s, %u_%u_%lu, sign x: %s, parent hash: %s",
+            //     common::Encode::HexEncode(hash).c_str(), 
+            //     common::Encode::HexEncode(view_block.qc().view_block_hash()).c_str(),
+            //     view_block.qc().network_id(),
+            //     view_block.qc().pool_index(),
+            //     view_block.qc().view(),
+            //     common::Encode::HexEncode(view_block.qc().sign_x()).c_str(),
+            //     common::Encode::HexEncode(view_block.parent_hash()).c_str());
             if (view_block.qc().view_block_hash() != hash) {
                 SETH_DEBUG("bug 2 get block hash: %s, view block hash: %s, %u_%u_%lu, sign x: %s, parent hash: %s",
                     common::Encode::HexEncode(hash).c_str(), 
