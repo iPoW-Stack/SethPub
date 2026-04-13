@@ -474,11 +474,11 @@ Status BlockAcceptor::addTxsToPool(
             }
         } else if (tx->step() == pools::protobuf::kConsensusLocalTos) {
             pools::protobuf::ToTxMessageItem to_tx_item;
-            if (!to_tx_item.ParseFromString(tx_info->value())) {
+            if (!to_tx_item.ParseFromString(tx->value())) {
                 block_tx.set_status(kConsensusError);
                 SETH_WARN("local get to txs info failed: %s, unique: %s",
-                    common::Encode::HexEncode(tx_info->value()).c_str(),
-                    common::Encode::HexEncode(tx_info->key()).c_str());
+                    common::Encode::HexEncode(tx->value()).c_str(),
+                    common::Encode::HexEncode(tx->key()).c_str());
                 verify_results[i] = -1; // Mark as failed
                 continue;
             }
