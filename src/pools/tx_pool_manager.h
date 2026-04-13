@@ -68,6 +68,12 @@ public:
         const pools::TxItemPtr& valid_tx);
     std::shared_ptr<address::protobuf::AddressInfo> GetAddressInfo(const std::string& address);
     void PoolTimerMessage();
+
+    // Callback invoked whenever a tx reaches a terminal status
+    // (anything other than kMessageHandle / kTxAccept).
+    using TxStatusCallback = std::function<void(const std::string&, transport::MessageHandleStatus)>;
+    void SetTxStatusCallback(TxStatusCallback cb) { tx_status_cb_ = std::move(cb); }
+
     bool NewTxValid(uint32_t pool_index, const std::string& addr, uint64_t nonce) {
         return tx_pool_[pool_index].NewTxValid(addr, nonce);
     }
@@ -267,11 +273,6 @@ private:
     void FlushHeightTree();
     void HandlePoolsMessage(const transport::MessagePtr& msg_ptr);
     void GetMinValidTxCount();
-    // Register a callback invoked whenever a tx reaches a terminal status
-    // (anything other than kMessageHandle / kTxAccept).
-    // Signature: void(const std::string& tx_hash_hex, transport::MessageHandleStatus status)
-    using TxStatusCallback = std::function<void(const std::string&, transport::MessageHandleStatus)>;
-    void SetTxStatusCallback(TxStatusCallback cb) { tx_status_cb_ = std::move(cb); }
     void SendTxToOtherNodes(const transport::MessagePtr& msg_ptr);
 
     uint32_t GetTxPoolIndex(const transport::MessagePtr& msg_ptr);
