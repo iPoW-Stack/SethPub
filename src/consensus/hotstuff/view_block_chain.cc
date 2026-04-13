@@ -1209,6 +1209,10 @@ int ViewBlockChain::CheckTxNonceValid(
                         nonce,
                         iter->second->nonce(),
                         common::Encode::HexEncode(parent_hash).c_str());
+                    if (iter->second->nonce() >= nonce) {
+                        return 3;
+                    }
+
                     return iter->second->nonce() + 1 > nonce ? 1 : -1;
                 }
 
@@ -1238,6 +1242,11 @@ int ViewBlockChain::CheckTxNonceValid(
             nonce,
             addr_info->nonce(),
             common::Encode::HexEncode(parent_hash).c_str());
+        *now_nonce = addr_info->nonce();
+        if (addr_info->nonce() >= nonce) {
+            return 3;
+        }
+
         return addr_info->nonce() + 1 > nonce ? 1 : -1;
     }
 
