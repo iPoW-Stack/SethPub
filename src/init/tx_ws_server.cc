@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <cstring>
 #include <sstream>
+#include <sys/socket.h>
 
 #include <openssl/sha.h>
 #include <openssl/bio.h>
@@ -37,6 +38,19 @@ int TxWsServer::Init(const std::string& ip, uint16_t port) {
 
     uv_tcp_init(loop_, &server_tcp_);
     server_tcp_.data = this;
+
+    // Set SO_REUSEADDR + SO_REUSEPORT before bind so the port can be reused
+    // immediately after a restart (avoids TIME_WAIT / EADDRINUSE).
+    uv_os_fd_t fd;
+    if (uv_fileno(reinterpret_cast<uv_handle_t*>(&server_tcp_), &fd) == 0) {
+        int opt = 1;
+        setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,
+                   reinterpret_cast<const char*>(&opt), sizeof(opt));
+#ifdef SO_REUSEPORT
+        setsockopt(fd, SOL_SOCKET, SO_REUSEPORT,
+                   reinterpret_cast<const char*>(&opt), sizeof(opt));
+#endif
+    }
 
     sockaddr_in addr{};
     uv_ip4_addr(ip.c_str(), port, &addr);

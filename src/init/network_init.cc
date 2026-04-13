@@ -319,7 +319,7 @@ int NetworkInit::Init(int argc, char** argv) {
 
     if (InitWsServer() != kInitSuccess) {
         INIT_ERROR("InitWsServer failed!");
-        return kInitError;
+        // return kInitError;
     }
 
     SETH_INFO("init 7");

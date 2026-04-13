@@ -1371,7 +1371,7 @@ void ViewBlockChain::AddPoolStatisticTag(uint64_t height, uint64_t timeblock_add
         tx->nonce(), 
         pool_index_,
         common::Encode::HexEncode(account_mgr_->pool_base_addrs(pools::protobuf::kPoolStatisticTag, pool_index_)).c_str(),
-        common::GetAddressPoolIndex(account_mgr_->pool_base_addrs(pools::protobuf::kPoolStatisticTag, pool_index_)),
+        account_mgr_->pool_base_addrs(pools::protobuf::kPoolStatisticTag, pool_index_)->pool_idx(),
         height,
         common::Encode::HexEncode(unique_hash).c_str());
     assert(msg_ptr->address_info != nullptr);
