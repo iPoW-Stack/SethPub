@@ -4,6 +4,7 @@
 #include <cstring>
 #include <sstream>
 #include <sys/socket.h>
+#include <ctime>
 
 #include <openssl/sha.h>
 #include <openssl/bio.h>
@@ -107,25 +108,8 @@ void TxWsServer::OnAsync(uv_async_t* handle) {
     // ── drain status-change queue (tx rejected/invalid before block) ─────────
     TxStatusItem item;
     while (self->status_queue_.pop(&item)) {
-        std::unordered_set<Conn*> conns;
-        {
-            std::lock_guard<std::mutex> lk(self->mutex_);
-            auto it = self->hash_to_conns_.find(item.tx_hash_hex);
-            if (it == self->hash_to_conns_.end() || it->second.empty()) continue;
-            conns = it->second;
-        }
-        std::ostringstream o;
-        o << "{\"tx_hash\":\"" << item.tx_hash_hex << "\","
-          << "\"status\":"     << static_cast<int32_t>(item.status) << ","
-          << "\"msg\":\""      << transport::MessageStatusToString(item.status) << "\"}";
-        std::string frame = MakeTextFrame(o.str());
-        for (Conn* c : conns) {
-            if (self->conn_to_hashes_.count(c) == 0) continue;
-            self->EnqueueFrame(c, frame);
-        }
-        SETH_INFO("[TxWsServer] pushed status %s for tx %s to %zu client(s)",
-                  transport::MessageStatusToString(item.status).c_str(),
-                  item.tx_hash_hex.c_str(), conns.size());
+        self->CompleteAndPush(item.tx_hash_hex,
+                              BuildStatusJson(item.tx_hash_hex, item.status));
     }
 
     // ── drain block queue ─────────────────────────────────────────────────────
@@ -135,25 +119,18 @@ void TxWsServer::OnAsync(uv_async_t* handle) {
         for (int i = 0; i < block.tx_list_size(); ++i) {
             const auto& tx = block.tx_list(i);
             if (!tx.has_tx_hash() || tx.tx_hash().empty()) continue;
-
             std::string hex = common::Encode::HexEncode(tx.tx_hash());
-
-            std::unordered_set<Conn*> conns;
-            {
-                std::lock_guard<std::mutex> lk(self->mutex_);
-                auto it = self->hash_to_conns_.find(hex);
-                if (it == self->hash_to_conns_.end() || it->second.empty()) continue;
-                conns = it->second;
-            }
-
-            std::string frame = MakeTextFrame(BuildTxJson(*vb, tx));
-            for (Conn* c : conns) {
-                if (self->conn_to_hashes_.count(c) == 0) continue;
-                self->EnqueueFrame(c, frame);
-            }
-            SETH_INFO("[TxWsServer] pushed tx %s to %zu client(s)",
-                      hex.c_str(), conns.size());
+            self->CompleteAndPush(hex, BuildTxJson(*vb, tx));
         }
+    }
+
+    // ── evict expired cache entries ───────────────────────────────────────────
+    int64_t now = static_cast<int64_t>(std::time(nullptr));
+    for (auto it = self->completed_txs_.begin(); it != self->completed_txs_.end(); ) {
+        if (it->second.expire_sec <= now)
+            it = self->completed_txs_.erase(it);
+        else
+            ++it;
     }
 }
 
@@ -297,6 +274,38 @@ bool TxWsServer::TryHttpUpgrade(Conn* c) {
 
 // ── WebSocket frame handling ──────────────────────────────────────────────────
 
+void TxWsServer::CompleteAndPush(const std::string& hash_hex, const std::string& json) {
+    // Cache the result for late subscribers.
+    int64_t expire = static_cast<int64_t>(std::time(nullptr)) + kCompletedTxTtlSec;
+    std::string frame = MakeTextFrame(json);
+    completed_txs_[hash_hex] = {frame, expire};
+
+    // Push to any current subscribers.
+    std::unordered_set<Conn*> conns;
+    {
+        std::lock_guard<std::mutex> lk(mutex_);
+        auto it = hash_to_conns_.find(hash_hex);
+        if (it != hash_to_conns_.end()) conns = it->second;
+    }
+    for (Conn* c : conns) {
+        if (conn_to_hashes_.count(c) == 0) continue;
+        EnqueueFrame(c, frame);
+    }
+    if (!conns.empty()) {
+        SETH_INFO("[TxWsServer] pushed result for tx %s to %zu client(s)",
+                  hash_hex.c_str(), conns.size());
+    }
+}
+
+std::string TxWsServer::BuildStatusJson(const std::string& tx_hash_hex,
+                                         transport::MessageHandleStatus status) {
+    std::ostringstream o;
+    o << "{\"tx_hash\":\"" << tx_hash_hex << "\","
+      << "\"status\":"     << static_cast<int32_t>(status) << ","
+      << "\"msg\":\""      << transport::MessageStatusToString(status) << "\"}";
+    return o.str();
+}
+
 void TxWsServer::HandleWsFrame(Conn* c, const std::string& payload) {
     static const std::string kSub   = "subscribe:";
     static const std::string kUnsub = "unsubscribe:";
@@ -304,6 +313,15 @@ void TxWsServer::HandleWsFrame(Conn* c, const std::string& payload) {
     if (payload.rfind(kSub, 0) == 0) {
         std::string hash = payload.substr(kSub.size());
         if (hash.empty()) { EnqueueFrame(c, R"({"error":"empty txhash"})"); return; }
+
+        // Check cache first: if this tx already completed, push immediately.
+        auto cached = completed_txs_.find(hash);
+        if (cached != completed_txs_.end()) {
+            SETH_INFO("[TxWsServer] late-subscribe hit cache for tx %s", hash.c_str());
+            EnqueueFrame(c, cached->second.frame);
+            return;
+        }
+
         {
             std::lock_guard<std::mutex> lk(mutex_);
             hash_to_conns_[hash].insert(c);
