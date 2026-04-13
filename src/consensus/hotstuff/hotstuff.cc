@@ -282,8 +282,8 @@ Status Hotstuff::Propose(
         }
 
         auto broadcast = tmp_msg_ptr->header.mutable_broadcast();
-        broadcast->clear_bloomfilter();
-        auto* hotstuff_msg = tmp_msg_ptr->header.mutable_hotstuff();
+        auto brd_param = header.mutable_broadcast();
+        broadcast::SetDefaultBroadcastParam(broadcast);        auto* hotstuff_msg = tmp_msg_ptr->header.mutable_hotstuff();
         if (tc != nullptr) {
             auto* pb_pro_msg = hotstuff_msg->mutable_pro_msg();
             *pb_pro_msg->mutable_tc() = *tc;
