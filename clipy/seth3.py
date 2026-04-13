@@ -1128,6 +1128,7 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
 
     # ── WS-aware wait_for_receipt patch ──────────────────────────────────────
     tx_times = []
+    current_tx_name = ["Unknown TX"]
 
     def _patched_wait(tx_hash, abi=None, function_name=None, **kw):
         print(f"  tx_hash : {tx_hash}")
@@ -1136,7 +1137,7 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
                                    abi=abi, function_name=function_name)
         t1 = time.time()
         duration = t1 - t0
-        tx_times.append((tx_hash, duration))
+        tx_times.append((current_tx_name[0], tx_hash, duration))
         if receipt:
             print(f"  ✅ [Time: {duration:.2f}s] block={receipt.get('block_height')}  "
                   f"status={receipt.get('status')}  gas={receipt.get('gas_used')}"
@@ -1154,9 +1155,13 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
         print(title)
         print("─" * 50)
 
+    def log_tx(name):
+        current_tx_name[0] = name
+        print(f"\n[TX] {name}")
+
     # ── 1. Standard transfer ──────────────────────────────────────────────────
     section("1. Standard Transfer")
-    print("\n[TX] Transfer 100000 → DEST")
+    log_tx("Transfer 100000 → DEST")
     w3.seth.send_transaction({'to': DEST, 'value': 100000}, KEY)
 
     # ── 2. Library + Calculator ───────────────────────────────────────────────
@@ -1166,40 +1171,40 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
                "contract Calculator { function use(uint a, uint b) public pure returns(uint){return MathLib.add(a,b);} }")
     l_bin, l_abi = compile_and_link(src_lib, "MathLib")
     lib = w3.seth.contract(abi=l_abi, bytecode=l_bin)
-    print("\n[TX] Deploy MathLib")
+    log_tx("Deploy MathLib")
     lib.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws01', 'step': StepType.kCreateLibrary}, KEY)
 
     c_bin_linked, c_abi = compile_and_link(src_lib, "Calculator", libs={"MathLib": lib.address})
     calc = w3.seth.contract(abi=c_abi, bytecode=c_bin_linked)
-    print("\n[TX] Deploy Calculator")
+    log_tx("Deploy Calculator")
     calc.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws02'}, KEY)
 
-    print("\n[TX] Calculator.use(10, 20)")
+    log_tx("Calculator.use(10, 20)")
     calc.functions.use(10, 20).transact(KEY)
 
     # ── 3. Contract-calls-contract (chain call) ───────────────────────────────
     section("3. Contract Call Contract (Chain Call)")
     p_bin, p_abi = compile_and_link(PROBE_POOL_SOL, "ProbePool")
     pool = w3.seth.contract(abi=p_abi, bytecode=p_bin)
-    print("\n[TX] Deploy ProbePool")
+    log_tx("Deploy ProbePool")
     pool.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws03', 'args': [10000, 10000], 'amount': 5000000}, KEY)
 
     t_bin, t_abi = compile_and_link(PROBE_TREASURY_SOL, "ProbeTreasury")
     treasury = w3.seth.contract(abi=t_abi, bytecode=t_bin)
-    print("\n[TX] Deploy ProbeTreasury")
+    log_tx("Deploy ProbeTreasury")
     treasury.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws04',
                      'args': [to_checksum_address(pool.address)], 'amount': 5000000}, KEY)
 
     b_bin, b_abi = compile_and_link(PROBE_BRIDGE_SOL, "ProbeBridge")
     bridge = w3.seth.contract(abi=b_abi, bytecode=b_bin, sender_address=MY)
-    print("\n[TX] Deploy ProbeBridge")
+    log_tx("Deploy ProbeBridge")
     bridge.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws05',
                    'args': [to_checksum_address(treasury.address)]}, KEY)
 
-    print("\n[TX] treasury.setBridge(bridge)")
+    log_tx("treasury.setBridge(bridge)")
     treasury.functions.setBridge(to_checksum_address(bridge.address)).transact(KEY)
 
-    print("\n[TX] bridge.request(1)")
+    log_tx("bridge.request(1)")
     bridge.functions.request(1).transact(KEY, value=5)
 
     # ── 4. Prefund full flow ──────────────────────────────────────────────────
@@ -1207,48 +1212,48 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     src_vault = "pragma solidity ^0.8.0; contract Vault { uint256 public val; function set(uint256 v) public { val = v; } }"
     v_bin, v_abi = compile_and_link(src_vault, "Vault")
     vault = w3.seth.contract(abi=v_abi, bytecode=v_bin)
-    print("\n[TX] Deploy Vault")
+    log_tx("Deploy Vault")
     vault.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws06'}, KEY)
 
-    print("\n[TX] Vault.prefund(5000000)")
+    log_tx("Vault.prefund(5000000)")
     vault.prefund(5000000, KEY)
 
-    print("\n[TX] Vault.set(888)")
+    log_tx("Vault.set(888)")
     vault.functions.set(888).transact(KEY, prefund=0)
 
-    print("\n[TX] Vault.refund")
+    log_tx("Vault.refund")
     vault.refund(KEY)
 
     # ── 5. Self-destruct ──────────────────────────────────────────────────────
     section("5. Contract Self-Destruct")
     k_bin, k_abi = compile_and_link(PROBE_KILL_SOL, "ProbeKill")
     kill_contract = w3.seth.contract(abi=k_abi, bytecode=k_bin, sender_address=MY)
-    print("\n[TX] Deploy ProbeKill")
+    log_tx("Deploy ProbeKill")
     kill_contract.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws07kill', 'amount': 2000}, KEY)
 
-    print("\n[TX] ProbeKill.setMessage('hello')")
+    log_tx("ProbeKill.setMessage('hello')")
     kill_contract.functions.setMessage("hello").transact(KEY)
 
     recipient = secrets.token_hex(20)
-    print(f"\n[TX] ProbeKill.kill({recipient})")
+    log_tx(f"ProbeKill.kill({recipient})")
     kill_contract.functions.kill(recipient).transact(KEY)
 
     # ── 6. CREATE2 assembly deployment ───────────────────────────────────────
     section("6. CREATE2 Assembly Deployment")
     f_bin, f_abi = compile_and_link(PROBE_CREATE2_FACTORY_SOL, "Create2Factory")
     factory = w3.seth.contract(abi=f_abi, bytecode=f_bin)
-    print("\n[TX] Deploy Create2Factory")
+    log_tx("Deploy Create2Factory")
     factory.deploy({'from': MY, 'salt': secrets.token_hex(31) + 'f2', 'amount': 100000000}, KEY)
 
-    print("\n[TX] factory.deploy(88888888)")
+    log_tx("factory.deploy(88888888)")
     factory.functions.deploy(88888888).transact(KEY)
 
     print("\n" + "=" * 60)
     print("  WebSocket Subscription Tx Latency Summary")
     print("=" * 60)
     total_time = 0
-    for tx_hash, duration in tx_times:
-        print(f"  - {tx_hash} : {duration:.2f} seconds")
+    for tx_name, tx_hash, duration in tx_times:
+        print(f"  - [{tx_name}] {tx_hash} : {duration:.2f} seconds")
         total_time += duration
     print("-" * 60)
     if tx_times:
