@@ -287,6 +287,7 @@ private:
 
     static const uint32_t kPopMessageCountEachTime = 64000u;
     TxStatusCallback tx_status_cb_;
+    TxPool* tx_pool_{ nullptr };
     std::shared_ptr<security::Security> security_ = nullptr;
     std::shared_ptr<db::Db> db_ = nullptr;
     std::shared_ptr<protos::PrefixDb> prefix_db_ = nullptr;
