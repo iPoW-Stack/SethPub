@@ -1814,7 +1814,7 @@ void HttpHandler::Init(
     secptr = security_ptr;
     prefix_db = tmp_prefix_db;
     contract_mgr = tmp_contract_mgr;
-    view_block_chain_ = std::make_shared<view_block::ViewBlockChain>();
+    view_block_chain_ = std::make_shared<hotstuff::ViewBlockChain>();
     view_block_chain_->Init(
         0,
         0,
