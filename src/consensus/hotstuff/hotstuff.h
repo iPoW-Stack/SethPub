@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cstdlib>
 #include <consensus/hotstuff/crypto.h>
 #include "consensus/consensus_utils.h"
 #include <consensus/hotstuff/block_acceptor.h>
@@ -315,7 +317,9 @@ private:
     common::BftMemberPtr GetLeader(
             uint32_t new_leader_idx, 
             const view_block::protobuf::QcItem& leader_latest_qc, 
-            View* out_view) {
+            View* out_view,
+            int64_t leader_tm_sec = 0,
+            bool debug = true) {
         // auto members = elect_item->valid_leaders();
         pool_tx_leader_.store(nullptr);
         auto members = Members(common::GlobalInfo::Instance()->network_id());
@@ -344,6 +348,7 @@ private:
             
             // *out_view += 1;
             
+            if (debug)
             SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is equal with high view block qc view: %lu, "
                 "high_view_block->qc().elect_height(): %lu, latest_elect_height_: %lu, out view: %lu, "
                 "last_stable_leader_member_index_: %u, new_leader_idx: %u, leader_latest_qc.leader_idx(): %u",
@@ -360,6 +365,7 @@ private:
         if (last_stable_leader_member_index_ == new_leader_idx) {
             do {
                 if (leader_latest_qc.view() != high_view_block->qc().view()) {
+            if (debug)
                     SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is not equal with high view block qc view: %lu",
                         pool_idx_, leader_latest_qc.view(), high_view_block->qc().view());
                     break;
@@ -376,6 +382,7 @@ private:
                 // }
 
                 // *out_view += 1;
+                if (debug)
                 SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is equal with high view block qc view: %lu, "
                     "high_view_block->qc().elect_height(): %lu, latest_elect_height_: %lu, out view: %lu, "
                     "last_stable_leader_member_index_: %u, new_leader_idx: %u, leader_latest_qc.leader_idx(): %u",
@@ -392,6 +399,7 @@ private:
 
         auto high_view_block_info = view_block_chain_->Get(leader_latest_qc.view_block_hash());
         if (high_view_block_info == nullptr || high_view_block_info->view_block == nullptr) {
+            if (debug)
             SETH_DEBUG("pool: %u, leader_latest_qc view: %lu, view_block_hash: %s "
                 "not found in view block chain", 
                 pool_idx_, leader_latest_qc.view(), leader_latest_qc.view_block_hash().c_str());
@@ -405,12 +413,19 @@ private:
             *out_view = high_view_block->qc().view() + 1;
         }
         
-        auto prev_qc_timestamp_sec = (high_view_block->block_info().timestamp() / 1000lu);
-        auto now = common::TimeUtils::TimestampSeconds();
-        auto timeout = static_cast<uint64_t>(
+        int64_t prev_qc_timestamp_sec = (high_view_block->block_info().timestamp() / 1000lu);
+        int64_t now = get_consensus_timestamp(30);
+        if (leader_tm_sec != 0) {
+            if (std::abs(leader_tm_sec - common::TimeUtils::TimestampSeconds()) < 15) {
+                now = leader_tm_sec;
+            }
+        }
+
+        int64_t timeout = static_cast<int64_t>(
             common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
-        auto elapsed = now - prev_qc_timestamp_sec;
+        int64_t elapsed = now - prev_qc_timestamp_sec;
         if (elapsed < timeout) {
+            if (debug)
             SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, consecutive_failures: %d, now: %u, block tm: %lu, "
                 "last_stable_leader_member_index: %d, get leader index: %u, latest_elect_height: %lu, out view: %lu", 
                 pool_idx_, high_view_block->qc().view(), elapsed, timeout, consecutive_failures_,
@@ -445,6 +460,7 @@ private:
             *out_view = high_view_block->qc().view() + k + 1;
         }
 
+        if (debug)
         SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
             "consecutive_failures: %d, now: %u, block tm: %lu, "
             "last_stable_leader_member_index: %d, get leader index: %u, "
@@ -467,6 +483,15 @@ private:
             *out_view);
         pool_tx_leader_.store((*members)[leader_idx % members->size()]);
         return (*members)[leader_idx % members->size()];
+    }
+
+    inline uint64_t get_consensus_timestamp(uint64_t window_size) {
+        auto now = std::chrono::system_clock::now();
+        auto duration = now.time_since_epoch();
+        uint64_t current_utc = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
+        uint64_t consensus_time = (current_utc / window_size) * window_size;
+
+        return consensus_time;
     }
 
     inline common::BftMemberPtr GetMember(uint32_t member_index) const {

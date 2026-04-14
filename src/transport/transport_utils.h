@@ -294,6 +294,20 @@ public:
     uint64_t latest_qc_view;
     bool system_message;
     std::atomic<MessageHandleStatus> handle_status;
+
+    // Optional callback invoked when set_status() is called with a terminal status.
+    // Set by TxPoolManager after msg_hash is known.
+    std::function<void(const std::string&, MessageHandleStatus)> status_notify_cb;
+
+    // Set handle_status and fire status_notify_cb for terminal statuses.
+    // kMessageHandle and kTxAccept are pending/success states — no notification.
+    void set_status(MessageHandleStatus s) {
+        handle_status = s;
+        if (s == kMessageHandle || s == kTxAccept) return;
+        if (status_notify_cb && !msg_hash.empty()) {
+            status_notify_cb(msg_hash, s);
+        }
+    }
 };
 
 typedef std::shared_ptr<TransportMessage> MessagePtr;

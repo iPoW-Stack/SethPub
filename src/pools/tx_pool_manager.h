@@ -68,6 +68,13 @@ public:
         const pools::TxItemPtr& valid_tx);
     std::shared_ptr<address::protobuf::AddressInfo> GetAddressInfo(const std::string& address);
     void PoolTimerMessage();
+
+    // Callback invoked whenever a tx reaches a terminal status
+    // (anything other than kMessageHandle / kTxAccept).
+    using TxStatusCallback = std::function<void(const std::string&, transport::MessageHandleStatus)>;
+    void SetTxStatusCallback(TxStatusCallback cb) { tx_status_cb_ = std::move(cb); }
+    const TxStatusCallback& GetTxStatusCallback() const { return tx_status_cb_; }
+
     bool NewTxValid(uint32_t pool_index, const std::string& addr, uint64_t nonce) {
         return tx_pool_[pool_index].NewTxValid(addr, nonce);
     }
@@ -267,11 +274,10 @@ private:
     void FlushHeightTree();
     void HandlePoolsMessage(const transport::MessagePtr& msg_ptr);
     void GetMinValidTxCount();
-    uint32_t GetTxPoolIndex(const transport::MessagePtr& msg_ptr);
-    // void CreateTestTxs(uint32_t pool_begin, uint32_t pool_end, uint32_t tps);
     void SendTxToOtherNodes(const transport::MessagePtr& msg_ptr);
 
-    static const uint32_t kPopMessageCountEachTime = 64000u;
+    uint32_t GetTxPoolIndex(const transport::MessagePtr& msg_ptr);
+    // void CreateTestTxs(uint32_t pool_begin, uint32_t pool_end, uint32_t tps);
     static const uint64_t kFlushHeightTreePeriod = 60000lu;
     static const uint64_t kSyncPoolsMaxHeightsPeriod = 3000lu;
     static const uint64_t kSyncMissingBlockPeriod = 3000lu;
@@ -281,6 +287,8 @@ private:
     double kGrubbsValidFactor = 3.217;  // 90%
     const double kInvalidLeaderRatio = 0.85;
 
+    static const uint32_t kPopMessageCountEachTime = 64000u;
+    TxStatusCallback tx_status_cb_;
     TxPool* tx_pool_{ nullptr };
     std::shared_ptr<security::Security> security_ = nullptr;
     std::shared_ptr<db::Db> db_ = nullptr;

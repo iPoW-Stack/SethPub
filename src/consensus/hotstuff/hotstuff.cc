@@ -282,7 +282,7 @@ Status Hotstuff::Propose(
         }
 
         auto broadcast = tmp_msg_ptr->header.mutable_broadcast();
-        auto* hotstuff_msg = tmp_msg_ptr->header.mutable_hotstuff();
+        broadcast::SetDefaultBroadcastParam(broadcast);        auto* hotstuff_msg = tmp_msg_ptr->header.mutable_hotstuff();
         if (tc != nullptr) {
             auto* pb_pro_msg = hotstuff_msg->mutable_pro_msg();
             *pb_pro_msg->mutable_tc() = *tc;
@@ -687,7 +687,8 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
     auto leader = GetLeader(
         view_item.qc().leader_idx(), 
         msg_ptr->header.hotstuff().pro_msg().tc(), 
-        &out_view);
+        &out_view,
+        pro_msg_wrap->view_block_ptr->block_info().timestamp());
     if (!leader) {
         SETH_INFO("pool: %d, propose message no leader info, leader idx: %u, tc view: %lu, "
             "propose_debug: %s",
@@ -1521,7 +1522,7 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    prev_recover_check_tm_ms_ = 0;
+    // prev_recover_check_tm_ms_ = 0;
     return Status::kSuccess;
 }
 
@@ -2299,9 +2300,7 @@ void Hotstuff::TryRecoverFromStuck(
 
     auto local_idx = GetLocalMemberIdx();
     View out_view = 0;
-    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view);
-    SETH_DEBUG("pool index: %d, GetLeader return leader: %d, out_view: %lu, local_idx: %d",
-        pool_idx_, leader ? leader->index : -1, out_view, local_idx);
+    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view, false);
     if (!leader) {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
         return;
@@ -2320,11 +2319,13 @@ void Hotstuff::TryRecoverFromStuck(
         return;
     }
 
-    if (prev_recover_check_tm_ms_ + 3000lu > now_tm_ms) {
-        return;
-    }
+    SETH_DEBUG("pool index: %d, GetLeader return leader: %d, out_view: %lu, local_idx: %d",
+        pool_idx_, leader ? leader->index : -1, out_view, local_idx);
+    // if (prev_recover_check_tm_ms_ + 3000lu > now_tm_ms) {
+    //     return;
+    // }
 
-    prev_recover_check_tm_ms_ = now_tm_ms;
+    // prev_recover_check_tm_ms_ = now_tm_ms;
     // auto stuck_st = IsStuck();
     // if (stuck_st != 0) {
     //     if (stuck_st != 1) {

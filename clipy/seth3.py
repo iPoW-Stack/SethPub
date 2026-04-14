@@ -746,6 +746,201 @@ def gmssl_sign_test():
     test_gmssl_transfer(w3, GM_KEY)
     test_gmssl_contract_flow(w3, GM_KEY)
 
+# ---------------------------------------------------------------------------
+# Upgradeable contract demo
+# Pattern: EIP-1967-style transparent proxy + two implementation versions.
+#
+# ProxyAdmin  – owns the proxy and can call upgradeTo()
+# ProxyV1     – minimal proxy that stores impl address in EIP-1967 slot and
+#               delegates all calls; exposes upgradeTo() for the admin
+# CounterV1   – first implementation: stores a counter, exposes inc() / get()
+# CounterV2   – upgraded implementation: adds a reset() function
+# ---------------------------------------------------------------------------
+
+PROXY_ADMIN_SOL = """
+pragma solidity ^0.8.0;
+
+interface IProxy {
+    function upgradeTo(address newImpl) external;
+}
+
+contract ProxyAdmin {
+    address public owner;
+
+    constructor() { owner = msg.sender; }
+
+    modifier onlyOwner() { require(msg.sender == owner, "not owner"); _; }
+
+    function upgrade(address proxy, address newImpl) external onlyOwner {
+        IProxy(proxy).upgradeTo(newImpl);
+    }
+}
+"""
+
+PROXY_SOL = """
+pragma solidity ^0.8.0;
+
+contract TransparentProxy {
+    bytes32 private constant IMPL_SLOT =
+        0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+    bytes32 private constant ADMIN_SLOT =
+        0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
+
+    constructor(address _impl, address _admin) {
+        _setSlot(IMPL_SLOT, _impl);
+        _setSlot(ADMIN_SLOT, _admin);
+    }
+
+    function upgradeTo(address newImpl) external {
+        require(msg.sender == _getSlot(ADMIN_SLOT), "not admin");
+        _setSlot(IMPL_SLOT, newImpl);
+    }
+
+    function implementation() external view returns (address) {
+        return _getSlot(IMPL_SLOT);
+    }
+
+    function _getSlot(bytes32 slot) internal view returns (address addr) {
+        assembly { addr := sload(slot) }
+    }
+
+    function _setSlot(bytes32 slot, address addr) internal {
+        assembly { sstore(slot, addr) }
+    }
+
+    fallback() external payable {
+        address impl = _getSlot(IMPL_SLOT);
+        require(impl != address(0), "no impl");
+        assembly {
+            calldatacopy(0, 0, calldatasize())
+            let result := delegatecall(gas(), impl, 0, calldatasize(), 0, 0)
+            returndatacopy(0, 0, returndatasize())
+            switch result
+            case 0 { revert(0, returndatasize()) }
+            default { return(0, returndatasize()) }
+        }
+    }
+
+    receive() external payable {}
+}
+"""
+
+COUNTER_V1_SOL = """
+pragma solidity ^0.8.0;
+
+contract CounterV1 {
+    uint256 public count;
+    event Incremented(uint256 newCount);
+
+    function inc() external { count += 1; emit Incremented(count); }
+    function get() external view returns (uint256) { return count; }
+    function version() external pure returns (string memory) { return "v1"; }
+}
+"""
+
+COUNTER_V2_SOL = """
+pragma solidity ^0.8.0;
+
+contract CounterV2 {
+    uint256 public count;
+    event Incremented(uint256 newCount);
+    event Reset();
+
+    function inc() external { count += 1; emit Incremented(count); }
+    function get() external view returns (uint256) { return count; }
+    function reset() external { count = 0; emit Reset(); }
+    function version() external pure returns (string memory) { return "v2"; }
+}
+"""
+
+
+def test_upgradeable_contract(w3, MY, KEY):
+    """
+    Upgradeable contract demo (transparent proxy, EIP-1967).
+    1. Deploy ProxyAdmin + CounterV1 + Proxy
+    2. inc() x2 via proxy  →  count == 2
+    3. Deploy CounterV2, upgrade via ProxyAdmin
+    4. Verify state preserved (count == 2, version == "v2")
+    5. reset()  →  count == 0
+    6. inc()    →  count == 1
+    """
+    print("\n" + "=" * 60)
+    print("  Upgradeable Contract Demo (Transparent Proxy)")
+    print("=" * 60)
+
+    salt = secrets.token_hex(31)
+
+    print("\n[1] Deploying ProxyAdmin...")
+    admin_bin, admin_abi = compile_and_link(PROXY_ADMIN_SOL, "ProxyAdmin")
+    proxy_admin = w3.seth.contract(abi=admin_abi, bytecode=admin_bin)
+    proxy_admin.deploy({'from': MY, 'salt': salt + 'pa'}, KEY)
+    print(f"    ProxyAdmin @ {proxy_admin.address}")
+
+    print("\n[2] Deploying CounterV1...")
+    v1_bin, v1_abi = compile_and_link(COUNTER_V1_SOL, "CounterV1")
+    impl_v1 = w3.seth.contract(abi=v1_abi, bytecode=v1_bin)
+    impl_v1.deploy({'from': MY, 'salt': salt + 'v1'}, KEY)
+    print(f"    CounterV1 @ {impl_v1.address}")
+
+    print("\n[3] Deploying TransparentProxy → CounterV1...")
+    proxy_bin, proxy_abi = compile_and_link(PROXY_SOL, "TransparentProxy")
+    proxy_contract = w3.seth.contract(abi=proxy_abi, bytecode=proxy_bin)
+    proxy_contract.deploy({
+        'from': MY, 'salt': salt + 'px',
+        'args': [to_checksum_address(impl_v1.address),
+                 to_checksum_address(proxy_admin.address)],
+    }, KEY)
+    print(f"    Proxy @ {proxy_contract.address}")
+
+    proxy_as_v1 = w3.seth.contract(address=proxy_contract.address, abi=v1_abi)
+
+    print("\n[4] inc() x2 via proxy (V1)...")
+    for i in range(1, 3):
+        r = proxy_as_v1.functions.inc().transact(KEY)
+        print(f"    inc() #{i} status={r.get('status')} events={r.get('decoded_events')}")
+    count = proxy_as_v1.functions.get().call()[0]
+    assert count == 2, f"Expected 2, got {count}"
+    print(f"    count={count} version={proxy_as_v1.functions.version().call()[0]}  ✅")
+
+    print("\n[5] Deploying CounterV2...")
+    v2_bin, v2_abi = compile_and_link(COUNTER_V2_SOL, "CounterV2")
+    impl_v2 = w3.seth.contract(abi=v2_abi, bytecode=v2_bin)
+    impl_v2.deploy({'from': MY, 'salt': salt + 'v2'}, KEY)
+    print(f"    CounterV2 @ {impl_v2.address}")
+
+    print("\n[6] Upgrading proxy to CounterV2...")
+    r = proxy_admin.functions.upgrade(
+        to_checksum_address(proxy_contract.address),
+        to_checksum_address(impl_v2.address),
+    ).transact(KEY)
+    assert r.get('status') == 0, "Upgrade tx failed"
+    print(f"    upgrade() status={r.get('status')}  ✅")
+
+    proxy_as_v2 = w3.seth.contract(address=proxy_contract.address, abi=v2_abi)
+
+    print("\n[7] Verifying state preserved...")
+    count = proxy_as_v2.functions.get().call()[0]
+    ver   = proxy_as_v2.functions.version().call()[0]
+    assert count == 2 and ver == "v2", f"count={count} ver={ver}"
+    print(f"    count={count} version={ver}  ✅")
+
+    print("\n[8] reset()...")
+    r = proxy_as_v2.functions.reset().transact(KEY)
+    count = proxy_as_v2.functions.get().call()[0]
+    assert count == 0, f"Expected 0, got {count}"
+    print(f"    count={count}  ✅")
+
+    print("\n[9] inc() after reset...")
+    proxy_as_v2.functions.inc().transact(KEY)
+    count = proxy_as_v2.functions.get().call()[0]
+    assert count == 1, f"Expected 1, got {count}"
+    print(f"    count={count}  ✅")
+
+    print("\n" + "=" * 60)
+    print("  ✅ Upgradeable contract demo PASSED")
+    print("=" * 60)
+
+
 def ecdsa_sign_test():
     IP, PORT, KEY = "127.0.0.1", 23001, "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
     w3 = SethWeb3Mock(IP, PORT)
@@ -757,6 +952,7 @@ def ecdsa_sign_test():
     test_ecdsa_prefund_full_flow(w3, MY, KEY)
     test_contract_selfdestruct(w3, MY, KEY)
     test_create2_assembly_deployment(w3, MY, KEY)
+    test_upgradeable_contract(w3, MY, KEY)
 
 def oqs_sign_test():
     # Base configuration
@@ -903,7 +1099,7 @@ def _build_ws_msg(action: str, tx_hash: str) -> str:
     return f"{action}:{tx_hash}"
 
 
-def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120,
+def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 35,
                      abi: list = None, function_name: str = None) -> dict | None:
     """
     Subscribe to a single txhash and block until the push is received or timeout.
@@ -912,7 +1108,7 @@ def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120,
         ws_ip         : WebSocket server IP.
         ws_port       : WebSocket server port.
         tx_hash       : Transaction hash to subscribe to (hex string).
-        timeout       : Maximum wait time in seconds (default 120).
+        timeout       : Maximum wait time in seconds (default 35).
         abi           : Contract ABI for decoding output/events (optional).
         function_name : Name of the called function for output decoding (optional).
 
@@ -996,7 +1192,7 @@ def subscribe_txhash(ws_ip: str, ws_port: int, tx_hash: str, timeout: int = 120,
 
 
 def subscribe_multiple_txhashes(
-    ws_ip: str, ws_port: int, tx_hashes: list[str], timeout: int = 120,
+    ws_ip: str, ws_port: int, tx_hashes: list[str], timeout: int = 35,
     abi: list = None
 ) -> dict[str, dict]:
     """
@@ -1096,7 +1292,7 @@ def _ws_send_and_wait(w3, ws_ip, ws_port, desc, send_fn) -> dict | None:
         print(f"  ❌ No tx_hash returned, skipping WS wait.")
         return None
     print(f"  tx_hash: {tx_hash}")
-    receipt = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=120)
+    receipt = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=35)
     if receipt:
         print(f"  ✅ Confirmed  block={receipt.get('block_height')}  "
               f"status={receipt.get('status')}  gas={receipt.get('gas_used')}")
@@ -1127,37 +1323,44 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     print(f"Receiver: {DEST}")
 
     # ── WS-aware wait_for_receipt patch ──────────────────────────────────────
+    tx_times = []
+    current_tx_name = ["Unknown TX"]
+
     def _patched_wait(tx_hash, abi=None, function_name=None, **kw):
         print(f"  tx_hash : {tx_hash}")
         t0 = time.time()
-        receipt = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=120,
+        receipt = subscribe_txhash(ws_ip, ws_port, tx_hash, timeout=35,
                                    abi=abi, function_name=function_name)
         t1 = time.time()
+        duration = t1 - t0
+        
+        status = receipt.get('status', 'Timeout') if receipt else 'Timeout'
+        tx_times.append((current_tx_name[0], tx_hash, duration, status))
+        
         if receipt:
-            print(f"  ✅ [Time: {t1 - t0:.2f}s] block={receipt.get('block_height')}  "
-                  f"status={receipt.get('status')}  gas={receipt.get('gas_used')}"
+            print(f"  ✅ [Time: {duration:.2f}s] block={receipt.get('block_height')}  "
+                  f"status={status}  gas={receipt.get('gas_used')}"
                   + (f"  output={receipt.get('decoded_output')}" if receipt.get('decoded_output') is not None else "")
                   + (f"  events={receipt.get('decoded_events')}" if receipt.get('decoded_events') else ""))
         else:
-            print(f"  ⏰ Timeout waiting for {tx_hash} after {t1 - t0:.2f}s")
+            print(f"  ⏰ Timeout waiting for {tx_hash} after {duration:.2f}s")
             receipt = {}
         return receipt
 
     w3.client.wait_for_receipt = _patched_wait
 
-    section_start_time = [None]
     def section(title):
-        now = time.time()
-        if section_start_time[0] is not None:
-            print(f"\n  [Test Case Time] Previous test case took: {now - section_start_time[0]:.2f} seconds")
-        section_start_time[0] = now
         print("\n" + "─" * 50)
         print(title)
         print("─" * 50)
 
+    def log_tx(name):
+        current_tx_name[0] = name
+        print(f"\n[TX] {name}")
+
     # ── 1. Standard transfer ──────────────────────────────────────────────────
     section("1. Standard Transfer")
-    print("\n[TX] Transfer 100000 → DEST")
+    log_tx("Transfer 100000 → DEST")
     w3.seth.send_transaction({'to': DEST, 'value': 100000}, KEY)
 
     # ── 2. Library + Calculator ───────────────────────────────────────────────
@@ -1167,40 +1370,40 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
                "contract Calculator { function use(uint a, uint b) public pure returns(uint){return MathLib.add(a,b);} }")
     l_bin, l_abi = compile_and_link(src_lib, "MathLib")
     lib = w3.seth.contract(abi=l_abi, bytecode=l_bin)
-    print("\n[TX] Deploy MathLib")
+    log_tx("Deploy MathLib")
     lib.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws01', 'step': StepType.kCreateLibrary}, KEY)
 
     c_bin_linked, c_abi = compile_and_link(src_lib, "Calculator", libs={"MathLib": lib.address})
     calc = w3.seth.contract(abi=c_abi, bytecode=c_bin_linked)
-    print("\n[TX] Deploy Calculator")
+    log_tx("Deploy Calculator")
     calc.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws02'}, KEY)
 
-    print("\n[TX] Calculator.use(10, 20)")
+    log_tx("Calculator.use(10, 20)")
     calc.functions.use(10, 20).transact(KEY)
 
     # ── 3. Contract-calls-contract (chain call) ───────────────────────────────
     section("3. Contract Call Contract (Chain Call)")
     p_bin, p_abi = compile_and_link(PROBE_POOL_SOL, "ProbePool")
     pool = w3.seth.contract(abi=p_abi, bytecode=p_bin)
-    print("\n[TX] Deploy ProbePool")
+    log_tx("Deploy ProbePool")
     pool.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws03', 'args': [10000, 10000], 'amount': 5000000}, KEY)
 
     t_bin, t_abi = compile_and_link(PROBE_TREASURY_SOL, "ProbeTreasury")
     treasury = w3.seth.contract(abi=t_abi, bytecode=t_bin)
-    print("\n[TX] Deploy ProbeTreasury")
+    log_tx("Deploy ProbeTreasury")
     treasury.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws04',
                      'args': [to_checksum_address(pool.address)], 'amount': 5000000}, KEY)
 
     b_bin, b_abi = compile_and_link(PROBE_BRIDGE_SOL, "ProbeBridge")
     bridge = w3.seth.contract(abi=b_abi, bytecode=b_bin, sender_address=MY)
-    print("\n[TX] Deploy ProbeBridge")
+    log_tx("Deploy ProbeBridge")
     bridge.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws05',
                    'args': [to_checksum_address(treasury.address)]}, KEY)
 
-    print("\n[TX] treasury.setBridge(bridge)")
+    log_tx("treasury.setBridge(bridge)")
     treasury.functions.setBridge(to_checksum_address(bridge.address)).transact(KEY)
 
-    print("\n[TX] bridge.request(1)")
+    log_tx("bridge.request(1)")
     bridge.functions.request(1).transact(KEY, value=5)
 
     # ── 4. Prefund full flow ──────────────────────────────────────────────────
@@ -1208,49 +1411,60 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     src_vault = "pragma solidity ^0.8.0; contract Vault { uint256 public val; function set(uint256 v) public { val = v; } }"
     v_bin, v_abi = compile_and_link(src_vault, "Vault")
     vault = w3.seth.contract(abi=v_abi, bytecode=v_bin)
-    print("\n[TX] Deploy Vault")
+    log_tx("Deploy Vault")
     vault.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws06'}, KEY)
 
-    print("\n[TX] Vault.prefund(5000000)")
+    log_tx("Vault.prefund(5000000)")
     vault.prefund(5000000, KEY)
 
-    print("\n[TX] Vault.set(888)")
+    log_tx("Vault.set(888)")
     vault.functions.set(888).transact(KEY, prefund=0)
 
-    print("\n[TX] Vault.refund")
+    log_tx("Vault.refund")
     vault.refund(KEY)
 
     # ── 5. Self-destruct ──────────────────────────────────────────────────────
     section("5. Contract Self-Destruct")
     k_bin, k_abi = compile_and_link(PROBE_KILL_SOL, "ProbeKill")
     kill_contract = w3.seth.contract(abi=k_abi, bytecode=k_bin, sender_address=MY)
-    print("\n[TX] Deploy ProbeKill")
+    log_tx("Deploy ProbeKill")
     kill_contract.deploy({'from': MY, 'salt': RANDOM_SALT + 'ws07kill', 'amount': 2000}, KEY)
 
-    print("\n[TX] ProbeKill.setMessage('hello')")
+    log_tx("ProbeKill.setMessage('hello')")
     kill_contract.functions.setMessage("hello").transact(KEY)
 
     recipient = secrets.token_hex(20)
-    print(f"\n[TX] ProbeKill.kill({recipient})")
+    log_tx(f"ProbeKill.kill")
     kill_contract.functions.kill(recipient).transact(KEY)
 
     # ── 6. CREATE2 assembly deployment ───────────────────────────────────────
     section("6. CREATE2 Assembly Deployment")
     f_bin, f_abi = compile_and_link(PROBE_CREATE2_FACTORY_SOL, "Create2Factory")
     factory = w3.seth.contract(abi=f_abi, bytecode=f_bin)
-    print("\n[TX] Deploy Create2Factory")
+    log_tx("Deploy Create2Factory")
     factory.deploy({'from': MY, 'salt': secrets.token_hex(31) + 'f2', 'amount': 100000000}, KEY)
 
-    print("\n[TX] factory.deploy(88888888)")
+    log_tx("factory.deploy(88888888)")
     factory.functions.deploy(88888888).transact(KEY)
+
+    print("\n" + "=" * 60)
+    print("  WebSocket Subscription Tx Latency Summary")
+    print("=" * 60)
+    total_time = 0
+    for tx_name, tx_hash, duration, status in tx_times:
+        print(f"  - {tx_name:<40} : {duration:>5.2f}s  (Status: {status})")
+        total_time += duration
+    print("-" * 60)
+    if tx_times:
+        print(f"  Average Tx Latency:                        {total_time / len(tx_times):.2f} seconds")
+    print(f"  Total Wait Time:                           {total_time:.2f} seconds")
 
     print("\n" + "=" * 60)
     print("  Demo complete.")
     print("=" * 60)
-
+    
 if __name__ == "__main__":
     ecdsa_sign_test()
     oqs_sign_test()
     gmssl_sign_test()
     demo_ws_subscribe("127.0.0.1", 33001)  # uncomment to run the WebSocket subscription demo
- 

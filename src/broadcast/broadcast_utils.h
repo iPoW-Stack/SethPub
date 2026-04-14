@@ -31,6 +31,7 @@ static inline void SetDefaultBroadcastParam(transport::protobuf::BroadcastParam*
     broadcast->set_neighbor_count(neigber_count);
     float overlap = 1.0f;
     broadcast->set_overlap(overlap);
+    broadcast->clear_bloomfilter();
 }
 
 }  // namespace broadcast

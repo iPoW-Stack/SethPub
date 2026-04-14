@@ -20,8 +20,8 @@ ViewBlockChain::ViewBlockChain() {}
 void ViewBlockChain::Init(
         ChainType chain_type,
         uint32_t pool_index, 
-        std::shared_ptr<db::Db>& db, 
-        std::shared_ptr<block::BlockManager>& block_mgr,
+        std::shared_ptr<db::Db> db, 
+        std::shared_ptr<block::BlockManager> block_mgr,
         std::shared_ptr<block::AccountManager> account_mgr, 
         std::shared_ptr<sync::KeyValueSync> kv_sync,
         std::shared_ptr<IBlockAcceptor> block_acceptor,
@@ -390,14 +390,14 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) const {
         auto view_block_info_ptr = it->second;
         if (view_block_info_ptr->view_block) {
             auto& view_block = *view_block_info_ptr->view_block;
-            SETH_DEBUG("get block hash: %s, view block hash: %s, %u_%u_%lu, sign x: %s, parent hash: %s",
-                common::Encode::HexEncode(hash).c_str(), 
-                common::Encode::HexEncode(view_block.qc().view_block_hash()).c_str(),
-                view_block.qc().network_id(),
-                view_block.qc().pool_index(),
-                view_block.qc().view(),
-                common::Encode::HexEncode(view_block.qc().sign_x()).c_str(),
-                common::Encode::HexEncode(view_block.parent_hash()).c_str());
+            // SETH_DEBUG("get block hash: %s, view block hash: %s, %u_%u_%lu, sign x: %s, parent hash: %s",
+            //     common::Encode::HexEncode(hash).c_str(), 
+            //     common::Encode::HexEncode(view_block.qc().view_block_hash()).c_str(),
+            //     view_block.qc().network_id(),
+            //     view_block.qc().pool_index(),
+            //     view_block.qc().view(),
+            //     common::Encode::HexEncode(view_block.qc().sign_x()).c_str(),
+            //     common::Encode::HexEncode(view_block.parent_hash()).c_str());
             if (view_block.qc().view_block_hash() != hash) {
                 SETH_DEBUG("bug 2 get block hash: %s, view block hash: %s, %u_%u_%lu, sign x: %s, parent hash: %s",
                     common::Encode::HexEncode(hash).c_str(), 
@@ -1209,6 +1209,10 @@ int ViewBlockChain::CheckTxNonceValid(
                         nonce,
                         iter->second->nonce(),
                         common::Encode::HexEncode(parent_hash).c_str());
+                    if (iter->second->nonce() >= nonce) {
+                        return 3;
+                    }
+
                     return iter->second->nonce() + 1 > nonce ? 1 : -1;
                 }
 
@@ -1238,6 +1242,11 @@ int ViewBlockChain::CheckTxNonceValid(
             nonce,
             addr_info->nonce(),
             common::Encode::HexEncode(parent_hash).c_str());
+        *now_nonce = addr_info->nonce();
+        if (addr_info->nonce() >= nonce) {
+            return 3;
+        }
+
         return addr_info->nonce() + 1 > nonce ? 1 : -1;
     }
 
@@ -1320,7 +1329,7 @@ protos::AddressInfoPtr ViewBlockChain::ChainGetAccountInfo(const std::string& ad
         return addr_info;
     }
 
-    auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
+    auto thread_idx = 0;  // common::GlobalInfo::Instance()->get_thread_index();
     addr_info = account_mgr_->GetAcountInfoFromDb(addr);
     if (!addr_info) {
         BLOCK_DEBUG(
@@ -1362,7 +1371,7 @@ void ViewBlockChain::AddPoolStatisticTag(uint64_t height, uint64_t timeblock_add
         tx->nonce(), 
         pool_index_,
         common::Encode::HexEncode(account_mgr_->pool_base_addrs(pools::protobuf::kPoolStatisticTag, pool_index_)).c_str(),
-        common::GetAddressPoolIndex(account_mgr_->pool_base_addrs(pools::protobuf::kPoolStatisticTag, pool_index_)),
+        pool_index_,
         height,
         common::Encode::HexEncode(unique_hash).c_str());
     assert(msg_ptr->address_info != nullptr);

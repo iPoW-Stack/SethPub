@@ -319,7 +319,7 @@ int NetworkInit::Init(int argc, char** argv) {
 
     if (InitWsServer() != kInitSuccess) {
         INIT_ERROR("InitWsServer failed!");
-        return kInitError;
+        // return kInitError;
     }
 
     SETH_INFO("init 7");
@@ -406,6 +406,11 @@ int NetworkInit::InitWsServer() {
             INIT_ERROR("[TxWsServer] init failed on %s:%u", ws_ip.c_str(), ws_port);
             return kInitError;
         }
+        // Forward terminal tx status changes to WS subscribers.
+        pools_mgr_->SetTxStatusCallback(
+            [this](const std::string& tx_hash_hex, transport::MessageHandleStatus status) {
+                tx_ws_server_.OnTxStatusChange(tx_hash_hex, status);
+            });
         SETH_INFO("[TxWsServer] tx subscription websocket started on %s:%u", ws_ip.c_str(), ws_port);
     }
 
