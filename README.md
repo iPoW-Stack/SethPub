@@ -8,8 +8,8 @@
 ### 1. Requirements
 Ensure your development environment meets the following specifications
 ```
-* **GCC/G++**: 13.0 or higher
-* **CMake**: 3.25.1 or higher
+    GCC/G++ : 13.0.0 or higher
+      CMake : 3.25.1 or higher
 ```
 
 ### 2. Run customized network
