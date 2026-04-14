@@ -1816,7 +1816,7 @@ void HttpHandler::Init(
     contract_mgr = tmp_contract_mgr;
     view_block_chain_ = std::make_shared<hotstuff::ViewBlockChain>();
     view_block_chain_->Init(
-        0,
+        hotstuff::kInvalidChain,
         0,
         nullptr,
         nullptr,
