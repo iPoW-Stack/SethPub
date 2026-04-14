@@ -757,6 +757,7 @@ def ecdsa_sign_test():
     test_ecdsa_prefund_full_flow(w3, MY, KEY)
     test_contract_selfdestruct(w3, MY, KEY)
     test_create2_assembly_deployment(w3, MY, KEY)
+    test_upgradeable_contract(w3, MY, KEY)
 
 def oqs_sign_test():
     # Base configuration
@@ -1266,6 +1267,260 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     print("\n" + "=" * 60)
     print("  Demo complete.")
     print("=" * 60)
+
+# ---------------------------------------------------------------------------
+# Upgradeable contract demo
+# Pattern: EIP-1967-style transparent proxy + two implementation versions.
+#
+# ProxyAdmin  – owns the proxy and can call upgradeTo()
+# ProxyV1     – minimal proxy that stores impl address in EIP-1967 slot and
+#               delegates all calls; exposes upgradeTo() for the admin
+# CounterV1   – first implementation: stores a counter, exposes inc() / get()
+# CounterV2   – upgraded implementation: adds a reset() function
+# ---------------------------------------------------------------------------
+
+PROXY_ADMIN_SOL = """
+pragma solidity ^0.8.0;
+
+interface IProxy {
+    function upgradeTo(address newImpl) external;
+}
+
+contract ProxyAdmin {
+    address public owner;
+
+    constructor() { owner = msg.sender; }
+
+    modifier onlyOwner() { require(msg.sender == owner, "not owner"); _; }
+
+    function upgrade(address proxy, address newImpl) external onlyOwner {
+        IProxy(proxy).upgradeTo(newImpl);
+    }
+}
+"""
+
+PROXY_SOL = """
+pragma solidity ^0.8.0;
+
+contract TransparentProxy {
+    // EIP-1967 implementation slot:
+    // keccak256("eip1967.proxy.implementation") - 1
+    bytes32 private constant IMPL_SLOT =
+        0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+
+    // EIP-1967 admin slot:
+    // keccak256("eip1967.proxy.admin") - 1
+    bytes32 private constant ADMIN_SLOT =
+        0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
+
+    constructor(address _impl, address _admin) {
+        _setSlot(IMPL_SLOT, _impl);
+        _setSlot(ADMIN_SLOT, _admin);
+    }
+
+    function upgradeTo(address newImpl) external {
+        require(msg.sender == _getSlot(ADMIN_SLOT), "not admin");
+        _setSlot(IMPL_SLOT, newImpl);
+    }
+
+    function implementation() external view returns (address) {
+        return _getSlot(IMPL_SLOT);
+    }
+
+    function _getSlot(bytes32 slot) internal view returns (address addr) {
+        assembly { addr := sload(slot) }
+    }
+
+    function _setSlot(bytes32 slot, address addr) internal {
+        assembly { sstore(slot, addr) }
+    }
+
+    fallback() external payable {
+        address impl = _getSlot(IMPL_SLOT);
+        require(impl != address(0), "no impl");
+        assembly {
+            calldatacopy(0, 0, calldatasize())
+            let result := delegatecall(gas(), impl, 0, calldatasize(), 0, 0)
+            returndatacopy(0, 0, returndatasize())
+            switch result
+            case 0 { revert(0, returndatasize()) }
+            default { return(0, returndatasize()) }
+        }
+    }
+
+    receive() external payable {}
+}
+"""
+
+COUNTER_V1_SOL = """
+pragma solidity ^0.8.0;
+
+contract CounterV1 {
+    uint256 public count;
+
+    event Incremented(uint256 newCount);
+
+    function inc() external {
+        count += 1;
+        emit Incremented(count);
+    }
+
+    function get() external view returns (uint256) {
+        return count;
+    }
+
+    function version() external pure returns (string memory) {
+        return "v1";
+    }
+}
+"""
+
+COUNTER_V2_SOL = """
+pragma solidity ^0.8.0;
+
+contract CounterV2 {
+    uint256 public count;
+
+    event Incremented(uint256 newCount);
+    event Reset();
+
+    function inc() external {
+        count += 1;
+        emit Incremented(count);
+    }
+
+    function get() external view returns (uint256) {
+        return count;
+    }
+
+    function reset() external {
+        count = 0;
+        emit Reset();
+    }
+
+    function version() external pure returns (string memory) {
+        return "v2";
+    }
+}
+"""
+
+
+def test_upgradeable_contract(w3, MY, KEY):
+    """
+    Upgradeable contract demo using a transparent proxy pattern.
+
+    Steps:
+      1. Deploy ProxyAdmin
+      2. Deploy CounterV1 (implementation)
+      3. Deploy TransparentProxy pointing to CounterV1, owned by ProxyAdmin
+      4. Call inc() twice through the proxy  →  count == 2
+      5. Deploy CounterV2 (new implementation)
+      6. Call ProxyAdmin.upgrade() to point proxy at CounterV2
+      7. Verify state is preserved (count still == 2)
+      8. Call reset() through the proxy  →  count == 0
+      9. Call inc() once more  →  count == 1
+    """
+    print("\n" + "=" * 60)
+    print("  Upgradeable Contract Demo (Transparent Proxy)")
+    print("=" * 60)
+
+    salt = secrets.token_hex(31)
+
+    # ── 1. Deploy ProxyAdmin ──────────────────────────────────────────────
+    print("\n[1] Deploying ProxyAdmin...")
+    admin_bin, admin_abi = compile_and_link(PROXY_ADMIN_SOL, "ProxyAdmin")
+    proxy_admin = w3.seth.contract(abi=admin_abi, bytecode=admin_bin)
+    proxy_admin.deploy({'from': MY, 'salt': salt + 'pa'}, KEY)
+    print(f"    ProxyAdmin @ {proxy_admin.address}")
+
+    # ── 2. Deploy CounterV1 ───────────────────────────────────────────────
+    print("\n[2] Deploying CounterV1 (implementation)...")
+    v1_bin, v1_abi = compile_and_link(COUNTER_V1_SOL, "CounterV1")
+    impl_v1 = w3.seth.contract(abi=v1_abi, bytecode=v1_bin)
+    impl_v1.deploy({'from': MY, 'salt': salt + 'v1'}, KEY)
+    print(f"    CounterV1 @ {impl_v1.address}")
+
+    # ── 3. Deploy Proxy ───────────────────────────────────────────────────
+    print("\n[3] Deploying TransparentProxy → CounterV1...")
+    proxy_bin, proxy_abi = compile_and_link(PROXY_SOL, "TransparentProxy")
+    proxy_contract = w3.seth.contract(abi=proxy_abi, bytecode=proxy_bin)
+    proxy_contract.deploy({
+        'from': MY,
+        'salt': salt + 'px',
+        'args': [
+            to_checksum_address(impl_v1.address),
+            to_checksum_address(proxy_admin.address),
+        ],
+    }, KEY)
+    print(f"    Proxy @ {proxy_contract.address}")
+
+    # Attach CounterV1 ABI to the proxy address so we can call through it.
+    proxy_as_v1 = w3.seth.contract(
+        address=proxy_contract.address, abi=v1_abi)
+
+    # ── 4. Call inc() twice through proxy ────────────────────────────────
+    print("\n[4] Calling inc() × 2 through proxy (V1)...")
+    r = proxy_as_v1.functions.inc().transact(KEY)
+    print(f"    inc() #1 status={r.get('status')}  events={r.get('decoded_events')}")
+    r = proxy_as_v1.functions.inc().transact(KEY)
+    print(f"    inc() #2 status={r.get('status')}  events={r.get('decoded_events')}")
+
+    count_after_v1 = proxy_as_v1.functions.get().call()[0]
+    ver_v1 = proxy_as_v1.functions.version().call()[0]
+    print(f"    count={count_after_v1}  version={ver_v1}")
+    assert count_after_v1 == 2, f"Expected count=2, got {count_after_v1}"
+    print("    ✅ V1 state correct")
+
+    # ── 5. Deploy CounterV2 ───────────────────────────────────────────────
+    print("\n[5] Deploying CounterV2 (new implementation)...")
+    v2_bin, v2_abi = compile_and_link(COUNTER_V2_SOL, "CounterV2")
+    impl_v2 = w3.seth.contract(abi=v2_abi, bytecode=v2_bin)
+    impl_v2.deploy({'from': MY, 'salt': salt + 'v2'}, KEY)
+    print(f"    CounterV2 @ {impl_v2.address}")
+
+    # ── 6. Upgrade proxy to V2 via ProxyAdmin ────────────────────────────
+    print("\n[6] Upgrading proxy to CounterV2 via ProxyAdmin...")
+    r = proxy_admin.functions.upgrade(
+        to_checksum_address(proxy_contract.address),
+        to_checksum_address(impl_v2.address),
+    ).transact(KEY)
+    print(f"    upgrade() status={r.get('status')}")
+    assert r.get('status') == 0, "Upgrade tx failed"
+
+    # Attach CounterV2 ABI to the same proxy address.
+    proxy_as_v2 = w3.seth.contract(
+        address=proxy_contract.address, abi=v2_abi)
+
+    # ── 7. Verify state preserved ─────────────────────────────────────────
+    print("\n[7] Verifying state preserved after upgrade...")
+    count_after_upgrade = proxy_as_v2.functions.get().call()[0]
+    ver_v2 = proxy_as_v2.functions.version().call()[0]
+    print(f"    count={count_after_upgrade}  version={ver_v2}")
+    assert count_after_upgrade == 2, f"State not preserved! count={count_after_upgrade}"
+    assert ver_v2 == "v2", f"Wrong version: {ver_v2}"
+    print("    ✅ State preserved, version upgraded to v2")
+
+    # ── 8. Call reset() ───────────────────────────────────────────────────
+    print("\n[8] Calling reset() through proxy (V2)...")
+    r = proxy_as_v2.functions.reset().transact(KEY)
+    print(f"    reset() status={r.get('status')}  events={r.get('decoded_events')}")
+    count_after_reset = proxy_as_v2.functions.get().call()[0]
+    print(f"    count after reset={count_after_reset}")
+    assert count_after_reset == 0, f"Reset failed! count={count_after_reset}"
+    print("    ✅ reset() works")
+
+    # ── 9. Final inc() ────────────────────────────────────────────────────
+    print("\n[9] Calling inc() once more...")
+    r = proxy_as_v2.functions.inc().transact(KEY)
+    count_final = proxy_as_v2.functions.get().call()[0]
+    print(f"    count={count_final}")
+    assert count_final == 1, f"Expected 1, got {count_final}"
+    print("    ✅ V2 inc() works after reset")
+
+    print("\n" + "=" * 60)
+    print("  ✅ Upgradeable contract demo PASSED")
+    print("=" * 60)
+
 
 if __name__ == "__main__":
     ecdsa_sign_test()
