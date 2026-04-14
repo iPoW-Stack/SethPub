@@ -219,7 +219,7 @@ public:
             }
         }
 
-        std::cout << "fetch nonce failed: " << address << std::endl;
+        std::cout << "fetch nonce failed: " << address << ":" << res->status << std::endl;
         return -1; 
     }
 
