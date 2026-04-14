@@ -1,6 +1,7 @@
 #include "bls/bls_manager.h"
 
 #include <bls/bls_utils.h>
+#include <unordered_set>
 #include "bls/dkg_cache.h"
 #include <dkg/dkg.h>
 #include <libbls/bls/BLSPrivateKey.h>
@@ -59,20 +60,14 @@ void BlsManager::PoolTimerMessage() {
             common::GlobalInfo::Instance()->network_id()) >=
             common::GlobalInfo::Instance()->sharding_min_nodes_count()) {
         PopFinishMessage();
-        // auto tmp_bls = waiting_bls_.load();
-        auto now_tm_ms = common::TimeUtils::TimestampMs();
-        // // SETH_WARN("BlsManager handle message begin.");
-        // if (tmp_bls != nullptr) {
-        //     tmp_bls->TimerMessage();
-        // }
+        BatchVerifyFinishItems();
 
+        auto now_tm_ms = common::TimeUtils::TimestampMs();
         auto etime = common::TimeUtils::TimestampMs();
         if (etime - now_tm_ms >= 10) {
             SETH_WARN("BlsManager handle message end use time: %lu", (etime - now_tm_ms));
         }
     }
-
-    // bls_tick_.CutOff(100000lu, std::bind(&BlsManager::TimerMessage, this));
 }
 
 void BlsManager::TimerMessage() {
@@ -582,14 +577,11 @@ void BlsManager::HandleFinish(const transport::MessagePtr& msg_ptr) {
         finish_item->max_public_pk_map[cpk_hash] = 1;
     } else {
         ++cpk_iter->second;
-        common_pkey.getPublicKey()->to_affine_coordinates();
+        // Accumulate for batch verification; do NOT call CheckAggSignValid here.
+        // The timer (PoolTimerMessage) will trigger verification every 30 seconds
+        // once the threshold is reached.
         if (cpk_iter->second >= t) {
-            CheckAggSignValid(
-                t,
-                members->size(),
-                *common_pkey.getPublicKey(),
-                finish_item,
-                bls_msg.index());
+            finish_item->pending_verify_indices.push_back(bls_msg.index());
         }
     }
 
@@ -630,6 +622,80 @@ void BlsManager::HandleFinish(const transport::MessagePtr& msg_ptr) {
     if (finish_item->max_finish_count == 0) {
         finish_item->max_finish_count = 1;
         finish_item->max_finish_hash = cpk_hash;
+    }
+}
+
+static constexpr uint64_t kBatchVerifyIntervalMs = 30000u;  // 30 seconds
+
+void BlsManager::BatchVerifyFinishItems() {
+    uint64_t now_ms = common::TimeUtils::TimestampMs();
+
+    for (auto& [network_id, finish_item] : finish_networks_map_) {
+        if (finish_item->success_verified) continue;
+        if (finish_item->pending_verify_indices.empty()) continue;
+        if (now_ms - finish_item->last_verify_time_ms < kBatchVerifyIntervalMs) continue;
+
+        finish_item->last_verify_time_ms = now_ms;
+
+        auto elect_iter = elect_members_.find(network_id);
+        if (elect_iter == elect_members_.end()) continue;
+        auto& members = elect_iter->second->members;
+        if (!members) continue;
+
+        uint32_t n = static_cast<uint32_t>(members->size());
+        uint32_t t = common::GetSignerCount(n);
+
+        // Find the dominant common public key.
+        if (finish_item->max_finish_hash.empty()) continue;
+        auto cpk_map_iter = finish_item->common_pk_map.find(finish_item->max_finish_hash);
+        if (cpk_map_iter == finish_item->common_pk_map.end()) continue;
+        libff::alt_bn128_G2 common_pk = cpk_map_iter->second;
+        common_pk.to_affine_coordinates();
+
+        // Build candidate set: all pending (unverified) members with matching cpk first.
+        std::vector<uint32_t> candidates;
+        for (uint32_t idx : finish_item->pending_verify_indices) {
+            if (idx < n &&
+                finish_item->all_common_public_keys[idx] == common_pk) {
+                candidates.push_back(idx);
+            }
+        }
+        finish_item->pending_verify_indices.clear();
+
+        // If candidates alone are not enough to reach t, supplement from already
+        // verified_valid_index (members that passed a previous verification round).
+        if (candidates.size() < t) {
+            for (size_t vi = 0; vi < finish_item->verified_valid_index.size(); ++vi) {
+                if (finish_item->verified_valid_index[vi] == 0) continue;
+                uint32_t idx = static_cast<uint32_t>(finish_item->verified_valid_index[vi] - 1);
+                // Avoid duplicates.
+                bool already = false;
+                for (uint32_t c : candidates) {
+                    if (c == idx) { already = true; break; }
+                }
+                if (!already) {
+                    candidates.push_back(idx);
+                }
+                if (candidates.size() >= t) break;
+            }
+        }
+
+        if (candidates.size() < t) {
+            SETH_DEBUG("[BatchVerify] net %u: only %zu candidates, need %u, skip",
+                       network_id, candidates.size(), t);
+            continue;
+        }
+
+        // Build sign/index vectors for CheckAggSignValid using the first t candidates.
+        // We call CheckAggSignValid for each new pending member so it can be
+        // individually validated and added to verified_valid_signs.
+        for (uint32_t idx : candidates) {
+            if (finish_item->success_verified) break;
+            CheckAggSignValid(t, n, common_pk, finish_item, idx);
+        }
+
+        SETH_INFO("[BatchVerify] net %u: batch verify done, success=%d",
+                  network_id, finish_item->success_verified);
     }
 }
 
@@ -936,6 +1002,79 @@ int BlsManager::AddBlsConsensusInfo(elect::protobuf::ElectBlock& ec_block) {
     if (iter == finish_networks_map_.end()) {
         BLS_ERROR("find finish_networks_map_ failed![%u]", ec_block.shard_network_id());
         return kBlsError;
+    }
+
+    // Verify all members that have a signature but haven't been individually
+    // validated yet, regardless of whether success_verified is already true.
+    {
+        auto elect_iter = elect_members_.find(ec_block.shard_network_id());
+        if (elect_iter != elect_members_.end() && elect_iter->second->members) {
+            auto& members    = elect_iter->second->members;
+            uint32_t n       = static_cast<uint32_t>(members->size());
+            uint32_t t       = common::GetSignerCount(n);
+            auto& finish_item = iter->second;
+
+            if (!finish_item->max_finish_hash.empty()) {
+                auto cpk_map_iter = finish_item->common_pk_map.find(finish_item->max_finish_hash);
+                if (cpk_map_iter != finish_item->common_pk_map.end()) {
+                    libff::alt_bn128_G2 common_pk = cpk_map_iter->second;
+                    common_pk.to_affine_coordinates();
+
+                    // Build the set of indices already in verified_valid_index.
+                    std::unordered_set<uint32_t> already_verified;
+                    for (size_t vi = 0; vi < finish_item->verified_valid_index.size(); ++vi) {
+                        if (finish_item->verified_valid_index[vi] != 0)
+                            already_verified.insert(
+                                static_cast<uint32_t>(finish_item->verified_valid_index[vi] - 1));
+                    }
+
+                    // Collect every member that has a signature, matches the dominant
+                    // cpk, but is not yet in verified_valid_index.
+                    std::vector<uint32_t> unverified;
+                    for (uint32_t i = 0; i < n; ++i) {
+                        if (finish_item->all_bls_signs[i] == libff::alt_bn128_G1::zero()) continue;
+                        if (finish_item->all_common_public_keys[i] != common_pk) continue;
+                        if (already_verified.count(i)) continue;
+                        unverified.push_back(i);
+                    }
+
+                    if (!unverified.empty()) {
+                        // Ensure we have at least t verified members before trying
+                        // to validate newcomers (CheckAggSignValid needs a baseline).
+                        if (!finish_item->success_verified) {
+                            // Not yet verified at all — try to bootstrap with all candidates.
+                            std::vector<uint32_t> all_candidates;
+                            for (uint32_t i = 0; i < n; ++i) {
+                                if (finish_item->all_bls_signs[i] == libff::alt_bn128_G1::zero()) continue;
+                                if (finish_item->all_common_public_keys[i] != common_pk) continue;
+                                all_candidates.push_back(i);
+                            }
+                            if (all_candidates.size() >= t) {
+                                for (uint32_t idx : all_candidates) {
+                                    if (finish_item->success_verified) break;
+                                    CheckAggSignValid(t, n, common_pk, finish_item, idx);
+                                }
+                            }
+                        }
+
+                        // Now verify the remaining unverified members one by one.
+                        if (finish_item->success_verified) {
+                            for (uint32_t idx : unverified) {
+                                CheckAggSignValid(t, n, common_pk, finish_item, idx);
+                            }
+                        }
+
+                        SETH_INFO("[AddBlsConsensusInfo] net %u: verified %zu new members, success=%d",
+                                  ec_block.shard_network_id(), unverified.size(),
+                                  finish_item->success_verified);
+                    }
+
+                    // Drain pending queue and reset timer so the batch timer doesn't redo this.
+                    finish_item->pending_verify_indices.clear();
+                    finish_item->last_verify_time_ms = common::TimeUtils::TimestampMs();
+                }
+            }
+        }
     }
 
     if (!iter->second->success_verified) {
