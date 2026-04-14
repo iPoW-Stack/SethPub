@@ -59,13 +59,9 @@ void BlsManager::PoolTimerMessage() {
             common::GlobalInfo::Instance()->network_id()) >=
             common::GlobalInfo::Instance()->sharding_min_nodes_count()) {
         PopFinishMessage();
-        // auto tmp_bls = waiting_bls_.load();
-        auto now_tm_ms = common::TimeUtils::TimestampMs();
-        // // SETH_WARN("BlsManager handle message begin.");
-        // if (tmp_bls != nullptr) {
-        //     tmp_bls->TimerMessage();
-        // }
+        BatchVerifyFinishItems();
 
+        auto now_tm_ms = common::TimeUtils::TimestampMs();
         auto etime = common::TimeUtils::TimestampMs();
         if (etime - now_tm_ms >= 10) {
             SETH_WARN("BlsManager handle message end use time: %lu", (etime - now_tm_ms));
@@ -582,14 +578,10 @@ void BlsManager::HandleFinish(const transport::MessagePtr& msg_ptr) {
         finish_item->max_public_pk_map[cpk_hash] = 1;
     } else {
         ++cpk_iter->second;
-        common_pkey.getPublicKey()->to_affine_coordinates();
+        // Do NOT verify immediately — accumulate into pending queue.
+        // BatchVerifyFinishItems() will drain it every 30 seconds.
         if (cpk_iter->second >= t) {
-            CheckAggSignValid(
-                t,
-                members->size(),
-                *common_pkey.getPublicKey(),
-                finish_item,
-                bls_msg.index());
+            finish_item->pending_verify_indices.push_back(bls_msg.index());
         }
     }
 
@@ -630,6 +622,69 @@ void BlsManager::HandleFinish(const transport::MessagePtr& msg_ptr) {
     if (finish_item->max_finish_count == 0) {
         finish_item->max_finish_count = 1;
         finish_item->max_finish_hash = cpk_hash;
+    }
+}
+
+static const uint64_t kBatchVerifyIntervalMs = 30000u;  // 30 seconds
+
+void BlsManager::BatchVerifyFinishItems() {
+    uint64_t now_ms = common::TimeUtils::TimestampMs();
+
+    for (auto& [network_id, finish_item] : finish_networks_map_) {
+        if (finish_item->success_verified) continue;
+        if (finish_item->pending_verify_indices.empty()) continue;
+        if (now_ms - finish_item->last_verify_time_ms < kBatchVerifyIntervalMs) continue;
+
+        finish_item->last_verify_time_ms = now_ms;
+
+        auto elect_iter = elect_members_.find(network_id);
+        if (elect_iter == elect_members_.end()) continue;
+        auto& members = elect_iter->second->members;
+        if (!members) continue;
+
+        uint32_t n = static_cast<uint32_t>(members->size());
+        uint32_t t = common::GetSignerCount(n);
+
+        if (finish_item->max_finish_hash.empty()) continue;
+        auto cpk_map_iter = finish_item->common_pk_map.find(finish_item->max_finish_hash);
+        if (cpk_map_iter == finish_item->common_pk_map.end()) continue;
+        libff::alt_bn128_G2 common_pk = cpk_map_iter->second;
+        common_pk.to_affine_coordinates();
+
+        // Collect all pending (unverified) members with matching cpk.
+        std::vector<uint32_t> candidates;
+        for (uint32_t idx : finish_item->pending_verify_indices) {
+            if (idx < n && finish_item->all_common_public_keys[idx] == common_pk) {
+                candidates.push_back(idx);
+            }
+        }
+        finish_item->pending_verify_indices.clear();
+
+        // If not enough, supplement from already verified members.
+        if (candidates.size() < t) {
+            for (size_t vi = 0; vi < finish_item->verified_valid_index.size(); ++vi) {
+                if (finish_item->verified_valid_index[vi] == 0) continue;
+                uint32_t idx = static_cast<uint32_t>(finish_item->verified_valid_index[vi] - 1);
+                bool dup = false;
+                for (uint32_t c : candidates) { if (c == idx) { dup = true; break; } }
+                if (!dup) candidates.push_back(idx);
+                if (candidates.size() >= t) break;
+            }
+        }
+
+        if (candidates.size() < t) {
+            SETH_DEBUG("[BatchVerify] net %u: only %zu candidates, need %u, skip",
+                       network_id, candidates.size(), t);
+            continue;
+        }
+
+        for (uint32_t idx : candidates) {
+            if (finish_item->success_verified) break;
+            CheckAggSignValid(t, n, common_pk, finish_item, idx);
+        }
+
+        SETH_INFO("[BatchVerify] net %u: batch verify done, success=%d",
+                  network_id, finish_item->success_verified);
     }
 }
 
