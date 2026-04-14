@@ -30,7 +30,7 @@ Ensure your development environment meets the following specifications:
 
 `cd clipy && python3 seth3.py`
 
-`# 更多资源 & 压力测试` [SethTests](https://github.com/iPoW-Stack/SethTests)
+`# More Resources & Stress Tests` [SethTests](https://github.com/iPoW-Stack/SethTests)
 
 
 #### Post-Quantum Attack Resistant 
