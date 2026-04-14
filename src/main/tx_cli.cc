@@ -609,7 +609,6 @@ int main(int argc, char** argv) {
 
         // TCP transport setup (same as tx_main)
         SignalRegister();
-        WriteDefaultLogConf();
         transport::MultiThreadHandler net_handler;
         std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
         auto db_ptr = std::make_shared<db::Db>();
