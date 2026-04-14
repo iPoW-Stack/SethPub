@@ -24,11 +24,9 @@
 ```
       cd clipy && python3 seth3.py
 ```
-`     # More Resources & Stress Tests` [SethTests](https://github.com/iPoW-Stack/SethTests)
 
-
-#### Post-Quantum Attack Resistant 
 ```python
+# Post-Quantum Attack Resistant
 def oqs_sign_test():
     # Base configuration
     IP, PORT = "127.0.0.1", 23001
@@ -46,6 +44,8 @@ def oqs_sign_test():
     test_oqs_library_with_contract(w3, MY_OQS, OQS_KEY, OQS_PK)
     test_oqs_contract_prefund_flow(w3, MY_OQS, OQS_KEY, OQS_PK)
 ```
+`     # More Resources & Stress Tests` [SethTests](https://github.com/iPoW-Stack/SethTests)
+
 ## Related Papers
 * **Shardora/Seth (TNSE 2026)**: [Shardora: Scaling Blockchain Sharding via 2D Parallelism](https://github.com/user-attachments/files/26715054/Shardora_TNSE_revised2nd_pure.pdf)
 * **Seth NMFT(TIFS 2025)**: [NMFT: A Copyrighted Data Trading Protocol based on NFT and AI-powered Merkle Feature Tree](https://ieeexplore.ieee.org/document/11275867/)
