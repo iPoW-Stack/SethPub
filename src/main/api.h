@@ -195,7 +195,8 @@ public:
 class SethClient {
 public:
     int64_t fetchNonce(const std::string& address) {
-        httplib::Client cli(node_host_, node_port_);
+        httplib::SSLClient cli(node_host_, node_port_);
+        cli.enable_server_certificate_verification(false);
         httplib::Params params;
         params.emplace("address", address);
         auto res = cli.Post("/query_account", params);
@@ -294,7 +295,8 @@ public:
                 std::string input = "", std::string key = "", std::string val = "", 
                 uint64_t prefund = 0, bool check_tx_valid = true) {
         try {
-            httplib::Client cli(node_host_, node_port_);
+            httplib::SSLClient cli(node_host_, node_port_);
+            cli.enable_server_certificate_verification(false);
             security::Ecdsa ecdsa;
             ecdsa.SetPrivateKey(common::Encode::HexDecode(private_key));
             if (nonce == -1) nonce = fetchNonce(common::Encode::HexEncode(ecdsa.GetAddress()));
@@ -330,7 +332,8 @@ public:
     }
     std::string queryContract(const std::string& private_key, const std::string& contract_address, const std::string& input_data) {
         try {
-            httplib::Client cli(node_host_, node_port_);
+            httplib::SSLClient cli(node_host_, node_port_);
+            cli.enable_server_certificate_verification(false);
             security::Ecdsa ecdsa;
             ecdsa.SetPrivateKey(common::Encode::HexDecode(private_key));
             httplib::Params params;
