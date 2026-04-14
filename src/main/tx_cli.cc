@@ -468,7 +468,7 @@ int main(int argc, char** argv) {
     // Usage: txcli 1 <shard> <pool> <ip> <port>
     if (argv[1][0] == '1') {
         std::cout << "[Deploy] Compiling ex.sol..." << std::endl;
-        std::ifstream sol_file("ex.sol");
+        std::ifstream sol_file("../python/ex.sol");
         if (!sol_file.is_open()) {
             std::cerr << "Cannot open ex.sol" << std::endl;
             return 1;
