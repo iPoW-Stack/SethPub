@@ -31,6 +31,27 @@ Ensure your development environment meets the following specifications:
 cd clipy && python3 seth3.py
 ```
 
+#### Post-Quantum Attack Resistant 
+```python
+def oqs_sign_test():
+    # Base configuration
+    IP, PORT = "127.0.0.1", 23001
+
+    # OQS keys (using sample ML-DSA-44 length Hex string here, should actually read from oqs_addrs file)
+    # Note: Private key length must be > 128 bits to trigger auto-switch logic in code
+    OQS_KEY = "4a6393c16df..."
+    OQS_PK  = "4a6393c16df..."
+
+    w3 = SethWeb3Mock(IP, PORT)
+    MY_OQS = w3.client.get_oqs_address(OQS_PK)
+
+    test_oqs_transfer(w3, MY_OQS, OQS_KEY, OQS_PK)
+    test_oqs_contract_deploy_and_call(w3, MY_OQS, OQS_KEY, OQS_PK)
+    test_oqs_library_with_contract(w3, MY_OQS, OQS_KEY, OQS_PK)
+    test_oqs_contract_prefund_flow(w3, MY_OQS, OQS_KEY, OQS_PK)
+```
+
+
 ## ⛏️ Start Mining
 
 ```
