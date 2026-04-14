@@ -1329,7 +1329,7 @@ protos::AddressInfoPtr ViewBlockChain::ChainGetAccountInfo(const std::string& ad
         return addr_info;
     }
 
-    auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
+    auto thread_idx = 0;  // common::GlobalInfo::Instance()->get_thread_index();
     addr_info = account_mgr_->GetAcountInfoFromDb(addr);
     if (!addr_info) {
         BLOCK_DEBUG(

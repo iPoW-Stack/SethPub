@@ -934,6 +934,7 @@ static void AbiQueryContract(const UWSRequest& req, UWSResponse& http_res) {
     // user caller prefund 's gas
     uint64_t from_balance = prefund;
     uint64_t to_balance = contract_addr_info->balance();
+    zjc_host.view_block_chain_ = std::make_shared<hotstuff::ViewBlockChain>();
     zjc_host.AddTmpAccountBalance(
         from,
         from_balance);
