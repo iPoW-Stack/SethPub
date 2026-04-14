@@ -7,8 +7,8 @@
 
 ### 1. Requirements
 ```
-    GCC/G++ : 13.0.0 or higher
-    CMake   : 3.25.1 or higher
+     GCC/G++ : 13.0.0 or higher
+     CMake   : 3.25.1 or higher
 ```
 
 ### 2. Run customized network
