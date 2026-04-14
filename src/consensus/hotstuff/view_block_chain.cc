@@ -1329,12 +1329,12 @@ protos::AddressInfoPtr ViewBlockChain::ChainGetAccountInfo(const std::string& ad
         return addr_info;
     }
 
-    auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
+    // auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     addr_info = account_mgr_->GetAcountInfoFromDb(addr);
     if (!addr_info) {
         BLOCK_DEBUG(
             "get account failed[%s] in thread_idx:%d", 
-            common::Encode::HexEncode(addr).c_str(), thread_idx);
+            common::Encode::HexEncode(addr).c_str(), 0);
     } else {
         account_lru_map_.insert(addr_info);
         SETH_DEBUG("success update address: %s, balance: %lu, nonce: %lu",
