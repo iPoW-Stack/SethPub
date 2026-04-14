@@ -21,9 +21,9 @@
       # machine password must Xf4aGbTaf!(for test), you can change it by edit simple_remote.sh
 ```
 ### 3. Run tests
-
-`     cd clipy && python3 seth3.py`
-
+```
+      cd clipy && python3 seth3.py
+```
 `     # More Resources & Stress Tests` [SethTests](https://github.com/iPoW-Stack/SethTests)
 
 
