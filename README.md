@@ -10,7 +10,7 @@ Ensure your development environment meets the following specifications:
 * **GCC/G++**: 13.0 or higher
 * **CMake**: 3.25.1 or higher
 
-### Run customized network
+### 2. Run customized network
       bash build_third.sh
       bash simple_remote.sh $each_machine_node_count $ip_list  
       # each_machine_node_count like 4, mean each machine create 4 nodes. 
@@ -18,7 +18,7 @@ Ensure your development environment meets the following specifications:
       # machine user must root
       # machine password must Xf4aGbTaf!(for test), you can change it by edit simple_remote.sh
 
-### Run tests
+### 3. Run tests
 
 `     cd clipy && python3 seth3.py`
 
@@ -44,14 +44,14 @@ def oqs_sign_test():
     test_oqs_library_with_contract(w3, MY_OQS, OQS_KEY, OQS_PK)
     test_oqs_contract_prefund_flow(w3, MY_OQS, OQS_KEY, OQS_PK)
 ```
-## 📄 Related Papers
+## 4. Related Papers
 * **Shardora/Seth (TNSE 2026)**: [Shardora: Scaling Blockchain Sharding via 2D Parallelism](https://github.com/user-attachments/files/26715054/Shardora_TNSE_revised2nd_pure.pdf)
 * **NMFT(TIFS 2025)**: [NMFT: A Copyrighted Data Trading Protocol based on NFT and AI-powered Merkle Feature Tree](https://ieeexplore.ieee.org/document/11275867/)
 * **Seth SCoRE**: [SCoRE: A Runtime System for Service-Oriented Smart Contracts in Sharded Blockchains](https://sosp26.hotcrp.com/doc/sosp26-paper501.pdf)
 * **Akaverse BFT**: [Boosting Sharded Blockchain via Multi-Leader Parallel Pipelines](https://github.com/user-attachments/files/24961427/Akaverse.Boosting.Sharded.Blockchain.via.Multi-Leader.Parallel.Pipelines.pdf)
 
 
-## ⛏️ Start Mining
+## 5. Start Mining
 
 ```
       git clone https://github.com/iPoW-Stack/SethPub.git /root/seth && cd /root/seth
