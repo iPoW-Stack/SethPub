@@ -3,7 +3,7 @@
 **Seth** is a high-performance blockchain sharding system featuring resilient and seamless shard reconfiguration. It optimizes consensus and transaction processing to maintain system stability even during complex shard transitions.
 
 ### 📄 Related Papers
-* **Seth (CCS 2025)**: [A Dynamic Blockchain Sharding System with Resilient and Seamless Shard Reconfiguration](https://ccs2025a.hotcrp.com/doc/ccs2025a-paper756.pdf?cap=hcav756eNAubdJqApSsXnJDucFgJMXB)
+* **Seth (TNSE2016)**: [A Dynamic Blockchain Sharding System with Resilient and Seamless Shard Reconfiguration](https://ccs2025a.hotcrp.com/doc/ccs2025a-paper756.pdf?cap=hcav756eNAubdJqApSsXnJDucFgJMXB)
 * **Seth (SOSP 2026)**: [SCoRE: A Runtime System for Service-Oriented Smart Contracts in Sharded Blockchains](https://sosp26.hotcrp.com/doc/sosp26-paper501.pdf)
 * **Akaverse**: [Boosting Sharded Blockchain via Multi-Leader Parallel Pipelines](https://github.com/user-attachments/files/24961427/Akaverse.Boosting.Sharded.Blockchain.via.Multi-Leader.Parallel.Pipelines.pdf)
 * **NMFT(Powered by Seth)**: [NMFT: A Copyrighted Data Trading Protocol based on NFT and AI-powered Merkle Feature Tree](https://ieeexplore.ieee.org/document/11275867/)
