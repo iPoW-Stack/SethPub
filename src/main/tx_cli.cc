@@ -1,5 +1,6 @@
 #include <common/encode.h>
 #include <iostream>
+#include <fstream>
 #include <queue>
 #include <vector>
 #include <mutex>
@@ -443,6 +444,226 @@ int main(int argc, char** argv) {
         tx_main(argc, argv);
         transport::TcpTransport::Instance()->Stop();
         usleep(1000000);
+        return 0;
+    }
+
+    // Common setup for modes 1/2/3
+    if (argc >= 4) {
+        shardnum = std::stoi(argv[2]);
+        global_pool_idx = std::stoi(argv[3]);
+    }
+    if (argc >= 6) {
+        global_chain_node_ip = argv[4];
+        global_chain_node_http_port = std::stoi(argv[5]) + 10000;
+    }
+
+    LoadAllAccounts(shardnum);
+    WriteDefaultLogConf();
+
+    // Use the first account as the deployer/tester
+    std::string deployer_prikey = common::Encode::HexEncode(g_prikeys[0]);
+    SethSDK sdk(global_chain_node_ip, global_chain_node_http_port);
+
+    // ── Mode 1: Deploy ex.sol ─────────────────────────────────────────────
+    // Usage: txcli 1 <shard> <pool> <ip> <port>
+    if (argv[1][0] == '1') {
+        std::cout << "[Deploy] Compiling ex.sol..." << std::endl;
+        std::ifstream sol_file("ex.sol");
+        if (!sol_file.is_open()) {
+            std::cerr << "Cannot open ex.sol" << std::endl;
+            return 1;
+        }
+        std::string source((std::istreambuf_iterator<char>(sol_file)),
+                            std::istreambuf_iterator<char>());
+        auto compile_res = sdk.compileSolidity(source);
+        if (compile_res["status"] != 0) {
+            std::cerr << "Compile failed: " << compile_res["msg"] << std::endl;
+            return 1;
+        }
+        std::string bytecode = compile_res["bytecode"];
+        std::cout << "[Deploy] Bytecode length: " << bytecode.size() << std::endl;
+
+        auto deploy_res = sdk.deploySolidity(deployer_prikey, bytecode, 0, 9000000000lu, 0, {}, {});
+        if (deploy_res["status"] != 0) {
+            std::cerr << "Deploy failed: " << deploy_res["msg"] << std::endl;
+            return 1;
+        }
+        std::string contract_addr = deploy_res["id"];
+        std::cout << "[Deploy] Contract address: " << contract_addr << std::endl;
+        // Persist address for subsequent modes
+        std::ofstream addr_file("ex_contract_addr.txt");
+        addr_file << contract_addr << std::endl;
+        std::cout << "[Deploy] Address saved to ex_contract_addr.txt" << std::endl;
+        return 0;
+    }
+
+    // Load contract address for modes 2/3
+    std::string contract_addr;
+    {
+        std::ifstream addr_file("ex_contract_addr.txt");
+        if (!addr_file.is_open()) {
+            std::cerr << "ex_contract_addr.txt not found. Run mode 1 first." << std::endl;
+            return 1;
+        }
+        std::getline(addr_file, contract_addr);
+    }
+    std::cout << "[Info] Using contract: " << contract_addr << std::endl;
+
+    // ── Mode 2: Functional test of ex.sol ─────────────────────────────────
+    // Usage: txcli 2 <shard> <pool> <ip> <port>
+    if (argv[1][0] == '2') {
+        std::cout << "\n=== ex.sol Functional Test ===" << std::endl;
+
+        // 1. CreateNewItem
+        bytes32 item_hash = "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+        // Use a deterministic hash derived from deployer address
+        std::string hash_hex = utils::keccak256Str(deployer_prikey + "item0");
+        std::string info_hex = utils::bytesToHex(std::vector<uint8_t>{'t','e','s','t',' ','i','t','e','m'});
+        uint64_t price = 1000;
+        uint64_t start_ms = 0;
+        uint64_t end_ms = 9999999999ULL;
+
+        std::cout << "[1] CreateNewItem hash=" << hash_hex << std::endl;
+        auto r = sdk.callFunctionSolidity(deployer_prikey, contract_addr, price,
+            "CreateNewItem",
+            {"bytes32","bytes","uint256","uint256","uint256"},
+            {hash_hex, info_hex,
+             std::to_string(price),
+             std::to_string(start_ms),
+             std::to_string(end_ms)});
+        std::cout << "    result: " << r.dump() << std::endl;
+        usleep(3000000);
+
+        // 2. Query TotalItems
+        auto q = sdk.queryFunctionSolidity(deployer_prikey, contract_addr,
+            "TotalItems", {}, {}, {"uint256"});
+        std::cout << "[2] TotalItems: " << q.dump() << std::endl;
+
+        // 3. ItemExists
+        q = sdk.queryFunctionSolidity(deployer_prikey, contract_addr,
+            "ItemExists", {"bytes32"}, {hash_hex}, {"bool"});
+        std::cout << "[3] ItemExists: " << q.dump() << std::endl;
+
+        // 4. PurchaseItem (use second account as buyer)
+        if (g_prikeys.size() >= 2) {
+            std::string buyer_prikey = common::Encode::HexEncode(g_prikeys[1]);
+            std::cout << "[4] PurchaseItem (buyer=" << buyer_prikey.substr(0,8) << "...)" << std::endl;
+            r = sdk.callFunctionSolidity(buyer_prikey, contract_addr, price + 100,
+                "PurchaseItem",
+                {"bytes32","uint256"},
+                {hash_hex, std::to_string(start_ms + 1)});
+            std::cout << "    result: " << r.dump() << std::endl;
+            usleep(3000000);
+
+            // 5. HasPurchased
+            std::shared_ptr<security::Security> buyer_sec = std::make_shared<security::Ecdsa>();
+            buyer_sec->SetPrivateKey(g_prikeys[1]);
+            std::string buyer_addr = "0x" + common::Encode::HexEncode(buyer_sec->GetAddress());
+            q = sdk.queryFunctionSolidity(deployer_prikey, contract_addr,
+                "HasPurchased", {"bytes32","address"}, {hash_hex, buyer_addr}, {"bool"});
+            std::cout << "[5] HasPurchased: " << q.dump() << std::endl;
+
+            // 6. BuyerCount
+            q = sdk.queryFunctionSolidity(deployer_prikey, contract_addr,
+                "BuyerCount", {"bytes32"}, {hash_hex}, {"uint256"});
+            std::cout << "[6] BuyerCount: " << q.dump() << std::endl;
+        }
+
+        // 7. ConfirmPurchase
+        std::cout << "[7] ConfirmPurchase" << std::endl;
+        r = sdk.callFunctionSolidity(deployer_prikey, contract_addr, 0,
+            "ConfirmPurchase", {"bytes32"}, {hash_hex});
+        std::cout << "    result: " << r.dump() << std::endl;
+        usleep(3000000);
+
+        // 8. SellStatus
+        q = sdk.queryFunctionSolidity(deployer_prikey, contract_addr,
+            "SellStatus", {"bytes32"}, {hash_hex}, {"uint256"});
+        std::cout << "[8] SellStatus: " << q.dump() << std::endl;
+
+        // 9. SellResult
+        q = sdk.queryFunctionSolidity(deployer_prikey, contract_addr,
+            "SellResult", {"bytes32"}, {hash_hex}, {"address","uint256"});
+        std::cout << "[9] SellResult: " << q.dump() << std::endl;
+
+        // 10. GetItem
+        q = sdk.queryFunctionSolidity(deployer_prikey, contract_addr,
+            "GetItem", {"bytes32"}, {hash_hex},
+            {"address","uint256","uint256","uint256","uint256","uint256","address"});
+        std::cout << "[10] GetItem: " << q.dump() << std::endl;
+
+        std::cout << "\n=== Functional Test Done ===" << std::endl;
+        return 0;
+    }
+
+    // ── Mode 3: Contract call stress test (PurchaseItem) ──────────────────
+    // Usage: txcli 3 <shard> <pool> <ip> <port> [threads] [items_per_thread]
+    // Pre-condition: items must already exist in the contract.
+    if (argv[1][0] == '3') {
+        uint32_t num_threads = (argc >= 7) ? std::stoi(argv[6]) : 4;
+        uint32_t items_per_thread = (argc >= 8) ? std::stoi(argv[7]) : 100;
+
+        std::cout << "[Stress] threads=" << num_threads
+                  << " items_per_thread=" << items_per_thread << std::endl;
+
+        // Pre-create items so threads can purchase them
+        std::cout << "[Stress] Creating " << num_threads * items_per_thread << " items..." << std::endl;
+        std::vector<std::string> item_hashes;
+        for (uint32_t t = 0; t < num_threads; ++t) {
+            for (uint32_t i = 0; i < items_per_thread; ++i) {
+                std::string h = utils::keccak256Str(deployer_prikey + std::to_string(t) + "_" + std::to_string(i));
+                item_hashes.push_back(h);
+                sdk.callFunctionSolidity(deployer_prikey, contract_addr, 100,
+                    "CreateNewItem",
+                    {"bytes32","bytes","uint256","uint256","uint256"},
+                    {h, "74657374", "100", "0", "9999999999"});
+                usleep(50000);
+            }
+        }
+        std::cout << "[Stress] Items created. Waiting 5s for consensus..." << std::endl;
+        usleep(5000000);
+
+        SignalRegister();
+        std::atomic<uint64_t> call_count{0};
+        std::atomic<uint64_t> fail_count{0};
+
+        auto stress_thread = [&](uint32_t tid, std::string prikey) {
+            SethSDK thread_sdk(global_chain_node_ip, global_chain_node_http_port);
+            uint32_t base = tid * items_per_thread;
+            uint32_t idx = 0;
+            while (!global_stop) {
+                const std::string& h = item_hashes[base + (idx % items_per_thread)];
+                auto r = thread_sdk.callFunctionSolidity(prikey, contract_addr, 100,
+                    "PurchaseItem", {"bytes32","uint256"},
+                    {h, std::to_string(common::TimeUtils::TimestampMs())});
+                if (r["status"] == 0) ++call_count;
+                else ++fail_count;
+                ++idx;
+            }
+        };
+
+        std::vector<std::thread> threads;
+        for (uint32_t t = 0; t < num_threads && t < g_prikeys.size(); ++t) {
+            threads.emplace_back(stress_thread, t,
+                common::Encode::HexEncode(g_prikeys[t % g_prikeys.size()]));
+        }
+
+        // TPS reporter
+        threads.emplace_back([&]() {
+            uint64_t prev = 0;
+            while (!global_stop) {
+                usleep(3000000);
+                uint64_t cur = call_count.load();
+                std::cout << "[Stress] tps=" << (cur - prev) / 3
+                          << "  total=" << cur
+                          << "  fail=" << fail_count.load() << std::endl;
+                prev = cur;
+            }
+        });
+
+        for (auto& th : threads) th.join();
+        std::cout << "[Stress] Done. total_calls=" << call_count
+                  << " fail=" << fail_count << std::endl;
         return 0;
     }
 
