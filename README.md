@@ -16,7 +16,6 @@
 Ensure your development environment meets the following specifications:
 * **GCC/G++**: 13.0 or higher
 * **CMake**: 3.25.1 or higher
-* **OpenSSL**: 1.1.1 or higher (for HTTPS support)
 
 ### Run customized network
       bash build_third.sh
