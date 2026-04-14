@@ -42,7 +42,7 @@ struct MaxBlsMemberItem {
 
 class BlsFinishItem {
 public:
-    BlsFinishItem() : max_finish_count(0), success_verified(false), last_verify_time_ms(0) {
+    BlsFinishItem() : max_finish_count(0), success_verified(false) {
         memset(verified, 0, sizeof(verified));
     }
 
@@ -59,11 +59,6 @@ public:
     std::vector<size_t> verified_valid_index;
     bool verified[common::kEachShardMaxNodeCount];
     bool success_verified;
-
-    // Indices of members that arrived since the last batch verification.
-    // Drained and verified every kBatchVerifyIntervalMs milliseconds.
-    std::vector<uint32_t> pending_verify_indices;
-    uint64_t last_verify_time_ms;
 };
 
 typedef std::shared_ptr<BlsFinishItem> BlsFinishItemPtr;

@@ -114,7 +114,6 @@ public:
 
 private:
     void HandleFinish(const transport::MessagePtr& msg_ptr);
-    void BatchVerifyFinishItems();
     void CheckAggSignValid(
         uint32_t t,
         uint32_t n,
