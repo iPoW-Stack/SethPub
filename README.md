@@ -6,9 +6,11 @@
 ## 🚀 Quick Start
 
 ### 1. Requirements
-Ensure your development environment meets the following specifications:
+Ensure your development environment meets the following specifications
+```
 * **GCC/G++**: 13.0 or higher
 * **CMake**: 3.25.1 or higher
+```
 
 ### 2. Run customized network
       bash build_third.sh
