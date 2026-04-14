@@ -1,6 +1,7 @@
 #include <common/encode.h>
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 #include <queue>
 #include <vector>
 #include <mutex>
@@ -594,18 +595,39 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    // ── Mode 3: Contract call stress test (PurchaseItem) ──────────────────
+    // ── Mode 3: Contract call stress test (PurchaseItem via TCP, fire-and-forget) ──
     // Usage: txcli 3 <shard> <pool> <ip> <port> [threads] [items_per_thread]
-    // Pre-condition: items must already exist in the contract.
     if (argv[1][0] == '3') {
         uint32_t num_threads = (argc >= 7) ? std::stoi(argv[6]) : 4;
         uint32_t items_per_thread = (argc >= 8) ? std::stoi(argv[7]) : 100;
+        std::string tcp_ip = (argc >= 5) ? argv[4] : kBroadcastIp;
+        uint16_t tcp_port = (argc >= 6) ? std::stoi(argv[5]) : kBroadcastPort;
 
         std::cout << "[Stress] threads=" << num_threads
-                  << " items_per_thread=" << items_per_thread << std::endl;
+                  << " items_per_thread=" << items_per_thread
+                  << " tcp=" << tcp_ip << ":" << tcp_port << std::endl;
 
-        // Pre-create items so threads can purchase them
-        std::cout << "[Stress] Creating " << num_threads * items_per_thread << " items..." << std::endl;
+        // TCP transport setup (same as tx_main)
+        SignalRegister();
+        WriteDefaultLogConf();
+        transport::MultiThreadHandler net_handler;
+        std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
+        auto db_ptr = std::make_shared<db::Db>();
+        if (!db_ptr->Init(db_path + "_stress")) {
+            std::cerr << "init db failed" << std::endl; return 1;
+        }
+        if (net_handler.Init(db_ptr, sec) != 0) {
+            std::cerr << "init net handler failed" << std::endl; return 1;
+        }
+        if (transport::TcpTransport::Instance()->Init("127.0.0.1:13792", 128, false, &net_handler) != 0) {
+            std::cerr << "init tcp failed" << std::endl; return 1;
+        }
+        if (transport::TcpTransport::Instance()->Start(false) != 0) {
+            std::cerr << "start tcp failed" << std::endl; return 1;
+        }
+
+        // Pre-create items so threads can call PurchaseItem on them
+        std::cout << "[Stress] Creating " << num_threads * items_per_thread << " items via HTTP..." << std::endl;
         std::vector<std::string> item_hashes;
         for (uint32_t t = 0; t < num_threads; ++t) {
             for (uint32_t i = 0; i < items_per_thread; ++i) {
@@ -621,29 +643,79 @@ int main(int argc, char** argv) {
         std::cout << "[Stress] Items created. Waiting 5s for consensus..." << std::endl;
         usleep(5000000);
 
-        SignalRegister();
+        // Fetch nonces for all accounts
+        UpdateAddressNonce();
+        prikey_with_nonce = src_prikey_with_nonce;
+
         std::atomic<uint64_t> call_count{0};
         std::atomic<uint64_t> fail_count{0};
 
-        auto stress_thread = [&](uint32_t tid, std::string prikey) {
-            SethSDK thread_sdk(global_chain_node_ip, global_chain_node_http_port);
-            uint32_t base = tid * items_per_thread;
+        // Build ABI-encoded input for PurchaseItem(bytes32,uint256)
+        // selector = keccak256("PurchaseItem(bytes32,uint256)")[0:4]
+        std::string purchase_selector = utils::keccak256Str("PurchaseItem(bytes32,uint256)").substr(0, 8);
+
+        auto stress_thread = [&](uint32_t tid) {
+            std::shared_ptr<security::Security> thread_sec = std::make_shared<security::Ecdsa>();
+            thread_sec->SetPrivateKey(g_prikeys[tid % g_prikeys.size()]);
+            auto addr = thread_sec->GetAddress();
             uint32_t idx = 0;
+            uint32_t base = tid * items_per_thread;
+
             while (!global_stop) {
+                // Nonce throttle: same logic as tx_main
+                if (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
+                    usleep(2000000);
+                    update_nonce_con.notify_one();
+                    usleep(1000000);
+                    if (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
+                        prikey_with_nonce[addr] = src_prikey_with_nonce[addr];
+                        usleep(10000000);
+                        continue;
+                    }
+                }
+
                 const std::string& h = item_hashes[base + (idx % items_per_thread)];
-                auto r = thread_sdk.callFunctionSolidity(prikey, contract_addr, 100,
-                    "PurchaseItem", {"bytes32","uint256"},
-                    {h, std::to_string(common::TimeUtils::TimestampMs())});
-                if (r["status"] == 0) ++call_count;
-                else ++fail_count;
+                // Encode: selector + bytes32(h) + uint256(timestamp)
+                uint64_t ts = common::TimeUtils::TimestampMs();
+                std::string ts_hex;
+                {
+                    std::ostringstream oss;
+                    oss << std::hex << std::setfill('0') << std::setw(64) << ts;
+                    ts_hex = oss.str();
+                }
+                // h is already 64-char hex (32 bytes), pad to 64 chars
+                std::string h_padded = h;
+                if (h_padded.size() < 64) h_padded = std::string(64 - h_padded.size(), '0') + h_padded;
+                std::string input_hex = purchase_selector + h_padded + ts_hex;
+
+                auto tx_msg_ptr = CreateTransactionWithAttr(
+                    thread_sec,
+                    ++prikey_with_nonce[addr],
+                    common::Encode::HexEncode(g_prikeys[tid % g_prikeys.size()]),
+                    contract_addr,
+                    "call",
+                    input_hex,
+                    100,   // value (bid amount)
+                    5000000,
+                    1,
+                    shardnum);
+
+                if (tx_msg_ptr &&
+                    transport::TcpTransport::Instance()->Send(tcp_ip, tcp_port, tx_msg_ptr->header) == 0) {
+                    ++call_count;
+                } else {
+                    ++fail_count;
+                }
                 ++idx;
             }
         };
 
         std::vector<std::thread> threads;
-        for (uint32_t t = 0; t < num_threads && t < g_prikeys.size(); ++t) {
-            threads.emplace_back(stress_thread, t,
-                common::Encode::HexEncode(g_prikeys[t % g_prikeys.size()]));
+        auto update_nonce_thread = [&]() { UpdateAddressNonceThread(); };
+        threads.emplace_back(update_nonce_thread);
+
+        for (uint32_t t = 0; t < num_threads; ++t) {
+            threads.emplace_back(stress_thread, t);
         }
 
         // TPS reporter
@@ -660,8 +732,8 @@ int main(int argc, char** argv) {
         });
 
         for (auto& th : threads) th.join();
-        std::cout << "[Stress] Done. total_calls=" << call_count
-                  << " fail=" << fail_count << std::endl;
+        transport::TcpTransport::Instance()->Stop();
+        std::cout << "[Stress] Done. total=" << call_count << " fail=" << fail_count << std::endl;
         return 0;
     }
 
