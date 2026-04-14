@@ -394,7 +394,9 @@ void UpdateAddressNonce(const std::string& contract_address) {
         std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
         security->SetPrivateKey(*iter);
         auto addr = security->GetAddress();
-        if (common::GetAddressPoolIndex(addr) != global_pool_idx) {
+        // Only filter by pool when a specific pool is requested.
+        if (global_pool_idx != -1 &&
+                common::GetAddressPoolIndex(addr) != (uint32_t)global_pool_idx) {
             continue;
         }
 
@@ -402,8 +404,18 @@ void UpdateAddressNonce(const std::string& contract_address) {
             addr = contract_address + addr;
         }
 
-        int64_t nonce = client.fetchNonce(common::Encode::HexEncode(addr));
-        if (nonce <= -1) {
+        // Retry up to 3 times on transient failures.
+        int64_t nonce = -1;
+        for (int retry = 0; retry < 3 && nonce < 0; ++retry) {
+            nonce = client.fetchNonce(common::Encode::HexEncode(addr));
+            if (nonce < 0 && retry < 2) {
+                usleep(500000);
+            }
+        }
+
+        if (nonce < 0) {
+            std::cout << "fetch nonce failed for addr: "
+                      << common::Encode::HexEncode(addr) << std::endl;
             continue;
         }
 
