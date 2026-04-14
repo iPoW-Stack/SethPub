@@ -20,8 +20,8 @@ ViewBlockChain::ViewBlockChain() {}
 void ViewBlockChain::Init(
         ChainType chain_type,
         uint32_t pool_index, 
-        std::shared_ptr<db::Db>& db, 
-        std::shared_ptr<block::BlockManager>& block_mgr,
+        std::shared_ptr<db::Db> db, 
+        std::shared_ptr<block::BlockManager> block_mgr,
         std::shared_ptr<block::AccountManager> account_mgr, 
         std::shared_ptr<sync::KeyValueSync> kv_sync,
         std::shared_ptr<IBlockAcceptor> block_acceptor,
