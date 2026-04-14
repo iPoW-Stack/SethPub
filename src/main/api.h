@@ -362,13 +362,17 @@ public:
         std::ofstream out(filename);
         out << sourceCode;
         out.close();
-        std::string cmd = "solc --combined-json abi,bin " + filename + " 2>&1";
+        // Redirect stderr to /dev/null so warnings don't corrupt the JSON output.
+        std::string cmd = "solc --combined-json abi,bin " + filename + " 2>/dev/null";
         std::string result_json;
         char buffer[128];
         FILE* pipe = popen(cmd.c_str(), "r");
         if (!pipe) throw std::runtime_error("popen() failed!");
         while (fgets(buffer, sizeof buffer, pipe) != nullptr) result_json += buffer;
         pclose(pipe);
+        // Trim leading/trailing whitespace
+        auto start = result_json.find('{');
+        if (start != std::string::npos) result_json = result_json.substr(start);
         try {
             json raw = json::parse(result_json);
             if (raw.contains("contracts")) {

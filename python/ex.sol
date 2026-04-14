@@ -106,10 +106,12 @@ contract Exchange {
         item.selled = 1;
         item.selled_price = max_price;
         item.buyer = max_buyer;
-        payable(msg.sender).transfer(max_price);
+        (bool ok1,) = payable(msg.sender).call{value: max_price}("");
+        require(ok1, "transfer to seller failed");
         for (uint256 i = 0; i < item.buyers.length; ++i) {
             if (item.buyers[i].buyer != max_buyer) {
-                payable(item.buyers[i].buyer).transfer(item.buyers[i].price);
+                (bool ok2,) = payable(item.buyers[i].buyer).call{value: item.buyers[i].price}("");
+                require(ok2, "refund failed");
             }
         }
         emit DebugEvent(13);
