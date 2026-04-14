@@ -649,6 +649,15 @@ int main(int argc, char** argv) {
         std::atomic<uint64_t> call_count{0};
         std::atomic<uint64_t> fail_count{0};
 
+        // Rate limiter: target 100 TPS across all threads.
+        // Each thread sleeps interval_us between sends.
+        static const uint64_t kTargetTps = 100;
+        uint64_t interval_us = (num_threads > 0)
+            ? (1000000ull * num_threads / kTargetTps)
+            : 10000ull;
+        std::cout << "[Stress] rate limit: " << kTargetTps << " TPS total"
+                  << " (interval=" << interval_us << "us/thread)" << std::endl;
+
         // Build ABI-encoded input for PurchaseItem(bytes32,uint256)
         // selector = keccak256("PurchaseItem(bytes32,uint256)")[0:4]
         std::string purchase_selector = utils::keccak256Str("PurchaseItem(bytes32,uint256)").substr(0, 8);
@@ -706,6 +715,8 @@ int main(int argc, char** argv) {
                     ++fail_count;
                 }
                 ++idx;
+                // Rate limiting: sleep to maintain target TPS
+                usleep(interval_us);
             }
         };
 
