@@ -70,10 +70,7 @@ contract Exchange {
         require(item_map[hash].exists);
         require(item_map[hash].owner != msg.sender);
         emit DebugEvent(5);
-        bytes[] memory all_bytes = new bytes[](2);
-        all_bytes[0] = Bytes32toBytes(hash);
-        all_bytes[1] = toBytes(msg.sender);
-        bytes memory key = bytesConcat(all_bytes, 2);
+        bytes memory key = abi.encodePacked(hash, msg.sender);
         require(!purchase_map[key]);
         emit DebugEvent(6);
         emit DebugEvent(item_map[hash].price);
@@ -152,10 +149,7 @@ contract Exchange {
 
     /// @notice Whether a given address has already bid on an item.
     function HasPurchased(bytes32 hash, address buyer) public view returns (bool) {
-        bytes[] memory parts = new bytes[](2);
-        parts[0] = abi.encodePacked(hash);
-        parts[1] = abi.encodePacked(buyer);
-        bytes memory key = bytes.concat(parts[0], parts[1]);
+        bytes memory key = abi.encodePacked(hash, buyer);
         return purchase_map[key];
     }
 
