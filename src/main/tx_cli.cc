@@ -515,8 +515,6 @@ int main(int argc, char** argv) {
         std::cout << "\n=== ex.sol Functional Test ===" << std::endl;
 
         // 1. CreateNewItem
-        bytes32 item_hash = "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
-        // Use a deterministic hash derived from deployer address
         std::string hash_hex = utils::keccak256Str(deployer_prikey + "item0");
         std::string info_hex = utils::bytesToHex(std::vector<uint8_t>{'t','e','s','t',' ','i','t','e','m'});
         uint64_t price = 1000;
