@@ -49,9 +49,9 @@
 ## Start Mining
 
 ```
-          git clone https://github.com/iPoW-Stack/SethPub.git /root/seth && cd /root/seth
-          bash build_third.sh
-          bash start_miner.sh <RAW_HEX_PRIVATE_KEY>
+      git clone https://github.com/iPoW-Stack/SethPub.git /root/seth && cd /root/seth
+      bash build_third.sh
+      bash start_miner.sh <RAW_HEX_PRIVATE_KEY>
 ```
 
 ## Related Papers
