@@ -27,13 +27,14 @@ Ensure your development environment meets the following specifications:
       # machine password must Xf4aGbTaf!(for test), you can change it by edit simple_remote.sh
 
 ### Run tests
+```
 `cd clipy && python3 seth3.py`
 
 `# 更多资源 & 压力测试`
 
 [SethTests](https://github.com/iPoW-Stack/SethTests)
 
-
+```
 #### Post-Quantum Attack Resistant 
 ```python
 def oqs_sign_test():
