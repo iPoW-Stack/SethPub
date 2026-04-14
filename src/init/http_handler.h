@@ -16,6 +16,10 @@
 
 namespace seth {
 
+namespace hotstuff {
+    class ViewBlockChain;
+}
+
 namespace init {
 
 class HttpHandler {
@@ -55,6 +59,10 @@ public:
         return tx_msg_map_;
     }
 
+    std::shared_ptr<hotstuff::ViewBlockChain> view_block_chain() {
+        return view_block_chain_;
+    }
+
     std::mutex& tx_msg_map_mutex() {
         return tx_msg_map_mutex_;
     }
@@ -81,6 +89,7 @@ private:
     std::shared_ptr<block::AccountManager> acc_mgr_ = nullptr;
     std::shared_ptr<std::thread> http_svr_thread_ = nullptr;
     common::LRUMap<std::string, transport::MessagePtr> tx_msg_map_{10240};
+    std::shared_ptr<hotstuff::ViewBlockChain> view_block_chain_ = nullptr;
     std::mutex tx_msg_map_mutex_;
     std::atomic<bool> running_{false};
 

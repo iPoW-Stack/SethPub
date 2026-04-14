@@ -790,7 +790,7 @@ static void QueryContract(const UWSRequest& req, UWSResponse& http_res) {
     zjc_host.contract_mgr_ = contract_mgr;
     zjc_host.my_address_ = contract_addr;
     zjc_host.tx_context_.block_gas_limit = prefund;
-    zjc_host.view_block_chain_ = std::make_shared<hotstuff::ViewBlockChain>();
+    zjc_host.view_block_chain_ = http_handler->view_block_chain();
     // user caller prefund 's gas
     uint64_t from_balance = prefund;
     uint64_t to_balance = contract_addr_info->balance();
@@ -934,7 +934,7 @@ static void AbiQueryContract(const UWSRequest& req, UWSResponse& http_res) {
     // user caller prefund 's gas
     uint64_t from_balance = prefund;
     uint64_t to_balance = contract_addr_info->balance();
-    zjc_host.view_block_chain_ = std::make_shared<hotstuff::ViewBlockChain>();
+    zjc_host.view_block_chain_ = http_handler->view_block_chain();
     zjc_host.AddTmpAccountBalance(
         from,
         from_balance);
@@ -1814,6 +1814,17 @@ void HttpHandler::Init(
     secptr = security_ptr;
     prefix_db = tmp_prefix_db;
     contract_mgr = tmp_contract_mgr;
+    view_block_chain_ = std::make_shared<view_block::ViewBlockChain>();
+    view_block_chain_->Init(
+        0,
+        0,
+        nullptr,
+        nullptr,
+        acc_mgr_,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr);
     http_ip_ = ip;
     http_port_ = port;
     
