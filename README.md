@@ -1,7 +1,7 @@
 # Seth: A Dynamic Blockchain Sharding System
 
 **Seth** is a high-performance blockchain sharding system featuring resilient and seamless shard reconfiguration. It optimizes consensus and transaction processing to maintain system stability even during complex shard transitions.
----
+
 
 ## 🚀 Quick Start
 
