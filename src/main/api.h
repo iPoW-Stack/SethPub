@@ -272,27 +272,20 @@ public:
         message.append(std::string((char*)&gas_price, sizeof(gas_price)));
         uint64_t tmp_step = step;
         message.append(std::string((char*)&tmp_step, sizeof(tmp_step)));
-        message.append(contract_bytes);
-        message.append(input);
-        message.append(std::string((char*)&prepay, sizeof(prepay)));
-        if (!key.empty()) {
-            message.append(key);
-            if (!val.empty()) {
-                message.append(val);
-            }
-        }
+        if (!contract_bytes.empty()) message.append(common::Encode::HexDecode(contract_bytes));
+        if (!input.empty()) message.append(common::Encode::HexDecode(input));
+        // Only append prepay when non-zero, matching seth_sdk.py behaviour.
+        if (prepay > 0) message.append(std::string((char*)&prepay, sizeof(prepay)));
 
         std::string h_str = common::Hash::keccak256(message);
         std::string sign;
         ecdsa.Sign(h_str, &sign);
-        std::cout << "hash: " << common::Encode::HexEncode(h_str) << ", " << common::Encode::HexEncode(message) 
-            << ", sign: " << common::Encode::HexEncode(sign) << std::endl;
         return {sign.substr(0, 32), sign.substr(32, 32), sign[64]};
     }
 
-    bool transfer(const std::string& private_key, std::string to, uint64_t amount, 
-                int64_t nonce = -1, int step = 0, std::string contract_bytes = "", 
-                std::string input = "", std::string key = "", std::string val = "", 
+    bool transfer(const std::string& private_key, std::string to, uint64_t amount,
+                int64_t nonce = -1, int step = 0, std::string contract_bytes = "",
+                std::string input = "", std::string key = "", std::string val = "",
                 uint64_t prefund = 0, bool check_tx_valid = true) {
         try {
             httplib::SSLClient cli(node_host_, node_port_);
@@ -302,7 +295,8 @@ public:
             if (nonce == -1) nonce = fetchNonce(common::Encode::HexEncode(ecdsa.GetAddress()));
             if (nonce == -1) return false;
             nonce++;
-            uint64_t gas_limit = 9999999lu;
+            // Must match seth_sdk.py: gas_limit=5000000, gas_price=1
+            uint64_t gas_limit = 5000000lu;
             uint64_t gas_price = 1llu;
             Sign sig = signMessage(ecdsa, nonce, to, amount, gas_limit, gas_price, step, contract_bytes, input, prefund, key, val);
             httplib::Params params;
@@ -313,21 +307,21 @@ public:
             params.emplace("amount", std::to_string(amount));
             params.emplace("gas_limit", std::to_string(gas_limit));
             params.emplace("gas_price", std::to_string(gas_price));
-            params.emplace("shard_id", "3");
-            params.emplace("key", key);
-            params.emplace("val", val);
-            params.emplace("prefund", std::to_string(prefund));
+            params.emplace("shard_id", "0");
+            if (!key.empty()) params.emplace("key", key);
+            if (!val.empty()) params.emplace("val", val);
+            if (prefund > 0) params.emplace("prefund", std::to_string(prefund));
             params.emplace("sign_r", common::Encode::HexEncode(sig.r));
             params.emplace("sign_s", common::Encode::HexEncode(sig.s));
-            params.emplace("sign_v", std::to_string(sig.v));
+            params.emplace("sign_v", std::to_string((uint8_t)sig.v));
             if (!contract_bytes.empty()) params.emplace("bytes_code", contract_bytes);
             if (!input.empty()) params.emplace("input", input);
             auto res = cli.Post("/transaction", params);
-            std::cout << res->body << std::endl;
+            if (res) std::cout << res->body << std::endl;
             return (res && res->status == 200);
-        } catch (std::exception& e) { 
-            std::cout << "transfer failed: " << e.what() << std::endl; 
-            return false; 
+        } catch (std::exception& e) {
+            std::cout << "transfer failed: " << e.what() << std::endl;
+            return false;
         }
     }
     std::string queryContract(const std::string& private_key, const std::string& contract_address, const std::string& input_data) {
