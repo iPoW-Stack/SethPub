@@ -23,7 +23,7 @@ int ContractUserCreateCall::HandleTx(
     int balance_status = GetTempAccountBalance(pre_zjc_host, from, acc_balance_map, &from_balance, &from_nonce);
     SETH_DEBUG("contract user call create called: %s, balance: %lu", 
         common::Encode::HexEncode(from).c_str(), from_balance);
-    uint64_t gas_used = consensus::kTransferGas;
+    uint64_t gas_used = consensus::kCreateContractDefaultUseGas;
     do {
         if (balance_status != kConsensusSuccess) {
             block_tx.set_status(balance_status);
@@ -91,7 +91,12 @@ int ContractUserCreateCall::HandleTx(
             block_tx.amount());
         check_valid = true;
         int call_res = CreateContractCallExcute(zjc_host, block_tx, &evmc_res);
-        gas_used = block_tx.gas_limit() - evmc_res.gas_left;
+        if (evmc_res.gas_left > (int64_t)block_tx.gas_limit()) {
+            gas_used = block_tx.gas_limit();
+        } else {
+            gas_used += block_tx.gas_limit() - evmc_res.gas_left;
+        }
+
         if (call_res != kConsensusSuccess || evmc_res.status_code != EVMC_SUCCESS) {
             block_tx.set_status(EvmcStatusToZbftStatus(evmc_res.status_code));
             SETH_DEBUG("create contract: %s failed, call_res: %d, "
@@ -102,10 +107,6 @@ int ContractUserCreateCall::HandleTx(
                 gas_used,
                 block_tx.gas_price(),
                 tmp_from_balance);
-        }
-
-        if (evmc_res.gas_left > (int64_t)block_tx.gas_limit()) {
-            gas_used = block_tx.gas_limit();
         }
 
         if (tmp_from_balance > gas_used * block_tx.gas_price()) {
