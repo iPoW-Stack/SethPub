@@ -19,7 +19,6 @@ from seth_sdk import SethClient, StepType
 # ==================== Config ====================
 HOST = "127.0.0.1"
 PORT = 23001
-USE_HTTPS = True  # server uses HTTPS
 PK = "4b6525236a2029ab54e2c6162c483133c1af7d38bd960f85b1f485c31e696b7b"
 GUARDIAN_API_BASE = os.getenv("GUARDIAN_API_BASE", "http://127.0.0.1:7072").rstrip("/")
 SETH_CHAIN_ID = 10001
@@ -103,7 +102,7 @@ def main():
             amount_str = sys.argv[i + 1]
 
     seth_amount = int(Decimal(amount_str) * 10**8)
-    cli = SethClient(HOST, PORT, use_https=USE_HTTPS)
+    cli = SethClient(HOST, PORT)
     sender = cli.get_address(PK)
 
     print("=" * 55)
