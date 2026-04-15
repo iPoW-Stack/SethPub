@@ -2,6 +2,21 @@
 
 **Seth** is a high-performance blockchain sharding system featuring resilient and seamless shard reconfiguration. It optimizes consensus and transaction processing to maintain system stability even during complex shard transitions.
 
+## 🔺 Blockchain Trilemma — Revised Triangle Area Comparison
+
+| Project | Decentralization | Security | Scalability | Triangle Area | Rank |
+|---------|:---:|:---:|:---:|:---:|:---:|
+| **Seth** | 9 | 9.5 | 10 | **42.9** | 🥇 1 |
+| Polkadot | 6 | 8 | 8 | 27.7 | 🥈 2 |
+| Ethereum 2.0 | 7 | 9 | 6 | 27.5 | 🥉 3 |
+| Solana | 4 | 6 | 10 | 23.3 | 4 |
+| Bitcoin | 8 | 10 | 2 | 19.6 | 5 |
+
+> 📊 **Triangle Area** = ½ × D × S × sin(120°) + ½ × S × Sc × sin(120°) + ½ × Sc × D × sin(120°)  
+> 👉 [Full Analysis: SETH Blockchain Trilemma Report](SETH_BLOCKCHAIN_TRILEMMA_EN.md)
+
+---
+
 ### 📄 Related Papers
 * **Shardora/seth (TNSE2026)**: [A Dynamic Blockchain Sharding System with Resilient and Seamless Shard Reconfiguration](https://ccs2025a.hotcrp.com/doc/ccs2025a-paper756.pdf?cap=hcav756eNAubdJqApSsXnJDucFgJMXB)
 * **Seth **: [SCoRE: A Runtime System for Service-Oriented Smart Contracts in Sharded Blockchains](https://sosp26.hotcrp.com/doc/sosp26-paper501.pdf)
