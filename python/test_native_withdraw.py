@@ -29,17 +29,24 @@ VAA_POLL_INTERVAL = int(os.getenv("VAA_POLL_INTERVAL", "3"))
 
 
 def load_seth_addresses():
-    env_path = os.path.join(os.path.dirname(__file__), "..", "seth_addresses.env")
+    # Search in the same directory as this script first, then one level up.
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.path.join(script_dir, "seth_addresses.env"),
+        os.path.join(script_dir, "..", "seth_addresses.env"),
+    ]
     out = {}
-    if not os.path.exists(env_path):
-        return out
-    with open(env_path, "r", encoding="utf-8") as f:
-        for raw in f:
-            line = raw.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            out[k.strip()] = v.strip().lower()
+    for env_path in candidates:
+        if not os.path.exists(env_path):
+            continue
+        with open(env_path, "r", encoding="utf-8") as f:
+            for raw in f:
+                line = raw.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                out[k.strip()] = v.strip().lower()
+        break  # use the first file found
     return out
 
 def sel(s):
@@ -80,6 +87,11 @@ def main():
     addrs = load_seth_addresses()
     bridge_router = os.getenv("BRIDGE_ROUTER", addrs.get("BRIDGE_ROUTER", ""))
     wb_addr = os.getenv("WORMHOLE_BRIDGE", addrs.get("WORMHOLE_BRIDGE", ""))
+    # If the env var looks like a file path rather than an address, ignore it.
+    if bridge_router and (bridge_router.startswith("/") or bridge_router.endswith(".env")):
+        bridge_router = addrs.get("BRIDGE_ROUTER", "")
+    if wb_addr and (wb_addr.startswith("/") or wb_addr.endswith(".env")):
+        wb_addr = addrs.get("WORMHOLE_BRIDGE", "")
     if not bridge_router or not wb_addr:
         print("Missing BRIDGE_ROUTER / WORMHOLE_BRIDGE (env or seth_addresses.env)")
         return
