@@ -45,7 +45,7 @@ Status ViewBlockChain::Store(
         const std::shared_ptr<ViewBlock>& view_block, 
         bool directly_store, 
         BalanceAndNonceMapPtr balane_map_ptr,
-        std::shared_ptr<zjcvm::ZjchainHost> zjc_host_ptr,
+        std::shared_ptr<sethvm::SethhainHost> seth_host_ptr,
         bool init) {
     // CheckThreadIdValid();
     if (chain_type_ == kLocalChain && !network::IsSameToLocalShard(view_block->qc().network_id())) {
@@ -75,8 +75,8 @@ Status ViewBlockChain::Store(
         return Status::kSuccess;
     }
 
-    if (zjc_host_ptr == nullptr) {
-        zjc_host_ptr = std::make_shared<zjcvm::ZjchainHost>();
+    if (seth_host_ptr == nullptr) {
+        seth_host_ptr = std::make_shared<sethvm::SethhainHost>();
     }
 
     if (chain_type_ == kLocalChain && balane_map_ptr == nullptr) {
@@ -84,7 +84,7 @@ Status ViewBlockChain::Store(
         for (int32_t i = 0; i < view_block->block_info().address_array_size(); ++i) {
             auto new_addr_info = std::make_shared<address::protobuf::AddressInfo>(
                 view_block->block_info().address_array(i));
-            prefix_db_->AddAddressInfo(new_addr_info->addr(), *new_addr_info, zjc_host_ptr->db_batch_);
+            prefix_db_->AddAddressInfo(new_addr_info->addr(), *new_addr_info, seth_host_ptr->db_batch_);
             (*balane_map_ptr)[new_addr_info->addr()] = new_addr_info;
             SETH_DEBUG("step: %d, success add addr: %s, value: %s", 
                 0,
@@ -99,8 +99,8 @@ Status ViewBlockChain::Store(
             prefix_db_->SaveTemporaryKv(
                 key, 
                 view_block->block_info().key_value_array(i).value(), 
-                zjc_host_ptr->db_batch_);
-            zjc_host_ptr->SaveKeyValue(
+                seth_host_ptr->db_batch_);
+            seth_host_ptr->SaveKeyValue(
                 view_block->block_info().key_value_array(i).addr(),
                 view_block->block_info().key_value_array(i).key(), 
                 view_block->block_info().key_value_array(i).value());
@@ -117,13 +117,13 @@ Status ViewBlockChain::Store(
             prefix_db_->SaveNodeVerificationVector(
                 addr,
                 join_info,
-                zjc_host_ptr->db_batch_);
+                seth_host_ptr->db_batch_);
 #ifndef NDEBUG
             auto n = common::GlobalInfo::Instance()->each_shard_max_members();
             auto t = common::GetSignerCount(n);
             assert(join_info.g2_req().verify_vec_size() >= t);
 #endif
-            prefix_db_->AddBlsVerifyG2(addr, join_info.g2_req(), zjc_host_ptr->db_batch_);
+            prefix_db_->AddBlsVerifyG2(addr, join_info.g2_req(), seth_host_ptr->db_batch_);
         }
     }
 
@@ -136,7 +136,7 @@ Status ViewBlockChain::Store(
         common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(),
         common::Encode::HexEncode(view_block->parent_hash()).c_str());
 #endif
-    auto block_info_ptr = GetViewBlockInfo(view_block, balane_map_ptr, zjc_host_ptr);
+    auto block_info_ptr = GetViewBlockInfo(view_block, balane_map_ptr, seth_host_ptr);
     if (!start_block_) {
         start_block_ = view_block;
         SetViewBlockToMap(block_info_ptr);
@@ -528,11 +528,11 @@ Status ViewBlockChain::GetOrderedAll(std::vector<std::shared_ptr<ViewBlock>>& vi
 
 void ViewBlockChain::CommitSynced(std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block) {
     // not this sharding
-    auto zjc_host_ptr = std::make_shared<zjcvm::ZjchainHost>();
-    new_block_cache_callback_(view_block, zjc_host_ptr->db_batch_);
-    auto block_info_ptr = GetViewBlockInfo(view_block, nullptr, zjc_host_ptr);
-    AddNewBlock(view_block, zjc_host_ptr->db_batch_);
-    if (!db_->Put(zjc_host_ptr->db_batch_).ok()) {
+    auto seth_host_ptr = std::make_shared<sethvm::SethhainHost>();
+    new_block_cache_callback_(view_block, seth_host_ptr->db_batch_);
+    auto block_info_ptr = GetViewBlockInfo(view_block, nullptr, seth_host_ptr);
+    AddNewBlock(view_block, seth_host_ptr->db_batch_);
+    if (!db_->Put(seth_host_ptr->db_batch_).ok()) {
         SETH_FATAL("write to db failed!");
     }
 
@@ -647,8 +647,8 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
             tmp_block->block_info().tx_list_size() > 0 ? tmp_block->block_info().tx_list(0).step(): -1,
             0,
             tmp_block->block_info().tx_list_size());
-        assert((*iter)->zjc_host_ptr);
-        auto& db_batch = (*iter)->zjc_host_ptr->db_batch_;
+        assert((*iter)->seth_host_ptr);
+        auto& db_batch = (*iter)->seth_host_ptr->db_batch_;
         new_block_cache_callback_(tmp_block, db_batch);
         if (tmp_block->qc().view() > commited_max_view_) {
             commited_max_view_ = tmp_block->qc().view();
@@ -1074,9 +1074,9 @@ bool ViewBlockChain::GetPrevStorageKeyValue(
             break;
         }
 
-        if (it->second->zjc_host_ptr) {
-            auto res = it->second->zjc_host_ptr->GetCachedKeyValue(id, key, val);
-            if (res == zjcvm::kZjcvmSuccess) {
+        if (it->second->seth_host_ptr) {
+            auto res = it->second->seth_host_ptr->GetCachedKeyValue(id, key, val);
+            if (res == sethvm::kSethvmSuccess) {
                 return true;
             }
         }
@@ -1112,8 +1112,8 @@ evmc::bytes32 ViewBlockChain::GetPrevStorageBytes32KeyValue(
             break;
         }
 
-        if (it->second->zjc_host_ptr) {
-            auto res = it->second->zjc_host_ptr->GetCachedStorage(addr, key);
+        if (it->second->seth_host_ptr) {
+            auto res = it->second->seth_host_ptr->GetCachedStorage(addr, key);
             if (res) {
                 return res;
             }

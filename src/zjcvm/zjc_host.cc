@@ -1,4 +1,4 @@
-#include "zjcvm/zjc_host.h"
+#include "sethvm/seth_host.h"
 
 #include <evmc/hex.hpp>
 
@@ -9,20 +9,20 @@
 #include "contract/call_parameters.h"
 #include "contract/contract_manager.h"
 #include "protos/prefix_db.h"
-#include "zjcvm/execution.h"
-#include "zjcvm/zjcvm_utils.h"
+#include "sethvm/execution.h"
+#include "sethvm/sethvm_utils.h"
 
 namespace seth {
 
-namespace zjcvm {
+namespace sethvm {
 
-bool ZjchainHost::account_exists(const evmc::address& addr) const noexcept {
+bool SethhainHost::account_exists(const evmc::address& addr) const noexcept {
     SETH_DEBUG("called 0");
     return Execution::Instance()->IsAddressExists(
         std::string((char*)addr.bytes, sizeof(addr.bytes)));
 }
 
-evmc::bytes32 ZjchainHost::GetCachedStorage(
+evmc::bytes32 SethhainHost::GetCachedStorage(
         const evmc::address& addr,
         const evmc::bytes32& key) const noexcept {
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
@@ -75,7 +75,7 @@ evmc::bytes32 ZjchainHost::GetCachedStorage(
     return tmp_val;
 }
 
-evmc::bytes32 ZjchainHost::get_storage(
+evmc::bytes32 SethhainHost::get_storage(
         const evmc::address& addr,
         const evmc::bytes32& key) const noexcept {
     auto thread_idx = -1;//common::GlobalInfo::Instance()->get_thread_index();
@@ -124,8 +124,8 @@ evmc::bytes32 ZjchainHost::get_storage(
             thread_idx);
     }
 
-    if (pre_zjc_host_ != nullptr) {
-        return pre_zjc_host_->get_storage(addr, key);
+    if (pre_seth_host_ != nullptr) {
+        return pre_seth_host_->get_storage(addr, key);
     }
 
     // auto str_key = std::string((char*)addr.bytes, sizeof(addr.bytes)) +
@@ -176,7 +176,7 @@ evmc::bytes32 ZjchainHost::get_storage(
     return tmp_val;
 }
 
-evmc_storage_status ZjchainHost::set_storage(
+evmc_storage_status SethhainHost::set_storage(
         const evmc::address& addr,
         const evmc::bytes32& key,
         const evmc::bytes32& value) noexcept {
@@ -185,7 +185,7 @@ evmc_storage_status ZjchainHost::set_storage(
     std::string key_str((char*)key.bytes, sizeof(key.bytes));
     std::string val_str((char*)value.bytes, sizeof(value.bytes));
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
-    SETH_DEBUG("3_15_%lu, thread_idx: %d, zjcvm set storage called, id: %s, key: %s, value: %s",
+    SETH_DEBUG("3_15_%lu, thread_idx: %d, sethvm set storage called, id: %s, key: %s, value: %s",
         view_,
         thread_idx,
         common::Encode::HexEncode(id).c_str(),
@@ -242,7 +242,7 @@ evmc_storage_status ZjchainHost::set_storage(
     return EVMC_STORAGE_ADDED;
 }
 
-evmc::uint256be ZjchainHost::get_balance(const evmc::address& addr) const noexcept {
+evmc::uint256be SethhainHost::get_balance(const evmc::address& addr) const noexcept {
     // don't use real balance
     SETH_DEBUG("called 3");
     auto iter = account_balance_.find(addr);
@@ -256,8 +256,8 @@ evmc::uint256be ZjchainHost::get_balance(const evmc::address& addr) const noexce
         return iter->second;
     }
 
-    if (pre_zjc_host_ != nullptr) {
-        return pre_zjc_host_->get_balance(addr);
+    if (pre_seth_host_ != nullptr) {
+        return pre_seth_host_->get_balance(addr);
     }
     
     auto acc_info = view_block_chain_->ChainGetAccountInfo(
@@ -281,7 +281,7 @@ evmc::uint256be ZjchainHost::get_balance(const evmc::address& addr) const noexce
     return res_val;
 }
 
-size_t ZjchainHost::get_code_size(const evmc::address& addr) const noexcept {
+size_t SethhainHost::get_code_size(const evmc::address& addr) const noexcept {
     std::string id = std::string((char*)addr.bytes, sizeof(addr.bytes));
     auto pre_addr = common::Encode::HexDecode("00000000000000000000000000000000000000");
     if (memcmp(id.c_str(), pre_addr.c_str(), pre_addr.size()) == 0) {
@@ -306,7 +306,7 @@ size_t ZjchainHost::get_code_size(const evmc::address& addr) const noexcept {
     return acc_info->bytes_code().size();
 }
 
-evmc::bytes32 ZjchainHost::get_code_hash(const evmc::address& addr) const noexcept {
+evmc::bytes32 SethhainHost::get_code_hash(const evmc::address& addr) const noexcept {
     assert(false);
     SETH_DEBUG("called 5");
     std::string code;
@@ -318,7 +318,7 @@ evmc::bytes32 ZjchainHost::get_code_hash(const evmc::address& addr) const noexce
     return tmp_val;
 }
 
-size_t ZjchainHost::copy_code(
+size_t SethhainHost::copy_code(
         const evmc::address& addr,
         size_t code_offset,
         uint8_t* buffer_data,
@@ -344,7 +344,7 @@ size_t ZjchainHost::copy_code(
     return n;
 }
 
-bool ZjchainHost::selfdestruct(
+bool SethhainHost::selfdestruct(
         const evmc::address& addr,
         const evmc::address& beneficiary) noexcept {
     contract_to_call_dirty_ = true;
@@ -360,12 +360,12 @@ bool ZjchainHost::selfdestruct(
     return true;
 }
 
-evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
+evmc::Result SethhainHost::call(const evmc_message& msg) noexcept {
     SETH_DEBUG("called 8");
     contract::CallParameters params;
-    params.zjc_host = this;
+    params.seth_host = this;
     params.gas = msg.gas;
-    params.apparent_value = zjcvm::EvmcBytes32ToUint64(msg.value);
+    params.apparent_value = sethvm::EvmcBytes32ToUint64(msg.value);
     params.value = (msg.kind == EVMC_DELEGATECALL) ? 0 : params.apparent_value;
     auto address_to_str = [](const evmc_address& addr) {
         return std::string(reinterpret_cast<const char*>(addr.bytes), sizeof(addr.bytes));
@@ -411,7 +411,7 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
             evmc_result call_result2 = {};
             evmc::Result evmc_res2{ call_result2 };
             evmc_result* raw_result2 = (evmc_result*)&evmc_res2;
-            int res_status = zjcvm::Execution::Instance()->execute(
+            int res_status = sethvm::Execution::Instance()->execute(
                 params2.data,
                 "",
                 params2.from,
@@ -420,7 +420,7 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
                 params2.apparent_value,
                 params2.gas,
                 depth_,
-                zjcvm::kCreate2,
+                sethvm::kCreate2,
                 *this,
                 &evmc_res2);
             evmc_res.gas_left = evmc_res2.gas_left;
@@ -461,7 +461,7 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
                     common::Encode::HexEncode(acc_info->bytes_code()).c_str());
                 ++depth_;
                 contract_to_call_dirty_ = false;
-                int res_status = zjcvm::Execution::Instance()->execute(
+                int res_status = sethvm::Execution::Instance()->execute(
                     acc_info->bytes_code(),
                     params.data,
                     params.from,
@@ -470,7 +470,7 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
                     params.apparent_value,
                     params.gas,
                     depth_,
-                    zjcvm::kJustCall,
+                    sethvm::kJustCall,
                     *this,
                     &evmc_res);
                 if (acc_info->pool_index() == view_block_chain_->pool_index()) {
@@ -539,7 +539,7 @@ evmc::Result ZjchainHost::call(const evmc_message& msg) noexcept {
     return evmc_res;
 }
 
-evmc_tx_context ZjchainHost::get_tx_context() const noexcept {
+evmc_tx_context SethhainHost::get_tx_context() const noexcept {
     // assert(false);
     SETH_DEBUG("emit called block number: %lu, block timestamp: %lu, gas: %lu",
         tx_context_.block_number,
@@ -548,13 +548,13 @@ evmc_tx_context ZjchainHost::get_tx_context() const noexcept {
     return tx_context_;
 }
 
-evmc::bytes32 ZjchainHost::get_block_hash(int64_t block_number) const noexcept {
+evmc::bytes32 SethhainHost::get_block_hash(int64_t block_number) const noexcept {
     SETH_DEBUG("called 10");
     assert(false);
     return {};
 }
 
-void ZjchainHost::emit_log(const evmc::address& addr,
+void SethhainHost::emit_log(const evmc::address& addr,
                 const uint8_t* data,
                 size_t data_size,
                 const evmc::bytes32 topics[],
@@ -575,7 +575,7 @@ void ZjchainHost::emit_log(const evmc::address& addr,
     recorded_logs_.push_back({ addr, std::string((char*)data, data_size), {topics, topics + topics_count} });
 }
 
-void ZjchainHost::AddTmpAccountBalance(const std::string& address, uint64_t balance) {
+void SethhainHost::AddTmpAccountBalance(const std::string& address, uint64_t balance) {
     SETH_DEBUG("called 12");
     evmc::address addr;
     memcpy(
@@ -589,14 +589,14 @@ void ZjchainHost::AddTmpAccountBalance(const std::string& address, uint64_t bala
     contract_to_call_dirty_ = true;
 }
 
-int ZjchainHost::SaveKeyValue(
+int SethhainHost::SaveKeyValue(
         const std::string& id,
         const std::string& key,
         const std::string& val) {
     SETH_DEBUG("called 13");
     auto addr = evmc::address{};
     memcpy(addr.bytes, id.c_str(), id.size());
-    CONTRACT_DEBUG("zjcvm set storage called, id: %s, key: %s, value: %s",
+    CONTRACT_DEBUG("sethvm set storage called, id: %s, key: %s, value: %s",
         common::Encode::HexEncode(id).c_str(),
         common::Encode::HexEncode(key).c_str(),
         common::Encode::HexEncode(val).c_str());
@@ -604,12 +604,12 @@ int ZjchainHost::SaveKeyValue(
     return SaveKeyValue(addr, key, val);
 }
 
-int ZjchainHost::SaveKeyValue(
+int SethhainHost::SaveKeyValue(
         const evmc::address& addr,
         const std::string& key,
         const std::string& val) {
     SETH_DEBUG("called 13");
-    SETH_DEBUG("view: %lu, zjcvm set storage called, id: %s, key: %s, value: %s",
+    SETH_DEBUG("view: %lu, sethvm set storage called, id: %s, key: %s, value: %s",
         view_,
         common::Encode::HexEncode(std::string((char*)addr.bytes, sizeof(addr.bytes))).c_str(),
         common::Encode::HexEncode(key).c_str(),
@@ -638,15 +638,15 @@ int ZjchainHost::SaveKeyValue(
     old.dirty = true;
     old.str_val = val;
     contract_to_call_dirty_ = true;
-    return kZjcvmSuccess;
+    return kSethvmSuccess;
 }
 
-int ZjchainHost::GetCachedKeyValue(
+int SethhainHost::GetCachedKeyValue(
         const std::string& id, 
         const std::string& key_str, 
         std::string* val) {
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
-    SETH_DEBUG("view: %lu, zjcvm get storage called, id: %s, key: %s, value: %s, thread_idx: %d",
+    SETH_DEBUG("view: %lu, sethvm get storage called, id: %s, key: %s, value: %s, thread_idx: %d",
         view_,
         common::Encode::HexEncode(id).c_str(),
         common::Encode::HexEncode(key_str).c_str(),
@@ -660,27 +660,27 @@ int ZjchainHost::GetCachedKeyValue(
         auto siter = it->second.str_storage.find(key_str);
         if (siter != it->second.str_storage.end()) {
             *val = siter->second.str_val;
-            return kZjcvmSuccess;
+            return kSethvmSuccess;
         }
         
-        CONTRACT_DEBUG("key invalid, view: %lu, zjcvm get storage called, id: %s, key: %s, value: %s, thread_idx: %d",
+        CONTRACT_DEBUG("key invalid, view: %lu, sethvm get storage called, id: %s, key: %s, value: %s, thread_idx: %d",
             view_,
             common::Encode::HexEncode(id).c_str(),
             common::Encode::HexEncode(key_str).c_str(),
             common::Encode::HexEncode(*val).c_str(),
             thread_idx);
     } else {
-        CONTRACT_DEBUG("addr invalid, view: %lu, zjcvm get storage called, id: %s, key: %s, value: %s, thread_idx: %d",
+        CONTRACT_DEBUG("addr invalid, view: %lu, sethvm get storage called, id: %s, key: %s, value: %s, thread_idx: %d",
             view_,
             common::Encode::HexEncode(id).c_str(),
             common::Encode::HexEncode(key_str).c_str(),
             common::Encode::HexEncode(*val).c_str(),
             thread_idx);
     }
-    return kZjcvmError;
+    return kSethvmError;
 }
 
-int ZjchainHost::GetKeyValue(const std::string& id, const std::string& key_str, std::string* val) {
+int SethhainHost::GetKeyValue(const std::string& id, const std::string& key_str, std::string* val) {
     auto addr = evmc::address{};
     memcpy(addr.bytes, id.c_str(), id.size());
     auto it = accounts_.find(addr);
@@ -688,53 +688,53 @@ int ZjchainHost::GetKeyValue(const std::string& id, const std::string& key_str, 
         auto siter = it->second.str_storage.find(key_str);
         if (siter != it->second.str_storage.end()) {
             *val = siter->second.str_val;
-            SETH_DEBUG("view: %lu, success zjcvm get storage called, id: %s, key: %s, value: %s",
+            SETH_DEBUG("view: %lu, success sethvm get storage called, id: %s, key: %s, value: %s",
                 view_,
                 common::Encode::HexEncode(id).c_str(),
                 common::Encode::HexEncode(key_str).c_str(),
                 common::Encode::HexEncode(*val).c_str());
-            return kZjcvmSuccess;
+            return kSethvmSuccess;
         }
     }
 
-    if (pre_zjc_host_ != nullptr) {
-        return pre_zjc_host_->GetKeyValue(id, key_str, val);
+    if (pre_seth_host_ != nullptr) {
+        return pre_seth_host_->GetKeyValue(id, key_str, val);
     }
 
     auto str_key = id + key_str;
     if (view_block_chain_->GetPrevStorageKeyValue(parent_hash_, id, key_str, val)) {
-        SETH_DEBUG("view: %lu, success zjcvm get storage called, id: %s, key: %s, value: %s",
+        SETH_DEBUG("view: %lu, success sethvm get storage called, id: %s, key: %s, value: %s",
             view_,
             common::Encode::HexEncode(id).c_str(),
             common::Encode::HexEncode(key_str).c_str(),
             common::Encode::HexEncode(*val).c_str());
-        return kZjcvmSuccess;
+        return kSethvmSuccess;
     }
     // auto prev_iter = prev_storages_map_.find(str_key);
     // if (prev_iter != prev_storages_map_.end()) {
     //     *val = prev_iter->second;
-    //     return kZjcvmSuccess;
+    //     return kSethvmSuccess;
     // }
 
     SETH_DEBUG("called 14");
     if (!Execution::Instance()->GetStorage(addr, key_str, val)) {
-        SETH_DEBUG("view: %lu, failed zjcvm get storage called, id: %s, key: %s, value: %s",
+        SETH_DEBUG("view: %lu, failed sethvm get storage called, id: %s, key: %s, value: %s",
             view_,
             common::Encode::HexEncode(id).c_str(),
             common::Encode::HexEncode(key_str).c_str(),
             common::Encode::HexEncode(*val).c_str());
-        return kZjcvmError;
+        return kSethvmError;
     }
 
-    SETH_DEBUG("view: %lu, success zjcvm get storage called, id: %s, key: %s, value: %s",
+    SETH_DEBUG("view: %lu, success sethvm get storage called, id: %s, key: %s, value: %s",
         view_,
         common::Encode::HexEncode(id).c_str(),
         common::Encode::HexEncode(key_str).c_str(),
         "common::Encode::HexEncode(*val).c_str()");
-    return kZjcvmSuccess;
+    return kSethvmSuccess;
 }
 
-evmc_access_status ZjchainHost::access_account(const evmc::address& addr) noexcept {
+evmc_access_status SethhainHost::access_account(const evmc::address& addr) noexcept {
     SETH_DEBUG("called 15");
     return EVMC_ACCESS_COLD;
     if (Execution::Instance()->AddressWarm(addr)) {
@@ -744,7 +744,7 @@ evmc_access_status ZjchainHost::access_account(const evmc::address& addr) noexce
     return EVMC_ACCESS_COLD;
 }
 
-evmc_access_status ZjchainHost::access_storage(
+evmc_access_status SethhainHost::access_storage(
         const evmc::address& addr,
         const evmc::bytes32& key) noexcept {
     SETH_DEBUG("called 16");
@@ -755,6 +755,6 @@ evmc_access_status ZjchainHost::access_storage(
 
     return EVMC_ACCESS_COLD;
 }
-}  // namespace zjcvm
+}  // namespace sethvm
 
 }  // namespace seth

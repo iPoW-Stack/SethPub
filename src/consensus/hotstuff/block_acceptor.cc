@@ -26,7 +26,7 @@
 #include "protos/zbft.pb.h"
 #include "security/gmssl/gmssl.h"
 #include "security/oqs/oqs.h"
-#include "zjcvm/zjcvm_utils.h"
+#include "sethvm/sethvm_utils.h"
 
 namespace seth {
 
@@ -73,7 +73,7 @@ Status BlockAcceptor::Accept(
         bool no_tx_allowed,
         bool directly_user_leader_txs,
         BalanceAndNonceMap& balance_and_nonce_map,
-        zjcvm::ZjchainHost& zjc_host) {
+        sethvm::SethhainHost& seth_host) {
     auto& msg_ptr = pro_msg_wrap->msg_ptr;
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto& propose_msg = pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().tx_propose();
@@ -124,10 +124,10 @@ Status BlockAcceptor::Accept(
         return Status::kAcceptorBlockInvalid;
     }
 
-    zjc_host.parent_hash_ = view_block.parent_hash();
-    zjc_host.view_block_chain_ = view_block_chain_;
-    assert(zjc_host.view_block_chain_ != nullptr);
-    zjc_host.view_ = view_block.qc().view();
+    seth_host.parent_hash_ = view_block.parent_hash();
+    seth_host.view_block_chain_ = view_block_chain_;
+    assert(seth_host.view_block_chain_ != nullptr);
+    seth_host.view_ = view_block.qc().view();
     // 2. Get txs from local pool
     auto txs_ptr = std::make_shared<consensus::WaitingTxsItem>();
     Status s = Status::kSuccess;
@@ -139,7 +139,7 @@ Status BlockAcceptor::Accept(
         directly_user_leader_txs, 
         txs_ptr, 
         balance_and_nonce_map,
-        zjc_host);
+        seth_host);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (s != Status::kSuccess) {
         SETH_WARN("GetAndAddTxsLocally error!");
@@ -148,7 +148,7 @@ Status BlockAcceptor::Accept(
 
     // 3. Do txs and create block_tx.
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    s = DoTransactions(txs_ptr, &view_block, balance_and_nonce_map, zjc_host);
+    s = DoTransactions(txs_ptr, &view_block, balance_and_nonce_map, seth_host);
     if (s != Status::kSuccess) {
         SETH_WARN("DoTransactions error!");
         return s;
@@ -184,11 +184,11 @@ Status BlockAcceptor::Accept(
             addr_info->balance(),
             addr_info->nonce(),
             addr_info->destructed());
-        prefix_db_->AddAddressInfo(addr_info->addr(), *addr_info, zjc_host.db_batch_);
+        prefix_db_->AddAddressInfo(addr_info->addr(), *addr_info, seth_host.db_batch_);
     }
 
-    for (auto account_iter = zjc_host.accounts_.begin();
-            account_iter != zjc_host.accounts_.end(); ++account_iter) {
+    for (auto account_iter = seth_host.accounts_.begin();
+            account_iter != seth_host.accounts_.end(); ++account_iter) {
         for (auto storage_iter = account_iter->second.storage.begin();
                 storage_iter != account_iter->second.storage.end(); ++storage_iter) {
             auto& kv_info = *view_block.mutable_block_info()->add_key_value_array();
@@ -201,7 +201,7 @@ Status BlockAcceptor::Accept(
             prefix_db_->SaveTemporaryKv(
                 kv_info.addr() + kv_info.key(), 
                 kv_info.SerializeAsString(), 
-                zjc_host.db_batch_);
+                seth_host.db_batch_);
             SETH_DEBUG("%u_%u_%lu_%lu, success add key value addr: %s, key: %s", 
                 view_block.qc().network_id(),
                 view_block.qc().pool_index(),
@@ -223,7 +223,7 @@ Status BlockAcceptor::Accept(
             prefix_db_->SaveTemporaryKv(
                 kv_info.addr() + kv_info.key(), 
                 kv_info.SerializeAsString(), 
-                zjc_host.db_batch_);
+                seth_host.db_batch_);
             SETH_DEBUG("%u_%u_%lu_%lu, success add key value addr: %s, key: %s", 
                 view_block.qc().network_id(),
                 view_block.qc().pool_index(),
@@ -240,19 +240,19 @@ Status BlockAcceptor::Accept(
         prefix_db_->SaveNodeVerificationVector(
             addr,
             join_info,
-            zjc_host.db_batch_);
+            seth_host.db_batch_);
 #ifndef NDEBUG
         auto n = common::GlobalInfo::Instance()->each_shard_max_members();
         auto t = common::GetSignerCount(n);
         assert(join_info.g2_req().verify_vec_size() >= t);
 #endif
-        prefix_db_->AddBlsVerifyG2(addr, join_info.g2_req(), zjc_host.db_batch_);
+        prefix_db_->AddBlsVerifyG2(addr, join_info.g2_req(), seth_host.db_batch_);
     }
 
-    for (auto iter = zjc_host.cross_to_map_.begin(); iter != zjc_host.cross_to_map_.end(); ++iter) {
+    for (auto iter = seth_host.cross_to_map_.begin(); iter != seth_host.cross_to_map_.end(); ++iter) {
         auto* cross_to_item = view_block.mutable_block_info()->add_cross_shard_to_array();
         *cross_to_item = *iter->second;
-        UpdateDesShardingId(cross_to_item, zjc_host);
+        UpdateDesShardingId(cross_to_item, seth_host);
         SETH_DEBUG("success add cross to item: %s, amount: %lu, prefund: %lu",
             common::Encode::HexEncode(cross_to_item->des()).c_str(),
             cross_to_item->amount(), cross_to_item->prefund());
@@ -296,7 +296,7 @@ Status BlockAcceptor::Accept(
 
 void BlockAcceptor::UpdateDesShardingId(
         pools::protobuf::ToTxMessageItem* to_addr_info, 
-        zjcvm::ZjchainHost& zjc_host) {
+        sethvm::SethhainHost& seth_host) {
     if (to_addr_info->has_des_sharding_id()) {
         return;
     }
@@ -320,7 +320,7 @@ Status BlockAcceptor::addTxsToPool(
         bool directly_user_leader_txs,
         std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
         BalanceAndNonceMap& now_balance_map,
-        zjcvm::ZjchainHost& zjc_host) {
+        sethvm::SethhainHost& seth_host) {
 
     // 0. Basic check
     if (txs.size() == 0) {
@@ -529,7 +529,7 @@ Status BlockAcceptor::addTxsToPool(
                 }
             } else {
                 std::string val;
-                if (zjc_host.GetKeyValue(tx->to(), tx->key(), &val) == zjcvm::kZjcvmSuccess) {
+                if (seth_host.GetKeyValue(tx->to(), tx->key(), &val) == sethvm::kSethvmSuccess) {
                     SETH_WARN("invalid add tx now get local to tx to: %s, unique hash: %s", 
                         common::Encode::HexEncode(tx->to()).c_str(),
                         common::Encode::HexEncode(tx->key()).c_str());
@@ -590,7 +590,7 @@ Status BlockAcceptor::addTxsToPool(
             tx_ptr = std::make_shared<consensus::ToTxLocalItem>(
                     msg_ptr, i, db_, account_mgr_, security_ptr_, address_info);
             std::string val;
-            if (zjc_host.GetKeyValue(tx_ptr->tx_info->to(), tx_ptr->tx_info->key(), &val) == zjcvm::kZjcvmSuccess) {
+            if (seth_host.GetKeyValue(tx_ptr->tx_info->to(), tx_ptr->tx_info->key(), &val) == sethvm::kSethvmSuccess) {
                 SETH_WARN("invalid add tx now get local to tx to: %s, unique hash: %s", 
                     common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
                     common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
@@ -615,7 +615,7 @@ Status BlockAcceptor::addTxsToPool(
                 if (tx_item != nullptr && !tx_item->txs.empty() && view_block_chain_) {
                     tx_ptr = *(tx_item->txs.begin());
                     std::string val;
-                    if (zjc_host.GetKeyValue(tx_ptr->tx_info->to(), tx_ptr->tx_info->key(), &val) == zjcvm::kZjcvmSuccess) {
+                    if (seth_host.GetKeyValue(tx_ptr->tx_info->to(), tx_ptr->tx_info->key(), &val) == sethvm::kSethvmSuccess) {
                         SETH_WARN("invalid add tx local exists");
                         tx_ptr = nullptr;
                         create_success = false;
@@ -774,7 +774,7 @@ Status BlockAcceptor::GetAndAddTxsLocally(
         bool directly_user_leader_txs,
         std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
         BalanceAndNonceMap& balance_map,
-        zjcvm::ZjchainHost& zjc_host) {
+        sethvm::SethhainHost& seth_host) {
     auto add_txs_status = addTxsToPool(
         msg_ptr,
         parent_hash, 
@@ -782,7 +782,7 @@ Status BlockAcceptor::GetAndAddTxsLocally(
         directly_user_leader_txs, 
         txs_ptr,
         balance_map,
-        zjc_host);
+        seth_host);
     if (add_txs_status != Status::kSuccess) {
         SETH_ERROR("invalid consensus, add_txs_status failed: %d.", (int32_t)add_txs_status);
         return add_txs_status;
@@ -812,18 +812,18 @@ Status BlockAcceptor::GetAndAddTxsLocally(
 
 bool BlockAcceptor::IsBlockValid(const view_block::protobuf::ViewBlockItem& view_block) {
     // Verify block prehash, latest height, etc.
-    auto* zjc_block = &view_block.block_info();
+    auto* seth_block = &view_block.block_info();
     uint64_t pool_height = pools_mgr_->latest_height(pool_idx());
-    if (zjc_block->height() <= pool_height || pool_height == common::kInvalidUint64) {
-        SETH_WARN("Accept height error: %lu, %lu", zjc_block->height(), pool_height);
+    if (seth_block->height() <= pool_height || pool_height == common::kInvalidUint64) {
+        SETH_WARN("Accept height error: %lu, %lu", seth_block->height(), pool_height);
         return false;
     }
 
     auto cur_time = common::TimeUtils::TimestampMs();
     // The timestamp of the new block must be greater than the timestamp of the previous block.
     uint64_t preblock_time = pools_mgr_->latest_timestamp(pool_idx());
-    if (zjc_block->timestamp() <= preblock_time && zjc_block->timestamp() + 10000lu >= cur_time) {
-        SETH_WARN("Accept timestamp error: %lu, %lu, cur: %lu", zjc_block->timestamp(), preblock_time, cur_time);
+    if (seth_block->timestamp() <= preblock_time && seth_block->timestamp() + 10000lu >= cur_time) {
+        SETH_WARN("Accept timestamp error: %lu, %lu, cur: %lu", seth_block->timestamp(), preblock_time, cur_time);
         return false;
     }
     
@@ -834,9 +834,9 @@ Status BlockAcceptor::DoTransactions(
         const std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
         view_block::protobuf::ViewBlockItem* view_block,
         BalanceAndNonceMap& balance_map,
-        zjcvm::ZjchainHost& zjc_host) {
+        sethvm::SethhainHost& seth_host) {
     Status s = BlockExecutorFactory().Create(security_ptr_)->DoTransactionAndCreateTxBlock(
-            txs_ptr, view_block, balance_map, zjc_host);
+            txs_ptr, view_block, balance_map, seth_host);
     if (s != Status::kSuccess) {
         return s;
     }

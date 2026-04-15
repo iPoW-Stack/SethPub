@@ -1,6 +1,6 @@
 #include <consensus/hotstuff/block_executor.h>
 #include "consensus/hotstuff/hotstuff_utils.h"
-#include <zjcvm/zjcvm_utils.h>
+#include <sethvm/sethvm_utils.h>
 
 namespace seth {
 namespace hotstuff {
@@ -9,19 +9,19 @@ Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
         const std::shared_ptr<consensus::WaitingTxsItem> &txs_ptr,
         view_block::protobuf::ViewBlockItem* view_block,
         BalanceAndNonceMap& acc_balance_map,
-        zjcvm::ZjchainHost& zjc_host) {
+        sethvm::SethhainHost& seth_host) {
     // Execute transaction
     auto& block = *view_block->mutable_block_info();
     auto tx_list = block.mutable_tx_list();
     auto& tx_map = txs_ptr->txs;
     tx_list->Reserve(tx_map.size());
-    zjc_host.tx_context_.tx_origin = evmc::address{};
-    zjc_host.tx_context_.block_coinbase = evmc::address{};
-    zjc_host.tx_context_.block_number = block.height();
-    zjc_host.tx_context_.block_timestamp = block.timestamp() / 1000;
+    seth_host.tx_context_.tx_origin = evmc::address{};
+    seth_host.tx_context_.block_coinbase = evmc::address{};
+    seth_host.tx_context_.block_number = block.height();
+    seth_host.tx_context_.block_timestamp = block.timestamp() / 1000;
     uint64_t chain_id = hotstuff::kGlobalChainId;
-    zjcvm::Uint64ToEvmcBytes32(
-        zjc_host.tx_context_.chain_id,
+    sethvm::Uint64ToEvmcBytes32(
+        seth_host.tx_context_.chain_id,
         chain_id);
     uint32_t tx_index = 0;
     for (auto iter = tx_map.begin(); iter != tx_map.end(); ++iter) { 
@@ -65,7 +65,7 @@ Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
         int do_tx_res = (*iter)->HandleTx(
             tx_index++,
             *view_block,
-            zjc_host,
+            seth_host,
             acc_balance_map,
             block_tx);
         if (do_tx_res != consensus::kConsensusSuccess) {
@@ -80,7 +80,7 @@ Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
             continue;
         }
 
-        zjc_host.recorded_logs_.clear();
+        seth_host.recorded_logs_.clear();
         // SETH_DEBUG("handle tx success: %u_%u_%lu, tx step: %d, nonce: %lu",
         //     view_block->qc().network_id(), 
         //     view_block->qc().pool_index(), 

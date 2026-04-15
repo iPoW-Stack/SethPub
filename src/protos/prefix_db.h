@@ -27,7 +27,7 @@
 #include "protos/ws.pb.h"
 #include "protos/view_block.pb.h"
 #include "security/security.h"
-#include "zjcvm/zjcvm_utils.h"
+#include "sethvm/sethvm_utils.h"
 
 namespace seth {
 
@@ -117,7 +117,7 @@ public:
     void AddNowElectHeight2Plege(const std::string& addr , const uint64_t height , db::DbWriteBatch& db_batch) {
         auto key = common::Encode::HexDecode(addr) + common::Encode::HexDecode("0000000000000000000000000000000000000000000000000000000000000000");
         evmc::bytes32 tmp_val{};
-        zjcvm::Uint64ToEvmcBytes32(tmp_val, height);
+        sethvm::Uint64ToEvmcBytes32(tmp_val, height);
 
         auto value =  std::string((char*)tmp_val.bytes, sizeof(tmp_val.bytes));
         SaveTemporaryKv(key, value, db_batch);

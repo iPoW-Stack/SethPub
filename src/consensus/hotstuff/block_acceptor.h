@@ -59,7 +59,7 @@ public:
         bool no_tx_allowed,
         bool directly_user_leader_txs,
         BalanceAndNonceMap& balance_map,
-        zjcvm::ZjchainHost& zjc_host) = 0;
+        sethvm::SethhainHost& seth_host) = 0;
     // Accept a block and txs in it from sync msg.
     virtual Status AcceptSync(const view_block::protobuf::ViewBlockItem& block) = 0;
     // Commit a block
@@ -101,7 +101,7 @@ public:
         bool no_tx_allowed,
         bool directly_user_leader_txs,
         BalanceAndNonceMap& balance_map,
-        zjcvm::ZjchainHost& zjc_host) override;
+        sethvm::SethhainHost& seth_host) override;
     // Accept a synced block.
     Status AcceptSync(const view_block::protobuf::ViewBlockItem& block) override;
 
@@ -117,13 +117,13 @@ public:
         bool directly_user_leader_txs,
         std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
         BalanceAndNonceMap& now_balance_map,
-        zjcvm::ZjchainHost& zjc_host);
+        sethvm::SethhainHost& seth_host);
     bool IsBlockValid(const view_block::protobuf::ViewBlockItem&);
     Status DoTransactions(
         const std::shared_ptr<consensus::WaitingTxsItem>&,
         view_block::protobuf::ViewBlockItem*,
         BalanceAndNonceMap& balance_map,
-        zjcvm::ZjchainHost& zjc_host);
+        sethvm::SethhainHost& seth_host);
     Status GetAndAddTxsLocally(
         transport::MessagePtr msg_ptr,
         const std::string& parent_hash,
@@ -131,10 +131,10 @@ public:
         bool directly_user_leader_txs,
         std::shared_ptr<consensus::WaitingTxsItem>&,
         BalanceAndNonceMap& balance_map,
-        zjcvm::ZjchainHost& zjc_host);
+        sethvm::SethhainHost& seth_host);
     void UpdateDesShardingId(
         pools::protobuf::ToTxMessageItem* to_addr_info, 
-        zjcvm::ZjchainHost& zjc_host);
+        sethvm::SethhainHost& seth_host);
 
     void CalculateTps(uint64_t tx_list_size) {
         auto now_tm_us = common::TimeUtils::TimestampUs();

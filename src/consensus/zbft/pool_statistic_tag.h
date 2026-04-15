@@ -36,13 +36,13 @@ public:
     virtual int HandleTx(
             uint32_t tx_index,
             view_block::protobuf::ViewBlockItem& view_block,
-            zjcvm::ZjchainHost& zjc_host,
+            sethvm::SethhainHost& seth_host,
             hotstuff::BalanceAndNonceMap& acc_balance_map,
             block::protobuf::BlockTx& block_tx) {
         uint64_t to_balance = 0;
         uint64_t to_nonce = 0;
         if (GetTempAccountBalance(
-                zjc_host, 
+                seth_host, 
                 block_tx.to(), 
                 acc_balance_map, 
                 &to_balance, 
@@ -55,17 +55,17 @@ public:
         }
 
         std::string val;
-        if (zjc_host.GetKeyValue(block_tx.to(), tx_info->key(), &val) == zjcvm::kZjcvmSuccess) {
+        if (seth_host.GetKeyValue(block_tx.to(), tx_info->key(), &val) == sethvm::kSethvmSuccess) {
             SETH_INFO("unique hash has consensus: %s", common::Encode::HexEncode(tx_info->key()).c_str());
             return consensus::kConsensusError;
         }
 
-        InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
+        InitHost(seth_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
        block::protobuf::TxHashStatus tx_hash_status;
         tx_hash_status.set_status(block_tx.status());
         auto status_val = tx_hash_status.SerializeAsString();
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
-        zjc_host.SaveKeyValue(block_tx.to(), tx_info->key(), tx_info->value());
+        seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+        seth_host.SaveKeyValue(block_tx.to(), tx_info->key(), tx_info->value());
         block_tx.set_unique_hash(tx_info->key());
         uint64_t* udata = (uint64_t*)tx_info->value().c_str();
         uint64_t statistic_height = udata[0];

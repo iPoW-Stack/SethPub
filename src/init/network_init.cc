@@ -47,7 +47,7 @@
 #include "transport/processor.h"
 #include "transport/tcp_transport.h"
 #include "transport/transport_utils.h"
-#include "zjcvm/execution.h"
+#include "sethvm/execution.h"
 #include "common/defer.h"
 
 namespace seth {
@@ -235,7 +235,7 @@ int NetworkInit::Init(int argc, char** argv) {
     pools_mgr_ = std::make_shared<pools::TxPoolManager>(
         security_, db_, kv_sync_, account_mgr_, hotstuff_mgr_);
     account_mgr_->Init(db_, pools_mgr_);
-    zjcvm::Execution::Instance()->Init(db_);
+    sethvm::Execution::Instance()->Init(db_);
     auto new_db_cb = std::bind(
         &NetworkInit::DbNewBlockCallback,
         this,

@@ -4,8 +4,8 @@
 #include "consensus/zbft/tx_item_base.h"
 #include "protos/prefix_db.h"
 #include "security/security.h"
-#include "zjcvm/zjc_host.h"
-#include "zjcvm/zjcvm_utils.h"
+#include "sethvm/seth_host.h"
+#include "sethvm/sethvm_utils.h"
 
 namespace seth {
 
@@ -28,7 +28,7 @@ public:
     virtual int HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        zjcvm::ZjchainHost& zjc_host,
+        sethvm::SethhainHost& seth_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx);
 

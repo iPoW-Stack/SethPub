@@ -7,9 +7,9 @@
 #include "common/encode.h"
 #include "common/global_info.h"
 #include "common/time_utils.h"
-#include "zjcvm/execution.h"
-#include "zjcvm/zjc_host.h"
-#include "zjcvm/zjcvm_utils.h"
+#include "sethvm/execution.h"
+#include "sethvm/seth_host.h"
+#include "sethvm/sethvm_utils.h"
 
 namespace seth {
 
@@ -233,11 +233,11 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
                     auto all = common::Encode::HexDecode(item["m"].get<std::string>());
                     evmc_bytes32 bytes32;
                     memcpy(bytes32.bytes, all.c_str(), 32);
-                    uint64_t a = zjcvm::EvmcBytes32ToUint64(bytes32);
+                    uint64_t a = sethvm::EvmcBytes32ToUint64(bytes32);
                     c2c_all->Append(a);
                     auto price = common::Encode::HexDecode(item["p"].get<std::string>());
                     memcpy(bytes32.bytes, price.c_str(), 32);
-                    uint64_t p = zjcvm::EvmcBytes32ToUint64(bytes32);
+                    uint64_t p = sethvm::EvmcBytes32ToUint64(bytes32);
                     c2c_now->Append(p);
                     uint32_t mr = item["mr"].get<bool>();
                     c2c_mc->Append(mr);
@@ -247,15 +247,15 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
                     c2c_report->Append(rp);
                     auto order = common::Encode::HexDecode(item["o"].get<std::string>());
                     memcpy(bytes32.bytes, order.c_str(), 32);
-                    uint64_t o = zjcvm::EvmcBytes32ToUint64(bytes32);
+                    uint64_t o = sethvm::EvmcBytes32ToUint64(bytes32);
                     c2c_order_id->Append(o);
                     auto tmp_height = common::Encode::HexDecode(item["h"].get<std::string>());
                     memcpy(bytes32.bytes, tmp_height.c_str(), 32);
-                    uint64_t h = zjcvm::EvmcBytes32ToUint64(bytes32);
+                    uint64_t h = sethvm::EvmcBytes32ToUint64(bytes32);
                     c2c_height->Append(h);
                     auto amount = common::Encode::HexDecode(item["bm"].get<std::string>());
                     memcpy(bytes32.bytes, amount.c_str(), 32);
-                    uint64_t am = zjcvm::EvmcBytes32ToUint64(bytes32);
+                    uint64_t am = sethvm::EvmcBytes32ToUint64(bytes32);
                     c2c_amount->Append(am);
                     c2c_contract_addr->Append(common::Encode::HexEncode(tx.to()));
                 }
@@ -493,18 +493,18 @@ void ClickHouseClient::FlushToCkWithData() try {
 }
 
 bool ClickHouseClient::QueryContract(const std::string& from, const std::string& contract_addr, nlohmann::json* res) {
-    zjcvm::ZjchainHost zjc_host;
-    zjc_host.tx_context_.tx_origin = evmc::address{};
-    zjc_host.tx_context_.block_coinbase = evmc::address{};
-    zjc_host.tx_context_.block_number = 0;
-    zjc_host.tx_context_.block_timestamp = 0;
+    sethvm::SethhainHost seth_host;
+    seth_host.tx_context_.tx_origin = evmc::address{};
+    seth_host.tx_context_.block_coinbase = evmc::address{};
+    seth_host.tx_context_.block_number = 0;
+    seth_host.tx_context_.block_timestamp = 0;
     uint64_t chanin_id = hotstuff::kGlobalChainId;
-    zjcvm::Uint64ToEvmcBytes32(
-        zjc_host.tx_context_.chain_id,
+    sethvm::Uint64ToEvmcBytes32(
+        seth_host.tx_context_.chain_id,
         chanin_id);
-    zjc_host.contract_mgr_ = contract_mgr_;
-    zjc_host.my_address_ = contract_addr;
-    zjc_host.tx_context_.block_gas_limit = 10000000000lu;
+    seth_host.contract_mgr_ = contract_mgr_;
+    seth_host.my_address_ = contract_addr;
+    seth_host.tx_context_.block_gas_limit = 10000000000lu;
     // user caller prefund 's gas
     uint64_t from_balance = 10000000000lu;
     auto contract_addr_info = prefix_db_->GetAddressInfo(contract_addr);
@@ -513,15 +513,15 @@ bool ClickHouseClient::QueryContract(const std::string& from, const std::string&
         return false;
     }
     uint64_t to_balance = contract_addr_info->balance();
-    zjc_host.AddTmpAccountBalance(
+    seth_host.AddTmpAccountBalance(
         from,
         from_balance);
-    zjc_host.AddTmpAccountBalance(
+    seth_host.AddTmpAccountBalance(
         contract_addr,
         to_balance);
     evmc_result evmc_res = {};
     evmc::Result result{ evmc_res };
-    int exec_res = zjcvm::Execution::Instance()->execute(
+    int exec_res = sethvm::Execution::Instance()->execute(
         contract_addr_info->bytes_code(),
         common::Encode::HexDecode("cdfd45bb"),
         from,
@@ -530,10 +530,10 @@ bool ClickHouseClient::QueryContract(const std::string& from, const std::string&
         0,
         10000000000lu,
         0,
-        zjcvm::kJustCall,
-        zjc_host,
+        sethvm::kJustCall,
+        seth_host,
         &result);
-    if (exec_res != zjcvm::kZjcvmSuccess || result.status_code != EVMC_SUCCESS) {
+    if (exec_res != sethvm::kSethvmSuccess || result.status_code != EVMC_SUCCESS) {
         std::string res = "query contract failed: " + std::to_string(result.status_code);
         SETH_INFO("query contract error: %s.", res.c_str());
         return false;
@@ -542,7 +542,7 @@ bool ClickHouseClient::QueryContract(const std::string& from, const std::string&
     std::string qdata((char*)result.output_data, result.output_size);
     evmc_bytes32 len_bytes;
     memcpy(len_bytes.bytes, qdata.c_str() + 32, 32);
-    uint64_t len = zjcvm::EvmcBytes32ToUint64(len_bytes);
+    uint64_t len = sethvm::EvmcBytes32ToUint64(len_bytes);
     std::string http_res(qdata.c_str() + 64, len);
     *res = nlohmann::json::parse(http_res);
     SETH_DEBUG("success query contract: %s", res->dump().c_str());
@@ -684,7 +684,7 @@ bool ClickHouseClient::CreateStatisticTable() {
     std::string create_cmd = std::string("CREATE TABLE if not exists ") + kClickhouseStatisticTableName + " ( "
         "`id` UInt64 COMMENT 'id' CODEC(T64, LZ4), "
         "`time` UInt64 COMMENT 'time' CODEC(LZ4), "
-        "`all_zjc` UInt64 COMMENT 'zjc' CODEC(LZ4), "
+        "`all_seth` UInt64 COMMENT 'seth' CODEC(LZ4), "
         "`all_address` UInt32 COMMENT 'address' CODEC(T64, LZ4), "
         "`all_contracts` UInt32 COMMENT 'contracts' CODEC(T64, LZ4), "
         "`all_transactions` UInt32 COMMENT 'transactions' CODEC(LZ4), "
@@ -1062,7 +1062,7 @@ void ClickHouseClient::TickStatistic() {
 }
 
 void ClickHouseClient::Statistic() try {
-    std::string cmd = "select count(*) as cnt from zjc_ck_transaction_table;";
+    std::string cmd = "select count(*) as cnt from seth_ck_transaction_table;";
     uint32_t all_transactions = 0;
     clickhouse::Client ck_client0(clickhouse::ClientOptions().
         SetHost(common::GlobalInfo::Instance()->ck_host()).
@@ -1075,7 +1075,7 @@ void ClickHouseClient::Statistic() try {
         }
     });
 
-    cmd = "select count(*) from zjc_ck_account_table;";
+    cmd = "select count(*) from seth_ck_account_table;";
     uint32_t all_address = 0;
     clickhouse::Client ck_client1(clickhouse::ClientOptions().
         SetHost(common::GlobalInfo::Instance()->ck_host()).
@@ -1088,7 +1088,7 @@ void ClickHouseClient::Statistic() try {
         }
     });
 
-    cmd = "select sum(balance) from zjc_ck_account_table;";
+    cmd = "select sum(balance) from seth_ck_account_table;";
     uint64_t sum_balance = 0;
     clickhouse::Client ck_client2(clickhouse::ClientOptions().
         SetHost(common::GlobalInfo::Instance()->ck_host()).
@@ -1101,7 +1101,7 @@ void ClickHouseClient::Statistic() try {
         }
     });
 
-    cmd = "select count(*) from zjc_ck_account_key_value_table where type = 4 and key = '5f5f636279746573636f6465'";
+    cmd = "select count(*) from seth_ck_account_key_value_table where type = 4 and key = '5f5f636279746573636f6465'";
     uint32_t all_contracts = 0;
     clickhouse::Client ck_client3(clickhouse::ClientOptions().
         SetHost(common::GlobalInfo::Instance()->ck_host()).
@@ -1115,7 +1115,7 @@ void ClickHouseClient::Statistic() try {
     });
 
     auto st_time = std::make_shared<clickhouse::ColumnUInt64>();
-    auto st_zjc = std::make_shared<clickhouse::ColumnUInt64>();
+    auto st_seth = std::make_shared<clickhouse::ColumnUInt64>();
     auto st_address = std::make_shared<clickhouse::ColumnUInt32>();
     auto st_contracts = std::make_shared<clickhouse::ColumnUInt32>();
     auto st_transactions = std::make_shared<clickhouse::ColumnUInt32>();
@@ -1124,7 +1124,7 @@ void ClickHouseClient::Statistic() try {
     auto st_date = std::make_shared<clickhouse::ColumnUInt32>();
     st_time->Append(common::TimeUtils::TimestampSeconds());
     st_date->Append(common::TimeUtils::TimestampDays());
-    st_zjc->Append(sum_balance);
+    st_seth->Append(sum_balance);
     st_address->Append(all_address);
     st_contracts->Append(all_contracts);
     st_transactions->Append(all_transactions);
@@ -1132,7 +1132,7 @@ void ClickHouseClient::Statistic() try {
     st_wnodes->Append(0);
     clickhouse::Block statistics;
     statistics.AppendColumn("time", st_time);
-    statistics.AppendColumn("all_zjc", st_zjc);
+    statistics.AppendColumn("all_seth", st_seth);
     statistics.AppendColumn("all_address", st_address);
     statistics.AppendColumn("all_contracts", st_contracts);
     statistics.AppendColumn("all_transactions", st_transactions);

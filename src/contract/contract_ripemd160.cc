@@ -8,7 +8,7 @@
 #include "contract/contract_cl.h"
 #include "contract/contract_reencryption.h"
 #include "pbc/pbc.h"
-#include "zjcvm/zjc_host.h"
+#include "sethvm/seth_host.h"
 
 namespace seth {
 
@@ -458,24 +458,24 @@ int Ripemd160::RabpreInit(
         std::string val;
         SaveCrs(crs, &val);
         auto tmp_key = std::string("rabpre_crs_") + id;
-        param.zjc_host->SaveKeyValue(param.from, tmp_key, val);
+        param.seth_host->SaveKeyValue(param.from, tmp_key, val);
         // 密钥生成
         auto [sk0, pk0] = Rabpre::KEYGEN(crs, 0);
         std::string sk0_pk0;
         SaveSkPk(sk0, pk0, &sk0_pk0);
         tmp_key = std::string("rabpre_sk0_pk0_") + id;
-        param.zjc_host->SaveKeyValue(param.from, tmp_key, sk0_pk0);
+        param.seth_host->SaveKeyValue(param.from, tmp_key, sk0_pk0);
         auto [sk1, pk1] = Rabpre::KEYGEN(crs, 1);
         std::string sk1_pk1;
         SaveSkPk(sk1, pk1, &sk1_pk1);
         tmp_key = std::string("rabpre_sk1_pk1_") + id;
-        param.zjc_host->SaveKeyValue(param.from, tmp_key, sk1_pk1);
+        param.seth_host->SaveKeyValue(param.from, tmp_key, sk1_pk1);
         // 聚合密钥
         auto [mpk, hsk0, hsk1] = Rabpre::AGGREGATE(crs, {pk0, pk1});
         std::string agg;
         SaveAgg(mpk, hsk0, hsk1, &agg);
         tmp_key = std::string("rabpre_agg_") + id;
-        param.zjc_host->SaveKeyValue(param.from, tmp_key, agg);
+        param.seth_host->SaveKeyValue(param.from, tmp_key, agg);
 
         // // 加密测试
         // long long plaintext = 199; //修改消息
@@ -557,7 +557,7 @@ int Ripemd160::RabpreEnc(
     std::tuple<long long, long long, long long, long long, long long> hsk1;
     auto tmp_key = std::string("rabpre_agg_") + id;
     std::string val;
-    param.zjc_host->GetKeyValue(param.from, tmp_key, &val);
+    param.seth_host->GetKeyValue(param.from, tmp_key, &val);
     SETH_DEBUG("rabpre enc 1");
     LoadAgg(val, &mpk, &hsk0, &hsk1);
     SETH_DEBUG("rabpre enc 2");
@@ -567,7 +567,7 @@ int Ripemd160::RabpreEnc(
     SaveEncVal(ct, &enc_val);
     tmp_key = std::string("rabpre_enc_") + id;
     SETH_DEBUG("rabpre enc 4");
-    param.zjc_host->SaveKeyValue(param.from, tmp_key, enc_val);
+    param.seth_host->SaveKeyValue(param.from, tmp_key, enc_val);
     SETH_DEBUG("Rabpre enc success id: %s, plaintext: %ld",
         common::Encode::HexEncode(id).c_str(), plaintext);
     return kContractSuccess;
@@ -580,7 +580,7 @@ int Ripemd160::RabpreDec(
     auto id = common::Encode::HexDecode(value);
     auto tmp_key = std::string("rabpre_crs_") + id;
     std::string val;
-    if (param.zjc_host->GetKeyValue(param.from, tmp_key, &val) != 0) {
+    if (param.seth_host->GetKeyValue(param.from, tmp_key, &val) != 0) {
         CONTRACT_ERROR("get key value failed: %s", tmp_key.c_str());
         return kContractError;
     }
@@ -588,12 +588,12 @@ int Ripemd160::RabpreDec(
     CRS crs;
     LoadCrs(val, crs);
     tmp_key = std::string("rabpre_sk0_pk0_") + id;
-    param.zjc_host->GetKeyValue(param.from, tmp_key, &val);
+    param.seth_host->GetKeyValue(param.from, tmp_key, &val);
     long long sk0;
     std::tuple<long long, long long> pk0;
     LoadSkPk(val, &sk0, &pk0);
     tmp_key = std::string("rabpre_sk1_pk1_") + id;
-    param.zjc_host->GetKeyValue(param.from, tmp_key, &val);
+    param.seth_host->GetKeyValue(param.from, tmp_key, &val);
     long long sk1;
     std::tuple<long long, long long> pk1;
     LoadSkPk(val, &sk1, &pk1);
@@ -601,14 +601,14 @@ int Ripemd160::RabpreDec(
     std::tuple<long long, long long, long long, long long, long long> hsk0;
     std::tuple<long long, long long, long long, long long, long long> hsk1;
     tmp_key = std::string("rabpre_agg_") + id;
-    param.zjc_host->GetKeyValue(param.from, tmp_key, &val);
+    param.seth_host->GetKeyValue(param.from, tmp_key, &val);
     LoadAgg(val, &mpk, &hsk0, &hsk1);
 
     std::tuple<int, long long, long long, long long,
                 long long, long long, long long, long long,
                 long long, long long> ct;
     tmp_key = std::string("rabpre_enc_") + id;
-    param.zjc_host->GetKeyValue(param.from, tmp_key, &val);
+    param.seth_host->GetKeyValue(param.from, tmp_key, &val);
     LoadEncVal(val, &ct);
     long long decrypted = Rabpre::DEC(ct, sk0, hsk0, mpk);
     SETH_DEBUG("Rabpre enc success id: %s, decrypted: %ld",
@@ -668,7 +668,7 @@ int Ripemd160::RabpreReEnc(
     auto id = common::Encode::HexDecode(value);
     auto tmp_key = std::string("rabpre_crs_") + id;
     std::string val;
-    if (param.zjc_host->GetKeyValue(param.from, tmp_key, &val) != 0) {
+    if (param.seth_host->GetKeyValue(param.from, tmp_key, &val) != 0) {
         CONTRACT_ERROR("get key value failed: %s", tmp_key.c_str());
         return kContractError;
     }
@@ -676,12 +676,12 @@ int Ripemd160::RabpreReEnc(
     CRS crs;
     LoadCrs(val, crs);
     tmp_key = std::string("rabpre_sk0_pk0_") + id;
-    param.zjc_host->GetKeyValue(param.from, tmp_key, &val);
+    param.seth_host->GetKeyValue(param.from, tmp_key, &val);
     long long sk0;
     std::tuple<long long, long long> pk0;
     LoadSkPk(val, &sk0, &pk0);
     tmp_key = std::string("rabpre_sk1_pk1_") + id;
-    param.zjc_host->GetKeyValue(param.from, tmp_key, &val);
+    param.seth_host->GetKeyValue(param.from, tmp_key, &val);
     long long sk1;
     std::tuple<long long, long long> pk1;
     LoadSkPk(val, &sk1, &pk1);
@@ -689,14 +689,14 @@ int Ripemd160::RabpreReEnc(
     std::tuple<long long, long long, long long, long long, long long> hsk0;
     std::tuple<long long, long long, long long, long long, long long> hsk1;
     tmp_key = std::string("rabpre_agg_") + id;
-    param.zjc_host->GetKeyValue(param.from, tmp_key, &val);
+    param.seth_host->GetKeyValue(param.from, tmp_key, &val);
     LoadAgg(val, &mpk, &hsk0, &hsk1);
 
     std::tuple<int, long long, long long, long long,
                 long long, long long, long long, long long,
                 long long, long long> ct;
     tmp_key = std::string("rabpre_enc_") + id;
-    param.zjc_host->GetKeyValue(param.from, tmp_key, &val);
+    param.seth_host->GetKeyValue(param.from, tmp_key, &val);
     LoadEncVal(val, &ct);
 
     auto rk = Rabpre::RKGEN({0,0}, sk1, hsk1, 1, mpk);
@@ -704,7 +704,7 @@ int Ripemd160::RabpreReEnc(
     std::string reenc_val;
     SaveReenc(ct_new, &reenc_val);
     tmp_key = std::string("rabpre_reenc_") + id;
-    param.zjc_host->SaveKeyValue(param.from, tmp_key, reenc_val);
+    param.seth_host->SaveKeyValue(param.from, tmp_key, reenc_val);
     SETH_DEBUG("Rabpre reenc success id: %s",
         common::Encode::HexEncode(id).c_str());
     return kContractSuccess;
@@ -717,7 +717,7 @@ int Ripemd160::RabpreReDec(
     auto id = common::Encode::HexDecode(value);
     auto tmp_key = std::string("rabpre_crs_") + id;
     std::string val;
-    if (param.zjc_host->GetKeyValue(param.from, tmp_key, &val) != 0) {
+    if (param.seth_host->GetKeyValue(param.from, tmp_key, &val) != 0) {
         CONTRACT_ERROR("get key value failed: %s", tmp_key.c_str());
         return kContractError;
     }
@@ -725,12 +725,12 @@ int Ripemd160::RabpreReDec(
     CRS crs;
     LoadCrs(val, crs);
     tmp_key = std::string("rabpre_sk0_pk0_") + id;
-    param.zjc_host->GetKeyValue(param.from, tmp_key, &val);
+    param.seth_host->GetKeyValue(param.from, tmp_key, &val);
     long long sk0;
     std::tuple<long long, long long> pk0;
     LoadSkPk(val, &sk0, &pk0);
     tmp_key = std::string("rabpre_sk1_pk1_") + id;
-    param.zjc_host->GetKeyValue(param.from, tmp_key, &val);
+    param.seth_host->GetKeyValue(param.from, tmp_key, &val);
     long long sk1;
     std::tuple<long long, long long> pk1;
     LoadSkPk(val, &sk1, &pk1);
@@ -738,16 +738,16 @@ int Ripemd160::RabpreReDec(
     std::tuple<long long, long long, long long, long long, long long> hsk0;
     std::tuple<long long, long long, long long, long long, long long> hsk1;
     tmp_key = std::string("rabpre_agg_") + id;
-    param.zjc_host->GetKeyValue(param.from, tmp_key, &val);
+    param.seth_host->GetKeyValue(param.from, tmp_key, &val);
     LoadAgg(val, &mpk, &hsk0, &hsk1);
     std::tuple<int, long long, long long, long long,
                 long long, long long, long long, long long,
                 long long, long long> ct;
     tmp_key = std::string("rabpre_enc_") + id;
-    param.zjc_host->GetKeyValue(param.from, tmp_key, &val);
+    param.seth_host->GetKeyValue(param.from, tmp_key, &val);
     LoadEncVal(val, &ct);
     tmp_key = std::string("rabpre_reenc_") + id;
-    param.zjc_host->GetKeyValue(param.from, tmp_key, &val);
+    param.seth_host->GetKeyValue(param.from, tmp_key, &val);
 
     std::tuple<int, std::tuple<long long, long long>,
             std::tuple<int, long long, long long, long long,
@@ -804,16 +804,16 @@ int Ripemd160::CreateArsKeys(
         len = element_to_bytes_compressed(bytes_data, public_keys[i]);
         std::string y_i_str((char*)bytes_data, len);
         auto tmp_key = id + std::string("ars_create_user_private_key_") + std::to_string(i);
-        param.zjc_host->SaveKeyValue(param.from, tmp_key, x_i_str);
+        param.seth_host->SaveKeyValue(param.from, tmp_key, x_i_str);
         tmp_key = id + std::string("ars_create_user_public_key_") + std::to_string(i);
-        param.zjc_host->SaveKeyValue(param.from, tmp_key, y_i_str);
+        param.seth_host->SaveKeyValue(param.from, tmp_key, y_i_str);
         element_clear(private_keys[i]);
         element_clear(public_keys[i]);
     }
 
     auto tmp_key = std::string("ars_create_") + id;
     auto val = common::StringUtil::Format("%u,%u", ars.ring_size(), ars.signer_count());
-    param.zjc_host->SaveKeyValue(param.from, tmp_key, val);
+    param.seth_host->SaveKeyValue(param.from, tmp_key, val);
     SETH_DEBUG("init sign success: %s, from: %s, key: %s, ring size: %d, signer_count: %d",
         ex_splits[1], 
         common::Encode::HexEncode(param.from).c_str(), 
@@ -831,7 +831,7 @@ int Ripemd160::GetRing(
     for (auto i = 0; i < ars.ring_size(); ++i) {
         auto key = id + std::string("ars_create_user_public_key_") + std::to_string(i);
         std::string val;
-        if (param.zjc_host->GetKeyValue(param.from, key, &val) != 0) {
+        if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
             CONTRACT_ERROR("get key value failed: %s", key.c_str());
             return kContractError;
         }
@@ -856,7 +856,7 @@ int Ripemd160::SingleSign(
     auto id = common::Encode::HexDecode(line_splits[1]);
     auto tmp_key = std::string("ars_create_") + id;
     std::string val;
-    if (param.zjc_host->GetKeyValue(param.from, tmp_key, &val) != 0) {
+    if (param.seth_host->GetKeyValue(param.from, tmp_key, &val) != 0) {
         CONTRACT_ERROR("get key value failed: %s", tmp_key.c_str());
         return kContractError;
     }
@@ -929,7 +929,7 @@ int Ripemd160::SingleSign(
         element_clear(proof);
     }
 
-    param.zjc_host->SaveKeyValue(param.from, tmp_key, val);
+    param.seth_host->SaveKeyValue(param.from, tmp_key, val);
     SETH_WARN("single sign success: %d, %s, from: %s, key: %s",
         signer_idx, line_splits[1], 
         common::Encode::HexEncode(param.from).c_str(), tmp_key.c_str());
@@ -949,7 +949,7 @@ int Ripemd160::AggSignAndVerify(
     auto tmp_key = std::string("ars_create_") + id;
     SETH_DEBUG("get create ars key: %s", common::Encode::HexEncode(tmp_key).c_str());
     std::string val;
-    if (param.zjc_host->GetKeyValue(param.from, tmp_key, &val) != 0) {
+    if (param.seth_host->GetKeyValue(param.from, tmp_key, &val) != 0) {
         CONTRACT_ERROR("get key value failed: %s", tmp_key.c_str());
         return kContractError;
     }
@@ -985,7 +985,7 @@ int Ripemd160::AggSignAndVerify(
     for (auto i = 0; i < ars.ring_size(); ++i) {
         auto tmp_key = std::string("ars_create_single_sign_") + std::to_string(i);
         std::string val;
-        if (param.zjc_host->GetKeyValue(param.from, tmp_key, &val) != 0) {
+        if (param.seth_host->GetKeyValue(param.from, tmp_key, &val) != 0) {
             CONTRACT_ERROR("get key value failed: %s", tmp_key.c_str());
             continue;
         }
@@ -1035,7 +1035,7 @@ int Ripemd160::AggSignAndVerify(
         unsigned char data[20480] = {0};
         auto len = element_to_bytes_compressed(data, agg_signature);
         auto val = common::Encode::HexEncode(std::string((char*)data, len)) + ",";
-        param.zjc_host->SaveKeyValue(param.from, tmp_key, val);
+        param.seth_host->SaveKeyValue(param.from, tmp_key, val);
         SETH_WARN("agg sign success: %s", val.c_str());
 
         // 聚合签名验证
@@ -1200,7 +1200,7 @@ int Ripemd160::AddReEncryptionParam(
     if (key == "reenc_all") {
         AddAllParams("reenc_", param, val);
     } else {
-        param.zjc_host->SaveKeyValue(param.from, key, val);
+        param.seth_host->SaveKeyValue(param.from, key, val);
     }
 
     res->output_data = new uint8_t[32];
@@ -1247,7 +1247,7 @@ int Ripemd160::AddParams(
     if (key == "abe_all") {
         AddAllParams("abe_", param, val);
     } else {
-        param.zjc_host->SaveKeyValue(param.from, key, val);
+        param.seth_host->SaveKeyValue(param.from, key, val);
     }
 
     res->output_data = new uint8_t[32];
@@ -1271,7 +1271,7 @@ void Ripemd160::AddAllParams(
         }
 
         std::string key = prev + items[0];
-        param.zjc_host->SaveKeyValue(
+        param.seth_host->SaveKeyValue(
             param.from,
             key,
             common::Encode::HexDecode(items[1]));
@@ -1283,7 +1283,7 @@ int Ripemd160::GetValue(
         const std::string& key,
         std::string* val,
         evmc_result* res) {
-    if (param.zjc_host->GetKeyValue(param.from, key, val) != 0) {
+    if (param.seth_host->GetKeyValue(param.from, key, val) != 0) {
         CONTRACT_ERROR("get key value failed: %s", key.c_str());
         return kContractError;
     }

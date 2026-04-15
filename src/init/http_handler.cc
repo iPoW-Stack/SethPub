@@ -24,9 +24,9 @@
 #include "security/gmssl/gmssl.h"
 #include "security/oqs/oqs.h"
 #include "transport/tcp_transport.h"
-#include "zjcvm/execution.h"
-#include "zjcvm/zjc_host.h"
-#include "zjcvm/zjcvm_utils.h"
+#include "sethvm/execution.h"
+#include "sethvm/seth_host.h"
+#include "sethvm/sethvm_utils.h"
 
 #include <google/protobuf/util/json_util.h>
 
@@ -778,31 +778,31 @@ static void QueryContract(const UWSRequest& req, UWSResponse& http_res) {
         return;
     }
 
-    zjcvm::ZjchainHost zjc_host;
-    zjc_host.tx_context_.tx_origin = evmc::address{};
-    zjc_host.tx_context_.block_coinbase = evmc::address{};
-    zjc_host.tx_context_.block_number = 0;
-    zjc_host.tx_context_.block_timestamp = 0;
+    sethvm::SethhainHost seth_host;
+    seth_host.tx_context_.tx_origin = evmc::address{};
+    seth_host.tx_context_.block_coinbase = evmc::address{};
+    seth_host.tx_context_.block_number = 0;
+    seth_host.tx_context_.block_timestamp = 0;
     uint64_t chanin_id = hotstuff::kGlobalChainId;
-    zjcvm::Uint64ToEvmcBytes32(
-        zjc_host.tx_context_.chain_id,
+    sethvm::Uint64ToEvmcBytes32(
+        seth_host.tx_context_.chain_id,
         chanin_id);
-    zjc_host.contract_mgr_ = contract_mgr;
-    zjc_host.my_address_ = contract_addr;
-    zjc_host.tx_context_.block_gas_limit = prefund;
-    zjc_host.view_block_chain_ = http_handler->view_block_chain();
+    seth_host.contract_mgr_ = contract_mgr;
+    seth_host.my_address_ = contract_addr;
+    seth_host.tx_context_.block_gas_limit = prefund;
+    seth_host.view_block_chain_ = http_handler->view_block_chain();
     // user caller prefund 's gas
     uint64_t from_balance = prefund;
     uint64_t to_balance = contract_addr_info->balance();
-    zjc_host.AddTmpAccountBalance(
+    seth_host.AddTmpAccountBalance(
         from,
         from_balance);
-    zjc_host.AddTmpAccountBalance(
+    seth_host.AddTmpAccountBalance(
         contract_addr,
         to_balance);
     evmc_result evmc_res = {};
     evmc::Result result{ evmc_res };
-    int exec_res = zjcvm::Execution::Instance()->execute(
+    int exec_res = sethvm::Execution::Instance()->execute(
         contract_addr_info->bytes_code(),
         input,
         from,
@@ -811,10 +811,10 @@ static void QueryContract(const UWSRequest& req, UWSResponse& http_res) {
         0,
         prefund,
         0,
-        zjcvm::kJustCall,
-        zjc_host,
+        sethvm::kJustCall,
+        seth_host,
         &result);
-    if (exec_res != zjcvm::kZjcvmSuccess || result.status_code != EVMC_SUCCESS) {
+    if (exec_res != sethvm::kSethvmSuccess || result.status_code != EVMC_SUCCESS) {
         std::string res = "query contract failed: " + 
             std::to_string(result.status_code) + 
             ", exec_res: " + std::to_string(exec_res);
@@ -832,7 +832,7 @@ static void QueryContract(const UWSRequest& req, UWSResponse& http_res) {
     }
     evmc_bytes32 len_bytes;
     memcpy(len_bytes.bytes, qdata.c_str() + 32, 32);
-    uint64_t len = zjcvm::EvmcBytes32ToUint64(len_bytes);
+    uint64_t len = sethvm::EvmcBytes32ToUint64(len_bytes);
     std::string http_res_str(qdata.c_str() + 64, len);
     http_res.set_content(http_res_str, "text/plain");
     SETH_INFO("query contract success data: %s", http_res_str.c_str());
@@ -919,31 +919,31 @@ static void AbiQueryContract(const UWSRequest& req, UWSResponse& http_res) {
         return;
     }
 
-    zjcvm::ZjchainHost zjc_host;
-    zjc_host.tx_context_.tx_origin = evmc::address{};
-    zjc_host.tx_context_.block_coinbase = evmc::address{};
-    zjc_host.tx_context_.block_number = 0;
-    zjc_host.tx_context_.block_timestamp = 0;
+    sethvm::SethhainHost seth_host;
+    seth_host.tx_context_.tx_origin = evmc::address{};
+    seth_host.tx_context_.block_coinbase = evmc::address{};
+    seth_host.tx_context_.block_number = 0;
+    seth_host.tx_context_.block_timestamp = 0;
     uint64_t chanin_id = hotstuff::kGlobalChainId;
-    zjcvm::Uint64ToEvmcBytes32(
-        zjc_host.tx_context_.chain_id,
+    sethvm::Uint64ToEvmcBytes32(
+        seth_host.tx_context_.chain_id,
         chanin_id);
-    zjc_host.contract_mgr_ = contract_mgr;
-    zjc_host.my_address_ = contract_addr;
-    zjc_host.tx_context_.block_gas_limit = prefund;
+    seth_host.contract_mgr_ = contract_mgr;
+    seth_host.my_address_ = contract_addr;
+    seth_host.tx_context_.block_gas_limit = prefund;
     // user caller prefund 's gas
     uint64_t from_balance = prefund;
     uint64_t to_balance = contract_addr_info->balance();
-    zjc_host.view_block_chain_ = http_handler->view_block_chain();
-    zjc_host.AddTmpAccountBalance(
+    seth_host.view_block_chain_ = http_handler->view_block_chain();
+    seth_host.AddTmpAccountBalance(
         from,
         from_balance);
-    zjc_host.AddTmpAccountBalance(
+    seth_host.AddTmpAccountBalance(
         contract_addr,
         to_balance);
     evmc_result evmc_res = {};
     evmc::Result result{ evmc_res };
-    int exec_res = zjcvm::Execution::Instance()->execute(
+    int exec_res = sethvm::Execution::Instance()->execute(
         contract_addr_info->bytes_code(),
         input,
         from,
@@ -952,10 +952,10 @@ static void AbiQueryContract(const UWSRequest& req, UWSResponse& http_res) {
         0,
         999999999999lu,
         0,
-        zjcvm::kJustCall,
-        zjc_host,
+        sethvm::kJustCall,
+        seth_host,
         &result);
-    if (exec_res != zjcvm::kZjcvmSuccess || result.status_code != EVMC_SUCCESS) {
+    if (exec_res != sethvm::kSethvmSuccess || result.status_code != EVMC_SUCCESS) {
         std::string res = "query contract failed: " + 
             std::to_string(result.status_code) + 
             ", exec_res: " + std::to_string(exec_res);
@@ -975,7 +975,7 @@ static void AbiQueryContract(const UWSRequest& req, UWSResponse& http_res) {
     // }
     // evmc_bytes32 len_bytes;
     // memcpy(len_bytes.bytes, qdata.c_str() + 32, 32);
-    // uint64_t len = zjcvm::EvmcBytes32ToUint64(len_bytes);
+    // uint64_t len = sethvm::EvmcBytes32ToUint64(len_bytes);
     // std::string http_res(qdata.c_str() + 64, len);
     http_res.set_content(hex_data, "text/plain");
     SETH_INFO("query contract success data: %s", hex_data.c_str());
@@ -1249,10 +1249,10 @@ static void GetProxyReencInfo(const UWSRequest& req, UWSResponse& http_res) {
     for (uint32_t i = 0; i < count; ++i) {
         auto private_key = proxy_id + "_" + std::string("init_prikey_") + std::to_string(i);
         std::string prikey;
-        zjcvm::Execution::Instance()->GetStorage(contract_str, private_key, &prikey);
+        sethvm::Execution::Instance()->GetStorage(contract_str, private_key, &prikey);
         auto public_key = proxy_id + "_" + std::string("init_pubkey_") + std::to_string(i);
         std::string pubkey;
-        zjcvm::Execution::Instance()->GetStorage(contract_str, public_key, &pubkey);
+        sethvm::Execution::Instance()->GetStorage(contract_str, public_key, &pubkey);
         SETH_WARN("contract_reencryption get member private and public key: %s, %s sk: %s, pk: %s",
             common::Encode::HexEncode(private_key).c_str(), 
             common::Encode::HexEncode(public_key).c_str(), 
@@ -1273,9 +1273,9 @@ static void GetProxyReencInfo(const UWSRequest& req, UWSResponse& http_res) {
 static void GetSecAndEncData(const UWSRequest& req, UWSResponse& http_res) {
     SETH_DEBUG("http transaction coming.");
     contract::ContractReEncryption prox_renc;
-    zjcvm::ZjchainHost zjc_host;
+    sethvm::SethhainHost seth_host;
     contract::CallParameters param;
-    param.zjc_host = &zjc_host;
+    param.seth_host = &seth_host;
     auto data = req.get_param_value("data");
     if (data.empty()) {
         std::string res = common::StringUtil::Format("param data is null");
@@ -1319,10 +1319,10 @@ static void GetSecAndEncData(const UWSRequest& req, UWSResponse& http_res) {
 static void ProxDecryption(const UWSRequest& req, UWSResponse& http_res) {
     SETH_WARN("ProxDecryption coming 0.");
     contract::ContractReEncryption prox_renc;
-    zjcvm::ZjchainHost zjc_host;
+    sethvm::SethhainHost seth_host;
     contract::CallParameters param;
     param.from = common::Encode::HexDecode("48e1eab96c9e759daa3aff82b40e77cd615a41d0");
-    param.zjc_host = &zjc_host;
+    param.seth_host = &seth_host;
     auto id = req.get_param_value("id");
     if (id.empty()) {
         std::string res = common::StringUtil::Format("param data is null");

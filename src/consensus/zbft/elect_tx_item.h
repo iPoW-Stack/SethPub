@@ -59,13 +59,13 @@ public:
     virtual int HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        zjcvm::ZjchainHost &zjc_host,
+        sethvm::SethhainHost &seth_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx &block_tx);
 
 private:
     int processElect(
-        zjcvm::ZjchainHost& zjc_host,
+        sethvm::SethhainHost& seth_host,
         view_block::protobuf::ViewBlockItem& view_block,
         seth::block::protobuf::BlockTx &block_tx);
 
@@ -100,7 +100,7 @@ private:
         std::vector<NodeDetailPtr> &elect_nodes,
         uint64_t *max_fts_val);
     int CreateNewElect(
-        zjcvm::ZjchainHost& zjc_host,
+        sethvm::SethhainHost& seth_host,
         block::protobuf::Block &block,
         const std::vector<NodeDetailPtr> &elect_nodes,
         uint64_t gas_for_root,
@@ -111,6 +111,23 @@ private:
         uint64_t all_gas_amount,
         uint64_t *gas_for_root);
     uint64_t GetMiningMaxCount(uint64_t max_tx_count);
+    
+    // New economic model functions (Dynamic Sharding Reward System)
+    uint64_t GetCurrentEpochNumber();
+    uint64_t CalculateBaseReward(uint64_t epoch_number);
+    uint64_t CalculateTxBonus(uint64_t shard_reward, uint64_t max_tx_count);
+    uint64_t CalculateTotalEpochReward(uint32_t shard_id, uint64_t max_tx_count);
+    void ApplyBurnMechanism(uint64_t total_gas, uint64_t* gas_to_distribute, uint64_t* gas_to_burn);
+    
+    // Dynamic sharding reward functions
+    uint32_t GetShardGeneration(uint32_t shard_id);
+    uint32_t GetActiveShardCount();
+    double CalculateTotalWeight(uint32_t active_shard_count);
+    double CalculateEarlyBonus(uint32_t active_shard_count);
+    uint64_t CalculateShardReward(
+        uint32_t shard_id,
+        uint64_t total_base_reward,
+        uint32_t active_shard_count);
     void GetIndexNodes(
         uint32_t index,
         uint32_t min_area_weight,

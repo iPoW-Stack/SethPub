@@ -11,7 +11,7 @@
 #include "consensus/hotstuff/hotstuff_utils.h"
 #include "consensus/hotstuff/storage_lru_map.h"
 #include "protos/prefix_db.h"
-#include "zjcvm/zjc_host.h"
+#include "sethvm/seth_host.h"
 
 namespace seth {
 
@@ -45,7 +45,7 @@ public:
         const std::shared_ptr<ViewBlock>& view_block, 
         bool directly_store, 
         BalanceAndNonceMapPtr balane_map_ptr,
-        std::shared_ptr<zjcvm::ZjchainHost> zjc_host_ptr,
+        std::shared_ptr<sethvm::SethhainHost> seth_host_ptr,
         bool init);
     // Get Block by hash value, fetch from neighbor nodes if necessary
     std::shared_ptr<ViewBlockInfo> Get(const HashStr& hash) const;
@@ -261,7 +261,7 @@ private:
     std::shared_ptr<ViewBlockInfo> GetViewBlockInfo(
             std::shared_ptr<ViewBlock> view_block, 
             BalanceAndNonceMapPtr acc_balance_map_ptr,
-            std::shared_ptr<zjcvm::ZjchainHost> zjc_host_ptr) {
+            std::shared_ptr<sethvm::SethhainHost> seth_host_ptr) {
         auto view_block_info_ptr = std::make_shared<ViewBlockInfo>();
         SETH_DEBUG("2 success add view block remove add %u_%u_%lu", 
             view_block->qc().network_id(), 
@@ -269,7 +269,7 @@ private:
             view_block->qc().view());
         view_block_info_ptr->view_block = view_block;
         view_block_info_ptr->acc_balance_map_ptr = acc_balance_map_ptr;
-        view_block_info_ptr->zjc_host_ptr = zjc_host_ptr;
+        view_block_info_ptr->seth_host_ptr = seth_host_ptr;
         return view_block_info_ptr;
     }
 

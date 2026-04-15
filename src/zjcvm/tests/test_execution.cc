@@ -5,13 +5,13 @@
 
 #include "common/encode.h"
 #define private public
-#include "zjcvm/execution.h"
-#include "zjcvm/zjc_host.h"
-#include "zjcvm/zjcvm_utils.h"
+#include "sethvm/execution.h"
+#include "sethvm/seth_host.h"
+#include "sethvm/sethvm_utils.h"
 
 namespace seth {
 
-namespace zjcvm {
+namespace sethvm {
 
 namespace test {
 
@@ -34,7 +34,7 @@ private:
 };
 
 TEST_F(TestExecution, All) {
-    zjcvm::Execution exec;
+    sethvm::Execution exec;
     std::string contract_address;
     std::string input;
     std::string from;
@@ -46,7 +46,7 @@ TEST_F(TestExecution, All) {
     bool is_create = false;
     evmc_result evmc_res = {};
     evmc::Result res{ evmc_res };
-    zjcvm::ZjchainHost zjc_host;
+    sethvm::SethhainHost seth_host;
     exec.execute(
         contract_address,
         input,
@@ -57,12 +57,12 @@ TEST_F(TestExecution, All) {
         gas_limit,
         depth,
         is_create,
-        zjc_host,
+        seth_host,
         &res);
 }
 
 }  // namespace test
 
-}  // namespace zjcvm
+}  // namespace sethvm
 
 }  // namespace seth

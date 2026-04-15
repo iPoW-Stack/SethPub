@@ -7,7 +7,7 @@ namespace consensus {
 int FromTxItem::HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        zjcvm::ZjchainHost& pre_zjc_host,
+        sethvm::SethhainHost& pre_seth_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
     uint64_t gas_used = 0;
@@ -16,7 +16,7 @@ int FromTxItem::HandleTx(
     uint64_t from_nonce = 0;
     uint64_t to_balance = 0;
     auto& from = address_info->addr();
-    int balance_status = GetTempAccountBalance(pre_zjc_host, from, acc_balance_map, &from_balance, &from_nonce);
+    int balance_status = GetTempAccountBalance(pre_seth_host, from, acc_balance_map, &from_balance, &from_nonce);
     auto src_banalce = from_balance;
     if (balance_status != kConsensusSuccess) {
         block_tx.set_status(balance_status);
@@ -25,11 +25,11 @@ int FromTxItem::HandleTx(
         return kConsensusSuccess;
     }
 
-    zjcvm::ZjchainHost zjc_host;
-    zjc_host.view_block_chain_ = pre_zjc_host.view_block_chain_;
-    zjc_host.tx_context_ = pre_zjc_host.tx_context_;
-    zjc_host.pre_zjc_host_ = &pre_zjc_host;
-    InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
+    sethvm::SethhainHost seth_host;
+    seth_host.view_block_chain_ = pre_seth_host.view_block_chain_;
+    seth_host.tx_context_ = pre_seth_host.tx_context_;
+    seth_host.pre_seth_host_ = &pre_seth_host;
+    InitHost(seth_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
     do  {
         gas_used = consensus::kTransferGas; // Transfer transaction fee calculation
         if (from_nonce + 1 != block_tx.nonce()) {
@@ -41,7 +41,7 @@ int FromTxItem::HandleTx(
         if (tx_info->has_key()) {
             gas_used += consensus::CalcKvStorageGas(
                 tx_info->key().size(), tx_info->value().size(), true);
-            zjc_host.SaveKeyValue(block_tx.from(), tx_info->key(), tx_info->value());
+            seth_host.SaveKeyValue(block_tx.from(), tx_info->key(), tx_info->value());
             block_tx.set_key(tx_info->key());
             block_tx.set_value(tx_info->value());
         }
@@ -88,14 +88,14 @@ int FromTxItem::HandleTx(
 
     uint32_t status_code = block_tx.status();
     if (block_tx.status() == kConsensusSuccess) {
-        zjc_host.MergeToPrev();
-        auto iter = pre_zjc_host.cross_to_map_.find(block_tx.to());
+        seth_host.MergeToPrev();
+        auto iter = pre_seth_host.cross_to_map_.find(block_tx.to());
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
-        if (iter == pre_zjc_host.cross_to_map_.end()) {
+        if (iter == pre_seth_host.cross_to_map_.end()) {
             to_item_ptr = std::make_shared<pools::protobuf::ToTxMessageItem>();
             to_item_ptr->set_des(block_tx.to());
             to_item_ptr->set_amount(block_tx.amount());
-            pre_zjc_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
+            pre_seth_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
             SETH_DEBUG("success add cross to shard array: %s, %lu",
                 common::Encode::HexEncode(block_tx.to()).c_str(),
                 block_tx.amount());
@@ -112,7 +112,7 @@ int FromTxItem::HandleTx(
     block::protobuf::TxHashStatus tx_hash_status;
     tx_hash_status.set_status(block_tx.status());
     auto status_val = tx_hash_status.SerializeAsString();
-    pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+    pre_seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
 
     // Deduct the amount from the source account
     acc_balance_map[from]->set_balance(from_balance);

@@ -990,15 +990,15 @@ Status Hotstuff::HandleProposeMsgStep_Directly(
     pro_msg_wrap->view_block_ptr->mutable_block_info()->clear_tx_list();
     auto balance_map_ptr = std::make_shared<BalanceAndNonceMap>();
     auto& balance_map = *balance_map_ptr;
-    auto zjc_host_ptr = std::make_shared<zjcvm::ZjchainHost>();
+    auto seth_host_ptr = std::make_shared<sethvm::SethhainHost>();
     auto btime = common::TimeUtils::TimestampMs();
-    zjcvm::ZjchainHost& zjc_host = *zjc_host_ptr;
+    sethvm::SethhainHost& seth_host = *seth_host_ptr;
     if (acceptor()->Accept(
             pro_msg_wrap, 
             true, 
             true, 
             balance_map,
-            zjc_host) != Status::kSuccess) {
+            seth_host) != Status::kSuccess) {
         SETH_DEBUG("====1.1.2 Accept pool: %d, verify view block failed, "
             "view: %lu, hash: %s, qc_view: %lu, hash64: %lu",
             pool_idx_,
@@ -1044,7 +1044,7 @@ Status Hotstuff::HandleProposeMsgStep_Directly(
         return Status::kNotExpectHash;
     }
 
-    Status s = view_block_chain()->Store(pro_msg_wrap->view_block_ptr, true, balance_map_ptr, zjc_host_ptr, false);
+    Status s = view_block_chain()->Store(pro_msg_wrap->view_block_ptr, true, balance_map_ptr, seth_host_ptr, false);
     SETH_DEBUG("pool: %d, add view block hash: %s, status: %d, view: %u_%u_%lu, tx size: %u",
         pool_idx_, 
         common::Encode::HexEncode(pro_msg_wrap->view_block_ptr->qc().view_block_hash()).c_str(),
@@ -1086,15 +1086,15 @@ Status Hotstuff::HandleProposeMsgStep_TxAccept(std::shared_ptr<ProposeMsgWrapper
     auto& proto_msg = pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg();
     pro_msg_wrap->acc_balance_and_nonce_map_ptr = std::make_shared<BalanceAndNonceMap>();
     auto& balance_and_nonce_map = *pro_msg_wrap->acc_balance_and_nonce_map_ptr;
-    pro_msg_wrap->zjc_host_ptr = std::make_shared<zjcvm::ZjchainHost>();
+    pro_msg_wrap->seth_host_ptr = std::make_shared<sethvm::SethhainHost>();
     auto btime = common::TimeUtils::TimestampMs();
-    zjcvm::ZjchainHost& zjc_host = *pro_msg_wrap->zjc_host_ptr;
+    sethvm::SethhainHost& seth_host = *pro_msg_wrap->seth_host_ptr;
     Status s = acceptor()->Accept(
         pro_msg_wrap, 
         true, 
         false, 
         balance_and_nonce_map,
-        zjc_host);
+        seth_host);
     if (s != Status::kSuccess) {
 #ifndef NDEBUG
         SETH_DEBUG("====1.1.2 Accept pool: %d, verify view block failed, "
@@ -1148,7 +1148,7 @@ Status Hotstuff::HandleProposeMsgStep_ChainStore(std::shared_ptr<ProposeMsgWrapp
         pro_msg_wrap->view_block_ptr, 
         false, 
         pro_msg_wrap->acc_balance_and_nonce_map_ptr,
-        pro_msg_wrap->zjc_host_ptr,
+        pro_msg_wrap->seth_host_ptr,
         false);
 #ifndef NDEBUG
     SETH_DEBUG("pool: %d, add view block hash: %s, status: %d, view: %u_%u_%lu, tx size: %u, propose_debug: %s",

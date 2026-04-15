@@ -41,14 +41,14 @@ public:
     virtual int HandleTx(
             uint32_t tx_index,
             view_block::protobuf::ViewBlockItem& view_block,
-            zjcvm::ZjchainHost& zjc_host,
+            sethvm::SethhainHost& seth_host,
             hotstuff::BalanceAndNonceMap& acc_balance_map,
             block::protobuf::BlockTx& block_tx) {
         uint64_t to_balance = 0;
         uint64_t to_nonce = 0;
         auto& unique_hash = tx_info->key();
         if (GetTempAccountBalance(
-                zjc_host, 
+                seth_host, 
                 block_tx.to(), 
                 acc_balance_map, 
                 &to_balance, 
@@ -58,7 +58,7 @@ public:
         }
 
         std::string val;
-        if (zjc_host.GetKeyValue(block_tx.to(), unique_hash, &val) == zjcvm::kZjcvmSuccess) {
+        if (seth_host.GetKeyValue(block_tx.to(), unique_hash, &val) == sethvm::kSethvmSuccess) {
             SETH_INFO("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
             return consensus::kConsensusError;
         }
@@ -76,12 +76,12 @@ public:
         }
 
         elect_statistic.set_nonce(block_tx.nonce());
-        InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
+        InitHost(seth_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
         block::protobuf::TxHashStatus tx_hash_status;
         tx_hash_status.set_status(block_tx.status());
         auto status_val = tx_hash_status.SerializeAsString();
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
-        zjc_host.SaveKeyValue(block_tx.to(), unique_hash, tx_info->value());
+        seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+        seth_host.SaveKeyValue(block_tx.to(), unique_hash, tx_info->value());
         block_tx.set_unique_hash(unique_hash);
         SETH_WARN("success call statistic tx pool: %d, view: %lu, "
             "to_nonce: %lu. tx nonce: %lu, to: %s, unique hash: %s", 
@@ -108,7 +108,7 @@ public:
             statistic_info->set_max_height(elect_statistic.height_info().heights(i).max_height());
         }
 
-        prefix_db_->SaveLatestPoolStatisticTag(elect_statistic.sharding_id(), pool_st_info, zjc_host.db_batch_);
+        prefix_db_->SaveLatestPoolStatisticTag(elect_statistic.sharding_id(), pool_st_info, seth_host.db_batch_);
         *view_block.mutable_block_info()->mutable_elect_statistic() = elect_statistic;
         *view_block.mutable_block_info()->mutable_pool_st_info() = pool_st_info;
         view_block.mutable_block_info()->add_unique_hashs(block_tx.unique_hash());

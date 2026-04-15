@@ -18,9 +18,9 @@ namespace block {
     class AccountManager;
 };
 
-namespace zjcvm {
+namespace sethvm {
 
-class ZjchainHost;
+class SethhainHost;
 class Execution {
 public:
     static Execution* Instance();
@@ -35,7 +35,7 @@ public:
         uint64_t max_gas,
         uint32_t depth,
         uint32_t call_mode,
-        ZjchainHost& host,
+        SethhainHost& host,
         evmc::Result* res);
     bool IsAddressExists(const std::string& addr);
     bool AddressWarm(const evmc::address& addr);
@@ -68,7 +68,7 @@ private:
     DISALLOW_COPY_AND_ASSIGN(Execution);
 };
 
-}  // namespace zjcvm
+}  // namespace sethvm
 
 }  //namespace seth
 

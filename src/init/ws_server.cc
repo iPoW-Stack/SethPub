@@ -87,7 +87,7 @@
 // void WsServer::GetAllTxs() {
 //     uint32_t got_count = 0;
 //     do {
-//         std::string cmd = "select  \"from\", to, amount, balance, height, to_add, timestamp, status, type from zjc_ck_transaction_table where shard_id = 3 and type != 8 and balance > 0 and timestamp > " + std::to_string(latest_timestamp_) + " limit 1000;";
+//         std::string cmd = "select  \"from\", to, amount, balance, height, to_add, timestamp, status, type from seth_ck_transaction_table where shard_id = 3 and type != 8 and balance > 0 and timestamp > " + std::to_string(latest_timestamp_) + " limit 1000;";
 //         uint32_t all_transactions = 0;
 //         try {
 //             clickhouse::Client ck_client0(clickhouse::ClientOptions().
@@ -136,7 +136,7 @@
 // }
 
 // void WsServer::GetTxs(ws::protobuf::WsMessage& ws_tx_res) {
-//     std::string cmd = "select  \"from\", to, amount, balance, height, to_add, timestamp, status, type from zjc_ck_transaction_table where shard_id = 3 and type != 8 and balance > 0 and timestamp > " + std::to_string(latest_timestamp_) + " limit 1000;";
+//     std::string cmd = "select  \"from\", to, amount, balance, height, to_add, timestamp, status, type from seth_ck_transaction_table where shard_id = 3 and type != 8 and balance > 0 and timestamp > " + std::to_string(latest_timestamp_) + " limit 1000;";
 //     uint32_t all_transactions = 0;
 //     try {
 //         clickhouse::Client ck_client0(clickhouse::ClientOptions().
@@ -188,7 +188,7 @@
 // }
 
 // void WsServer::GetPrefund(ws::protobuf::WsMessage& ws_tx_res) {
-//     std::string cmd = "select user, prefund, height from zjc_ck_prefund_table where contract = '" + 
+//     std::string cmd = "select user, prefund, height from seth_ck_prefund_table where contract = '" + 
 //         c2c_contract_addr() + 
 //         "' and height > " + std::to_string(latest_prefund_height_) + " limit 1000;";
 //     try {
@@ -240,7 +240,7 @@
 //     uint32_t got_count = 0;
 //     int status = 0;
 //     do {
-//         std::string cmd = "select seller, buyer, amount, receivable, all, now, mchecked, schecked, reported, orderId, height from zjc_ck_c2c_table where contract='" + 
+//         std::string cmd = "select seller, buyer, amount, receivable, all, now, mchecked, schecked, reported, orderId, height from seth_ck_c2c_table where contract='" + 
 //             c2c_contract_addr() + "' and height > " + std::to_string(max_c2c_height_) +  " order by height asc limit 1000;";
 //         uint32_t all_transactions = 0;
 //         SETH_INFO("run cmd: %s, get count: %d", cmd.c_str(), 0);
@@ -462,7 +462,7 @@
 // }
 
 // void WsServer::GetC2cs(ws::protobuf::WsMessage& ws_tx_res) {
-//     std::string cmd = "select seller, buyer, amount, receivable, all, now, mchecked, schecked, reported, orderId, height from zjc_ck_c2c_table where contract='" + 
+//     std::string cmd = "select seller, buyer, amount, receivable, all, now, mchecked, schecked, reported, orderId, height from seth_ck_c2c_table where contract='" + 
 //         c2c_contract_addr() + "' and height > " + std::to_string(max_c2c_height_) +  " limit 1000;";
 //     uint32_t all_transactions = 0;
 //     SETH_DEBUG("get c2c run cmd: %s", cmd.c_str());
@@ -609,7 +609,7 @@
 // void WsServer::GetAllBalance() {
 //     while (true) {
 //         int32_t get_count = 0;
-//         std::string cmd = "select id, balance from zjc_ck_account_table limit 10000;";
+//         std::string cmd = "select id, balance from seth_ck_account_table limit 10000;";
 //         uint32_t all_transactions = 0;
 //         try {
 //             clickhouse::Client ck_client0(clickhouse::ClientOptions().

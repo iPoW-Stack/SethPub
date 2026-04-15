@@ -10,7 +10,7 @@ target_link_libraries(bls_test PRIVATE bls network gtest gtest_main gmock gmock_
     init
     consensus
     sync
-    zjcvm
+    sethvm
     block
     vss
     ck

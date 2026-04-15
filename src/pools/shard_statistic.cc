@@ -8,9 +8,9 @@
 #include "network/network_utils.h"
 #include "protos/pools.pb.h"
 #include "pools/tx_pool_manager.h"
-#include "zjcvm/execution.h"
-#include "zjcvm/zjc_host.h"
-#include "zjcvm/zjcvm_utils.h"
+#include "sethvm/execution.h"
+#include "sethvm/seth_host.h"
+#include "sethvm/sethvm_utils.h"
 #include <bls/bls_utils.h>
 #include <protos/elect.pb.h>
 #include <protos/tx_storage_key.h>
