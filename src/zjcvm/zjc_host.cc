@@ -200,7 +200,11 @@ evmc_storage_status ZjchainHost::set_storage(
 
     auto& old = it->second.storage[key];
     if (!old.dirty) {
-        gas_more_ += (sizeof(addr.bytes) + sizeof(key.bytes) + sizeof(value.bytes)) * consensus::kKeyValueStorageEachBytes;
+        // New slot write (zero → non-zero): 20000 gas (EIP-2200)
+        gas_more_ += consensus::kSstoreNewSlotGas;
+    } else {
+        // Dirty slot update (non-zero → non-zero): 2900 gas (EIP-2200)
+        gas_more_ += consensus::kSstoreDirtySlotGas;
     }
 
     old.value = value;
@@ -619,11 +623,16 @@ int ZjchainHost::SaveKeyValue(
 
     auto& old = it->second.str_storage[key];
     if (old.dirty) {
+        // Update existing slot: charge for the incremental slots added (EIP-2200 dirty rate)
         if (val.size() > old.str_val.size()) {
-            gas_more_ += (val.size() - old.str_val.size()) * consensus::kKeyValueStorageEachBytes;
+            size_t extra = val.size() - old.str_val.size();
+            uint64_t slots = (static_cast<uint64_t>(extra) + consensus::kStorageSlotBytes - 1)
+                             / consensus::kStorageSlotBytes;
+            gas_more_ += slots * consensus::kSstoreDirtySlotGas;
         }
     } else {
-        gas_more_ += (val.size() + key.size() + sizeof(addr.bytes)) * consensus::kKeyValueStorageEachBytes;
+        // New write: charge for all key+value bytes rounded up to 32-byte slots
+        gas_more_ += consensus::CalcKvStorageGas(key.size() + sizeof(addr.bytes), val.size(), true);
     }
 
     old.dirty = true;

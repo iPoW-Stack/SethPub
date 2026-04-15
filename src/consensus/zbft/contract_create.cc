@@ -23,7 +23,9 @@ int ContractUserCreateCall::HandleTx(
     int balance_status = GetTempAccountBalance(pre_zjc_host, from, acc_balance_map, &from_balance, &from_nonce);
     SETH_DEBUG("contract user call create called: %s, balance: %lu", 
         common::Encode::HexEncode(from).c_str(), from_balance);
-    uint64_t gas_used = consensus::kCreateContractDefaultUseGas;
+    // Intrinsic gas: base (53000) + bytecode calldata bytes (EIP-2028)
+    uint64_t gas_used = consensus::kCreateContractDefaultUseGas
+                        + consensus::CalcCalldataGas(block_tx.contract_code());
     do {
         if (balance_status != kConsensusSuccess) {
             block_tx.set_status(balance_status);
@@ -110,8 +112,8 @@ int ContractUserCreateCall::HandleTx(
         }
 
         if (tmp_from_balance > gas_used * block_tx.gas_price()) {
-            gas_used += (tx_info->key().size() + tx_info->value().size()) *
-                consensus::kKeyValueStorageEachBytes;
+            gas_used += consensus::CalcKvStorageGas(
+                tx_info->key().size(), tx_info->value().size(), true);
             SETH_DEBUG("create contract key: %s, value: %s", 
                 tx_info->key().c_str(), 
                 tx_info->value().c_str());

@@ -1143,18 +1143,16 @@ int32_t TxPoolManager::HandleCreateContractTx(const transport::MessagePtr& msg_p
         return transport::kRequestInvalid;
     }
 
-    uint64_t default_gas = consensus::kCallContractDefaultUseGas +
-        tx_msg.value().size() * consensus::kKeyValueStorageEachBytes;
+    uint64_t default_gas = consensus::kCallContractDefaultUseGas
+        + consensus::CalcKvStorageGas(0, tx_msg.value().size(), true);
     if (tx_msg.step() == pools::protobuf::kContractCreate) {
         if (common::IsContractBytescodeValid(tx_msg.contract_code()) != common::ValidationStatus::SUCCESS) {
             return consensus::kConsensusContractBytesCodeError;
         }
     } else {
         // all shards will save the library.
-        default_gas = consensus::kCreateLibraryDefaultUseGas +
-            network::kConsensusWaitingShardOffset *
-            (tx_msg.value().size() + tx_msg.key().size()) *
-            consensus::kKeyValueStorageEachBytes;
+        default_gas = consensus::kCreateLibraryDefaultUseGas
+            + consensus::CalcKvStorageGas(tx_msg.key().size(), tx_msg.value().size(), true);
     }
 
     if (!UserTxValid(msg_ptr)) {

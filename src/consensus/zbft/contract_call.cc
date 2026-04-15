@@ -34,7 +34,9 @@ int ContractCall::HandleTx(
     int64_t new_contract_balance = static_cast<int64_t>(src_to_balance);
     uint64_t test_from_balance = from_balance;
     bool check_valid = false;
-    auto gas_used = kCallContractDefaultUseGas;
+    // Intrinsic gas: base (21000) + calldata bytes (EIP-2028: 16 per non-zero, 4 per zero byte)
+    auto gas_used = kCallContractDefaultUseGas
+                    + CalcCalldataGas(block_tx.contract_input());
     int64_t contract_balance_add = 0;
     auto gas_limit = block_tx.gas_limit();
     zjcvm::ZjchainHost zjc_host;
@@ -48,7 +50,7 @@ int ContractCall::HandleTx(
             break;
         }
 
-        if (from_balance <= kCallContractDefaultUseGas * block_tx.gas_price() + block_tx.amount()) {
+        if (from_balance <= gas_used * block_tx.gas_price() + block_tx.amount()) {
             block_tx.set_status(kConsensusAccountBalanceError);
             // assert(false);
             break;
@@ -124,8 +126,8 @@ int ContractCall::HandleTx(
 
         if (from_balance > gas_used * block_tx.gas_price()) {
             from_balance -= gas_used * block_tx.gas_price();
-            gas_used += (tx_info->key().size() + tx_info->value().size()) *
-                consensus::kKeyValueStorageEachBytes;
+            gas_used += consensus::CalcKvStorageGas(
+                tx_info->key().size(), tx_info->value().size(), true);
             if (gas_limit < gas_used) {
                 block_tx.set_status(consensus::kConsensusUserSetGasLimitError);
                 SETH_DEBUG("1 balance error: %lu, %lu, %lu",

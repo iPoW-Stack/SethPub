@@ -36,7 +36,8 @@ int JoinElectTxItem::HandleTx(
     }
 
     bls::protobuf::JoinElectInfo join_info;
-    auto store_gas = (tx_info->key().size() + tx_info->value().size()) * consensus::kKeyValueStorageEachBytes;
+    auto store_gas = consensus::CalcKvStorageGas(
+        tx_info->key().size(), tx_info->value().size(), true);
     do {
         gas_used = consensus::kJoinElectGas;
         if (block_tx.gas_limit() < (gas_used + store_gas)) {
