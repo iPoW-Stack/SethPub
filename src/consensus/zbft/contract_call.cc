@@ -115,9 +115,10 @@ int ContractCall::HandleTx(
                     common::Encode::HexEncode(block_tx.contract_input()).c_str());
             }
 
-            gas_used += gas_limit - evmc_res.gas_left;
             if (evmc_res.gas_left > (int64_t)gas_limit) {
                 gas_used = gas_limit;
+            } else {
+                gas_used += gas_limit - evmc_res.gas_left;
             }
         }
 
