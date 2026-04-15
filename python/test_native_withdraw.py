@@ -10,7 +10,7 @@ import base64
 import subprocess
 import requests
 from decimal import Decimal
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "seth"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "clipy"))
 
 import eth_abi
 from Crypto.Hash import keccak
@@ -19,6 +19,7 @@ from seth_sdk import SethClient, StepType
 # ==================== Config ====================
 HOST = "127.0.0.1"
 PORT = 23001
+USE_HTTPS = True  # server uses HTTPS
 PK = "4b6525236a2029ab54e2c6162c483133c1af7d38bd960f85b1f485c31e696b7b"
 GUARDIAN_API_BASE = os.getenv("GUARDIAN_API_BASE", "http://127.0.0.1:7072").rstrip("/")
 SETH_CHAIN_ID = 10001
@@ -102,7 +103,7 @@ def main():
             amount_str = sys.argv[i + 1]
 
     seth_amount = int(Decimal(amount_str) * 10**8)
-    cli = SethClient(HOST, PORT)
+    cli = SethClient(HOST, PORT, use_https=USE_HTTPS)
     sender = cli.get_address(PK)
 
     print("=" * 55)

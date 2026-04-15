@@ -543,8 +543,8 @@ class SethContract:
         return self
 
 class SethWeb3Mock:
-    def __init__(self, host: str, port: int):
-        self.client = SethClient(host, port)
+    def __init__(self, host: str, port: int, use_https: bool = False):
+        self.client = SethClient(host, port, use_https=use_https)
         self.seth = self
 
     def contract(self, address: str = None, abi: list = None, bytecode: str = None, sender_address: str = ""):
