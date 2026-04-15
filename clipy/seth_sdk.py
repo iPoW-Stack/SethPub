@@ -586,13 +586,14 @@ class SethWeb3Mock:
 # --- 4. Base Client ---
 
 class SethClient:
-    def __init__(self, host, port):
-        self.base_url = f"https://{host}:{port}"
+    def __init__(self, host, port, use_https=False):
+        scheme = "https" if use_https else "http"
+        self.base_url = f"{scheme}://{host}:{port}"
         self.tx_url = f"{self.base_url}/transaction"
         self.query_url = f"{self.base_url}/query_account"
         self.receipt_url = f"{self.base_url}/transaction_receipt"
         self.query_contract_url = f"{self.base_url}/abi_query_contract"
-        self.oqs_url = f"https://{host}:{port}/oqs_transaction"
+        self.oqs_url = f"{scheme}://{host}:{port}/oqs_transaction"
         self.gmssl_url = f"{self.base_url}/gm_transaction"
         # Disable SSL verification for self-signed certificates
         self.verify_ssl = False
