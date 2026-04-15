@@ -37,7 +37,9 @@ public:
         zjc_host.view_block_chain_ = pre_zjc_host.view_block_chain_;
         zjc_host.pre_zjc_host_ = &pre_zjc_host;
         do  {
-            gas_used = consensus::kCreateLibraryDefaultUseGas;
+            // Intrinsic gas: base (53000) + bytecode calldata bytes (EIP-2028)
+            gas_used = consensus::kCreateLibraryDefaultUseGas
+                       + consensus::CalcCalldataGas(block_tx.contract_code());
             if (balance_status != kConsensusSuccess) {
                 block_tx.set_status(balance_status);
                 // will never happen
@@ -53,9 +55,8 @@ public:
             }
 
             if (tx_info->has_key()) {
-                gas_used += network::kConsensusWaitingShardOffset * (
-                    tx_info->key().size() + tx_info->value().size()) *
-                    consensus::kKeyValueStorageEachBytes;
+                gas_used += consensus::CalcKvStorageGas(
+                    tx_info->key().size(), tx_info->value().size(), true);
                 zjc_host.SaveKeyValue(from, tx_info->key(), tx_info->value());
             }
 

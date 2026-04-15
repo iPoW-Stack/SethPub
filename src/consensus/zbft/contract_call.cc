@@ -34,7 +34,9 @@ int ContractCall::HandleTx(
     int64_t new_contract_balance = static_cast<int64_t>(src_to_balance);
     uint64_t test_from_balance = from_balance;
     bool check_valid = false;
-    auto gas_used = kCallContractDefaultUseGas;
+    // Intrinsic gas: base (21000) + calldata bytes (EIP-2028: 16 per non-zero, 4 per zero byte)
+    auto gas_used = kCallContractDefaultUseGas
+                    + CalcCalldataGas(block_tx.contract_input());
     int64_t contract_balance_add = 0;
     auto gas_limit = block_tx.gas_limit();
     zjcvm::ZjchainHost zjc_host;
@@ -48,7 +50,7 @@ int ContractCall::HandleTx(
             break;
         }
 
-        if (from_balance <= kCallContractDefaultUseGas * block_tx.gas_price() + block_tx.amount()) {
+        if (from_balance <= gas_used * block_tx.gas_price() + block_tx.amount()) {
             block_tx.set_status(kConsensusAccountBalanceError);
             // assert(false);
             break;
@@ -115,17 +117,17 @@ int ContractCall::HandleTx(
                     common::Encode::HexEncode(block_tx.contract_input()).c_str());
             }
 
-            gas_used += gas_limit - evmc_res.gas_left;
             if (evmc_res.gas_left > (int64_t)gas_limit) {
                 gas_used = gas_limit;
+            } else {
+                gas_used += gas_limit - evmc_res.gas_left;
             }
         }
-        
 
         if (from_balance > gas_used * block_tx.gas_price()) {
             from_balance -= gas_used * block_tx.gas_price();
-            gas_used += (tx_info->key().size() + tx_info->value().size()) *
-                consensus::kKeyValueStorageEachBytes;
+            gas_used += consensus::CalcKvStorageGas(
+                tx_info->key().size(), tx_info->value().size(), true);
             if (gas_limit < gas_used) {
                 block_tx.set_status(consensus::kConsensusUserSetGasLimitError);
                 SETH_DEBUG("1 balance error: %lu, %lu, %lu",
@@ -511,7 +513,7 @@ int ContractCall::ContractExcute(
         SETH_ERROR("ContractExcute failed: %d, bytes: %s, input: %s",
             exec_res, common::Encode::HexEncode(contract_info->bytes_code()).c_str(),
             common::Encode::HexEncode(tx.contract_input()).c_str());
-        assert(false);
+        // assert(false);
         return kConsensusError;
     }
 

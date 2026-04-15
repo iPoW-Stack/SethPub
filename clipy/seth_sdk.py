@@ -636,25 +636,42 @@ class SethClient:
         if input_hex: data["input"] = input_hex
         if prefund: data["prefund"] = str(prefund)
         
-        requests.post(self.tx_url, data=data, verify=self.verify_ssl)
+        resp = requests.post(self.tx_url, data=data, verify=self.verify_ssl)
+        print(f"[send_tx] status={resp.status_code} body={resp.text[:200]}")
         return txh.hex()
 
-    def wait_for_receipt(self, tx_hash: str, abi: list = None, function_name: str = None) -> dict:
-        """Polls for the transaction receipt and automatically calls decode_receipt once retrieved."""
-        while True:
+    def wait_for_receipt(self, tx_hash: str, abi: list = None, function_name: str = None,
+                         timeout: int = 120, not_exists_retries: int = 10) -> dict:
+        """Polls for the transaction receipt. Returns None on timeout or persistent kNotExists."""
+        deadline = time.time() + timeout
+        not_exists_count = 0
+        while time.time() < deadline:
             try:
                 resp = requests.post(self.receipt_url, data={"tx_hash": tx_hash}, verify=self.verify_ssl).json()
                 print(resp)
-                # Status codes 10001 (Pending) or 10003 (Accepted) indicate processing is still in progress
-                if resp.get("status") not in [10001, 10003]:
-                    # Receipt found! Decode if ABI and function name are provided
-                    if abi and function_name:
-                        return self.decode_receipt(resp, abi, function_name)
-                    return resp
+                status = resp.get("status")
+                # kNotExists: tx not yet in pool — retry a limited number of times
+                if status == 100010:
+                    not_exists_count += 1
+                    if not_exists_count >= not_exists_retries:
+                        print(f"[wait_receipt] tx {tx_hash} not found after {not_exists_retries} retries, giving up")
+                        return resp
+                    time.sleep(5)
+                    continue
+                # kMessageHandle / kTxAccept: still pending
+                if status in [10001, 10003]:
+                    not_exists_count = 0  # reset — tx is in pool now
+                    time.sleep(5)
+                    continue
+                # Any other status = final result
+                if abi and function_name:
+                    return self.decode_receipt(resp, abi, function_name)
+                return resp
             except Exception as ex:
                 print(f"Receipt poll error: {ex}")
-                
-            time.sleep(5)  # Poll once every 5 seconds
+                time.sleep(5)
+        print(f"[wait_receipt] timeout after {timeout}s for tx {tx_hash}")
+        return None
 
     def decode_receipt(self, receipt: dict, abi: list, function_name: str = None) -> dict:
         status = receipt.get("status")

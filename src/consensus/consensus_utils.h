@@ -110,13 +110,46 @@ static const uint32_t kSyncToLeaderTxCount = common::kMaxTxCount; // consensus c
 static const uint32_t kBitcountWithItemCount = 20u;  // m/n, k = 8, error ratio = 0.000009
 static const uint32_t kHashCount = 6u;  // k
 static const uint32_t kDirectTxCount = kBitcountWithItemCount * 8 / 32;
-// gas consume
-static const uint64_t kTransferGas = 1000llu;
-static const uint64_t kJoinElectGas = 10000llu;
-static const uint64_t kCallContractDefaultUseGas = 1000llu;
-static const uint64_t kCreateLibraryDefaultUseGas = 100000llu;
-static const uint64_t kCreateContractDefaultUseGas = 100000llu;
+// gas consume — aligned with Ethereum Yellow Paper / EIP-2028
+// Base transaction gas (EIP-2028): 21000
+static const uint64_t kTransferGas = 21000llu;
+// Join-elect is a special internal tx; keep a reasonable overhead
+static const uint64_t kJoinElectGas = 21000llu;
+// Contract call intrinsic gas (same as a plain tx): 21000
+static const uint64_t kCallContractDefaultUseGas = 21000llu;
+// Library / contract creation intrinsic gas (CREATE opcode base): 53000
+static const uint64_t kCreateLibraryDefaultUseGas = 53000llu;
+static const uint64_t kCreateContractDefaultUseGas = 53000llu;
+// Calldata gas per byte: non-zero = 16, zero = 4 (EIP-2028)
+static const uint64_t kCalldataNonZeroByteGas = 16llu;
+static const uint64_t kCalldataZeroByteGas = 4llu;
+// Key-value storage gas — aligned with ETH EIP-2200 SSTORE pricing.
+// New slot write (zero → non-zero): 20000 gas per 32-byte slot.
+// Dirty slot update (non-zero → non-zero): 2900 gas per 32-byte slot.
+static const uint64_t kSstoreNewSlotGas    = 20000llu;
+static const uint64_t kSstoreDirtySlotGas  = 2900llu;
+static const uint64_t kStorageSlotBytes    = 32llu;
+// Legacy per-byte constant kept for any remaining callers during migration.
 static const uint64_t kKeyValueStorageEachBytes = 10llu;
+
+// Calculate KV storage gas: round byte length up to 32-byte slots, then
+// apply SSTORE pricing.  Use is_new=true for first write, false for update.
+inline static uint64_t CalcKvStorageGas(size_t key_bytes, size_t value_bytes,
+                                         bool is_new = true) {
+    size_t total = key_bytes + value_bytes;
+    uint64_t slots = (static_cast<uint64_t>(total) + kStorageSlotBytes - 1) / kStorageSlotBytes;
+    if (slots == 0) slots = 1;
+    return slots * (is_new ? kSstoreNewSlotGas : kSstoreDirtySlotGas);
+}
+
+// Calculate calldata gas cost following EIP-2028 rules.
+inline static uint64_t CalcCalldataGas(const std::string& data) {
+    uint64_t gas = 0;
+    for (unsigned char c : data) {
+        gas += (c == 0) ? kCalldataZeroByteGas : kCalldataNonZeroByteGas;
+    }
+    return gas;
+}
 
 inline static int32_t EvmcStatusToZbftStatus(evmc_status_code status_code) {
     switch (status_code) {

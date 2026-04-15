@@ -39,8 +39,8 @@ int ContractPrefund::HandleTx(
             break;
         }
         
-        gas_used += (tx_info->key().size() + tx_info->value().size()) *
-            consensus::kKeyValueStorageEachBytes;
+        gas_used += consensus::CalcKvStorageGas(
+            tx_info->key().size(), tx_info->value().size(), true);
         if (from_balance < gas_used  * block_tx.gas_price()) {
             block_tx.set_status(consensus::kConsensusUserSetGasLimitError);
             SETH_DEBUG("balance error: %lu, %lu, %lu",

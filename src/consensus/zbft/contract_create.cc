@@ -23,7 +23,9 @@ int ContractUserCreateCall::HandleTx(
     int balance_status = GetTempAccountBalance(pre_zjc_host, from, acc_balance_map, &from_balance, &from_nonce);
     SETH_DEBUG("contract user call create called: %s, balance: %lu", 
         common::Encode::HexEncode(from).c_str(), from_balance);
-    uint64_t gas_used = consensus::kTransferGas;
+    // Intrinsic gas: base (53000) + bytecode calldata bytes (EIP-2028)
+    uint64_t gas_used = consensus::kCreateContractDefaultUseGas
+                        + consensus::CalcCalldataGas(block_tx.contract_code());
     do {
         if (balance_status != kConsensusSuccess) {
             block_tx.set_status(balance_status);
@@ -91,7 +93,12 @@ int ContractUserCreateCall::HandleTx(
             block_tx.amount());
         check_valid = true;
         int call_res = CreateContractCallExcute(zjc_host, block_tx, &evmc_res);
-        gas_used = block_tx.gas_limit() - evmc_res.gas_left;
+        if (evmc_res.gas_left > (int64_t)block_tx.gas_limit()) {
+            gas_used = block_tx.gas_limit();
+        } else {
+            gas_used += block_tx.gas_limit() - evmc_res.gas_left;
+        }
+
         if (call_res != kConsensusSuccess || evmc_res.status_code != EVMC_SUCCESS) {
             block_tx.set_status(EvmcStatusToZbftStatus(evmc_res.status_code));
             SETH_DEBUG("create contract: %s failed, call_res: %d, "
@@ -104,15 +111,9 @@ int ContractUserCreateCall::HandleTx(
                 tmp_from_balance);
         }
 
-        if (evmc_res.gas_left > (int64_t)block_tx.gas_limit()) {
-            gas_used = block_tx.gas_limit();
-        }
-
         if (tmp_from_balance > gas_used * block_tx.gas_price()) {
-            tmp_from_balance -= gas_used * block_tx.gas_price();
-            gas_used = 0;
-            gas_used += (tx_info->key().size() + tx_info->value().size()) *
-                consensus::kKeyValueStorageEachBytes;
+            gas_used += consensus::CalcKvStorageGas(
+                tx_info->key().size(), tx_info->value().size(), true);
             SETH_DEBUG("create contract key: %s, value: %s", 
                 tx_info->key().c_str(), 
                 tx_info->value().c_str());
