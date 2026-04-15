@@ -120,7 +120,6 @@ int ContractCall::HandleTx(
                 gas_used = gas_limit;
             }
         }
-        
 
         if (from_balance > gas_used * block_tx.gas_price()) {
             from_balance -= gas_used * block_tx.gas_price();
@@ -511,7 +510,7 @@ int ContractCall::ContractExcute(
         SETH_ERROR("ContractExcute failed: %d, bytes: %s, input: %s",
             exec_res, common::Encode::HexEncode(contract_info->bytes_code()).c_str(),
             common::Encode::HexEncode(tx.contract_input()).c_str());
-        assert(false);
+        // assert(false);
         return kConsensusError;
     }
 
