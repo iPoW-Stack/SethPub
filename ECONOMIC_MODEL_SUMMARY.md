@@ -10,33 +10,44 @@
    - 质押平滑算法说明
    - 与主流公链深度对比
 
-2. **FTS_CONSENSUS_GAP_MECHANISM.md** (12KB)
+2. **FTS_NAMING_PHILOSOPHY.md** (新增)
+   - FTS = Follow The Satoshi（追随中本聪算法）
+   - 命名含义和设计哲学
+   - 与中本聪思想的对比
+   - FTS 的创新之处
+
+3. **FTS_CONSENSUS_GAP_MECHANISM.md** (12KB)
    - 滞留罚分机制详解
    - Consensus Gap 计算逻辑
    - 防止节点长期垄断的设计
    - 与淘汰机制的配合
 
-3. **FTS_RANDOMNESS_AND_BLS.md** (12KB)
+4. **FTS_RANDOMNESS_AND_BLS.md** (12KB)
    - BLS 阈值签名随机性
    - 中本聪随机性思想
    - 防止选举操纵机制
 
-4. **FTS_VS_POS_COMPARISON.md** (7.3KB)
+5. **FTS_COMPLETE_ANALYSIS.md** (15KB)
+   - FTS 共识机制完整分析
+   - 工作流程和设计优势
+   - 与其他共识机制的对比
+
+6. **FTS_VS_POS_COMPARISON.md** (7.3KB)
    - FTS vs 传统 PoS 快速对比
    - 具体场景案例分析
    - 实际收益计算
 
-5. **DYNAMIC_SHARDING_REWARD_DESIGN.md**
+7. **DYNAMIC_SHARDING_REWARD_DESIGN.md**
    - 动态分片激励设计
    - 世代权重系统
    - 分片扩展路径
 
-6. **EPOCH_PERIOD_UPDATE.md**
+8. **EPOCH_PERIOD_UPDATE.md**
    - Epoch 周期调整说明
    - 减半周期计算
    - 通胀率分析
 
-7. **EPOCH_COMPARISON_TABLE.md**
+9. **EPOCH_COMPARISON_TABLE.md**
    - 新旧配置详细对比
    - 长期经济预测
 
@@ -47,11 +58,13 @@
 ```
 Seth = HotStuff BFT + FTS 多维度评分
 
-FTS = 19.5% PoS (质押)
+FTS = Follow The Satoshi（追随中本聪算法）
+    = 19.5% PoS (质押)
     + 19.5% PoL (地理证明)
     + 19.5% PoR (信用证明)
     + 19.5% PoW (工作证明)
     + 2% 滞留罚分 (防止垄断)
+    + BLS 阈值签名随机性（借鉴中本聪）
 ```
 
 ### 关键特性

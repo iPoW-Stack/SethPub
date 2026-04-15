@@ -2,7 +2,7 @@
 
 ## Implementation Overview
 
-Successfully integrated an Ethereum-like economic model into Seth blockchain's mining reward system. The new model introduces a more sustainable and fair reward mechanism while maintaining compatibility with the existing FTS (Fault Tolerance Score) distribution algorithm.
+Successfully integrated an Ethereum-like economic model into Seth blockchain's mining reward system. The new model introduces a more sustainable and fair reward mechanism while maintaining compatibility with the existing FTS (Follow The Satoshi) distribution algorithm.
 
 ## Core Changes
 

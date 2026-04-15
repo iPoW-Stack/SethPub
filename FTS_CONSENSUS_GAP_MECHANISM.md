@@ -2,7 +2,13 @@
 
 ## 概述
 
-Seth 区块链的 FTS（Fair Transaction Selection）共识算法中包含了一个创新的**滞留罚分机制**（Consensus Gap Penalty），用于防止节点长期占据选举位置，确保网络的公平性和去中心化。
+Seth 区块链的 FTS（Follow The Satoshi，追随中本聪算法）共识算法中包含了一个创新的**滞留罚分机制**（Consensus Gap Penalty），用于防止节点长期占据选举位置，确保网络的公平性和去中心化。
+
+**FTS 的命名含义**：
+- **Follow The Satoshi**：追随中本聪的设计哲学
+- 借鉴比特币的随机性和公平性思想
+- 通过多维度评分和 BLS 阈值签名随机性，防止系统被操纵
+- 实现真正的去中心化
 
 ## 核心思想
 

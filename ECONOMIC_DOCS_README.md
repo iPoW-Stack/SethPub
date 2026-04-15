@@ -2,11 +2,37 @@
 
 ## 📚 完整文档列表
 
-本项目包含 Seth 区块链经济模型的完整分析文档，共 **10 个主要文档**，总计 **90+ KB**。
+本项目包含 Seth 区块链经济模型的完整分析文档，共 **12 个主要文档**，总计 **100+ KB**。
 
 ### 🌟 核心文档（必读）
 
-#### 1. **SETH_HYBRID_CONSENSUS_ECONOMIC_MODEL.md** (17KB) ⭐⭐⭐⭐⭐
+#### 1. **FTS_NAMING_PHILOSOPHY.md** (新增) ⭐⭐⭐⭐⭐
+**FTS 命名与设计哲学，理解 Seth 的第一步！**
+
+**内容**：
+- FTS = Follow The Satoshi（追随中本聪算法）
+- 为什么叫 "Follow The Satoshi"
+- 与中本聪思想的对比
+- FTS 的创新之处
+- 设计哲学详解
+
+**适合**：
+- 所有人（必读）
+- 想理解 Seth 设计哲学的人
+- 对中本聪思想感兴趣的人
+
+**关键发现**：
+```
+FTS = Follow The Satoshi
+追随中本聪的随机性、公平性、去中心化思想
+通过 BLS 阈值签名实现随机性
+多维度评分实现公平性
+滞留罚分实现去中心化
+```
+
+---
+
+#### 2. **SETH_HYBRID_CONSENSUS_ECONOMIC_MODEL.md** (17KB) ⭐⭐⭐⭐⭐
 **最重要的文档！完整分析 Seth 的混合共识机制。**
 
 **内容**：
@@ -25,6 +51,7 @@
 **关键发现**：
 ```
 Seth 不是 PoS！
+FTS = Follow The Satoshi
 质押只占 19.5%，不是主导因素！
 奖励基于工作量，不是质押量！
 滞留罚分防止节点长期垄断！
@@ -32,7 +59,7 @@ Seth 不是 PoS！
 
 ---
 
-#### 2. **FTS_CONSENSUS_GAP_MECHANISM.md** (12KB) ⭐⭐⭐⭐⭐
+#### 3. **FTS_CONSENSUS_GAP_MECHANISM.md** (12KB) ⭐⭐⭐⭐⭐
 **滞留罚分机制详解，Seth 独特的防垄断设计。**
 
 **内容**：
@@ -56,7 +83,7 @@ Seth 不是 PoS！
 
 ---
 
-#### 3. **FTS_RANDOMNESS_AND_BLS.md** (12KB) ⭐⭐⭐⭐
+#### 4. **FTS_RANDOMNESS_AND_BLS.md** (12KB) ⭐⭐⭐⭐
 **BLS 阈值签名随机性机制，借鉴中本聪思想。**
 
 **内容**：
@@ -79,7 +106,7 @@ Seth 不是 PoS！
 
 ---
 
-#### 4. **FTS_VS_POS_COMPARISON.md** (7.3KB) ⭐⭐⭐⭐
+#### 5. **FTS_VS_POS_COMPARISON.md** (7.3KB) ⭐⭐⭐⭐
 **快速对比文档，适合快速了解 Seth 与传统 PoS 的区别。**
 
 **内容**：
@@ -104,7 +131,7 @@ Seth 不是 PoS！
 
 ### 📖 详细文档
 
-#### 5. **ECONOMIC_MODEL_SUMMARY.md** (6.9KB)
+#### 6. **ECONOMIC_MODEL_SUMMARY.md** (6.9KB)
 **总览文档，提供所有文档的索引和核心要点。**
 
 **内容**：
@@ -119,7 +146,7 @@ Seth 不是 PoS！
 
 ---
 
-#### 6. **DYNAMIC_SHARDING_REWARD_DESIGN.md**
+#### 7. **DYNAMIC_SHARDING_REWARD_DESIGN.md**
 **动态分片激励设计文档。**
 
 **内容**：
@@ -144,7 +171,7 @@ Gen 8: 43%
 
 ---
 
-#### 7. **ECONOMIC_MODEL_IMPLEMENTATION.md** (9.4KB)
+#### 8. **ECONOMIC_MODEL_IMPLEMENTATION.md** (9.4KB)
 **实现总结文档（中文）。**
 
 **内容**：
@@ -160,7 +187,7 @@ Gen 8: 43%
 
 ---
 
-#### 8. **ECONOMIC_MODEL_IMPLEMENTATION_EN.md** (10KB)
+#### 9. **ECONOMIC_MODEL_IMPLEMENTATION_EN.md** (10KB)
 **实现总结文档（英文）。**
 
 **内容**：
@@ -169,7 +196,7 @@ Gen 8: 43%
 
 ---
 
-#### 9. **ECONOMIC_MODEL_QUICK_REFERENCE.md** (7.5KB)
+#### 10. **ECONOMIC_MODEL_QUICK_REFERENCE.md** (7.5KB)
 **快速参考卡片。**
 
 **内容**：
@@ -188,7 +215,7 @@ Gen 8: 43%
 
 ### 📊 补充文档
 
-#### 10. **EPOCH_PERIOD_UPDATE.md**
+#### 11. **EPOCH_PERIOD_UPDATE.md**
 **Epoch 周期更新说明。**
 
 **内容**：
@@ -206,7 +233,7 @@ Epoch周期: 120s → 600s (×5)
 
 ---
 
-#### 11. **EPOCH_COMPARISON_TABLE.md**
+#### 12. **EPOCH_COMPARISON_TABLE.md**
 **新旧配置详细对比表。**
 
 **内容**：
@@ -223,11 +250,11 @@ Epoch周期: 120s → 600s (×5)
 ### 路径 1：快速了解（30分钟）
 
 ```
-1. ECONOMIC_MODEL_SUMMARY.md (5分钟)
+1. FTS_NAMING_PHILOSOPHY.md (10分钟)
    ↓
-2. FTS_VS_POS_COMPARISON.md (15分钟)
+2. ECONOMIC_MODEL_SUMMARY.md (5分钟)
    ↓
-3. FTS_CONSENSUS_GAP_MECHANISM.md (10分钟)
+3. FTS_VS_POS_COMPARISON.md (15分钟)
 ```
 
 **适合**：投资者、决策者、快速评估
@@ -237,19 +264,21 @@ Epoch周期: 120s → 600s (×5)
 ### 路径 2：深入理解（3小时）
 
 ```
-1. ECONOMIC_MODEL_SUMMARY.md (5分钟)
+1. FTS_NAMING_PHILOSOPHY.md (10分钟)
    ↓
-2. FTS_VS_POS_COMPARISON.md (15分钟)
+2. ECONOMIC_MODEL_SUMMARY.md (5分钟)
    ↓
-3. SETH_HYBRID_CONSENSUS_ECONOMIC_MODEL.md (60分钟)
+3. FTS_VS_POS_COMPARISON.md (15分钟)
    ↓
-4. FTS_CONSENSUS_GAP_MECHANISM.md (30分钟)
+4. SETH_HYBRID_CONSENSUS_ECONOMIC_MODEL.md (60分钟)
    ↓
-5. FTS_RANDOMNESS_AND_BLS.md (30分钟)
+5. FTS_CONSENSUS_GAP_MECHANISM.md (30分钟)
    ↓
-6. DYNAMIC_SHARDING_REWARD_DESIGN.md (30分钟)
+6. FTS_RANDOMNESS_AND_BLS.md (30分钟)
    ↓
-7. EPOCH_PERIOD_UPDATE.md (10分钟)
+7. DYNAMIC_SHARDING_REWARD_DESIGN.md (30分钟)
+   ↓
+8. EPOCH_PERIOD_UPDATE.md (10分钟)
 ```
 
 **适合**：研究者、技术爱好者、深度分析

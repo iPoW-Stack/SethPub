@@ -2,7 +2,13 @@
 
 ## 核心理念：FTS 多维度评分系统
 
-Seth **不是传统的 PoS（Proof of Stake）系统**，而是基于 **FTS (Fault Tolerance Score)** 的混合共识机制。质押（Stake）只是评分的一个维度，且经过平滑处理，**不占主导地位**。
+Seth **不是传统的 PoS（Proof of Stake）系统**，而是基于 **FTS (Follow The Satoshi，追随中本聪算法)** 的混合共识机制。质押（Stake）只是评分的一个维度，且经过平滑处理，**不占主导地位**。
+
+**FTS 的命名含义**：
+- **Follow The Satoshi**：追随中本聪的设计哲学
+- 借鉴比特币的随机性和公平性思想
+- 通过多维度评分和 BLS 阈值签名随机性，防止系统被操纵
+- 实现真正的去中心化和公平性
 
 ---
 
