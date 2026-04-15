@@ -109,8 +109,6 @@ int ContractUserCreateCall::HandleTx(
         }
 
         if (tmp_from_balance > gas_used * block_tx.gas_price()) {
-            tmp_from_balance -= gas_used * block_tx.gas_price();
-            gas_used = 0;
             gas_used += (tx_info->key().size() + tx_info->value().size()) *
                 consensus::kKeyValueStorageEachBytes;
             SETH_DEBUG("create contract key: %s, value: %s", 
