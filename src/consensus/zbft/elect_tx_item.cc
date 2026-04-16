@@ -1536,8 +1536,7 @@ void ElectTxItem::SmoothFtsValue(
                                      2 * blance_weight[i] +
                                      2 * epoch_weight[i] +
                                      2 * area_weight_smooth[i]) +
-                                     2 * gap_weight[i] /
-                                    10;
+                                     2 * gap_weight[i];
         fts_val_str += std::to_string(ip_weight[i]) + "," +
                        std::to_string(credit_weight[i]) + "," +
                        std::to_string(blance_weight[i]) + "," +
