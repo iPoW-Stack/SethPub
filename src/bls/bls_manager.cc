@@ -695,12 +695,16 @@ void BlsManager::HandleFinishSyncRequest(const transport::MessagePtr& msg_ptr) {
         return;
     }
 
-    // Get requester's address
-    std::string requester_id = header.from_dht_key();
-    if (requester_id.empty()) {
-        BLS_WARN("[HandleSyncReq] network %u: requester_id is empty", network_id);
+    // Get requester's member index from message
+    uint32_t requester_idx = bls_msg.index();
+    if (requester_idx >= n) {
+        BLS_WARN("[HandleSyncReq] network %u: invalid requester_idx %u >= %u",
+                 network_id, requester_idx, n);
         return;
     }
+
+    // Get requester's address
+    std::string requester_id = (*members)[requester_idx]->id;
 
     // Send finish messages for the requested missing nodes
     uint32_t sent_count = 0;
@@ -1211,7 +1215,6 @@ int BlsManager::CheckBlsConsensusInfo(const elect::protobuf::ElectBlock& ec_bloc
     }
 
     auto t = common::GetSignerCount(members->size());
-    BlsFinishItemPtr finish_item = iter->second;
     if (finish_item->max_finish_count < exchange_member_count) {
         BLS_INFO("network: %u, finish_item->max_finish_count < t[%u][%u]",
             ec_block.shard_network_id(),

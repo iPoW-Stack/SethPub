@@ -98,7 +98,9 @@ public:
         pk += libBLS::ThresholdUtils::fieldElementToString(common_pk.Y.c0) + ",";
         pk += libBLS::ThresholdUtils::fieldElementToString(common_pk.Y.c1);
         return pk;
-    }        
+    }
+
+    bool IsFinishPeriod();
 
 private:
     void HandleVerifyBroadcast(const transport::MessagePtr header);
@@ -153,26 +155,6 @@ private:
             0,
             (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 5)));
         if (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 5)) {
-            return true;
-        }
-
-        return false;
-    }
-
-    bool IsFinishPeriod() {
-#ifdef SETH_UNITTEST
-        return true;
-#endif
-        auto now_tm_us = common::TimeUtils::TimestampUs();
-        SETH_DEBUG("IsFinishPeriod begin_time_us_: %lu, now_tm_us: %lu, "
-            "kDkgPeriodUs: %lu, now_tm_us > (begin_time_us_ + kDkgPeriodUs * 5): %d, now_tm_us < (begin_time_us_ + kDkgPeriodUs * 10): %d",
-            begin_time_us_,
-            now_tm_us,
-            kDkgPeriodUs,
-            (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 5)),
-            (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 10)));
-        if (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 10) &&
-            now_tm_us >= (begin_time_us_ + kDkgPeriodUs * 5)) {
             return true;
         }
 

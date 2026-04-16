@@ -222,6 +222,26 @@ void BlsDkg::HandleBlsMessage(const transport::MessagePtr msg_ptr) try {
     BLS_ERROR("catch error: %s", e.what());
 }
 
+bool BlsDkg::IsFinishPeriod() {
+#ifdef SETH_UNITTEST
+    return true;
+#endif
+    auto now_tm_us = common::TimeUtils::TimestampUs();
+    SETH_DEBUG("IsFinishPeriod begin_time_us_: %lu, now_tm_us: %lu, "
+        "kDkgPeriodUs: %lu, now_tm_us > (begin_time_us_ + kDkgPeriodUs * 5): %d, now_tm_us < (begin_time_us_ + kDkgPeriodUs * 10): %d",
+        begin_time_us_,
+        now_tm_us,
+        kDkgPeriodUs,
+        (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 5)),
+        (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 10)));
+    if (now_tm_us < (begin_time_us_ + kDkgPeriodUs * 10) &&
+        now_tm_us >= (begin_time_us_ + kDkgPeriodUs * 5)) {
+        return true;
+    }
+
+    return false;
+}
+
 bool BlsDkg::IsSignValid(const transport::MessagePtr msg_ptr, std::string* content_to_hash) {
 #ifdef SETH_UNITTEST
     return true;
@@ -1095,11 +1115,10 @@ void BlsDkg::CreateContribution(uint32_t valid_n, uint32_t valid_t) {
 
     std::vector<libff::alt_bn128_Fr> polynomial(valid_t);
     // int32_t change_idx = common::Random::RandomInt32() % valid_t;
-    libff::alt_bn128_G2 old_g2 = libff::alt_bn128_G2::zero();
     for (uint32_t i = 0; i < valid_t; ++i) {
         polynomial[i] = libff::alt_bn128_Fr(common::Encode::HexEncode(local_poly.polynomial(i)).c_str());
         // if (change_idx == (int32_t)i) {
-        //     old_g2 = polynomial[i] * libff::alt_bn128_G2::one();
+        //     libff::alt_bn128_G2 old_g2 = polynomial[i] * libff::alt_bn128_G2::one();
         //     polynomial[i] = libff::alt_bn128_Fr::random_element();
         //     while (polynomial[i] == libff::alt_bn128_Fr::zero()) {
         //         polynomial[i] = libff::alt_bn128_Fr::random_element();
