@@ -111,10 +111,10 @@ public:
         return security_;
     }
     void PoolTimerMessage();
-    void SyncFinishMessageToNeighbors(uint32_t network_id);
 
 private:
     void HandleFinish(const transport::MessagePtr& msg_ptr);
+    void HandleFinishSyncRequest(const transport::MessagePtr& msg_ptr);
     void BatchVerifyFinishItems();
     void CheckAggSignValid(
         uint32_t t,
