@@ -5,7 +5,7 @@
 #include "pools/tx_utils.h"
 #include "pools/tx_pool_manager.h"
 #include "protos/prefix_db.h"
-#include "zjcvm/seth_host.h"
+#include "sethvm/seth_host.h"
 
 namespace seth {
 

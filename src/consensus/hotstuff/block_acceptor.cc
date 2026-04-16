@@ -26,7 +26,7 @@
 #include "protos/zbft.pb.h"
 #include "security/gmssl/gmssl.h"
 #include "security/oqs/oqs.h"
-#include "zjcvm/sethvm_utils.h"
+#include "sethvm/sethvm_utils.h"
 
 namespace seth {
 

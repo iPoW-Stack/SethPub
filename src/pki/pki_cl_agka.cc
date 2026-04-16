@@ -10,7 +10,7 @@
 
 #include "common/split.h"
 #include "common/string_utils.h"
-#include "zjcvm/seth_host.h"
+#include "sethvm/seth_host.h"
 
 namespace seth {
 

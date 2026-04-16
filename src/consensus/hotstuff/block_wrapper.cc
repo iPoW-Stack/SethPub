@@ -4,7 +4,7 @@
 #include <common/utils.h>
 #include <consensus/hotstuff/block_wrapper.h>
 #include <consensus/hotstuff/view_block_chain.h>
-#include "zjcvm/seth_host.h"
+#include "sethvm/seth_host.h"
 
 namespace seth {
 namespace hotstuff {

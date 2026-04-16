@@ -13,7 +13,7 @@
 #include "common/encode.h"
 #include "contract/contract_modexp.h"
 #include "security/ecdsa/ecdsa.h"
-#include "zjcvm/sethvm_utils.h"
+#include "sethvm/sethvm_utils.h"
 
 namespace seth {
 

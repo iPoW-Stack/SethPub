@@ -13,7 +13,7 @@
 #include "protos/prefix_db.h"
 #include "protos/transport.pb.h"
 #include "transport/transport_utils.h"
-#include "zjcvm/seth_host.h"
+#include "sethvm/seth_host.h"
 
 namespace seth {
 

@@ -19,7 +19,7 @@
 #include "network/network_utils.h"
 #include "security/security.h"
 #include "transport/transport_utils.h"
-#include "zjcvm/seth_host.h"
+#include "sethvm/seth_host.h"
 
 namespace seth {
 
