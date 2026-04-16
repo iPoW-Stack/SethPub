@@ -656,12 +656,12 @@ class SethClient:
                     if not_exists_count >= not_exists_retries:
                         print(f"[wait_receipt] tx {tx_hash} not found after {not_exists_retries} retries, giving up")
                         return resp
-                    time.sleep(5)
+                    time.sleep(1)
                     continue
                 # kMessageHandle / kTxAccept: still pending
                 if status in [10001, 10003]:
                     not_exists_count = 0  # reset — tx is in pool now
-                    time.sleep(5)
+                    time.sleep(1)
                     continue
                 # Any other status = final result
                 if abi and function_name:
@@ -669,7 +669,7 @@ class SethClient:
                 return resp
             except Exception as ex:
                 print(f"Receipt poll error: {ex}")
-                time.sleep(5)
+                time.sleep(1)
         print(f"[wait_receipt] timeout after {timeout}s for tx {tx_hash}")
         return None
 
