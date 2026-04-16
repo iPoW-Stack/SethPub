@@ -37,29 +37,29 @@
 // #define SETH_DEBUG(logfmt, ...)
 
 #define DEBUG(logfmt, ...)  do {\
-    spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+    SafeLog(spdlog::level::debug, fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
 // #define SETH_DEBUG(logfmt, ...)
 #define SETH_DEBUG(logfmt, ...)  do {\
-    spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+    SafeLog(spdlog::level::debug, fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
 #endif
 
 #define SETH_INFO(logfmt, ...)  do {\
-    spdlog::info(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+    SafeLog(spdlog::level::info, fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
 
 #define SETH_WARN(logfmt, ...)  do {\
-    spdlog::warn(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+    SafeLog(spdlog::level::warn, fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
 
 #define SETH_ERROR(logfmt, ...)  do {\
-    spdlog::error(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+    SafeLog(spdlog::level::err, fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
 
 #define SETH_FATAL(logfmt, ...)  do {\
     printf("[DEBUG][%s][%s][%d] " logfmt "\n", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
-    spdlog::critical(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+    SafeLog(spdlog::level::critical, fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
     assert(false);\
     exit(0);\
 } while (0)
@@ -72,7 +72,7 @@
 //#define DEBUG(logfmt, ...)
 //#define SETH_DEBUG(logfmt, ...)
 #define DEBUG(logfmt, ...)  do {\
-    spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+    SafeLog(spdlog::level::debug, fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
 #define SETH_DEBUG(logfmt, ...)  do {\
     spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
@@ -100,6 +100,18 @@
 } while (0)
 
 #endif // _WIN32
+
+// Safe logging helpers: guard against spdlog being uninitialized or shutdown
+static inline void SafeLog(spdlog::level::level_enum lvl, const std::string &msg) {
+    auto logger = spdlog::default_logger_raw();
+    if (logger) {
+        logger->log(lvl, msg);
+    } else {
+        // fallback to stderr to avoid crashing during shutdown/init races
+        fprintf(stderr, "%s\n", msg.c_str());
+    }
+}
+
 
 // #ifdef LOG
 // #undef LOG
