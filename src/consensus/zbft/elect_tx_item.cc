@@ -1411,6 +1411,40 @@ void ElectTxItem::SmoothFtsValue(
         }
     }
 
+    // Smooth area_weight using PoS-style normalization
+    std::vector<int32_t> area_weight_smooth;
+    {
+        area_weight_smooth.resize(elect_nodes.size(), 0);
+        int32_t min_area_weight_smooth = (std::numeric_limits<int32_t>::max)();
+        int32_t max_area_weight_smooth = (std::numeric_limits<int32_t>::min)();
+        for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
+            // Convert area_weight to normalized weight
+            // Larger area_weight = better dispersion (higher value)
+            // Apply area penalty coefficient: larger coefficient reduces effective weight
+            int32_t normalized_area = static_cast<int32_t>(
+                static_cast<double>(elect_nodes[i]->area_weight) / ElectTxItem::kAreaPenaltyCoefficient);
+            area_weight_smooth[i] = normalized_area;
+            
+            if (area_weight_smooth[i] > max_area_weight_smooth) {
+                max_area_weight_smooth = area_weight_smooth[i];
+            }
+            
+            if (area_weight_smooth[i] < min_area_weight_smooth) {
+                min_area_weight_smooth = area_weight_smooth[i];
+            }
+        }
+        
+        // Normalize area weights to balance_diff range
+        int32_t area_weight_diff = max_area_weight_smooth - min_area_weight_smooth;
+        if (area_weight_diff > 0) {
+            int32_t area_weight_index = blance_diff / area_weight_diff;
+            for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
+                area_weight_smooth[i] = min_balance + area_weight_index * 
+                    (area_weight_smooth[i] - min_area_weight_smooth);
+            }
+        }
+    }
+
     std::vector<int32_t> ip_weight;
     {
         ip_weight.resize(elect_nodes.size(), 0);
@@ -1419,8 +1453,8 @@ void ElectTxItem::SmoothFtsValue(
         for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
                 int32_t prefix_len = 0;
                 auto count = 0;
-                // Apply area penalty coefficient: larger coefficient reduces effective ip weight
-                ip_weight[i] = static_cast<int32_t>(static_cast<double>(elect_nodes[i]->area_weight) / ElectTxItem::kAreaPenaltyCoefficient);
+                // Use smoothed area_weight instead of direct value
+                ip_weight[i] = area_weight_smooth[i];
             if (ip_weight[i] > max_ip_weight) {
                 max_ip_weight = ip_weight[i];
             }
@@ -1495,16 +1529,20 @@ void ElectTxItem::SmoothFtsValue(
 
     std::string fts_val_str;
     for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
+        // Include area_weight_smooth in fts_value calculation with weight coefficient
+        // area_weight contributes to geographic distribution (same weight as ip_weight)
         elect_nodes[i]->fts_value = (2 * ip_weight[i] +
                                      2 * credit_weight[i] +
                                      2 * blance_weight[i] +
-                                     2 * epoch_weight[i]) +
+                                     2 * epoch_weight[i] +
+                                     2 * area_weight_smooth[i]) +
                                      2 * gap_weight[i] /
                                     10;
         fts_val_str += std::to_string(ip_weight[i]) + "," +
                        std::to_string(credit_weight[i]) + "," +
                        std::to_string(blance_weight[i]) + "," +
                        std::to_string(epoch_weight[i]) + "," +
+                       std::to_string(area_weight_smooth[i]) + "," +
                        std::to_string(gap_weight[i]) + "," +
                        std::to_string(elect_nodes[i]->fts_value) + " --- ";
         if (*max_fts_val < elect_nodes[i]->fts_value) {
