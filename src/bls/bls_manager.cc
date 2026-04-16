@@ -578,11 +578,11 @@ void BlsManager::HandleFinish(const transport::MessagePtr& msg_ptr) {
         finish_item->max_public_pk_map[cpk_hash] = 1;
     } else {
         ++cpk_iter->second;
-        // Do NOT verify immediately — accumulate into pending queue.
-        // BatchVerifyFinishItems() will drain it every 30 seconds.
-        if (cpk_iter->second >= t) {
-            finish_item->pending_verify_indices.push_back(bls_msg.index());
-        }
+    }
+    
+    // Always add to pending queue when count reaches t, then continue adding for batch verification
+    if (finish_item->max_public_pk_map[cpk_hash] >= t) {
+        finish_item->pending_verify_indices.push_back(bls_msg.index());
     }
 
     if (finish_item->success_verified) {
@@ -634,22 +634,6 @@ void BlsManager::BatchVerifyFinishItems() {
 
     for (auto& [network_id, finish_item] : finish_networks_map_) {
         if (finish_item->success_verified) continue;
-        if (finish_item->pending_verify_indices.empty()) continue;
-
-        // Determine verification interval based on DKG elapsed time
-        uint64_t verify_interval_ms = kBatchVerifyIntervalMs;
-        auto tmp_bls = waiting_bls_.load();
-        if (tmp_bls != nullptr && tmp_bls->elect_hegiht() > 0) {
-            // Speed up verification to 3 seconds when DKG passes the 9-period mark
-            if (now_us > (tmp_bls->begin_time_us() + tmp_bls->dkg_period_us() * 9)) {
-                verify_interval_ms = kBatchVerifyFastIntervalMs;
-                SETH_DEBUG("[BatchVerify] Accelerating verification interval to 3s (passed 9-period mark)");
-            }
-        }
-
-        if (now_ms - finish_item->last_verify_time_ms < verify_interval_ms) continue;
-
-        finish_item->last_verify_time_ms = now_ms;
 
         auto elect_iter = elect_members_.find(network_id);
         if (elect_iter == elect_members_.end()) continue;
@@ -658,6 +642,33 @@ void BlsManager::BatchVerifyFinishItems() {
 
         uint32_t n = static_cast<uint32_t>(members->size());
         uint32_t t = common::GetSignerCount(n);
+
+        // Count how many nodes have completed their finish message
+        uint32_t verified_count = 0;
+        for (uint32_t i = 0; i < n; ++i) {
+            if (finish_item->verified[i]) {
+                ++verified_count;
+            }
+        }
+
+        // If we haven't received enough finish messages yet, and pending list is empty, skip
+        if (finish_item->pending_verify_indices.empty() && verified_count < t) {
+            continue;
+        }
+
+        // Determine verification interval based on DKG elapsed time
+        uint64_t verify_interval_ms = kBatchVerifyIntervalMs;
+        auto tmp_bls = waiting_bls_.load();
+        if (tmp_bls != nullptr && tmp_bls->elect_hegiht() > 0) {
+            // Speed up verification to 3 seconds when DKG passes the 9-period mark
+            if (now_us > (tmp_bls->begin_time_us() + tmp_bls->dkg_period_us() * 9)) {
+                verify_interval_ms = kBatchVerifyFastIntervalMs;
+            }
+        }
+
+        if (now_ms - finish_item->last_verify_time_ms < verify_interval_ms) continue;
+
+        finish_item->last_verify_time_ms = now_ms;
 
         if (finish_item->max_finish_hash.empty()) continue;
         auto cpk_map_iter = finish_item->common_pk_map.find(finish_item->max_finish_hash);
@@ -686,11 +697,26 @@ void BlsManager::BatchVerifyFinishItems() {
             }
         }
 
+        // If still not enough, try to collect from all verified members
         if (candidates.size() < t) {
-            SETH_DEBUG("[BatchVerify] net %u: only %zu candidates, need %u, skip",
-                       network_id, candidates.size(), t);
+            for (uint32_t i = 0; i < n; ++i) {
+                if (!finish_item->verified[i]) continue;
+                if (finish_item->all_common_public_keys[i] != common_pk) continue;
+                bool dup = false;
+                for (uint32_t c : candidates) { if (c == i) { dup = true; break; } }
+                if (!dup) candidates.push_back(i);
+                if (candidates.size() >= t) break;
+            }
+        }
+
+        if (candidates.size() < t) {
+            SETH_DEBUG("[BatchVerify] net %u: only %zu candidates, need %u, verified_count=%u, skip",
+                       network_id, candidates.size(), t, verified_count);
             continue;
         }
+
+        SETH_INFO("[BatchVerify] net %u: start verify with %zu candidates (t=%u, verified_count=%u)",
+                  network_id, candidates.size(), t, verified_count);
 
         for (uint32_t idx : candidates) {
             if (finish_item->success_verified) break;
