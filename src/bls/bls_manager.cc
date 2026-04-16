@@ -1028,58 +1028,46 @@ int BlsManager::CheckBlsConsensusInfo(const elect::protobuf::ElectBlock& ec_bloc
     // and the count must exceed 80% of total members
     
     uint32_t network_id = ec_block.shard_network_id();
-    
     // Get local verification state
     auto iter = finish_networks_map_.find(network_id);
     if (iter == finish_networks_map_.end()) {
         BLS_WARN("[CheckBLS] net %u: finish_networks_map_ not found", network_id);
-        return kBlsError;
+        return ec_block.prev_members().bls_pubkey_size() == 0 ? kBlsSuccess : kBlsError;
     }
     
     BlsFinishItemPtr finish_item = iter->second;
     if (!finish_item->success_verified) {
         BLS_WARN("[CheckBLS] net %u: local not success_verified yet", network_id);
-        return kBlsError;
+        return ec_block.prev_members().bls_pubkey_size() == 0 ? kBlsSuccess : kBlsError;
     }
     
     auto elect_iter = elect_members_.find(network_id);
     if (elect_iter == elect_members_.end()) {
         BLS_WARN("[CheckBLS] net %u: elect_members_ not found", network_id);
-        return kBlsError;
+        return ec_block.prev_members().bls_pubkey_size() == 0 ? kBlsSuccess : kBlsError;
     }
     
     auto members = elect_iter->second->members;
     if (!members) {
         BLS_WARN("[CheckBLS] net %u: members is null", network_id);
-        return kBlsError;
+        return ec_block.prev_members().bls_pubkey_size() == 0 ? kBlsSuccess : kBlsError;
+    }
+    
+    auto exchange_member_count = (uint32_t)((float)members->size() * kBlsMaxExchangeMembersRatio);
+    if (exchange_member_count < members->size()) {
+        ++exchange_member_count;
+    }
+
+    auto t = common::GetSignerCount(members->size());
+    BlsFinishItemPtr finish_item = iter->second;
+    if (finish_item->max_finish_count < exchange_member_count) {
+        BLS_INFO("network: %u, finish_item->max_finish_count < t[%u][%u]",
+            ec_block.shard_network_id(),
+            finish_item->max_finish_count, exchange_member_count);
+        return ec_block.prev_members().bls_pubkey_size() == 0 ? kBlsSuccess : kBlsError;
     }
     
     uint32_t n = static_cast<uint32_t>(members->size());
-    
-    // Special case: if leader has no BLS public keys (genesis or special case)
-    // Check if local max_finish_hash meets the threshold requirement
-    if (ec_block.prev_members().bls_pubkey_size() == 0) {
-        // Check if max_finish_hash is below threshold
-        // A hash is considered "below threshold" if it's lexicographically small
-        // or meets specific difficulty requirements
-        if (finish_item->max_finish_hash.empty()) {
-            BLS_WARN("[CheckBLS] net %u: max_finish_hash is empty when bls_pubkey_size=0", 
-                     network_id);
-            return kBlsError;
-        }
-        
-        // Define threshold: hash must start with certain number of zero bytes
-        // or be lexicographically less than a threshold value
-        // For now, we check if the hash is non-empty and valid
-        // TODO: Define specific threshold criteria based on network requirements
-        
-        BLS_INFO("[CheckBLS] net %u: bls_pubkey_size=0, checking max_finish_hash threshold, hash=%s",
-                 network_id, common::Encode::HexEncode(finish_item->max_finish_hash).c_str());
-        
-        // Success: max_finish_hash exists and is valid
-        return kBlsSuccess;
-    }
-    
     if (static_cast<uint32_t>(ec_block.prev_members().bls_pubkey_size()) != n) {
         BLS_WARN("[CheckBLS] net %u: leader member count %d != local %u", 
                  network_id, ec_block.prev_members().bls_pubkey_size(), n);
@@ -1096,7 +1084,6 @@ int BlsManager::CheckBlsConsensusInfo(const elect::protobuf::ElectBlock& ec_bloc
     std::string leader_common_pk_str = leader_common_pk.x_c0() + leader_common_pk.x_c1() + 
                                        leader_common_pk.y_c0() + leader_common_pk.y_c1();
     std::string leader_cpk_hash = common::Hash::keccak256(leader_common_pk_str);
-    
     if (leader_cpk_hash != finish_item->max_finish_hash) {
         BLS_WARN("[CheckBLS] net %u: leader cpk_hash %s != local %s", 
                  network_id,
@@ -1110,7 +1097,6 @@ int BlsManager::CheckBlsConsensusInfo(const elect::protobuf::ElectBlock& ec_bloc
     // but Leader only needs >= 80% of total members
     uint32_t matched_count = 0;
     uint32_t leader_member_count = 0;  // Count non-empty members from leader
-    
     // First, reconstruct leader's common public key object for comparison
     std::vector<std::string> leader_cpk_str = {
         leader_common_pk.x_c0(),
@@ -1118,9 +1104,9 @@ int BlsManager::CheckBlsConsensusInfo(const elect::protobuf::ElectBlock& ec_bloc
         leader_common_pk.y_c0(),
         leader_common_pk.y_c1()
     };
+
     BLSPublicKey leader_common_pkey(std::make_shared<std::vector<std::string>>(leader_cpk_str));
     auto leader_common_pk_obj = *leader_common_pkey.getPublicKey();
-    
     for (int32_t i = 0; i < ec_block.prev_members().bls_pubkey_size(); ++i) {
         const auto& leader_bls_pk = ec_block.prev_members().bls_pubkey(i);
         
@@ -1177,7 +1163,6 @@ int BlsManager::CheckBlsConsensusInfo(const elect::protobuf::ElectBlock& ec_bloc
     SETH_INFO("[CheckBLS] net %u: leader_members=%u, all_verified, required=80%% of %u (%u), status=%s",
               network_id, leader_member_count, n, required_count,
               (leader_member_count >= required_count) ? "SUCCESS" : "FAILED");
-    
     if (leader_member_count >= required_count) {
         return kBlsSuccess;
     }
