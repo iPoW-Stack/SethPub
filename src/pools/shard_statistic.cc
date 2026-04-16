@@ -16,6 +16,7 @@
 #include <protos/elect.pb.h>
 #include <protos/tx_storage_key.h>
 #include <cmath>
+#include <sstream>
 // #include <iostream>
 // #include "shard_statistic.h"
 
@@ -1081,8 +1082,21 @@ void ShardStatistic::setElectStatistics(
             double avg_dist_km = (pair_count > 0) ? (total_dist_km / pair_count) : 0.0;
             // Store as integer km (precision sufficient for shard-level statistics).
             statistic_item.set_avg_geo_distance(static_cast<uint64_t>(avg_dist_km));
-            SETH_INFO("[GeoStat] elect_height=%lu members=%u pairs=%u avg_dist=%.1f km",
-                      hiter->first, n, pair_count, avg_dist_km);
+            // Build per-member geo details (public IP + lat/lon) for logging
+            std::ostringstream geo_ss;
+            for (uint32_t i = 0; i < n; ++i) {
+                std::string id = (*members)[i]->id;
+                std::string public_ip = network::NeighborIpManager::Instance()->GetIpThreadSafe(id);
+                float lat = 0.0f, lon = 0.0f;
+                if (!public_ip.empty()) {
+                    common::Ip::Instance()->GetIpLocation(public_ip, &lat, &lon);
+                }
+                if (i != 0) geo_ss << "; ";
+                geo_ss << (public_ip.empty() ? "unknown" : public_ip) << "(" << std::fixed << std::setprecision(4) << lat << "," << lon << ")";
+            }
+            std::string geo_details = geo_ss.str();
+            SETH_INFO("[GeoStat] elect_height=%lu members=%u pairs=%u avg_dist=%.1f km details=%s",
+                      hiter->first, n, pair_count, avg_dist_km, geo_details.c_str());
         }
 
         statistic_item.set_elect_height(hiter->first);
