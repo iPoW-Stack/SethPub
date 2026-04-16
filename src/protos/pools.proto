@@ -124,6 +124,8 @@ message PoolStatisticItem {
     repeated uint64 gas_sum =5;
     repeated uint64 credit =6;
     repeated uint64 consensus_gap = 7;
+    // Average pairwise Haversine distance (km) among shard members in this epoch.
+    optional uint64 avg_geo_distance = 8;
 }
 
 message JoinElectNode {
