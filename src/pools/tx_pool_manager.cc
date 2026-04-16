@@ -69,7 +69,7 @@ TxPoolManager::TxPoolManager(
 
 TxPoolManager::~TxPoolManager() {
     destroy_ = true;
-    FlushHeightTree();
+    // FlushHeightTree();
 #ifdef USE_SERVER_TEST_TRANSACTION
     if (test_tx_thread_) {
         test_tx_thread_->join();
