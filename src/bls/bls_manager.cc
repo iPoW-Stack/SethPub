@@ -1023,7 +1023,142 @@ bool BlsManager::VerifyAggSignValid(
 }
 
 int BlsManager::CheckBlsConsensusInfo(const elect::protobuf::ElectBlock& ec_block) {
-    return kBlsSuccess;
+    // Verify that the Leader's BLS consensus info matches local verified data
+    // Requirement: all finish nodes in leader must be in locally verified nodes, 
+    // and the count must exceed 80% of total members
+    
+    uint32_t network_id = ec_block.shard_network_id();
+    
+    // Get local verification state
+    auto iter = finish_networks_map_.find(network_id);
+    if (iter == finish_networks_map_.end()) {
+        BLS_WARN("[CheckBLS] net %u: finish_networks_map_ not found", network_id);
+        return kBlsError;
+    }
+    
+    BlsFinishItemPtr finish_item = iter->second;
+    if (!finish_item->success_verified) {
+        BLS_WARN("[CheckBLS] net %u: local not success_verified yet", network_id);
+        return kBlsError;
+    }
+    
+    auto elect_iter = elect_members_.find(network_id);
+    if (elect_iter == elect_members_.end()) {
+        BLS_WARN("[CheckBLS] net %u: elect_members_ not found", network_id);
+        return kBlsError;
+    }
+    
+    auto members = elect_iter->second->members;
+    if (!members) {
+        BLS_WARN("[CheckBLS] net %u: members is null", network_id);
+        return kBlsError;
+    }
+    
+    uint32_t n = static_cast<uint32_t>(members->size());
+    if (ec_block.prev_members().bls_pubkey_size() != n) {
+        BLS_WARN("[CheckBLS] net %u: leader member count %d != local %u", 
+                 network_id, ec_block.prev_members().bls_pubkey_size(), n);
+        return kBlsError;
+    }
+    
+    // Check common public key matches
+    if (!ec_block.prev_members().has_common_pubkey()) {
+        BLS_WARN("[CheckBLS] net %u: leader has no common_pubkey", network_id);
+        return kBlsError;
+    }
+    
+    const auto& leader_common_pk = ec_block.prev_members().common_pubkey();
+    std::string leader_common_pk_str = leader_common_pk.x_c0() + leader_common_pk.x_c1() + 
+                                       leader_common_pk.y_c0() + leader_common_pk.y_c1();
+    std::string leader_cpk_hash = common::Hash::keccak256(leader_common_pk_str);
+    
+    if (leader_cpk_hash != finish_item->max_finish_hash) {
+        BLS_WARN("[CheckBLS] net %u: leader cpk_hash %s != local %s", 
+                 network_id,
+                 common::Encode::HexEncode(leader_cpk_hash).c_str(),
+                 common::Encode::HexEncode(finish_item->max_finish_hash).c_str());
+        return kBlsError;
+    }
+    
+    // Verify each member's BLS public key
+    // Requirement: All members in Leader MUST be locally verified,
+    // but Leader only needs >= 80% of total members
+    uint32_t matched_count = 0;
+    uint32_t leader_member_count = 0;  // Count non-empty members from leader
+    
+    // First, reconstruct leader's common public key object for comparison
+    std::vector<std::string> leader_cpk_str = {
+        leader_common_pk.x_c0(),
+        leader_common_pk.x_c1(),
+        leader_common_pk.y_c0(),
+        leader_common_pk.y_c1()
+    };
+    BLSPublicKey leader_common_pkey(std::make_shared<std::vector<std::string>>(leader_cpk_str));
+    auto leader_common_pk_obj = *leader_common_pkey.getPublicKey();
+    
+    for (int32_t i = 0; i < ec_block.prev_members().bls_pubkey_size(); ++i) {
+        const auto& leader_bls_pk = ec_block.prev_members().bls_pubkey(i);
+        
+        // Empty leader key means this member didn't participate from leader's side
+        if (leader_bls_pk.x_c0().empty()) {
+            continue;
+        }
+        
+        ++leader_member_count;
+        
+        // CRITICAL: Member MUST be in our verified list (no exceptions)
+        if (i >= n || !finish_item->verified[i]) {
+            BLS_ERROR("[CheckBLS] net %u: member %d in leader but NOT in local verified list!", 
+                      network_id, i);
+            return kBlsError;  // Fail immediately - Leader has unverified member
+        }
+        
+        // Reconstruct leader's BLS public key and compare with local
+        std::vector<std::string> leader_pk_str = {
+            leader_bls_pk.x_c0(),
+            leader_bls_pk.x_c1(),
+            leader_bls_pk.y_c0(),
+            leader_bls_pk.y_c1()
+        };
+        
+        BLSPublicKey leader_pkey(std::make_shared<std::vector<std::string>>(leader_pk_str));
+        auto leader_pk_obj = *leader_pkey.getPublicKey();
+        
+        // Compare individual member public key
+        if (finish_item->all_public_keys[i] != leader_pk_obj) {
+            BLS_ERROR("[CheckBLS] net %u: member %d public key mismatch!", network_id, i);
+            return kBlsError;  // Fail immediately - Key mismatch
+        }
+        
+        // Compare common public key stored at this member
+        if (finish_item->all_common_public_keys[i] != leader_common_pk_obj) {
+            BLS_ERROR("[CheckBLS] net %u: member %d common public key mismatch!", network_id, i);
+            return kBlsError;  // Fail immediately - CPK mismatch
+        }
+        
+        ++matched_count;
+    }
+    
+    // Calculate required count (80% of total members)
+    uint32_t required_count = (n * 80 + 99) / 100;  // Ceiling division for 80%
+    
+    // All matched members must equal leader member count (all leader members verified successfully)
+    if (matched_count != leader_member_count) {
+        BLS_ERROR("[CheckBLS] net %u: matched=%u != leader_member_count=%u (verification failed)",
+                  network_id, matched_count, leader_member_count);
+        return kBlsError;
+    }
+    
+    SETH_INFO("[CheckBLS] net %u: leader_members=%u, all_verified, required=80%% of %u (%u), status=%s",
+              network_id, leader_member_count, n, required_count,
+              (leader_member_count >= required_count) ? "SUCCESS" : "FAILED");
+    
+    if (leader_member_count >= required_count) {
+        return kBlsSuccess;
+    }
+    
+    return kBlsError;
+}
 }
 
 int BlsManager::AddBlsConsensusInfo(elect::protobuf::ElectBlock& ec_block) {
