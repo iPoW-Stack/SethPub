@@ -1,4 +1,4 @@
-#include "sethvm/seth_host.h"
+#include "zjcvm/seth_host.h"
 
 #include <evmc/hex.hpp>
 
@@ -9,8 +9,8 @@
 #include "contract/call_parameters.h"
 #include "contract/contract_manager.h"
 #include "protos/prefix_db.h"
-#include "sethvm/execution.h"
-#include "sethvm/sethvm_utils.h"
+#include "zjcvm/execution.h"
+#include "zjcvm/sethvm_utils.h"
 
 namespace seth {
 

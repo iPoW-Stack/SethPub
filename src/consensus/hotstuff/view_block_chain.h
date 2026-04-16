@@ -11,7 +11,7 @@
 #include "consensus/hotstuff/hotstuff_utils.h"
 #include "consensus/hotstuff/storage_lru_map.h"
 #include "protos/prefix_db.h"
-#include "sethvm/seth_host.h"
+#include "zjcvm/seth_host.h"
 
 namespace seth {
 

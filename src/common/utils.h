@@ -281,6 +281,8 @@ static const double kMiningTokenMultiplicationFactor = 1.0;
 static const int32_t kLeaderRoatationBaseTimeoutSec = 30;
 
 // Economic Model Parameters (Dynamic Sharding Reward System)
+// kSethMiniTransportUnit must be defined before use (= 10^8, smallest SETH unit)
+static const uint64_t kSethMiniTransportUnit = 100000000llu;
 static const uint64_t kInitialTotalReward = 10000llu * kSethMiniTransportUnit;  // 10,000 SETH total per epoch
 // Halving period: 4 years with 600s epoch period
 // 4 years = 365.25 * 24 * 3600 / 600 * 4 = 210,240 epochs
@@ -342,7 +344,6 @@ static const uint8_t kMaxThreadCount = 32u;
 static const uint32_t kSingleBlockMaxMBytes = 2u;
 static const uint32_t kVpnShareStakingPrice = 1u;
 
-static const uint64_t kSethMiniTransportUnit = 100000000llu;
 static const uint64_t kSethMaxAmount = 2100llu * 100000000llu * kSethMiniTransportUnit;
 static const uint32_t kTransactionNoVersion = 0u;
 static const uint32_t kTransactionVersion = 1u;

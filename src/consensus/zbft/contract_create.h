@@ -4,8 +4,8 @@
 #include "consensus/zbft/tx_item_base.h"
 #include "protos/prefix_db.h"
 #include "security/security.h"
-#include "sethvm/seth_host.h"
-#include "sethvm/sethvm_utils.h"
+#include "zjcvm/seth_host.h"
+#include "zjcvm/sethvm_utils.h"
 
 namespace seth {
 

@@ -3,7 +3,7 @@
 #include "common/split.h"
 #include "common/string_utils.h"
 #include "common/time_utils.h"
-#include "sethvm/seth_host.h"
+#include "zjcvm/seth_host.h"
 
 namespace seth {
 

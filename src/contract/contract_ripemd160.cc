@@ -8,7 +8,7 @@
 #include "contract/contract_cl.h"
 #include "contract/contract_reencryption.h"
 #include "pbc/pbc.h"
-#include "sethvm/seth_host.h"
+#include "zjcvm/seth_host.h"
 
 namespace seth {
 

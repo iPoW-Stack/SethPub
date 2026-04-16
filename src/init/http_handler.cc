@@ -24,9 +24,9 @@
 #include "security/gmssl/gmssl.h"
 #include "security/oqs/oqs.h"
 #include "transport/tcp_transport.h"
-#include "sethvm/execution.h"
-#include "sethvm/seth_host.h"
-#include "sethvm/sethvm_utils.h"
+#include "zjcvm/execution.h"
+#include "zjcvm/seth_host.h"
+#include "zjcvm/sethvm_utils.h"
 
 #include <google/protobuf/util/json_util.h>
 
