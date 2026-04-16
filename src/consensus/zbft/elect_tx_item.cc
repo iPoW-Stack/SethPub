@@ -6,6 +6,10 @@
 #include "protos/get_proto_hash.h"
 #include <bls/bls_utils.h>
 #include <google/protobuf/util/json_util.h>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <chrono>
 
 namespace seth {
 
@@ -94,6 +98,7 @@ int ElectTxItem::HandleTx(
         common::Encode::HexEncode(block_tx.to()).c_str(), 
         ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str(),
         common::Encode::HexEncode(unique_hash).c_str());
+    
     // *view_block.mutable_block_info()->mutable_elect_statistic() = elect_statistic_;
     *view_block.mutable_block_info()->mutable_elect_block() = *elect_block_;
     view_block.mutable_block_info()->add_unique_hashs(block_tx.unique_hash());
@@ -229,6 +234,80 @@ int ElectTxItem::processElect(
         SETH_DEBUG("LLLLL after CreateNewElect: count: %d ,%s", count, ids.c_str());
     }
 #endif
+    // Persist per-election log for analysis (one file per round)
+    try {
+        std::filesystem::path log_dir = std::filesystem::path("elect_logs");
+        std::error_code ec;
+        std::filesystem::create_directories(log_dir, ec);
+        if (ec) {
+            SETH_ERROR("create elect_logs dir failed: %s", ec.message().c_str());
+        } else {
+            auto now = std::chrono::system_clock::now();
+            auto now_ts = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+            std::ostringstream fname;
+            fname << "elect_" << elect_statistic_.sharding_id() << "_" << now_ts << "_" << elect_statistic_.statistic_height() << ".json";
+            auto filepath = log_dir / fname.str();
+
+            std::ofstream ofs(filepath.string(), std::ios::out | std::ios::trunc);
+            if (ofs) {
+                ofs << "{\n";
+                ofs << "  \"timestamp\": " << now_ts << ",\n";
+                ofs << "  \"shard\": " << elect_statistic_.sharding_id() << ",\n";
+                ofs << "  \"statistic_height\": " << elect_statistic_.statistic_height() << ",\n";
+
+                ofs << "  \"fts_params\": {\n";
+                ofs << "    \"weedout_div_rate\": " << kFtsWeedoutDividRate << ",\n";
+                ofs << "    \"new_elect_join_rate\": " << kFtsNewElectJoinRate << ",\n";
+                ofs << "    \"min_double_node_count\": " << kFtsMinDoubleNodeCount << "\n";
+                ofs << "  },\n";
+
+                std::string proto_json = ProtobufToJson(elect_statistic_);
+                ofs << "  \"elect_statistic_proto\": ";
+                ofs << proto_json << ",\n";
+
+                ofs << "  \"leaders\": [";
+                bool first = true;
+                for (auto idx : leader_nodes) {
+                    if (!first) ofs << ", ";
+                    first = false;
+                    ofs << idx;
+                }
+                ofs << "],\n";
+
+                ofs << "  \"nodes\": [\n";
+                bool first_node = true;
+                for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
+                    if (elect_nodes[i] == nullptr) continue;
+                    if (!first_node) ofs << ",\n";
+                    first_node = false;
+                    auto &n = elect_nodes[i];
+                    ofs << "    {\n";
+                    ofs << "      \"index\": " << n->index << ",\n";
+                    ofs << "      \"pubkey\": \"" << common::Encode::HexEncode(n->pubkey) << "\",\n";
+                    ofs << "      \"fts_value\": " << n->fts_value << ",\n";
+                    ofs << "      \"stoke\": " << n->stoke << ",\n";
+                    ofs << "      \"stoke_diff\": " << n->stoke_diff << ",\n";
+                    ofs << "      \"tx_count\": " << n->tx_count << ",\n";
+                    ofs << "      \"gas_sum\": " << n->gas_sum << ",\n";
+                    ofs << "      \"credit\": " << n->credit << ",\n";
+                    ofs << "      \"area_weight\": " << n->area_weight << ",\n";
+                    ofs << "      \"leader_mod_index\": " << n->leader_mod_index << ",\n";
+                    ofs << "      \"mining_token\": " << n->mining_token << ",\n";
+                    ofs << "      \"consensus_gap\": " << n->consensus_gap << "\n";
+                    ofs << "    }";
+                }
+                ofs << "\n  ]\n";
+                ofs << "}\n";
+                ofs.close();
+                SETH_INFO("wrote elect log: %s", filepath.string().c_str());
+            } else {
+                SETH_ERROR("open elect log file failed: %s", filepath.string().c_str());
+            }
+        }
+    } catch (const std::exception &e) {
+        SETH_ERROR("exception while writing elect log: %s", e.what());
+    }
+
     SETH_DEBUG("consensus elect tx success: %u, proto: %s",
         elect_statistic_.sharding_id(), 
         ProtobufToJson(elect_statistic_).c_str());
@@ -533,9 +612,11 @@ void ElectTxItem::MiningToken(
     //    uint64_t gas_for_mining = all_gas_amount - (all_gas_amount / network_count_);
     uint64_t gas_for_mining = all_gas_amount;
     uint64_t gas_burned = 0;
-    
-    // Apply burn mechanism (EIP-1559 style)
-    ApplyBurnMechanism(all_gas_amount, &gas_for_mining, &gas_burned);
+
+    // Burn disabled by configuration: do not burn gas, add it to incentive pool.
+    // Previously we called ApplyBurnMechanism(all_gas_amount, &gas_for_mining, &gas_burned)
+    // which would split some gas to be burned. Now gas_burned stays 0 and the full
+    // amount remains available for incentives (subject to root allocation below).
     
     // root shard use statistic gas amount.
     if (statistic_sharding_id == network::kRootCongressNetworkId) {
