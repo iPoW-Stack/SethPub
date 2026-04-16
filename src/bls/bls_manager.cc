@@ -1055,7 +1055,7 @@ int BlsManager::CheckBlsConsensusInfo(const elect::protobuf::ElectBlock& ec_bloc
     }
     
     uint32_t n = static_cast<uint32_t>(members->size());
-    if (ec_block.prev_members().bls_pubkey_size() != n) {
+    if (static_cast<uint32_t>(ec_block.prev_members().bls_pubkey_size()) != n) {
         BLS_WARN("[CheckBLS] net %u: leader member count %d != local %u", 
                  network_id, ec_block.prev_members().bls_pubkey_size(), n);
         return kBlsError;
@@ -1107,7 +1107,7 @@ int BlsManager::CheckBlsConsensusInfo(const elect::protobuf::ElectBlock& ec_bloc
         ++leader_member_count;
         
         // CRITICAL: Member MUST be in our verified list (no exceptions)
-        if (i >= n || !finish_item->verified[i]) {
+        if (i >= static_cast<int32_t>(n) || !finish_item->verified[i]) {
             BLS_ERROR("[CheckBLS] net %u: member %d in leader but NOT in local verified list!", 
                       network_id, i);
             return kBlsError;  // Fail immediately - Leader has unverified member
@@ -1158,7 +1158,6 @@ int BlsManager::CheckBlsConsensusInfo(const elect::protobuf::ElectBlock& ec_bloc
     }
     
     return kBlsError;
-}
 }
 
 int BlsManager::AddBlsConsensusInfo(elect::protobuf::ElectBlock& ec_block) {
