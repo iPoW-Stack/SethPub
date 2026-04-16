@@ -15,6 +15,9 @@ namespace seth {
 
 namespace consensus {
 
+// Define the area penalty coefficient default value (can be tuned)
+const double ElectTxItem::kAreaPenaltyCoefficient = 1.0;
+
 inline bool ElectNodeBalanceCompare(const NodeDetailPtr& left, const NodeDetailPtr& right) {
     return left->stoke < right->stoke;
 }
@@ -258,7 +261,8 @@ int ElectTxItem::processElect(
                 ofs << "  \"fts_params\": {\n";
                 ofs << "    \"weedout_div_rate\": " << kFtsWeedoutDividRate << ",\n";
                 ofs << "    \"new_elect_join_rate\": " << kFtsNewElectJoinRate << ",\n";
-                ofs << "    \"min_double_node_count\": " << kFtsMinDoubleNodeCount << "\n";
+                ofs << "    \"min_double_node_count\": " << kFtsMinDoubleNodeCount << ",\n";
+                ofs << "    \"area_penalty_coefficient\": " << ElectTxItem::kAreaPenaltyCoefficient << "\n";
                 ofs << "  },\n";
 
                 std::string proto_json = ProtobufToJson(elect_statistic_);
@@ -1363,9 +1367,10 @@ void ElectTxItem::SmoothFtsValue(
         int32_t min_ip_weight = (std::numeric_limits<int32_t>::max)();
         int32_t max_ip_weight = (std::numeric_limits<int32_t>::min)();
         for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
-            int32_t prefix_len = 0;
-            auto count = 0;
-            ip_weight[i] = elect_nodes[i]->area_weight;
+                int32_t prefix_len = 0;
+                auto count = 0;
+                // Apply area penalty coefficient: larger coefficient reduces effective ip weight
+                ip_weight[i] = static_cast<int32_t>(static_cast<double>(elect_nodes[i]->area_weight) / ElectTxItem::kAreaPenaltyCoefficient);
             if (ip_weight[i] > max_ip_weight) {
                 max_ip_weight = ip_weight[i];
             }

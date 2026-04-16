@@ -145,6 +145,8 @@ private:
     static const uint32_t kFtsWeedoutDividRate = 10u;
     static const uint32_t kFtsNewElectJoinRate = 5u;
     static const uint32_t kFtsMinDoubleNodeCount = 256u;
+    // Area penalty coefficient: values > 1 reduce the effective IP weight (apply as division)
+    static const double kAreaPenaltyCoefficient;
 
     std::shared_ptr<protos::PrefixDb> prefix_db_ = nullptr;
     std::shared_ptr<elect::ElectManager> elect_mgr_ = nullptr;
