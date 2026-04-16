@@ -1078,7 +1078,7 @@ int ElectTxItem::CheckWeedout(
     }
 
     // Calculate area dispersion metrics for all nodes first
-    std::vector<std::pair<uint32_t, std::vector<uint32_t>>> all_distances(statistic_item.tx_count_size());
+    std::vector<std::vector<uint32_t>> all_distances(statistic_item.tx_count_size());
     for (int32_t member_idx = 0; member_idx < statistic_item.tx_count_size(); ++member_idx) {
         if (invalid_nodes.find(member_idx) != invalid_nodes.end()) {
             continue;
@@ -1098,9 +1098,7 @@ int ElectTxItem::CheckWeedout(
             distances.push_back(dis);
         }
         
-        if (!distances.empty()) {
-            all_distances[member_idx] = distances;
-        }
+        all_distances[member_idx] = distances;
     }
 
     std::vector<NodeDetailPtr> elect_nodes_to_choose;
