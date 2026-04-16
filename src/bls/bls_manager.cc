@@ -626,14 +626,28 @@ void BlsManager::HandleFinish(const transport::MessagePtr& msg_ptr) {
 }
 
 static const uint64_t kBatchVerifyIntervalMs = 30000u;  // 30 seconds
+static const uint64_t kBatchVerifyFastIntervalMs = 3000u;  // 3 seconds
 
 void BlsManager::BatchVerifyFinishItems() {
     uint64_t now_ms = common::TimeUtils::TimestampMs();
+    uint64_t now_us = common::TimeUtils::TimestampUs();
 
     for (auto& [network_id, finish_item] : finish_networks_map_) {
         if (finish_item->success_verified) continue;
         if (finish_item->pending_verify_indices.empty()) continue;
-        if (now_ms - finish_item->last_verify_time_ms < kBatchVerifyIntervalMs) continue;
+
+        // Determine verification interval based on DKG elapsed time
+        uint64_t verify_interval_ms = kBatchVerifyIntervalMs;
+        auto tmp_bls = waiting_bls_.load();
+        if (tmp_bls != nullptr && tmp_bls->elect_hegiht() > 0) {
+            // Speed up verification to 3 seconds when DKG passes the 9-period mark
+            if (now_us > (tmp_bls->begin_time_us() + tmp_bls->dkg_period_us() * 9)) {
+                verify_interval_ms = kBatchVerifyFastIntervalMs;
+                SETH_DEBUG("[BatchVerify] Accelerating verification interval to 3s (passed 9-period mark)");
+            }
+        }
+
+        if (now_ms - finish_item->last_verify_time_ms < verify_interval_ms) continue;
 
         finish_item->last_verify_time_ms = now_ms;
 
