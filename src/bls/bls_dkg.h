@@ -83,6 +83,14 @@ public:
         return member_count_;
     }
 
+    uint64_t begin_time_us() const {
+        return begin_time_us_;
+    }
+
+    int64_t dkg_period_us() const {
+        return kDkgPeriodUs;
+    }
+
     static std::string serializeCommonPk(const libff::alt_bn128_G2& common_pk) {
         std::string pk;
         pk += libBLS::ThresholdUtils::fieldElementToString(common_pk.X.c0) + ",";
