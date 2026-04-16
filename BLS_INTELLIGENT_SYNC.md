@@ -2,7 +2,7 @@
 
 ## Overview
 
-Implemented an intelligent BLS finish message synchronization feature that only syncs missing finish messages from neighbors. This feature has a prerequisite of receiving at least 2/3 finish messages and only operates during the epoch finish period.
+Implemented an intelligent BLS finish message synchronization feature that only syncs missing finish messages from neighbors. This feature has a prerequisite of receiving at least 1/2 finish messages and only operates during the epoch finish period.
 
 ## Key Improvements
 
@@ -13,7 +13,7 @@ Implemented an intelligent BLS finish message synchronization feature that only 
 
 ### New Intelligent Approach
 - ✅ Only request missing finish messages
-- ✅ Prerequisite: Must have ≥2/3 finish messages
+- ✅ Prerequisite: Must have ≥1/2 finish messages
 - ✅ Skip already verified nodes
 - ✅ Two-way communication (request/response)
 - ✅ Finish period constraint
@@ -31,9 +31,9 @@ for (uint32_t i = 0; i < n; ++i) {
 }
 ```
 
-### 2. 2/3 Threshold Prerequisite
+### 2. 1/2 Threshold Prerequisite
 ```cpp
-uint32_t t = common::GetSignerCount(n);  // 2/3 threshold
+uint32_t t = (n + 1) / 2;  // 1/2 threshold
 if (verified_count < t) {
     // Don't sync - not enough messages yet
     return;
@@ -57,12 +57,12 @@ if (!waiting_bls->IsFinishPeriod()) {
 
 **Prerequisites**:
 - In finish period
-- Have ≥2/3 finish messages
+- Have ≥1/2 finish messages
 - Have missing nodes
 
 **Process**:
 1. Count verified finish messages
-2. Check if ≥2/3 threshold met
+2. Check if ≥1/2 threshold met
 3. Identify missing nodes
 4. Request from verified neighbors
 
@@ -95,8 +95,8 @@ message BlsMessage {
 
 ### Scenario
 - Network: 1024 nodes
-- Threshold (2/3): 683 nodes
-- Node A has: 700 verified (✓ above threshold)
+- Threshold (1/2): 512 nodes
+- Node A has: 600 verified (✓ above threshold)
 - Node A missing: [5, 7, 9, 15, 20, ...]
 
 ### Step-by-Step
@@ -104,8 +104,8 @@ message BlsMessage {
 ```
 1. Node A checks prerequisites:
    ✓ In finish period
-   ✓ Have 700/1024 verified (≥ 683)
-   ✓ Have 324 missing nodes
+   ✓ Have 600/1024 verified (≥ 512)
+   ✓ Have 424 missing nodes
 
 2. Node A identifies neighbors with verified finish:
    - Neighbor B (verified ✓)
@@ -130,25 +130,30 @@ message BlsMessage {
    - ...
 
 6. Node A's verified count increases:
-   700 → 703 → ... → eventually 1024
+   600 → 603 → ... → eventually 1024
 ```
 
 ## Prerequisites Explained
 
-### Why 2/3 Threshold?
+### Why 1/2 Threshold?
 
-**Reason**: Ensures we have enough information to determine consensus
+**Reason**: Ensures we have enough information to start synchronization while being more aggressive than 2/3
 
 **Without threshold**:
 - Node might have only 100/1024 messages
 - Doesn't know which messages are valid
 - Could request wrong messages
 
-**With threshold**:
-- Node has 700/1024 messages (≥2/3)
-- Can determine consensus (max_finish_hash)
-- Knows which messages are missing
-- Can safely request missing messages
+**With 1/2 threshold**:
+- Node has 512/1024 messages (≥1/2)
+- Has majority of messages
+- Can start helping network converge faster
+- More aggressive than 2/3 but still safe
+
+**Comparison**:
+- 2/3 threshold (683): More conservative, waits longer
+- 1/2 threshold (512): More aggressive, starts earlier
+- Trade-off: Earlier sync vs. more certainty
 
 ### Why Finish Period Only?
 
@@ -188,25 +193,25 @@ message BlsMessage {
 
 ### Sync Request (Node A)
 ```
-[SyncFinish] network 3: have 700/1024 verified (>= 2/3), checking for missing nodes
-[SyncFinish] network 3: found 324 missing nodes, requesting from neighbors
-[SyncFinish] network 3: requesting 324 missing nodes from neighbor 5
-[SyncFinish] network 3: requesting 324 missing nodes from neighbor 6
-[SyncFinish] network 3: sent sync requests to 8 neighbors for 324 missing nodes
+[SyncFinish] network 3: have 600/1024 verified (>= 1/2), checking for missing nodes
+[SyncFinish] network 3: found 424 missing nodes, requesting from neighbors
+[SyncFinish] network 3: requesting 424 missing nodes from neighbor 5
+[SyncFinish] network 3: requesting 424 missing nodes from neighbor 6
+[SyncFinish] network 3: sent sync requests to 8 neighbors for 424 missing nodes
 ```
 
 ### Sync Response (Node B)
 ```
-[HandleSyncReq] network 3: received sync request for 324 missing nodes from member 10
+[HandleSyncReq] network 3: received sync request for 424 missing nodes from member 10
 [HandleSyncReq] network 3: sending finish message for node 5 to requester
 [HandleSyncReq] network 3: sending finish message for node 7 to requester
 [HandleSyncReq] network 3: we don't have finish message for node 9
-[HandleSyncReq] network 3: sent 300 finish messages to requester (requested 324)
+[HandleSyncReq] network 3: sent 400 finish messages to requester (requested 424)
 ```
 
 ### Below Threshold (No Sync)
 ```
-[SyncFinish] network 3: only 600/1024 verified, need at least 683 (2/3), skip sync
+[SyncFinish] network 3: only 500/1024 verified, need at least 512 (1/2), skip sync
 ```
 
 ## Performance Benefits
@@ -220,9 +225,9 @@ message BlsMessage {
 
 **New Approach**:
 - Only request missing messages
-- Only when ≥2/3 threshold met
-- 324 missing × 8 neighbors = 2,592 messages
-- **68% reduction in messages**
+- Only when ≥1/2 threshold met
+- 424 missing × 8 neighbors = 3,392 messages
+- **59% reduction in messages**
 
 ### CPU Efficiency
 
@@ -243,12 +248,12 @@ message BlsMessage {
 1. **Threshold Test**
    ```cpp
    TEST(BlsSync, BelowThreshold) {
-       // Setup: 600/1024 verified
+       // Setup: 500/1024 verified
        // Expected: No sync
    }
    
    TEST(BlsSync, AboveThreshold) {
-       // Setup: 700/1024 verified
+       // Setup: 600/1024 verified
        // Expected: Sync triggered
    }
    ```
@@ -274,8 +279,8 @@ message BlsMessage {
    }
    
    TEST(BlsSync, SomeMissingNodes) {
-       // Setup: 324 nodes missing
-       // Expected: Request those 324
+       // Setup: 424 nodes missing
+       // Expected: Request those 424
    }
    ```
 
@@ -292,8 +297,8 @@ message BlsMessage {
    - End: All nodes have 100%
 
 3. **Threshold Enforcement**
-   - Nodes <2/3: Don't sync
-   - Nodes ≥2/3: Do sync
+   - Nodes <1/2: Don't sync
+   - Nodes ≥1/2: Do sync
 
 ## Future Enhancements
 

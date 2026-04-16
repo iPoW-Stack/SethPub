@@ -1485,7 +1485,7 @@ void BlsManager::SyncFinishMessageToNeighbors(uint32_t network_id) {
     }
 
     uint32_t n = static_cast<uint32_t>(members->size());
-    uint32_t t = common::GetSignerCount(n);  // 2/3 threshold
+    uint32_t t = (n + 1) / 2;  // 1/2 threshold for sync
 
     // Check if we are in the finish period
     auto waiting_bls = waiting_bls_.load();
@@ -1507,14 +1507,14 @@ void BlsManager::SyncFinishMessageToNeighbors(uint32_t network_id) {
         }
     }
 
-    // Prerequisite: Must have received at least 2/3 finish messages
+    // Prerequisite: Must have received at least 1/2 finish messages
     if (verified_count < t) {
-        BLS_DEBUG("[SyncFinish] network %u: only %u/%u verified, need at least %u (2/3), skip sync",
+        BLS_DEBUG("[SyncFinish] network %u: only %u/%u verified, need at least %u (1/2), skip sync",
                   network_id, verified_count, n, t);
         return;
     }
 
-    BLS_INFO("[SyncFinish] network %u: have %u/%u verified (>= 2/3), checking for missing nodes",
+    BLS_INFO("[SyncFinish] network %u: have %u/%u verified (>= 1/2), checking for missing nodes",
              network_id, verified_count, n);
 
     // Get local member index
