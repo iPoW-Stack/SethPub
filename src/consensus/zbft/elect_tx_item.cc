@@ -10,6 +10,8 @@
 #include <fstream>
 #include <sstream>
 #include <chrono>
+#include <cmath>
+#include <algorithm>
 
 namespace seth {
 
@@ -1075,27 +1077,77 @@ int ElectTxItem::CheckWeedout(
         }
     }
 
+    // Calculate area dispersion metrics for all nodes first
+    std::vector<std::pair<uint32_t, std::vector<uint32_t>>> all_distances(statistic_item.tx_count_size());
+    for (int32_t member_idx = 0; member_idx < statistic_item.tx_count_size(); ++member_idx) {
+        if (invalid_nodes.find(member_idx) != invalid_nodes.end()) {
+            continue;
+        }
+        
+        // Calculate distances to all other valid nodes
+        std::vector<uint32_t> distances;
+        for (int32_t idx = 0; idx < statistic_item.tx_count_size(); ++idx) {
+            if (member_idx == idx || invalid_nodes.find(idx) != invalid_nodes.end()) {
+                continue;
+            }
+            
+            auto &point0 = statistic_item.area_point(member_idx);
+            auto &point1 = statistic_item.area_point(idx);
+            uint32_t dis = (point0.x() - point1.x()) * (point0.x() - point1.x()) +
+                           (point0.y() - point1.y()) * (point0.y() - point1.y());
+            distances.push_back(dis);
+        }
+        
+        if (!distances.empty()) {
+            all_distances[member_idx] = distances;
+        }
+    }
+
     std::vector<NodeDetailPtr> elect_nodes_to_choose;
     for (int32_t member_idx = 0; member_idx < statistic_item.tx_count_size(); ++member_idx) {
         if (invalid_nodes.find(member_idx) != invalid_nodes.end()) {
             continue;
         }
 
-        // Calculate the minimum distance between the current node and other nodes
-        uint32_t min_dis = common::kInvalidUint32;
-        for (int32_t idx = 0; idx < statistic_item.tx_count_size(); ++idx) {
-            if (member_idx == idx) {
-                continue;
+        // Calculate area_weight using improved algorithm:
+        // area_weight = avg_distance + (std_dev * 0.5) + (median_distance * 0.3)
+        // This considers average proximity, variance, and median to better assess dispersion
+        uint32_t area_weight = 0;
+        
+        if (!all_distances[member_idx].empty()) {
+            auto &distances = all_distances[member_idx];
+            std::sort(distances.begin(), distances.end());
+            
+            // Calculate average distance
+            uint64_t sum_distance = 0;
+            for (auto d : distances) {
+                sum_distance += d;
             }
-
-            auto &point0 = statistic_item.area_point(member_idx);
-            auto &point1 = statistic_item.area_point(idx);
-            uint32_t dis = (point0.x() - point1.x()) * (point0.x() - point1.x()) +
-                           (point0.y() - point1.y()) * (point0.y() - point1.y());
-            if (min_dis > dis) {
-                min_dis = dis;
+            double avg_distance = static_cast<double>(sum_distance) / distances.size();
+            
+            // Calculate median distance
+            uint32_t median_distance = distances[distances.size() / 2];
+            
+            // Calculate standard deviation
+            double sq_sum = 0.0;
+            for (auto d : distances) {
+                double diff = d - avg_distance;
+                sq_sum += diff * diff;
             }
+            double std_dev = std::sqrt(sq_sum / distances.size());
+            
+            // Composite area weight: prioritize average proximity with variance adjustment
+            // Higher value = better dispersion (greater average distance from neighbors)
+            double composite_weight = avg_distance + (std_dev * 0.5) + (median_distance * 0.3);
+            area_weight = static_cast<uint32_t>(composite_weight);
+            
+            SETH_DEBUG("Node %d: avg=%.1f, median=%u, std_dev=%.1f, composite_weight=%u",
+                      member_idx, avg_distance, median_distance, std_dev, area_weight);
+        } else {
+            // Fallback if no valid neighbors (should not happen)
+            area_weight = common::kInvalidUint32;
         }
+        
         // Build node information and update global minimum node distance
         protos::AddressInfoPtr account_info = view_block_chain_->ChainGetAccountInfo((*members)[member_idx]->id);
         if (account_info == nullptr) {
@@ -1107,15 +1159,15 @@ int ElectTxItem::CheckWeedout(
 
         auto node_info = std::make_shared<ElectNodeInfo>();
         node_info->gas_sum = statistic_item.gas_sum(member_idx);
-        node_info->area_weight = min_dis;
+        node_info->area_weight = area_weight;
         node_info->tx_count = statistic_item.tx_count(member_idx);
         node_info->stoke = statistic_item.stokes(member_idx);
         node_info->credit = statistic_item.credit(member_idx);
         node_info->index = member_idx;
         node_info->pubkey = (*members)[member_idx]->pubkey;
         node_info->consensus_gap = statistic_item.consensus_gap(member_idx); 
-        if (*min_area_weight > min_dis) {
-            *min_area_weight = min_dis;
+        if (*min_area_weight > area_weight && area_weight != common::kInvalidUint32) {
+            *min_area_weight = area_weight;
         }
 
         elect_nodes_to_choose.push_back(node_info);
