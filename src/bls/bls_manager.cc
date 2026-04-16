@@ -725,6 +725,11 @@ void BlsManager::BatchVerifyFinishItems() {
 
         SETH_INFO("[BatchVerify] net %u: batch verify done, success=%d",
                   network_id, finish_item->success_verified);
+        
+        // Sync finish message to neighbors if we are in finish period
+        if (finish_item->success_verified) {
+            SyncFinishMessageToNeighbors(network_id);
+        }
     }
 }
 
@@ -1307,6 +1312,150 @@ int BlsManager::AddBlsConsensusInfo(elect::protobuf::ElectBlock& ec_block) {
 //         common_pk->x_c0().c_str(), common_pk->x_c1().c_str(),
 //         common_pk->y_c0().c_str(), common_pk->y_c1().c_str());
     return kBlsSuccess;
+}
+
+void BlsManager::SyncFinishMessageToNeighbors(uint32_t network_id) {
+    // Check if we have finish item for this network
+    auto finish_iter = finish_networks_map_.find(network_id);
+    if (finish_iter == finish_networks_map_.end()) {
+        BLS_DEBUG("[SyncFinish] network %u: finish_networks_map_ not found", network_id);
+        return;
+    }
+
+    BlsFinishItemPtr finish_item = finish_iter->second;
+    
+    // Check if we have elect members for this network
+    auto elect_iter = elect_members_.find(network_id);
+    if (elect_iter == elect_members_.end()) {
+        BLS_DEBUG("[SyncFinish] network %u: elect_members_ not found", network_id);
+        return;
+    }
+
+    auto members = elect_iter->second->members;
+    if (!members) {
+        BLS_DEBUG("[SyncFinish] network %u: members is null", network_id);
+        return;
+    }
+
+    // Check if we are in the finish period
+    auto waiting_bls = waiting_bls_.load();
+    if (!waiting_bls) {
+        BLS_DEBUG("[SyncFinish] network %u: waiting_bls_ is null", network_id);
+        return;
+    }
+
+    if (!waiting_bls->IsFinishPeriod()) {
+        BLS_DEBUG("[SyncFinish] network %u: not in finish period", network_id);
+        return;
+    }
+
+    // Get local member index
+    uint32_t local_member_index = common::kInvalidUint32;
+    std::string local_id = security_->GetAddress();
+    for (uint32_t i = 0; i < members->size(); ++i) {
+        if ((*members)[i]->id == local_id) {
+            local_member_index = i;
+            break;
+        }
+    }
+
+    if (local_member_index == common::kInvalidUint32) {
+        BLS_DEBUG("[SyncFinish] network %u: local member not found", network_id);
+        return;
+    }
+
+    // Check if we have verified finish message for local member
+    if (!finish_item->verified[local_member_index]) {
+        BLS_DEBUG("[SyncFinish] network %u: local member %u not verified yet", 
+                  network_id, local_member_index);
+        return;
+    }
+
+    // Get max finish hash
+    if (finish_item->max_finish_hash.empty()) {
+        BLS_DEBUG("[SyncFinish] network %u: max_finish_hash is empty", network_id);
+        return;
+    }
+
+    // Find the bitmap for max finish hash
+    auto max_bls_iter = finish_item->max_bls_members.find(finish_item->max_finish_hash);
+    if (max_bls_iter == finish_item->max_bls_members.end()) {
+        BLS_DEBUG("[SyncFinish] network %u: max_bls_members not found for hash %s", 
+                  network_id, common::Encode::HexEncode(finish_item->max_finish_hash).c_str());
+        return;
+    }
+
+    // Create finish message
+    auto msg_ptr = std::make_shared<transport::TransportMessage>();
+    auto& msg = msg_ptr->header;
+    msg.set_src_sharding_id(network_id);
+    msg.set_type(common::kBlsMessage);
+    msg.set_hop_count(0);
+    
+    auto& bls_msg = *msg.mutable_bls_proto();
+    bls_msg.set_index(local_member_index);
+    bls_msg.set_elect_height(elect_iter->second->height);
+    
+    auto finish_msg = bls_msg.mutable_finish_req();
+    finish_msg->set_network_id(network_id);
+    
+    // Add bitmap
+    auto& bitmap_data = max_bls_iter->second->bitmap.data();
+    for (uint32_t i = 0; i < bitmap_data.size(); ++i) {
+        finish_msg->add_bitmap(bitmap_data[i]);
+    }
+
+    // Add local public key
+    auto& local_pk = finish_item->all_public_keys[local_member_index];
+    auto local_pk_msg = finish_msg->mutable_pubkey();
+    local_pk.to_affine_coordinates();
+    local_pk_msg->set_x_c0(libBLS::ThresholdUtils::fieldElementToString(local_pk.X.c0));
+    local_pk_msg->set_x_c1(libBLS::ThresholdUtils::fieldElementToString(local_pk.X.c1));
+    local_pk_msg->set_y_c0(libBLS::ThresholdUtils::fieldElementToString(local_pk.Y.c0));
+    local_pk_msg->set_y_c1(libBLS::ThresholdUtils::fieldElementToString(local_pk.Y.c1));
+
+    // Add common public key
+    auto& common_pk = finish_item->all_common_public_keys[local_member_index];
+    auto common_pk_msg = finish_msg->mutable_common_pubkey();
+    common_pk.to_affine_coordinates();
+    common_pk_msg->set_x_c0(libBLS::ThresholdUtils::fieldElementToString(common_pk.X.c0));
+    common_pk_msg->set_x_c1(libBLS::ThresholdUtils::fieldElementToString(common_pk.X.c1));
+    common_pk_msg->set_y_c0(libBLS::ThresholdUtils::fieldElementToString(common_pk.Y.c0));
+    common_pk_msg->set_y_c1(libBLS::ThresholdUtils::fieldElementToString(common_pk.Y.c1));
+
+    // Add BLS signature
+    auto& bls_sign = finish_item->all_bls_signs[local_member_index];
+    bls_sign.to_affine_coordinates();
+    finish_msg->set_bls_sign_x(libBLS::ThresholdUtils::fieldElementToString(bls_sign.X));
+    finish_msg->set_bls_sign_y(libBLS::ThresholdUtils::fieldElementToString(bls_sign.Y));
+
+    // Send to neighbors
+    uint32_t n = static_cast<uint32_t>(members->size());
+    uint32_t neighbor_count = std::min(8u, n);  // Send to at most 8 neighbors
+    
+    for (uint32_t i = 0; i < neighbor_count; ++i) {
+        uint32_t neighbor_idx = (local_member_index + i + 1) % n;
+        if (neighbor_idx == local_member_index) {
+            continue;
+        }
+
+        // Skip if neighbor already verified
+        if (finish_item->verified[neighbor_idx]) {
+            continue;
+        }
+
+        // Create message for this neighbor
+        auto neighbor_msg = std::make_shared<transport::TransportMessage>(*msg_ptr);
+        neighbor_msg->header.set_des_dht_key((*members)[neighbor_idx]->id);
+        
+        BLS_INFO("[SyncFinish] network %u: syncing finish message to neighbor %u (member %u)",
+                 network_id, i, neighbor_idx);
+        
+        network::Route::Instance()->Send(neighbor_msg);
+    }
+
+    BLS_INFO("[SyncFinish] network %u: synced finish message to %u neighbors", 
+             network_id, neighbor_count);
 }
 
 void BlsManager::ResetLeaders(
