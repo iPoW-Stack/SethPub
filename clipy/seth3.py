@@ -540,6 +540,18 @@ contract StructDemo {
 }
 """
 
+IWETH9_SOL = """
+pragma solidity ^0.8.20;
+
+contract IWETH9 {
+    constructor() payable {
+    }
+    function deposit() external payable{
+    }
+    function balanceOf(address account) external view returns (uint256){return 0;}
+}
+"""
+
 RANDOM_SALT = secrets.token_hex(31)
 
 def test_struct_demo(w3, MY, KEY):
@@ -1799,6 +1811,74 @@ def ecdsa_sign_test():
     test_upgradeable_contract(w3, MY, KEY)
     test_amm_same_shard(w3, MY, KEY)
     test_struct_demo(w3, MY, KEY)
+    test_iweth9_demo(w3, MY, KEY)
+
+def test_iweth9_demo(w3, MY, KEY):
+    """
+    Demonstrate IWETH9 contract deployment and function invocation.
+    Shows how to:
+    1. Compile a Solidity contract
+    2. Deploy with payable constructor
+    3. Call contract functions (deposit, balanceOf)
+    4. Verify results
+    """
+    print("\n--- TEST CASE: IWETH9 Deployment and Calling Demo ---")
+    
+    try:
+        # [1] Compile IWETH9 contract
+        print("[1] Compiling IWETH9 contract...")
+        weth_bin, weth_abi = compile_and_link(IWETH9_SOL, "IWETH9")
+        print(f"    ✅ Compiled successfully")
+        print(f"    - Bytecode length: {len(weth_bin)} bytes")
+        print(f"    - ABI functions: {len(weth_abi)} items")
+        
+        # [2] Deploy IWETH9 with payable constructor
+        print("\n[2] Deploying IWETH9 contract with payable amount...")
+        initial_amount = 5000000  # 5 ETH equivalent
+        weth_contract = w3.seth.contract(abi=weth_abi, bytecode=weth_bin).deploy(
+            {'from': MY, 'salt': RANDOM_SALT + 'weth9', 'amount': initial_amount},
+            KEY
+        )
+        weth_address = weth_contract.address
+        print(f"    ✅ Deployed at: {weth_address}")
+        print(f"    - Initial payable amount: {initial_amount}")
+        
+        # [3] Call deposit() - send additional ETH to contract
+        print("\n[3] Calling deposit() function...")
+        deposit_amount = 2000000  # 2 ETH equivalent
+        receipt = weth_contract.functions.deposit().transact(
+            KEY,
+            value=deposit_amount
+        )
+        print(f"    ✅ Deposit successful")
+        print(f"    - Deposited amount: {deposit_amount}")
+        print(f"    - Transaction hash: {receipt.transactionHash.hex()}")
+        
+        # [4] Call balanceOf() view function
+        print("\n[4] Calling balanceOf() view function...")
+        balance = weth_contract.functions.balanceOf(MY).call()
+        print(f"    ✅ Balance retrieved")
+        print(f"    - Address: {MY}")
+        print(f"    - Balance: {balance}")
+        
+        # [5] Verification and assertions
+        print("\n[5] Verifying results...")
+        expected_balance = initial_amount + deposit_amount
+        assert balance == expected_balance, f"Balance mismatch: expected {expected_balance}, got {balance}"
+        assert weth_address is not None and weth_address != "0x0000000000000000000000000000000000000000", "Invalid contract address"
+        print(f"    ✅ All verifications passed")
+        print(f"    - Expected total: {expected_balance}")
+        print(f"    - Actual balance: {balance}")
+        print(f"    - Match: ✓")
+        
+        print("\n✅ TEST CASE PASSED: IWETH9 Deployment and Calling Demo")
+        return True
+        
+    except Exception as e:
+        print(f"\n❌ TEST CASE FAILED: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 def oqs_sign_test():
     # Base configuration
