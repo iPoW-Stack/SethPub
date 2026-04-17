@@ -100,22 +100,111 @@ int JoinElectTxItem::HandleTx(
     } while (0);
 
     if (block_tx.status() == kConsensusSuccess) {
-        if (from_balance >= (gas_used + store_gas) * block_tx.gas_price()) {
-            from_balance -= (gas_used + store_gas) * block_tx.gas_price();
-            gas_used += store_gas;
-            auto* block_join_info = view_block.mutable_block_info()->add_joins();
-            *block_join_info = join_info;
-        } else {
-            if (from_balance >= (gas_used) * block_tx.gas_price()) {
-                from_balance -= (gas_used) * block_tx.gas_price();
-            } else {
-                from_balance = 0;
+        // Check if this is a stake or redeem operation
+        if (join_info.has_stake_op()) {
+            if (join_info.stake_op() == bls::protobuf::STAKE_OP_STAKE) {
+                // Handle stake operation
+                return HandleStakeOperation(tx_index, view_block, seth_host, acc_balance_map, block_tx, join_info, from, from_balance, gas_used, store_gas);
+            } else if (join_info.stake_op() == bls::protobuf::STAKE_OP_REDEEM) {
+                // Handle redeem operation
+                return HandleRedeemOperation(tx_index, view_block, seth_host, acc_balance_map, block_tx, join_info, from, from_balance, gas_used);
             }
+        }
+        
+        // Normal join_elect without staking
+        uint64_t stake_amount = join_info.stake_amount();
+        
+        if (stake_amount > 0) {
+            // Validate stake amount is multiple of minimum unit (8 * 10^8)
+            static const uint64_t kMinStakeUnit = 8 * 100000000llu;
+            if (stake_amount % kMinStakeUnit != 0) {
+                block_tx.set_status(consensus::kConsensusError);
+                SETH_ERROR("Invalid stake amount: %lu, must be multiple of %lu",
+                    stake_amount, kMinStakeUnit);
+                from_balance -= gas_used * block_tx.gas_price();
+            } else if (from_balance < stake_amount + (gas_used + store_gas) * block_tx.gas_price()) {
+                block_tx.set_status(consensus::kConsensusAccountBalanceError);
+                SETH_ERROR("Insufficient balance for stake: have %lu, need %lu + gas",
+                    from_balance, stake_amount);
+                from_balance -= gas_used * block_tx.gas_price();
+            } else {
+                // Transfer stake to pool address
+                uint32_t pool_index = common::GetAddressPoolIndex(from);
+                std::string pool_address = common::GetPoolAddress(pool_index);
+                
+                // Check if there's existing stake info (for additional staking)
+                uint64_t existing_stake = 0;
+                uint64_t existing_elect_height = 0;
+                uint32_t existing_pool_index = 0;
+                uint64_t existing_block_height = 0;
+                bool has_existing_stake = prefix_db_->GetStakeInfo(
+                    from, &existing_stake, &existing_elect_height, 
+                    &existing_pool_index, &existing_block_height);
+                
+                // Calculate total staked amount
+                uint64_t total_staked = existing_stake + stake_amount;
+                
+                // Deduct stake amount and gas from sender
+                from_balance -= stake_amount + (gas_used + store_gas) * block_tx.gas_price();
+                gas_used += store_gas;
+                
+                // Add stake to pool address
+                uint64_t pool_balance = 0;
+                uint64_t pool_nonce = 0;
+                int pool_status = GetTempAccountBalance(seth_host, pool_address, acc_balance_map, &pool_balance, &pool_nonce);
+                if (pool_status == kConsensusSuccess) {
+                    pool_balance += stake_amount;
+                    acc_balance_map[pool_address]->set_balance(pool_balance);
+                    acc_balance_map[pool_address]->set_latest_height(view_block.block_info().height());
+                }
+                
+                // Save/Update stake info with new lock period starting from current elect height
+                // Lock period resets to 1008 epochs from now on each additional stake
+                prefix_db_->SaveStakeInfo(
+                    from,
+                    total_staked,  // Save total staked amount
+                    join_info.stake_elect_height(),  // Reset lock period start
+                    pool_index,
+                    view_block.block_info().height());
+                
+                // Update join_info with total staked for FTS calculation
+                join_info.set_total_staked(total_staked);
+                
+                auto* block_join_info = view_block.mutable_block_info()->add_joins();
+                *block_join_info = join_info;
+                
+                if (has_existing_stake) {
+                    SETH_INFO("Additional stake: added %lu coins (total now: %lu) to pool %u address %s, "
+                        "lock period reset to elect_height: %lu (previous: %lu)",
+                        stake_amount, total_staked, pool_index,
+                        common::Encode::HexEncode(pool_address).c_str(),
+                        join_info.stake_elect_height(), existing_elect_height);
+                } else {
+                    SETH_INFO("Initial stake: %lu coins to pool %u address %s, elect_height: %lu",
+                        stake_amount, pool_index,
+                        common::Encode::HexEncode(pool_address).c_str(),
+                        join_info.stake_elect_height());
+                }
+            }
+        } else {
+            // No stake, just process join elect normally
+            if (from_balance >= (gas_used + store_gas) * block_tx.gas_price()) {
+                from_balance -= (gas_used + store_gas) * block_tx.gas_price();
+                gas_used += store_gas;
+                auto* block_join_info = view_block.mutable_block_info()->add_joins();
+                *block_join_info = join_info;
+            } else {
+                if (from_balance >= (gas_used) * block_tx.gas_price()) {
+                    from_balance -= (gas_used) * block_tx.gas_price();
+                } else {
+                    from_balance = 0;
+                }
 
-            block_tx.set_status(consensus::kConsensusAccountBalanceError);
-            SETH_ERROR("id: %s leader balance error: %llu, %llu",
-                common::Encode::HexEncode(from).c_str(),
-                from_balance, (gas_used + store_gas) * block_tx.gas_price());
+                block_tx.set_status(consensus::kConsensusAccountBalanceError);
+                SETH_ERROR("id: %s leader balance error: %llu, %llu",
+                    common::Encode::HexEncode(from).c_str(),
+                    from_balance, (gas_used + store_gas) * block_tx.gas_price());
+            }
         }
     } else {
         if (from_balance >= gas_used * block_tx.gas_price()) {
@@ -129,9 +218,24 @@ int JoinElectTxItem::HandleTx(
     tx_hash_status.set_status(block_tx.status());
     auto status_val = tx_hash_status.SerializeAsString();
     seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+    
+    // Set stoke for FTS calculation
+    // Priority: 1. Stake info (if exists), 2. Historical min stoke
     uint64_t stoke = 0;
-    prefix_db_->GetElectNodeMinStoke(common::GlobalInfo::Instance()->network_id(), from, &stoke);
-    join_info.set_stoke(stoke);
+    uint64_t stake_timestamp = 0;
+    if (prefix_db_->GetStakeInfo(from, &stoke, &stake_timestamp)) {
+        // Use staked amount as stoke (total_staked)
+        join_info.set_stoke(stoke);
+        SETH_DEBUG("Using stake info for stoke: addr=%s, stoke=%lu",
+            common::Encode::HexEncode(from).c_str(), stoke);
+    } else {
+        // Fallback to historical min stoke
+        prefix_db_->GetElectNodeMinStoke(common::GlobalInfo::Instance()->network_id(), from, &stoke);
+        join_info.set_stoke(stoke);
+        SETH_DEBUG("Using historical min stoke: addr=%s, stoke=%lu",
+            common::Encode::HexEncode(from).c_str(), stoke);
+    }
+    
     join_info.set_public_key(from_pk_);
     acc_balance_map[from]->set_balance(from_balance);
     acc_balance_map[from]->set_nonce(block_tx.nonce());
@@ -147,6 +251,213 @@ int JoinElectTxItem::HandleTx(
         view_block.qc().pool_index(),
         block.height(),
         join_info.shard_id());
+    return kConsensusSuccess;
+}
+
+int JoinElectTxItem::HandleStakeOperation(
+        uint32_t tx_index,
+        view_block::protobuf::ViewBlockItem& view_block,
+        sethvm::SethhainHost& seth_host,
+        hotstuff::BalanceAndNonceMap& acc_balance_map,
+        block::protobuf::BlockTx& block_tx,
+        bls::protobuf::JoinElectInfo& join_info,
+        const std::string& from,
+        uint64_t& from_balance,
+        uint64_t gas_used,
+        uint64_t store_gas) {
+    
+    uint64_t stake_amount = join_info.stake_amount();
+    
+    // Validate stake amount is multiple of minimum unit (8 * 10^8)
+    static const uint64_t kMinStakeUnit = 8 * 100000000llu;
+    if (stake_amount % kMinStakeUnit != 0) {
+        block_tx.set_status(consensus::kConsensusError);
+        SETH_ERROR("Invalid stake amount: %lu, must be multiple of %lu",
+            stake_amount, kMinStakeUnit);
+        from_balance -= gas_used * block_tx.gas_price();
+        acc_balance_map[from]->set_balance(from_balance);
+        acc_balance_map[from]->set_nonce(block_tx.nonce());
+        return kConsensusError;
+    }
+    
+    if (from_balance < stake_amount + (gas_used + store_gas) * block_tx.gas_price()) {
+        block_tx.set_status(consensus::kConsensusAccountBalanceError);
+        SETH_ERROR("Insufficient balance for stake: have %lu, need %lu + gas",
+            from_balance, stake_amount);
+        from_balance -= gas_used * block_tx.gas_price();
+        acc_balance_map[from]->set_balance(from_balance);
+        acc_balance_map[from]->set_nonce(block_tx.nonce());
+        return kConsensusAccountBalanceError;
+    }
+    
+    // Get root stake pool address
+    std::string root_pool_address = common::GetRootStakePoolAddress();
+    
+    // Check if there's existing stake info (for additional staking)
+    uint64_t existing_stake = 0;
+    uint64_t existing_timestamp = 0;
+    bool has_existing_stake = prefix_db_->GetStakeInfo(
+        from, &existing_stake, &existing_timestamp);
+    
+    // Calculate total staked amount
+    uint64_t total_staked = existing_stake + stake_amount;
+    
+    // Deduct stake amount and gas from sender
+    from_balance -= stake_amount + (gas_used + store_gas) * block_tx.gas_price();
+    gas_used += store_gas;
+    
+    // Add stake to root pool address
+    uint64_t pool_balance = 0;
+    uint64_t pool_nonce = 0;
+    int pool_status = GetTempAccountBalance(seth_host, root_pool_address, acc_balance_map, &pool_balance, &pool_nonce);
+    if (pool_status == kConsensusSuccess) {
+        pool_balance += stake_amount;
+        acc_balance_map[root_pool_address]->set_balance(pool_balance);
+        acc_balance_map[root_pool_address]->set_latest_height(view_block.block_info().height());
+    }
+    
+    // Save/Update stake info with timestamp
+    prefix_db_->SaveStakeInfo(
+        from,
+        total_staked,  // Save total staked amount
+        join_info.stake_timestamp(),  // Use timestamp for lock period
+        view_block.block_info().height());
+    
+    // Update join_info with total staked for FTS calculation
+    join_info.set_total_staked(total_staked);
+    join_info.set_stoke(total_staked);  // Use total_staked for PoS weight
+    
+    auto* block_join_info = view_block.mutable_block_info()->add_joins();
+    *block_join_info = join_info;
+    
+    // Update account balance
+    acc_balance_map[from]->set_balance(from_balance);
+    acc_balance_map[from]->set_nonce(block_tx.nonce());
+    acc_balance_map[from]->set_latest_height(view_block.block_info().height());
+    acc_balance_map[from]->set_tx_index(tx_index);
+    
+    block_tx.set_balance(from_balance);
+    block_tx.set_gas_used(gas_used);
+    
+    if (has_existing_stake) {
+        SETH_INFO("Additional stake in root shard: addr=%s, added=%lu, total=%lu, "
+            "timestamp=%lu (previous: %lu), pool=%s",
+            common::Encode::HexEncode(from).c_str(),
+            stake_amount, total_staked,
+            join_info.stake_timestamp(), existing_timestamp,
+            common::Encode::HexEncode(root_pool_address).c_str());
+    } else {
+        SETH_INFO("Initial stake in root shard: addr=%s, amount=%lu, timestamp=%lu, pool=%s",
+            common::Encode::HexEncode(from).c_str(),
+            stake_amount, join_info.stake_timestamp(),
+            common::Encode::HexEncode(root_pool_address).c_str());
+    }
+    
+    return kConsensusSuccess;
+}
+
+int JoinElectTxItem::HandleRedeemOperation(
+        uint32_t tx_index,
+        view_block::protobuf::ViewBlockItem& view_block,
+        sethvm::SethhainHost& seth_host,
+        hotstuff::BalanceAndNonceMap& acc_balance_map,
+        block::protobuf::BlockTx& block_tx,
+        bls::protobuf::JoinElectInfo& join_info,
+        const std::string& from,
+        uint64_t& from_balance,
+        uint64_t gas_used) {
+    
+    // Get stake info
+    uint64_t total_staked = 0;
+    uint64_t stake_timestamp = 0;
+    
+    if (!prefix_db_->GetStakeInfo(from, &total_staked, &stake_timestamp)) {
+        block_tx.set_status(consensus::kConsensusError);
+        SETH_ERROR("No stake info found for address: %s",
+            common::Encode::HexEncode(from).c_str());
+        from_balance -= gas_used * block_tx.gas_price();
+        acc_balance_map[from]->set_balance(from_balance);
+        acc_balance_map[from]->set_nonce(block_tx.nonce());
+        return kConsensusError;
+    }
+    
+    // Check if lock period has passed using timestamps
+    static const uint64_t kStakeLockSeconds = 1008 * 600;  // 604,800 seconds = 7 days
+    uint64_t current_timestamp = view_block.block_info().timestamp();
+    uint64_t seconds_passed = current_timestamp - stake_timestamp;
+    
+    if (seconds_passed < kStakeLockSeconds) {
+        block_tx.set_status(consensus::kConsensusError);
+        SETH_ERROR("Stake lock period not passed: %lu/%lu seconds (%lu days)",
+            seconds_passed, kStakeLockSeconds, seconds_passed / 86400);
+        from_balance -= gas_used * block_tx.gas_price();
+        acc_balance_map[from]->set_balance(from_balance);
+        acc_balance_map[from]->set_nonce(block_tx.nonce());
+        return kConsensusError;
+    }
+    
+    // Transfer stake back from root pool address to user
+    std::string root_pool_address = common::GetRootStakePoolAddress();
+    uint64_t pool_balance = 0;
+    uint64_t pool_nonce = 0;
+    
+    int pool_status = GetTempAccountBalance(seth_host, root_pool_address, 
+                                             acc_balance_map, &pool_balance, &pool_nonce);
+    if (pool_status != kConsensusSuccess) {
+        block_tx.set_status(consensus::kConsensusError);
+        SETH_ERROR("Failed to get root pool balance");
+        from_balance -= gas_used * block_tx.gas_price();
+        acc_balance_map[from]->set_balance(from_balance);
+        acc_balance_map[from]->set_nonce(block_tx.nonce());
+        return kConsensusError;
+    }
+    
+    if (pool_balance < total_staked) {
+        block_tx.set_status(consensus::kConsensusError);
+        SETH_ERROR("Insufficient root pool balance: have %lu, need %lu",
+            pool_balance, total_staked);
+        from_balance -= gas_used * block_tx.gas_price();
+        acc_balance_map[from]->set_balance(from_balance);
+        acc_balance_map[from]->set_nonce(block_tx.nonce());
+        return kConsensusError;
+    }
+    
+    // Deduct gas from sender
+    from_balance -= gas_used * block_tx.gas_price();
+    
+    // Transfer total staked amount from pool to user
+    pool_balance -= total_staked;
+    from_balance += total_staked;
+    
+    // Update balances
+    acc_balance_map[from]->set_balance(from_balance);
+    acc_balance_map[from]->set_nonce(block_tx.nonce());
+    acc_balance_map[from]->set_latest_height(view_block.block_info().height());
+    acc_balance_map[from]->set_tx_index(tx_index);
+    
+    acc_balance_map[root_pool_address]->set_balance(pool_balance);
+    acc_balance_map[root_pool_address]->set_latest_height(view_block.block_info().height());
+    
+    // Remove stake info
+    prefix_db_->RemoveStakeInfo(from);
+    
+    // Set stoke to 0 for redeem operation (no PoS weight)
+    join_info.set_stoke(0);
+    join_info.set_total_staked(0);
+    
+    // Add to block joins to record the redeem operation
+    auto* block_join_info = view_block.mutable_block_info()->add_joins();
+    *block_join_info = join_info;
+    
+    block_tx.set_balance(from_balance);
+    block_tx.set_gas_used(gas_used);
+    
+    SETH_INFO("Redeemed stake in root shard: addr=%s, amount=%lu, "
+        "seconds_passed=%lu, stake_timestamp=%lu, current_timestamp=%lu, pool=%s, stoke set to 0",
+        common::Encode::HexEncode(from).c_str(),
+        total_staked, seconds_passed, stake_timestamp, current_timestamp,
+        common::Encode::HexEncode(root_pool_address).c_str());
+    
     return kConsensusSuccess;
 }
 

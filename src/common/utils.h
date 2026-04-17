@@ -489,6 +489,8 @@ bool IsVlanIp(const std::string& ip);
 uint32_t IpToUint32(const char* ip);
 std::string Uint32ToIp(uint32_t ip);
 uint32_t GetAddressPoolIndex(const std::string& addr);
+std::string GetPoolAddress(uint32_t pool_index);
+std::string GetRootStakePoolAddress();
 uint32_t GetAddressMemberIndex(const std::string& addr);
 
 inline static uint64_t GetNodeConnectInt(const std::string& ip, uint16_t port) {

@@ -69,6 +69,7 @@ static const std::string kLocalTempCommonPublicKeyPrefix = "ag\x01";
 static const std::string kNodeVerificationVectorPrefix = "ah\x01";
 static const std::string kNodeLocalElectPosPrefix = "ai\x01";
 static const std::string kCrossCheckHeightPrefix = "aj\x01";
+static const std::string kStakeInfoPrefix = "ak\x01";
 static const std::string kViewBlockInfoPrefix = "an\x01";
 
 static const std::string kBandwidthPrefix = "ao\x01";
@@ -924,6 +925,87 @@ public:
         *sharding_id = tmp[0];
         *des_sharding_id = tmp[1];
         return true;
+    }
+
+    // Save stake information for an address (using timestamp)
+    void SaveStakeInfo(
+            const std::string& address,
+            uint64_t total_stake_amount,
+            uint64_t stake_timestamp,  // Changed from elect_height to timestamp
+            uint64_t stake_block_height) {
+        std::string key;
+        key.reserve(64);
+        key.append(kStakeInfoPrefix);
+        key.append(address);
+        
+        // Pack data: total_stake_amount(8) + stake_timestamp(8) + stake_block_height(8)
+        char data[24];
+        uint64_t* u64_ptr = (uint64_t*)data;
+        u64_ptr[0] = total_stake_amount;
+        u64_ptr[1] = stake_timestamp;
+        u64_ptr[2] = stake_block_height;
+        
+        std::string val(data, sizeof(data));
+        auto st = db_->Put(key, val);
+        if (!st.ok()) {
+            SETH_ERROR("Failed to save stake info for address: %s, status: %s",
+                common::Encode::HexEncode(address).c_str(), st.ToString().c_str());
+        } else {
+            SETH_DEBUG("Saved stake info: addr=%s, total_stake=%lu, timestamp=%lu, block_height=%lu",
+                common::Encode::HexEncode(address).c_str(),
+                total_stake_amount, stake_timestamp, stake_block_height);
+        }
+    }
+
+    // Get stake information for an address (using timestamp)
+    bool GetStakeInfo(
+            const std::string& address,
+            uint64_t* total_stake_amount,
+            uint64_t* stake_timestamp) {  // Changed from elect_height to timestamp
+        std::string key;
+        key.reserve(64);
+        key.append(kStakeInfoPrefix);
+        key.append(address);
+        
+        std::string val;
+        auto st = db_->Get(key, &val);
+        if (!st.ok()) {
+            return false;
+        }
+        
+        if (val.size() != 24) {
+            SETH_ERROR("Invalid stake info size: %lu for address: %s",
+                val.size(), common::Encode::HexEncode(address).c_str());
+            return false;
+        }
+        
+        const uint64_t* u64_ptr = (const uint64_t*)val.c_str();
+        *total_stake_amount = u64_ptr[0];
+        *stake_timestamp = u64_ptr[1];
+        // stake_block_height = u64_ptr[2] (not needed for return)
+        
+        SETH_DEBUG("Got stake info: addr=%s, total_stake=%lu, timestamp=%lu",
+            common::Encode::HexEncode(address).c_str(),
+            *total_stake_amount, *stake_timestamp);
+        
+        return true;
+    }
+
+    // Remove stake information for an address
+    void RemoveStakeInfo(const std::string& address) {
+        std::string key;
+        key.reserve(64);
+        key.append(kStakeInfoPrefix);
+        key.append(address);
+        
+        auto st = db_->Delete(key);
+        if (!st.ok()) {
+            SETH_ERROR("Failed to remove stake info for address: %s, status: %s",
+                common::Encode::HexEncode(address).c_str(), st.ToString().c_str());
+        } else {
+            SETH_DEBUG("Removed stake info for address: %s",
+                common::Encode::HexEncode(address).c_str());
+        }
     }
 
     void SaveLocalPolynomial(

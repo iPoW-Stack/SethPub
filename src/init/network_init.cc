@@ -1756,6 +1756,38 @@ void NetworkInit::SendJoinElectTransaction() {
         join_info.set_shard_id(common::GlobalInfo::Instance()->network_id());
     }
     
+    // Get stake amount from config (in units of 8 * 10^8)
+    uint64_t stake_units = 0;
+    conf_.Get("seth", "stake_units", stake_units);
+    if (stake_units > 0) {
+        // Minimum stake unit is 8 * 10^8 coins (8 SETH)
+        static const uint64_t kMinStakeUnit = 8 * 100000000llu;
+        uint64_t stake_amount = stake_units * kMinStakeUnit;
+        
+        // Check if account has enough balance
+        if (msg_ptr->address_info->balance() >= stake_amount) {
+            join_info.set_stake_op(bls::protobuf::STAKE_OP_STAKE);
+            join_info.set_stake_amount(stake_amount);
+            join_info.set_stake_timestamp(common::TimeUtils::TimestampSeconds());
+            
+            // Get current elect height for stake tracking
+            elect::protobuf::ElectBlock elect_block;
+            if (prefix_db_->GetLatestElectBlock(des_sharding_id_, &elect_block)) {
+                join_info.set_stake_elect_height(elect_block.elect_height());
+            }
+            
+            SETH_INFO("Sending stake transaction: %lu coins (%lu units) to root shard, timestamp: %lu",
+                stake_amount, stake_units, join_info.stake_timestamp());
+        } else {
+            SETH_ERROR("Insufficient balance for staking: have %lu, need %lu",
+                msg_ptr->address_info->balance(), stake_amount);
+            return;
+        }
+    } else {
+        // Normal join_elect without staking
+        join_info.set_stake_op(bls::protobuf::STAKE_OP_NONE);
+    }
+    
     // if (pos == common::kInvalidUint32) {
         auto n = common::GlobalInfo::Instance()->each_shard_max_members();
         auto t = common::GetSignerCount(n);
@@ -1782,14 +1814,85 @@ void NetworkInit::SendJoinElectTransaction() {
     // msg_ptr->msg_hash = tx_hash; // TxPoolmanager::HandleElectTx The receiving end has calculated it, so there is no need to transmit it here
     network::Route::Instance()->Send(msg_ptr);
     SETH_DEBUG("success send join elect request transaction: %u, join: %u, addr: %s, nonce: %lu, "
-        "hash64: %lu, tx hash: %s, pk: %s sign: %s",
+        "stake_amount: %lu, hash64: %lu, tx hash: %s, pk: %s sign: %s",
         des_sharding_id_, join_info.shard_id(),
         common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
         new_tx->nonce(),
+        join_info.stake_amount(),
         msg.hash64(),
         common::Encode::HexEncode(tx_hash).c_str(),
         common::Encode::HexEncode(new_tx->pubkey()).c_str(),
         common::Encode::HexEncode(new_tx->sign()).c_str());
+}
+
+void NetworkInit::SendRedeemStakeTransaction() {
+    if (common::GlobalInfo::Instance()->network_id() < network::kConsensusShardBeginNetworkId) {
+        return;
+    }
+
+    if (common::GlobalInfo::Instance()->network_id() >= network::kConsensusWaitingShardEndNetworkId) {
+        return;
+    }
+
+    auto local_node_account_info = prefix_db_->GetAddressInfo(security_->GetAddress());
+    if (local_node_account_info == nullptr) {
+        SETH_DEBUG("failed get address info: %s",
+            common::Encode::HexEncode(security_->GetAddress()).c_str());
+        return;
+    }
+
+    auto msg_ptr = std::make_shared<transport::TransportMessage>();
+    msg_ptr->address_info = account_mgr_->GetAccountInfo(security_->GetAddress());
+    transport::protobuf::Header& msg = msg_ptr->header;
+    dht::DhtKeyManager dht_key(network::kRootCongressNetworkId);  // Send to root shard
+    msg.set_src_sharding_id(common::GlobalInfo::Instance()->network_id());
+    msg.set_des_dht_key(dht_key.StrKey());
+    msg.set_type(common::kPoolsMessage);
+    msg.set_hop_count(0);
+    
+    auto new_tx = msg.mutable_tx_proto();
+    new_tx->set_nonce(msg_ptr->address_info->nonce() + 1);
+    new_tx->set_pubkey(security_->GetPublicKeyUnCompressed());
+    new_tx->set_step(pools::protobuf::kJoinElect);  // Use kJoinElect
+    new_tx->set_gas_limit(consensus::kJoinElectGas + 10000000lu);
+    new_tx->set_gas_price(1);
+    new_tx->set_key(protos::kJoinElectVerifyG2);
+    
+    bls::protobuf::JoinElectInfo join_info;
+    join_info.set_stake_op(bls::protobuf::STAKE_OP_REDEEM);  // Redeem operation
+    join_info.set_stake_amount(0);  // No amount needed for redeem
+    join_info.set_addr(security_->GetAddress());
+    join_info.set_public_key(security_->GetPublicKey());
+    join_info.set_shard_id(common::GlobalInfo::Instance()->network_id());
+    
+    // Still need g2_req for validation
+    uint32_t pos = common::kInvalidUint32;
+    prefix_db_->GetLocalElectPos(security_->GetAddress(), &pos);
+    join_info.set_member_idx(pos);
+    
+    auto n = common::GlobalInfo::Instance()->each_shard_max_members();
+    auto t = common::GetSignerCount(n);
+    auto* req = join_info.mutable_g2_req();
+    auto res = prefix_db_->GetBlsVerifyG2(security_->GetAddress(), req);
+    if (!res || req->verify_vec_size() != t) {
+        CreateContribution(req);
+    }
+    
+    new_tx->set_value(SerializeDeterministic(join_info));
+    transport::TcpTransport::Instance()->SetMessageHash(msg);
+    auto tx_hash = pools::GetTxMessageHash(*new_tx);
+    std::string sign;
+    if (security_->Sign(tx_hash, &sign) != security::kSecuritySuccess) {
+        assert(false);
+        return;
+    }
+
+    new_tx->set_sign(sign);
+    network::Route::Instance()->Send(msg_ptr);
+    
+    SETH_INFO("Sent redeem stake transaction to root shard: addr=%s, nonce=%lu",
+        common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
+        new_tx->nonce());
 }
 
 void NetworkInit::CreateContribution(bls::protobuf::VerifyVecBrdReq* bls_verify_req) {

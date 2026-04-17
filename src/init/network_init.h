@@ -84,6 +84,7 @@ private:
     int InitWsServer();
     void CreateInitAddress(uint32_t net_id);
     void SendJoinElectTransaction();
+    void SendRedeemStakeTransaction();
     void CreateContribution(bls::protobuf::VerifyVecBrdReq* bls_verify_req);
     void HandleNewBlock();
     void SaveLatestBlock(std::shared_ptr<db::Db> db, uint32_t sharding_id);

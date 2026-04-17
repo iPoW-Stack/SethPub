@@ -35,6 +35,29 @@ public:
         block::protobuf::BlockTx& block_tx);
 
 private:
+    int HandleStakeOperation(
+        uint32_t tx_index,
+        view_block::protobuf::ViewBlockItem& view_block,
+        sethvm::SethhainHost& seth_host,
+        hotstuff::BalanceAndNonceMap& acc_balance_map,
+        block::protobuf::BlockTx& block_tx,
+        bls::protobuf::JoinElectInfo& join_info,
+        const std::string& from,
+        uint64_t& from_balance,
+        uint64_t gas_used,
+        uint64_t store_gas);
+    
+    int HandleRedeemOperation(
+        uint32_t tx_index,
+        view_block::protobuf::ViewBlockItem& view_block,
+        sethvm::SethhainHost& seth_host,
+        hotstuff::BalanceAndNonceMap& acc_balance_map,
+        block::protobuf::BlockTx& block_tx,
+        bls::protobuf::JoinElectInfo& join_info,
+        const std::string& from,
+        uint64_t& from_balance,
+        uint64_t gas_used);
+
     std::shared_ptr<protos::PrefixDb> prefix_db_ = nullptr;
     std::shared_ptr<elect::ElectManager> elect_mgr_ = nullptr;
     std::string from_pk_;

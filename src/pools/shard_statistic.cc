@@ -327,13 +327,28 @@ bool ShardStatistic::HandleStatistic(
             }
 
             auto& elect_stoke_map = join_elect_stoke_map[view_block_ptr->qc().elect_height()];
-            elect_stoke_map[join_addr] = join_info.stoke();
-            SETH_DEBUG("success add elect node stoke %s, %lu, "
-                "elect height: %lu, tm height: %lu",
-                common::Encode::HexEncode(join_addr).c_str(), 
-                join_info.stoke(),
-                view_block_ptr->qc().elect_height(),
-                block.timeblock_height());
+            
+            // Check if this is a redeem operation (stoke = 0)
+            if (join_info.has_stake_op() && 
+                join_info.stake_op() == bls::protobuf::STAKE_OP_REDEEM) {
+                // Redeem: set stoke to 0 (remove PoS weight)
+                elect_stoke_map[join_addr] = 0;
+                SETH_DEBUG("redeem operation: set stoke to 0 for %s, "
+                    "elect height: %lu, tm height: %lu",
+                    common::Encode::HexEncode(join_addr).c_str(),
+                    view_block_ptr->qc().elect_height(),
+                    block.timeblock_height());
+            } else {
+                // Stake or normal join: use join_info.stoke
+                elect_stoke_map[join_addr] = join_info.stoke();
+                SETH_DEBUG("success add elect node stoke %s, %lu, "
+                    "elect height: %lu, tm height: %lu, stake_op: %d",
+                    common::Encode::HexEncode(join_addr).c_str(), 
+                    join_info.stoke(),
+                    view_block_ptr->qc().elect_height(),
+                    block.timeblock_height(),
+                    join_info.has_stake_op() ? join_info.stake_op() : -1);
+            }
         }
 
         {
@@ -973,9 +988,9 @@ void ShardStatistic::addNewNode2JoinStatics(
 
         auto shard_iter = r_siter->second.find(elect_nodes[i]);
         auto shard_id = shard_iter->second;
-        auto stoke = 0;
+        auto stoke_iter = r_eiter->second.find(elect_nodes[i]);
+        auto stoke = stoke_iter->second;  // Use stoke from map, not 0!
         auto join_elect_node = elect_statistic.add_join_elect_nodes();
-        auto iter = r_eiter->second.find(elect_nodes[i]);
         join_elect_node->set_consensus_gap(0);
         join_elect_node->set_credit(0);
         join_elect_node->set_pubkey(pubkey);
@@ -985,9 +1000,10 @@ void ShardStatistic::addNewNode2JoinStatics(
         SETH_DEBUG("add node to election new member: %s, %s, stoke: %lu, shard: %u, elect pos: %d",
                   common::Encode::HexEncode(pubkey).c_str(),
                   common::Encode::HexEncode(secptr_->GetAddressWithPublicKey(pubkey)).c_str(),
-                  iter->second, shard_iter->second,
+                  stoke, shard_id,
                   0);
         SETH_DEBUG("add new elect node: %s, stoke: %lu, shard: %u",
+            common::Encode::HexEncode(pubkey).c_str(), stoke, shard_id);
             common::Encode::HexEncode(pubkey).c_str(), iter->second, shard_iter->second);
     }
 }

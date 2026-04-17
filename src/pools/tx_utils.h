@@ -113,7 +113,7 @@ struct StatisticMemberInfoItem {
 };
 
 struct AccoutPoceInfoItem {
-    uint64_t consensus_gap; // 边缘化程度 P
+    uint64_t consensus_gap; // Marginalization degree P (tenure time)
     uint64_t credit;
 };
 
