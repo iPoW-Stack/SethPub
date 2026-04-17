@@ -372,7 +372,6 @@ class SethContract:
     
     def transact(self, private_key: str, value: int = 0, prefund: int = 10**6, oqs_pubkey: str = None, gm_mode: bool = False) -> dict:
         """
-        核心交易触发逻辑：支持 ECDSA, OQS 和 GmSSL。
         Core transaction triggering logic: supports ECDSA, OQS, and GmSSL.
         """
         # 1. Automatic routing logic
@@ -897,7 +896,7 @@ class SethClient:
 
     def get_gmssl_address(self, pubkey_hex: str) -> str:
         """
-        匹配 C++: str_addr_ = common::Hash::sm3(str_pk_).substr(0, 20)
+        Match C++: str_addr_ = common::Hash::sm3(str_pk_).substr(0, 20)
         """
         import binascii
         pub_bytes = binascii.unhexlify(pubkey_hex.replace('0x', ''))
@@ -906,7 +905,7 @@ class SethClient:
     
     def send_gmssl_transaction(self, pri_key_hex, pub_key_hex, to, step, amount=0, contract_code='', input_hex='', prefund=0):
         """
-        发送国密交易：构造消息 -> SM3摘要 -> SM2签名 -> 发送
+        Send GmSSL transaction: build message -> SM3 digest -> SM2 sign -> send
         """
         my_addr = self.get_gmssl_address(pub_key_hex)
         nonce_addr = to + my_addr if (step in [StepType.kContractExcute, StepType.kContractRefund]) else my_addr

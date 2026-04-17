@@ -1,44 +1,44 @@
-# Seth AMM 原子性解决方案 — 基于 Demo 的完整阐述
+# Seth AMM Atomicity Solution — A Complete Explanation Based on the Demo
 ```
 cd SethPub/clipy && python3 amm.py --host 35.197.170.240 --port 23001
 ```
 
-## 1. 问题背景
+## 1. Problem Background
 
-### 1.1 审稿人提出的质疑
+### 1.1 Reviewer's Concern
 
-> *"缺乏同步原子性迫使开发者手动编写异步补偿交易来退款 —— 本质上是将一次简单的 swap 当作复杂的跨链交互来处理。"*
+> *"The lack of synchronous atomicity forces developers to manually write asynchronous compensating transactions for refunds — essentially treating a simple swap as a complex cross-chain interaction."*
 
-审稿人假设的场景：
+The scenario assumed by the reviewer:
 
 ```
 Alice (Shard X) → TokenX (Shard X) → AMM (Shard P) → TokenY (Shard Y)
-                   ↑ 不同分片 ↑         ↑ 不同分片 ↑
+                   ↑ different shard ↑    ↑ different shard ↑
 ```
 
-在这个假设下，TokenX、TokenY 和 AMM 池分布在不同分片，swap 过程中任何一步失败都需要跨分片补偿交易，开发者负担极重。
+Under this assumption, TokenX, TokenY, and the AMM pool are distributed across different shards. Any step failure during a swap would require cross-shard compensating transactions, placing an extremely heavy burden on developers.
 
-### 1.2 问题的本质
+### 1.2 The Essence of the Problem
 
-AMM 的核心需求是 **原子性**：一次 swap 涉及多个合约的状态变更（扣除 TokenA、增加 TokenB、更新储备量），这些变更必须全部成功或全部回滚。在分片架构中，如果这些合约分布在不同分片，原子性就无法在单次共识中保证。
+The core requirement of an AMM is **atomicity**: a single swap involves state changes across multiple contracts (deducting TokenA, adding TokenB, updating reserves), and these changes must either all succeed or all roll back. In a sharded architecture, if these contracts are distributed across different shards, atomicity cannot be guaranteed within a single consensus round.
 
 ---
 
-## 2. Seth 的解决方案：部署者地址派生保证合约共置
+## 2. Seth's Solution: Deployer Address Derivation Guarantees Contract Co-location
 
-### 2.1 核心机制
+### 2.1 Core Mechanism
 
-Seth 使用 CREATE2 地址派生，合约地址由 **部署者地址 + salt + 字节码** 决定：
+Seth uses CREATE2 address derivation, where the contract address is determined by **deployer address + salt + bytecode**:
 
 ```python
-# seth_sdk.py — 地址计算
+# seth_sdk.py — Address calculation
 def calc_create2_address(sender, salt, bytecode):
     code_hash = keccak256(bytecode)
     input_data = 0xff + sender + salt_bytes + code_hash
     return keccak256(input_data)[-20:]
 ```
 
-池索引（决定分片和交易池）由地址哈希计算：
+The pool index (which determines the shard and transaction pool) is calculated from the address hash:
 
 ```cpp
 // src/common/utils.h
@@ -47,45 +47,45 @@ static inline uint32_t GetAddressPoolIndex(const std::string& addr) {
 }
 ```
 
-**关键推论**：同一账户部署的所有合约，其地址都由该账户地址派生，在同一分片的共识范围内处理。当 AMMPool 调用 TokenA.transferFrom() 时，EVM CALL 指令解析为 **池内执行** —— 被调用合约的存储在同一个 `ViewBlockChain` 中：
+**Key corollary**: All contracts deployed by the same account have their addresses derived from that account's address and are processed within the same shard's consensus scope. When AMMPool calls TokenA.transferFrom(), the EVM CALL instruction resolves to **intra-pool execution** — the called contract's storage is in the same `ViewBlockChain`:
 
 ```cpp
-// src/sethvm/seth_host.cc — EVM CALL 处理
+// src/sethvm/seth_host.cc — EVM CALL handling
 protos::AddressInfoPtr acc_info = view_block_chain_->ChainGetAccountInfo(id);
 if (acc_info != nullptr && !acc_info->bytes_code().empty()) {
-    // 在同一共识上下文中执行被调用合约的字节码
+    // Execute the called contract's bytecode within the same consensus context
     int res_status = Execution::Instance()->execute(
         acc_info->bytes_code(), ...);
 }
 ```
 
-### 2.2 实际流程
+### 2.2 Actual Flow
 
 ```
-Alice (任意分片)
+Alice (any shard)
     │
-    │ 跨分片转账（如果需要）—— 异步，由 ToTxsPools 处理
+    │ Cross-shard transfer (if needed) — async, handled by ToTxsPools
     ▼
-AMM Pool (Shard S, Pool P)  ← 与 TokenA、TokenB 在同一个池
+AMM Pool (Shard S, Pool P)  ← In the same pool as TokenA and TokenB
     │
-    ├─ call TokenA.transferFrom(alice, pool, amountIn)   ← 池内调用
-    ├─ 计算 amountOut = amountIn * reserveB / (reserveA + amountIn)
-    ├─ require(amountOut >= minOut, "slippage")           ← 失败则整体 REVERT
-    ├─ call TokenB.transfer(alice, amountOut)             ← 池内调用
+    ├─ call TokenA.transferFrom(alice, pool, amountIn)   ← Intra-pool call
+    ├─ Calculate amountOut = amountIn * reserveB / (reserveA + amountIn)
+    ├─ require(amountOut >= minOut, "slippage")           ← Failure causes full REVERT
+    ├─ call TokenB.transfer(alice, amountOut)             ← Intra-pool call
     │
-    └─ 三个合约的状态变更在 **一轮共识** 中完成
-       → 完全原子，无需补偿交易
+    └─ State changes across all three contracts complete in **a single consensus round**
+       → Fully atomic, no compensating transactions needed
 ```
 
 ---
 
-## 3. Demo 代码详解
+## 3. Demo Code Walkthrough
 
-### 3.1 合约设计
+### 3.1 Contract Design
 
-Demo 包含三个合约，均定义在 `clipy/amm.py` 中：
+The demo contains three contracts, all defined in `clipy/amm.py`:
 
-**SimpleToken** — 简化的 ERC20 代币合约：
+**SimpleToken** — A simplified ERC20 token contract:
 
 ```solidity
 contract SimpleToken {
@@ -97,7 +97,7 @@ contract SimpleToken {
     constructor(string memory _name, uint256 _initialSupply) {
         name = _name;
         totalSupply = _initialSupply;
-        balanceOf[msg.sender] = _initialSupply;  // 全部初始供应给部署者
+        balanceOf[msg.sender] = _initialSupply;  // All initial supply goes to deployer
     }
 
     function transfer(address to, uint256 amount) external returns (bool) { ... }
@@ -106,7 +106,7 @@ contract SimpleToken {
 }
 ```
 
-**AMMPool** — 恒定乘积 AMM 池（x * y = k）：
+**AMMPool** — Constant product AMM pool (x * y = k):
 
 ```solidity
 contract AMMPool {
@@ -117,36 +117,36 @@ contract AMMPool {
     uint256 public totalLiquidity;
     mapping(address => uint256) public liquidity;
 
-    // 添加流动性：原子调用两个 token 的 transferFrom
+    // Add liquidity: atomically calls transferFrom on both tokens
     function addLiquidity(uint256 amountA, uint256 amountB) external returns (uint256 lp) {
-        tokenA.transferFrom(msg.sender, address(this), amountA);  // ← 池内调用
-        tokenB.transferFrom(msg.sender, address(this), amountB);  // ← 池内调用
-        // ... 更新储备量和 LP 代币
+        tokenA.transferFrom(msg.sender, address(this), amountA);  // ← Intra-pool call
+        tokenB.transferFrom(msg.sender, address(this), amountB);  // ← Intra-pool call
+        // ... update reserves and LP tokens
     }
 
-    // Swap A→B：原子调用 transferFrom + transfer
+    // Swap A→B: atomically calls transferFrom + transfer
     function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 amountOut) {
         amountOut = (amountIn * reserveB) / (reserveA + amountIn);
-        require(amountOut >= minOut, "slippage");  // ← 失败则整体 REVERT
-        tokenA.transferFrom(msg.sender, address(this), amountIn);  // ← 池内调用
-        tokenB.transfer(msg.sender, amountOut);                     // ← 池内调用
-        // ... 更新储备量
+        require(amountOut >= minOut, "slippage");  // ← Failure causes full REVERT
+        tokenA.transferFrom(msg.sender, address(this), amountIn);  // ← Intra-pool call
+        tokenB.transfer(msg.sender, amountOut);                     // ← Intra-pool call
+        // ... update reserves
     }
 
-    // 移除流动性
+    // Remove liquidity
     function removeLiquidity(uint256 lpAmount) external { ... }
 }
 ```
 
-### 3.2 多用户测试流程（`test_amm`）
+### 3.2 Multi-User Test Flow (`test_amm`)
 
-Demo 模拟真实场景：**一个部署者创建 DeFi 协议，多个独立用户在上面交易**。
+The demo simulates a real-world scenario: **one deployer creates a DeFi protocol, and multiple independent users trade on it**.
 
 ```python
 def test_amm(w3, deployer_addr, deployer_key, num_users=3):
 
-    # ═══ Phase 1：部署者创建协议 ═══════════════════════════════
-    # 同一账户部署 → 保证同分片同池
+    # ═══ Phase 1: Deployer creates the protocol ═══════════════════════════════
+    # Same account deploys → guarantees same shard, same pool
     token_a.deploy({'from': deployer_addr, 'salt': salt + 'ta',
                     'args': ["TokenA", 10_000_000]}, deployer_key)
     token_b.deploy({'from': deployer_addr, 'salt': salt + 'tb',
@@ -154,67 +154,67 @@ def test_amm(w3, deployer_addr, deployer_key, num_users=3):
     amm.deploy({'from': deployer_addr, 'salt': salt + 'am',
                 'args': [checksum(token_a.address), checksum(token_b.address)]}, deployer_key)
 
-    # 部署者设置 prefund + 添加初始流动性
+    # Deployer sets up prefund + adds initial liquidity
     token_a.prefund(50_000_000, deployer_key)
     token_b.prefund(50_000_000, deployer_key)
     amm.prefund(50_000_000, deployer_key)
     amm.functions.addLiquidity(500_000, 500_000).transact(deployer_key)
 
-    # ═══ Phase 2：创建独立交易者账户 ═══════════════════════════
+    # ═══ Phase 2: Create independent trader accounts ═══════════════════════════
     for i in range(num_users):
-        user_key = secrets.token_hex(32)          # 随机生成新私钥
+        user_key = secrets.token_hex(32)          # Randomly generate a new private key
         user_addr = w3.client.get_address(user_key)
 
-        # 部署者分发代币给用户
+        # Deployer distributes tokens to user
         token_a.functions.transfer(checksum(user_addr), 100_000).transact(deployer_key)
         token_b.functions.transfer(checksum(user_addr), 100_000).transact(deployer_key)
 
-        # 用户在每个合约上设置 prefund（gas 预存）
+        # User sets up prefund (gas pre-deposit) on each contract
         token_a.prefund(10_000_000, user_key)
         token_b.prefund(10_000_000, user_key)
         amm.prefund(10_000_000, user_key)
 
-    # ═══ Phase 3：每个用户独立交易 ═════════════════════════════
+    # ═══ Phase 3: Each user trades independently ═════════════════════════════
     for user_addr, user_key, name in users:
-        # 用户授权 AMMPool 操作自己的代币
+        # User authorizes AMMPool to operate their tokens
         user_token_a.functions.approve(checksum(amm.address), 50_000).transact(user_key)
         user_token_b.functions.approve(checksum(amm.address), 50_000).transact(user_key)
 
-        # Swap A→B（原子执行：transferFrom + transfer 在同一共识轮）
+        # Swap A→B (atomic execution: transferFrom + transfer in the same consensus round)
         user_amm.functions.swapAForB(10_000, 0).transact(user_key)
 
-        # Swap B→A（反向）
+        # Swap B→A (reverse)
         user_amm.functions.swapBForA(3_000, 0).transact(user_key)
 
-    # ═══ Phase 4：所有用户 refund prefund ══════════════════════
+    # ═══ Phase 4: All users refund prefund ══════════════════════
     for user_addr, user_key, name in users:
         token_a_handle.refund(user_key)
         token_b_handle.refund(user_key)
         amm_handle.refund(user_key)
 
-    # 部署者也 refund
+    # Deployer also refunds
     token_a.refund(deployer_key)
     token_b.refund(deployer_key)
     amm.refund(deployer_key)
 ```
 
-**关键点**：
-- **Phase 1**：部署者创建所有合约（同分片同池），添加初始流动性
-- **Phase 2**：生成 N 个独立用户（随机私钥），部署者分发代币，每个用户设置 prefund
-- **Phase 3**：每个用户用自己的私钥签名交易，独立执行 approve + swap
-- **Phase 4**：所有用户和部署者回收未使用的 gas prefund
+**Key points**:
+- **Phase 1**: Deployer creates all contracts (same shard, same pool) and adds initial liquidity
+- **Phase 2**: Generate N independent users (random private keys), deployer distributes tokens, each user sets up prefund
+- **Phase 3**: Each user signs transactions with their own private key, independently executing approve + swap
+- **Phase 4**: All users and the deployer reclaim unused gas prefund
 
-### 3.3 运行方式
+### 3.3 How to Run
 
 ```bash
 cd clipy
-python amm.py                                    # 默认 3 个用户
-python amm.py --host 10.0.0.1 --port 23001       # 指定节点
-python amm.py --users 5                           # 5 个交易者
-python amm.py --key <deployer_private_key_hex>    # 指定部署者私钥
+python amm.py                                    # Default 3 users
+python amm.py --host 10.0.0.1 --port 23001       # Specify node
+python amm.py --users 5                           # 5 traders
+python amm.py --key <deployer_private_key_hex>    # Specify deployer private key
 ```
 
-Demo 输出示例：
+Demo output example:
 
 ```
 Node     : https://127.0.0.1:23001
@@ -280,15 +280,15 @@ Traders  : 3
 
 ---
 
-## 4. 原子性保证的形式化分析
+## 4. Formal Analysis of Atomicity Guarantees
 
-### 4.1 地址到池的映射
+### 4.1 Address-to-Pool Mapping
 
 ```
 Pool(addr) = Hash32(addr) mod kImmutablePoolSize
 ```
 
-同一账户通过 CREATE2 部署的合约：
+Contracts deployed by the same account via CREATE2:
 
 ```
 addr_TokenA = CREATE2(deployer, salt_A, bytecode_A)
@@ -296,41 +296,41 @@ addr_TokenB = CREATE2(deployer, salt_B, bytecode_B)
 addr_AMM    = CREATE2(deployer, salt_AMM, bytecode_AMM)
 ```
 
-三个地址均在部署者所在分片处理。AMMPool 调用 tokenA.transferFrom() 时，EVM CALL 指令在 **同一共识上下文** 中执行。
+All three addresses are processed in the deployer's shard. When AMMPool calls tokenA.transferFrom(), the EVM CALL instruction executes within the **same consensus context**.
 
-### 4.2 单轮共识内的原子性
+### 4.2 Atomicity Within a Single Consensus Round
 
 ```
-1. Leader 提议包含 swap 交易的区块
-2. BlockAcceptor::Accept() 执行交易
-3. EVM 顺序执行：swapAForB → transferFrom → transfer
-4. 任何子调用 REVERT → 整个交易回滚
-5. 2f+1 副本对结果达成一致后提交区块
+1. Leader proposes a block containing the swap transaction
+2. BlockAcceptor::Accept() executes the transaction
+3. EVM executes sequentially: swapAForB → transferFrom → transfer
+4. Any sub-call REVERT → the entire transaction rolls back
+5. Block is committed after 2f+1 replicas reach agreement on the result
 ```
 
-这与以太坊的原子性模型 **完全一致** —— 单笔交易内的所有合约交互都是原子的。
+This is **fully consistent** with Ethereum's atomicity model — all contract interactions within a single transaction are atomic.
 
-### 4.3 什么跨分片，什么不跨分片
+### 4.3 What Crosses Shards and What Doesn't
 
-| 操作 | 是否跨分片 | 是否原子 |
+| Operation | Cross-shard? | Atomic? |
 |------|:---:|:---:|
-| 部署 TokenA, TokenB, AMMPool | 否（同一部署者） | 是 |
-| 用户 approve AMMPool | 可能（用户在不同分片时） | 不适用（单合约操作） |
-| 用户调用 AMMPool.swap() | 调用本身是池内的 | 是 |
-| AMMPool 调用 TokenA.transferFrom() | 否（同池） | 是 |
-| AMMPool 调用 TokenB.transfer() | 否（同池） | 是 |
-| 用户接收代币 | 可能（跨分片转账） | 最终一致 |
+| Deploy TokenA, TokenB, AMMPool | No (same deployer) | Yes |
+| User approves AMMPool | Possibly (if user is on a different shard) | N/A (single-contract operation) |
+| User calls AMMPool.swap() | The call itself is intra-pool | Yes |
+| AMMPool calls TokenA.transferFrom() | No (same pool) | Yes |
+| AMMPool calls TokenB.transfer() | No (same pool) | Yes |
+| User receives tokens | Possibly (cross-shard transfer) | Eventually consistent |
 
-**只有用户的初始存入和最终提取可能跨分片。swap 本身始终是池内操作，完全原子。**
+**Only the user's initial deposit and final withdrawal may cross shards. The swap itself is always an intra-pool operation and fully atomic.**
 
 ---
 
-## 5. 滑点保护：标准 Solidity REVERT
+## 5. Slippage Protection: Standard Solidity REVERT
 
 ```solidity
 function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 amountOut) {
     amountOut = (amountIn * reserveB) / (reserveA + amountIn);
-    require(amountOut >= minOut, "slippage");  // ← 失败则整体 REVERT
+    require(amountOut >= minOut, "slippage");  // ← Failure causes full REVERT
     tokenA.transferFrom(msg.sender, address(this), amountIn);
     tokenB.transfer(msg.sender, amountOut);
     reserveA += amountIn;
@@ -338,88 +338,91 @@ function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 a
 }
 ```
 
-如果 `amountOut < minOut`，`require` 触发 EVM `REVERT`。由于三个合约在同一个池中，REVERT 在单轮共识内处理 —— **无需补偿交易**。
+If `amountOut < minOut`, `require` triggers an EVM `REVERT`. Since all three contracts are in the same pool, the REVERT is handled within a single consensus round — **no compensating transactions needed**.
 
 ---
 
-## 6. 与审稿人假设的对比
+## 6. Comparison with the Reviewer's Assumptions
 
-| 维度 | 审稿人假设 | Seth 实际行为 |
+| Dimension | Reviewer's Assumption | Seth's Actual Behavior |
 |------|-----------|-------------|
-| Token 位置 | 不同分片 | 同分片同池（共同部署） |
-| AMM swap | 跨分片多跳 | 池内单笔交易 |
-| 滑点失败 | 需要补偿交易 | 标准 EVM REVERT |
-| 最终化时间 | 多轮共识（扩展） | 单轮共识（~2s） |
-| 开发者负担 | 编写异步补偿逻辑 | 标准 Solidity（无额外工作） |
-| 代码复杂度 | 200+ 行补偿代码 | 与以太坊完全一致 |
+| Token location | Different shards | Same shard, same pool (co-deployed) |
+| AMM swap | Cross-shard multi-hop | Single intra-pool transaction |
+| Slippage failure | Requires compensating transactions | Standard EVM REVERT |
+| Finalization time | Multiple consensus rounds (extended) | Single consensus round (~2s) |
+| Developer burden | Write async compensation logic | Standard Solidity (no extra work) |
+| Code complexity | 200+ lines of compensation code | Identical to Ethereum |
 
 ---
 
-## 7. 多跳路由场景
+## 7. Multi-Hop Routing Scenario
 
-对于需要多池路由的 swap（如 X→USDC→Y），同样适用同一部署者原则：
+For swaps requiring multi-pool routing (e.g., X→USDC→Y), the same deployer principle applies:
 
 ```
-部署者部署：TokenX, TokenUSDC, TokenY, Pool_X_USDC, Pool_USDC_Y, Router
-→ 全部在同一分片同一池
-→ Router.swap(X→Y) 调用 Pool_X_USDC.swap() 再调用 Pool_USDC_Y.swap()
-→ 单笔交易内完全原子
+Deployer deploys: TokenX, TokenUSDC, TokenY, Pool_X_USDC, Pool_USDC_Y, Router
+→ All in the same shard, same pool
+→ Router.swap(X→Y) calls Pool_X_USDC.swap() then calls Pool_USDC_Y.swap()
+→ Fully atomic within a single transaction
 ```
 
 ```python
-# 多跳路由示例（伪代码）
+# Multi-hop routing example (pseudocode)
 router.deploy({'from': MY, 'salt': salt + 'rt'}, KEY)
 pool_x_usdc.deploy({'from': MY, 'salt': salt + 'p1', 'args': [tokenX, tokenUSDC]}, KEY)
 pool_usdc_y.deploy({'from': MY, 'salt': salt + 'p2', 'args': [tokenUSDC, tokenY]}, KEY)
-# 所有合约由 MY 部署 → 同分片同池 → Router 的多跳调用完全原子
+# All contracts deployed by MY → same shard, same pool → Router's multi-hop calls are fully atomic
 ```
 
 ---
 
-## 8. 多用户交互流程与 Prefund 生命周期
+## 8. Multi-User Interaction Flow and Prefund Lifecycle
 
-在 Seth 中，用户调用合约需要先在合约上预存 gas（prefund）。完整的多用户 AMM 交互流程：
+In Seth, users must pre-deposit gas on a contract (prefund) before calling it. The complete multi-user AMM interaction flow:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│              多用户 AMM 交互完整流程                               │
+│           Multi-User AMM Interaction — Complete Flow              │
 ├──────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │ Phase 1: 部署者创建协议（同一账户 → 同分片同池）          │    │
+│  │ Phase 1: Deployer creates protocol (same account → same │    │
+│  │          shard, same pool)                              │    │
 │  │                                                         │    │
-│  │  Deployer 部署 TokenA, TokenB, AMMPool                  │    │
-│  │  Deployer prefund → 添加初始流动性                       │    │
+│  │  Deployer deploys TokenA, TokenB, AMMPool               │    │
+│  │  Deployer prefund → add initial liquidity               │    │
 │  └─────────────────────────────────────────────────────────┘    │
 │                          │                                       │
 │                          ▼                                       │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │ Phase 2: 创建用户 + 分发代币 + 设置 Prefund              │    │
+│  │ Phase 2: Create users + distribute tokens + set Prefund │    │
 │  │                                                         │    │
-│  │  User_1: 获得代币 → prefund(TokenA, TokenB, AMMPool)    │    │
-│  │  User_2: 获得代币 → prefund(TokenA, TokenB, AMMPool)    │    │
-│  │  User_3: 获得代币 → prefund(TokenA, TokenB, AMMPool)    │    │
+│  │  User_1: receive tokens → prefund(TokenA, TokenB, AMMPool)│  │
+│  │  User_2: receive tokens → prefund(TokenA, TokenB, AMMPool)│  │
+│  │  User_3: receive tokens → prefund(TokenA, TokenB, AMMPool)│  │
 │  └─────────────────────────────────────────────────────────┘    │
 │                          │                                       │
 │                          ▼                                       │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │ Phase 3: 每个用户独立交易（池内原子执行）                  │    │
+│  │ Phase 3: Each user trades independently (intra-pool     │    │
+│  │          atomic execution)                              │    │
 │  │                                                         │    │
 │  │  User_1: approve → swapAForB(10000) → swapBForA(3000)   │    │
 │  │  User_2: approve → swapAForB(15000) → swapBForA(5000)   │    │
 │  │  User_3: approve → swapAForB(20000) → swapBForA(7000)   │    │
 │  │                                                         │    │
-│  │  每次 swap 在同一共识轮（~2s）内原子执行：                 │    │
+│  │  Each swap executes atomically within a single          │    │
+│  │  consensus round (~2s):                                 │    │
 │  │    AMMPool.swapAForB()                                  │    │
-│  │      ├─ require(amountOut >= minOut)    ← 滑点检查       │    │
-│  │      ├─ TokenA.transferFrom(user, pool) ← 池内调用       │    │
-│  │      ├─ TokenB.transfer(user, out)      ← 池内调用       │    │
-│  │      └─ 任何失败 → 整体 REVERT                          │    │
+│  │      ├─ require(amountOut >= minOut)    ← Slippage check│    │
+│  │      ├─ TokenA.transferFrom(user, pool) ← Intra-pool call│   │
+│  │      ├─ TokenB.transfer(user, out)      ← Intra-pool call│   │
+│  │      └─ Any failure → full REVERT                       │    │
 │  └─────────────────────────────────────────────────────────┘    │
 │                          │                                       │
 │                          ▼                                       │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │ Phase 4: 回收 Prefund                                    │    │
+│  │ Phase 4: Reclaim Prefund                                │    │
 │  │                                                         │    │
 │  │  User_1: refund(TokenA, TokenB, AMMPool)                │    │
 │  │  User_2: refund(TokenA, TokenB, AMMPool)                │    │
@@ -430,99 +433,100 @@ pool_usdc_y.deploy({'from': MY, 'salt': salt + 'p2', 'args': [tokenUSDC, tokenY]
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### Prefund 生命周期
+### Prefund Lifecycle
 
 ```
-prefund(amount)  →  合约调用消耗 gas  →  refund() 回收剩余
+prefund(amount)  →  Contract calls consume gas  →  refund() reclaims remainder
      │                    │                    │
      ▼                    ▼                    ▼
-  用户预存 gas        每次 transact         交易完成后
-  到合约账户          自动扣除 gas          取回未用的 gas
+  User pre-deposits   Each transact         After trading is done
+  gas to contract     automatically          reclaim unused gas
+  account             deducts gas
 ```
 
-这确保了：
-- 用户只需预存一次 gas，即可多次调用合约
-- 未使用的 gas 可以完整回收
-- 不同用户的 prefund 互相隔离
+This ensures:
+- Users only need to pre-deposit gas once to make multiple contract calls
+- Unused gas can be fully reclaimed
+- Different users' prefunds are isolated from each other
 
 ---
 
-## 9. 开发者指南
+## 9. Developer Guide
 
-### 规则 1：相关合约由同一账户部署
+### Rule 1: Related contracts are deployed by the same account
 
 ```python
-# 所有合约由 MY 部署 → 保证同分片同池
+# All contracts deployed by MY → guarantees same shard, same pool
 token_a.deploy({'from': MY, 'salt': salt + 'ta', ...}, KEY)
 token_b.deploy({'from': MY, 'salt': salt + 'tb', ...}, KEY)
 amm.deploy({'from': MY, 'salt': salt + 'am', ...}, KEY)
 ```
 
-### 规则 2：跨分片转账在原子操作之前完成
+### Rule 2: Cross-shard transfers complete before atomic operations
 
 ```
-步骤 1：Alice 将资金转入 AMM 所在分片（跨分片，异步）
-步骤 2：Alice 调用 AMMPool.swap()（池内，原子）
-步骤 3：输出代币转回 Alice 所在分片（跨分片，异步）
+Step 1: Alice transfers funds to the AMM's shard (cross-shard, async)
+Step 2: Alice calls AMMPool.swap() (intra-pool, atomic)
+Step 3: Output tokens transfer back to Alice's shard (cross-shard, async)
 ```
 
-### 规则 3：DeFi 协议的部署模式
+### Rule 3: Deployment pattern for DeFi protocols
 
 ```
-一个 DeFi 协议 = 一个部署者账户
+One DeFi protocol = one deployer account
   ├─ TokenA
   ├─ TokenB
   ├─ AMMPool
-  ├─ Router（多跳路由）
-  ├─ Staking（质押合约）
-  └─ Governance（治理合约）
+  ├─ Router (multi-hop routing)
+  ├─ Staking (staking contract)
+  └─ Governance (governance contract)
 
-全部由同一账户部署 → 全部在同一分片同一池
-→ 协议内所有合约交互完全原子
+All deployed by the same account → all in the same shard, same pool
+→ All intra-protocol contract interactions are fully atomic
 ```
 
 ---
 
-## 10. 与以太坊的等价性
+## 10. Equivalence with Ethereum
 
-| 特性 | 以太坊 | Seth |
+| Feature | Ethereum | Seth |
 |------|--------|------|
-| 单笔交易原子性 | ✅ 全局状态 | ✅ 池内状态 |
-| 合约间调用 | ✅ 同步 CALL | ✅ 同步 CALL（同池） |
-| REVERT 语义 | ✅ 整体回滚 | ✅ 整体回滚 |
-| 滑点保护 | require + revert | require + revert |
-| 开发者体验 | 标准 Solidity | 标准 Solidity（无差异） |
-| 吞吐量 | ~15 TPS | 分片数 × 单分片 TPS |
+| Single-transaction atomicity | ✅ Global state | ✅ Intra-pool state |
+| Inter-contract calls | ✅ Synchronous CALL | ✅ Synchronous CALL (same pool) |
+| REVERT semantics | ✅ Full rollback | ✅ Full rollback |
+| Slippage protection | require + revert | require + revert |
+| Developer experience | Standard Solidity | Standard Solidity (no difference) |
+| Throughput | ~15 TPS | Number of shards × single-shard TPS |
 
-**Seth 在保持与以太坊完全一致的开发者体验的同时，通过分片实现了水平扩展。**
-
----
-
-## 11. 结论
-
-审稿人关于 AMM 原子性的质疑基于一个 **错误的前提**：假设可组合的合约分布在不同分片。Seth 的架构通过 **哈希桶分片 + 部署者地址派生** 自然保证了可组合合约的共置。
-
-`test_amm` Demo（`clipy/amm.py`）通过多用户场景证明了：
-
-1. **无需补偿交易** — 滑点失败通过标准 EVM REVERT 原子回滚
-2. **单轮共识最终化** — swap 在 ~2s 内完成，而非多轮
-3. **多用户独立交易** — 不同私钥的用户各自 prefund、approve、swap、refund
-4. **开发者体验与以太坊一致** — 标准 Solidity，无需异步模式
-5. **完整资源生命周期** — prefund 预存 gas → 交易 → refund 回收
-
-唯一跨分片的操作是 **资金转移**（存入/提取），这在任何分片系统中都是异步的，由 Seth 现有的跨分片机制处理，具有三层重放保护和双路由优化（直接路由 + root 中继）。
+**Seth achieves horizontal scaling through sharding while maintaining a developer experience fully consistent with Ethereum.**
 
 ---
 
-## 相关文件
+## 11. Conclusion
 
-| 文件 | 说明 |
+The reviewer's concern about AMM atomicity is based on an **incorrect premise**: the assumption that composable contracts are distributed across different shards. Seth's architecture naturally guarantees co-location of composable contracts through **hash-bucket sharding + deployer address derivation**.
+
+The `test_amm` demo (`clipy/amm.py`) demonstrates through a multi-user scenario that:
+
+1. **No compensating transactions needed** — Slippage failures atomically roll back via standard EVM REVERT
+2. **Single-round consensus finalization** — Swaps complete in ~2s, not multiple rounds
+3. **Multi-user independent trading** — Users with different private keys each prefund, approve, swap, and refund independently
+4. **Developer experience identical to Ethereum** — Standard Solidity, no async patterns needed
+5. **Complete resource lifecycle** — prefund pre-deposits gas → trading → refund reclaims
+
+The only cross-shard operations are **fund transfers** (deposits/withdrawals), which are asynchronous in any sharded system and are handled by Seth's existing cross-shard mechanism with three-layer replay protection and dual-route optimization (direct routing + root relay).
+
+---
+
+## Related Files
+
+| File | Description |
 |------|------|
-| `clipy/amm.py` | **独立 AMM Demo**（`test_amm` 函数，可直接运行） |
-| `clipy/seth3.py` | 综合测试套件（包含 `test_amm_same_shard` 等全部测试） |
-| `clipy/seth_sdk.py` | SDK 基础设施（`calc_create2_address` 等） |
-| `src/sethvm/seth_host.cc` | EVM CALL 处理（池内合约调用） |
-| `src/common/utils.h` | `GetAddressPoolIndex` 地址到池映射 |
-| `src/pools/to_txs_pools.cc` | 跨分片转账路由 |
-| `AMM_ATOMICITY_IN_SHARDED_BLOCKCHAIN.md` | 原子性形式化分析 |
-| `CROSS_SHARD_TX_ANALYSIS.md` | 跨分片交易机制分析 |
+| `clipy/amm.py` | **Standalone AMM Demo** (`test_amm` function, can be run directly) |
+| `clipy/seth3.py` | Comprehensive test suite (includes `test_amm_same_shard` and all other tests) |
+| `clipy/seth_sdk.py` | SDK infrastructure (`calc_create2_address`, etc.) |
+| `src/sethvm/seth_host.cc` | EVM CALL handling (intra-pool contract calls) |
+| `src/common/utils.h` | `GetAddressPoolIndex` address-to-pool mapping |
+| `src/pools/to_txs_pools.cc` | Cross-shard transfer routing |
+| `AMM_ATOMICITY_IN_SHARDED_BLOCKCHAIN.md` | Formal analysis of atomicity |
+| `CROSS_SHARD_TX_ANALYSIS.md` | Cross-shard transaction mechanism analysis |

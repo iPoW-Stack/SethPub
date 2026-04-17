@@ -200,56 +200,56 @@ STRUCT_DEMO_SOL = """
 pragma solidity ^0.8.20;
 
 /**
- * @title StructDemo - 结构体参数和返回值演示
- * @notice 演示如何在合约中使用结构体作为参数和返回值
- * @dev 展示 Solidity 的结构体功能
+ * @title StructDemo - Struct Parameters and Return Values Demo
+ * @notice Demonstrates using structs as function parameters and return values
+ * @dev Showcases Solidity struct capabilities
  */
 contract StructDemo {
     
-    // ========== 结构体定义 ==========
+    // ========== Struct Definitions ==========
     
     /**
-     * @notice 用户信息结构体
+     * @notice User information struct
      */
     struct UserInfo {
-        address userAddr;        // 用户地址
-        string name;             // 用户名
-        uint256 balance;         // 账户余额
-        uint256 joinTime;        // 加入时间
-        bool isActive;           // 是否活跃
+        address userAddr;        // User address
+        string name;             // Username
+        uint256 balance;         // Account balance
+        uint256 joinTime;        // Join time
+        bool isActive;           // Whether active
     }
     
     /**
-     * @notice 交易信息结构体
+     * @notice Transaction information struct
      */
     struct Transaction {
-        address from;            // 发送者
-        address to;              // 接收者
-        uint256 amount;          // 交易金额
-        uint256 timestamp;       // 交易时间
-        string txType;           // 交易类型
-        bool success;            // 是否成功
+        address from;            // Sender
+        address to;              // Receiver
+        uint256 amount;          // Transaction amount
+        uint256 timestamp;       // Transaction time
+        string txType;           // Transaction type
+        bool success;            // Whether successful
     }
     
     /**
-     * @notice 账户统计结构体
+     * @notice Account statistics struct
      */
     struct AccountStats {
-        uint256 totalTransactions;  // 总交易数
-        uint256 totalIn;            // 总收入
-        uint256 totalOut;           // 总支出
-        uint256 lastTxTime;         // 最后交易时间
-        uint256 averageAmount;      // 平均交易额
+        uint256 totalTransactions;  // Total transactions
+        uint256 totalIn;            // Total income
+        uint256 totalOut;           // Total expenditure
+        uint256 lastTxTime;         // Last transaction time
+        uint256 averageAmount;      // Average transaction amount
     }
     
-    // ========== 状态变量 ==========
+    // ========== State Variables ==========
     
     mapping(address => UserInfo) public users;
     mapping(address => Transaction[]) public userTransactions;
     mapping(address => AccountStats) public stats;
     uint256 public userCount;
     
-    // ========== 事件 ==========
+    // ========== Events ==========
     
     event UserRegistered(
         address indexed userAddr,
@@ -271,17 +271,17 @@ contract StructDemo {
         uint256 totalOut
     );
     
-    // ========== 函数：结构体作为参数 ==========
+    // ========== Functions: Struct as Parameter ==========
     
     /**
-     * @notice 注册新用户（接收结构体参数）
-     * @param info 用户信息结构体
-     * @return success 注册是否成功
+     * @notice Register a new user (accepts struct parameter)
+     * @param info UserInfo struct
+     * @return success Whether registration succeeded
      * 
-     * 演示：
-     * - 接收 UserInfo 结构体作为参数
-     * - 直接访问结构体字段
-     * - 修改状态变量
+     * Demonstrates:
+     * - Accepting UserInfo struct as parameter
+     * - Accessing struct fields directly
+     * - Modifying state variables
      */
     function registerUser(UserInfo calldata info) 
         external 
@@ -305,14 +305,14 @@ contract StructDemo {
     }
     
     /**
-     * @notice 执行交易（接收结构体参数）
-     * @param tx 交易信息结构体
-     * @return success 交易是否成功
+     * @notice Execute a transaction (accepts struct parameter)
+     * @param tx Transaction struct
+     * @return success Whether transaction succeeded
      * 
-     * 演示：
-     * - 接收 Transaction 结构体
-     * - 验证结构体字段
-     * - 返回布尔值表示成功
+     * Demonstrates:
+     * - Accepting Transaction struct
+     * - Validating struct fields
+     * - Returning boolean for success
      */
     function executeTransaction(Transaction calldata tx) 
         external 
@@ -324,14 +324,14 @@ contract StructDemo {
         require(tx.amount > 0, "Amount must be positive");
         require(bytes(tx.txType).length > 0, "Transaction type required");
         
-        // 验证发送者
+        // Verify sender
         require(msg.sender == tx.from || msg.sender == users[tx.from].userAddr, 
                 "Only transaction owner can execute");
         
-        // 记录交易
+        // Record transaction
         userTransactions[tx.from].push(tx);
         
-        // 更新统计
+        // Update statistics
         _updateStats(tx.from, tx.to, tx.amount);
         
         emit TransactionExecuted(tx.from, tx.to, tx.amount, true);
@@ -339,9 +339,9 @@ contract StructDemo {
     }
     
     /**
-     * @notice 批量执行交易（多个结构体参数）
-     * @param txs 交易数组
-     * @return successCount 成功交易数
+     * @notice Batch execute transactions (multiple struct parameters)
+     * @param txs Transaction array
+     * @return successCount Number of successful transactions
      */
     function batchExecute(Transaction[] calldata txs) 
         external 
@@ -351,23 +351,23 @@ contract StructDemo {
             try this.executeTransaction(txs[i]) {
                 successCount++;
             } catch {
-                // 继续处理下一个交易
+                // Continue processing next transaction
             }
         }
         return successCount;
     }
     
-    // ========== 函数：返回结构体 ==========
+    // ========== Functions: Return Struct ==========
     
     /**
-     * @notice 获取用户信息（返回结构体）
-     * @param userAddr 用户地址
-     * @return 用户信息结构体
+     * @notice Get user info (returns struct)
+     * @param userAddr User address
+     * @return UserInfo struct
      * 
-     * 演示：
-     * - 返回 UserInfo 结构体
-     * - 包含多个字段
-     * - 前端可以直接解析
+     * Demonstrates:
+     * - Returning UserInfo struct
+     * - Contains multiple fields
+     * - Frontend can parse directly
      */
     function getUserInfo(address userAddr) 
         external 
@@ -383,9 +383,9 @@ contract StructDemo {
     }
     
     /**
-     * @notice 获取用户的最后一笔交易（返回结构体）
-     * @param userAddr 用户地址
-     * @return 最后的交易信息
+     * @notice Get user's last transaction (returns struct)
+     * @param userAddr User address
+     * @return Last transaction info
      */
     function getLastTransaction(address userAddr) 
         external 
@@ -400,9 +400,9 @@ contract StructDemo {
     }
     
     /**
-     * @notice 获取用户的所有交易（返回结构体数组）
-     * @param userAddr 用户地址
-     * @return 交易数组
+     * @notice Get all transactions for a user (returns struct array)
+     * @param userAddr User address
+     * @return Transaction array
      */
     function getTransactionHistory(address userAddr) 
         external 
@@ -414,14 +414,14 @@ contract StructDemo {
     }
     
     /**
-     * @notice 获取账户统计信息（返回结构体）
-     * @param userAddr 用户地址
-     * @return 账户统计数据
+     * @notice Get account statistics (returns struct)
+     * @param userAddr User address
+     * @return Account statistics data
      * 
-     * 演示：
-     * - 返回复杂的统计结构体
-     * - 包含计算结果
-     * - 前端获得完整的统计数据
+     * Demonstrates:
+     * - Returning complex statistics struct
+     * - Contains computed results
+     * - Frontend gets complete statistics
      */
     function getAccountStats(address userAddr) 
         external 
@@ -432,7 +432,7 @@ contract StructDemo {
         
         AccountStats memory account = stats[userAddr];
         
-        // 计算平均值
+        // Calculate average
         if (account.totalTransactions > 0) {
             account.averageAmount = (account.totalIn + account.totalOut) / account.totalTransactions;
         }
@@ -441,16 +441,16 @@ contract StructDemo {
     }
     
     /**
-     * @notice 查询和处理用户信息（接收和返回结构体）
-     * @param userAddr 用户地址
-     * @return info 用户信息
-     * @return accountStats 账户统计
-     * @return txCount 交易数量
+     * @notice Query and process user info (accepts and returns structs)
+     * @param userAddr User address
+     * @return info User information
+     * @return accountStats Account statistics
+     * @return txCount Transaction count
      * 
-     * 演示：
-     * - 同时接收参数和返回多个结构体
-     * - 返回多个值（元组）
-     * - 前端可以一次性获得所有数据
+     * Demonstrates:
+     * - Accepting parameters and returning multiple structs
+     * - Returning multiple values (tuple)
+     * - Frontend can get all data in one call
      */
     function getUserFullInfo(address userAddr) 
         external 
@@ -477,11 +477,11 @@ contract StructDemo {
     }
     
     /**
-     * @notice 搜索符合条件的交易（接收条件结构体，返回交易结构体数组）
-     * @param userAddr 用户地址
-     * @param minAmount 最小金额
-     * @param maxAmount 最大金额
-     * @return 符合条件的交易
+     * @notice Search transactions matching criteria (returns struct array)
+     * @param userAddr User address
+     * @param minAmount Minimum amount
+     * @param maxAmount Maximum amount
+     * @return Matching transactions
      */
     function searchTransactions(
         address userAddr,
@@ -498,18 +498,18 @@ contract StructDemo {
         Transaction[] storage userTxs = userTransactions[userAddr];
         uint256 matchCount = 0;
         
-        // 计数匹配的交易
+        // Count matching transactions
         for (uint256 i = 0; i < userTxs.length; i++) {
             if (userTxs[i].amount >= minAmount && userTxs[i].amount <= maxAmount) {
                 matchCount++;
             }
         }
         
-        // 创建结果数组
+        // Create result array
         Transaction[] memory result = new Transaction[](matchCount);
         uint256 resultIndex = 0;
         
-        // 填充结果
+        // Fill results
         for (uint256 i = 0; i < userTxs.length; i++) {
             if (userTxs[i].amount >= minAmount && userTxs[i].amount <= maxAmount) {
                 result[resultIndex] = userTxs[i];
@@ -520,18 +520,18 @@ contract StructDemo {
         return result;
     }
     
-    // ========== 内部函数 ==========
+    // ========== Internal Functions ==========
     
     /**
-     * @notice 更新用户统计信息
+     * @notice Update user statistics
      */
     function _updateStats(address from, address to, uint256 amount) internal {
-        // 发送者统计
+        // Sender statistics
         stats[from].totalOut += amount;
         stats[from].totalTransactions++;
         stats[from].lastTxTime = block.timestamp;
         
-        // 接收者统计
+        // Receiver statistics
         stats[to].totalIn += amount;
         stats[to].lastTxTime = block.timestamp;
         
@@ -544,37 +544,37 @@ RANDOM_SALT = secrets.token_hex(31)
 
 def test_struct_demo(w3, MY, KEY):
     """
-    StructDemo Test: 演示结构体作为参数和返回值
+    StructDemo Test: Demonstrates structs as parameters and return values
     
-    展示：
-    1. 传入结构体参数（UserInfo）- registerUser()
-    2. 传入结构体参数（Transaction）- executeTransaction()
-    3. 返回结构体（UserInfo）- getUserInfo()
-    4. 返回结构体数组（Transaction[]）- getTransactionHistory()
-    5. 返回多个结构体 - getUserFullInfo()
-    6. 复杂的结构体查询和返回 - getAccountStats()
+    Covers:
+    1. Passing struct parameter (UserInfo) - registerUser()
+    2. Passing struct parameter (Transaction) - executeTransaction()
+    3. Returning struct (UserInfo) - getUserInfo()
+    4. Returning struct array (Transaction[]) - getTransactionHistory()
+    5. Returning multiple structs - getUserFullInfo()
+    6. Complex struct query and return - getAccountStats()
     """
     print("\n" + "="*70)
     print("TEST CASE: Struct Demo - Structs as Parameters and Return Values")
     print("="*70)
     
-    # 部署合约
-    print("\n[1] 编译和部署 StructDemo 合约...")
+    # Deploy contract
+    print("\n[1] Compiling and deploying StructDemo contract...")
     struct_bin, struct_abi = compile_and_link(STRUCT_DEMO_SOL, "StructDemo")
     struct_contract = w3.seth.contract(abi=struct_abi, bytecode=struct_bin).deploy({
         'from': MY,
         'salt': RANDOM_SALT + 'struct_demo',
     }, KEY)
-    print(f"✅ StructDemo 已部署: {struct_contract.address}")
+    print(f"✅ StructDemo deployed: {struct_contract.address}")
     
-    # ========== 测试 1: 传入结构体参数 - registerUser() ==========
-    print("\n[2] 测试：传入结构体参数 registerUser()")
+    # ========== Test 1: Struct as parameter - registerUser() ==========
+    print("\n[2] Test: Passing struct parameter registerUser()")
     print("-" * 70)
     
     alice_addr = "0x" + "1111111111111111111111111111111111111111"
     bob_addr = "0x" + "2222222222222222222222222222222222222222"
     
-    # 构造 UserInfo 结构体参数
+    # Construct UserInfo struct parameter
     user_info_alice = (
         alice_addr,           # userAddr
         "Alice",              # name
@@ -583,21 +583,21 @@ def test_struct_demo(w3, MY, KEY):
         True                  # isActive
     )
     
-    print(f"  注册用户: {user_info_alice}")
+    print(f"  Registering user: {user_info_alice}")
     receipt = struct_contract.functions.registerUser(user_info_alice).transact(KEY)
     
     if receipt.get('status') == 0:
-        print(f"  ✅ 交易成功")
+        print(f"  ✅ Transaction succeeded")
         for e in receipt.get('decoded_events', []):
             if e['event'] == 'UserRegistered':
-                print(f"  📍 事件: UserRegistered")
+                print(f"  📍 Event: UserRegistered")
                 # userAddr is indexed → in topics, not in args
-                print(f"     用户名: {e['args']['name']}")
-                print(f"     加入时间: {e['args']['joinTime']}")
+                print(f"     Name: {e['args']['name']}")
+                print(f"     Join time: {e['args']['joinTime']}")
     else:
-        print(f"  ❌ 交易失败: {receipt.get('msg')}")
+        print(f"  ❌ Transaction failed: {receipt.get('msg')}")
     
-    # 再注册一个用户
+    # Register another user
     user_info_bob = (
         bob_addr,
         "Bob",
@@ -606,55 +606,55 @@ def test_struct_demo(w3, MY, KEY):
         True
     )
     struct_contract.functions.registerUser(user_info_bob).transact(KEY)
-    print(f"  注册用户 Bob...")
+    print(f"  Registering user Bob...")
     
-    # ========== 测试 2: 返回结构体 - getUserInfo() ==========
-    print("\n[3] 测试：返回结构体 getUserInfo()")
+    # ========== Test 2: Return struct - getUserInfo() ==========
+    print("\n[3] Test: Returning struct getUserInfo()")
     print("-" * 70)
     
     result = struct_contract.functions.getUserInfo(alice_addr).call()
-    print(f"  获取用户信息: getUserInfo({alice_addr[:10]}...)")
+    print(f"  Getting user info: getUserInfo({alice_addr[:10]}...)")
     
     if result:
         # eth_abi.decode returns (struct_tuple,) for single struct return
         user_info = result[0]
         user_addr, name, balance, join_time, is_active = user_info
-        print(f"  ✅ 返回结构体:")
-        print(f"     地址: {user_addr}")
-        print(f"     名字: {name}")
-        print(f"     余额: {balance}")
-        print(f"     加入时间: {join_time}")
-        print(f"     活跃: {is_active}")
+        print(f"  ✅ Returned struct:")
+        print(f"     Address: {user_addr}")
+        print(f"     Name: {name}")
+        print(f"     Balance: {balance}")
+        print(f"     Join time: {join_time}")
+        print(f"     Active: {is_active}")
     
-    # ========== 测试 3: 传入和返回结构体 - executeTransaction() ==========
-    print("\n[4] 测试：传入结构体参数 executeTransaction()")
+    # ========== Test 3: Struct as parameter and return - executeTransaction() ==========
+    print("\n[4] Test: Passing struct parameter executeTransaction()")
     print("-" * 70)
     
-    # 构造 Transaction 结构体
+    # Construct Transaction struct
     tx_info = (
         alice_addr,           # from
         bob_addr,             # to
         500,                  # amount
-        0,                    # timestamp (会被设置)
+        0,                    # timestamp (will be set by contract)
         "transfer",           # txType
         True                  # success
     )
     
-    print(f"  执行交易: {alice_addr[:10]}... -> {bob_addr[:10]}... (金额: 500)")
+    print(f"  Executing transaction: {alice_addr[:10]}... -> {bob_addr[:10]}... (amount: 500)")
     receipt = struct_contract.functions.executeTransaction(tx_info).transact(KEY)
     
     if receipt.get('status') == 0:
-        print(f"  ✅ 交易执行成功")
+        print(f"  ✅ Transaction executed successfully")
         for e in receipt.get('decoded_events', []):
             if e['event'] == 'TransactionExecuted':
-                print(f"  📍 事件: TransactionExecuted")
+                print(f"  📍 Event: TransactionExecuted")
                 # from, to are indexed → in topics, not in args
-                print(f"     金额: {e['args']['amount']}")
-                print(f"     成功: {e['args']['success']}")
+                print(f"     Amount: {e['args']['amount']}")
+                print(f"     Success: {e['args']['success']}")
     else:
-        print(f"  ❌ 交易失败: {receipt.get('msg')}")
+        print(f"  ❌ Transaction failed: {receipt.get('msg')}")
     
-    # 执行另一笔交易
+    # Execute another transaction
     tx_info2 = (
         bob_addr,
         alice_addr,
@@ -664,73 +664,73 @@ def test_struct_demo(w3, MY, KEY):
         True
     )
     struct_contract.functions.executeTransaction(tx_info2).transact(KEY)
-    print(f"  执行交易 2...")
+    print(f"  Executing transaction 2...")
     
-    # ========== 测试 4: 返回结构体数组 - getTransactionHistory() ==========
-    print("\n[5] 测试：返回结构体数组 getTransactionHistory()")
+    # ========== Test 4: Return struct array - getTransactionHistory() ==========
+    print("\n[5] Test: Returning struct array getTransactionHistory()")
     print("-" * 70)
     
     tx_history = struct_contract.functions.getTransactionHistory(alice_addr).call()
-    print(f"  获取交易历史: getTransactionHistory({alice_addr[:10]}...)")
+    print(f"  Getting transaction history: getTransactionHistory({alice_addr[:10]}...)")
     # eth_abi.decode returns (list_of_tuples,) for array return
     tx_list = tx_history[0] if tx_history else []
-    print(f"  ✅ 交易数量: {len(tx_list)}")
+    print(f"  ✅ Transaction count: {len(tx_list)}")
     
     for i, tx in enumerate(tx_list):
         from_addr, to_addr, amount, timestamp, tx_type, success = tx
-        print(f"  交易 {i+1}:")
-        print(f"    从: {from_addr[:10]}...")
-        print(f"    到: {to_addr[:10]}...")
-        print(f"    金额: {amount}")
-        print(f"    类型: {tx_type}")
-        print(f"    成功: {success}")
+        print(f"  Transaction {i+1}:")
+        print(f"    From: {from_addr[:10]}...")
+        print(f"    To: {to_addr[:10]}...")
+        print(f"    Amount: {amount}")
+        print(f"    Type: {tx_type}")
+        print(f"    Success: {success}")
     
-    # ========== 测试 5: 返回多个结构体 - getUserFullInfo() ==========
-    print("\n[6] 测试：返回多个结构体 getUserFullInfo()")
+    # ========== Test 5: Return multiple structs - getUserFullInfo() ==========
+    print("\n[6] Test: Returning multiple structs getUserFullInfo()")
     print("-" * 70)
     
     full_info = struct_contract.functions.getUserFullInfo(alice_addr).call()
-    print(f"  获取完整用户信息: getUserFullInfo({alice_addr[:10]}...)")
+    print(f"  Getting full user info: getUserFullInfo({alice_addr[:10]}...)")
     
     if full_info:
         user_info, account_stats, tx_count = full_info
         
-        # 解析 UserInfo
+        # Parse UserInfo
         user_addr, name, balance, join_time, is_active = user_info
-        print(f"  ✅ 用户信息:")
-        print(f"     名字: {name}")
-        print(f"     余额: {balance}")
-        print(f"     活跃: {is_active}")
+        print(f"  ✅ User info:")
+        print(f"     Name: {name}")
+        print(f"     Balance: {balance}")
+        print(f"     Active: {is_active}")
         
-        # 解析 AccountStats
+        # Parse AccountStats
         total_txs, total_in, total_out, last_tx_time, avg_amount = account_stats
-        print(f"  ✅ 账户统计:")
-        print(f"     总交易数: {total_txs}")
-        print(f"     总收入: {total_in}")
-        print(f"     总支出: {total_out}")
-        print(f"     平均金额: {avg_amount}")
-        print(f"     交易历史数量: {tx_count}")
+        print(f"  ✅ Account statistics:")
+        print(f"     Total transactions: {total_txs}")
+        print(f"     Total income: {total_in}")
+        print(f"     Total expenditure: {total_out}")
+        print(f"     Average amount: {avg_amount}")
+        print(f"     Transaction history count: {tx_count}")
     
-    # ========== 测试 6: 获取账户统计 - getAccountStats() ==========
-    print("\n[7] 测试：返回统计结构体 getAccountStats()")
+    # ========== Test 6: Get account stats - getAccountStats() ==========
+    print("\n[7] Test: Returning statistics struct getAccountStats()")
     print("-" * 70)
     
     stats = struct_contract.functions.getAccountStats(alice_addr).call()
-    print(f"  获取账户统计: getAccountStats({alice_addr[:10]}...)")
+    print(f"  Getting account stats: getAccountStats({alice_addr[:10]}...)")
     
     if stats:
         # Single struct return → (struct_tuple,)
         stat = stats[0]
         total_txs, total_in, total_out, last_tx_time, avg_amount = stat
-        print(f"  ✅ 统计数据:")
-        print(f"     总交易数: {total_txs}")
-        print(f"     总收入: {total_in}")
-        print(f"     总支出: {total_out}")
-        print(f"     最后交易时间: {last_tx_time}")
-        print(f"     平均交易额: {avg_amount}")
+        print(f"  ✅ Statistics:")
+        print(f"     Total transactions: {total_txs}")
+        print(f"     Total income: {total_in}")
+        print(f"     Total expenditure: {total_out}")
+        print(f"     Last transaction time: {last_tx_time}")
+        print(f"     Average amount: {avg_amount}")
     
-    # ========== 测试 7: 搜索交易 - searchTransactions() ==========
-    print("\n[8] 测试：搜索和返回结构体数组 searchTransactions()")
+    # ========== Test 7: Search transactions - searchTransactions() ==========
+    print("\n[8] Test: Search and return struct array searchTransactions()")
     print("-" * 70)
     
     search_results = struct_contract.functions.searchTransactions(
@@ -739,50 +739,50 @@ def test_struct_demo(w3, MY, KEY):
         600      # maxAmount
     ).call()
     
-    print(f"  搜索交易 (100 <= 金额 <= 600)...")
+    print(f"  Searching transactions (100 <= amount <= 600)...")
     # Array return → (list_of_tuples,)
     results_list = search_results[0] if search_results else []
-    print(f"  ✅ 搜索结果数量: {len(results_list)}")
+    print(f"  ✅ Search results count: {len(results_list)}")
     
     for i, tx in enumerate(results_list):
         from_addr, to_addr, amount, timestamp, tx_type, success = tx
-        print(f"  结果 {i+1}: 金额 {amount} {tx_type}")
+        print(f"  Result {i+1}: amount {amount} {tx_type}")
     
-    # ========== 测试 8: 批量执行交易 - batchExecute() ==========
-    print("\n[9] 测试：批量处理结构体数组 batchExecute()")
+    # ========== Test 8: Batch execute - batchExecute() ==========
+    print("\n[9] Test: Batch processing struct array batchExecute()")
     print("-" * 70)
     
-    # 创建批量交易
+    # Create batch transactions
     batch_txs = [
         (alice_addr, bob_addr, 100, 0, "batch_1", True),
         (bob_addr, alice_addr, 50, 0, "batch_2", True),
         (alice_addr, bob_addr, 75, 0, "batch_3", True),
     ]
     
-    print(f"  执行 {len(batch_txs)} 笔批量交易...")
+    print(f"  Executing {len(batch_txs)} batch transactions...")
     receipt = struct_contract.functions.batchExecute(batch_txs).transact(KEY)
     
     if receipt.get('status') == 0:
-        # 解析返回值（成功交易数）
+        # Parse return value (successful transaction count)
         output = receipt.get('decoded_output')
-        print(f"  ✅ 批量执行完成")
+        print(f"  ✅ Batch execution complete")
         if output is not None:
-            print(f"     成功交易数: {output}")
+            print(f"     Successful transactions: {output}")
     else:
-        print(f"  ❌ 批量执行失败: {receipt.get('msg')}")
+        print(f"  ❌ Batch execution failed: {receipt.get('msg')}")
     
-    # ========== 总结 ==========
+    # ========== Summary ==========
     print("\n" + "="*70)
-    print("✅ 结构体演示完成")
+    print("✅ Struct Demo Complete")
     print("="*70)
     print("""
-关键要点：
-1. ✅ 结构体可以作为函数参数（calldata）
-2. ✅ 结构体可以作为返回值（memory）
-3. ✅ 可以返回结构体数组
-4. ✅ 可以同时返回多个结构体（元组）
-5. ✅ 前端可以直接解析返回的结构体
-6. ✅ SDK 自动编码/解码结构体
+Key Takeaways:
+1. ✅ Structs can be used as function parameters (calldata)
+2. ✅ Structs can be used as return values (memory)
+3. ✅ Struct arrays can be returned
+4. ✅ Multiple structs can be returned simultaneously (tuple)
+5. ✅ Frontend can directly parse returned structs
+6. ✅ SDK automatically encodes/decodes structs
     """)
 
 def test_create2_assembly_deployment(w3, MY, KEY):
@@ -1258,7 +1258,7 @@ def test_gmssl_transfer(w3, GM_KEY):
     tx_dict = { # 2. Construct transaction dictionary
         'to': dest,
         'value': 10000,
-        'gm_pubkey': gm_pubkey  # 触发 SDK 的 send_gmssl_transaction 逻辑
+        'gm_pubkey': gm_pubkey  # Triggers SDK's send_gmssl_transaction logic
     }
 
     print("Sending GmSSL Transfer...")
