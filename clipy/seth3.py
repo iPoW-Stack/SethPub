@@ -591,7 +591,7 @@ def test_struct_demo(w3, MY, KEY):
         for e in receipt.get('decoded_events', []):
             if e['event'] == 'UserRegistered':
                 print(f"  📍 事件: UserRegistered")
-                print(f"     用户地址: {e['args']['userAddr']}")
+                # userAddr is indexed → in topics, not in args
                 print(f"     用户名: {e['args']['name']}")
                 print(f"     加入时间: {e['args']['joinTime']}")
     else:
@@ -646,8 +646,7 @@ def test_struct_demo(w3, MY, KEY):
         for e in receipt.get('decoded_events', []):
             if e['event'] == 'TransactionExecuted':
                 print(f"  📍 事件: TransactionExecuted")
-                print(f"     发送者: {e['args']['from'][:10]}...")
-                print(f"     接收者: {e['args']['to'][:10]}...")
+                # from, to are indexed → in topics, not in args
                 print(f"     金额: {e['args']['amount']}")
                 print(f"     成功: {e['args']['success']}")
     else:
