@@ -1973,17 +1973,17 @@ def ecdsa_sign_test():
     w3 = SethWeb3Mock(IP, PORT)
     MY = w3.client.get_address(KEY)
 
-    # test_contract_call_contract(w3, MY, KEY)
-    # test_transfer(w3, MY, KEY, "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b")
-    # test_library_with_contrcat(w3, MY, KEY)
-    # test_ecdsa_prefund_full_flow(w3, MY, KEY)
-    # test_contract_selfdestruct(w3, MY, KEY)
-    # test_create2_assembly_deployment(w3, MY, KEY)
-    # test_upgradeable_contract(w3, MY, KEY)
-    # test_amm_same_shard(w3, MY, KEY)
-    # test_struct_demo(w3, MY, KEY)
+    test_contract_call_contract(w3, MY, KEY)
+    test_transfer(w3, MY, KEY, "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b")
+    test_library_with_contrcat(w3, MY, KEY)
+    test_ecdsa_prefund_full_flow(w3, MY, KEY)
+    test_contract_selfdestruct(w3, MY, KEY)
+    test_create2_assembly_deployment(w3, MY, KEY)
+    test_upgradeable_contract(w3, MY, KEY)
+    test_amm_same_shard(w3, MY, KEY)
+    test_struct_demo(w3, MY, KEY)
     test_iweth9_existing_contract(w3, MY, KEY)
-    # test_iweth9_demo(w3, MY, KEY)
+    test_iweth9_demo(w3, MY, KEY)
 
 
 def oqs_sign_test():
@@ -2496,7 +2496,7 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     print("=" * 60)
     
 if __name__ == "__main__":
-    # demo_ws_subscribe("127.0.0.1", 33001)  # uncomment to run the WebSocket subscription demo
+    demo_ws_subscribe("127.0.0.1", 33001)  # uncomment to run the WebSocket subscription demo
     ecdsa_sign_test()
-    # oqs_sign_test()
-    # gmssl_sign_test()
+    oqs_sign_test()
+    gmssl_sign_test()
