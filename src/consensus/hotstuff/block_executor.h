@@ -21,7 +21,7 @@ public:
             const std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
             view_block::protobuf::ViewBlockItem* view_block,
             BalanceAndNonceMap& balance_map,
-            zjcvm::ZjchainHost& zjc_host) = 0;
+            sethvm::SethhainHost& seth_host) = 0;
 };
 
 class ShardBlockExecutor : public IBlockExecutor {
@@ -39,7 +39,7 @@ public:
             const std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
             view_block::protobuf::ViewBlockItem* view_block,
             BalanceAndNonceMap& balance_map,
-            zjcvm::ZjchainHost& zjc_host);
+            sethvm::SethhainHost& seth_host);
 private:
     std::shared_ptr<db::DbWriteBatch> db_batch_ = nullptr;
     std::shared_ptr<security::Security> security_ptr_ = nullptr;    
@@ -60,7 +60,7 @@ public:
             const std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
             view_block::protobuf::ViewBlockItem* view_block,
             BalanceAndNonceMap& balance_map,
-            zjcvm::ZjchainHost& zjc_host);
+            sethvm::SethhainHost& seth_host);
 private:
     std::shared_ptr<db::DbWriteBatch> db_batch_ = nullptr;
     std::shared_ptr<security::Security> security_ptr_ = nullptr;
@@ -69,17 +69,17 @@ private:
             const std::shared_ptr<consensus::WaitingTxsItem> &txs_ptr,
             view_block::protobuf::ViewBlockItem* view_block,
             BalanceAndNonceMap& balance_map,
-            zjcvm::ZjchainHost& zjc_host);
+            sethvm::SethhainHost& seth_host);
     void RootCreateAccountAddressBlock(
             const std::shared_ptr<consensus::WaitingTxsItem> &txs_ptr,
             view_block::protobuf::ViewBlockItem* view_block,
             BalanceAndNonceMap& balance_map,
-            zjcvm::ZjchainHost& zjc_host);
+            sethvm::SethhainHost& seth_host);
     void RootCreateElectConsensusShardBlock(
             const std::shared_ptr<consensus::WaitingTxsItem> &txs_ptr,
             view_block::protobuf::ViewBlockItem* view_block,
             BalanceAndNonceMap& balance_map,
-            zjcvm::ZjchainHost& zjc_host);        
+            sethvm::SethhainHost& seth_host);        
 };
 
 class BlockExecutorFactory {

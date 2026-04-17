@@ -109,7 +109,7 @@ public:
     static void SetUpTestCase() {
         std::string config_path_ = "./";
         std::string log_conf_path = config_path_ + "/log4cpp.properties";
-        std::string log_path = config_path_ + "/zjc.log";
+        std::string log_path = config_path_ + "/seth.log";
         WriteDefaultLogConf(log_conf_path, log_path);
         log4cpp::PropertyConfigurator::configure(log_conf_path);
         common::GlobalInfo::Instance()->set_network_id(kTestShardingId);

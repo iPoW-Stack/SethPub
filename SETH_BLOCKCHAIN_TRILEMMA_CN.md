@@ -189,8 +189,8 @@ static const uint32_t kEachShardMaxTps = 2000u;
 // src/elect/elect_utils.h
 static const uint32_t kFtsWeedoutDividRate = 10u;  // 每轮淘汰10%
 
-// 淘汰算法：FTS (Fault Tolerance Score)
-// 基于节点表现评分，淘汰低效节点
+// 淘汰算法：FTS (Follow The Satoshi，追随中本聪算法)
+// 基于节点多维度表现评分，淘汰低效节点
 ```
 
 #### 淘汰流程

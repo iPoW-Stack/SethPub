@@ -19,7 +19,7 @@
 #include "network/network_utils.h"
 #include "security/security.h"
 #include "transport/transport_utils.h"
-#include "zjcvm/zjc_host.h"
+#include "sethvm/seth_host.h"
 
 namespace seth {
 
@@ -396,7 +396,7 @@ public:
     virtual int HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        zjcvm::ZjchainHost& zjc_host,
+        sethvm::SethhainHost& seth_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) = 0;
     virtual int TxToBlockTx(

@@ -86,11 +86,11 @@ fi
 
 # 压缩 seths/seth，便于网络传输
 
-clickhouse-client -q "drop table zjc_ck_account_key_value_table"
-clickhouse-client -q "drop table zjc_ck_account_table"
-clickhouse-client -q "drop table zjc_ck_block_table"
-clickhouse-client -q "drop table zjc_ck_statistic_table"
-clickhouse-client -q "drop table zjc_ck_transaction_table"
+clickhouse-client -q "drop table seth_ck_account_key_value_table"
+clickhouse-client -q "drop table seth_ck_account_table"
+clickhouse-client -q "drop table seth_ck_block_table"
+clickhouse-client -q "drop table seth_ck_statistic_table"
+clickhouse-client -q "drop table seth_ck_transaction_table"
 clickhouse-client -q "drop table bls_elect_info"
 clickhouse-client -q "drop table bls_block_info"
 

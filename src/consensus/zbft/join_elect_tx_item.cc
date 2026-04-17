@@ -9,7 +9,7 @@ namespace consensus {
 int JoinElectTxItem::HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        zjcvm::ZjchainHost& zjc_host,
+        sethvm::SethhainHost& seth_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
     auto& block = view_block.block_info();
@@ -27,7 +27,7 @@ int JoinElectTxItem::HandleTx(
         return kConsensusError;
     }
 
-    int balance_status = GetTempAccountBalance(zjc_host, from, acc_balance_map, &from_balance, &from_nonce);
+    int balance_status = GetTempAccountBalance(seth_host, from, acc_balance_map, &from_balance, &from_nonce);
     if (balance_status != kConsensusSuccess) {
         block_tx.set_status(balance_status);
         // will never happen
@@ -128,7 +128,7 @@ int JoinElectTxItem::HandleTx(
     block::protobuf::TxHashStatus tx_hash_status;
     tx_hash_status.set_status(block_tx.status());
     auto status_val = tx_hash_status.SerializeAsString();
-    zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+    seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
     uint64_t stoke = 0;
     prefix_db_->GetElectNodeMinStoke(common::GlobalInfo::Instance()->network_id(), from, &stoke);
     join_info.set_stoke(stoke);

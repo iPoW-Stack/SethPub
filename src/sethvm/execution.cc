@@ -1,4 +1,4 @@
-#include "zjcvm/execution.h"
+#include "sethvm/execution.h"
 
 #include "block/account_manager.h"
 #include "common/encode.h"
@@ -9,12 +9,12 @@
 #include "evmc/evmc.h"
 #include "evmc/mocked_host.hpp"
 #include "security/security_utils.h"
-#include "zjcvm/zjc_host.h"
-#include "zjcvm/zjcvm_utils.h"
+#include "sethvm/seth_host.h"
+#include "sethvm/sethvm_utils.h"
 
 namespace seth {
 
-namespace zjcvm {
+namespace sethvm {
 
 Execution::Execution() {}
 
@@ -145,7 +145,7 @@ int Execution::execute(
         uint64_t gas_limit,
         uint32_t depth,
         uint32_t call_mode,
-        ZjchainHost& host,
+        SethhainHost& host,
         evmc::Result* out_res) {
     view_block_chain_ = host.view_block_chain_;
     auto btime = common::TimeUtils::TimestampMs();
@@ -161,7 +161,7 @@ int Execution::execute(
             common::Encode::HexEncode(to_address).c_str(),
             common::Encode::HexEncode(origin_address).c_str());
         // assert(false);
-        return kZjcvmError;
+        return kSethvmError;
     }
 
     int64_t gas = gas_limit;
@@ -212,7 +212,7 @@ int Execution::execute(
                 "common::Encode::HexEncode(bytes_code).c_str()",
                 common::Encode::HexEncode(from_address).c_str(),
                 common::Encode::HexEncode(to_address).c_str());
-            return kZjcvmSuccess;
+            return kSethvmSuccess;
         } else {
             const auto gas_used = msg.gas - out_res->gas_left;
             SETH_DEBUG("out_res->status_code == EVMC_SUCCESS.nResult: %d, gas_used: %lu, gas limit: %lu, codes: %s",
@@ -221,7 +221,7 @@ int Execution::execute(
 
         host.create_bytes_code_ = std::string((char*)out_res->output_data, out_res->output_size);
         if (call_mode == kJustCreate || call_mode == kCreate2) {
-            return kZjcvmSuccess;
+            return kSethvmSuccess;
         }
 
         msg.gas = out_res->gas_left;
@@ -248,9 +248,9 @@ int Execution::execute(
         out_res->gas_refund,
         (etime - btime),
         common::Encode::HexEncode(std::string((char*)out_res->output_data, out_res->output_size)).c_str());
-    return kZjcvmSuccess;
+    return kSethvmSuccess;
 }
 
-}  // namespace zjcvm
+}  // namespace sethvm
 
 }  //namespace seth

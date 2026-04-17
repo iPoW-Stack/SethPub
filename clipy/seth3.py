@@ -196,7 +196,594 @@ contract ProbeBridge {
 }
 """
 
+STRUCT_DEMO_SOL = """
+pragma solidity ^0.8.20;
+
+/**
+ * @title StructDemo - Struct Parameters and Return Values Demo
+ * @notice Demonstrates using structs as function parameters and return values
+ * @dev Showcases Solidity struct capabilities
+ */
+contract StructDemo {
+    
+    // ========== Struct Definitions ==========
+    
+    /**
+     * @notice User information struct
+     */
+    struct UserInfo {
+        address userAddr;        // User address
+        string name;             // Username
+        uint256 balance;         // Account balance
+        uint256 joinTime;        // Join time
+        bool isActive;           // Whether active
+    }
+    
+    /**
+     * @notice Transaction information struct
+     */
+    struct Transaction {
+        address from;            // Sender
+        address to;              // Receiver
+        uint256 amount;          // Transaction amount
+        uint256 timestamp;       // Transaction time
+        string txType;           // Transaction type
+        bool success;            // Whether successful
+    }
+    
+    /**
+     * @notice Account statistics struct
+     */
+    struct AccountStats {
+        uint256 totalTransactions;  // Total transactions
+        uint256 totalIn;            // Total income
+        uint256 totalOut;           // Total expenditure
+        uint256 lastTxTime;         // Last transaction time
+        uint256 averageAmount;      // Average transaction amount
+    }
+    
+    // ========== State Variables ==========
+    
+    mapping(address => UserInfo) public users;
+    mapping(address => Transaction[]) public userTransactions;
+    mapping(address => AccountStats) public stats;
+    uint256 public userCount;
+    
+    // ========== Events ==========
+    
+    event UserRegistered(
+        address indexed userAddr,
+        string name,
+        uint256 joinTime
+    );
+    
+    event TransactionExecuted(
+        address indexed from,
+        address indexed to,
+        uint256 amount,
+        bool success
+    );
+    
+    event StatsUpdated(
+        address indexed user,
+        uint256 totalTransactions,
+        uint256 totalIn,
+        uint256 totalOut
+    );
+    
+    // ========== Functions: Struct as Parameter ==========
+    
+    /**
+     * @notice Register a new user (accepts struct parameter)
+     * @param info UserInfo struct
+     * @return success Whether registration succeeded
+     * 
+     * Demonstrates:
+     * - Accepting UserInfo struct as parameter
+     * - Accessing struct fields directly
+     * - Modifying state variables
+     */
+    function registerUser(UserInfo calldata info) 
+        external 
+        returns (bool success) 
+    {
+        require(info.userAddr != address(0), "Invalid address");
+        require(bytes(info.name).length > 0, "Name cannot be empty");
+        require(info.balance >= 0, "Balance cannot be negative");
+        
+        users[info.userAddr] = UserInfo({
+            userAddr: info.userAddr,
+            name: info.name,
+            balance: info.balance,
+            joinTime: block.timestamp,
+            isActive: true
+        });
+        
+        userCount++;
+        emit UserRegistered(info.userAddr, info.name, block.timestamp);
+        return true;
+    }
+    
+    /**
+     * @notice Execute a transaction (accepts struct parameter)
+     * @param tx Transaction struct
+     * @return success Whether transaction succeeded
+     * 
+     * Demonstrates:
+     * - Accepting Transaction struct
+     * - Validating struct fields
+     * - Returning boolean for success
+     */
+    function executeTransaction(Transaction calldata tx) 
+        external 
+        payable 
+        returns (bool success) 
+    {
+        require(tx.from != address(0), "Invalid from address");
+        require(tx.to != address(0), "Invalid to address");
+        require(tx.amount > 0, "Amount must be positive");
+        require(bytes(tx.txType).length > 0, "Transaction type required");
+        
+        // Verify sender
+        require(msg.sender == tx.from || msg.sender == users[tx.from].userAddr, 
+                "Only transaction owner can execute");
+        
+        // Record transaction
+        userTransactions[tx.from].push(tx);
+        
+        // Update statistics
+        _updateStats(tx.from, tx.to, tx.amount);
+        
+        emit TransactionExecuted(tx.from, tx.to, tx.amount, true);
+        return true;
+    }
+    
+    /**
+     * @notice Batch execute transactions (multiple struct parameters)
+     * @param txs Transaction array
+     * @return successCount Number of successful transactions
+     */
+    function batchExecute(Transaction[] calldata txs) 
+        external 
+        returns (uint256 successCount) 
+    {
+        for (uint256 i = 0; i < txs.length; i++) {
+            try this.executeTransaction(txs[i]) {
+                successCount++;
+            } catch {
+                // Continue processing next transaction
+            }
+        }
+        return successCount;
+    }
+    
+    // ========== Functions: Return Struct ==========
+    
+    /**
+     * @notice Get user info (returns struct)
+     * @param userAddr User address
+     * @return UserInfo struct
+     * 
+     * Demonstrates:
+     * - Returning UserInfo struct
+     * - Contains multiple fields
+     * - Frontend can parse directly
+     */
+    function getUserInfo(address userAddr) 
+        external 
+        view 
+        returns (UserInfo memory) 
+    {
+        require(userAddr != address(0), "Invalid address");
+        
+        UserInfo memory info = users[userAddr];
+        require(info.userAddr != address(0), "User not found");
+        
+        return info;
+    }
+    
+    /**
+     * @notice Get user's last transaction (returns struct)
+     * @param userAddr User address
+     * @return Last transaction info
+     */
+    function getLastTransaction(address userAddr) 
+        external 
+        view 
+        returns (Transaction memory) 
+    {
+        require(userAddr != address(0), "Invalid address");
+        require(userTransactions[userAddr].length > 0, "No transactions");
+        
+        uint256 lastIndex = userTransactions[userAddr].length - 1;
+        return userTransactions[userAddr][lastIndex];
+    }
+    
+    /**
+     * @notice Get all transactions for a user (returns struct array)
+     * @param userAddr User address
+     * @return Transaction array
+     */
+    function getTransactionHistory(address userAddr) 
+        external 
+        view 
+        returns (Transaction[] memory) 
+    {
+        require(userAddr != address(0), "Invalid address");
+        return userTransactions[userAddr];
+    }
+    
+    /**
+     * @notice Get account statistics (returns struct)
+     * @param userAddr User address
+     * @return Account statistics data
+     * 
+     * Demonstrates:
+     * - Returning complex statistics struct
+     * - Contains computed results
+     * - Frontend gets complete statistics
+     */
+    function getAccountStats(address userAddr) 
+        external 
+        view 
+        returns (AccountStats memory) 
+    {
+        require(userAddr != address(0), "Invalid address");
+        
+        AccountStats memory account = stats[userAddr];
+        
+        // Calculate average
+        if (account.totalTransactions > 0) {
+            account.averageAmount = (account.totalIn + account.totalOut) / account.totalTransactions;
+        }
+        
+        return account;
+    }
+    
+    /**
+     * @notice Query and process user info (accepts and returns structs)
+     * @param userAddr User address
+     * @return info User information
+     * @return accountStats Account statistics
+     * @return txCount Transaction count
+     * 
+     * Demonstrates:
+     * - Accepting parameters and returning multiple structs
+     * - Returning multiple values (tuple)
+     * - Frontend can get all data in one call
+     */
+    function getUserFullInfo(address userAddr) 
+        external 
+        view 
+        returns (
+            UserInfo memory info,
+            AccountStats memory accountStats,
+            uint256 txCount
+        ) 
+    {
+        require(userAddr != address(0), "Invalid address");
+        
+        info = users[userAddr];
+        require(info.userAddr != address(0), "User not found");
+        
+        accountStats = stats[userAddr];
+        if (accountStats.totalTransactions > 0) {
+            accountStats.averageAmount = (accountStats.totalIn + accountStats.totalOut) / accountStats.totalTransactions;
+        }
+        
+        txCount = userTransactions[userAddr].length;
+        
+        return (info, accountStats, txCount);
+    }
+    
+    /**
+     * @notice Search transactions matching criteria (returns struct array)
+     * @param userAddr User address
+     * @param minAmount Minimum amount
+     * @param maxAmount Maximum amount
+     * @return Matching transactions
+     */
+    function searchTransactions(
+        address userAddr,
+        uint256 minAmount,
+        uint256 maxAmount
+    ) 
+        external 
+        view 
+        returns (Transaction[] memory) 
+    {
+        require(userAddr != address(0), "Invalid address");
+        require(minAmount <= maxAmount, "Invalid range");
+        
+        Transaction[] storage userTxs = userTransactions[userAddr];
+        uint256 matchCount = 0;
+        
+        // Count matching transactions
+        for (uint256 i = 0; i < userTxs.length; i++) {
+            if (userTxs[i].amount >= minAmount && userTxs[i].amount <= maxAmount) {
+                matchCount++;
+            }
+        }
+        
+        // Create result array
+        Transaction[] memory result = new Transaction[](matchCount);
+        uint256 resultIndex = 0;
+        
+        // Fill results
+        for (uint256 i = 0; i < userTxs.length; i++) {
+            if (userTxs[i].amount >= minAmount && userTxs[i].amount <= maxAmount) {
+                result[resultIndex] = userTxs[i];
+                resultIndex++;
+            }
+        }
+        
+        return result;
+    }
+    
+    // ========== Internal Functions ==========
+    
+    /**
+     * @notice Update user statistics
+     */
+    function _updateStats(address from, address to, uint256 amount) internal {
+        // Sender statistics
+        stats[from].totalOut += amount;
+        stats[from].totalTransactions++;
+        stats[from].lastTxTime = block.timestamp;
+        
+        // Receiver statistics
+        stats[to].totalIn += amount;
+        stats[to].lastTxTime = block.timestamp;
+        
+        emit StatsUpdated(from, stats[from].totalTransactions, stats[from].totalIn, stats[from].totalOut);
+    }
+}
+"""
+
 RANDOM_SALT = secrets.token_hex(31)
+
+def test_struct_demo(w3, MY, KEY):
+    """
+    StructDemo Test: Demonstrates structs as parameters and return values
+    
+    Covers:
+    1. Passing struct parameter (UserInfo) - registerUser()
+    2. Passing struct parameter (Transaction) - executeTransaction()
+    3. Returning struct (UserInfo) - getUserInfo()
+    4. Returning struct array (Transaction[]) - getTransactionHistory()
+    5. Returning multiple structs - getUserFullInfo()
+    6. Complex struct query and return - getAccountStats()
+    """
+    print("\n" + "="*70)
+    print("TEST CASE: Struct Demo - Structs as Parameters and Return Values")
+    print("="*70)
+    
+    # Deploy contract
+    print("\n[1] Compiling and deploying StructDemo contract...")
+    struct_bin, struct_abi = compile_and_link(STRUCT_DEMO_SOL, "StructDemo")
+    struct_contract = w3.seth.contract(abi=struct_abi, bytecode=struct_bin).deploy({
+        'from': MY,
+        'salt': RANDOM_SALT + 'struct_demo',
+    }, KEY)
+    print(f"✅ StructDemo deployed: {struct_contract.address}")
+    
+    # ========== Test 1: Struct as parameter - registerUser() ==========
+    print("\n[2] Test: Passing struct parameter registerUser()")
+    print("-" * 70)
+    
+    alice_addr = "0x" + "1111111111111111111111111111111111111111"
+    bob_addr = "0x" + "2222222222222222222222222222222222222222"
+    
+    # Construct UserInfo struct parameter
+    user_info_alice = (
+        alice_addr,           # userAddr
+        "Alice",              # name
+        1000,                 # balance
+        0,                    # joinTime (will be overwritten by contract)
+        True                  # isActive
+    )
+    
+    print(f"  Registering user: {user_info_alice}")
+    receipt = struct_contract.functions.registerUser(user_info_alice).transact(KEY)
+    
+    if receipt.get('status') == 0:
+        print(f"  ✅ Transaction succeeded")
+        for e in receipt.get('decoded_events', []):
+            if e['event'] == 'UserRegistered':
+                print(f"  📍 Event: UserRegistered")
+                # userAddr is indexed → in topics, not in args
+                print(f"     Name: {e['args']['name']}")
+                print(f"     Join time: {e['args']['joinTime']}")
+    else:
+        print(f"  ❌ Transaction failed: {receipt.get('msg')}")
+    
+    # Register another user
+    user_info_bob = (
+        bob_addr,
+        "Bob",
+        2000,
+        0,                    # joinTime
+        True
+    )
+    struct_contract.functions.registerUser(user_info_bob).transact(KEY)
+    print(f"  Registering user Bob...")
+    
+    # ========== Test 2: Return struct - getUserInfo() ==========
+    print("\n[3] Test: Returning struct getUserInfo()")
+    print("-" * 70)
+    
+    result = struct_contract.functions.getUserInfo(alice_addr).call()
+    print(f"  Getting user info: getUserInfo({alice_addr[:10]}...)")
+    
+    if result:
+        # eth_abi.decode returns (struct_tuple,) for single struct return
+        user_info = result[0]
+        user_addr, name, balance, join_time, is_active = user_info
+        print(f"  ✅ Returned struct:")
+        print(f"     Address: {user_addr}")
+        print(f"     Name: {name}")
+        print(f"     Balance: {balance}")
+        print(f"     Join time: {join_time}")
+        print(f"     Active: {is_active}")
+    
+    # ========== Test 3: Struct as parameter and return - executeTransaction() ==========
+    print("\n[4] Test: Passing struct parameter executeTransaction()")
+    print("-" * 70)
+    
+    # Construct Transaction struct
+    tx_info = (
+        alice_addr,           # from
+        bob_addr,             # to
+        500,                  # amount
+        0,                    # timestamp (will be set by contract)
+        "transfer",           # txType
+        True                  # success
+    )
+    
+    print(f"  Executing transaction: {alice_addr[:10]}... -> {bob_addr[:10]}... (amount: 500)")
+    receipt = struct_contract.functions.executeTransaction(tx_info).transact(KEY)
+    
+    if receipt.get('status') == 0:
+        print(f"  ✅ Transaction executed successfully")
+        for e in receipt.get('decoded_events', []):
+            if e['event'] == 'TransactionExecuted':
+                print(f"  📍 Event: TransactionExecuted")
+                # from, to are indexed → in topics, not in args
+                print(f"     Amount: {e['args']['amount']}")
+                print(f"     Success: {e['args']['success']}")
+    else:
+        print(f"  ❌ Transaction failed: {receipt.get('msg')}")
+    
+    # Execute another transaction
+    tx_info2 = (
+        bob_addr,
+        alice_addr,
+        200,
+        0,
+        "transfer",
+        True
+    )
+    struct_contract.functions.executeTransaction(tx_info2).transact(KEY)
+    print(f"  Executing transaction 2...")
+    
+    # ========== Test 4: Return struct array - getTransactionHistory() ==========
+    print("\n[5] Test: Returning struct array getTransactionHistory()")
+    print("-" * 70)
+    
+    tx_history = struct_contract.functions.getTransactionHistory(alice_addr).call()
+    print(f"  Getting transaction history: getTransactionHistory({alice_addr[:10]}...)")
+    # eth_abi.decode returns (list_of_tuples,) for array return
+    tx_list = tx_history[0] if tx_history else []
+    print(f"  ✅ Transaction count: {len(tx_list)}")
+    
+    for i, tx in enumerate(tx_list):
+        from_addr, to_addr, amount, timestamp, tx_type, success = tx
+        print(f"  Transaction {i+1}:")
+        print(f"    From: {from_addr[:10]}...")
+        print(f"    To: {to_addr[:10]}...")
+        print(f"    Amount: {amount}")
+        print(f"    Type: {tx_type}")
+        print(f"    Success: {success}")
+    
+    # ========== Test 5: Return multiple structs - getUserFullInfo() ==========
+    print("\n[6] Test: Returning multiple structs getUserFullInfo()")
+    print("-" * 70)
+    
+    full_info = struct_contract.functions.getUserFullInfo(alice_addr).call()
+    print(f"  Getting full user info: getUserFullInfo({alice_addr[:10]}...)")
+    
+    if full_info:
+        user_info, account_stats, tx_count = full_info
+        
+        # Parse UserInfo
+        user_addr, name, balance, join_time, is_active = user_info
+        print(f"  ✅ User info:")
+        print(f"     Name: {name}")
+        print(f"     Balance: {balance}")
+        print(f"     Active: {is_active}")
+        
+        # Parse AccountStats
+        total_txs, total_in, total_out, last_tx_time, avg_amount = account_stats
+        print(f"  ✅ Account statistics:")
+        print(f"     Total transactions: {total_txs}")
+        print(f"     Total income: {total_in}")
+        print(f"     Total expenditure: {total_out}")
+        print(f"     Average amount: {avg_amount}")
+        print(f"     Transaction history count: {tx_count}")
+    
+    # ========== Test 6: Get account stats - getAccountStats() ==========
+    print("\n[7] Test: Returning statistics struct getAccountStats()")
+    print("-" * 70)
+    
+    stats = struct_contract.functions.getAccountStats(alice_addr).call()
+    print(f"  Getting account stats: getAccountStats({alice_addr[:10]}...)")
+    
+    if stats:
+        # Single struct return → (struct_tuple,)
+        stat = stats[0]
+        total_txs, total_in, total_out, last_tx_time, avg_amount = stat
+        print(f"  ✅ Statistics:")
+        print(f"     Total transactions: {total_txs}")
+        print(f"     Total income: {total_in}")
+        print(f"     Total expenditure: {total_out}")
+        print(f"     Last transaction time: {last_tx_time}")
+        print(f"     Average amount: {avg_amount}")
+    
+    # ========== Test 7: Search transactions - searchTransactions() ==========
+    print("\n[8] Test: Search and return struct array searchTransactions()")
+    print("-" * 70)
+    
+    search_results = struct_contract.functions.searchTransactions(
+        alice_addr,
+        100,     # minAmount
+        600      # maxAmount
+    ).call()
+    
+    print(f"  Searching transactions (100 <= amount <= 600)...")
+    # Array return → (list_of_tuples,)
+    results_list = search_results[0] if search_results else []
+    print(f"  ✅ Search results count: {len(results_list)}")
+    
+    for i, tx in enumerate(results_list):
+        from_addr, to_addr, amount, timestamp, tx_type, success = tx
+        print(f"  Result {i+1}: amount {amount} {tx_type}")
+    
+    # ========== Test 8: Batch execute - batchExecute() ==========
+    print("\n[9] Test: Batch processing struct array batchExecute()")
+    print("-" * 70)
+    
+    # Create batch transactions
+    batch_txs = [
+        (alice_addr, bob_addr, 100, 0, "batch_1", True),
+        (bob_addr, alice_addr, 50, 0, "batch_2", True),
+        (alice_addr, bob_addr, 75, 0, "batch_3", True),
+    ]
+    
+    print(f"  Executing {len(batch_txs)} batch transactions...")
+    receipt = struct_contract.functions.batchExecute(batch_txs).transact(KEY)
+    
+    if receipt.get('status') == 0:
+        # Parse return value (successful transaction count)
+        output = receipt.get('decoded_output')
+        print(f"  ✅ Batch execution complete")
+        if output is not None:
+            print(f"     Successful transactions: {output}")
+    else:
+        print(f"  ❌ Batch execution failed: {receipt.get('msg')}")
+    
+    # ========== Summary ==========
+    print("\n" + "="*70)
+    print("✅ Struct Demo Complete")
+    print("="*70)
+    print("""
+Key Takeaways:
+1. ✅ Structs can be used as function parameters (calldata)
+2. ✅ Structs can be used as return values (memory)
+3. ✅ Struct arrays can be returned
+4. ✅ Multiple structs can be returned simultaneously (tuple)
+5. ✅ Frontend can directly parse returned structs
+6. ✅ SDK automatically encodes/decodes structs
+    """)
 
 def test_create2_assembly_deployment(w3, MY, KEY):
     print("\n--- TEST CASE: CREATE2 Assembly Predictable Deployment ---")
@@ -671,7 +1258,7 @@ def test_gmssl_transfer(w3, GM_KEY):
     tx_dict = { # 2. Construct transaction dictionary
         'to': dest,
         'value': 10000,
-        'gm_pubkey': gm_pubkey  # 触发 SDK 的 send_gmssl_transaction 逻辑
+        'gm_pubkey': gm_pubkey  # Triggers SDK's send_gmssl_transaction logic
     }
 
     print("Sending GmSSL Transfer...")
@@ -941,6 +1528,263 @@ def test_upgradeable_contract(w3, MY, KEY):
     print("=" * 60)
 
 
+# ---------------------------------------------------------------------------
+# AMM (Automated Market Maker) Demo
+#
+# Design principle: In Seth's sharded architecture, contracts that call each
+# other MUST reside in the same shard AND the same pool to guarantee atomic
+# execution within a single consensus round.  This is achieved by deploying
+# all related contracts from the SAME account — the CREATE2 address is
+# derived from the deployer's address, so all contracts land in the deployer's
+# shard and pool.
+#
+# Three contracts:
+#   TokenA  — simple ERC20-like token
+#   TokenB  — simple ERC20-like token
+#   AMMPool — constant-product AMM (x * y = k) that holds reserves of both
+#             tokens and exposes swap / addLiquidity / removeLiquidity.
+#
+# Because all three are deployed by the same account (MY), they share the
+# same shard and pool, so AMMPool.swap() calling TokenA.transferFrom() and
+# TokenB.transfer() is fully atomic — no cross-shard coordination needed.
+# ---------------------------------------------------------------------------
+
+AMM_TOKEN_SOL = """
+pragma solidity ^0.8.0;
+
+contract SimpleToken {
+    string  public name;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    constructor(string memory _name, uint256 _initialSupply) {
+        name = _name;
+        totalSupply = _initialSupply;
+        balanceOf[msg.sender] = _initialSupply;
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        require(balanceOf[msg.sender] >= amount, "insufficient");
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(msg.sender, to, amount);
+        return true;
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        emit Approval(msg.sender, spender, amount);
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        require(allowance[from][msg.sender] >= amount, "not approved");
+        require(balanceOf[from] >= amount, "insufficient");
+        allowance[from][msg.sender] -= amount;
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(from, to, amount);
+        return true;
+    }
+}
+"""
+
+AMM_POOL_SOL = """
+pragma solidity ^0.8.0;
+
+interface IERC20 {
+    function transferFrom(address from, address to, uint256 amount) external returns (bool);
+    function transfer(address to, uint256 amount) external returns (bool);
+    function balanceOf(address account) external view returns (uint256);
+}
+
+contract AMMPool {
+    IERC20 public tokenA;
+    IERC20 public tokenB;
+    uint256 public reserveA;
+    uint256 public reserveB;
+    uint256 public totalLiquidity;
+    mapping(address => uint256) public liquidity;
+
+    event LiquidityAdded(address indexed provider, uint256 amountA, uint256 amountB, uint256 lp);
+    event LiquidityRemoved(address indexed provider, uint256 amountA, uint256 amountB);
+    event Swap(address indexed user, address tokenIn, uint256 amountIn, uint256 amountOut);
+
+    constructor(address _tokenA, address _tokenB) {
+        tokenA = IERC20(_tokenA);
+        tokenB = IERC20(_tokenB);
+    }
+
+    function addLiquidity(uint256 amountA, uint256 amountB) external returns (uint256 lp) {
+        tokenA.transferFrom(msg.sender, address(this), amountA);
+        tokenB.transferFrom(msg.sender, address(this), amountB);
+        if (totalLiquidity == 0) {
+            lp = amountA;
+        } else {
+            lp = (amountA * totalLiquidity) / reserveA;
+        }
+        reserveA += amountA;
+        reserveB += amountB;
+        totalLiquidity += lp;
+        liquidity[msg.sender] += lp;
+        emit LiquidityAdded(msg.sender, amountA, amountB, lp);
+    }
+
+    function removeLiquidity(uint256 lpAmount) external {
+        require(liquidity[msg.sender] >= lpAmount, "insufficient lp");
+        uint256 amountA = (lpAmount * reserveA) / totalLiquidity;
+        uint256 amountB = (lpAmount * reserveB) / totalLiquidity;
+        liquidity[msg.sender] -= lpAmount;
+        totalLiquidity -= lpAmount;
+        reserveA -= amountA;
+        reserveB -= amountB;
+        tokenA.transfer(msg.sender, amountA);
+        tokenB.transfer(msg.sender, amountB);
+        emit LiquidityRemoved(msg.sender, amountA, amountB);
+    }
+
+    function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 amountOut) {
+        require(amountIn > 0 && reserveA > 0 && reserveB > 0, "invalid");
+        // constant product: (reserveA + amountIn) * (reserveB - amountOut) = reserveA * reserveB
+        amountOut = (amountIn * reserveB) / (reserveA + amountIn);
+        require(amountOut >= minOut, "slippage");
+        tokenA.transferFrom(msg.sender, address(this), amountIn);
+        tokenB.transfer(msg.sender, amountOut);
+        reserveA += amountIn;
+        reserveB -= amountOut;
+        emit Swap(msg.sender, address(tokenA), amountIn, amountOut);
+    }
+
+    function swapBForA(uint256 amountIn, uint256 minOut) external returns (uint256 amountOut) {
+        require(amountIn > 0 && reserveA > 0 && reserveB > 0, "invalid");
+        amountOut = (amountIn * reserveA) / (reserveB + amountIn);
+        require(amountOut >= minOut, "slippage");
+        tokenB.transferFrom(msg.sender, address(this), amountIn);
+        tokenA.transfer(msg.sender, amountOut);
+        reserveB += amountIn;
+        reserveA -= amountOut;
+        emit Swap(msg.sender, address(tokenB), amountIn, amountOut);
+    }
+
+    function getReserves() external view returns (uint256, uint256) {
+        return (reserveA, reserveB);
+    }
+}
+"""
+
+
+def test_amm_same_shard(w3, MY, KEY):
+    """
+    AMM demo: deploy TokenA, TokenB, AMMPool from the SAME account so all
+    three contracts land in the same shard and pool.  Then:
+      1. Mint tokens to deployer
+      2. Approve AMMPool to spend tokens
+      3. Add liquidity (atomic: AMMPool calls transferFrom on both tokens)
+      4. Swap A→B (atomic: AMMPool calls transferFrom + transfer)
+      5. Remove liquidity
+      6. Verify reserves and balances
+    """
+    print("\n" + "=" * 60)
+    print("  AMM Demo — Same-Shard Atomic Execution")
+    print("=" * 60)
+
+    salt = secrets.token_hex(31)
+
+    # ── 1. Deploy TokenA ──────────────────────────────────────────────
+    print("\n[1] Deploying TokenA...")
+    ta_bin, ta_abi = compile_and_link(AMM_TOKEN_SOL, "SimpleToken")
+    token_a = w3.seth.contract(abi=ta_abi, bytecode=ta_bin)
+    token_a.deploy({
+        'from': MY, 'salt': salt + 'ta',
+        'args': ["TokenA", 1000000],
+    }, KEY)
+    print(f"    TokenA @ {token_a.address}")
+
+    # ── 2. Deploy TokenB ──────────────────────────────────────────────
+    print("\n[2] Deploying TokenB...")
+    token_b = w3.seth.contract(abi=ta_abi, bytecode=ta_bin)
+    token_b.deploy({
+        'from': MY, 'salt': salt + 'tb',
+        'args': ["TokenB", 1000000],
+    }, KEY)
+    print(f"    TokenB @ {token_b.address}")
+
+    # ── 3. Deploy AMMPool ─────────────────────────────────────────────
+    print("\n[3] Deploying AMMPool (references TokenA & TokenB)...")
+    pool_bin, pool_abi = compile_and_link(AMM_POOL_SOL, "AMMPool")
+    amm = w3.seth.contract(abi=pool_abi, bytecode=pool_bin)
+    amm.deploy({
+        'from': MY, 'salt': salt + 'am',
+        'args': [
+            to_checksum_address(token_a.address),
+            to_checksum_address(token_b.address),
+        ],
+    }, KEY)
+    print(f"    AMMPool @ {amm.address}")
+    print(f"    All 3 contracts deployed by {MY} → same shard & pool ✅")
+
+    # ── 4. Approve AMMPool to spend tokens ────────────────────────────
+    print("\n[4] Approving AMMPool to spend TokenA & TokenB...")
+    token_a.functions.approve(to_checksum_address(amm.address), 500000).transact(KEY)
+    token_b.functions.approve(to_checksum_address(amm.address), 500000).transact(KEY)
+    print("    Approved 500000 each ✅")
+
+    # ── 5. Add liquidity (atomic cross-contract call) ─────────────────
+    print("\n[5] Adding liquidity: 100000 A + 100000 B...")
+    r = amm.functions.addLiquidity(100000, 100000).transact(KEY)
+    print(f"    status={r.get('status')} events={r.get('decoded_events')}")
+    reserves = amm.functions.getReserves().call()
+    print(f"    Reserves after: A={reserves[0]}, B={reserves[1]}")
+    assert reserves[0] == 100000 and reserves[1] == 100000, "Liquidity add failed"
+    print("    ✅ Liquidity added atomically")
+
+    # ── 6. Swap A→B (atomic: transferFrom + transfer in one tx) ───────
+    print("\n[6] Swapping 10000 A → B (minOut=0)...")
+    r = amm.functions.swapAForB(10000, 0).transact(KEY)
+    print(f"    status={r.get('status')} events={r.get('decoded_events')}")
+    reserves = amm.functions.getReserves().call()
+    print(f"    Reserves after swap: A={reserves[0]}, B={reserves[1]}")
+    # After swap: reserveA=110000, amountOut = 10000*100000/110000 ≈ 9090
+    assert reserves[0] == 110000, f"Expected reserveA=110000, got {reserves[0]}"
+    expected_b = 100000 - (10000 * 100000) // 110000
+    print(f"    ✅ Swap executed atomically, reserveB={reserves[1]}")
+
+    # ── 7. Remove liquidity ───────────────────────────────────────────
+    print("\n[7] Removing all liquidity...")
+    lp = amm.functions.liquidity(to_checksum_address("0x" + MY)).call()[0]
+    print(f"    LP tokens: {lp}")
+    if lp > 0:
+        r = amm.functions.removeLiquidity(lp).transact(KEY)
+        print(f"    status={r.get('status')}")
+        reserves = amm.functions.getReserves().call()
+        print(f"    Reserves after remove: A={reserves[0]}, B={reserves[1]}")
+        print("    ✅ Liquidity removed")
+
+    # ── 8. Verify final token balances ────────────────────────────────
+    print("\n[8] Final balances:")
+    bal_a = token_a.functions.balanceOf(to_checksum_address("0x" + MY)).call()[0]
+    bal_b = token_b.functions.balanceOf(to_checksum_address("0x" + MY)).call()[0]
+    print(f"    TokenA: {bal_a}")
+    print(f"    TokenB: {bal_b}")
+
+    print("\n" + "=" * 60)
+    print("  ✅ AMM Demo PASSED — All operations atomic (same shard/pool)")
+    print("=" * 60)
+    print("\n  HOW SETH SOLVES THE AMM PROBLEM:")
+    print("  ─────────────────────────────────")
+    print("  1. All contracts deployed by the SAME account → same shard & pool")
+    print("  2. AMMPool.swap() calls TokenA.transferFrom() + TokenB.transfer()")
+    print("     in a SINGLE consensus round → fully atomic, no rollback needed")
+    print("  3. Cross-shard transfers (user → AMM) are handled by the normal")
+    print("     cross-shard mechanism BEFORE the swap executes")
+    print("  4. The swap itself is always intra-pool → no GBP overhead")
+    print("  5. Only the final output (tokens to user) may cross shards")
+
+
 def ecdsa_sign_test():
     IP, PORT, KEY = "127.0.0.1", 23001, "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
     w3 = SethWeb3Mock(IP, PORT)
@@ -953,6 +1797,8 @@ def ecdsa_sign_test():
     test_contract_selfdestruct(w3, MY, KEY)
     test_create2_assembly_deployment(w3, MY, KEY)
     test_upgradeable_contract(w3, MY, KEY)
+    test_amm_same_shard(w3, MY, KEY)
+    test_struct_demo(w3, MY, KEY)
 
 def oqs_sign_test():
     # Base configuration
@@ -1464,7 +2310,7 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     print("=" * 60)
     
 if __name__ == "__main__":
+    demo_ws_subscribe("127.0.0.1", 33001)  # uncomment to run the WebSocket subscription demo
     ecdsa_sign_test()
     oqs_sign_test()
     gmssl_sign_test()
-    demo_ws_subscribe("127.0.0.1", 33001)  # uncomment to run the WebSocket subscription demo

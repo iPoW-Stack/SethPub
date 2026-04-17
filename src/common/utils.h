@@ -256,7 +256,7 @@ static const uint32_t kTestForNetworkId = 4u;
 static const uint16_t kDefaultVpnPort = 9033u;
 static const uint16_t kDefaultRoutePort = 9034u;
 // static const int64_t kRotationPeriod = 600ll * 1000ll * 1000ll; // epoch time
-static const int64_t kRotationPeriod = 120ll * 1000ll * 1000ll; // for quicker debugging
+static const int64_t kRotationPeriod = 600ll * 1000ll * 1000ll; // for quicker debugging
 static const int64_t kMessageTimeoutMs = 10000ll;
 static const uint32_t kMaxRotationCount = 4u;
 static const uint16_t kNodePortRangeMin = 1000u;
@@ -280,6 +280,49 @@ static const int32_t kInitNodeCredit = 30;
 static const double kMiningTokenMultiplicationFactor = 1.0;
 static const int32_t kLeaderRoatationBaseTimeoutSec = 30;
 
+// Economic Model Parameters (Dynamic Sharding Reward System)
+// kSethMiniTransportUnit must be defined before use (= 10^8, smallest SETH unit)
+static const uint64_t kSethMiniTransportUnit = 100000000llu;
+static const uint64_t kInitialTotalReward = 10000llu * kSethMiniTransportUnit;  // 10,000 SETH total per epoch
+// Halving period: 4 years with 600s epoch period
+// 4 years = 365.25 * 24 * 3600 / 600 * 4 = 210,240 epochs
+static const uint32_t kHalvingPeriodEpochs = 210240u;  // 4 years (with 600s epoch period)
+static const double kTxBonusMultiplier = 0.2;  // Transaction bonus up to 20% of shard reward
+static const double kStakingRewardRatio = 0.0;  // Staking rewards (reserved for future)
+static const double kBurnRatio = 0.5;  // Burn 50% of gas fees
+static const uint64_t kMinBlockReward = 1llu * kSethMiniTransportUnit;  // Minimum reward 1 SETH
+static const uint32_t kMaxHalvingCount = 64u;  // Maximum halving iterations (prevent overflow)
+
+// Dynamic Sharding Parameters
+static const double kEarlyBonusMultiplier = 1.1;  // 10% bonus when shards < max
+static const double kGenerationWeightDecay = 0.9;  // Each generation gets 90% of previous
+static const uint32_t kMaxShardCount = 1024u;  // Maximum shard count
+static const uint32_t kInitialShardCount = 3u;  // Initial shard count (Gen 0)
+
+// Shard Generation Information
+struct ShardGenerationInfo {
+    uint32_t generation;        // Generation number
+    uint32_t start_shard_id;    // Start shard ID (inclusive)
+    uint32_t end_shard_id;      // End shard ID (inclusive)
+    double weight;              // Weight coefficient (0.9^generation)
+    uint32_t shard_count;       // Number of shards in this generation
+};
+
+// Shard generation table: 3 -> 8 -> 16 -> 32 -> 64 -> 128 -> 256 -> 512 -> 1024
+static const ShardGenerationInfo kShardGenerations[] = {
+    {0, 3, 5, 1.0, 3},                    // Gen 0: 3 shards (IDs: 3, 4, 5)
+    {1, 6, 10, 0.9, 5},                   // Gen 1: 5 shards (IDs: 6-10)
+    {2, 11, 18, 0.81, 8},                 // Gen 2: 8 shards (IDs: 11-18)
+    {3, 19, 34, 0.729, 16},               // Gen 3: 16 shards (IDs: 19-34)
+    {4, 35, 66, 0.6561, 32},              // Gen 4: 32 shards (IDs: 35-66)
+    {5, 67, 130, 0.59049, 64},            // Gen 5: 64 shards (IDs: 67-130)
+    {6, 131, 258, 0.531441, 128},         // Gen 6: 128 shards (IDs: 131-258)
+    {7, 259, 514, 0.478297, 256},         // Gen 7: 256 shards (IDs: 259-514)
+    {8, 515, 1026, 0.430467, 512}         // Gen 8: 512 shards (IDs: 515-1026)
+};
+
+static const uint32_t kShardGenerationCount = sizeof(kShardGenerations) / sizeof(ShardGenerationInfo);
+
 static const uint64_t kToPeriodMs = 10000lu;
 
 // broadcast default params
@@ -301,16 +344,15 @@ static const uint8_t kMaxThreadCount = 32u;
 static const uint32_t kSingleBlockMaxMBytes = 2u;
 static const uint32_t kVpnShareStakingPrice = 1u;
 
-static const uint64_t kZjcMiniTransportUnit = 100000000llu;
-static const uint64_t kZjcMaxAmount = 2100llu * 100000000llu * kZjcMiniTransportUnit;
+static const uint64_t kSethMaxAmount = 2100llu * 10000llu * kSethMiniTransportUnit;
 static const uint32_t kTransactionNoVersion = 0u;
 static const uint32_t kTransactionVersion = 1u;
 // 10% 
-static const uint64_t kGenesisShardingNodesMaxZjc = kZjcMaxAmount / 100llu * 10llu;
+static const uint64_t kGenesisShardingNodesMaxSeth = kSethMaxAmount / 100llu * 10llu;
 static const uint32_t kElectNodeMinMemberIndex = 1024u;
 
-static const uint64_t kVpnVipMinPayfor = 66llu * kZjcMiniTransportUnit;
-static const uint64_t kVpnVipMaxPayfor = 2000u * kZjcMiniTransportUnit;
+static const uint64_t kVpnVipMinPayfor = 66llu * kSethMiniTransportUnit;
+static const uint64_t kVpnVipMaxPayfor = 2000u * kSethMiniTransportUnit;
 
 static const uint32_t kDefaultBroadcastIgnBloomfilterHop = 1u;
 static const uint32_t kDefaultBroadcastStopTimes = 2u;

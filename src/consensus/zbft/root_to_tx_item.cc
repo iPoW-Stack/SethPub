@@ -30,15 +30,15 @@ RootToTxItem::~RootToTxItem() {}
 int RootToTxItem::HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        zjcvm::ZjchainHost& zjc_host,
+        sethvm::SethhainHost& seth_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
     uint64_t to_balance = 0;
     uint64_t to_nonce = 0;
-    GetTempAccountBalance(zjc_host, block_tx.to(), acc_balance_map, &to_balance, &to_nonce);
+    GetTempAccountBalance(seth_host, block_tx.to(), acc_balance_map, &to_balance, &to_nonce);
     auto& unique_hash = tx_info->key();
     std::string val;
-    if (zjc_host.GetKeyValue(block_tx.to(), unique_hash, &val) == zjcvm::kZjcvmSuccess) {
+    if (seth_host.GetKeyValue(block_tx.to(), unique_hash, &val) == sethvm::kSethvmSuccess) {
         SETH_INFO("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
         return consensus::kConsensusError;
     }
@@ -50,13 +50,13 @@ int RootToTxItem::HandleTx(
         return consensus::kConsensusError;
     }
 
-    InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
-    zjc_host.SaveKeyValue(block_tx.to(), unique_hash, tx_info->value());
+    InitHost(seth_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
+    seth_host.SaveKeyValue(block_tx.to(), unique_hash, tx_info->value());
     block_tx.set_unique_hash(unique_hash);
     block_tx.set_nonce(0);
     protos::AddressInfoPtr to_account_info = nullptr;
     auto to_addr = to_item.des().substr(0, common::kUnicastAddressLength);
-    to_account_info = zjc_host.view_block_chain_->ChainGetAccountInfo(to_addr);
+    to_account_info = seth_host.view_block_chain_->ChainGetAccountInfo(to_addr);
     uint32_t sharding_id = 0;
     if (to_account_info != nullptr) {
         sharding_id = to_account_info->sharding_id();
@@ -97,12 +97,12 @@ int RootToTxItem::HandleTx(
 
     uint32_t status_code = block_tx.status();
     if (block_tx.status() == kConsensusSuccess) {
-        auto iter = zjc_host.cross_to_map_.find(to_item.des());
+        auto iter = seth_host.cross_to_map_.find(to_item.des());
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
-        if (iter == zjc_host.cross_to_map_.end()) {
+        if (iter == seth_host.cross_to_map_.end()) {
             to_item_ptr = std::make_shared<pools::protobuf::ToTxMessageItem>(to_item);
             to_item_ptr->set_des_sharding_id(sharding_id);
-            zjc_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
+            seth_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
         } else {
             to_item_ptr = iter->second;
             to_item_ptr->set_amount(block_tx.amount() + to_item_ptr->amount());
@@ -124,7 +124,7 @@ int RootToTxItem::HandleTx(
     block::protobuf::TxHashStatus tx_hash_status;
     tx_hash_status.set_status(block_tx.status());
     auto status_val = tx_hash_status.SerializeAsString();
-    zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+    seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
 
     SETH_DEBUG("success add addr to: %s, value: %s, unique hash: %s", 
         common::Encode::HexEncode(block_tx.to()).c_str(), 

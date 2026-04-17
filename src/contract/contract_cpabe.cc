@@ -4,7 +4,7 @@
 #include "common/split.h"
 #include "common/string_utils.h"
 #include "common/time_utils.h"
-#include "zjcvm/zjc_host.h"
+#include "sethvm/seth_host.h"
 
 namespace seth {
 

@@ -114,6 +114,8 @@ public:
 
 private:
     void HandleFinish(const transport::MessagePtr& msg_ptr);
+    void HandleFinishSyncRequest(const transport::MessagePtr& msg_ptr);
+    void SyncFinishMessageToNeighbors(uint32_t network_id);
     void BatchVerifyFinishItems();
     void CheckAggSignValid(
         uint32_t t,

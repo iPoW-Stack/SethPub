@@ -3,7 +3,7 @@
 #include "common/defer.h"
 #include "consensus/hotstuff/view_block_chain.h"
 #include "contract/contract_manager.h"
-#include "zjcvm/execution.h"
+#include "sethvm/execution.h"
 
 namespace seth {
 
@@ -12,7 +12,7 @@ namespace consensus {
 int ContractUserCreateCall::HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        zjcvm::ZjchainHost& pre_zjc_host,
+        sethvm::SethhainHost& pre_seth_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
     // contract create call
@@ -20,7 +20,7 @@ int ContractUserCreateCall::HandleTx(
     uint64_t from_balance = 0;
     uint64_t from_nonce = 0;
     auto& from = address_info->addr();
-    int balance_status = GetTempAccountBalance(pre_zjc_host, from, acc_balance_map, &from_balance, &from_nonce);
+    int balance_status = GetTempAccountBalance(pre_seth_host, from, acc_balance_map, &from_balance, &from_nonce);
     SETH_DEBUG("contract user call create called: %s, balance: %lu", 
         common::Encode::HexEncode(from).c_str(), from_balance);
     // Intrinsic gas: base (53000) + bytecode calldata bytes (EIP-2028)
@@ -41,7 +41,7 @@ int ContractUserCreateCall::HandleTx(
             break;
         }
 
-	    protos::AddressInfoPtr contract_info = pre_zjc_host.view_block_chain_->ChainGetAccountInfo(block_tx.to());
+	    protos::AddressInfoPtr contract_info = pre_seth_host.view_block_chain_->ChainGetAccountInfo(block_tx.to());
         if (contract_info != nullptr) {
             block_tx.set_status(kConsensusAccountExists);
             break;
@@ -70,29 +70,29 @@ int ContractUserCreateCall::HandleTx(
     } while(0);
 
     int64_t tmp_from_balance = from_balance;
-    zjcvm::ZjchainHost zjc_host;
-    zjc_host.view_block_chain_ = pre_zjc_host.view_block_chain_;
-    zjc_host.tx_context_ = pre_zjc_host.tx_context_;
-    zjc_host.pre_zjc_host_ = &pre_zjc_host;
+    sethvm::SethhainHost seth_host;
+    seth_host.view_block_chain_ = pre_seth_host.view_block_chain_;
+    seth_host.tx_context_ = pre_seth_host.tx_context_;
+    seth_host.pre_seth_host_ = &pre_seth_host;
     evmc_result evmc_call_res = {};
     evmc::Result evmc_res{ evmc_call_res };
     bool check_valid = false;
     if (block_tx.status() == kConsensusSuccess) {
         InitHost(
-            zjc_host, 
+            seth_host, 
             block_tx, 
             block_tx.gas_limit() - gas_used, 
             block_tx.gas_price(), 
             view_block);
         // get caller prepaid gas
-        zjc_host.AddTmpAccountBalance(
+        seth_host.AddTmpAccountBalance(
             block_tx.from(),
             tmp_from_balance);
-        zjc_host.AddTmpAccountBalance(
+        seth_host.AddTmpAccountBalance(
             block_tx.to(),
             block_tx.amount());
         check_valid = true;
-        int call_res = CreateContractCallExcute(zjc_host, block_tx, &evmc_res);
+        int call_res = CreateContractCallExcute(seth_host, block_tx, &evmc_res);
         if (evmc_res.gas_left > (int64_t)block_tx.gas_limit()) {
             gas_used = block_tx.gas_limit();
         } else {
@@ -154,9 +154,9 @@ int ContractUserCreateCall::HandleTx(
     if (block_tx.status() == kConsensusSuccess) {
         int64_t contract_balance_add = 0;
         int64_t caller_balance_add = 0;
-        int64_t gas_more = zjc_host.gas_more_;
+        int64_t gas_more = seth_host.gas_more_;
         int res = SaveContractCreateInfo(
-            zjc_host,
+            seth_host,
             block_tx,
             contract_balance_add,
             caller_balance_add);
@@ -199,7 +199,7 @@ int ContractUserCreateCall::HandleTx(
             contract_info->set_sharding_id(view_block.qc().network_id());
             contract_info->set_pool_index(view_block.qc().pool_index());
             contract_info->set_type(address::protobuf::kNormal);
-            contract_info->set_bytes_code(zjc_host.create_bytes_code_);
+            contract_info->set_bytes_code(seth_host.create_bytes_code_);
             contract_info->set_latest_height(view_block.block_info().height());
             contract_info->set_tx_index(tx_index);
             contract_info->set_nonce(0);
@@ -245,8 +245,8 @@ int ContractUserCreateCall::HandleTx(
         block_tx.contract_prefund(),
         block_tx.amount(),
         block_tx.status());
-    for (auto event_iter = zjc_host.recorded_logs_.begin();
-            event_iter != zjc_host.recorded_logs_.end(); ++event_iter) {
+    for (auto event_iter = seth_host.recorded_logs_.begin();
+            event_iter != seth_host.recorded_logs_.end(); ++event_iter) {
         auto log = block_tx.add_events();
         log->set_data((*event_iter).data);
         for (auto topic_iter = (*event_iter).topics.begin();
@@ -281,17 +281,17 @@ int ContractUserCreateCall::HandleTx(
         common::Encode::HexEncode(block_tx.from()).c_str(),
         common::Encode::HexEncode(block_tx.to()).c_str());
     if (block_tx.status() == kConsensusSuccess) {
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
-        zjc_host.MergeToPrev();
-        auto iter = pre_zjc_host.cross_to_map_.find(block_tx.to());
+        seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+        seth_host.MergeToPrev();
+        auto iter = pre_seth_host.cross_to_map_.find(block_tx.to());
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
-        if (iter == pre_zjc_host.cross_to_map_.end()) {
+        if (iter == pre_seth_host.cross_to_map_.end()) {
             to_item_ptr = std::make_shared<pools::protobuf::ToTxMessageItem>();
             to_item_ptr->set_des(block_tx.to() + block_tx.from());
             to_item_ptr->set_amount(0);  // create contract direct set balance, not cross by root
             to_item_ptr->set_sharding_id(view_block.qc().network_id());
             to_item_ptr->set_des_sharding_id(network::kRootCongressNetworkId);
-            pre_zjc_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
+            pre_seth_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
             // if (block_tx.contract_prefund() > 0) {
             //     to_item_ptr->set_prefund(block_tx.contract_prefund());
             // }
@@ -302,10 +302,10 @@ int ContractUserCreateCall::HandleTx(
         }
 
         for (auto exists_iter = cross_to_map_.begin(); exists_iter != cross_to_map_.end(); ++exists_iter) {
-            auto iter = pre_zjc_host.cross_to_map_.find(exists_iter->first);
+            auto iter = pre_seth_host.cross_to_map_.find(exists_iter->first);
             std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
-            if (iter == pre_zjc_host.cross_to_map_.end()) {
-                pre_zjc_host.cross_to_map_[exists_iter->first] = exists_iter->second;
+            if (iter == pre_seth_host.cross_to_map_.end()) {
+                pre_seth_host.cross_to_map_[exists_iter->first] = exists_iter->second;
             } else {
                 to_item_ptr = iter->second;
                 to_item_ptr->set_amount(exists_iter->second->amount() + to_item_ptr->amount());
@@ -316,20 +316,20 @@ int ContractUserCreateCall::HandleTx(
                 exists_iter->second->amount());
         }
     } else {
-        pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+        pre_seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
     }
 
     return kConsensusSuccess;
 }
 
 int ContractUserCreateCall::SaveContractCreateInfo(
-        zjcvm::ZjchainHost& zjc_host,
+        sethvm::SethhainHost& seth_host,
         block::protobuf::BlockTx& block_tx,
         int64_t& contract_balance_add,
         int64_t& caller_balance_add) {
     int64_t other_add = 0;
-    for (auto transfer_iter = zjc_host.to_account_value_.begin();
-            transfer_iter != zjc_host.to_account_value_.end(); ++transfer_iter) {
+    for (auto transfer_iter = seth_host.to_account_value_.begin();
+            transfer_iter != seth_host.to_account_value_.end(); ++transfer_iter) {
         // transfer from must caller or contract address, other not allowed.
         if (transfer_iter->first != block_tx.from() && transfer_iter->first != block_tx.to()) {
             return kConsensusError;
@@ -405,15 +405,15 @@ int ContractUserCreateCall::SaveContractCreateInfo(
 }
 
 int ContractUserCreateCall::CreateContractCallExcute(
-        zjcvm::ZjchainHost& zjc_host,
+        sethvm::SethhainHost& seth_host,
         block::protobuf::BlockTx& tx,
         evmc::Result* out_res) {
-    uint32_t call_mode = zjcvm::kJustCreate;
+    uint32_t call_mode = sethvm::kJustCreate;
     if (tx.has_contract_input() && !tx.contract_input().empty()) {
-        call_mode = zjcvm::kCreateAndCall;
+        call_mode = sethvm::kCreateAndCall;
     }
 
-    int exec_res = zjcvm::Execution::Instance()->execute(
+    int exec_res = sethvm::Execution::Instance()->execute(
         tx.contract_code(),
         tx.contract_input(),
         tx.from(),
@@ -423,9 +423,9 @@ int ContractUserCreateCall::CreateContractCallExcute(
         tx.gas_limit(),
         0,
         call_mode,
-        zjc_host,
+        seth_host,
         out_res);
-    if (exec_res != zjcvm::kZjcvmSuccess) {
+    if (exec_res != sethvm::kSethvmSuccess) {
         SETH_ERROR("CreateContractCallExcute failed: %d", exec_res);
         return kConsensusError;
     }

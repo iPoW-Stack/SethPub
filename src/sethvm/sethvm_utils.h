@@ -8,15 +8,15 @@
 
 namespace seth {
 
-namespace zjcvm {
+namespace sethvm {
 
-enum ZjcvmErrorCode {
-    kZjcvmSuccess = 0,
-    kZjcvmError = 1,
-    kZjcvmKeyExsits = 2,
-    kZjcvmKeyAdded = 3,
-    kZjcvmBlockReloaded = 4,
-    kZjcvmContractNotExists = 5,
+enum SethvmErrorCode {
+    kSethvmSuccess = 0,
+    kSethvmError = 1,
+    kSethvmKeyExsits = 2,
+    kSethvmKeyAdded = 3,
+    kSethvmBlockReloaded = 4,
+    kSethvmContractNotExists = 5,
 };
 
 enum ContractCallMode {
@@ -48,7 +48,7 @@ inline static uint64_t EvmcBytes32ToUint64(const evmc_bytes32& bytes32) {
     return value;
 }
 
-}  // namespace zjcvm
+}  // namespace sethvm
 
 }  // namespace seth
 

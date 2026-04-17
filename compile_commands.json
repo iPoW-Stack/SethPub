@@ -612,16 +612,16 @@
   "output": "pools/CMakeFiles/pools.dir/tx_pool_manager.cc.o"
 },
 {
-  "directory": "/Users/sofly/projects/c/seth/cbuild_Debug/zjcvm",
-  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DDISABLE_GENESIS_BLS_VERIFY -DENABLE_HOTSTUFF -DGUID_CFUUID -DLEVELDB -DMOCK_SIGN -DMOCK_VERIFY -DOPENSSL_ROOT_DIR=/usr/local/Cellar/openssl/1.0.2r -DUSE_TC -DXUFEI -isystem /Users/sofly/projects/c/seth/third_party/depends/include -isystem /Users/sofly/projects/c/seth/third_party/depends/include/libbls -isystem /Users/sofly/projects/c/seth/third_party/depends/include/geoip -isystem /Users/sofly/projects/c/seth/third_party/depends/include/uv -isystem /Users/sofly/projects/c/seth/third_party/depends/include/sslib -isystem /Users/sofly/projects/c/seth/src -std=c++17 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk -Wno-c++11-narrowing -fPIC -Wall -pthread -Wno-unused-variable -std=c++17 -o CMakeFiles/zjcvm.dir/execution.cc.o -c /Users/sofly/projects/c/seth/src/zjcvm/execution.cc",
-  "file": "/Users/sofly/projects/c/seth/src/zjcvm/execution.cc",
-  "output": "zjcvm/CMakeFiles/zjcvm.dir/execution.cc.o"
+  "directory": "/Users/sofly/projects/c/seth/cbuild_Debug/sethvm",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DDISABLE_GENESIS_BLS_VERIFY -DENABLE_HOTSTUFF -DGUID_CFUUID -DLEVELDB -DMOCK_SIGN -DMOCK_VERIFY -DOPENSSL_ROOT_DIR=/usr/local/Cellar/openssl/1.0.2r -DUSE_TC -DXUFEI -isystem /Users/sofly/projects/c/seth/third_party/depends/include -isystem /Users/sofly/projects/c/seth/third_party/depends/include/libbls -isystem /Users/sofly/projects/c/seth/third_party/depends/include/geoip -isystem /Users/sofly/projects/c/seth/third_party/depends/include/uv -isystem /Users/sofly/projects/c/seth/third_party/depends/include/sslib -isystem /Users/sofly/projects/c/seth/src -std=c++17 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk -Wno-c++11-narrowing -fPIC -Wall -pthread -Wno-unused-variable -std=c++17 -o CMakeFiles/sethvm.dir/execution.cc.o -c /Users/sofly/projects/c/seth/src/sethvm/execution.cc",
+  "file": "/Users/sofly/projects/c/seth/src/sethvm/execution.cc",
+  "output": "sethvm/CMakeFiles/sethvm.dir/execution.cc.o"
 },
 {
-  "directory": "/Users/sofly/projects/c/seth/cbuild_Debug/zjcvm",
-  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DDISABLE_GENESIS_BLS_VERIFY -DENABLE_HOTSTUFF -DGUID_CFUUID -DLEVELDB -DMOCK_SIGN -DMOCK_VERIFY -DOPENSSL_ROOT_DIR=/usr/local/Cellar/openssl/1.0.2r -DUSE_TC -DXUFEI -isystem /Users/sofly/projects/c/seth/third_party/depends/include -isystem /Users/sofly/projects/c/seth/third_party/depends/include/libbls -isystem /Users/sofly/projects/c/seth/third_party/depends/include/geoip -isystem /Users/sofly/projects/c/seth/third_party/depends/include/uv -isystem /Users/sofly/projects/c/seth/third_party/depends/include/sslib -isystem /Users/sofly/projects/c/seth/src -std=c++17 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk -Wno-c++11-narrowing -fPIC -Wall -pthread -Wno-unused-variable -std=c++17 -o CMakeFiles/zjcvm.dir/zjc_host.cc.o -c /Users/sofly/projects/c/seth/src/zjcvm/zjc_host.cc",
-  "file": "/Users/sofly/projects/c/seth/src/zjcvm/zjc_host.cc",
-  "output": "zjcvm/CMakeFiles/zjcvm.dir/zjc_host.cc.o"
+  "directory": "/Users/sofly/projects/c/seth/cbuild_Debug/sethvm",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DDISABLE_GENESIS_BLS_VERIFY -DENABLE_HOTSTUFF -DGUID_CFUUID -DLEVELDB -DMOCK_SIGN -DMOCK_VERIFY -DOPENSSL_ROOT_DIR=/usr/local/Cellar/openssl/1.0.2r -DUSE_TC -DXUFEI -isystem /Users/sofly/projects/c/seth/third_party/depends/include -isystem /Users/sofly/projects/c/seth/third_party/depends/include/libbls -isystem /Users/sofly/projects/c/seth/third_party/depends/include/geoip -isystem /Users/sofly/projects/c/seth/third_party/depends/include/uv -isystem /Users/sofly/projects/c/seth/third_party/depends/include/sslib -isystem /Users/sofly/projects/c/seth/src -std=c++17 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk -Wno-c++11-narrowing -fPIC -Wall -pthread -Wno-unused-variable -std=c++17 -o CMakeFiles/sethvm.dir/seth_host.cc.o -c /Users/sofly/projects/c/seth/src/sethvm/seth_host.cc",
+  "file": "/Users/sofly/projects/c/seth/src/sethvm/seth_host.cc",
+  "output": "sethvm/CMakeFiles/sethvm.dir/seth_host.cc.o"
 },
 {
   "directory": "/Users/sofly/projects/c/seth/cbuild_Debug/big_num",
@@ -1224,10 +1224,10 @@
   "output": "pools_test/CMakeFiles/pools_test.dir/test_tx_pool_manager.cc.o"
 },
 {
-  "directory": "/Users/sofly/projects/c/seth/cbuild_Debug/zjcvm_test",
-  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DDISABLE_GENESIS_BLS_VERIFY -DENABLE_HOTSTUFF -DGUID_CFUUID -DLEVELDB -DMOCK_SIGN -DMOCK_VERIFY -DOPENSSL_ROOT_DIR=/usr/local/Cellar/openssl/1.0.2r -DUSE_TC -DXUFEI -isystem /Users/sofly/projects/c/seth/third_party/depends/include -isystem /Users/sofly/projects/c/seth/third_party/depends/include/libbls -isystem /Users/sofly/projects/c/seth/third_party/depends/include/geoip -isystem /Users/sofly/projects/c/seth/third_party/depends/include/uv -isystem /Users/sofly/projects/c/seth/third_party/depends/include/sslib -isystem /Users/sofly/projects/c/seth/src -std=c++17 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk -Wno-c++11-narrowing -fPIC -Wall -pthread -Wno-unused-variable -std=c++17 -Wno-unused-parameter -o CMakeFiles/zjcvm_test.dir/test_execution.cc.o -c /Users/sofly/projects/c/seth/src/zjcvm/tests/test_execution.cc",
-  "file": "/Users/sofly/projects/c/seth/src/zjcvm/tests/test_execution.cc",
-  "output": "zjcvm_test/CMakeFiles/zjcvm_test.dir/test_execution.cc.o"
+  "directory": "/Users/sofly/projects/c/seth/cbuild_Debug/sethvm_test",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DDISABLE_GENESIS_BLS_VERIFY -DENABLE_HOTSTUFF -DGUID_CFUUID -DLEVELDB -DMOCK_SIGN -DMOCK_VERIFY -DOPENSSL_ROOT_DIR=/usr/local/Cellar/openssl/1.0.2r -DUSE_TC -DXUFEI -isystem /Users/sofly/projects/c/seth/third_party/depends/include -isystem /Users/sofly/projects/c/seth/third_party/depends/include/libbls -isystem /Users/sofly/projects/c/seth/third_party/depends/include/geoip -isystem /Users/sofly/projects/c/seth/third_party/depends/include/uv -isystem /Users/sofly/projects/c/seth/third_party/depends/include/sslib -isystem /Users/sofly/projects/c/seth/src -std=c++17 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk -Wno-c++11-narrowing -fPIC -Wall -pthread -Wno-unused-variable -std=c++17 -Wno-unused-parameter -o CMakeFiles/sethvm_test.dir/test_execution.cc.o -c /Users/sofly/projects/c/seth/src/sethvm/tests/test_execution.cc",
+  "file": "/Users/sofly/projects/c/seth/src/sethvm/tests/test_execution.cc",
+  "output": "sethvm_test/CMakeFiles/sethvm_test.dir/test_execution.cc.o"
 },
 {
   "directory": "/Users/sofly/projects/c/seth/cbuild_Debug/bignum_test",

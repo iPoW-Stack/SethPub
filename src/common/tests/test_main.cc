@@ -8,7 +8,7 @@ int main(int argc, char *argv[]) {
     testing::InitGoogleTest(&argc, argv);
     ::testing::InitGoogleMock(&argc, argv);
     seth::common::Config conf;
-    conf.Init("../conf/zjchain.conf");
+    conf.Init("../conf/sethhain.conf");
     seth::common::GlobalInfo::Instance()->Init(conf);
     int ret = RUN_ALL_TESTS();
     return ret;

@@ -5,15 +5,18 @@
 #include "common/ip.h"
 #include "common/global_info.h"
 #include "elect/elect_manager.h"
+#include "network/neighbor_ip_manager.h"
 #include "network/network_utils.h"
 #include "protos/pools.pb.h"
 #include "pools/tx_pool_manager.h"
-#include "zjcvm/execution.h"
-#include "zjcvm/zjc_host.h"
-#include "zjcvm/zjcvm_utils.h"
+#include "sethvm/execution.h"
+#include "sethvm/seth_host.h"
+#include "sethvm/sethvm_utils.h"
 #include <bls/bls_utils.h>
 #include <protos/elect.pb.h>
 #include <protos/tx_storage_key.h>
+#include <cmath>
+#include <sstream>
 // #include <iostream>
 // #include "shard_statistic.h"
 
@@ -1037,21 +1040,63 @@ void ShardStatistic::setElectStatistics(
             stoke = 0;
             statistic_item.add_stokes(stoke);
             auto area_point = statistic_item.add_area_point();
-            auto ip_int = (*members)[midx]->public_ip;
-            area_point->set_x(0);
-            area_point->set_y(0);
-            // if (ip_int != 0) {
-            //     auto ip = common::Uint32ToIp(ip_int);
-            //     float x = 0.0;
-            //     float y = 0.0;
-            //     if (common::Ip::Instance()->GetIpLocation(ip, &x, &y) == 0) {
-            //         area_point->set_x(static_cast<int32_t>(x * 100));
-            //         area_point->set_y(static_cast<int32_t>(y * 100));
-            //     }
-            // }
 
-            int32_t x1 = area_point->x();
-            int32_t y1 = area_point->y();
+            // Look up the node's public IP from NeighborIpManager (populated by
+            // signature-verified DHT messages) and resolve its geo coordinates.
+            float lat = 0.0f, lon = 0.0f;
+            std::string public_ip =
+                network::NeighborIpManager::Instance()->GetIpThreadSafe(id);
+            if (!public_ip.empty()) {
+                common::Ip::Instance()->GetIpLocation(public_ip, &lat, &lon);
+            }
+            area_point->set_x(static_cast<int32_t>(lat * 100));
+            area_point->set_y(static_cast<int32_t>(lon * 100));
+        }
+
+        // Calculate average pairwise geographic distance (Haversine) among members
+        // and store it in the statistic item.
+        {
+            static constexpr double kEarthRadiusKm = 6371.0;
+            static constexpr double kDegToRad = M_PI / 180.0;
+            double total_dist_km = 0.0;
+            uint32_t pair_count = 0;
+            uint32_t n = static_cast<uint32_t>(statistic_item.area_point_size());
+            for (uint32_t i = 0; i < n; ++i) {
+                double lat1 = statistic_item.area_point(i).x() / 100.0 * kDegToRad;
+                double lon1 = statistic_item.area_point(i).y() / 100.0 * kDegToRad;
+                if (lat1 == 0.0 && lon1 == 0.0) continue;
+                for (uint32_t j = i + 1; j < n; ++j) {
+                    double lat2 = statistic_item.area_point(j).x() / 100.0 * kDegToRad;
+                    double lon2 = statistic_item.area_point(j).y() / 100.0 * kDegToRad;
+                    if (lat2 == 0.0 && lon2 == 0.0) continue;
+                    double dlat = lat2 - lat1;
+                    double dlon = lon2 - lon1;
+                    double a = std::sin(dlat / 2) * std::sin(dlat / 2)
+                             + std::cos(lat1) * std::cos(lat2)
+                             * std::sin(dlon / 2) * std::sin(dlon / 2);
+                    double c = 2.0 * std::atan2(std::sqrt(a), std::sqrt(1.0 - a));
+                    total_dist_km += kEarthRadiusKm * c;
+                    ++pair_count;
+                }
+            }
+            double avg_dist_km = (pair_count > 0) ? (total_dist_km / pair_count) : 0.0;
+            // Store as integer km (precision sufficient for shard-level statistics).
+            statistic_item.set_avg_geo_distance(static_cast<uint64_t>(avg_dist_km));
+            // Build per-member geo details (public IP + lat/lon) for logging
+            std::ostringstream geo_ss;
+            for (uint32_t i = 0; i < n; ++i) {
+                std::string id = (*members)[i]->id;
+                std::string public_ip = network::NeighborIpManager::Instance()->GetIpThreadSafe(id);
+                float lat = 0.0f, lon = 0.0f;
+                if (!public_ip.empty()) {
+                    common::Ip::Instance()->GetIpLocation(public_ip, &lat, &lon);
+                }
+                if (i != 0) geo_ss << "; ";
+                geo_ss << (public_ip.empty() ? "unknown" : public_ip) << "(" << std::fixed << std::setprecision(4) << lat << "," << lon << ")";
+            }
+            std::string geo_details = geo_ss.str();
+            SETH_INFO("[GeoStat] elect_height=%lu members=%u pairs=%u avg_dist=%.1f km details=%s",
+                      hiter->first, n, pair_count, avg_dist_km, geo_details.c_str());
         }
 
         statistic_item.set_elect_height(hiter->first);

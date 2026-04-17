@@ -4,8 +4,8 @@
 #include "consensus/zbft/tx_item_base.h"
 #include "protos/prefix_db.h"
 #include "security/security.h"
-#include "zjcvm/zjc_host.h"
-#include "zjcvm/zjcvm_utils.h"
+#include "sethvm/seth_host.h"
+#include "sethvm/sethvm_utils.h"
 
 namespace seth {
 
@@ -32,7 +32,7 @@ public:
     virtual int HandleTx(
             uint32_t tx_index,
             view_block::protobuf::ViewBlockItem& view_block,
-            zjcvm::ZjchainHost& pre_zjc_host,
+            sethvm::SethhainHost& pre_seth_host,
             hotstuff::BalanceAndNonceMap& acc_balance_map,
             block::protobuf::BlockTx& block_tx) {
         auto btime = common::TimeUtils::TimestampMs();
@@ -40,7 +40,7 @@ public:
         uint64_t from_balance = 0;
         uint64_t from_nonce = 0;
         auto preppayment_id = block_tx.to() + block_tx.from();
-        auto res = GetTempAccountBalance(pre_zjc_host, preppayment_id, acc_balance_map, &from_balance, &from_nonce);
+        auto res = GetTempAccountBalance(pre_seth_host, preppayment_id, acc_balance_map, &from_balance, &from_nonce);
         if (res != kConsensusSuccess) {
             return kConsensusError;
         }
@@ -91,13 +91,13 @@ public:
 
         uint32_t status_code = block_tx.status();
         if (block_tx.status() == kConsensusSuccess && from_balance > 0) {
-            auto iter = pre_zjc_host.cross_to_map_.find(block_tx.to());
+            auto iter = pre_seth_host.cross_to_map_.find(block_tx.to());
             std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
-            if (iter == pre_zjc_host.cross_to_map_.end()) {
+            if (iter == pre_seth_host.cross_to_map_.end()) {
                 to_item_ptr = std::make_shared<pools::protobuf::ToTxMessageItem>();
                 to_item_ptr->set_des(block_tx.from());
                 to_item_ptr->set_amount(from_balance);
-                pre_zjc_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
+                pre_seth_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
                 SETH_DEBUG("success add cross to shard array: %s, %lu",
                     common::Encode::HexEncode(block_tx.from()).c_str(),
                     from_balance);
@@ -124,7 +124,7 @@ public:
         block::protobuf::TxHashStatus tx_hash_status;
         tx_hash_status.set_status(block_tx.status());
         auto status_val = tx_hash_status.SerializeAsString();
-        pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+        pre_seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
         return kConsensusSuccess;
     }
 

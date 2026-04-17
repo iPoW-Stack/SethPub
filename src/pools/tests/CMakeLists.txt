@@ -8,7 +8,7 @@ add_executable(pools_test ${pools_test_src})
 add_dependencies(pools_test pools)
 target_link_libraries(pools_test PRIVATE consensus
     sync
-    zjcvm
+    sethvm
     block
     vss
     ck

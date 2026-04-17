@@ -182,8 +182,8 @@ Actual usable TPS (considering cross-shard overhead):
 // src/elect/elect_utils.h
 static const uint32_t kFtsWeedoutDividRate = 10u;  // Weed out 10% per round
 
-// Elimination algorithm: FTS (Fault Tolerance Score)
-// Score nodes based on performance, eliminate underperformers
+// Elimination algorithm: FTS (Follow The Satoshi)
+// Score nodes based on multi-dimensional performance, eliminate underperformers
 ```
 
 #### Elimination Process

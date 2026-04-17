@@ -13,7 +13,7 @@
 #include "protos/prefix_db.h"
 #include "protos/transport.pb.h"
 #include "transport/transport_utils.h"
-#include "zjcvm/zjc_host.h"
+#include "sethvm/seth_host.h"
 
 namespace seth {
 
@@ -37,7 +37,7 @@ public:
     transport::MessagePtr msg_ptr;
     std::shared_ptr<ViewBlock> view_block_ptr;
     BalanceAndNonceMapPtr acc_balance_and_nonce_map_ptr;
-    std::shared_ptr<zjcvm::ZjchainHost> zjc_host_ptr;
+    std::shared_ptr<sethvm::SethhainHost> seth_host_ptr;
     Breakpoint breakpoint; // 断点位置
     int tried_times;
     common::BftMemberPtr leader;
@@ -92,7 +92,7 @@ public:
     ViewBlockStatus status;
     std::shared_ptr<QC> qc;
     BalanceAndNonceMapPtr acc_balance_map_ptr;
-    std::shared_ptr<zjcvm::ZjchainHost> zjc_host_ptr;
+    std::shared_ptr<sethvm::SethhainHost> seth_host_ptr;
     std::atomic<bool> valid;
     uint64_t b_tm_ms;
 

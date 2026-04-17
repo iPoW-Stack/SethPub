@@ -7,6 +7,7 @@
 #include "network/dht_manager.h"
 #include "network/universal_manager.h"
 #include "network/network_utils.h"
+#include "network/neighbor_ip_manager.h"
 #include "transport/processor.h"
 
 namespace seth {
@@ -31,10 +32,12 @@ void Route::Init(std::shared_ptr<security::Security> sec_ptr) {
     broadcast_thread_ = std::make_shared<std::thread>(std::bind(
         &Route::Broadcasting, 
         this));
+    NeighborIpManager::Instance()->Start();
 }
 
 void Route::Destroy() {
     destroy_ = true;
+    NeighborIpManager::Instance()->Stop();
     if (broadcast_thread_ != nullptr) {
         broadcast_thread_->join();
         broadcast_thread_ = nullptr;

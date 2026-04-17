@@ -1,6 +1,6 @@
 #include "consensus/zbft/contract_prefund.h"
 
-#include "zjcvm/execution.h"
+#include "sethvm/execution.h"
 
 namespace seth {
 
@@ -9,7 +9,7 @@ namespace consensus {
 int ContractPrefund::HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        zjcvm::ZjchainHost& pre_zjc_host,
+        sethvm::SethhainHost& pre_seth_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
     uint64_t gas_used = 0;
@@ -18,7 +18,7 @@ int ContractPrefund::HandleTx(
     uint64_t from_nonce = 0;
     uint64_t to_balance = 0;
     auto& from = address_info->addr();
-    int balance_status = GetTempAccountBalance(pre_zjc_host, from, acc_balance_map, &from_balance, &from_nonce);
+    int balance_status = GetTempAccountBalance(pre_seth_host, from, acc_balance_map, &from_balance, &from_nonce);
     if (balance_status != kConsensusSuccess) {
         block_tx.set_status(balance_status);
         // will never happen
@@ -108,17 +108,17 @@ int ContractPrefund::HandleTx(
     block::protobuf::TxHashStatus tx_hash_status;
     tx_hash_status.set_status(block_tx.status());
     auto status_val = tx_hash_status.SerializeAsString();
-    pre_zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+    pre_seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
     if (block_tx.status() == kConsensusSuccess) {
-        pre_zjc_host.SaveKeyValue(block_tx.from(), block_tx.tx_hash(), "1");
+        pre_seth_host.SaveKeyValue(block_tx.from(), block_tx.tx_hash(), "1");
         auto preypayment_id = block_tx.to() + block_tx.from();
-        auto iter = pre_zjc_host.cross_to_map_.find(preypayment_id);
+        auto iter = pre_seth_host.cross_to_map_.find(preypayment_id);
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
-        if (iter == pre_zjc_host.cross_to_map_.end()) {
+        if (iter == pre_seth_host.cross_to_map_.end()) {
             to_item_ptr = std::make_shared<pools::protobuf::ToTxMessageItem>();
             to_item_ptr->set_des(preypayment_id);
             to_item_ptr->set_prefund(block_tx.contract_prefund());
-            pre_zjc_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
+            pre_seth_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
         } else {
             to_item_ptr = iter->second;
             to_item_ptr->set_prefund(block_tx.contract_prefund() + to_item_ptr->prefund());

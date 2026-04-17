@@ -1828,8 +1828,8 @@ void GenesisBlockInit::InitShardGenesisAccount() {
             }
         }
 
-        uint64_t aver_balance = common::kGenesisShardingNodesMaxZjc / valid_ids.size();
-        uint64_t rest_balance = common::kGenesisShardingNodesMaxZjc % valid_ids.size();
+        uint64_t aver_balance = common::kGenesisShardingNodesMaxSeth / valid_ids.size();
+        uint64_t rest_balance = common::kGenesisShardingNodesMaxSeth % valid_ids.size();
         uint32_t count = 0;
         for (auto it = valid_ids.begin(); it != valid_ids.end(); ++it, ++count) {
             uint64_t balance = aver_balance;

@@ -5,7 +5,7 @@
 #include "pools/tx_utils.h"
 #include "pools/tx_pool_manager.h"
 #include "protos/prefix_db.h"
-#include "zjcvm/zjc_host.h"
+#include "sethvm/seth_host.h"
 
 namespace seth {
 
@@ -90,11 +90,11 @@ int CheckTransactionValid(
         }
     }
 
-    zjcvm::ZjchainHost zjc_host;
-    zjc_host.parent_hash_ = parent_hash;
-    zjc_host.view_block_chain_ = view_block_chain;
+    sethvm::SethhainHost seth_host;
+    seth_host.parent_hash_ = parent_hash;
+    seth_host.view_block_chain_ = view_block_chain;
     std::string val;
-    if (zjc_host.GetKeyValue(tx_info.to(), tx_info.key(), &val) == zjcvm::kZjcvmSuccess) {
+    if (seth_host.GetKeyValue(tx_info.to(), tx_info.key(), &val) == sethvm::kSethvmSuccess) {
         SETH_DEBUG("not user tx unique hash exists to: %s, unique hash: %s, step: %d",
             common::Encode::HexEncode(tx_info.to()).c_str(),
             common::Encode::HexEncode(tx_info.key()).c_str(),

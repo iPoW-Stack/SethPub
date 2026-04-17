@@ -19,6 +19,7 @@
 #include "dht/dht_proto.h"
 #include "dht/dht_function.h"
 #include "dht/dht_key.h"
+#include "network/neighbor_ip_manager.h"
 
 namespace seth {
 
@@ -137,6 +138,8 @@ int BaseDht::Join(NodePtr& node) {
         node->public_ip.c_str(),
         node->public_port,
         valid_count_);
+    // Record id → public_ip mapping for all successfully verified nodes.
+    network::NeighborIpManager::Instance()->Update(node->id, node->public_ip);
     return kDhtSuccess;
 }
 
@@ -665,12 +668,19 @@ void BaseDht::ProcessRefreshNeighborsResponse(const transport::MessagePtr& msg_p
     // add res_nodes to waiting_refresh_nodes_map_ pubkey => [NodePtr, NodePtr, ...]
     waiting_refresh_nodes_map_.clear();
     for (int32_t i = 0; i < res_nodes.size(); ++i) {
+        auto node_id = security_->GetAddressWithPublicKey(res_nodes[i].pubkey());
         NodePtr node = std::make_shared<Node>(
             res_nodes[i].sharding_id(),
             res_nodes[i].public_ip(),
             res_nodes[i].public_port(),
             res_nodes[i].pubkey(),
-            security_->GetAddressWithPublicKey(res_nodes[i].pubkey()));
+            node_id);
+        // Record id → public_ip for nodes received from neighbors (no signature
+        // verification here, but the enclosing refresh response was signed by the
+        // responding peer, so these are transitively trusted neighbor advertisements).
+        if (!node_id.empty() && !res_nodes[i].public_ip().empty()) {
+            network::NeighborIpManager::Instance()->Update(node_id, res_nodes[i].public_ip());
+        }
         auto iter = waiting_refresh_nodes_map_.find(res_nodes[i].id());
         if (iter != waiting_refresh_nodes_map_.end()) {
             iter->second.push_back(node);

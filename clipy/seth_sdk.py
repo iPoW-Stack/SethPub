@@ -255,8 +255,22 @@ class SethMethod:
     def __init__(self, contract: SethContract, abi_item: dict):
         self.contract = contract
         self.name = abi_item['name']
-        self.input_types = [p['type'] for p in abi_item.get('inputs', [])]
-        self.output_types = [p['type'] for p in abi_item.get('outputs', [])]
+        self.abi_item = abi_item
+        self.input_types = [self._resolve_type(p) for p in abi_item.get('inputs', [])]
+        self.output_types = [self._resolve_type(p) for p in abi_item.get('outputs', [])]
+
+    @staticmethod
+    def _resolve_type(param: dict) -> str:
+        """Resolve ABI parameter type, expanding tuple types into (type1,type2,...) form.
+        Handles nested tuples and tuple arrays like tuple[] / tuple[3]."""
+        base = param.get('type', '')
+        if not base.startswith('tuple'):
+            return base
+        # Extract array suffix if present, e.g. "tuple[]" → "[]", "tuple[3]" → "[3]"
+        suffix = base[5:]  # everything after "tuple"
+        components = param.get('components', [])
+        inner = ','.join(SethMethod._resolve_type(c) for c in components)
+        return f"({inner}){suffix}"
 
     def __call__(self, *args) -> SethMethod:
         sig = f"{self.name}({','.join(self.input_types)})"
@@ -358,7 +372,6 @@ class SethContract:
     
     def transact(self, private_key: str, value: int = 0, prefund: int = 10**6, oqs_pubkey: str = None, gm_mode: bool = False) -> dict:
         """
-        核心交易触发逻辑：支持 ECDSA, OQS 和 GmSSL。
         Core transaction triggering logic: supports ECDSA, OQS, and GmSSL.
         """
         # 1. Automatic routing logic
@@ -656,12 +669,12 @@ class SethClient:
                     if not_exists_count >= not_exists_retries:
                         print(f"[wait_receipt] tx {tx_hash} not found after {not_exists_retries} retries, giving up")
                         return resp
-                    time.sleep(5)
+                    time.sleep(1)
                     continue
                 # kMessageHandle / kTxAccept: still pending
                 if status in [10001, 10003]:
                     not_exists_count = 0  # reset — tx is in pool now
-                    time.sleep(5)
+                    time.sleep(1)
                     continue
                 # Any other status = final result
                 if abi and function_name:
@@ -669,7 +682,7 @@ class SethClient:
                 return resp
             except Exception as ex:
                 print(f"Receipt poll error: {ex}")
-                time.sleep(5)
+                time.sleep(1)
         print(f"[wait_receipt] timeout after {timeout}s for tx {tx_hash}")
         return None
 
@@ -883,7 +896,7 @@ class SethClient:
 
     def get_gmssl_address(self, pubkey_hex: str) -> str:
         """
-        匹配 C++: str_addr_ = common::Hash::sm3(str_pk_).substr(0, 20)
+        Match C++: str_addr_ = common::Hash::sm3(str_pk_).substr(0, 20)
         """
         import binascii
         pub_bytes = binascii.unhexlify(pubkey_hex.replace('0x', ''))
@@ -892,7 +905,7 @@ class SethClient:
     
     def send_gmssl_transaction(self, pri_key_hex, pub_key_hex, to, step, amount=0, contract_code='', input_hex='', prefund=0):
         """
-        发送国密交易：构造消息 -> SM3摘要 -> SM2签名 -> 发送
+        Send GmSSL transaction: build message -> SM3 digest -> SM2 sign -> send
         """
         my_addr = self.get_gmssl_address(pub_key_hex)
         nonce_addr = to + my_addr if (step in [StepType.kContractExcute, StepType.kContractRefund]) else my_addr

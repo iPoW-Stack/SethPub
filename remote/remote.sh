@@ -42,9 +42,9 @@ cd /root/seths/s3/ && nohup ./seth -f 0 -g 0 &
 #cd /root/seths/s10/ && nohup ./seth -f 0 -g 0 &
 
 exit 0
-cd /root/n2 &&  rm -rf db ./log/* && nohup ./zjc2 -f 0 -g 0 &
-cd /root/n3 &&  rm -rf db ./log/* && nohup ./zjc3 -f 0 -g 0 &
-cd /root/n4 &&  rm -rf db ./log/* && nohup ./zjc4 -f 0 -g 0 &
+cd /root/n2 &&  rm -rf db ./log/* && nohup ./seth2 -f 0 -g 0 &
+cd /root/n3 &&  rm -rf db ./log/* && nohup ./seth3 -f 0 -g 0 &
+cd /root/n4 &&  rm -rf db ./log/* && nohup ./seth4 -f 0 -g 0 &
 sleep 3
 cd /root/seths/s11/ && nohup ./seth -f 0 -g 0 &
 cd /root/seths/s12/ && nohup ./seth -f 0 -g 0 &

@@ -446,6 +446,12 @@ void BlsManager::HandleMessage(const transport::MessagePtr& msg_ptr) {
         return;
     }
 
+    // Handle finish sync request
+    if (bls_msg.has_finish_sync_req()) {
+        HandleFinishSyncRequest(msg_ptr);
+        return;
+    }
+
     auto waiting_bls = waiting_bls_.load();
     if (waiting_bls != nullptr) {
         waiting_bls->HandleMessage(msg_ptr);
@@ -578,11 +584,11 @@ void BlsManager::HandleFinish(const transport::MessagePtr& msg_ptr) {
         finish_item->max_public_pk_map[cpk_hash] = 1;
     } else {
         ++cpk_iter->second;
-        // Do NOT verify immediately — accumulate into pending queue.
-        // BatchVerifyFinishItems() will drain it every 30 seconds.
-        if (cpk_iter->second >= t) {
-            finish_item->pending_verify_indices.push_back(bls_msg.index());
-        }
+    }
+    
+    // Always add to pending queue when count reaches t, then continue adding for batch verification
+    if (finish_item->max_public_pk_map[cpk_hash] >= t) {
+        finish_item->pending_verify_indices.push_back(bls_msg.index());
     }
 
     if (finish_item->success_verified) {
@@ -625,17 +631,165 @@ void BlsManager::HandleFinish(const transport::MessagePtr& msg_ptr) {
     }
 }
 
+void BlsManager::HandleFinishSyncRequest(const transport::MessagePtr& msg_ptr) {
+    auto& header = msg_ptr->header;
+    auto& bls_msg = header.bls_proto();
+    
+    if (!bls_msg.has_finish_sync_req()) {
+        BLS_WARN("[HandleSyncReq] no finish_sync_req in message");
+        return;
+    }
+
+    auto& sync_req = bls_msg.finish_sync_req();
+    uint32_t network_id = sync_req.network_id();
+    
+    BLS_INFO("[HandleSyncReq] network %u: received sync request for %d missing nodes from member %u",
+             network_id, sync_req.missing_indices_size(), bls_msg.index());
+
+    // Check if we have finish item for this network
+    auto finish_iter = finish_networks_map_.find(network_id);
+    if (finish_iter == finish_networks_map_.end()) {
+        BLS_DEBUG("[HandleSyncReq] network %u: finish_networks_map_ not found", network_id);
+        return;
+    }
+
+    BlsFinishItemPtr finish_item = finish_iter->second;
+
+    // Check if we have elect members for this network
+    auto elect_iter = elect_members_.find(network_id);
+    if (elect_iter == elect_members_.end()) {
+        BLS_DEBUG("[HandleSyncReq] network %u: elect_members_ not found", network_id);
+        return;
+    }
+
+    auto members = elect_iter->second->members;
+    if (!members) {
+        BLS_DEBUG("[HandleSyncReq] network %u: members is null", network_id);
+        return;
+    }
+
+    uint32_t n = static_cast<uint32_t>(members->size());
+
+    // Check if we are in the finish period
+    auto waiting_bls = waiting_bls_.load();
+    if (!waiting_bls) {
+        BLS_DEBUG("[HandleSyncReq] network %u: waiting_bls_ is null", network_id);
+        return;
+    }
+
+    if (!waiting_bls->IsFinishPeriod()) {
+        BLS_DEBUG("[HandleSyncReq] network %u: not in finish period", network_id);
+        return;
+    }
+
+    // Get max finish hash
+    if (finish_item->max_finish_hash.empty()) {
+        BLS_DEBUG("[HandleSyncReq] network %u: max_finish_hash is empty", network_id);
+        return;
+    }
+
+    // Find the bitmap for max finish hash
+    auto max_bls_iter = finish_item->max_bls_members.find(finish_item->max_finish_hash);
+    if (max_bls_iter == finish_item->max_bls_members.end()) {
+        BLS_DEBUG("[HandleSyncReq] network %u: max_bls_members not found", network_id);
+        return;
+    }
+
+    // Get requester's member index from message
+    uint32_t requester_idx = bls_msg.index();
+    if (requester_idx >= n) {
+        BLS_WARN("[HandleSyncReq] network %u: invalid requester_idx %u >= %u",
+                 network_id, requester_idx, n);
+        return;
+    }
+
+    // Get requester's address
+    std::string requester_id = (*members)[requester_idx]->id;
+
+    // Send finish messages for the requested missing nodes
+    uint32_t sent_count = 0;
+    for (int32_t i = 0; i < sync_req.missing_indices_size(); ++i) {
+        uint32_t missing_idx = sync_req.missing_indices(i);
+        
+        // Validate index
+        if (missing_idx >= n) {
+            BLS_WARN("[HandleSyncReq] network %u: invalid missing_idx %u >= %u",
+                     network_id, missing_idx, n);
+            continue;
+        }
+
+        // Check if we have this node's finish message
+        if (!finish_item->verified[missing_idx]) {
+            BLS_DEBUG("[HandleSyncReq] network %u: we don't have finish message for node %u",
+                      network_id, missing_idx);
+            continue;
+        }
+
+        // Create finish message for this missing node
+        auto response_msg = std::make_shared<transport::TransportMessage>();
+        auto& resp_header = response_msg->header;
+        resp_header.set_src_sharding_id(network_id);
+        resp_header.set_type(common::kBlsMessage);
+        resp_header.set_hop_count(0);
+        resp_header.set_des_dht_key(requester_id);
+        
+        auto& resp_bls_msg = *resp_header.mutable_bls_proto();
+        resp_bls_msg.set_index(missing_idx);
+        resp_bls_msg.set_elect_height(elect_iter->second->height);
+        
+        auto finish_msg = resp_bls_msg.mutable_finish_req();
+        finish_msg->set_network_id(network_id);
+        
+        // Add bitmap
+        auto& bitmap_data = max_bls_iter->second->bitmap.data();
+        for (uint32_t j = 0; j < bitmap_data.size(); ++j) {
+            finish_msg->add_bitmap(bitmap_data[j]);
+        }
+
+        // Add public key
+        auto& pk = finish_item->all_public_keys[missing_idx];
+        auto pk_msg = finish_msg->mutable_pubkey();
+        pk.to_affine_coordinates();
+        pk_msg->set_x_c0(libBLS::ThresholdUtils::fieldElementToString(pk.X.c0));
+        pk_msg->set_x_c1(libBLS::ThresholdUtils::fieldElementToString(pk.X.c1));
+        pk_msg->set_y_c0(libBLS::ThresholdUtils::fieldElementToString(pk.Y.c0));
+        pk_msg->set_y_c1(libBLS::ThresholdUtils::fieldElementToString(pk.Y.c1));
+
+        // Add common public key
+        auto& common_pk = finish_item->all_common_public_keys[missing_idx];
+        auto common_pk_msg = finish_msg->mutable_common_pubkey();
+        common_pk.to_affine_coordinates();
+        common_pk_msg->set_x_c0(libBLS::ThresholdUtils::fieldElementToString(common_pk.X.c0));
+        common_pk_msg->set_x_c1(libBLS::ThresholdUtils::fieldElementToString(common_pk.X.c1));
+        common_pk_msg->set_y_c0(libBLS::ThresholdUtils::fieldElementToString(common_pk.Y.c0));
+        common_pk_msg->set_y_c1(libBLS::ThresholdUtils::fieldElementToString(common_pk.Y.c1));
+
+        // Add BLS signature
+        auto& bls_sign = finish_item->all_bls_signs[missing_idx];
+        bls_sign.to_affine_coordinates();
+        finish_msg->set_bls_sign_x(libBLS::ThresholdUtils::fieldElementToString(bls_sign.X));
+        finish_msg->set_bls_sign_y(libBLS::ThresholdUtils::fieldElementToString(bls_sign.Y));
+
+        BLS_INFO("[HandleSyncReq] network %u: sending finish message for node %u to requester",
+                 network_id, missing_idx);
+        
+        network::Route::Instance()->Send(response_msg);
+        ++sent_count;
+    }
+
+    BLS_INFO("[HandleSyncReq] network %u: sent %u finish messages to requester (requested %d)",
+             network_id, sent_count, sync_req.missing_indices_size());
+}
+
 static const uint64_t kBatchVerifyIntervalMs = 30000u;  // 30 seconds
+static const uint64_t kBatchVerifyFastIntervalMs = 3000u;  // 3 seconds
 
 void BlsManager::BatchVerifyFinishItems() {
     uint64_t now_ms = common::TimeUtils::TimestampMs();
+    uint64_t now_us = common::TimeUtils::TimestampUs();
 
     for (auto& [network_id, finish_item] : finish_networks_map_) {
         if (finish_item->success_verified) continue;
-        if (finish_item->pending_verify_indices.empty()) continue;
-        if (now_ms - finish_item->last_verify_time_ms < kBatchVerifyIntervalMs) continue;
-
-        finish_item->last_verify_time_ms = now_ms;
 
         auto elect_iter = elect_members_.find(network_id);
         if (elect_iter == elect_members_.end()) continue;
@@ -644,6 +798,33 @@ void BlsManager::BatchVerifyFinishItems() {
 
         uint32_t n = static_cast<uint32_t>(members->size());
         uint32_t t = common::GetSignerCount(n);
+
+        // Count how many nodes have completed their finish message
+        uint32_t verified_count = 0;
+        for (uint32_t i = 0; i < n; ++i) {
+            if (finish_item->verified[i]) {
+                ++verified_count;
+            }
+        }
+
+        // If we haven't received enough finish messages yet, and pending list is empty, skip
+        if (finish_item->pending_verify_indices.empty() && verified_count < t) {
+            continue;
+        }
+
+        // Determine verification interval based on DKG elapsed time
+        uint64_t verify_interval_ms = kBatchVerifyIntervalMs;
+        auto tmp_bls = waiting_bls_.load();
+        if (tmp_bls != nullptr && tmp_bls->elect_hegiht() > 0) {
+            // Speed up verification to 3 seconds when DKG passes the 9-period mark
+            if (now_us > (tmp_bls->begin_time_us() + tmp_bls->dkg_period_us() * 9)) {
+                verify_interval_ms = kBatchVerifyFastIntervalMs;
+            }
+        }
+
+        if (now_ms - finish_item->last_verify_time_ms < verify_interval_ms) continue;
+
+        finish_item->last_verify_time_ms = now_ms;
 
         if (finish_item->max_finish_hash.empty()) continue;
         auto cpk_map_iter = finish_item->common_pk_map.find(finish_item->max_finish_hash);
@@ -672,11 +853,26 @@ void BlsManager::BatchVerifyFinishItems() {
             }
         }
 
+        // If still not enough, try to collect from all verified members
         if (candidates.size() < t) {
-            SETH_DEBUG("[BatchVerify] net %u: only %zu candidates, need %u, skip",
-                       network_id, candidates.size(), t);
+            for (uint32_t i = 0; i < n; ++i) {
+                if (!finish_item->verified[i]) continue;
+                if (finish_item->all_common_public_keys[i] != common_pk) continue;
+                bool dup = false;
+                for (uint32_t c : candidates) { if (c == i) { dup = true; break; } }
+                if (!dup) candidates.push_back(i);
+                if (candidates.size() >= t) break;
+            }
+        }
+
+        if (candidates.size() < t) {
+            SETH_DEBUG("[BatchVerify] net %u: only %zu candidates, need %u, verified_count=%u, skip",
+                       network_id, candidates.size(), t, verified_count);
             continue;
         }
+
+        SETH_INFO("[BatchVerify] net %u: start verify with %zu candidates (t=%u, verified_count=%u)",
+                  network_id, candidates.size(), t, verified_count);
 
         for (uint32_t idx : candidates) {
             if (finish_item->success_verified) break;
@@ -983,7 +1179,150 @@ bool BlsManager::VerifyAggSignValid(
 }
 
 int BlsManager::CheckBlsConsensusInfo(const elect::protobuf::ElectBlock& ec_block) {
-    return kBlsSuccess;
+    // Verify that the Leader's BLS consensus info matches local verified data
+    // Requirement: all finish nodes in leader must be in locally verified nodes, 
+    // and the count must exceed 80% of total members
+    
+    uint32_t network_id = ec_block.shard_network_id();
+    // Get local verification state
+    auto iter = finish_networks_map_.find(network_id);
+    if (iter == finish_networks_map_.end()) {
+        BLS_WARN("[CheckBLS] net %u: finish_networks_map_ not found", network_id);
+        return ec_block.prev_members().bls_pubkey_size() == 0 ? kBlsSuccess : kBlsError;
+    }
+    
+    BlsFinishItemPtr finish_item = iter->second;
+    if (!finish_item->success_verified) {
+        BLS_WARN("[CheckBLS] net %u: local not success_verified yet", network_id);
+        return ec_block.prev_members().bls_pubkey_size() == 0 ? kBlsSuccess : kBlsError;
+    }
+    
+    auto elect_iter = elect_members_.find(network_id);
+    if (elect_iter == elect_members_.end()) {
+        BLS_WARN("[CheckBLS] net %u: elect_members_ not found", network_id);
+        return ec_block.prev_members().bls_pubkey_size() == 0 ? kBlsSuccess : kBlsError;
+    }
+    
+    auto members = elect_iter->second->members;
+    if (!members) {
+        BLS_WARN("[CheckBLS] net %u: members is null", network_id);
+        return ec_block.prev_members().bls_pubkey_size() == 0 ? kBlsSuccess : kBlsError;
+    }
+    
+    auto exchange_member_count = (uint32_t)((float)members->size() * kBlsMaxExchangeMembersRatio);
+    if (exchange_member_count < members->size()) {
+        ++exchange_member_count;
+    }
+
+    auto t = common::GetSignerCount(members->size());
+    if (finish_item->max_finish_count < exchange_member_count) {
+        BLS_INFO("network: %u, finish_item->max_finish_count < t[%u][%u]",
+            ec_block.shard_network_id(),
+            finish_item->max_finish_count, exchange_member_count);
+        return ec_block.prev_members().bls_pubkey_size() == 0 ? kBlsSuccess : kBlsError;
+    }
+    
+    uint32_t n = static_cast<uint32_t>(members->size());
+    if (static_cast<uint32_t>(ec_block.prev_members().bls_pubkey_size()) != n) {
+        BLS_WARN("[CheckBLS] net %u: leader member count %d != local %u", 
+                 network_id, ec_block.prev_members().bls_pubkey_size(), n);
+        return kBlsError;
+    }
+    
+    // Check common public key matches
+    if (!ec_block.prev_members().has_common_pubkey()) {
+        BLS_WARN("[CheckBLS] net %u: leader has no common_pubkey", network_id);
+        return kBlsError;
+    }
+    
+    const auto& leader_common_pk = ec_block.prev_members().common_pubkey();
+    std::string leader_common_pk_str = leader_common_pk.x_c0() + leader_common_pk.x_c1() + 
+                                       leader_common_pk.y_c0() + leader_common_pk.y_c1();
+    std::string leader_cpk_hash = common::Hash::keccak256(leader_common_pk_str);
+    if (leader_cpk_hash != finish_item->max_finish_hash) {
+        BLS_WARN("[CheckBLS] net %u: leader cpk_hash %s != local %s", 
+                 network_id,
+                 common::Encode::HexEncode(leader_cpk_hash).c_str(),
+                 common::Encode::HexEncode(finish_item->max_finish_hash).c_str());
+        return kBlsError;
+    }
+    
+    // Verify each member's BLS public key
+    // Requirement: All members in Leader MUST be locally verified,
+    // but Leader only needs >= 80% of total members
+    uint32_t matched_count = 0;
+    uint32_t leader_member_count = 0;  // Count non-empty members from leader
+    // First, reconstruct leader's common public key object for comparison
+    std::vector<std::string> leader_cpk_str = {
+        leader_common_pk.x_c0(),
+        leader_common_pk.x_c1(),
+        leader_common_pk.y_c0(),
+        leader_common_pk.y_c1()
+    };
+
+    BLSPublicKey leader_common_pkey(std::make_shared<std::vector<std::string>>(leader_cpk_str));
+    auto leader_common_pk_obj = *leader_common_pkey.getPublicKey();
+    for (int32_t i = 0; i < ec_block.prev_members().bls_pubkey_size(); ++i) {
+        const auto& leader_bls_pk = ec_block.prev_members().bls_pubkey(i);
+        
+        // Empty leader key means this member didn't participate from leader's side
+        if (leader_bls_pk.x_c0().empty()) {
+            continue;
+        }
+        
+        ++leader_member_count;
+        
+        // CRITICAL: Member MUST be in our verified list (no exceptions)
+        if (i >= static_cast<int32_t>(n) || !finish_item->verified[i]) {
+            BLS_ERROR("[CheckBLS] net %u: member %d in leader but NOT in local verified list!", 
+                      network_id, i);
+            return kBlsError;  // Fail immediately - Leader has unverified member
+        }
+        
+        // Reconstruct leader's BLS public key and compare with local
+        std::vector<std::string> leader_pk_str = {
+            leader_bls_pk.x_c0(),
+            leader_bls_pk.x_c1(),
+            leader_bls_pk.y_c0(),
+            leader_bls_pk.y_c1()
+        };
+        
+        BLSPublicKey leader_pkey(std::make_shared<std::vector<std::string>>(leader_pk_str));
+        auto leader_pk_obj = *leader_pkey.getPublicKey();
+        
+        // Compare individual member public key
+        if (finish_item->all_public_keys[i] != leader_pk_obj) {
+            BLS_ERROR("[CheckBLS] net %u: member %d public key mismatch!", network_id, i);
+            return kBlsError;  // Fail immediately - Key mismatch
+        }
+        
+        // Compare common public key stored at this member
+        if (finish_item->all_common_public_keys[i] != leader_common_pk_obj) {
+            BLS_ERROR("[CheckBLS] net %u: member %d common public key mismatch!", network_id, i);
+            return kBlsError;  // Fail immediately - CPK mismatch
+        }
+        
+        ++matched_count;
+    }
+    
+    // Calculate required count (80% of total members)
+    uint32_t required_count = (n * 80 + 99) / 100;  // Ceiling division for 80%
+    
+    // All matched members must equal leader member count (all leader members verified successfully)
+    if (matched_count != leader_member_count) {
+        BLS_ERROR("[CheckBLS] net %u: matched=%u != leader_member_count=%u (verification failed)",
+                  network_id, matched_count, leader_member_count);
+        return kBlsError;
+    }
+    
+    SETH_INFO("[CheckBLS] net %u: leader_members=%u, all_verified, required=80%% of %u (%u), status=%s",
+              network_id, leader_member_count, n, required_count,
+              (leader_member_count >= required_count) ? "SUCCESS" : "FAILED");
+    if (leader_member_count >= required_count) {
+        return kBlsSuccess;
+    }
+    
+    return kBlsError;
 }
 
 int BlsManager::AddBlsConsensusInfo(elect::protobuf::ElectBlock& ec_block) {
@@ -1123,6 +1462,155 @@ int BlsManager::AddBlsConsensusInfo(elect::protobuf::ElectBlock& ec_block) {
 //         common_pk->x_c0().c_str(), common_pk->x_c1().c_str(),
 //         common_pk->y_c0().c_str(), common_pk->y_c1().c_str());
     return kBlsSuccess;
+}
+
+void BlsManager::SyncFinishMessageToNeighbors(uint32_t network_id) {
+    // Check if we have finish item for this network
+    auto finish_iter = finish_networks_map_.find(network_id);
+    if (finish_iter == finish_networks_map_.end()) {
+        BLS_DEBUG("[SyncFinish] network %u: finish_networks_map_ not found", network_id);
+        return;
+    }
+
+    BlsFinishItemPtr finish_item = finish_iter->second;
+    
+    // Check if we have elect members for this network
+    auto elect_iter = elect_members_.find(network_id);
+    if (elect_iter == elect_members_.end()) {
+        BLS_DEBUG("[SyncFinish] network %u: elect_members_ not found", network_id);
+        return;
+    }
+
+    auto members = elect_iter->second->members;
+    if (!members) {
+        BLS_DEBUG("[SyncFinish] network %u: members is null", network_id);
+        return;
+    }
+
+    uint32_t n = static_cast<uint32_t>(members->size());
+    uint32_t t = (n + 1) / 2;  // 1/2 threshold for sync
+
+    // Check if we are in the finish period
+    auto waiting_bls = waiting_bls_.load();
+    if (!waiting_bls) {
+        BLS_DEBUG("[SyncFinish] network %u: waiting_bls_ is null", network_id);
+        return;
+    }
+
+    if (!waiting_bls->IsFinishPeriod()) {
+        BLS_DEBUG("[SyncFinish] network %u: not in finish period", network_id);
+        return;
+    }
+
+    // Count how many finish messages we have received
+    uint32_t verified_count = 0;
+    for (uint32_t i = 0; i < n; ++i) {
+        if (finish_item->verified[i]) {
+            ++verified_count;
+        }
+    }
+
+    // Prerequisite: Must have received at least 1/2 finish messages
+    if (verified_count < t) {
+        BLS_DEBUG("[SyncFinish] network %u: only %u/%u verified, need at least %u (1/2), skip sync",
+                  network_id, verified_count, n, t);
+        return;
+    }
+
+    BLS_INFO("[SyncFinish] network %u: have %u/%u verified (>= 1/2), checking for missing nodes",
+             network_id, verified_count, n);
+
+    // Get local member index
+    uint32_t local_member_index = common::kInvalidUint32;
+    std::string local_id = security_->GetAddress();
+    for (uint32_t i = 0; i < members->size(); ++i) {
+        if ((*members)[i]->id == local_id) {
+            local_member_index = i;
+            break;
+        }
+    }
+
+    if (local_member_index == common::kInvalidUint32) {
+        BLS_DEBUG("[SyncFinish] network %u: local member not found", network_id);
+        return;
+    }
+
+    // Get max finish hash
+    if (finish_item->max_finish_hash.empty()) {
+        BLS_DEBUG("[SyncFinish] network %u: max_finish_hash is empty", network_id);
+        return;
+    }
+
+    // Find the bitmap for max finish hash
+    auto max_bls_iter = finish_item->max_bls_members.find(finish_item->max_finish_hash);
+    if (max_bls_iter == finish_item->max_bls_members.end()) {
+        BLS_DEBUG("[SyncFinish] network %u: max_bls_members not found for hash %s", 
+                  network_id, common::Encode::HexEncode(finish_item->max_finish_hash).c_str());
+        return;
+    }
+
+    // Identify missing nodes (nodes we haven't verified yet)
+    std::vector<uint32_t> missing_nodes;
+    for (uint32_t i = 0; i < n; ++i) {
+        if (!finish_item->verified[i]) {
+            missing_nodes.push_back(i);
+        }
+    }
+
+    if (missing_nodes.empty()) {
+        BLS_DEBUG("[SyncFinish] network %u: no missing nodes, all %u nodes verified",
+                  network_id, n);
+        return;
+    }
+
+    BLS_INFO("[SyncFinish] network %u: found %zu missing nodes, requesting from neighbors",
+             network_id, missing_nodes.size());
+
+    // Request missing finish messages from neighbors
+    // Strategy: Ask neighbors who have verified for the missing nodes' finish messages
+    uint32_t sync_count = 0;
+    uint32_t max_neighbors = std::min(8u, n);  // Ask at most 8 neighbors
+
+    for (uint32_t neighbor_offset = 1; neighbor_offset <= max_neighbors && sync_count < missing_nodes.size(); ++neighbor_offset) {
+        uint32_t neighbor_idx = (local_member_index + neighbor_offset) % n;
+        if (neighbor_idx == local_member_index) {
+            continue;
+        }
+
+        // Check if this neighbor has verified their finish message
+        if (!finish_item->verified[neighbor_idx]) {
+            continue;
+        }
+
+        // Request missing nodes' finish messages from this neighbor
+        // Create a sync request message
+        auto msg_ptr = std::make_shared<transport::TransportMessage>();
+        auto& msg = msg_ptr->header;
+        msg.set_src_sharding_id(network_id);
+        msg.set_type(common::kBlsMessage);
+        msg.set_hop_count(0);
+        msg.set_des_dht_key((*members)[neighbor_idx]->id);
+        
+        auto& bls_msg = *msg.mutable_bls_proto();
+        bls_msg.set_index(local_member_index);
+        bls_msg.set_elect_height(elect_iter->second->height);
+        
+        // Add a sync request with missing node indices
+        auto sync_req = bls_msg.mutable_finish_sync_req();
+        sync_req->set_network_id(network_id);
+        for (uint32_t missing_idx : missing_nodes) {
+            sync_req->add_missing_indices(missing_idx);
+        }
+
+        BLS_INFO("[SyncFinish] network %u: requesting %zu missing nodes from neighbor %u",
+                 network_id, missing_nodes.size(), neighbor_idx);
+        
+        network::Route::Instance()->Send(msg_ptr);
+        ++sync_count;
+    }
+
+    BLS_INFO("[SyncFinish] network %u: sent sync requests to %u neighbors for %zu missing nodes",
+             network_id, sync_count, missing_nodes.size());
 }
 
 void BlsManager::ResetLeaders(

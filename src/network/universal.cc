@@ -7,6 +7,7 @@
 #include "dht/dht_function.h"
 #include "dht/dht_function.h"
 #include "network/network_utils.h"
+#include "network/neighbor_ip_manager.h"
 #include "network/universal_manager.h"
 #include "network/dht_manager.h"
 #include "network/network_proto.h"
@@ -180,12 +181,17 @@ void Universal::ProcessGetNetworkNodesResponse(const transport::MessagePtr& msg_
                 continue;
             }
 
+            auto node_id = security_->GetAddressWithPublicKey(res_nodes[i].pubkey());
             auto node = std::make_shared<dht::Node>(
                 res_nodes[i].sharding_id(),
                 res_nodes[i].public_ip(),
                 res_nodes[i].public_port(),
                 res_nodes[i].pubkey(),
-                security_->GetAddressWithPublicKey(res_nodes[i].pubkey()));
+                node_id);
+            // Record id → public_ip for nodes advertised by network peers.
+            if (!node_id.empty() && !res_nodes[i].public_ip().empty()) {
+                NeighborIpManager::Instance()->Update(node_id, res_nodes[i].public_ip());
+            }
             wait_nodes_.push_back(node);
         }
     } while (0);

@@ -31,11 +31,11 @@ protected:
     virtual int HandleTx(
             uint32_t tx_index,
             view_block::protobuf::ViewBlockItem& view_block,
-            zjcvm::ZjchainHost& zjc_host,
+            sethvm::SethhainHost& seth_host,
             hotstuff::BalanceAndNonceMap& acc_balance_map,
             block::protobuf::BlockTx& block_tx) {
         uint32_t status_code = 0;
-        zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
+        seth_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
         return consensus::kConsensusSuccess;
     }
 
@@ -50,34 +50,34 @@ protected:
     }
 
     virtual void InitHost(
-            zjcvm::ZjchainHost& zjc_host, 
+            sethvm::SethhainHost& seth_host, 
             const block::protobuf::BlockTx& tx, 
             uint64_t gas_limit, 
             uint64_t gas_price, 
             view_block::protobuf::ViewBlockItem& view_block) {
-        zjcvm::Uint64ToEvmcBytes32(
-            zjc_host.tx_context_.tx_gas_price,
+        sethvm::Uint64ToEvmcBytes32(
+            seth_host.tx_context_.tx_gas_price,
             gas_price);
-        zjc_host.contract_mgr_ = contract_mgr_;
-        zjc_host.my_address_ = tx.to();
-        zjc_host.recorded_selfdestructs_ = nullptr;
-        zjc_host.gas_more_ = 0lu;
-        zjc_host.create_bytes_code_ = "";
-        zjc_host.contract_to_call_dirty_ = false;
-        zjc_host.recorded_logs_.clear();
-        zjc_host.to_account_value_.clear();
-        zjc_host.view_ = view_block.qc().view();
-        zjc_host.tx_context_.block_gas_limit = gas_limit;
-        zjc_host.tx_context_.block_number = view_block.block_info().height();
-        zjc_host.tx_context_.block_timestamp = view_block.block_info().timestamp();
+        seth_host.contract_mgr_ = contract_mgr_;
+        seth_host.my_address_ = tx.to();
+        seth_host.recorded_selfdestructs_ = nullptr;
+        seth_host.gas_more_ = 0lu;
+        seth_host.create_bytes_code_ = "";
+        seth_host.contract_to_call_dirty_ = false;
+        seth_host.recorded_logs_.clear();
+        seth_host.to_account_value_.clear();
+        seth_host.view_ = view_block.qc().view();
+        seth_host.tx_context_.block_gas_limit = gas_limit;
+        seth_host.tx_context_.block_number = view_block.block_info().height();
+        seth_host.tx_context_.block_timestamp = view_block.block_info().timestamp();
         uint64_t chain_id = hotstuff::kGlobalChainId;
-        zjcvm::Uint64ToEvmcBytes32(
-            zjc_host.tx_context_.chain_id,
+        sethvm::Uint64ToEvmcBytes32(
+            seth_host.tx_context_.chain_id,
             chain_id);
         SETH_DEBUG("init host, block number: %lu, timestamp: %lu, gas limit: %lu, "
             "gas price: %lu, from: %s, to: %s",
-            zjc_host.tx_context_.block_number, zjc_host.tx_context_.block_timestamp,
-            zjc_host.tx_context_.block_gas_limit, gas_price,
+            seth_host.tx_context_.block_number, seth_host.tx_context_.block_timestamp,
+            seth_host.tx_context_.block_gas_limit, gas_price,
             common::Encode::HexEncode(tx.from()).c_str(),
             common::Encode::HexEncode(tx.to()).c_str());
     }
@@ -127,14 +127,14 @@ protected:
     }
 
     int GetTempAccountBalance(
-            zjcvm::ZjchainHost& zjc_host,
+            sethvm::SethhainHost& seth_host,
             const std::string& id,
             hotstuff::BalanceAndNonceMap& acc_balance_map,
             uint64_t* balance,
             uint64_t* nonce) {
         auto iter = acc_balance_map.find(id);
         if (iter == acc_balance_map.end()) {
-            protos::AddressInfoPtr acc_info = zjc_host.view_block_chain_->ChainGetAccountInfo(id);
+            protos::AddressInfoPtr acc_info = seth_host.view_block_chain_->ChainGetAccountInfo(id);
             if (acc_info == nullptr) {
                 SETH_DEBUG("account addres not exists[%s]", common::Encode::HexEncode(id).c_str());
                 return consensus::kConsensusAccountNotExists;

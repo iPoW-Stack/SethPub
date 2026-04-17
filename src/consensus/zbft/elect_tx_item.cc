@@ -6,10 +6,19 @@
 #include "protos/get_proto_hash.h"
 #include <bls/bls_utils.h>
 #include <google/protobuf/util/json_util.h>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <chrono>
+#include <cmath>
+#include <algorithm>
 
 namespace seth {
 
 namespace consensus {
+
+// Define the area penalty coefficient default value (can be tuned)
+const double ElectTxItem::kAreaPenaltyCoefficient = 1.0;
 
 inline bool ElectNodeBalanceCompare(const NodeDetailPtr& left, const NodeDetailPtr& right) {
     return left->stoke < right->stoke;
@@ -43,16 +52,16 @@ int ElectTxItem::TxToBlockTx(
 int ElectTxItem::HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        zjcvm::ZjchainHost& pre_zjc_host,
+        sethvm::SethhainHost& pre_seth_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
-    view_block_chain_ = pre_zjc_host.view_block_chain_;
+    view_block_chain_ = pre_seth_host.view_block_chain_;
     g2_ = std::make_shared<std::mt19937_64>(vss_mgr_->EpochRandom());
-    zjcvm::ZjchainHost zjc_host;
-    zjc_host.view_block_chain_ = pre_zjc_host.view_block_chain_;
-    zjc_host.tx_context_ = pre_zjc_host.tx_context_;
-    zjc_host.pre_zjc_host_ = &pre_zjc_host;
-    InitHost(zjc_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
+    sethvm::SethhainHost seth_host;
+    seth_host.view_block_chain_ = pre_seth_host.view_block_chain_;
+    seth_host.tx_context_ = pre_seth_host.tx_context_;
+    seth_host.pre_seth_host_ = &pre_seth_host;
+    InitHost(seth_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
     auto& unique_hash = tx_info->key();
     if (!elect_statistic_.ParseFromString(tx_info->value())) {
         SETH_DEBUG("elect tx parse elect info failed!");
@@ -69,21 +78,21 @@ int ElectTxItem::HandleTx(
         common::Encode::HexEncode(unique_hash).c_str());
     uint64_t to_balance = 0;
     uint64_t to_nonce = 0;
-    GetTempAccountBalance(zjc_host, block_tx.to(), acc_balance_map, &to_balance, &to_nonce);
+    GetTempAccountBalance(seth_host, block_tx.to(), acc_balance_map, &to_balance, &to_nonce);
     auto str_key = block_tx.to() + unique_hash;
     std::string val;
-    if (zjc_host.GetKeyValue(block_tx.to(), unique_hash, &val) == zjcvm::kZjcvmSuccess) {
+    if (seth_host.GetKeyValue(block_tx.to(), unique_hash, &val) == sethvm::kSethvmSuccess) {
         SETH_DEBUG("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
         return consensus::kConsensusError;
     }
 
     block_tx.set_unique_hash(unique_hash);
-    auto res = processElect(zjc_host, view_block, block_tx);
+    auto res = processElect(seth_host, view_block, block_tx);
     if (res != consensus::kConsensusSuccess) {
         return kConsensusError;
     }
 
-    zjc_host.SaveKeyValue(block_tx.to(), unique_hash, "1");
+    seth_host.SaveKeyValue(block_tx.to(), unique_hash, "1");
     SETH_WARN("success call elect block pool: %d, view: %lu, to_nonce: %lu. tx nonce: %lu", 
         view_block.qc().pool_index(), view_block.qc().view(), to_nonce, block_tx.nonce());
     acc_balance_map[block_tx.to()]->set_balance(to_balance);
@@ -94,19 +103,20 @@ int ElectTxItem::HandleTx(
         common::Encode::HexEncode(block_tx.to()).c_str(), 
         ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str(),
         common::Encode::HexEncode(unique_hash).c_str());
+    
     // *view_block.mutable_block_info()->mutable_elect_statistic() = elect_statistic_;
     *view_block.mutable_block_info()->mutable_elect_block() = *elect_block_;
     view_block.mutable_block_info()->add_unique_hashs(block_tx.unique_hash());
     block::protobuf::TxHashStatus tx_hash_status;
     tx_hash_status.set_status(block_tx.status());
     auto status_val = tx_hash_status.SerializeAsString();
-    zjc_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
-    zjc_host.MergeToPrev();
+    seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+    seth_host.MergeToPrev();
     return consensus::kConsensusSuccess;
 }
 
 int ElectTxItem::processElect(
-        zjcvm::ZjchainHost& zjc_host,
+        sethvm::SethhainHost& seth_host,
         view_block::protobuf::ViewBlockItem& view_block,
         seth::block::protobuf::BlockTx &block_tx) {
     auto& block = *view_block.mutable_block_info();
@@ -208,7 +218,7 @@ int ElectTxItem::processElect(
 #endif
 
     CreateNewElect(
-        zjc_host,
+        seth_host,
         block,
         elect_nodes,
         gas_for_root,
@@ -229,6 +239,81 @@ int ElectTxItem::processElect(
         SETH_DEBUG("LLLLL after CreateNewElect: count: %d ,%s", count, ids.c_str());
     }
 #endif
+    // Persist per-election log for analysis (one file per round)
+    try {
+        std::filesystem::path log_dir = std::filesystem::path("elect_logs");
+        std::error_code ec;
+        std::filesystem::create_directories(log_dir, ec);
+        if (ec) {
+            SETH_ERROR("create elect_logs dir failed: %s", ec.message().c_str());
+        } else {
+            auto now = std::chrono::system_clock::now();
+            auto now_ts = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+            std::ostringstream fname;
+            fname << "elect_" << elect_statistic_.sharding_id() << "_" << now_ts << "_" << elect_statistic_.statistic_height() << ".json";
+            auto filepath = log_dir / fname.str();
+
+            std::ofstream ofs(filepath.string(), std::ios::out | std::ios::trunc);
+            if (ofs) {
+                ofs << "{\n";
+                ofs << "  \"timestamp\": " << now_ts << ",\n";
+                ofs << "  \"shard\": " << elect_statistic_.sharding_id() << ",\n";
+                ofs << "  \"statistic_height\": " << elect_statistic_.statistic_height() << ",\n";
+
+                ofs << "  \"fts_params\": {\n";
+                ofs << "    \"weedout_div_rate\": " << kFtsWeedoutDividRate << ",\n";
+                ofs << "    \"new_elect_join_rate\": " << kFtsNewElectJoinRate << ",\n";
+                ofs << "    \"min_double_node_count\": " << kFtsMinDoubleNodeCount << ",\n";
+                ofs << "    \"area_penalty_coefficient\": " << ElectTxItem::kAreaPenaltyCoefficient << "\n";
+                ofs << "  },\n";
+
+                std::string proto_json = ProtobufToJson(elect_statistic_);
+                ofs << "  \"elect_statistic_proto\": ";
+                ofs << proto_json << ",\n";
+
+                ofs << "  \"leaders\": [";
+                bool first = true;
+                for (auto idx : leader_nodes) {
+                    if (!first) ofs << ", ";
+                    first = false;
+                    ofs << idx;
+                }
+                ofs << "],\n";
+
+                ofs << "  \"nodes\": [\n";
+                bool first_node = true;
+                for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
+                    if (elect_nodes[i] == nullptr) continue;
+                    if (!first_node) ofs << ",\n";
+                    first_node = false;
+                    auto &n = elect_nodes[i];
+                    ofs << "    {\n";
+                    ofs << "      \"index\": " << n->index << ",\n";
+                    ofs << "      \"pubkey\": \"" << common::Encode::HexEncode(n->pubkey) << "\",\n";
+                    ofs << "      \"fts_value\": " << n->fts_value << ",\n";
+                    ofs << "      \"stoke\": " << n->stoke << ",\n";
+                    ofs << "      \"stoke_diff\": " << n->stoke_diff << ",\n";
+                    ofs << "      \"tx_count\": " << n->tx_count << ",\n";
+                    ofs << "      \"gas_sum\": " << n->gas_sum << ",\n";
+                    ofs << "      \"credit\": " << n->credit << ",\n";
+                    ofs << "      \"area_weight\": " << n->area_weight << ",\n";
+                    ofs << "      \"leader_mod_index\": " << n->leader_mod_index << ",\n";
+                    ofs << "      \"mining_token\": " << n->mining_token << ",\n";
+                    ofs << "      \"consensus_gap\": " << n->consensus_gap << "\n";
+                    ofs << "    }";
+                }
+                ofs << "\n  ]\n";
+                ofs << "}\n";
+                ofs.close();
+                SETH_INFO("wrote elect log: %s", filepath.string().c_str());
+            } else {
+                SETH_ERROR("open elect log file failed: %s", filepath.string().c_str());
+            }
+        }
+    } catch (const std::exception &e) {
+        SETH_ERROR("exception while writing elect log: %s", e.what());
+    }
+
     SETH_DEBUG("consensus elect tx success: %u, proto: %s",
         elect_statistic_.sharding_id(), 
         ProtobufToJson(elect_statistic_).c_str());
@@ -532,12 +617,27 @@ void ElectTxItem::MiningToken(
 
     //    uint64_t gas_for_mining = all_gas_amount - (all_gas_amount / network_count_);
     uint64_t gas_for_mining = all_gas_amount;
+    uint64_t gas_burned = 0;
+
+    // Burn disabled by configuration: do not burn gas, add it to incentive pool.
+    // Previously we called ApplyBurnMechanism(all_gas_amount, &gas_for_mining, &gas_burned)
+    // which would split some gas to be burned. Now gas_burned stays 0 and the full
+    // amount remains available for incentives (subject to root allocation below).
+    
     // root shard use statistic gas amount.
     if (statistic_sharding_id == network::kRootCongressNetworkId) {
-        gas_for_mining = all_gas_amount;
+        // For root shard, apply burn to the full amount
+        // gas_for_mining already set by ApplyBurnMechanism
     } else {
-        *gas_for_root = all_gas_amount - gas_for_mining;
+        // For other shards, allocate some to root
+        uint64_t gas_for_root_before_burn = all_gas_amount / network_count_;
+        *gas_for_root = gas_for_root_before_burn;
+        gas_for_mining = all_gas_amount - gas_for_root_before_burn - gas_burned;
     }
+    
+    ELECT_INFO("MiningToken: shard=%u, total_gas=%lu, burned=%lu, for_mining=%lu, for_root=%lu",
+               statistic_sharding_id, all_gas_amount, gas_burned, gas_for_mining,
+               (gas_for_root ? *gas_for_root : 0));
 
     auto now_ming_count = GetMiningMaxCount(max_tx_count);
     uint64_t tmp_all_gas_amount = 0;
@@ -607,19 +707,267 @@ void ElectTxItem::SetPrevElectInfo(
         ProtobufToJson(prev_block_item.elect_block()).c_str());
 }
 
-uint64_t ElectTxItem::GetMiningMaxCount(uint64_t max_tx_count) {
-    if (common::GlobalInfo::Instance()->network_id() == network::kRootCongressNetworkId) {
-        max_tx_count += 10000lu;
-    }
+// ============================================================================
+// Dynamic Sharding Reward System Implementation
+// ============================================================================
 
-    auto now_ming_count = static_cast<uint64_t>(
-                              common::kMiningTokenMultiplicationFactor * log2((double)max_tx_count)) *
-                          common::kZjcMiniTransportUnit;
-    return now_ming_count;
+uint64_t ElectTxItem::GetCurrentEpochNumber() {
+    if (first_timeblock_timestamp_ == 0) {
+        ELECT_ERROR("first_timeblock_timestamp_ is 0, cannot calculate epoch number");
+        return 0;
+    }
+    
+    uint64_t current_timestamp = common::TimeUtils::TimestampSeconds();
+    if (current_timestamp < first_timeblock_timestamp_) {
+        ELECT_ERROR("current_timestamp %lu < first_timeblock_timestamp_ %lu",
+                    current_timestamp, first_timeblock_timestamp_);
+        return 0;
+    }
+    
+    uint64_t elapsed_seconds = current_timestamp - first_timeblock_timestamp_;
+    uint64_t epoch_number = elapsed_seconds / common::kTimeBlockCreatePeriodSeconds;
+    
+    ELECT_DEBUG("GetCurrentEpochNumber: current_ts=%lu, first_ts=%lu, elapsed=%lu, epoch=%lu",
+                current_timestamp, first_timeblock_timestamp_, elapsed_seconds, epoch_number);
+    
+    return epoch_number;
+}
+
+uint64_t ElectTxItem::CalculateBaseReward(uint64_t epoch_number) {
+    // Calculate halving count (every 4 years)
+    uint32_t halving_count = static_cast<uint32_t>(epoch_number / common::kHalvingPeriodEpochs);
+    
+    // Prevent overflow by limiting halving count
+    if (halving_count > common::kMaxHalvingCount) {
+        halving_count = common::kMaxHalvingCount;
+    }
+    
+    // Calculate base reward with halving: initial_reward / (2^halving_count)
+    uint64_t base_reward = common::kInitialTotalReward;
+    for (uint32_t i = 0; i < halving_count; ++i) {
+        base_reward /= 2;
+        if (base_reward < common::kMinBlockReward) {
+            base_reward = common::kMinBlockReward;
+            break;
+        }
+    }
+    
+    ELECT_DEBUG("CalculateBaseReward: epoch=%lu, halving_count=%u, base_reward=%lu",
+                epoch_number, halving_count, base_reward);
+    
+    return base_reward;
+}
+
+uint32_t ElectTxItem::GetShardGeneration(uint32_t shard_id) {
+    // Find which generation this shard belongs to
+    for (uint32_t i = 0; i < common::kShardGenerationCount; ++i) {
+        if (shard_id >= common::kShardGenerations[i].start_shard_id &&
+            shard_id <= common::kShardGenerations[i].end_shard_id) {
+            return common::kShardGenerations[i].generation;
+        }
+    }
+    
+    // If not found, return last generation (should not happen)
+    ELECT_WARN("Shard %u not found in generation table, using last generation", shard_id);
+    return common::kShardGenerations[common::kShardGenerationCount - 1].generation;
+}
+
+uint32_t ElectTxItem::GetActiveShardCount() {
+    // Get the maximum consensus sharding ID from network
+    // This should be provided by the network layer
+    // For now, we use a simple heuristic based on elect_statistic_
+    
+    uint32_t max_shard_id = network_count_;  // Use network_count_ as proxy
+    
+    // Count how many shards are active based on generation table
+    uint32_t active_count = 0;
+    for (uint32_t i = 0; i < common::kShardGenerationCount; ++i) {
+        if (max_shard_id >= common::kShardGenerations[i].start_shard_id) {
+            // All shards in this generation are active
+            active_count += common::kShardGenerations[i].shard_count;
+        } else {
+            break;
+        }
+    }
+    
+    // Ensure at least initial shard count
+    if (active_count < common::kInitialShardCount) {
+        active_count = common::kInitialShardCount;
+    }
+    
+    ELECT_DEBUG("GetActiveShardCount: max_shard_id=%u, active_count=%u",
+                max_shard_id, active_count);
+    
+    return active_count;
+}
+
+double ElectTxItem::CalculateTotalWeight(uint32_t active_shard_count) {
+    double total_weight = 0.0;
+    uint32_t counted_shards = 0;
+    
+    // Sum up weights for all active generations
+    for (uint32_t i = 0; i < common::kShardGenerationCount; ++i) {
+        const auto& gen = common::kShardGenerations[i];
+        
+        if (counted_shards >= active_shard_count) {
+            break;
+        }
+        
+        // Calculate how many shards from this generation are active
+        uint32_t shards_in_gen = gen.shard_count;
+        if (counted_shards + shards_in_gen > active_shard_count) {
+            shards_in_gen = active_shard_count - counted_shards;
+        }
+        
+        total_weight += gen.weight * shards_in_gen;
+        counted_shards += shards_in_gen;
+        
+        ELECT_DEBUG("Gen %u: weight=%.6f, shards=%u, contribution=%.6f",
+                    gen.generation, gen.weight, shards_in_gen, gen.weight * shards_in_gen);
+    }
+    
+    ELECT_DEBUG("CalculateTotalWeight: active_shards=%u, total_weight=%.6f",
+                active_shard_count, total_weight);
+    
+    return total_weight;
+}
+
+double ElectTxItem::CalculateEarlyBonus(uint32_t active_shard_count) {
+    // Apply 10% bonus when network has fewer than max shards
+    double bonus = (active_shard_count < common::kMaxShardCount) 
+                   ? common::kEarlyBonusMultiplier 
+                   : 1.0;
+    
+    ELECT_DEBUG("CalculateEarlyBonus: active_shards=%u, bonus=%.2f",
+                active_shard_count, bonus);
+    
+    return bonus;
+}
+
+uint64_t ElectTxItem::CalculateShardReward(
+        uint32_t shard_id,
+        uint64_t total_base_reward,
+        uint32_t active_shard_count) {
+    
+    // Get shard generation and weight
+    uint32_t generation = GetShardGeneration(shard_id);
+    double weight = common::kShardGenerations[generation].weight;
+    
+    // Calculate total weight across all active shards
+    double total_weight = CalculateTotalWeight(active_shard_count);
+    
+    if (total_weight <= 0.0) {
+        ELECT_ERROR("Total weight is zero or negative: %.6f", total_weight);
+        return common::kMinBlockReward;
+    }
+    
+    // Calculate this shard's reward based on its weight
+    uint64_t shard_reward = static_cast<uint64_t>(
+        (total_base_reward * weight) / total_weight);
+    
+    // Ensure minimum reward
+    if (shard_reward < common::kMinBlockReward) {
+        shard_reward = common::kMinBlockReward;
+    }
+    
+    ELECT_INFO("CalculateShardReward: shard=%u, gen=%u, weight=%.6f, "
+               "total_base=%lu, total_weight=%.6f, shard_reward=%lu",
+               shard_id, generation, weight, total_base_reward, 
+               total_weight, shard_reward);
+    
+    return shard_reward;
+}
+
+uint64_t ElectTxItem::CalculateTxBonus(uint64_t shard_reward, uint64_t max_tx_count) {
+    if (max_tx_count == 0) {
+        return 0;
+    }
+    
+    // Normalize transaction count to 0-1 range using log2
+    // log2(1) = 0, log2(1048576) ≈ 20, so we divide by 20 to normalize
+    double tx_count_normalized = log2(static_cast<double>(max_tx_count + 1)) / 20.0;
+    if (tx_count_normalized > 1.0) {
+        tx_count_normalized = 1.0;
+    }
+    
+    // Calculate transaction bonus (20% of shard reward)
+    uint64_t tx_bonus = static_cast<uint64_t>(
+        shard_reward * tx_count_normalized * common::kTxBonusMultiplier);
+    
+    ELECT_DEBUG("CalculateTxBonus: shard_reward=%lu, max_tx_count=%lu, "
+                "normalized=%.4f, tx_bonus=%lu",
+                shard_reward, max_tx_count, tx_count_normalized, tx_bonus);
+    
+    return tx_bonus;
+}
+
+uint64_t ElectTxItem::CalculateTotalEpochReward(uint32_t shard_id, uint64_t max_tx_count) {
+    // 1. Get current epoch number
+    uint64_t epoch_number = GetCurrentEpochNumber();
+    
+    // 2. Calculate base reward (with halving every 4 years)
+    uint64_t base_reward = CalculateBaseReward(epoch_number);
+    
+    // 3. Get current active shard count
+    uint32_t active_shards = GetActiveShardCount();
+    
+    // 4. Apply early bonus (10% when shards < 1024)
+    double early_bonus = CalculateEarlyBonus(active_shards);
+    uint64_t total_base_reward = static_cast<uint64_t>(base_reward * early_bonus);
+    
+    // 5. Calculate this shard's base reward
+    uint64_t shard_reward = CalculateShardReward(shard_id, total_base_reward, active_shards);
+    
+    // 6. Add transaction bonus
+    uint64_t tx_bonus = CalculateTxBonus(shard_reward, max_tx_count);
+    
+    uint64_t total_reward = shard_reward + tx_bonus;
+    
+    ELECT_INFO("CalculateTotalEpochReward: shard=%u, epoch=%lu, base=%lu, "
+               "early_bonus=%.2f, active_shards=%u, shard_reward=%lu, "
+               "tx_bonus=%lu, total=%lu",
+               shard_id, epoch_number, base_reward, early_bonus, active_shards,
+               shard_reward, tx_bonus, total_reward);
+    
+    return total_reward;
+}
+
+void ElectTxItem::ApplyBurnMechanism(
+        uint64_t total_gas,
+        uint64_t* gas_to_distribute,
+        uint64_t* gas_to_burn) {
+    if (gas_to_distribute == nullptr || gas_to_burn == nullptr) {
+        ELECT_ERROR("ApplyBurnMechanism: null pointer parameters");
+        return;
+    }
+    
+    // Calculate gas to burn (EIP-1559 style)
+    *gas_to_burn = static_cast<uint64_t>(total_gas * common::kBurnRatio);
+    *gas_to_distribute = total_gas - *gas_to_burn;
+    
+    ELECT_INFO("ApplyBurnMechanism: total_gas=%lu, burned=%lu, distributed=%lu, burn_ratio=%.2f",
+               total_gas, *gas_to_burn, *gas_to_distribute, common::kBurnRatio);
+}
+
+// ============================================================================
+// Original Mining Functions (Modified to use dynamic sharding reward system)
+// ============================================================================
+
+uint64_t ElectTxItem::GetMiningMaxCount(uint64_t max_tx_count) {
+    // Get the shard ID from elect_statistic_
+    uint32_t shard_id = elect_statistic_.sharding_id();
+    
+    // Use new dynamic sharding reward system
+    uint64_t total_epoch_reward = CalculateTotalEpochReward(shard_id, max_tx_count);
+    
+    ELECT_DEBUG("GetMiningMaxCount: shard=%u, max_tx_count=%lu, total_epoch_reward=%lu",
+                shard_id, max_tx_count, total_epoch_reward);
+    
+    return total_epoch_reward;
 }
 
 int ElectTxItem::CreateNewElect(
-        zjcvm::ZjchainHost& zjc_host,
+        sethvm::SethhainHost& seth_host,
         block::protobuf::Block &block,
         const std::vector<NodeDetailPtr> &elect_nodes,
         uint64_t gas_for_root,
@@ -729,27 +1077,75 @@ int ElectTxItem::CheckWeedout(
         }
     }
 
+    // Calculate area dispersion metrics for all nodes first
+    std::vector<std::vector<uint32_t>> all_distances(statistic_item.tx_count_size());
+    for (int32_t member_idx = 0; member_idx < statistic_item.tx_count_size(); ++member_idx) {
+        if (invalid_nodes.find(member_idx) != invalid_nodes.end()) {
+            continue;
+        }
+        
+        // Calculate distances to all other valid nodes
+        std::vector<uint32_t> distances;
+        for (int32_t idx = 0; idx < statistic_item.tx_count_size(); ++idx) {
+            if (member_idx == idx || invalid_nodes.find(idx) != invalid_nodes.end()) {
+                continue;
+            }
+            
+            auto &point0 = statistic_item.area_point(member_idx);
+            auto &point1 = statistic_item.area_point(idx);
+            uint32_t dis = (point0.x() - point1.x()) * (point0.x() - point1.x()) +
+                           (point0.y() - point1.y()) * (point0.y() - point1.y());
+            distances.push_back(dis);
+        }
+        
+        all_distances[member_idx] = distances;
+    }
+
     std::vector<NodeDetailPtr> elect_nodes_to_choose;
     for (int32_t member_idx = 0; member_idx < statistic_item.tx_count_size(); ++member_idx) {
         if (invalid_nodes.find(member_idx) != invalid_nodes.end()) {
             continue;
         }
 
-        // Calculate the minimum distance between the current node and other nodes
-        uint32_t min_dis = common::kInvalidUint32;
-        for (int32_t idx = 0; idx < statistic_item.tx_count_size(); ++idx) {
-            if (member_idx == idx) {
-                continue;
+        // Calculate area_weight using improved algorithm:
+        // area_weight = avg_distance + (std_dev * 0.5) + (median_distance * 0.3)
+        // This considers average proximity, variance, and median to better assess dispersion
+        uint32_t area_weight = 0;
+        
+        if (!all_distances[member_idx].empty()) {
+            auto &distances = all_distances[member_idx];
+            std::sort(distances.begin(), distances.end());
+            
+            // Calculate average distance
+            uint64_t sum_distance = 0;
+            for (auto d : distances) {
+                sum_distance += d;
             }
-
-            auto &point0 = statistic_item.area_point(member_idx);
-            auto &point1 = statistic_item.area_point(idx);
-            uint32_t dis = (point0.x() - point1.x()) * (point0.x() - point1.x()) +
-                           (point0.y() - point1.y()) * (point0.y() - point1.y());
-            if (min_dis > dis) {
-                min_dis = dis;
+            double avg_distance = static_cast<double>(sum_distance) / distances.size();
+            
+            // Calculate median distance
+            uint32_t median_distance = distances[distances.size() / 2];
+            
+            // Calculate standard deviation
+            double sq_sum = 0.0;
+            for (auto d : distances) {
+                double diff = d - avg_distance;
+                sq_sum += diff * diff;
             }
+            double std_dev = std::sqrt(sq_sum / distances.size());
+            
+            // Composite area weight: prioritize average proximity with variance adjustment
+            // Higher value = better dispersion (greater average distance from neighbors)
+            double composite_weight = avg_distance + (std_dev * 0.5) + (median_distance * 0.3);
+            area_weight = static_cast<uint32_t>(composite_weight);
+            
+            SETH_DEBUG("Node %d: avg=%.1f, median=%u, std_dev=%.1f, composite_weight=%u",
+                      member_idx, avg_distance, median_distance, std_dev, area_weight);
+        } else {
+            // Fallback if no valid neighbors (should not happen)
+            area_weight = common::kInvalidUint32;
         }
+        
         // Build node information and update global minimum node distance
         protos::AddressInfoPtr account_info = view_block_chain_->ChainGetAccountInfo((*members)[member_idx]->id);
         if (account_info == nullptr) {
@@ -761,15 +1157,15 @@ int ElectTxItem::CheckWeedout(
 
         auto node_info = std::make_shared<ElectNodeInfo>();
         node_info->gas_sum = statistic_item.gas_sum(member_idx);
-        node_info->area_weight = min_dis;
+        node_info->area_weight = area_weight;
         node_info->tx_count = statistic_item.tx_count(member_idx);
         node_info->stoke = statistic_item.stokes(member_idx);
         node_info->credit = statistic_item.credit(member_idx);
         node_info->index = member_idx;
         node_info->pubkey = (*members)[member_idx]->pubkey;
         node_info->consensus_gap = statistic_item.consensus_gap(member_idx); 
-        if (*min_area_weight > min_dis) {
-            *min_area_weight = min_dis;
+        if (*min_area_weight > area_weight && area_weight != common::kInvalidUint32) {
+            *min_area_weight = area_weight;
         }
 
         elect_nodes_to_choose.push_back(node_info);
@@ -1015,15 +1411,50 @@ void ElectTxItem::SmoothFtsValue(
         }
     }
 
+    // Smooth area_weight using PoS-style normalization
+    std::vector<int32_t> area_weight_smooth;
+    {
+        area_weight_smooth.resize(elect_nodes.size(), 0);
+        int32_t min_area_weight_smooth = (std::numeric_limits<int32_t>::max)();
+        int32_t max_area_weight_smooth = (std::numeric_limits<int32_t>::min)();
+        for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
+            // Convert area_weight to normalized weight
+            // Larger area_weight = better dispersion (higher value)
+            // Apply area penalty coefficient: larger coefficient reduces effective weight
+            int32_t normalized_area = static_cast<int32_t>(
+                static_cast<double>(elect_nodes[i]->area_weight) / ElectTxItem::kAreaPenaltyCoefficient);
+            area_weight_smooth[i] = normalized_area;
+            
+            if (area_weight_smooth[i] > max_area_weight_smooth) {
+                max_area_weight_smooth = area_weight_smooth[i];
+            }
+            
+            if (area_weight_smooth[i] < min_area_weight_smooth) {
+                min_area_weight_smooth = area_weight_smooth[i];
+            }
+        }
+        
+        // Normalize area weights to balance_diff range
+        int32_t area_weight_diff = max_area_weight_smooth - min_area_weight_smooth;
+        if (area_weight_diff > 0) {
+            int32_t area_weight_index = blance_diff / area_weight_diff;
+            for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
+                area_weight_smooth[i] = min_balance + area_weight_index * 
+                    (area_weight_smooth[i] - min_area_weight_smooth);
+            }
+        }
+    }
+
     std::vector<int32_t> ip_weight;
     {
         ip_weight.resize(elect_nodes.size(), 0);
         int32_t min_ip_weight = (std::numeric_limits<int32_t>::max)();
         int32_t max_ip_weight = (std::numeric_limits<int32_t>::min)();
         for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
-            int32_t prefix_len = 0;
-            auto count = 0;
-            ip_weight[i] = elect_nodes[i]->area_weight;
+                int32_t prefix_len = 0;
+                auto count = 0;
+                // Use smoothed area_weight instead of direct value
+                ip_weight[i] = area_weight_smooth[i];
             if (ip_weight[i] > max_ip_weight) {
                 max_ip_weight = ip_weight[i];
             }
@@ -1098,16 +1529,19 @@ void ElectTxItem::SmoothFtsValue(
 
     std::string fts_val_str;
     for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
+        // Include area_weight_smooth in fts_value calculation with weight coefficient
+        // area_weight contributes to geographic distribution (same weight as ip_weight)
         elect_nodes[i]->fts_value = (2 * ip_weight[i] +
                                      2 * credit_weight[i] +
                                      2 * blance_weight[i] +
-                                     2 * epoch_weight[i]) +
-                                     2 * gap_weight[i] /
-                                    10;
+                                     2 * epoch_weight[i] +
+                                     2 * area_weight_smooth[i]) +
+                                     2 * gap_weight[i];
         fts_val_str += std::to_string(ip_weight[i]) + "," +
                        std::to_string(credit_weight[i]) + "," +
                        std::to_string(blance_weight[i]) + "," +
                        std::to_string(epoch_weight[i]) + "," +
+                       std::to_string(area_weight_smooth[i]) + "," +
                        std::to_string(gap_weight[i]) + "," +
                        std::to_string(elect_nodes[i]->fts_value) + " --- ";
         if (*max_fts_val < elect_nodes[i]->fts_value) {
