@@ -616,7 +616,9 @@ def test_struct_demo(w3, MY, KEY):
     print(f"  获取用户信息: getUserInfo({alice_addr[:10]}...)")
     
     if result:
-        user_addr, name, balance, join_time, is_active = result
+        # eth_abi.decode returns (struct_tuple,) for single struct return
+        user_info = result[0]
+        user_addr, name, balance, join_time, is_active = user_info
         print(f"  ✅ 返回结构体:")
         print(f"     地址: {user_addr}")
         print(f"     名字: {name}")
@@ -670,9 +672,11 @@ def test_struct_demo(w3, MY, KEY):
     
     tx_history = struct_contract.functions.getTransactionHistory(alice_addr).call()
     print(f"  获取交易历史: getTransactionHistory({alice_addr[:10]}...)")
-    print(f"  ✅ 交易数量: {len(tx_history)}")
+    # eth_abi.decode returns (list_of_tuples,) for array return
+    tx_list = tx_history[0] if tx_history else []
+    print(f"  ✅ 交易数量: {len(tx_list)}")
     
-    for i, tx in enumerate(tx_history):
+    for i, tx in enumerate(tx_list):
         from_addr, to_addr, amount, timestamp, tx_type, success = tx
         print(f"  交易 {i+1}:")
         print(f"    从: {from_addr[:10]}...")
@@ -715,7 +719,9 @@ def test_struct_demo(w3, MY, KEY):
     print(f"  获取账户统计: getAccountStats({alice_addr[:10]}...)")
     
     if stats:
-        total_txs, total_in, total_out, last_tx_time, avg_amount = stats
+        # Single struct return → (struct_tuple,)
+        stat = stats[0]
+        total_txs, total_in, total_out, last_tx_time, avg_amount = stat
         print(f"  ✅ 统计数据:")
         print(f"     总交易数: {total_txs}")
         print(f"     总收入: {total_in}")
@@ -734,9 +740,11 @@ def test_struct_demo(w3, MY, KEY):
     ).call()
     
     print(f"  搜索交易 (100 <= 金额 <= 600)...")
-    print(f"  ✅ 搜索结果数量: {len(search_results)}")
+    # Array return → (list_of_tuples,)
+    results_list = search_results[0] if search_results else []
+    print(f"  ✅ 搜索结果数量: {len(results_list)}")
     
-    for i, tx in enumerate(search_results):
+    for i, tx in enumerate(results_list):
         from_addr, to_addr, amount, timestamp, tx_type, success = tx
         print(f"  结果 {i+1}: 金额 {amount} {tx_type}")
     
