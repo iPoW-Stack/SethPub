@@ -183,6 +183,30 @@ def _wait_balance(token, addr_ck, expected, label="", retries=30):
     return bal
 
 
+def _wait_prefund(contract, user_addr, expected, label="", retries=30):
+    """Poll prefund balance until it reaches at least the expected value."""
+    for i in range(retries):
+        pf = contract.get_prefund(user_addr)
+        if pf >= expected:
+            return pf
+        time.sleep(2)
+    pf = contract.get_prefund(user_addr)
+    return pf
+
+
+def _wait_account_exists(client, addr, label="", retries=30):
+    """Poll until the account address is queryable (balance >= 0 and no error)."""
+    for i in range(retries):
+        try:
+            bal = client.get_balance(addr)
+            if bal >= 0:
+                return True
+        except Exception:
+            pass
+        time.sleep(2)
+    return False
+
+
 # ---------------------------------------------------------------------------
 # Test: Multi-User AMM
 # ---------------------------------------------------------------------------
@@ -253,7 +277,17 @@ def test_amm(w3, deployer_addr: str, deployer_key: str, num_users: int = 3):
     token_a.prefund(prefund_amount, deployer_key)
     token_b.prefund(prefund_amount, deployer_key)
     amm.prefund(prefund_amount, deployer_key)
-    print(f"    Prefund set ✅")
+
+    # Verify deployer prefund
+    print(f"    Verifying deployer prefund...")
+    dpf_a = _wait_prefund(token_a, deployer_addr, prefund_amount, "Deployer TokenA")
+    dpf_b = _wait_prefund(token_b, deployer_addr, prefund_amount, "Deployer TokenB")
+    dpf_amm = _wait_prefund(amm, deployer_addr, prefund_amount, "Deployer AMMPool")
+    print(f"    Prefund: TokenA={dpf_a}, TokenB={dpf_b}, AMMPool={dpf_amm}")
+    assert dpf_a >= prefund_amount, f"Deployer TokenA prefund failed: {dpf_a}"
+    assert dpf_b >= prefund_amount, f"Deployer TokenB prefund failed: {dpf_b}"
+    assert dpf_amm >= prefund_amount, f"Deployer AMMPool prefund failed: {dpf_amm}"
+    print(f"    ✅ Deployer prefund verified")
 
     print(f"\n[5] Deployer: approve AMMPool + add initial liquidity (500,000 each)...")
     token_a.functions.approve(_ck(amm.address), 500_000).transact(deployer_key)
@@ -273,35 +307,59 @@ def test_amm(w3, deployer_addr: str, deployer_key: str, num_users: int = 3):
 
     users = []  # list of (addr, key, name)
     tokens_per_user = 100_000
+    user_prefund = 10_000_000
 
     for i in range(num_users):
         user_key = secrets.token_hex(32)
         user_addr = w3.client.get_address(user_key)
         name = f"User_{i+1}"
         users.append((user_addr, user_key, name))
+        user_ck = _ck(user_addr)
         print(f"\n[{name}] Address: {user_addr}")
 
-        # Deployer transfers tokens to this user
+        # ── Step A: Transfer tokens from deployer to user ─────────────
         print(f"    Deployer → {name}: {tokens_per_user} TokenA...")
-        r = token_a.functions.transfer(_ck(user_addr), tokens_per_user).transact(deployer_key)
+        r = token_a.functions.transfer(user_ck, tokens_per_user).transact(deployer_key)
         assert r.get('status') == 0, f"Transfer TokenA to {name} failed"
 
         print(f"    Deployer → {name}: {tokens_per_user} TokenB...")
-        r = token_b.functions.transfer(_ck(user_addr), tokens_per_user).transact(deployer_key)
+        r = token_b.functions.transfer(user_ck, tokens_per_user).transact(deployer_key)
         assert r.get('status') == 0, f"Transfer TokenB to {name} failed"
 
-        # Wait for token balances to settle
-        bal_a = _wait_balance(token_a, _ck(user_addr), tokens_per_user, f"{name} TokenA")
-        bal_b = _wait_balance(token_b, _ck(user_addr), tokens_per_user, f"{name} TokenB")
-        print(f"    Balances: TokenA={bal_a}, TokenB={bal_b}")
+        # ── Step B: Verify user account exists and token balances ─────
+        print(f"    Verifying {name} account exists...")
+        exists = _wait_account_exists(w3.client, user_addr, name)
+        assert exists, f"{name} account not found on chain!"
+        print(f"    ✅ {name} account exists on chain")
 
-        # User sets prefund on all 3 contracts (gas deposit for contract calls)
-        user_prefund = 10_000_000
+        bal_a = _wait_balance(token_a, user_ck, tokens_per_user, f"{name} TokenA")
+        bal_b = _wait_balance(token_b, user_ck, tokens_per_user, f"{name} TokenB")
+        print(f"    Token balances: A={bal_a}, B={bal_b}")
+        assert bal_a == tokens_per_user, \
+            f"❌ {name} TokenA balance mismatch: expected {tokens_per_user}, got {bal_a}"
+        assert bal_b == tokens_per_user, \
+            f"❌ {name} TokenB balance mismatch: expected {tokens_per_user}, got {bal_b}"
+        print(f"    ✅ Token balances verified")
+
+        # ── Step C: User sets prefund on all 3 contracts ──────────────
         print(f"    {name}: prefund {user_prefund} on TokenA, TokenB, AMMPool...")
         token_a.prefund(user_prefund, user_key)
         token_b.prefund(user_prefund, user_key)
         amm.prefund(user_prefund, user_key)
-        print(f"    ✅ {name} ready to trade")
+
+        # ── Step D: Verify prefund balances ───────────────────────────
+        print(f"    Verifying {name} prefund balances...")
+        pf_a = _wait_prefund(token_a, user_addr, user_prefund, f"{name} TokenA prefund")
+        pf_b = _wait_prefund(token_b, user_addr, user_prefund, f"{name} TokenB prefund")
+        pf_amm = _wait_prefund(amm, user_addr, user_prefund, f"{name} AMMPool prefund")
+        print(f"    Prefund: TokenA={pf_a}, TokenB={pf_b}, AMMPool={pf_amm}")
+        assert pf_a >= user_prefund, \
+            f"❌ {name} TokenA prefund mismatch: expected >={user_prefund}, got {pf_a}"
+        assert pf_b >= user_prefund, \
+            f"❌ {name} TokenB prefund mismatch: expected >={user_prefund}, got {pf_b}"
+        assert pf_amm >= user_prefund, \
+            f"❌ {name} AMMPool prefund mismatch: expected >={user_prefund}, got {pf_amm}"
+        print(f"    ✅ Prefund verified — {name} ready to trade")
 
     # ══════════════════════════════════════════════════════════════════════
     # Phase 3: Each user trades independently
