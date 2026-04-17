@@ -1831,13 +1831,39 @@ def test_iweth9_existing_contract(w3, MY, KEY):
         print(f"\n[3] Setting up prefund (gas deposit)...")
         prefund_amount = 5000000  # 5 units as gas prefund
         prefund_receipt = weth_contract.prefund(prefund_amount, KEY)
-        print(f"    ✅ Prefund successful")
+        print(f"    ✅ Prefund transaction sent")
         print(f"    - Prefund amount: {prefund_amount}")
         print(f"    - Status: {prefund_receipt.get('status', 'pending')}")
         
-        # Wait for prefund to settle
+        # [3.1] Wait for prefund to settle and check status (up to 30 seconds)
+        print(f"\n[3.1] Waiting for prefund to settle (checking every 2 seconds, max 30s)...")
         import time
-        time.sleep(2)
+        max_wait = 30
+        check_interval = 2
+        elapsed = 0
+        prefund_confirmed = False
+        
+        while elapsed < max_wait:
+            try:
+                current_prefund = weth_contract.get_prefund(MY)
+                print(f"    [{elapsed}s] Current prefund status: {current_prefund}")
+                
+                # If prefund is confirmed (non-zero), mark as confirmed
+                if current_prefund > 0:
+                    print(f"    ✅ Prefund confirmed! Balance: {current_prefund}")
+                    prefund_confirmed = True
+                    break
+                    
+            except Exception as e:
+                print(f"    [{elapsed}s] Checking prefund... (Error: {str(e)[:50]})")
+            
+            time.sleep(check_interval)
+            elapsed += check_interval
+        
+        if not prefund_confirmed:
+            print(f"    ⚠️ Warning: Prefund status not confirmed after {max_wait}s")
+        else:
+            print(f"    ✅ Prefund fully confirmed after {elapsed}s")
         
         # [4] Call deposit() function
         print(f"\n[4] Calling deposit() function...")
@@ -1851,7 +1877,30 @@ def test_iweth9_existing_contract(w3, MY, KEY):
         print(f"    - Deposit amount: {deposit_amount}")
         print(f"    - Status: {deposit_receipt.get('status', 'pending')}")
         
-        time.sleep(1)
+        # [4.1] Wait for deposit transaction to settle
+        print(f"\n[4.1] Waiting for deposit transaction to settle (checking every 2 seconds, max 30s)...")
+        elapsed = 0
+        deposit_confirmed = False
+        
+        while elapsed < max_wait:
+            try:
+                # Try to verify transaction was processed
+                tx_status = deposit_receipt.get('status')
+                print(f"    [{elapsed}s] Deposit status: {tx_status}")
+                if tx_status == 0 or tx_status == '0':
+                    print(f"    ✅ Deposit confirmed!")
+                    deposit_confirmed = True
+                    break
+            except Exception as e:
+                print(f"    [{elapsed}s] Checking deposit... (Error: {str(e)[:50]})")
+            
+            time.sleep(check_interval)
+            elapsed += check_interval
+        
+        if deposit_confirmed:
+            print(f"    ✅ Deposit fully confirmed after {elapsed}s")
+        else:
+            print(f"    ⚠️ Deposit status: {deposit_receipt.get('status')}")
         
         # [5] Call balanceOf() view function
         print(f"\n[5] Checking balance with balanceOf()...")
@@ -1869,15 +1918,35 @@ def test_iweth9_existing_contract(w3, MY, KEY):
         # [7] Refund remaining prefund
         print(f"\n[7] Refunding remaining prefund...")
         refund_receipt = weth_contract.refund(KEY)
-        print(f"    ✅ Refund successful")
+        print(f"    ✅ Refund transaction sent")
         print(f"    - Status: {refund_receipt.get('status', 'pending')}")
         
-        # [8] Verify refund completed
-        print(f"\n[8] Verifying refund completed...")
-        final_prefund = weth_contract.get_prefund(MY)
-        print(f"    - Final prefund: {final_prefund}")
-        if final_prefund <= prefund_status:
-            print(f"    ✅ Refund verified - prefund reduced")
+        # [7.1] Wait for refund to complete (up to 30 seconds)
+        print(f"\n[7.1] Waiting for refund to complete (checking every 2 seconds, max 30s)...")
+        elapsed = 0
+        refund_confirmed = False
+        
+        while elapsed < max_wait:
+            try:
+                final_prefund = weth_contract.get_prefund(MY)
+                print(f"    [{elapsed}s] Current prefund: {final_prefund}")
+                
+                # If prefund is reduced or zero, refund is complete
+                if final_prefund <= prefund_status:
+                    print(f"    ✅ Refund confirmed! Final prefund: {final_prefund}")
+                    refund_confirmed = True
+                    break
+                    
+            except Exception as e:
+                print(f"    [{elapsed}s] Checking refund... (Error: {str(e)[:50]})")
+            
+            time.sleep(check_interval)
+            elapsed += check_interval
+        
+        if refund_confirmed:
+            print(f"    ✅ Refund fully confirmed after {elapsed}s")
+        else:
+            print(f"    ⚠️ Warning: Refund status not confirmed after {max_wait}s")
         
         print("\n" + "=" * 70)
         print("✅ TEST CASE PASSED: IWETH9 Existing Contract Test Complete")
