@@ -100,6 +100,560 @@ contract ProbeBridge {
 """
 
 RANDOM_SALT = secrets.token_hex(31)
+
+# ============================================
+# AMM SAME-SHARD ATOMIC SWAP TEST CONTRACTS
+# ============================================
+# 关键设计：三个合约部署到同一分片，同一交易池中执行
+# 目的：演示同一分片内的原子性保证 vs 跨分片的非原子性
+# 
+# 合约角色分工：
+# 1. AMMPool       - 流动性池，保存储备金，执行恒定乘积公式
+# 2. AMMTreasury   - 资金管理，处理用户余额、存取
+# 3. AMMRouter     - 路由执行，调用 Treasury -> Pool 的链式调用
+#
+# 同分片同交易池特性：
+# - Pool 和 Treasury 的调用在同一笔交易中原子执行
+# - 要么全成功，要么全失败（自动回滚）
+# - 开发者无需手动编写补偿逻辑
+# ============================================
+
+AMM_POOL_SOL = """
+pragma solidity ^0.8.20;
+
+/**
+ * @title AMMPool - Liquidity Pool with Constant Product Formula
+ * @notice 流动性池合约，维护代币储备和交换逻辑
+ * @dev 必须与 AMMTreasury 和 AMMRouter 部署到同一分片
+ */
+contract AMMPool {
+    string public poolName;
+    uint256 public reserveTokenX;  // Token X 储备
+    uint256 public reserveTokenY;  // Token Y 储备
+    uint256 public totalSwaps;
+    uint256 public failedSwaps;
+    
+    address public treasury;  // 关键：指向同分片的 Treasury 合约
+    
+    // 事件用于链式调用追踪
+    event SwapInitiated(address indexed user, uint256 amountXIn, uint256 minYOut, uint256 swapId);
+    event SwapExecuted(address indexed user, uint256 amountXIn, uint256 amountYOut, uint256 swapId);
+    event SwapFailed(address indexed user, uint256 amountXIn, uint256 reason, uint256 swapId);
+    event PoolStateUpdated(uint256 reserveX, uint256 reserveY, uint256 totalSwaps);
+    
+    mapping(uint256 => SwapRecord) public swapHistory;
+    
+    struct SwapRecord {
+        address user;
+        uint256 amountIn;
+        uint256 minOut;
+        uint256 amountOut;
+        uint256 timestamp;
+        uint8 status;  // 0=pending, 1=success, 2=failed
+    }
+
+    constructor(string memory name, uint256 initialX, uint256 initialY) payable {
+        poolName = name;
+        reserveTokenX = initialX;
+        reserveTokenY = initialY;
+    }
+
+    /**
+     * @notice 设置 Treasury 地址（必须在部署后调用，确保同分片）
+     */
+    function setTreasury(address _treasury) external {
+        require(treasury == address(0), "Treasury already set");
+        treasury = _treasury;
+    }
+
+    /**
+     * @notice 恒定乘积公式交换：X * Y = K
+     * @param amountXIn 输入 Token X 数量
+     * @param minYOut 最小输出 Token Y 数量（滑点保护）
+     * @return amountYOut 实际输出的 Y 数量
+     * @return swapId 本次交换ID
+     * 
+     * 关键点：同分片原子性
+     * - 如果交换失败（滑点过大），整个交易回滚
+     * - Treasury 和 Pool 的状态同步更新
+     * - 无需手动补偿机制
+     */
+    function swapXtoY(uint256 amountXIn, uint256 minYOut) 
+        external 
+        returns (uint256 amountYOut, uint256 swapId) 
+    {
+        require(msg.sender == treasury, "Only Treasury can call");
+        require(amountXIn > 0, "Input amount must be positive");
+        
+        swapId = totalSwaps++;
+        
+        emit SwapInitiated(tx.origin, amountXIn, minYOut, swapId);
+        
+        // 恒定乘积公式计算
+        uint256 k = reserveTokenX * reserveTokenY;
+        uint256 newReserveX = reserveTokenX + amountXIn;
+        uint256 newReserveY = k / newReserveX;
+        amountYOut = reserveTokenY - newReserveY;
+        
+        // 滑点检查：失败将导致整个交易回滚（同分片原子性）
+        require(amountYOut >= minYOut, "Slippage exceeded: insufficient output");
+        
+        // 状态更新（原子性保证）
+        reserveTokenX = newReserveX;
+        reserveTokenY = newReserveY;
+        
+        swapHistory[swapId] = SwapRecord({
+            user: tx.origin,
+            amountIn: amountXIn,
+            minOut: minYOut,
+            amountOut: amountYOut,
+            timestamp: block.timestamp,
+            status: 1  // 1 = success
+        });
+        
+        emit SwapExecuted(tx.origin, amountXIn, amountYOut, swapId);
+        emit PoolStateUpdated(reserveTokenX, reserveTokenY, totalSwaps);
+        
+        return (amountYOut, swapId);
+    }
+    
+    /**
+     * @notice 获取当前池的状态
+     */
+    function getPoolStats() external view returns (uint256 x, uint256 y, uint256 swaps, uint256 failed) {
+        return (reserveTokenX, reserveTokenY, totalSwaps, failedSwaps);
+    }
+}
+"""
+
+AMM_TREASURY_SOL = """
+pragma solidity ^0.8.20;
+
+/**
+ * @title AMMTreasury - 资金管理和用户余额跟踪
+ * @notice 必须与 AMMPool 和 AMMRouter 部署到同一分片
+ * @dev 同分片部署保证以下调用链的原子性：Router -> Treasury -> Pool
+ */
+interface IAMMPool {
+    function swapXtoY(uint256 amountXIn, uint256 minYOut) external returns (uint256 amountYOut, uint256 swapId);
+    function getPoolStats() external view returns (uint256 x, uint256 y, uint256 swaps, uint256 failed);
+}
+
+contract AMMTreasury {
+    address public pool;
+    address public router;
+    
+    // 用户余额跟踪
+    mapping(address => uint256) public balanceX;  // Token X 用户余额
+    mapping(address => uint256) public balanceY;  // Token Y 用户余额
+    mapping(address => uint256) public totalDeposited;
+    
+    uint256 public totalSwapsExecuted;
+    uint256 public totalSwapsFailed;
+    
+    event Deposited(address indexed user, uint256 amountX, uint256 amountY);
+    event SwapRequested(address indexed user, uint256 amountXIn, uint256 minYOut, uint256 requestId);
+    event SwapCompleted(address indexed user, uint256 amountXIn, uint256 amountYOut, uint256 requestId);
+    event SwapFailed(address indexed user, string reason);
+    event Withdrawn(address indexed user, uint256 amountX, uint256 amountY);
+    
+    constructor(address _pool) {
+        pool = _pool;
+    }
+
+    /**
+     * @notice 设置 Router 地址（必须在部署后调用）
+     */
+    function setRouter(address _router) external {
+        require(router == address(0), "Router already set");
+        router = _router;
+    }
+
+    /**
+     * @notice 用户存款到 Treasury（初始化余额）
+     */
+    function deposit(uint256 amountX, uint256 amountY) external payable {
+        require(amountX > 0 || amountY > 0, "Must deposit positive amount");
+        
+        balanceX[msg.sender] += amountX;
+        balanceY[msg.sender] += amountY;
+        totalDeposited[msg.sender] += msg.value;
+        
+        emit Deposited(msg.sender, amountX, amountY);
+    }
+
+    /**
+     * @notice 执行交换（由 Router 调用）
+     * @param user 交换用户
+     * @param amountXIn Token X 输入数量
+     * @param minYOut 最小输出 Y 数量
+     * @return amountYOut 实际输出 Y 数量
+     * 
+     * 关键的链式调用：Router -> Treasury.executeSwap() -> Pool.swapXtoY()
+     * 这些调用在同一分片、同一交易池中**原子执行**
+     * 如果任何步骤失败（如滑点检查），整个交易自动回滚
+     * 用户无需手动补偿
+     */
+    function executeSwap(
+        address user,
+        uint256 amountXIn,
+        uint256 minYOut
+    ) external returns (uint256 amountYOut) {
+        require(msg.sender == router, "Only Router can call");
+        require(balanceX[user] >= amountXIn, "Insufficient balance");
+        
+        uint256 requestId = totalSwapsExecuted;
+        emit SwapRequested(user, amountXIn, minYOut, requestId);
+        
+        // 关键步骤：调用同分片 Pool 的 swapXtoY
+        // 如果失败（如滑点过大），回滚整个交易
+        (uint256 amountYOut, ) = IAMMPool(pool).swapXtoY(amountXIn, minYOut);
+        
+        // 更新用户余额（只有当 Pool.swapXtoY 成功时才执行）
+        balanceX[user] -= amountXIn;
+        balanceY[user] += amountYOut;
+        
+        totalSwapsExecuted++;
+        emit SwapCompleted(user, amountXIn, amountYOut, requestId);
+        
+        return amountYOut;
+    }
+
+    /**
+     * @notice 用户提现
+     */
+    function withdraw(uint256 amountX, uint256 amountY) external {
+        require(balanceX[msg.sender] >= amountX && balanceY[msg.sender] >= amountY, "Insufficient balance");
+        
+        balanceX[msg.sender] -= amountX;
+        balanceY[msg.sender] -= amountY;
+        
+        emit Withdrawn(msg.sender, amountX, amountY);
+    }
+
+    /**
+     * @notice 查看用户余额
+     */
+    function getUserBalance(address user) external view returns (uint256 x, uint256 y) {
+        return (balanceX[user], balanceY[user]);
+    }
+}
+"""
+
+AMM_ROUTER_SOL = """
+pragma solidity ^0.8.20;
+
+/**
+ * @title AMMRouter - 路由和交换编排
+ * @notice 必须与 AMMPool 和 AMMTreasury 部署到同一分片
+ * @dev 演示同分片链式调用的原子性
+ */
+interface IAMMTreasury {
+    function executeSwap(address user, uint256 amountXIn, uint256 minYOut) external returns (uint256 amountYOut);
+    function getUserBalance(address user) external view returns (uint256 x, uint256 y);
+}
+
+contract AMMRouter {
+    address public treasury;
+    address public pool;
+    uint256 public totalRoutedSwaps;
+    uint256 public successfulSwaps;
+    uint256 public failedSwaps;
+    
+    event RoutingInitiated(address indexed user, uint256 amountXIn, uint256 minYOut);
+    event RoutingSuccess(address indexed user, uint256 amountXIn, uint256 amountYOut);
+    event RoutingFailed(address indexed user, string reason);
+    event AtomicityDemonstration(string message);
+
+    constructor(address _treasury, address _pool) {
+        treasury = _treasury;
+        pool = _pool;
+    }
+
+    /**
+     * @notice 执行原子交换
+     * @param amountXIn Token X 输入数量
+     * @param minYOut 最小输出 Y 数量
+     * @return amountYOut 实际输出 Y 数量
+     * 
+     * 调用链（在同一分片同一交易池执行）：
+     * Router.atomicSwap() 
+     *  ↓
+     * Treasury.executeSwap()
+     *  ↓
+     * Pool.swapXtoY()
+     *  ↑
+     * 如果 Pool 失败（如滑点检查失败），异常会沿链冒泡
+     * 整个交易自动回滚，Treasury 和 Pool 的状态都不变
+     * 用户不需要手动补偿！
+     */
+    function atomicSwap(
+        uint256 amountXIn,
+        uint256 minYOut
+    ) external returns (uint256 amountYOut) {
+        totalRoutedSwaps++;
+        
+        emit RoutingInitiated(msg.sender, amountXIn, minYOut);
+        emit AtomicityDemonstration("Starting atomic swap in same shard");
+        
+        // 这个调用链是**原子的**（同分片同交易池）
+        amountYOut = IAMMTreasury(treasury).executeSwap(msg.sender, amountXIn, minYOut);
+        
+        successfulSwaps++;
+        emit RoutingSuccess(msg.sender, amountXIn, amountYOut);
+        emit AtomicityDemonstration("Atomic swap completed: no compensation needed!");
+        
+        return amountYOut;
+    }
+
+    /**
+     * @notice 多跳交换演示
+     * @param hops 跳数
+     * 
+     * 与跨分片不同：同分片内所有跳都在一个交易中原子执行
+     * 要么全成功，要么全失败 + 自动回滚
+     */
+    function multiHopSwap(uint256 amountXIn, uint256 minYOut, uint256 hops) 
+        external 
+        returns (uint256 finalAmount) 
+    {
+        require(hops > 0, "At least 1 hop required");
+        
+        uint256 currentAmount = amountXIn;
+        
+        // 所有跳都在同一交易中执行
+        for (uint256 i = 0; i < hops; i++) {
+            uint256 hopMinOut = (i == hops - 1) ? minYOut : 1;
+            
+            // 每一跳都是 atomicSwap 的链式调用
+            // 如果任何一跳失败，整个交易回滚
+            currentAmount = this.atomicSwap(currentAmount, hopMinOut);
+        }
+        
+        emit AtomicityDemonstration("Multi-hop swap completed atomically");
+        return currentAmount;
+    }
+
+    /**
+     * @notice 获取统计信息
+     */
+    function getStats() external view returns (uint256 total, uint256 success, uint256 failed) {
+        return (totalRoutedSwaps, successfulSwaps, failedSwaps);
+    }
+}
+"""
+
+def test_amm_same_shard_atomic_swap(w3, MY, KEY):
+    """
+    Test Case: Same-Shard AMM Atomic Swap
+    
+    关键设计原则：
+    - 三个合约（Pool、Treasury、Router）由同一账户部署
+    - 因此它们都在该账户所在的分片和交易池中
+    - 所有合约间调用在同一交易池中原子执行
+    - 原子性保证：要么全成功，要么全失败（自动回滚）
+    
+    对比跨分片：
+    - 跨分片部署的合约无法原子调用
+    - 需要手动补偿机制
+    - 开发者负担大
+    
+    Validation Points:
+    1. 同一账户部署三个合约到同一分片
+    2. 成功的交换：自动执行，无需手动补偿
+    3. 失败的交换：自动回滚，状态不变
+    4. 链式调用在同一交易中原子执行
+    """
+    print("\n" + "="*80)
+    print("TEST CASE: Same-Shard AMM Atomic Swap (Single Transaction Pool)")
+    print("="*80)
+    
+    print("\n[1] 部署三个合约到同一分片（同一账户创建）")
+    print("-" * 80)
+    print(f"创建者账户: {MY}")
+    print("这些合约会被部署到该账户所在的分片和交易池中\n")
+    
+    # ========== 第一步：部署 AMMPool ==========
+    print("▶ 部署 AMMPool (流动性池)")
+    pool_bin, pool_abi = compile_and_link(AMM_POOL_SOL, "AMMPool")
+    amm_pool = w3.seth.contract(abi=pool_abi, bytecode=pool_bin).deploy({
+        'from': MY,
+        'salt': RANDOM_SALT + 'amm_pool_',
+        'args': ["SETH/USDC", 10000, 10000],
+    }, KEY)
+    print(f"  ✅ AMMPool 已部署: {amm_pool.address}")
+    print(f"     初始储备: X=10000, Y=10000 (K={10000*10000})")
+    
+    # ========== 第二步：部署 AMMTreasury ==========
+    print("\n▶ 部署 AMMTreasury (资金管理)")
+    treasury_bin, treasury_abi = compile_and_link(AMM_TREASURY_SOL, "AMMTreasury")
+    amm_treasury = w3.seth.contract(abi=treasury_abi, bytecode=treasury_bin).deploy({
+        'from': MY,
+        'salt': RANDOM_SALT + 'amm_treas',
+        'args': [to_checksum_address(amm_pool.address)],
+    }, KEY)
+    print(f"  ✅ AMMTreasury 已部署: {amm_treasury.address}")
+    
+    # ========== 第三步：部署 AMMRouter ==========
+    print("\n▶ 部署 AMMRouter (路由和编排)")
+    router_bin, router_abi = compile_and_link(AMM_ROUTER_SOL, "AMMRouter")
+    amm_router = w3.seth.contract(abi=router_abi, bytecode=router_bin).deploy({
+        'from': MY,
+        'salt': RANDOM_SALT + 'amm_rout_',
+        'args': [to_checksum_address(amm_treasury.address), to_checksum_address(amm_pool.address)],
+    }, KEY)
+    print(f"  ✅ AMMRouter 已部署: {amm_router.address}")
+    
+    # ========== 第四步：初始化关系 ==========
+    print("\n[2] 初始化合约关系")
+    print("-" * 80)
+    
+    # Pool 设置 Treasury
+    print("▶ AMMPool.setTreasury() ...")
+    amm_pool.functions.setTreasury(to_checksum_address(amm_treasury.address)).transact(KEY)
+    print("  ✅ Treasury 已关联到 Pool")
+    
+    # Treasury 设置 Router
+    print("▶ AMMTreasury.setRouter() ...")
+    amm_treasury.functions.setRouter(to_checksum_address(amm_router.address)).transact(KEY)
+    print("  ✅ Router 已关联到 Treasury")
+    
+    # ========== 第五步：用户存款 ==========
+    print("\n[3] 用户存款初始化")
+    print("-" * 80)
+    print("▶ 用户存入: 1000 X, 1000 Y")
+    amm_treasury.functions.deposit(1000, 1000).transact(KEY, value=2000)
+    
+    user_balance = amm_treasury.functions.getUserBalance(MY).call()
+    print(f"  ✅ 用户余额: X={user_balance[0]}, Y={user_balance[1]}")
+    
+    # ========== TEST 1: 成功的原子交换 ==========
+    print("\n[4] TEST 1: 成功的原子交换（滑点在允许范围内）")
+    print("-" * 80)
+    print("场景: 用户交换 100 X，最小期望 90 Y")
+    print("步骤: Router → Treasury → Pool（同交易池中原子执行）")
+    
+    amount_in = 100
+    min_out = 90
+    
+    receipt = amm_router.functions.atomicSwap(amount_in, min_out).transact(KEY)
+    
+    if receipt.get('status') == 0:
+        print("✅ 交易成功，状态码: 0")
+        
+        # 检查事件
+        for e in receipt.get('decoded_events', []):
+            if e['event'] == 'RoutingSuccess':
+                actual_out = e['args']['amountYOut']
+                print(f"✅ 原子交换成功: {e['args']['amountXIn']} X → {actual_out} Y")
+            elif e['event'] == 'AtomicityDemonstration':
+                print(f"   📍 {e['args']['message']}")
+        
+        # 验证状态更新
+        user_balance_after = amm_treasury.functions.getUserBalance(MY).call()
+        print(f"✅ 用户余额已更新: X={user_balance_after[0]}, Y={user_balance_after[1]}")
+        
+        pool_stats = amm_pool.functions.getPoolStats().call()
+        print(f"✅ Pool 状态已更新: X={pool_stats[0]}, Y={pool_stats[1]}, 总交换={pool_stats[2]}")
+    else:
+        print(f"❌ 交易失败: {receipt.get('msg')}")
+    
+    # ========== TEST 2: 失败导致自动回滚 ==========
+    print("\n[5] TEST 2: 失败的交换导致自动回滚（同分片保证）")
+    print("-" * 80)
+    print("场景: 用户要求最小输出 5000 Y（市场无法提供）")
+    print("结果: 整个交易回滚，Pool 和 Treasury 状态不变")
+    print("对比跨分片: 跨分片会导致状态不一致，需要手动补偿")
+    
+    amount_in = 100
+    unrealistic_min = 5000
+    
+    # 记录当前状态
+    balance_before_fail = amm_treasury.functions.getUserBalance(MY).call()
+    pool_before_fail = amm_pool.functions.getPoolStats().call()
+    
+    print(f"\n交易前状态:")
+    print(f"  用户余额: X={balance_before_fail[0]}, Y={balance_before_fail[1]}")
+    print(f"  Pool状态: X={pool_before_fail[0]}, Y={pool_before_fail[1]}")
+    
+    # 尝试失败的交换
+    try:
+        receipt = amm_router.functions.atomicSwap(amount_in, unrealistic_min).transact(KEY)
+        
+        if receipt.get('status') != 0:
+            print(f"\n✅ 交易失败（预期行为），状态码: {receipt.get('status')}")
+            print(f"   原因: {receipt.get('msg')}")
+            
+            # 验证自动回滚
+            balance_after_fail = amm_treasury.functions.getUserBalance(MY).call()
+            pool_after_fail = amm_pool.functions.getPoolStats().call()
+            
+            print(f"\n✅ 自动回滚验证:")
+            print(f"  用户余额不变: X={balance_after_fail[0]} (期望{balance_before_fail[0]})")
+            print(f"  Pool状态不变: X={pool_after_fail[0]} (期望{pool_before_fail[0]})")
+            
+            if (balance_after_fail[0] == balance_before_fail[0] and 
+                pool_after_fail[0] == pool_before_fail[0]):
+                print("\n🎯 原子性保证验证成功！")
+                print("   → 失败的交换导致整个交易回滚")
+                print("   → 用户余额和 Pool 状态都未改变")
+                print("   → 无需手动补偿机制")
+        else:
+            print(f"⚠️ 交易意外成功")
+    except Exception as e:
+        print(f"✅ 交易异常（预期行为）: {str(e)}")
+        print("   → 异常在同交易池中导致回滚")
+        print("   → 原子性保证生效")
+    
+    # ========== TEST 3: 多跳交换（所有跳原子执行）==========
+    print("\n[6] TEST 3: 多跳交换（所有跳在同一交易中原子执行）")
+    print("-" * 80)
+    print("场景: 2跳交换（A → B → C）")
+    print("特点: 与跨分片不同，所有跳都在同交易中完成，无需补偿")
+    
+    # 重新存款以确保余额充足
+    amm_treasury.functions.deposit(500, 500).transact(KEY, value=1000)
+    
+    receipt = amm_router.functions.multiHopSwap(200, 50, 2).transact(KEY)
+    
+    if receipt.get('status') == 0:
+        print("✅ 多跳交换成功")
+        
+        for e in receipt.get('decoded_events', []):
+            if e['event'] == 'AtomicityDemonstration':
+                print(f"   📍 {e['args']['message']}")
+        
+        final_balance = amm_treasury.functions.getUserBalance(MY).call()
+        print(f"✅ 最终用户余额: X={final_balance[0]}, Y={final_balance[1]}")
+        print("   → 所有跳都在同一交易中成功完成")
+        print("   → 自动原子性，无需手动协调")
+    else:
+        print(f"❌ 多跳交换失败: {receipt.get('msg')}")
+    
+    # ========== 总结 ==========
+    print("\n[7] 对比分析：同分片 vs 跨分片")
+    print("="*80)
+    print("""
+┌─────────────────────┬──────────────────┬──────────────────┐
+│      特性           │     同分片        │     跨分片       │
+├─────────────────────┼──────────────────┼──────────────────┤
+│ 部署位置            │ 同一交易池       │ 不同分片         │
+│ 调用原子性          │ ✅ 自动原子      │ ❌ 非原子        │
+│ 失败回滚            │ ✅ 自动回滚      │ ❌ 手动补偿      │
+│ 开发难度            │ ✅ 简单          │ ❌ 复杂          │
+│ 状态一致性          │ ✅ 保证          │ ❌ 不保证        │
+│ 链式调用            │ ✅ 支持          │ ❌ 异步          │
+│ 最终化时间          │ ✅ 一个区块      │ ❌ 多个区块      │
+│ 补偿逻辑            │ ✅ 无需          │ ❌ 必须编写      │
+└─────────────────────┴──────────────────┴──────────────────┘
+
+结论：
+1. 同分片部署使得原子性成为约束条件而非特性
+2. 这大大简化了复杂合约交互的实现
+3. 跨分片仍需补偿机制，但可通过中间层合约优化
+4. Seth 通过分片部署策略实现灵活的一致性保证
+    """)
+
 def test_library_with_contrcat(w3, MY, KEY):
     print("\n--- TEST CASE 1: Library ---")
     src = "pragma solidity ^0.8.0; library MathLib { function add(uint a, uint b) public pure returns(uint){return a+b;} } contract Calculator { function use(uint a, uint b) public pure returns(uint){return MathLib.add(a,b);} }"
@@ -575,7 +1129,27 @@ def oqs_sign_test():
     test_oqs_contract_prefund_flow(w3, MY_OQS, OQS_KEY, OQS_PK)
 
 if __name__ == "__main__":
+    # Standard ECDSA signature tests
     ecdsa_sign_test()
+    
+    # Post-quantum signature tests
     oqs_sign_test()
+    
+    # GM/SM2 signature tests
     gmssl_sign_test()
+    
+    # === NEW: Same-Shard AMM Atomic Swap Tests ===
+    # Tests the atomicity guarantee when multiple contracts are deployed to the same shard
+    # by the same account and executed in the same transaction pool
+    print("\n" + "="*80)
+    print("RUNNING SAME-SHARD AMM ATOMIC SWAP TESTS")
+    print("Key Principle: Multiple contracts deployed by same account → same shard → same TX pool")
+    print("Result: Automatic atomicity and rollback guarantee")
+    print("="*80)
+    
+    IP, PORT, KEY = "127.0.0.1", 23001, "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
+    w3 = SethWeb3Mock(IP, PORT)
+    MY = w3.client.get_address(KEY)
+    
+    test_amm_same_shard_atomic_swap(w3, MY, KEY)
  

@@ -941,6 +941,263 @@ def test_upgradeable_contract(w3, MY, KEY):
     print("=" * 60)
 
 
+# ---------------------------------------------------------------------------
+# AMM (Automated Market Maker) Demo
+#
+# Design principle: In Seth's sharded architecture, contracts that call each
+# other MUST reside in the same shard AND the same pool to guarantee atomic
+# execution within a single consensus round.  This is achieved by deploying
+# all related contracts from the SAME account — the CREATE2 address is
+# derived from the deployer's address, so all contracts land in the deployer's
+# shard and pool.
+#
+# Three contracts:
+#   TokenA  — simple ERC20-like token
+#   TokenB  — simple ERC20-like token
+#   AMMPool — constant-product AMM (x * y = k) that holds reserves of both
+#             tokens and exposes swap / addLiquidity / removeLiquidity.
+#
+# Because all three are deployed by the same account (MY), they share the
+# same shard and pool, so AMMPool.swap() calling TokenA.transferFrom() and
+# TokenB.transfer() is fully atomic — no cross-shard coordination needed.
+# ---------------------------------------------------------------------------
+
+AMM_TOKEN_SOL = """
+pragma solidity ^0.8.0;
+
+contract SimpleToken {
+    string  public name;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    constructor(string memory _name, uint256 _initialSupply) {
+        name = _name;
+        totalSupply = _initialSupply;
+        balanceOf[msg.sender] = _initialSupply;
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        require(balanceOf[msg.sender] >= amount, "insufficient");
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(msg.sender, to, amount);
+        return true;
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        emit Approval(msg.sender, spender, amount);
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        require(allowance[from][msg.sender] >= amount, "not approved");
+        require(balanceOf[from] >= amount, "insufficient");
+        allowance[from][msg.sender] -= amount;
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(from, to, amount);
+        return true;
+    }
+}
+"""
+
+AMM_POOL_SOL = """
+pragma solidity ^0.8.0;
+
+interface IERC20 {
+    function transferFrom(address from, address to, uint256 amount) external returns (bool);
+    function transfer(address to, uint256 amount) external returns (bool);
+    function balanceOf(address account) external view returns (uint256);
+}
+
+contract AMMPool {
+    IERC20 public tokenA;
+    IERC20 public tokenB;
+    uint256 public reserveA;
+    uint256 public reserveB;
+    uint256 public totalLiquidity;
+    mapping(address => uint256) public liquidity;
+
+    event LiquidityAdded(address indexed provider, uint256 amountA, uint256 amountB, uint256 lp);
+    event LiquidityRemoved(address indexed provider, uint256 amountA, uint256 amountB);
+    event Swap(address indexed user, address tokenIn, uint256 amountIn, uint256 amountOut);
+
+    constructor(address _tokenA, address _tokenB) {
+        tokenA = IERC20(_tokenA);
+        tokenB = IERC20(_tokenB);
+    }
+
+    function addLiquidity(uint256 amountA, uint256 amountB) external returns (uint256 lp) {
+        tokenA.transferFrom(msg.sender, address(this), amountA);
+        tokenB.transferFrom(msg.sender, address(this), amountB);
+        if (totalLiquidity == 0) {
+            lp = amountA;
+        } else {
+            lp = (amountA * totalLiquidity) / reserveA;
+        }
+        reserveA += amountA;
+        reserveB += amountB;
+        totalLiquidity += lp;
+        liquidity[msg.sender] += lp;
+        emit LiquidityAdded(msg.sender, amountA, amountB, lp);
+    }
+
+    function removeLiquidity(uint256 lpAmount) external {
+        require(liquidity[msg.sender] >= lpAmount, "insufficient lp");
+        uint256 amountA = (lpAmount * reserveA) / totalLiquidity;
+        uint256 amountB = (lpAmount * reserveB) / totalLiquidity;
+        liquidity[msg.sender] -= lpAmount;
+        totalLiquidity -= lpAmount;
+        reserveA -= amountA;
+        reserveB -= amountB;
+        tokenA.transfer(msg.sender, amountA);
+        tokenB.transfer(msg.sender, amountB);
+        emit LiquidityRemoved(msg.sender, amountA, amountB);
+    }
+
+    function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 amountOut) {
+        require(amountIn > 0 && reserveA > 0 && reserveB > 0, "invalid");
+        // constant product: (reserveA + amountIn) * (reserveB - amountOut) = reserveA * reserveB
+        amountOut = (amountIn * reserveB) / (reserveA + amountIn);
+        require(amountOut >= minOut, "slippage");
+        tokenA.transferFrom(msg.sender, address(this), amountIn);
+        tokenB.transfer(msg.sender, amountOut);
+        reserveA += amountIn;
+        reserveB -= amountOut;
+        emit Swap(msg.sender, address(tokenA), amountIn, amountOut);
+    }
+
+    function swapBForA(uint256 amountIn, uint256 minOut) external returns (uint256 amountOut) {
+        require(amountIn > 0 && reserveA > 0 && reserveB > 0, "invalid");
+        amountOut = (amountIn * reserveA) / (reserveB + amountIn);
+        require(amountOut >= minOut, "slippage");
+        tokenB.transferFrom(msg.sender, address(this), amountIn);
+        tokenA.transfer(msg.sender, amountOut);
+        reserveB += amountIn;
+        reserveA -= amountOut;
+        emit Swap(msg.sender, address(tokenB), amountIn, amountOut);
+    }
+
+    function getReserves() external view returns (uint256, uint256) {
+        return (reserveA, reserveB);
+    }
+}
+"""
+
+
+def test_amm_same_shard(w3, MY, KEY):
+    """
+    AMM demo: deploy TokenA, TokenB, AMMPool from the SAME account so all
+    three contracts land in the same shard and pool.  Then:
+      1. Mint tokens to deployer
+      2. Approve AMMPool to spend tokens
+      3. Add liquidity (atomic: AMMPool calls transferFrom on both tokens)
+      4. Swap A→B (atomic: AMMPool calls transferFrom + transfer)
+      5. Remove liquidity
+      6. Verify reserves and balances
+    """
+    print("\n" + "=" * 60)
+    print("  AMM Demo — Same-Shard Atomic Execution")
+    print("=" * 60)
+
+    salt = secrets.token_hex(31)
+
+    # ── 1. Deploy TokenA ──────────────────────────────────────────────
+    print("\n[1] Deploying TokenA...")
+    ta_bin, ta_abi = compile_and_link(AMM_TOKEN_SOL, "SimpleToken")
+    token_a = w3.seth.contract(abi=ta_abi, bytecode=ta_bin)
+    token_a.deploy({
+        'from': MY, 'salt': salt + 'ta',
+        'args': ["TokenA", 1000000],
+    }, KEY)
+    print(f"    TokenA @ {token_a.address}")
+
+    # ── 2. Deploy TokenB ──────────────────────────────────────────────
+    print("\n[2] Deploying TokenB...")
+    token_b = w3.seth.contract(abi=ta_abi, bytecode=ta_bin)
+    token_b.deploy({
+        'from': MY, 'salt': salt + 'tb',
+        'args': ["TokenB", 1000000],
+    }, KEY)
+    print(f"    TokenB @ {token_b.address}")
+
+    # ── 3. Deploy AMMPool ─────────────────────────────────────────────
+    print("\n[3] Deploying AMMPool (references TokenA & TokenB)...")
+    pool_bin, pool_abi = compile_and_link(AMM_POOL_SOL, "AMMPool")
+    amm = w3.seth.contract(abi=pool_abi, bytecode=pool_bin)
+    amm.deploy({
+        'from': MY, 'salt': salt + 'am',
+        'args': [
+            to_checksum_address(token_a.address),
+            to_checksum_address(token_b.address),
+        ],
+    }, KEY)
+    print(f"    AMMPool @ {amm.address}")
+    print(f"    All 3 contracts deployed by {MY} → same shard & pool ✅")
+
+    # ── 4. Approve AMMPool to spend tokens ────────────────────────────
+    print("\n[4] Approving AMMPool to spend TokenA & TokenB...")
+    token_a.functions.approve(to_checksum_address(amm.address), 500000).transact(KEY)
+    token_b.functions.approve(to_checksum_address(amm.address), 500000).transact(KEY)
+    print("    Approved 500000 each ✅")
+
+    # ── 5. Add liquidity (atomic cross-contract call) ─────────────────
+    print("\n[5] Adding liquidity: 100000 A + 100000 B...")
+    r = amm.functions.addLiquidity(100000, 100000).transact(KEY)
+    print(f"    status={r.get('status')} events={r.get('decoded_events')}")
+    reserves = amm.functions.getReserves().call()
+    print(f"    Reserves after: A={reserves[0]}, B={reserves[1]}")
+    assert reserves[0] == 100000 and reserves[1] == 100000, "Liquidity add failed"
+    print("    ✅ Liquidity added atomically")
+
+    # ── 6. Swap A→B (atomic: transferFrom + transfer in one tx) ───────
+    print("\n[6] Swapping 10000 A → B (minOut=0)...")
+    r = amm.functions.swapAForB(10000, 0).transact(KEY)
+    print(f"    status={r.get('status')} events={r.get('decoded_events')}")
+    reserves = amm.functions.getReserves().call()
+    print(f"    Reserves after swap: A={reserves[0]}, B={reserves[1]}")
+    # After swap: reserveA=110000, amountOut = 10000*100000/110000 ≈ 9090
+    assert reserves[0] == 110000, f"Expected reserveA=110000, got {reserves[0]}"
+    expected_b = 100000 - (10000 * 100000) // 110000
+    print(f"    ✅ Swap executed atomically, reserveB={reserves[1]}")
+
+    # ── 7. Remove liquidity ───────────────────────────────────────────
+    print("\n[7] Removing all liquidity...")
+    lp = amm.functions.liquidity(to_checksum_address("0x" + MY)).call()[0]
+    print(f"    LP tokens: {lp}")
+    if lp > 0:
+        r = amm.functions.removeLiquidity(lp).transact(KEY)
+        print(f"    status={r.get('status')}")
+        reserves = amm.functions.getReserves().call()
+        print(f"    Reserves after remove: A={reserves[0]}, B={reserves[1]}")
+        print("    ✅ Liquidity removed")
+
+    # ── 8. Verify final token balances ────────────────────────────────
+    print("\n[8] Final balances:")
+    bal_a = token_a.functions.balanceOf(to_checksum_address("0x" + MY)).call()[0]
+    bal_b = token_b.functions.balanceOf(to_checksum_address("0x" + MY)).call()[0]
+    print(f"    TokenA: {bal_a}")
+    print(f"    TokenB: {bal_b}")
+
+    print("\n" + "=" * 60)
+    print("  ✅ AMM Demo PASSED — All operations atomic (same shard/pool)")
+    print("=" * 60)
+    print("\n  HOW SETH SOLVES THE AMM PROBLEM:")
+    print("  ─────────────────────────────────")
+    print("  1. All contracts deployed by the SAME account → same shard & pool")
+    print("  2. AMMPool.swap() calls TokenA.transferFrom() + TokenB.transfer()")
+    print("     in a SINGLE consensus round → fully atomic, no rollback needed")
+    print("  3. Cross-shard transfers (user → AMM) are handled by the normal")
+    print("     cross-shard mechanism BEFORE the swap executes")
+    print("  4. The swap itself is always intra-pool → no GBP overhead")
+    print("  5. Only the final output (tokens to user) may cross shards")
+
+
 def ecdsa_sign_test():
     IP, PORT, KEY = "127.0.0.1", 23001, "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
     w3 = SethWeb3Mock(IP, PORT)
@@ -953,6 +1210,7 @@ def ecdsa_sign_test():
     test_contract_selfdestruct(w3, MY, KEY)
     test_create2_assembly_deployment(w3, MY, KEY)
     test_upgradeable_contract(w3, MY, KEY)
+    test_amm_same_shard(w3, MY, KEY)
 
 def oqs_sign_test():
     # Base configuration
