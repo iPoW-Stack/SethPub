@@ -255,8 +255,22 @@ class SethMethod:
     def __init__(self, contract: SethContract, abi_item: dict):
         self.contract = contract
         self.name = abi_item['name']
-        self.input_types = [p['type'] for p in abi_item.get('inputs', [])]
-        self.output_types = [p['type'] for p in abi_item.get('outputs', [])]
+        self.abi_item = abi_item
+        self.input_types = [self._resolve_type(p) for p in abi_item.get('inputs', [])]
+        self.output_types = [self._resolve_type(p) for p in abi_item.get('outputs', [])]
+
+    @staticmethod
+    def _resolve_type(param: dict) -> str:
+        """Resolve ABI parameter type, expanding tuple types into (type1,type2,...) form.
+        Handles nested tuples and tuple arrays like tuple[] / tuple[3]."""
+        base = param.get('type', '')
+        if not base.startswith('tuple'):
+            return base
+        # Extract array suffix if present, e.g. "tuple[]" → "[]", "tuple[3]" → "[3]"
+        suffix = base[5:]  # everything after "tuple"
+        components = param.get('components', [])
+        inner = ','.join(SethMethod._resolve_type(c) for c in components)
+        return f"({inner}){suffix}"
 
     def __call__(self, *args) -> SethMethod:
         sig = f"{self.name}({','.join(self.input_types)})"
