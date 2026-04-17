@@ -31,7 +31,6 @@ public:
 
     void Start() {
         running_.store(true);
-        drain_thread_ = std::thread(&NeighborIpManager::DrainLoop, this);
     }
 
     void Stop() {
@@ -66,15 +65,6 @@ private:
     };
 
     NeighborIpManager() = default;
-
-    void DrainLoop() {
-        while (running_.load(std::memory_order_acquire)) {
-            Flush();
-            usleep(10000);  // 10 ms idle sleep
-        }
-        Flush();  // drain remaining entries on shutdown
-    }
-
     void Flush() {
         Entry e;
         while (queue_.pop(&e)) {

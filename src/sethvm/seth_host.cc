@@ -25,7 +25,7 @@ bool SethhainHost::account_exists(const evmc::address& addr) const noexcept {
 evmc::bytes32 SethhainHost::GetCachedStorage(
         const evmc::address& addr,
         const evmc::bytes32& key) const noexcept {
-    auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
+    auto thread_idx = -1;//common::GlobalInfo::Instance()->get_thread_index();
     std::string id((char*)addr.bytes, sizeof(addr.bytes));
     std::string key_str((char*)key.bytes, sizeof(key.bytes));
     SETH_DEBUG("view: %lu, 0 0 success get storage addr: %s, "
@@ -184,7 +184,7 @@ evmc_storage_status SethhainHost::set_storage(
     std::string id((char*)addr.bytes, sizeof(addr.bytes));
     std::string key_str((char*)key.bytes, sizeof(key.bytes));
     std::string val_str((char*)value.bytes, sizeof(value.bytes));
-    auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
+    auto thread_idx = -1; // common::GlobalInfo::Instance()->get_thread_index();
     SETH_DEBUG("3_15_%lu, thread_idx: %d, sethvm set storage called, id: %s, key: %s, value: %s",
         view_,
         thread_idx,
@@ -645,7 +645,7 @@ int SethhainHost::GetCachedKeyValue(
         const std::string& id, 
         const std::string& key_str, 
         std::string* val) {
-    auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
+    auto thread_idx = -1;//common::GlobalInfo::Instance()->get_thread_index();
     SETH_DEBUG("view: %lu, sethvm get storage called, id: %s, key: %s, value: %s, thread_idx: %d",
         view_,
         common::Encode::HexEncode(id).c_str(),
