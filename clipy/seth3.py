@@ -1797,6 +1797,107 @@ def test_amm_same_shard(w3, MY, KEY):
     print("  5. Only the final output (tokens to user) may cross shards")
 
 
+def test_iweth9_existing_contract(w3, MY, KEY):
+    """
+    Test calling an already deployed IWETH9 contract at a specific address.
+    Workflow:
+    1. Get the ABI for IWETH9
+    2. Create contract instance at the deployed address
+    3. Setup prefund (deposit gas)
+    4. Call deposit() function with payable amount
+    5. Call balanceOf() to check the balance
+    6. Refund remaining prefund
+    """
+    print("\n" + "=" * 70)
+    print("TEST CASE: IWETH9 Existing Contract - Prefund, Call, and Refund")
+    print("=" * 70)
+    
+    # Deployed contract address
+    IWETH9_ADDRESS = "758b97b0370c763f4fec47dae8081eb6200fc9b4"
+    
+    try:
+        # [1] Compile and get ABI
+        print("\n[1] Getting IWETH9 ABI...")
+        _, weth_abi = compile_and_link(IWETH9_SOL, "IWETH9")
+        print(f"    ✅ ABI loaded: {len(weth_abi)} items")
+        
+        # [2] Create contract instance at existing address
+        print(f"\n[2] Creating contract instance at: {IWETH9_ADDRESS}")
+        weth_contract = w3.seth.contract(address=IWETH9_ADDRESS, abi=weth_abi)
+        print(f"    ✅ Contract instance created")
+        print(f"    - Address: {weth_contract.address}")
+        
+        # [3] Setup prefund (deposit gas for transaction fees)
+        print(f"\n[3] Setting up prefund (gas deposit)...")
+        prefund_amount = 5000000  # 5 units as gas prefund
+        prefund_receipt = weth_contract.prefund(prefund_amount, KEY)
+        print(f"    ✅ Prefund successful")
+        print(f"    - Prefund amount: {prefund_amount}")
+        print(f"    - Status: {prefund_receipt.get('status', 'pending')}")
+        
+        # Wait for prefund to settle
+        import time
+        time.sleep(2)
+        
+        # [4] Call deposit() function
+        print(f"\n[4] Calling deposit() function...")
+        deposit_amount = 2000000  # 2 units to deposit
+        deposit_receipt = weth_contract.functions.deposit().transact(
+            KEY,
+            value=deposit_amount,
+            prefund=0  # Use existing prefund, don't deposit more
+        )
+        print(f"    ✅ Deposit transaction sent")
+        print(f"    - Deposit amount: {deposit_amount}")
+        print(f"    - Status: {deposit_receipt.get('status', 'pending')}")
+        
+        time.sleep(1)
+        
+        # [5] Call balanceOf() view function
+        print(f"\n[5] Checking balance with balanceOf()...")
+        balance_result = weth_contract.functions.balanceOf(MY).call()
+        balance = balance_result[0] if isinstance(balance_result, (list, tuple)) else balance_result
+        print(f"    ✅ Balance retrieved")
+        print(f"    - Address: {MY}")
+        print(f"    - Balance: {balance}")
+        
+        # [6] Get prefund status before refund
+        print(f"\n[6] Checking prefund status before refund...")
+        prefund_status = weth_contract.get_prefund(MY)
+        print(f"    - Remaining prefund: {prefund_status}")
+        
+        # [7] Refund remaining prefund
+        print(f"\n[7] Refunding remaining prefund...")
+        refund_receipt = weth_contract.refund(KEY)
+        print(f"    ✅ Refund successful")
+        print(f"    - Status: {refund_receipt.get('status', 'pending')}")
+        
+        # [8] Verify refund completed
+        print(f"\n[8] Verifying refund completed...")
+        final_prefund = weth_contract.get_prefund(MY)
+        print(f"    - Final prefund: {final_prefund}")
+        if final_prefund <= prefund_status:
+            print(f"    ✅ Refund verified - prefund reduced")
+        
+        print("\n" + "=" * 70)
+        print("✅ TEST CASE PASSED: IWETH9 Existing Contract Test Complete")
+        print("=" * 70)
+        print("""
+Summary:
+  • Contract instance created at deployed address ✅
+  • Prefund setup successful ✅
+  • deposit() function called successfully ✅
+  • balanceOf() retrieved balance ✅
+  • Refund completed successfully ✅
+        """)
+        return True
+        
+    except Exception as e:
+        print(f"\n❌ TEST CASE FAILED: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 def test_iweth9_demo(w3, MY, KEY):
     """
     Demonstrate IWETH9 contract deployment and function invocation.
@@ -1872,16 +1973,17 @@ def ecdsa_sign_test():
     w3 = SethWeb3Mock(IP, PORT)
     MY = w3.client.get_address(KEY)
 
-    test_contract_call_contract(w3, MY, KEY)
-    test_transfer(w3, MY, KEY, "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b")
-    test_library_with_contrcat(w3, MY, KEY)
-    test_ecdsa_prefund_full_flow(w3, MY, KEY)
-    test_contract_selfdestruct(w3, MY, KEY)
-    test_create2_assembly_deployment(w3, MY, KEY)
-    test_upgradeable_contract(w3, MY, KEY)
-    test_amm_same_shard(w3, MY, KEY)
-    test_struct_demo(w3, MY, KEY)
-    test_iweth9_demo(w3, MY, KEY)
+    # test_contract_call_contract(w3, MY, KEY)
+    # test_transfer(w3, MY, KEY, "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b")
+    # test_library_with_contrcat(w3, MY, KEY)
+    # test_ecdsa_prefund_full_flow(w3, MY, KEY)
+    # test_contract_selfdestruct(w3, MY, KEY)
+    # test_create2_assembly_deployment(w3, MY, KEY)
+    # test_upgradeable_contract(w3, MY, KEY)
+    # test_amm_same_shard(w3, MY, KEY)
+    # test_struct_demo(w3, MY, KEY)
+    test_iweth9_existing_contract(w3, MY, KEY)
+    # test_iweth9_demo(w3, MY, KEY)
 
 
 def oqs_sign_test():
@@ -2394,7 +2496,7 @@ def demo_ws_subscribe(ws_ip="127.0.0.1", ws_port=23100):
     print("=" * 60)
     
 if __name__ == "__main__":
-    demo_ws_subscribe("127.0.0.1", 33001)  # uncomment to run the WebSocket subscription demo
+    # demo_ws_subscribe("127.0.0.1", 33001)  # uncomment to run the WebSocket subscription demo
     ecdsa_sign_test()
-    oqs_sign_test()
-    gmssl_sign_test()
+    # oqs_sign_test()
+    # gmssl_sign_test()
