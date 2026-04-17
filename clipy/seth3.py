@@ -579,6 +579,7 @@ def test_struct_demo(w3, MY, KEY):
         alice_addr,           # userAddr
         "Alice",              # name
         1000,                 # balance
+        0,                    # joinTime (will be overwritten by contract)
         True                  # isActive
     )
     
@@ -601,6 +602,7 @@ def test_struct_demo(w3, MY, KEY):
         bob_addr,
         "Bob",
         2000,
+        0,                    # joinTime
         True
     )
     struct_contract.functions.registerUser(user_info_bob).transact(KEY)
