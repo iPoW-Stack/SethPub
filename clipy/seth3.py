@@ -196,7 +196,585 @@ contract ProbeBridge {
 }
 """
 
+STRUCT_DEMO_SOL = """
+pragma solidity ^0.8.20;
+
+/**
+ * @title StructDemo - 结构体参数和返回值演示
+ * @notice 演示如何在合约中使用结构体作为参数和返回值
+ * @dev 展示 Solidity 的结构体功能
+ */
+contract StructDemo {
+    
+    // ========== 结构体定义 ==========
+    
+    /**
+     * @notice 用户信息结构体
+     */
+    struct UserInfo {
+        address userAddr;        // 用户地址
+        string name;             // 用户名
+        uint256 balance;         // 账户余额
+        uint256 joinTime;        // 加入时间
+        bool isActive;           // 是否活跃
+    }
+    
+    /**
+     * @notice 交易信息结构体
+     */
+    struct Transaction {
+        address from;            // 发送者
+        address to;              // 接收者
+        uint256 amount;          // 交易金额
+        uint256 timestamp;       // 交易时间
+        string txType;           // 交易类型
+        bool success;            // 是否成功
+    }
+    
+    /**
+     * @notice 账户统计结构体
+     */
+    struct AccountStats {
+        uint256 totalTransactions;  // 总交易数
+        uint256 totalIn;            // 总收入
+        uint256 totalOut;           // 总支出
+        uint256 lastTxTime;         // 最后交易时间
+        uint256 averageAmount;      // 平均交易额
+    }
+    
+    // ========== 状态变量 ==========
+    
+    mapping(address => UserInfo) public users;
+    mapping(address => Transaction[]) public userTransactions;
+    mapping(address => AccountStats) public stats;
+    uint256 public userCount;
+    
+    // ========== 事件 ==========
+    
+    event UserRegistered(
+        address indexed userAddr,
+        string name,
+        uint256 joinTime
+    );
+    
+    event TransactionExecuted(
+        address indexed from,
+        address indexed to,
+        uint256 amount,
+        bool success
+    );
+    
+    event StatsUpdated(
+        address indexed user,
+        uint256 totalTransactions,
+        uint256 totalIn,
+        uint256 totalOut
+    );
+    
+    // ========== 函数：结构体作为参数 ==========
+    
+    /**
+     * @notice 注册新用户（接收结构体参数）
+     * @param info 用户信息结构体
+     * @return success 注册是否成功
+     * 
+     * 演示：
+     * - 接收 UserInfo 结构体作为参数
+     * - 直接访问结构体字段
+     * - 修改状态变量
+     */
+    function registerUser(UserInfo calldata info) 
+        external 
+        returns (bool success) 
+    {
+        require(info.userAddr != address(0), "Invalid address");
+        require(bytes(info.name).length > 0, "Name cannot be empty");
+        require(info.balance >= 0, "Balance cannot be negative");
+        
+        users[info.userAddr] = UserInfo({
+            userAddr: info.userAddr,
+            name: info.name,
+            balance: info.balance,
+            joinTime: block.timestamp,
+            isActive: true
+        });
+        
+        userCount++;
+        emit UserRegistered(info.userAddr, info.name, block.timestamp);
+        return true;
+    }
+    
+    /**
+     * @notice 执行交易（接收结构体参数）
+     * @param tx 交易信息结构体
+     * @return success 交易是否成功
+     * 
+     * 演示：
+     * - 接收 Transaction 结构体
+     * - 验证结构体字段
+     * - 返回布尔值表示成功
+     */
+    function executeTransaction(Transaction calldata tx) 
+        external 
+        payable 
+        returns (bool success) 
+    {
+        require(tx.from != address(0), "Invalid from address");
+        require(tx.to != address(0), "Invalid to address");
+        require(tx.amount > 0, "Amount must be positive");
+        require(bytes(tx.txType).length > 0, "Transaction type required");
+        
+        // 验证发送者
+        require(msg.sender == tx.from || msg.sender == users[tx.from].userAddr, 
+                "Only transaction owner can execute");
+        
+        // 记录交易
+        userTransactions[tx.from].push(tx);
+        
+        // 更新统计
+        _updateStats(tx.from, tx.to, tx.amount);
+        
+        emit TransactionExecuted(tx.from, tx.to, tx.amount, true);
+        return true;
+    }
+    
+    /**
+     * @notice 批量执行交易（多个结构体参数）
+     * @param txs 交易数组
+     * @return successCount 成功交易数
+     */
+    function batchExecute(Transaction[] calldata txs) 
+        external 
+        returns (uint256 successCount) 
+    {
+        for (uint256 i = 0; i < txs.length; i++) {
+            try this.executeTransaction(txs[i]) {
+                successCount++;
+            } catch {
+                // 继续处理下一个交易
+            }
+        }
+        return successCount;
+    }
+    
+    // ========== 函数：返回结构体 ==========
+    
+    /**
+     * @notice 获取用户信息（返回结构体）
+     * @param userAddr 用户地址
+     * @return 用户信息结构体
+     * 
+     * 演示：
+     * - 返回 UserInfo 结构体
+     * - 包含多个字段
+     * - 前端可以直接解析
+     */
+    function getUserInfo(address userAddr) 
+        external 
+        view 
+        returns (UserInfo memory) 
+    {
+        require(userAddr != address(0), "Invalid address");
+        
+        UserInfo memory info = users[userAddr];
+        require(info.userAddr != address(0), "User not found");
+        
+        return info;
+    }
+    
+    /**
+     * @notice 获取用户的最后一笔交易（返回结构体）
+     * @param userAddr 用户地址
+     * @return 最后的交易信息
+     */
+    function getLastTransaction(address userAddr) 
+        external 
+        view 
+        returns (Transaction memory) 
+    {
+        require(userAddr != address(0), "Invalid address");
+        require(userTransactions[userAddr].length > 0, "No transactions");
+        
+        uint256 lastIndex = userTransactions[userAddr].length - 1;
+        return userTransactions[userAddr][lastIndex];
+    }
+    
+    /**
+     * @notice 获取用户的所有交易（返回结构体数组）
+     * @param userAddr 用户地址
+     * @return 交易数组
+     */
+    function getTransactionHistory(address userAddr) 
+        external 
+        view 
+        returns (Transaction[] memory) 
+    {
+        require(userAddr != address(0), "Invalid address");
+        return userTransactions[userAddr];
+    }
+    
+    /**
+     * @notice 获取账户统计信息（返回结构体）
+     * @param userAddr 用户地址
+     * @return 账户统计数据
+     * 
+     * 演示：
+     * - 返回复杂的统计结构体
+     * - 包含计算结果
+     * - 前端获得完整的统计数据
+     */
+    function getAccountStats(address userAddr) 
+        external 
+        view 
+        returns (AccountStats memory) 
+    {
+        require(userAddr != address(0), "Invalid address");
+        
+        AccountStats memory account = stats[userAddr];
+        
+        // 计算平均值
+        if (account.totalTransactions > 0) {
+            account.averageAmount = (account.totalIn + account.totalOut) / account.totalTransactions;
+        }
+        
+        return account;
+    }
+    
+    /**
+     * @notice 查询和处理用户信息（接收和返回结构体）
+     * @param userAddr 用户地址
+     * @return info 用户信息
+     * @return accountStats 账户统计
+     * @return txCount 交易数量
+     * 
+     * 演示：
+     * - 同时接收参数和返回多个结构体
+     * - 返回多个值（元组）
+     * - 前端可以一次性获得所有数据
+     */
+    function getUserFullInfo(address userAddr) 
+        external 
+        view 
+        returns (
+            UserInfo memory info,
+            AccountStats memory accountStats,
+            uint256 txCount
+        ) 
+    {
+        require(userAddr != address(0), "Invalid address");
+        
+        info = users[userAddr];
+        require(info.userAddr != address(0), "User not found");
+        
+        accountStats = stats[userAddr];
+        if (accountStats.totalTransactions > 0) {
+            accountStats.averageAmount = (accountStats.totalIn + accountStats.totalOut) / accountStats.totalTransactions;
+        }
+        
+        txCount = userTransactions[userAddr].length;
+        
+        return (info, accountStats, txCount);
+    }
+    
+    /**
+     * @notice 搜索符合条件的交易（接收条件结构体，返回交易结构体数组）
+     * @param userAddr 用户地址
+     * @param minAmount 最小金额
+     * @param maxAmount 最大金额
+     * @return 符合条件的交易
+     */
+    function searchTransactions(
+        address userAddr,
+        uint256 minAmount,
+        uint256 maxAmount
+    ) 
+        external 
+        view 
+        returns (Transaction[] memory) 
+    {
+        require(userAddr != address(0), "Invalid address");
+        require(minAmount <= maxAmount, "Invalid range");
+        
+        Transaction[] storage userTxs = userTransactions[userAddr];
+        uint256 matchCount = 0;
+        
+        // 计数匹配的交易
+        for (uint256 i = 0; i < userTxs.length; i++) {
+            if (userTxs[i].amount >= minAmount && userTxs[i].amount <= maxAmount) {
+                matchCount++;
+            }
+        }
+        
+        // 创建结果数组
+        Transaction[] memory result = new Transaction[](matchCount);
+        uint256 resultIndex = 0;
+        
+        // 填充结果
+        for (uint256 i = 0; i < userTxs.length; i++) {
+            if (userTxs[i].amount >= minAmount && userTxs[i].amount <= maxAmount) {
+                result[resultIndex] = userTxs[i];
+                resultIndex++;
+            }
+        }
+        
+        return result;
+    }
+    
+    // ========== 内部函数 ==========
+    
+    /**
+     * @notice 更新用户统计信息
+     */
+    function _updateStats(address from, address to, uint256 amount) internal {
+        // 发送者统计
+        stats[from].totalOut += amount;
+        stats[from].totalTransactions++;
+        stats[from].lastTxTime = block.timestamp;
+        
+        // 接收者统计
+        stats[to].totalIn += amount;
+        stats[to].lastTxTime = block.timestamp;
+        
+        emit StatsUpdated(from, stats[from].totalTransactions, stats[from].totalIn, stats[from].totalOut);
+    }
+}
+"""
+
 RANDOM_SALT = secrets.token_hex(31)
+
+def test_struct_demo(w3, MY, KEY):
+    """
+    StructDemo Test: 演示结构体作为参数和返回值
+    
+    展示：
+    1. 传入结构体参数（UserInfo）- registerUser()
+    2. 传入结构体参数（Transaction）- executeTransaction()
+    3. 返回结构体（UserInfo）- getUserInfo()
+    4. 返回结构体数组（Transaction[]）- getTransactionHistory()
+    5. 返回多个结构体 - getUserFullInfo()
+    6. 复杂的结构体查询和返回 - getAccountStats()
+    """
+    print("\n" + "="*70)
+    print("TEST CASE: Struct Demo - Structs as Parameters and Return Values")
+    print("="*70)
+    
+    # 部署合约
+    print("\n[1] 编译和部署 StructDemo 合约...")
+    struct_bin, struct_abi = compile_and_link(STRUCT_DEMO_SOL, "StructDemo")
+    struct_contract = w3.seth.contract(abi=struct_abi, bytecode=struct_bin).deploy({
+        'from': MY,
+        'salt': RANDOM_SALT + 'struct_demo',
+    }, KEY)
+    print(f"✅ StructDemo 已部署: {struct_contract.address}")
+    
+    # ========== 测试 1: 传入结构体参数 - registerUser() ==========
+    print("\n[2] 测试：传入结构体参数 registerUser()")
+    print("-" * 70)
+    
+    alice_addr = "0x" + "1111111111111111111111111111111111111111"
+    bob_addr = "0x" + "2222222222222222222222222222222222222222"
+    
+    # 构造 UserInfo 结构体参数
+    user_info_alice = (
+        alice_addr,           # userAddr
+        "Alice",              # name
+        1000,                 # balance
+        True                  # isActive
+    )
+    
+    print(f"  注册用户: {user_info_alice}")
+    receipt = struct_contract.functions.registerUser(user_info_alice).transact(KEY)
+    
+    if receipt.get('status') == 0:
+        print(f"  ✅ 交易成功")
+        for e in receipt.get('decoded_events', []):
+            if e['event'] == 'UserRegistered':
+                print(f"  📍 事件: UserRegistered")
+                print(f"     用户地址: {e['args']['userAddr']}")
+                print(f"     用户名: {e['args']['name']}")
+                print(f"     加入时间: {e['args']['joinTime']}")
+    else:
+        print(f"  ❌ 交易失败: {receipt.get('msg')}")
+    
+    # 再注册一个用户
+    user_info_bob = (
+        bob_addr,
+        "Bob",
+        2000,
+        True
+    )
+    struct_contract.functions.registerUser(user_info_bob).transact(KEY)
+    print(f"  注册用户 Bob...")
+    
+    # ========== 测试 2: 返回结构体 - getUserInfo() ==========
+    print("\n[3] 测试：返回结构体 getUserInfo()")
+    print("-" * 70)
+    
+    result = struct_contract.functions.getUserInfo(alice_addr).call()
+    print(f"  获取用户信息: getUserInfo({alice_addr[:10]}...)")
+    
+    if result:
+        user_addr, name, balance, join_time, is_active = result
+        print(f"  ✅ 返回结构体:")
+        print(f"     地址: {user_addr}")
+        print(f"     名字: {name}")
+        print(f"     余额: {balance}")
+        print(f"     加入时间: {join_time}")
+        print(f"     活跃: {is_active}")
+    
+    # ========== 测试 3: 传入和返回结构体 - executeTransaction() ==========
+    print("\n[4] 测试：传入结构体参数 executeTransaction()")
+    print("-" * 70)
+    
+    # 构造 Transaction 结构体
+    tx_info = (
+        alice_addr,           # from
+        bob_addr,             # to
+        500,                  # amount
+        0,                    # timestamp (会被设置)
+        "transfer",           # txType
+        True                  # success
+    )
+    
+    print(f"  执行交易: {alice_addr[:10]}... -> {bob_addr[:10]}... (金额: 500)")
+    receipt = struct_contract.functions.executeTransaction(tx_info).transact(KEY)
+    
+    if receipt.get('status') == 0:
+        print(f"  ✅ 交易执行成功")
+        for e in receipt.get('decoded_events', []):
+            if e['event'] == 'TransactionExecuted':
+                print(f"  📍 事件: TransactionExecuted")
+                print(f"     发送者: {e['args']['from'][:10]}...")
+                print(f"     接收者: {e['args']['to'][:10]}...")
+                print(f"     金额: {e['args']['amount']}")
+                print(f"     成功: {e['args']['success']}")
+    else:
+        print(f"  ❌ 交易失败: {receipt.get('msg')}")
+    
+    # 执行另一笔交易
+    tx_info2 = (
+        bob_addr,
+        alice_addr,
+        200,
+        0,
+        "transfer",
+        True
+    )
+    struct_contract.functions.executeTransaction(tx_info2).transact(KEY)
+    print(f"  执行交易 2...")
+    
+    # ========== 测试 4: 返回结构体数组 - getTransactionHistory() ==========
+    print("\n[5] 测试：返回结构体数组 getTransactionHistory()")
+    print("-" * 70)
+    
+    tx_history = struct_contract.functions.getTransactionHistory(alice_addr).call()
+    print(f"  获取交易历史: getTransactionHistory({alice_addr[:10]}...)")
+    print(f"  ✅ 交易数量: {len(tx_history)}")
+    
+    for i, tx in enumerate(tx_history):
+        from_addr, to_addr, amount, timestamp, tx_type, success = tx
+        print(f"  交易 {i+1}:")
+        print(f"    从: {from_addr[:10]}...")
+        print(f"    到: {to_addr[:10]}...")
+        print(f"    金额: {amount}")
+        print(f"    类型: {tx_type}")
+        print(f"    成功: {success}")
+    
+    # ========== 测试 5: 返回多个结构体 - getUserFullInfo() ==========
+    print("\n[6] 测试：返回多个结构体 getUserFullInfo()")
+    print("-" * 70)
+    
+    full_info = struct_contract.functions.getUserFullInfo(alice_addr).call()
+    print(f"  获取完整用户信息: getUserFullInfo({alice_addr[:10]}...)")
+    
+    if full_info:
+        user_info, account_stats, tx_count = full_info
+        
+        # 解析 UserInfo
+        user_addr, name, balance, join_time, is_active = user_info
+        print(f"  ✅ 用户信息:")
+        print(f"     名字: {name}")
+        print(f"     余额: {balance}")
+        print(f"     活跃: {is_active}")
+        
+        # 解析 AccountStats
+        total_txs, total_in, total_out, last_tx_time, avg_amount = account_stats
+        print(f"  ✅ 账户统计:")
+        print(f"     总交易数: {total_txs}")
+        print(f"     总收入: {total_in}")
+        print(f"     总支出: {total_out}")
+        print(f"     平均金额: {avg_amount}")
+        print(f"     交易历史数量: {tx_count}")
+    
+    # ========== 测试 6: 获取账户统计 - getAccountStats() ==========
+    print("\n[7] 测试：返回统计结构体 getAccountStats()")
+    print("-" * 70)
+    
+    stats = struct_contract.functions.getAccountStats(alice_addr).call()
+    print(f"  获取账户统计: getAccountStats({alice_addr[:10]}...)")
+    
+    if stats:
+        total_txs, total_in, total_out, last_tx_time, avg_amount = stats
+        print(f"  ✅ 统计数据:")
+        print(f"     总交易数: {total_txs}")
+        print(f"     总收入: {total_in}")
+        print(f"     总支出: {total_out}")
+        print(f"     最后交易时间: {last_tx_time}")
+        print(f"     平均交易额: {avg_amount}")
+    
+    # ========== 测试 7: 搜索交易 - searchTransactions() ==========
+    print("\n[8] 测试：搜索和返回结构体数组 searchTransactions()")
+    print("-" * 70)
+    
+    search_results = struct_contract.functions.searchTransactions(
+        alice_addr,
+        100,     # minAmount
+        600      # maxAmount
+    ).call()
+    
+    print(f"  搜索交易 (100 <= 金额 <= 600)...")
+    print(f"  ✅ 搜索结果数量: {len(search_results)}")
+    
+    for i, tx in enumerate(search_results):
+        from_addr, to_addr, amount, timestamp, tx_type, success = tx
+        print(f"  结果 {i+1}: 金额 {amount} {tx_type}")
+    
+    # ========== 测试 8: 批量执行交易 - batchExecute() ==========
+    print("\n[9] 测试：批量处理结构体数组 batchExecute()")
+    print("-" * 70)
+    
+    # 创建批量交易
+    batch_txs = [
+        (alice_addr, bob_addr, 100, 0, "batch_1", True),
+        (bob_addr, alice_addr, 50, 0, "batch_2", True),
+        (alice_addr, bob_addr, 75, 0, "batch_3", True),
+    ]
+    
+    print(f"  执行 {len(batch_txs)} 笔批量交易...")
+    receipt = struct_contract.functions.batchExecute(batch_txs).transact(KEY)
+    
+    if receipt.get('status') == 0:
+        # 解析返回值（成功交易数）
+        output = receipt.get('decoded_output')
+        print(f"  ✅ 批量执行完成")
+        if output is not None:
+            print(f"     成功交易数: {output}")
+    else:
+        print(f"  ❌ 批量执行失败: {receipt.get('msg')}")
+    
+    # ========== 总结 ==========
+    print("\n" + "="*70)
+    print("✅ 结构体演示完成")
+    print("="*70)
+    print("""
+关键要点：
+1. ✅ 结构体可以作为函数参数（calldata）
+2. ✅ 结构体可以作为返回值（memory）
+3. ✅ 可以返回结构体数组
+4. ✅ 可以同时返回多个结构体（元组）
+5. ✅ 前端可以直接解析返回的结构体
+6. ✅ SDK 自动编码/解码结构体
+    """)
 
 def test_create2_assembly_deployment(w3, MY, KEY):
     print("\n--- TEST CASE: CREATE2 Assembly Predictable Deployment ---")
@@ -1211,6 +1789,7 @@ def ecdsa_sign_test():
     test_create2_assembly_deployment(w3, MY, KEY)
     test_upgradeable_contract(w3, MY, KEY)
     test_amm_same_shard(w3, MY, KEY)
+    test_struct_demo(w3, MY, KEY)
 
 def oqs_sign_test():
     # Base configuration
