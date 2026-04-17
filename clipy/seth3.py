@@ -1836,7 +1836,8 @@ def test_iweth9_demo(w3, MY, KEY):
         )
         print(f"    ✅ Deposit successful")
         print(f"    - Deposited amount: {deposit_amount}")
-        print(f"    - Transaction hash: {receipt.transactionHash.hex()}")
+        tx_hash = receipt.get('tx_hash') or receipt.get('hash') or 'N/A'
+        print(f"    - Transaction status: {receipt.get('status', 'unknown')}")
         
         # [4] Call balanceOf() view function
         print("\n[4] Calling balanceOf() view function...")
