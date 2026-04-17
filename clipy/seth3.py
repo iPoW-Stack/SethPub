@@ -1797,22 +1797,6 @@ def test_amm_same_shard(w3, MY, KEY):
     print("  5. Only the final output (tokens to user) may cross shards")
 
 
-def ecdsa_sign_test():
-    IP, PORT, KEY = "127.0.0.1", 23001, "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
-    w3 = SethWeb3Mock(IP, PORT)
-    MY = w3.client.get_address(KEY)
-
-    test_contract_call_contract(w3, MY, KEY)
-    test_transfer(w3, MY, KEY, "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b")
-    test_library_with_contrcat(w3, MY, KEY)
-    test_ecdsa_prefund_full_flow(w3, MY, KEY)
-    test_contract_selfdestruct(w3, MY, KEY)
-    test_create2_assembly_deployment(w3, MY, KEY)
-    test_upgradeable_contract(w3, MY, KEY)
-    test_amm_same_shard(w3, MY, KEY)
-    test_struct_demo(w3, MY, KEY)
-    test_iweth9_demo(w3, MY, KEY)
-
 def test_iweth9_demo(w3, MY, KEY):
     """
     Demonstrate IWETH9 contract deployment and function invocation.
@@ -1879,6 +1863,23 @@ def test_iweth9_demo(w3, MY, KEY):
         import traceback
         traceback.print_exc()
         return False
+    
+def ecdsa_sign_test():
+    IP, PORT, KEY = "127.0.0.1", 23001, "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
+    w3 = SethWeb3Mock(IP, PORT)
+    MY = w3.client.get_address(KEY)
+
+    test_contract_call_contract(w3, MY, KEY)
+    test_transfer(w3, MY, KEY, "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b")
+    test_library_with_contrcat(w3, MY, KEY)
+    test_ecdsa_prefund_full_flow(w3, MY, KEY)
+    test_contract_selfdestruct(w3, MY, KEY)
+    test_create2_assembly_deployment(w3, MY, KEY)
+    test_upgradeable_contract(w3, MY, KEY)
+    test_amm_same_shard(w3, MY, KEY)
+    test_struct_demo(w3, MY, KEY)
+    test_iweth9_demo(w3, MY, KEY)
+
 
 def oqs_sign_test():
     # Base configuration
