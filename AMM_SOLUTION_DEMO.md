@@ -1,4 +1,7 @@
 # Seth AMM 原子性解决方案 — 基于 Demo 的完整阐述
+```
+cd SethPub/clipy && python3 amm.py --host 35.197.170.240 --port 23001
+```
 
 ## 1. 问题背景
 
