@@ -195,16 +195,26 @@ def _wait_prefund(contract, user_addr, expected, label="", retries=30):
 
 
 def _wait_account_exists(client, addr, label="", retries=30):
-    """Poll until the account address is queryable (balance >= 0 and no error)."""
+    """Poll until the account address is registered on chain and queryable."""
     for i in range(retries):
         try:
             bal = client.get_balance(addr)
-            if bal >= 0:
+            # get_balance returns 0 on query failure too, but the underlying
+            # response contains "get address failed" when the address doesn't
+            # exist.  A successful query with balance > 0 means the address
+            # is definitely on chain.  Balance == 0 is ambiguous on the first
+            # few polls, so we also accept it after enough retries.
+            if bal > 0:
                 return True
         except Exception:
             pass
         time.sleep(2)
-    return False
+    # Final check — if we got here, try one more time
+    try:
+        bal = client.get_balance(addr)
+        return bal >= 0
+    except Exception:
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -308,6 +318,8 @@ def test_amm(w3, deployer_addr: str, deployer_key: str, num_users: int = 3):
     users = []  # list of (addr, key, name)
     tokens_per_user = 100_000
     user_prefund = 10_000_000
+    # Native SETH to send to each user for address creation + gas
+    native_transfer_amount = 100_000_000
 
     for i in range(num_users):
         user_key = secrets.token_hex(32)
@@ -317,7 +329,26 @@ def test_amm(w3, deployer_addr: str, deployer_key: str, num_users: int = 3):
         user_ck = _ck(user_addr)
         print(f"\n[{name}] Address: {user_addr}")
 
-        # ── Step A: Transfer tokens from deployer to user ─────────────
+        # ── Step A: Create user address on chain via native transfer ──
+        # Seth requires addresses to be registered on-chain before they
+        # can send transactions.  A native SETH transfer from an existing
+        # account triggers kRootCreateAddress on the root shard.
+        print(f"    Deployer → {name}: native transfer {native_transfer_amount} SETH "
+              f"(creates address on chain)...")
+        receipt = w3.seth.send_transaction(
+            {'to': user_addr, 'value': native_transfer_amount}, deployer_key)
+        assert receipt and receipt.get('status') == 0, \
+            f"Native transfer to {name} failed: {receipt}"
+        print(f"    Transfer tx status={receipt.get('status')} ✅")
+
+        # ── Step B: Wait for address to exist on chain ────────────────
+        print(f"    Waiting for {name} address to be queryable...")
+        exists = _wait_account_exists(w3.client, user_addr, name)
+        assert exists, f"❌ {name} account not found on chain after transfer!"
+        user_balance = w3.client.get_balance(user_addr)
+        print(f"    ✅ {name} on-chain, native balance={user_balance}")
+
+        # ── Step C: Transfer tokens from deployer to user ─────────────
         print(f"    Deployer → {name}: {tokens_per_user} TokenA...")
         r = token_a.functions.transfer(user_ck, tokens_per_user).transact(deployer_key)
         assert r.get('status') == 0, f"Transfer TokenA to {name} failed"
@@ -326,12 +357,7 @@ def test_amm(w3, deployer_addr: str, deployer_key: str, num_users: int = 3):
         r = token_b.functions.transfer(user_ck, tokens_per_user).transact(deployer_key)
         assert r.get('status') == 0, f"Transfer TokenB to {name} failed"
 
-        # ── Step B: Verify user account exists and token balances ─────
-        print(f"    Verifying {name} account exists...")
-        exists = _wait_account_exists(w3.client, user_addr, name)
-        assert exists, f"{name} account not found on chain!"
-        print(f"    ✅ {name} account exists on chain")
-
+        # ── Step D: Verify token balances ─────────────────────────────
         bal_a = _wait_balance(token_a, user_ck, tokens_per_user, f"{name} TokenA")
         bal_b = _wait_balance(token_b, user_ck, tokens_per_user, f"{name} TokenB")
         print(f"    Token balances: A={bal_a}, B={bal_b}")
@@ -341,13 +367,13 @@ def test_amm(w3, deployer_addr: str, deployer_key: str, num_users: int = 3):
             f"❌ {name} TokenB balance mismatch: expected {tokens_per_user}, got {bal_b}"
         print(f"    ✅ Token balances verified")
 
-        # ── Step C: User sets prefund on all 3 contracts ──────────────
+        # ── Step E: User sets prefund on all 3 contracts ──────────────
         print(f"    {name}: prefund {user_prefund} on TokenA, TokenB, AMMPool...")
         token_a.prefund(user_prefund, user_key)
         token_b.prefund(user_prefund, user_key)
         amm.prefund(user_prefund, user_key)
 
-        # ── Step D: Verify prefund balances ───────────────────────────
+        # ── Step F: Verify prefund balances ───────────────────────────
         print(f"    Verifying {name} prefund balances...")
         pf_a = _wait_prefund(token_a, user_addr, user_prefund, f"{name} TokenA prefund")
         pf_b = _wait_prefund(token_b, user_addr, user_prefund, f"{name} TokenB prefund")
