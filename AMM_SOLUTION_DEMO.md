@@ -138,99 +138,143 @@ contract AMMPool {
 }
 ```
 
-### 3.2 测试流程（`test_amm`）
+### 3.2 多用户测试流程（`test_amm`）
+
+Demo 模拟真实场景：**一个部署者创建 DeFi 协议，多个独立用户在上面交易**。
 
 ```python
-def test_amm(w3, my_addr, key):
-    salt = secrets.token_hex(31)
-    me = to_checksum_address("0x" + my_addr)
+def test_amm(w3, deployer_addr, deployer_key, num_users=3):
 
-    # ── 步骤 1-3：同一账户部署三个合约 ──────────────────────
-    # 关键：全部由 my_addr 部署 → 保证同分片同池
-    token_a.deploy({'from': my_addr, 'salt': salt + 'ta', 'args': ["TokenA", 1_000_000]}, key)
-    token_b.deploy({'from': my_addr, 'salt': salt + 'tb', 'args': ["TokenB", 1_000_000]}, key)
-    amm.deploy({'from': my_addr, 'salt': salt + 'am',
-                'args': [checksum(token_a.address), checksum(token_b.address)]}, key)
+    # ═══ Phase 1：部署者创建协议 ═══════════════════════════════
+    # 同一账户部署 → 保证同分片同池
+    token_a.deploy({'from': deployer_addr, 'salt': salt + 'ta',
+                    'args': ["TokenA", 10_000_000]}, deployer_key)
+    token_b.deploy({'from': deployer_addr, 'salt': salt + 'tb',
+                    'args': ["TokenB", 10_000_000]}, deployer_key)
+    amm.deploy({'from': deployer_addr, 'salt': salt + 'am',
+                'args': [checksum(token_a.address), checksum(token_b.address)]}, deployer_key)
 
-    # ── 步骤 4：授权 AMMPool 操作代币 ────────────────────────
-    token_a.functions.approve(checksum(amm.address), 500_000).transact(key)
-    token_b.functions.approve(checksum(amm.address), 500_000).transact(key)
+    # 部署者设置 prefund + 添加初始流动性
+    token_a.prefund(50_000_000, deployer_key)
+    token_b.prefund(50_000_000, deployer_key)
+    amm.prefund(50_000_000, deployer_key)
+    amm.functions.addLiquidity(500_000, 500_000).transact(deployer_key)
 
-    # ── 步骤 5：添加流动性（原子跨合约调用）─────────────────
-    r = amm.functions.addLiquidity(100_000, 100_000).transact(key)
-    reserves = amm.functions.getReserves().call()
-    assert reserves[0] == 100_000 and reserves[1] == 100_000
+    # ═══ Phase 2：创建独立交易者账户 ═══════════════════════════
+    for i in range(num_users):
+        user_key = secrets.token_hex(32)          # 随机生成新私钥
+        user_addr = w3.client.get_address(user_key)
 
-    # ── 步骤 6：Swap A→B（原子执行）──────────────────────────
-    r = amm.functions.swapAForB(10_000, 0).transact(key)
-    reserves = amm.functions.getReserves().call()
-    assert reserves[0] == 110_000
+        # 部署者分发代币给用户
+        token_a.functions.transfer(checksum(user_addr), 100_000).transact(deployer_key)
+        token_b.functions.transfer(checksum(user_addr), 100_000).transact(deployer_key)
 
-    # ── 步骤 7：Swap B→A（反向原子执行）──────────────────────
-    r = amm.functions.swapBForA(5_000, 0).transact(key)
+        # 用户在每个合约上设置 prefund（gas 预存）
+        token_a.prefund(10_000_000, user_key)
+        token_b.prefund(10_000_000, user_key)
+        amm.prefund(10_000_000, user_key)
 
-    # ── 步骤 8：移除流动性 ───────────────────────────────────
-    lp = amm.functions.liquidity(me).call()[0]
-    amm.functions.removeLiquidity(lp).transact(key)
+    # ═══ Phase 3：每个用户独立交易 ═════════════════════════════
+    for user_addr, user_key, name in users:
+        # 用户授权 AMMPool 操作自己的代币
+        user_token_a.functions.approve(checksum(amm.address), 50_000).transact(user_key)
+        user_token_b.functions.approve(checksum(amm.address), 50_000).transact(user_key)
 
-    # ── 步骤 9：验证最终余额 ─────────────────────────────────
-    bal_a = token_a.functions.balanceOf(me).call()[0]
-    bal_b = token_b.functions.balanceOf(me).call()[0]
+        # Swap A→B（原子执行：transferFrom + transfer 在同一共识轮）
+        user_amm.functions.swapAForB(10_000, 0).transact(user_key)
+
+        # Swap B→A（反向）
+        user_amm.functions.swapBForA(3_000, 0).transact(user_key)
+
+    # ═══ Phase 4：所有用户 refund prefund ══════════════════════
+    for user_addr, user_key, name in users:
+        token_a_handle.refund(user_key)
+        token_b_handle.refund(user_key)
+        amm_handle.refund(user_key)
+
+    # 部署者也 refund
+    token_a.refund(deployer_key)
+    token_b.refund(deployer_key)
+    amm.refund(deployer_key)
 ```
+
+**关键点**：
+- **Phase 1**：部署者创建所有合约（同分片同池），添加初始流动性
+- **Phase 2**：生成 N 个独立用户（随机私钥），部署者分发代币，每个用户设置 prefund
+- **Phase 3**：每个用户用自己的私钥签名交易，独立执行 approve + swap
+- **Phase 4**：所有用户和部署者回收未使用的 gas prefund
 
 ### 3.3 运行方式
 
 ```bash
 cd clipy
-python amm.py
-python amm.py --host 10.0.0.1 --port 23001
-python amm.py --key <your_private_key_hex>
+python amm.py                                    # 默认 3 个用户
+python amm.py --host 10.0.0.1 --port 23001       # 指定节点
+python amm.py --users 5                           # 5 个交易者
+python amm.py --key <deployer_private_key_hex>    # 指定部署者私钥
 ```
 
 Demo 输出示例：
 
 ```
-Node    : https://127.0.0.1:23001
-Account : a1b2c3d4...
+Node     : https://127.0.0.1:23001
+Deployer : a1b2c3d4...
+Traders  : 3
 
 ================================================================
-  AMM Demo — Same-Shard Atomic Execution
+  AMM Multi-User Demo — Same-Shard Atomic Execution
 ================================================================
 
-[1] Deploying TokenA (supply=1,000,000)...
+────────────────────────────────────────────────────────────────
+  Phase 1: Deploy Protocol (single deployer → same shard/pool)
+────────────────────────────────────────────────────────────────
+
+[1] Deploying TokenA (supply=10,000,000)...
     TokenA @ a1b2c3...
-
-[2] Deploying TokenB (supply=1,000,000)...
+[2] Deploying TokenB (supply=10,000,000)...
     TokenB @ d4e5f6...
-
 [3] Deploying AMMPool...
     AMMPool @ 789abc...
-    All 3 contracts deployed by a1b2c3d4...
-    → same shard & pool → atomic execution guaranteed ✅
+    → All 3 contracts in same shard & pool ✅
+[4] Deployer: prefund on each contract...
+[5] Deployer: add initial liquidity (500,000 each)...
+    Reserves: A=500000, B=500000 ✅
 
-[4] Approving AMMPool to spend 500000 of each token...
-    Approved ✅
+────────────────────────────────────────────────────────────────
+  Phase 2: Create 3 Trader Accounts
+────────────────────────────────────────────────────────────────
 
-[5] Adding liquidity: 100000 A + 100000 B...
-    Reserves: A=100000, B=100000
-    ✅ Liquidity added atomically
+[User_1] Address: e1f2a3...
+    Deployer → User_1: 100000 TokenA, 100000 TokenB
+    User_1: prefund on TokenA, TokenB, AMMPool ✅
 
-[6] Swapping 10000 A → B (minOut=0)...
-    Reserves: A=110000, B=90910
-    ✅ Swap A→B atomic (amountOut ≈ 9090)
+[User_2] Address: b4c5d6...
+    Deployer → User_2: 100000 TokenA, 100000 TokenB
+    User_2: prefund on TokenA, TokenB, AMMPool ✅
 
-[7] Swapping 5000 B → A (minOut=0)...
-    ✅ Swap B→A atomic
+[User_3] Address: 78f9a0...
+    Deployer → User_3: 100000 TokenA, 100000 TokenB
+    User_3: prefund on TokenA, TokenB, AMMPool ✅
 
-[8] Removing all liquidity...
-    ✅ Liquidity removed
+────────────────────────────────────────────────────────────────
+  Phase 3: Multi-User Trading
+────────────────────────────────────────────────────────────────
 
-[9] Final token balances:
-    TokenA: 1000000
-    TokenB: 1000000
+  User_1: approve → swapAForB(10000) → swapBForA(3000) ✅
+  User_2: approve → swapAForB(15000) → swapBForA(5000) ✅
+  User_3: approve → swapAForB(20000) → swapBForA(7000) ✅
+
+────────────────────────────────────────────────────────────────
+  Phase 4: Refund Prefund (all users + deployer)
+────────────────────────────────────────────────────────────────
+
+  User_1: refunded ✅
+  User_2: refunded ✅
+  User_3: refunded ✅
+  Deployer: refunded ✅
 
 ================================================================
-  ✅ AMM Demo PASSED — All operations atomic (same shard/pool)
+  ✅ AMM Multi-User Demo PASSED
 ================================================================
 ```
 
@@ -332,44 +376,74 @@ pool_usdc_y.deploy({'from': MY, 'salt': salt + 'p2', 'args': [tokenUSDC, tokenY]
 
 ---
 
-## 8. 跨分片用户交互流程
+## 8. 多用户交互流程与 Prefund 生命周期
 
-当用户与 AMM 交互时，唯一可能跨分片的是 **资金转移**，而非 swap 逻辑本身：
+在 Seth 中，用户调用合约需要先在合约上预存 gas（prefund）。完整的多用户 AMM 交互流程：
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                    完整用户交互流程                            │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│  步骤 1：用户存入资金（可能跨分片）                            │
-│  ┌─────────┐    跨分片转账     ┌─────────────────────┐       │
-│  │ Alice   │ ──────────────→  │ AMM 所在分片         │       │
-│  │ Shard A │   (ToTxsPools)   │ (Shard S, Pool P)   │       │
-│  └─────────┘                  └─────────────────────┘       │
-│                                                              │
-│  步骤 2：用户调用 swap（池内原子执行）                         │
-│  ┌─────────────────────────────────────────────────┐        │
-│  │ 同一共识轮（~2s）                                 │        │
-│  │                                                  │        │
-│  │  AMMPool.swapAForB(10000, minOut=9000)           │        │
-│  │    ├─ require(amountOut >= 9000)     ← 滑点检查  │        │
-│  │    ├─ TokenA.transferFrom(alice, pool, 10000)    │        │
-│  │    ├─ TokenB.transfer(alice, 9090)               │        │
-│  │    └─ 更新 reserveA, reserveB                    │        │
-│  │                                                  │        │
-│  │  如果任何步骤失败 → 整体 REVERT                    │        │
-│  └─────────────────────────────────────────────────┘        │
-│                                                              │
-│  步骤 3：用户提取代币（可能跨分片）                            │
-│  ┌─────────────────────┐    跨分片转账     ┌─────────┐      │
-│  │ AMM 所在分片         │ ──────────────→  │ Alice   │      │
-│  │ (Shard S, Pool P)   │   (ToTxsPools)   │ Shard A │      │
-│  └─────────────────────┘                  └─────────┘      │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│              多用户 AMM 交互完整流程                               │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ Phase 1: 部署者创建协议（同一账户 → 同分片同池）          │    │
+│  │                                                         │    │
+│  │  Deployer 部署 TokenA, TokenB, AMMPool                  │    │
+│  │  Deployer prefund → 添加初始流动性                       │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                          │                                       │
+│                          ▼                                       │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ Phase 2: 创建用户 + 分发代币 + 设置 Prefund              │    │
+│  │                                                         │    │
+│  │  User_1: 获得代币 → prefund(TokenA, TokenB, AMMPool)    │    │
+│  │  User_2: 获得代币 → prefund(TokenA, TokenB, AMMPool)    │    │
+│  │  User_3: 获得代币 → prefund(TokenA, TokenB, AMMPool)    │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                          │                                       │
+│                          ▼                                       │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ Phase 3: 每个用户独立交易（池内原子执行）                  │    │
+│  │                                                         │    │
+│  │  User_1: approve → swapAForB(10000) → swapBForA(3000)   │    │
+│  │  User_2: approve → swapAForB(15000) → swapBForA(5000)   │    │
+│  │  User_3: approve → swapAForB(20000) → swapBForA(7000)   │    │
+│  │                                                         │    │
+│  │  每次 swap 在同一共识轮（~2s）内原子执行：                 │    │
+│  │    AMMPool.swapAForB()                                  │    │
+│  │      ├─ require(amountOut >= minOut)    ← 滑点检查       │    │
+│  │      ├─ TokenA.transferFrom(user, pool) ← 池内调用       │    │
+│  │      ├─ TokenB.transfer(user, out)      ← 池内调用       │    │
+│  │      └─ 任何失败 → 整体 REVERT                          │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                          │                                       │
+│                          ▼                                       │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ Phase 4: 回收 Prefund                                    │    │
+│  │                                                         │    │
+│  │  User_1: refund(TokenA, TokenB, AMMPool)                │    │
+│  │  User_2: refund(TokenA, TokenB, AMMPool)                │    │
+│  │  User_3: refund(TokenA, TokenB, AMMPool)                │    │
+│  │  Deployer: refund(TokenA, TokenB, AMMPool)              │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-步骤 1 和 3 是标准跨分片转账，由 `ToTxsPools` 处理，具有三层重放保护。步骤 2 完全在池内原子执行。
+### Prefund 生命周期
+
+```
+prefund(amount)  →  合约调用消耗 gas  →  refund() 回收剩余
+     │                    │                    │
+     ▼                    ▼                    ▼
+  用户预存 gas        每次 transact         交易完成后
+  到合约账户          自动扣除 gas          取回未用的 gas
+```
+
+这确保了：
+- 用户只需预存一次 gas，即可多次调用合约
+- 未使用的 gas 可以完整回收
+- 不同用户的 prefund 互相隔离
 
 ---
 
@@ -428,12 +502,13 @@ amm.deploy({'from': MY, 'salt': salt + 'am', ...}, KEY)
 
 审稿人关于 AMM 原子性的质疑基于一个 **错误的前提**：假设可组合的合约分布在不同分片。Seth 的架构通过 **哈希桶分片 + 部署者地址派生** 自然保证了可组合合约的共置。
 
-`test_amm` Demo（`clipy/amm.py`）证明了：
+`test_amm` Demo（`clipy/amm.py`）通过多用户场景证明了：
 
 1. **无需补偿交易** — 滑点失败通过标准 EVM REVERT 原子回滚
 2. **单轮共识最终化** — swap 在 ~2s 内完成，而非多轮
-3. **开发者体验与以太坊一致** — 标准 Solidity，无需异步模式
-4. **多跳路由同样原子** — 同一部署者的所有合约在同一池中
+3. **多用户独立交易** — 不同私钥的用户各自 prefund、approve、swap、refund
+4. **开发者体验与以太坊一致** — 标准 Solidity，无需异步模式
+5. **完整资源生命周期** — prefund 预存 gas → 交易 → refund 回收
 
 唯一跨分片的操作是 **资金转移**（存入/提取），这在任何分片系统中都是异步的，由 Seth 现有的跨分片机制处理，具有三层重放保护和双路由优化（直接路由 + root 中继）。
 

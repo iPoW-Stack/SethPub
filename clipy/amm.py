@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 """
-Seth AMM Atomic Swap Demo
-==========================
-Demonstrates that AMM contracts deployed by the same account are co-located
-in the same shard and pool, guaranteeing atomic execution of swap operations
-without cross-shard compensation transactions.
+Seth AMM Multi-User Atomic Swap Demo
+======================================
+Demonstrates that:
+  1. AMM contracts deployed by the SAME account are co-located in the same
+     shard & pool, guaranteeing atomic execution.
+  2. DIFFERENT users (separate private keys) can interact with the AMM —
+     each user sets prefund, approves tokens, swaps, and refunds.
+
+This is a realistic scenario: one deployer creates the DeFi protocol,
+multiple independent users trade on it.
 
 Usage:
-    python amm.py                          # default: 127.0.0.1:23001
+    python amm.py                              # default: 127.0.0.1:23001
     python amm.py --host 10.0.0.1 --port 23001
+    python amm.py --users 3                    # number of trader accounts
 
 Requires: seth_sdk.py in the same directory.
 """
@@ -19,7 +25,7 @@ import secrets
 import time
 
 from eth_utils import to_checksum_address
-from seth_sdk import SethWeb3Mock, compile_and_link
+from seth_sdk import SethWeb3Mock, StepType, compile_and_link
 
 # ---------------------------------------------------------------------------
 # Solidity Sources
@@ -166,137 +172,268 @@ def _print_reserves(amm):
     return r
 
 
+def _wait_balance(token, addr_ck, expected, label="", retries=30):
+    """Poll token balance until it matches expected value."""
+    for i in range(retries):
+        bal = token.functions.balanceOf(addr_ck).call()[0]
+        if bal == expected:
+            return bal
+        time.sleep(2)
+    bal = token.functions.balanceOf(addr_ck).call()[0]
+    return bal
+
+
 # ---------------------------------------------------------------------------
-# Test: AMM Same-Shard Atomic Execution
+# Test: Multi-User AMM
 # ---------------------------------------------------------------------------
 
-def test_amm(w3, my_addr: str, key: str):
+def test_amm(w3, deployer_addr: str, deployer_key: str, num_users: int = 3):
     """
-    Full AMM lifecycle test:
-      1. Deploy TokenA, TokenB, AMMPool from the SAME account
-         → guarantees all three land in the same shard & pool
-      2. Approve AMMPool to spend tokens
-      3. Add liquidity  (atomic cross-contract: 2x transferFrom)
-      4. Swap A→B       (atomic: transferFrom + transfer + slippage check)
-      5. Swap B→A       (reverse direction)
-      6. Remove liquidity
-      7. Verify final balances
+    Multi-user AMM lifecycle:
+
+    Phase 1 — Deployer sets up the protocol
+      1. Deploy TokenA, TokenB, AMMPool from ONE account (same shard/pool)
+      2. Add initial liquidity
+
+    Phase 2 — Create trader accounts
+      3. Generate N new private keys (independent users)
+      4. Deployer transfers tokens to each user
+      5. Each user sets prefund on TokenA, TokenB, AMMPool contracts
+
+    Phase 3 — Users trade
+      6. Each user approves AMMPool and executes swaps
+      7. Verify reserves and balances after each swap
+
+    Phase 4 — Cleanup
+      8. Each user refunds prefund from all contracts
     """
     print("\n" + "=" * 64)
-    print("  AMM Demo — Same-Shard Atomic Execution")
+    print("  AMM Multi-User Demo — Same-Shard Atomic Execution")
     print("=" * 64)
 
     salt = secrets.token_hex(31)
-    me = _ck(my_addr)
+    deployer_ck = _ck(deployer_addr)
 
-    # ── 1. Compile ────────────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    # Phase 1: Deployer sets up the protocol
+    # ══════════════════════════════════════════════════════════════════════
+    print("\n" + "─" * 64)
+    print("  Phase 1: Deploy Protocol (single deployer → same shard/pool)")
+    print("─" * 64)
+
     ta_bin, ta_abi = compile_and_link(SIMPLE_TOKEN_SOL, "SimpleToken")
     pool_bin, pool_abi = compile_and_link(AMM_POOL_SOL, "AMMPool")
 
-    # ── 2. Deploy TokenA ──────────────────────────────────────────────────
-    print("\n[1] Deploying TokenA (supply=1,000,000)...")
+    # Deploy TokenA
+    print("\n[1] Deploying TokenA (supply=10,000,000)...")
     token_a = w3.seth.contract(abi=ta_abi, bytecode=ta_bin)
-    token_a.deploy({'from': my_addr, 'salt': salt + 'ta',
-                    'args': ["TokenA", 1_000_000]}, key)
+    token_a.deploy({'from': deployer_addr, 'salt': salt + 'ta',
+                    'args': ["TokenA", 10_000_000]}, deployer_key)
     print(f"    TokenA @ {token_a.address}")
 
-    # ── 3. Deploy TokenB ──────────────────────────────────────────────────
-    print("\n[2] Deploying TokenB (supply=1,000,000)...")
+    # Deploy TokenB
+    print("\n[2] Deploying TokenB (supply=10,000,000)...")
     token_b = w3.seth.contract(abi=ta_abi, bytecode=ta_bin)
-    token_b.deploy({'from': my_addr, 'salt': salt + 'tb',
-                    'args': ["TokenB", 1_000_000]}, key)
+    token_b.deploy({'from': deployer_addr, 'salt': salt + 'tb',
+                    'args': ["TokenB", 10_000_000]}, deployer_key)
     print(f"    TokenB @ {token_b.address}")
 
-    # ── 4. Deploy AMMPool ─────────────────────────────────────────────────
+    # Deploy AMMPool
     print("\n[3] Deploying AMMPool...")
     amm = w3.seth.contract(abi=pool_abi, bytecode=pool_bin)
-    amm.deploy({'from': my_addr, 'salt': salt + 'am',
-                'args': [_ck(token_a.address), _ck(token_b.address)]}, key)
+    amm.deploy({'from': deployer_addr, 'salt': salt + 'am',
+                'args': [_ck(token_a.address), _ck(token_b.address)]}, deployer_key)
     print(f"    AMMPool @ {amm.address}")
-    print(f"    All 3 contracts deployed by {my_addr}")
-    print(f"    → same shard & pool → atomic execution guaranteed ✅")
+    print(f"    Deployer: {deployer_addr}")
+    print(f"    → All 3 contracts in same shard & pool ✅")
 
-    # ── 5. Approve ────────────────────────────────────────────────────────
-    approve_amount = 500_000
-    print(f"\n[4] Approving AMMPool to spend {approve_amount} of each token...")
-    r1 = token_a.functions.approve(_ck(amm.address), approve_amount).transact(key)
-    r2 = token_b.functions.approve(_ck(amm.address), approve_amount).transact(key)
-    assert r1.get('status') == 0 and r2.get('status') == 0, "Approve failed"
-    print(f"    Approved ✅")
+    # Deployer: prefund on all 3 contracts + approve + add liquidity
+    prefund_amount = 50_000_000
+    print(f"\n[4] Deployer: prefund {prefund_amount} on each contract...")
+    token_a.prefund(prefund_amount, deployer_key)
+    token_b.prefund(prefund_amount, deployer_key)
+    amm.prefund(prefund_amount, deployer_key)
+    print(f"    Prefund set ✅")
 
-    # ── 6. Add Liquidity ──────────────────────────────────────────────────
-    liq_a, liq_b = 100_000, 100_000
-    print(f"\n[5] Adding liquidity: {liq_a} A + {liq_b} B...")
-    r = amm.functions.addLiquidity(liq_a, liq_b).transact(key)
-    print(f"    status={r.get('status')}")
-    for e in r.get('decoded_events', []):
-        print(f"    Event: {e['event']} → {e['args']}")
+    print(f"\n[5] Deployer: approve AMMPool + add initial liquidity (500,000 each)...")
+    token_a.functions.approve(_ck(amm.address), 500_000).transact(deployer_key)
+    token_b.functions.approve(_ck(amm.address), 500_000).transact(deployer_key)
+    r = amm.functions.addLiquidity(500_000, 500_000).transact(deployer_key)
+    assert r.get('status') == 0, f"addLiquidity failed: {r}"
     ra, rb = _print_reserves(amm)
-    assert ra == liq_a and rb == liq_b, f"Expected ({liq_a},{liq_b}), got ({ra},{rb})"
-    print(f"    ✅ Liquidity added atomically")
+    assert ra == 500_000 and rb == 500_000
+    print(f"    ✅ Initial liquidity: A={ra}, B={rb}")
 
-    # ── 7. Swap A→B ──────────────────────────────────────────────────────
-    swap_in = 10_000
-    print(f"\n[6] Swapping {swap_in} A → B (minOut=0)...")
-    r = amm.functions.swapAForB(swap_in, 0).transact(key)
-    print(f"    status={r.get('status')}  output={r.get('decoded_output')}")
-    for e in r.get('decoded_events', []):
-        print(f"    Event: {e['event']} → {e['args']}")
-    ra, rb = _print_reserves(amm)
-    expected_ra = liq_a + swap_in  # 110000
-    expected_out = (swap_in * liq_b) // (liq_a + swap_in)  # ≈ 9090
-    assert ra == expected_ra, f"Expected reserveA={expected_ra}, got {ra}"
-    print(f"    ✅ Swap A→B atomic (amountOut ≈ {expected_out})")
+    # ══════════════════════════════════════════════════════════════════════
+    # Phase 2: Create independent trader accounts
+    # ══════════════════════════════════════════════════════════════════════
+    print("\n" + "─" * 64)
+    print(f"  Phase 2: Create {num_users} Trader Accounts")
+    print("─" * 64)
 
-    # ── 8. Swap B→A ──────────────────────────────────────────────────────
-    swap_b_in = 5_000
-    print(f"\n[7] Swapping {swap_b_in} B → A (minOut=0)...")
-    r = amm.functions.swapBForA(swap_b_in, 0).transact(key)
-    print(f"    status={r.get('status')}  output={r.get('decoded_output')}")
-    ra2, rb2 = _print_reserves(amm)
-    print(f"    ✅ Swap B→A atomic")
+    users = []  # list of (addr, key, name)
+    tokens_per_user = 100_000
 
-    # ── 9. Remove Liquidity ───────────────────────────────────────────────
-    print(f"\n[8] Removing all liquidity...")
-    lp = amm.functions.liquidity(me).call()[0]
-    print(f"    LP tokens held: {lp}")
-    if lp > 0:
-        r = amm.functions.removeLiquidity(lp).transact(key)
-        print(f"    status={r.get('status')}")
+    for i in range(num_users):
+        user_key = secrets.token_hex(32)
+        user_addr = w3.client.get_address(user_key)
+        name = f"User_{i+1}"
+        users.append((user_addr, user_key, name))
+        print(f"\n[{name}] Address: {user_addr}")
+
+        # Deployer transfers tokens to this user
+        print(f"    Deployer → {name}: {tokens_per_user} TokenA...")
+        r = token_a.functions.transfer(_ck(user_addr), tokens_per_user).transact(deployer_key)
+        assert r.get('status') == 0, f"Transfer TokenA to {name} failed"
+
+        print(f"    Deployer → {name}: {tokens_per_user} TokenB...")
+        r = token_b.functions.transfer(_ck(user_addr), tokens_per_user).transact(deployer_key)
+        assert r.get('status') == 0, f"Transfer TokenB to {name} failed"
+
+        # Wait for token balances to settle
+        bal_a = _wait_balance(token_a, _ck(user_addr), tokens_per_user, f"{name} TokenA")
+        bal_b = _wait_balance(token_b, _ck(user_addr), tokens_per_user, f"{name} TokenB")
+        print(f"    Balances: TokenA={bal_a}, TokenB={bal_b}")
+
+        # User sets prefund on all 3 contracts (gas deposit for contract calls)
+        user_prefund = 10_000_000
+        print(f"    {name}: prefund {user_prefund} on TokenA, TokenB, AMMPool...")
+        token_a.prefund(user_prefund, user_key)
+        token_b.prefund(user_prefund, user_key)
+        amm.prefund(user_prefund, user_key)
+        print(f"    ✅ {name} ready to trade")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # Phase 3: Each user trades independently
+    # ══════════════════════════════════════════════════════════════════════
+    print("\n" + "─" * 64)
+    print("  Phase 3: Multi-User Trading")
+    print("─" * 64)
+
+    for idx, (user_addr, user_key, name) in enumerate(users):
+        user_ck = _ck(user_addr)
+        print(f"\n{'─' * 40}")
+        print(f"  {name} ({user_addr[:16]}...)")
+        print(f"{'─' * 40}")
+
+        # Create contract handles bound to this user's sender_address
+        user_token_a = w3.seth.contract(address=token_a.address, abi=ta_abi,
+                                        sender_address=user_addr)
+        user_token_b = w3.seth.contract(address=token_b.address, abi=ta_abi,
+                                        sender_address=user_addr)
+        user_amm = w3.seth.contract(address=amm.address, abi=pool_abi,
+                                    sender_address=user_addr)
+
+        # Step A: Approve AMMPool to spend user's tokens
+        approve_amt = 50_000
+        print(f"\n  [A] {name}: approve AMMPool for {approve_amt} of each token...")
+        r1 = user_token_a.functions.approve(_ck(amm.address), approve_amt).transact(user_key)
+        r2 = user_token_b.functions.approve(_ck(amm.address), approve_amt).transact(user_key)
+        assert r1.get('status') == 0, f"{name} approve TokenA failed: {r1}"
+        assert r2.get('status') == 0, f"{name} approve TokenB failed: {r2}"
+        print(f"      Approved ✅")
+
+        # Step B: Swap A→B
+        swap_a_in = 10_000 + idx * 5_000  # each user swaps a different amount
+        print(f"\n  [B] {name}: swap {swap_a_in} A → B...")
+        ra_before, rb_before = amm.functions.getReserves().call()
+        expected_out = (swap_a_in * rb_before) // (ra_before + swap_a_in)
+
+        r = user_amm.functions.swapAForB(swap_a_in, 0).transact(user_key)
+        print(f"      status={r.get('status')}  output={r.get('decoded_output')}")
         for e in r.get('decoded_events', []):
-            print(f"    Event: {e['event']} → {e['args']}")
-        _print_reserves(amm)
-        print(f"    ✅ Liquidity removed")
+            print(f"      Event: {e['event']} → {e['args']}")
+        assert r.get('status') == 0, f"{name} swapAForB failed: {r}"
+        ra_after, rb_after = _print_reserves(user_amm)
+        assert ra_after == ra_before + swap_a_in, \
+            f"reserveA mismatch: expected {ra_before + swap_a_in}, got {ra_after}"
+        print(f"      ✅ Swap A→B atomic (in={swap_a_in}, out≈{expected_out})")
 
-    # ── 10. Final Balances ────────────────────────────────────────────────
-    print(f"\n[9] Final token balances for {my_addr}:")
-    bal_a = token_a.functions.balanceOf(me).call()[0]
-    bal_b = token_b.functions.balanceOf(me).call()[0]
-    print(f"    TokenA: {bal_a}")
-    print(f"    TokenB: {bal_b}")
+        # Step C: Swap B→A (reverse)
+        swap_b_in = 3_000 + idx * 2_000
+        print(f"\n  [C] {name}: swap {swap_b_in} B → A...")
+        r = user_amm.functions.swapBForA(swap_b_in, 0).transact(user_key)
+        print(f"      status={r.get('status')}  output={r.get('decoded_output')}")
+        assert r.get('status') == 0, f"{name} swapBForA failed: {r}"
+        _print_reserves(user_amm)
+        print(f"      ✅ Swap B→A atomic")
+
+        # Step D: Check user's final token balances
+        bal_a = user_token_a.functions.balanceOf(user_ck).call()[0]
+        bal_b = user_token_b.functions.balanceOf(user_ck).call()[0]
+        print(f"\n  [D] {name} balances: TokenA={bal_a}, TokenB={bal_b}")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # Phase 4: Cleanup — all users refund prefund
+    # ══════════════════════════════════════════════════════════════════════
+    print("\n" + "─" * 64)
+    print("  Phase 4: Refund Prefund (all users + deployer)")
+    print("─" * 64)
+
+    for user_addr, user_key, name in users:
+        print(f"\n  {name}: refunding prefund from TokenA, TokenB, AMMPool...")
+        # Bind contract handles for refund
+        c_a = w3.seth.contract(address=token_a.address, abi=ta_abi,
+                               sender_address=user_addr)
+        c_b = w3.seth.contract(address=token_b.address, abi=ta_abi,
+                               sender_address=user_addr)
+        c_amm = w3.seth.contract(address=amm.address, abi=pool_abi,
+                                 sender_address=user_addr)
+        c_a.refund(user_key)
+        c_b.refund(user_key)
+        c_amm.refund(user_key)
+        print(f"    ✅ {name} refunded")
+
+    # Deployer refund
+    print(f"\n  Deployer: refunding prefund...")
+    token_a.refund(deployer_key)
+    token_b.refund(deployer_key)
+    amm.refund(deployer_key)
+    print(f"    ✅ Deployer refunded")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # Final Summary
+    # ══════════════════════════════════════════════════════════════════════
+    print("\n" + "─" * 64)
+    print("  Final State")
+    print("─" * 64)
+    ra, rb = _print_reserves(amm)
+    print(f"\n  Deployer token balances:")
+    print(f"    TokenA: {token_a.functions.balanceOf(deployer_ck).call()[0]}")
+    print(f"    TokenB: {token_b.functions.balanceOf(deployer_ck).call()[0]}")
+    for user_addr, user_key, name in users:
+        user_ck = _ck(user_addr)
+        ba = token_a.functions.balanceOf(user_ck).call()[0]
+        bb = token_b.functions.balanceOf(user_ck).call()[0]
+        print(f"  {name} ({user_addr[:12]}...): TokenA={ba}, TokenB={bb}")
 
     print("\n" + "=" * 64)
-    print("  ✅ AMM Demo PASSED — All operations atomic (same shard/pool)")
+    print("  ✅ AMM Multi-User Demo PASSED")
     print("=" * 64)
-
-    # ── Summary ───────────────────────────────────────────────────────────
     print("""
-  HOW SETH SOLVES THE AMM ATOMICITY PROBLEM
-  ──────────────────────────────────────────
-  1. All contracts deployed by the SAME account
-     → CREATE2 address derivation places them in the same shard & pool
+  KEY TAKEAWAYS
+  ─────────────
+  1. DEPLOYER creates all contracts from ONE account
+     → TokenA, TokenB, AMMPool land in the same shard & pool
 
-  2. AMMPool.swap() calls TokenA.transferFrom() + TokenB.transfer()
-     in a SINGLE consensus round → fully atomic, no rollback needed
+  2. MULTIPLE INDEPENDENT USERS interact with the AMM
+     → Each user has their own private key and address
+     → Each user sets prefund (gas deposit) on contracts
+     → Each user approves and swaps independently
 
-  3. Slippage failure triggers standard EVM REVERT
-     → entire transaction rolls back, no compensation transactions
+  3. EVERY SWAP IS ATOMIC within a single consensus round
+     → AMMPool.swap() calls TokenA.transferFrom() + TokenB.transfer()
+     → If slippage check fails → standard EVM REVERT, entire tx rolls back
+     → No cross-shard coordination, no compensation transactions
 
-  4. Cross-shard transfers (user ↔ AMM shard) are handled BEFORE/AFTER
-     the swap by the normal cross-shard mechanism (ToTxsPools)
+  4. PREFUND / REFUND lifecycle
+     → Users deposit gas prefund before interacting with contracts
+     → After trading, users reclaim unused gas via refund
+     → Clean resource management
 
-  5. Developer experience is identical to Ethereum
-     → standard Solidity, no async patterns required
+  5. DEVELOPER EXPERIENCE = ETHEREUM
+     → Standard Solidity contracts, standard ERC20 approve/transferFrom
+     → No async patterns, no manual compensation logic
 """)
 
 
@@ -305,19 +442,25 @@ def test_amm(w3, my_addr: str, key: str):
 # ---------------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="Seth AMM Atomic Swap Demo")
-    parser.add_argument("--host", default="127.0.0.1", help="Node IP (default: 127.0.0.1)")
-    parser.add_argument("--port", type=int, default=23001, help="Node HTTPS port (default: 23001)")
-    parser.add_argument("--key", default="71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6",
-                        help="ECDSA private key (hex)")
+    parser = argparse.ArgumentParser(description="Seth AMM Multi-User Atomic Swap Demo")
+    parser.add_argument("--host", default="127.0.0.1",
+                        help="Node IP (default: 127.0.0.1)")
+    parser.add_argument("--port", type=int, default=23001,
+                        help="Node HTTPS port (default: 23001)")
+    parser.add_argument("--key",
+                        default="71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6",
+                        help="Deployer ECDSA private key (hex)")
+    parser.add_argument("--users", type=int, default=3,
+                        help="Number of trader accounts to create (default: 3)")
     args = parser.parse_args()
 
     w3 = SethWeb3Mock(args.host, args.port)
-    my_addr = w3.client.get_address(args.key)
-    print(f"Node    : https://{args.host}:{args.port}")
-    print(f"Account : {my_addr}")
+    deployer_addr = w3.client.get_address(args.key)
+    print(f"Node     : https://{args.host}:{args.port}")
+    print(f"Deployer : {deployer_addr}")
+    print(f"Traders  : {args.users}")
 
-    test_amm(w3, my_addr, args.key)
+    test_amm(w3, deployer_addr, args.key, num_users=args.users)
 
 
 if __name__ == "__main__":
