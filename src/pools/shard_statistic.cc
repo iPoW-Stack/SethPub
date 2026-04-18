@@ -1004,7 +1004,6 @@ void ShardStatistic::addNewNode2JoinStatics(
                   0);
         SETH_DEBUG("add new elect node: %s, stoke: %lu, shard: %u",
             common::Encode::HexEncode(pubkey).c_str(), stoke, shard_id);
-            common::Encode::HexEncode(pubkey).c_str(), iter->second, shard_iter->second);
     }
 }
 
