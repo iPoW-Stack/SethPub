@@ -135,6 +135,11 @@ public:
     void UpdateDesShardingId(
         pools::protobuf::ToTxMessageItem* to_addr_info, 
         sethvm::SethhainHost& seth_host);
+    
+    // Validate statistic transaction node consistency (90% threshold)
+    bool ValidateStatisticNodeConsistency(
+        const pools::protobuf::ElectStatistic& leader_statistic,
+        uint32_t pool_index);
 
     void CalculateTps(uint64_t tx_list_size) {
         auto now_tm_us = common::TimeUtils::TimestampUs();

@@ -97,15 +97,15 @@ public:
             common::Encode::HexEncode(block_tx.to()).c_str(), 
             ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str(),
             common::Encode::HexEncode(unique_hash).c_str(),
-            ProtobufToJson(elect_statistic).c_str());
+            ProtobufToJson(leader_statistic).c_str());
 
         pools::protobuf::PoolStatisticTxInfo pool_st_info;
-        pool_st_info.set_height(elect_statistic.statistic_height());
+        pool_st_info.set_height(leader_statistic.statistic_height());
         for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
             auto statistic_info = pool_st_info.add_pool_statisitcs();
             statistic_info->set_pool_index(i);
-            statistic_info->set_min_height(elect_statistic.height_info().heights(i).min_height());
-            statistic_info->set_max_height(elect_statistic.height_info().heights(i).max_height());
+            statistic_info->set_min_height(leader_statistic.height_info().heights(i).min_height());
+            statistic_info->set_max_height(leader_statistic.height_info().heights(i).max_height());
         }
 
         prefix_db_->SaveLatestPoolStatisticTag(elect_statistic.sharding_id(), pool_st_info, seth_host.db_batch_);
