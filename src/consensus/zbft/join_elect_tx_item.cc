@@ -78,7 +78,7 @@ int JoinElectTxItem::HandleTx(
 
         auto n = common::GlobalInfo::Instance()->each_shard_max_members();
         auto t = common::GetSignerCount(n);
-        if (join_info.g2_req().verify_vec_size() != t) {
+        if (join_info.g2_req().verify_vec_size() != static_cast<int>(t)) {
             SETH_DEBUG("join des shard error: %d,  %d, "
                 "join_info.g2_req().verify_vec_size() != t %u : %u",
                 join_info.shard_id(), msg_ptr->address_info->sharding_id(),
@@ -134,12 +134,9 @@ int JoinElectTxItem::HandleTx(
                 
                 // Check if there's existing stake info (for additional staking)
                 uint64_t existing_stake = 0;
-                uint64_t existing_elect_height = 0;
-                uint32_t existing_pool_index = 0;
-                uint64_t existing_block_height = 0;
+                uint64_t existing_timestamp = 0;
                 bool has_existing_stake = prefix_db_->GetStakeInfo(
-                    from, &existing_stake, &existing_elect_height, 
-                    &existing_pool_index, &existing_block_height);
+                    from, &existing_stake, &existing_timestamp);
                 
                 // Calculate total staked amount
                 uint64_t total_staked = existing_stake + stake_amount;
@@ -158,13 +155,12 @@ int JoinElectTxItem::HandleTx(
                     acc_balance_map[pool_address]->set_latest_height(view_block.block_info().height());
                 }
                 
-                // Save/Update stake info with new lock period starting from current elect height
-                // Lock period resets to 1008 epochs from now on each additional stake
+                // Save/Update stake info with new lock period starting from current timestamp
+                // Lock period resets to 7 days from now on each additional stake
                 prefix_db_->SaveStakeInfo(
                     from,
                     total_staked,  // Save total staked amount
-                    join_info.stake_elect_height(),  // Reset lock period start
-                    pool_index,
+                    join_info.stake_timestamp(),  // Reset lock period start (timestamp)
                     view_block.block_info().height());
                 
                 // Update join_info with total staked for FTS calculation
@@ -175,15 +171,15 @@ int JoinElectTxItem::HandleTx(
                 
                 if (has_existing_stake) {
                     SETH_INFO("Additional stake: added %lu coins (total now: %lu) to pool %u address %s, "
-                        "lock period reset to elect_height: %lu (previous: %lu)",
+                        "lock period reset to timestamp: %lu (previous: %lu)",
                         stake_amount, total_staked, pool_index,
                         common::Encode::HexEncode(pool_address).c_str(),
-                        join_info.stake_elect_height(), existing_elect_height);
+                        join_info.stake_timestamp(), existing_timestamp);
                 } else {
-                    SETH_INFO("Initial stake: %lu coins to pool %u address %s, elect_height: %lu",
+                    SETH_INFO("Initial stake: %lu coins to pool %u address %s, timestamp: %lu",
                         stake_amount, pool_index,
                         common::Encode::HexEncode(pool_address).c_str(),
-                        join_info.stake_elect_height());
+                        join_info.stake_timestamp());
                 }
             }
         } else {

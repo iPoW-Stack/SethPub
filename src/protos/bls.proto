@@ -1,7 +1,7 @@
 syntax = "proto2";
 
 package seth.bls.protobuf;
-import "protos/elect.proto";
+import "elect.proto";
 
 message VerifyVecItem {
     optional bytes x_c0 = 1;
