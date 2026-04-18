@@ -897,11 +897,11 @@ Status BlockAcceptor::addTxsToPool(
             }
             
             // Verify sharding_id matches
-            if (leader_statistic.sharding_id() != msg_ptr->header.hotstuff().pro_msg().tx_propose().net_id()) {
+            if (leader_statistic.sharding_id() != msg_ptr->header.hotstuff().net_id()) {
                 SETH_WARN("statistic sharding_id mismatch, rejecting proposal. "
                     "leader_shard=%u, expected_shard=%u, pool=%u",
                     leader_statistic.sharding_id(),
-                    msg_ptr->header.hotstuff().pro_msg().tx_propose().net_id(),
+                    msg_ptr->header.hotstuff().net_id(),
                     msg_ptr->address_info->pool_index());
                 create_success = false;
                 break;
