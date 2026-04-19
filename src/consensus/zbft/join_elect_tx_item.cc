@@ -155,13 +155,17 @@ int JoinElectTxItem::HandleTx(
                     acc_balance_map[pool_address]->set_latest_height(view_block.block_info().height());
                 }
                 
-                // Save/Update stake info with new lock period starting from current timestamp
+                // Save/Update stake info with new lock period starting from block timestamp
                 // Lock period resets to 7 days from now on each additional stake
+                // Use block timestamp (not user-provided) to prevent timestamp manipulation
+                // Use db_batch to delay write until block commit
+                uint64_t block_timestamp = view_block.block_info().timestamp();
                 prefix_db_->SaveStakeInfo(
                     from,
                     total_staked,  // Save total staked amount
-                    join_info.stake_timestamp(),  // Reset lock period start (timestamp)
-                    view_block.block_info().height());
+                    block_timestamp,  // Use block timestamp (not user-provided)
+                    view_block.block_info().height(),
+                    seth_host.db_batch_);  // Use db_batch for delayed write
                 
                 // Update join_info with total staked for FTS calculation
                 join_info.set_total_staked(total_staked);
@@ -171,24 +175,34 @@ int JoinElectTxItem::HandleTx(
                 
                 if (has_existing_stake) {
                     SETH_INFO("Additional stake: added %lu coins (total now: %lu) to pool %u address %s, "
-                        "lock period reset to timestamp: %lu (previous: %lu)",
+                        "lock period reset to block timestamp: %lu (previous: %lu)",
                         stake_amount, total_staked, pool_index,
                         common::Encode::HexEncode(pool_address).c_str(),
-                        join_info.stake_timestamp(), existing_timestamp);
+                        block_timestamp, existing_timestamp);
                 } else {
-                    SETH_INFO("Initial stake: %lu coins to pool %u address %s, timestamp: %lu",
+                    SETH_INFO("Initial stake: %lu coins to pool %u address %s, block timestamp: %lu",
                         stake_amount, pool_index,
                         common::Encode::HexEncode(pool_address).c_str(),
-                        join_info.stake_timestamp());
+                        block_timestamp);
                 }
             }
         } else {
-            // No stake, just process join elect normally
+            // stake_amount == 0: join elect without additional staking
             if (from_balance >= (gas_used + store_gas) * block_tx.gas_price()) {
                 from_balance -= (gas_used + store_gas) * block_tx.gas_price();
                 gas_used += store_gas;
                 auto* block_join_info = view_block.mutable_block_info()->add_joins();
                 *block_join_info = join_info;
+                
+                // Check if user has existing stake for logging
+                uint64_t existing_stake = 0;
+                uint64_t existing_timestamp = 0;
+                if (prefix_db_->GetStakeInfo(from, &existing_stake, &existing_timestamp)) {
+                    SETH_INFO("Join elect with existing stake: addr=%s, existing_stake=%lu, no additional stake",
+                        common::Encode::HexEncode(from).c_str(), existing_stake);
+                } else {
+                    SETH_INFO("Join elect without stake: addr=%s", common::Encode::HexEncode(from).c_str());
+                }
             } else {
                 if (from_balance >= (gas_used) * block_tx.gas_price()) {
                     from_balance -= (gas_used) * block_tx.gas_price();
@@ -197,7 +211,7 @@ int JoinElectTxItem::HandleTx(
                 }
 
                 block_tx.set_status(consensus::kConsensusAccountBalanceError);
-                SETH_ERROR("id: %s leader balance error: %llu, %llu",
+                SETH_ERROR("id: %s balance error for gas: %llu, %llu",
                     common::Encode::HexEncode(from).c_str(),
                     from_balance, (gas_used + store_gas) * block_tx.gas_price());
             }
@@ -262,6 +276,21 @@ int JoinElectTxItem::HandleStakeOperation(
         uint64_t gas_used,
         uint64_t store_gas) {
     
+    // Stake operations can only be processed in root shard
+    if (common::GlobalInfo::Instance()->network_id() != network::kRootCongressNetworkId) {
+        block_tx.set_status(consensus::kConsensusError);
+        SETH_ERROR("Stake operation can only be processed in root shard, current shard: %u",
+            common::GlobalInfo::Instance()->network_id());
+        from_balance -= gas_used * block_tx.gas_price();
+        acc_balance_map[from]->set_balance(from_balance);
+        acc_balance_map[from]->set_nonce(block_tx.nonce());
+        acc_balance_map[from]->set_latest_height(view_block.block_info().height());
+        acc_balance_map[from]->set_tx_index(tx_index);
+        block_tx.set_balance(from_balance);
+        block_tx.set_gas_used(gas_used);
+        return kConsensusError;
+    }
+    
     uint64_t stake_amount = join_info.stake_amount();
     
     // Validate stake amount is multiple of minimum unit (8 * 10^8)
@@ -312,12 +341,16 @@ int JoinElectTxItem::HandleStakeOperation(
         acc_balance_map[root_pool_address]->set_latest_height(view_block.block_info().height());
     }
     
-    // Save/Update stake info with timestamp
+    // Save/Update stake info with block timestamp
+    // Use block timestamp (not user-provided) to prevent timestamp manipulation
+    // Use db_batch to delay write until block commit
+    uint64_t block_timestamp = view_block.block_info().timestamp();
     prefix_db_->SaveStakeInfo(
         from,
         total_staked,  // Save total staked amount
-        join_info.stake_timestamp(),  // Use timestamp for lock period
-        view_block.block_info().height());
+        block_timestamp,  // Use block timestamp (not user-provided)
+        view_block.block_info().height(),
+        seth_host.db_batch_);  // Use db_batch for delayed write
     
     // Update join_info with total staked for FTS calculation
     join_info.set_total_staked(total_staked);
@@ -337,15 +370,15 @@ int JoinElectTxItem::HandleStakeOperation(
     
     if (has_existing_stake) {
         SETH_INFO("Additional stake in root shard: addr=%s, added=%lu, total=%lu, "
-            "timestamp=%lu (previous: %lu), pool=%s",
+            "block_timestamp=%lu (previous: %lu), pool=%s",
             common::Encode::HexEncode(from).c_str(),
             stake_amount, total_staked,
-            join_info.stake_timestamp(), existing_timestamp,
+            block_timestamp, existing_timestamp,
             common::Encode::HexEncode(root_pool_address).c_str());
     } else {
-        SETH_INFO("Initial stake in root shard: addr=%s, amount=%lu, timestamp=%lu, pool=%s",
+        SETH_INFO("Initial stake in root shard: addr=%s, amount=%lu, block_timestamp=%lu, pool=%s",
             common::Encode::HexEncode(from).c_str(),
-            stake_amount, join_info.stake_timestamp(),
+            stake_amount, block_timestamp,
             common::Encode::HexEncode(root_pool_address).c_str());
     }
     
@@ -362,6 +395,21 @@ int JoinElectTxItem::HandleRedeemOperation(
         const std::string& from,
         uint64_t& from_balance,
         uint64_t gas_used) {
+    
+    // Redeem operations can only be processed in root shard
+    if (common::GlobalInfo::Instance()->network_id() != network::kRootCongressNetworkId) {
+        block_tx.set_status(consensus::kConsensusError);
+        SETH_ERROR("Redeem operation can only be processed in root shard, current shard: %u",
+            common::GlobalInfo::Instance()->network_id());
+        from_balance -= gas_used * block_tx.gas_price();
+        acc_balance_map[from]->set_balance(from_balance);
+        acc_balance_map[from]->set_nonce(block_tx.nonce());
+        acc_balance_map[from]->set_latest_height(view_block.block_info().height());
+        acc_balance_map[from]->set_tx_index(tx_index);
+        block_tx.set_balance(from_balance);
+        block_tx.set_gas_used(gas_used);
+        return kConsensusError;
+    }
     
     // Get stake info
     uint64_t total_staked = 0;
@@ -435,7 +483,8 @@ int JoinElectTxItem::HandleRedeemOperation(
     acc_balance_map[root_pool_address]->set_latest_height(view_block.block_info().height());
     
     // Remove stake info
-    prefix_db_->RemoveStakeInfo(from);
+    // Use db_batch to delay write until block commit
+    prefix_db_->RemoveStakeInfo(from, seth_host.db_batch_);
     
     // Set stoke to 0 for redeem operation (no PoS weight)
     join_info.set_stoke(0);

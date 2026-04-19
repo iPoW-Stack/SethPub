@@ -1756,10 +1756,25 @@ void NetworkInit::SendJoinElectTransaction() {
         join_info.set_shard_id(common::GlobalInfo::Instance()->network_id());
     }
     
+    // Check if user already has stake info
+    uint64_t existing_stake = 0;
+    uint64_t existing_timestamp = 0;
+    bool has_existing_stake = prefix_db_->GetStakeInfo(
+        security_->GetAddress(), &existing_stake, &existing_timestamp);
+    
     // Get stake amount from config (in units of 8 * 10^8)
     uint64_t stake_units = 0;
     conf_.Get("seth", "stake_units", stake_units);
-    if (stake_units > 0) {
+    
+    if (has_existing_stake) {
+        // User already has stake, no need to stake again
+        // Send join_elect with stake_amount = 0 to participate using existing stake
+        join_info.set_stake_op(bls::protobuf::STAKE_OP_NONE);
+        join_info.set_stake_amount(0);
+        SETH_INFO("User already has stake: %lu coins, sending join_elect without additional stake",
+            existing_stake);
+    } else if (stake_units > 0) {
+        // User doesn't have stake, and config specifies stake amount
         // Minimum stake unit is 8 * 10^8 coins (8 SETH)
         static const uint64_t kMinStakeUnit = 8 * 100000000llu;
         uint64_t stake_amount = stake_units * kMinStakeUnit;
@@ -1768,7 +1783,8 @@ void NetworkInit::SendJoinElectTransaction() {
         if (msg_ptr->address_info->balance() >= stake_amount) {
             join_info.set_stake_op(bls::protobuf::STAKE_OP_STAKE);
             join_info.set_stake_amount(stake_amount);
-            join_info.set_stake_timestamp(common::TimeUtils::TimestampSeconds());
+            // Note: stake_timestamp will be set by consensus using block timestamp
+            // to prevent user timestamp manipulation
             
             // Get current elect height for stake tracking
             elect::protobuf::ElectBlock elect_block;
@@ -1776,21 +1792,40 @@ void NetworkInit::SendJoinElectTransaction() {
                 join_info.set_stake_elect_height(elect_block.elect_height());
             }
             
-            SETH_INFO("Sending stake transaction: %lu coins (%lu units) to root shard, timestamp: %lu",
-                stake_amount, stake_units, join_info.stake_timestamp());
+            SETH_INFO("Sending initial stake transaction: %lu coins (%lu units) to root shard",
+                stake_amount, stake_units);
         } else {
             SETH_ERROR("Insufficient balance for staking: have %lu, need %lu",
                 msg_ptr->address_info->balance(), stake_amount);
             return;
         }
     } else {
+        // No existing stake and no stake_units configured
         // Normal join_elect without staking
         join_info.set_stake_op(bls::protobuf::STAKE_OP_NONE);
+        join_info.set_stake_amount(0);
+        SETH_INFO("Sending join_elect without stake");
     }
     
-    // if (pos == common::kInvalidUint32) {
-        auto n = common::GlobalInfo::Instance()->each_shard_max_members();
-        auto t = common::GetSignerCount(n);
+    // Check if user has already sent g2_req in a previous join_elect transaction
+    // by checking if NodeVerificationVector exists in database (saved from consensus block)
+    bls::protobuf::JoinElectInfo previous_join_info;
+    bool has_sent_g2_req = prefix_db_->GetNodeVerificationVector(
+        security_->GetAddress(), &previous_join_info);
+    
+    auto n = common::GlobalInfo::Instance()->each_shard_max_members();
+    auto t = common::GetSignerCount(n);
+    
+    if (has_sent_g2_req && previous_join_info.has_g2_req() && 
+        previous_join_info.g2_req().verify_vec_size() == t) {
+        // User has already sent g2_req in a previous transaction (confirmed in consensus block)
+        // No need to send it again, leave join_info.g2_req empty
+        SETH_INFO("User has already sent g2_req in previous join_elect (found in consensus block), "
+            "skipping g2_req in this transaction. verify_vec_size: %d",
+            previous_join_info.g2_req().verify_vec_size());
+    } else {
+        // First time sending join_elect, or previous g2_req was invalid
+        // Must include g2_req in this transaction
         auto* req = join_info.mutable_g2_req();
         auto res = prefix_db_->GetBlsVerifyG2(security_->GetAddress(), req);
         if (!res || req->verify_vec_size() != t) {
@@ -1799,7 +1834,9 @@ void NetworkInit::SendJoinElectTransaction() {
 #ifndef NDEBUG
         assert(req->verify_vec_size() >= t);
 #endif
-    // }
+        SETH_INFO("First time sending join_elect or no valid g2_req in consensus block, "
+            "including g2_req in transaction. verify_vec_size: %d", req->verify_vec_size());
+    }
 
     new_tx->set_value(SerializeDeterministic(join_info));
     transport::TcpTransport::Instance()->SetMessageHash(msg);
@@ -1870,12 +1907,30 @@ void NetworkInit::SendRedeemStakeTransaction() {
     prefix_db_->GetLocalElectPos(security_->GetAddress(), &pos);
     join_info.set_member_idx(pos);
     
+    // Check if user has already sent g2_req in a previous join_elect transaction
+    // by checking if NodeVerificationVector exists in database (saved from consensus block)
+    bls::protobuf::JoinElectInfo previous_join_info;
+    bool has_sent_g2_req = prefix_db_->GetNodeVerificationVector(
+        security_->GetAddress(), &previous_join_info);
+    
     auto n = common::GlobalInfo::Instance()->each_shard_max_members();
     auto t = common::GetSignerCount(n);
-    auto* req = join_info.mutable_g2_req();
-    auto res = prefix_db_->GetBlsVerifyG2(security_->GetAddress(), req);
-    if (!res || req->verify_vec_size() != t) {
-        CreateContribution(req);
+    
+    if (has_sent_g2_req && previous_join_info.has_g2_req() && 
+        previous_join_info.g2_req().verify_vec_size() == t) {
+        // User has already sent g2_req in a previous transaction (confirmed in consensus block)
+        // No need to send it again for redeem operation
+        SETH_INFO("Redeem: User has already sent g2_req in previous join_elect (found in consensus block), "
+            "skipping g2_req in redeem transaction. verify_vec_size: %d",
+            previous_join_info.g2_req().verify_vec_size());
+    } else {
+        // First time or previous g2_req was invalid, must include g2_req
+        auto* req = join_info.mutable_g2_req();
+        auto res = prefix_db_->GetBlsVerifyG2(security_->GetAddress(), req);
+        if (!res || req->verify_vec_size() != t) {
+            CreateContribution(req);
+        }
+        SETH_INFO("Redeem: Including g2_req in transaction. verify_vec_size: %d", req->verify_vec_size());
     }
     
     new_tx->set_value(SerializeDeterministic(join_info));

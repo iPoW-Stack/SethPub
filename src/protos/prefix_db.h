@@ -957,6 +957,32 @@ public:
         }
     }
 
+    // Save stake information for an address (using timestamp) with db_batch
+    void SaveStakeInfo(
+            const std::string& address,
+            uint64_t total_stake_amount,
+            uint64_t stake_timestamp,
+            uint64_t stake_block_height,
+            db::DbWriteBatch& db_batch) {
+        std::string key;
+        key.reserve(64);
+        key.append(kStakeInfoPrefix);
+        key.append(address);
+        
+        // Pack data: total_stake_amount(8) + stake_timestamp(8) + stake_block_height(8)
+        char data[24];
+        uint64_t* u64_ptr = (uint64_t*)data;
+        u64_ptr[0] = total_stake_amount;
+        u64_ptr[1] = stake_timestamp;
+        u64_ptr[2] = stake_block_height;
+        
+        std::string val(data, sizeof(data));
+        db_batch.Put(key, val);
+        SETH_DEBUG("Saved stake info to batch: addr=%s, total_stake=%lu, timestamp=%lu, block_height=%lu",
+            common::Encode::HexEncode(address).c_str(),
+            total_stake_amount, stake_timestamp, stake_block_height);
+    }
+
     // Get stake information for an address (using timestamp)
     bool GetStakeInfo(
             const std::string& address,
@@ -1006,6 +1032,18 @@ public:
             SETH_DEBUG("Removed stake info for address: %s",
                 common::Encode::HexEncode(address).c_str());
         }
+    }
+
+    // Remove stake information for an address with db_batch
+    void RemoveStakeInfo(const std::string& address, db::DbWriteBatch& db_batch) {
+        std::string key;
+        key.reserve(64);
+        key.append(kStakeInfoPrefix);
+        key.append(address);
+        
+        db_batch.Delete(key);
+        SETH_DEBUG("Removed stake info from batch for address: %s",
+            common::Encode::HexEncode(address).c_str());
     }
 
     void SaveLocalPolynomial(
