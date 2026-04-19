@@ -351,7 +351,7 @@ Status Hotstuff::Propose(
     header.set_hop_count(0);
     auto* hotstuff_msg = header.mutable_hotstuff();
     auto* pb_pro_msg = hotstuff_msg->mutable_pro_msg();
-    SETH_INFO("pool: %d, leader begin construct propose msg, pre_vb: %u_%u_%lu, timeblock_height: %lu",
+    SETH_DEBUG("pool: %d, leader begin construct propose msg, pre_vb: %u_%u_%lu, timeblock_height: %lu",
         pool_idx_,
         pre_v_block->qc().network_id(),
         pre_v_block->qc().pool_index(),
@@ -628,7 +628,7 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
         if (latest_view_block_ptr->block_info().tx_list_size() == 0 && 
                 latest_view_block_ptr->qc().view() == pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().tc().view()) {
             ADD_DEBUG_PROCESS_TIMESTAMP();
-            SETH_INFO("pool: %d, high view block tx size is 0, and not timeout "
+            SETH_DEBUG("pool: %d, high view block tx size is 0, and not timeout "
                 "and propose tx size is 0, ignore.", pool_idx_);
             return Status::kLeaderInvalid;
         }
@@ -690,7 +690,7 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
         &out_view,
         pro_msg_wrap->view_block_ptr->block_info().timestamp());
     if (!leader) {
-        SETH_INFO("pool: %d, propose message no leader info, leader idx: %u, tc view: %lu, "
+        SETH_DEBUG("pool: %d, propose message no leader info, leader idx: %u, tc view: %lu, "
             "propose_debug: %s",
             pool_idx_, view_item.qc().leader_idx(), 
             msg_ptr->header.hotstuff().pro_msg().tc().view(),
@@ -699,7 +699,7 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
     }
 
     if (view_item.qc().view() != out_view) {
-        SETH_INFO("pool: %d, propose message view not match leader view, "
+        SETH_DEBUG("pool: %d, propose message view not match leader view, "
             "leader view: %lu, propose view: %lu, hash: %lu, propose_debug: %s",
             pool_idx_, out_view, view_item.qc().view(), pro_msg_wrap->msg_ptr->header.hash64(),
             "");
@@ -1860,7 +1860,7 @@ Status Hotstuff::VerifyViewBlock(
         return Status::kError;
     }
 
-    SETH_ERROR("pool: %d, block view message is success. %lu, %lu, %s, %s, "
+    SETH_DEBUG("pool: %d, block view message is success. %lu, %lu, %s, %s, "
         "v_block.qc().view(): %lu, pacemaker()->CurView(): %lu, "
         "v_block.qc().view(): %lu",
         pool_idx_, v_block.qc().view(), view_block_chain->LatestCommittedBlock()->qc().view(),
