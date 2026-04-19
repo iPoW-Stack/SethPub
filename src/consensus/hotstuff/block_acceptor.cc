@@ -890,7 +890,7 @@ Status BlockAcceptor::addTxsToPool(
             if (!leader_statistic.ParseFromString(tx->value())) {
                 SETH_WARN("failed to parse leader's elect statistic, rejecting proposal. "
                     "pool=%u, key=%s",
-                    msg_ptr->address_info->pool_index(),
+                    pool_idx(),
                     common::Encode::HexEncode(tx->key()).c_str());
                 create_success = false;
                 break;
@@ -902,20 +902,20 @@ Status BlockAcceptor::addTxsToPool(
                     "leader_shard=%u, expected_shard=%u, pool=%u",
                     leader_statistic.sharding_id(),
                     msg_ptr->header.hotstuff().net_id(),
-                    msg_ptr->address_info->pool_index());
+                    pool_idx());
                 create_success = false;
                 break;
             }
             
             // Verify transaction exists in local tx_pool
             if (!pools_mgr_->TxKeyExists(
-                    msg_ptr->address_info->pool_index(),
+                    pool_idx(),
                     tx->to(),
                     tx->nonce(),
                     tx->key())) {
                 SETH_WARN("statistic tx not found in local tx_pool, rejecting proposal. "
                     "pool=%u, to=%s, nonce=%lu, key=%s",
-                    msg_ptr->address_info->pool_index(),
+                    pool_idx(),
                     common::Encode::HexEncode(tx->to()).c_str(),
                     tx->nonce(),
                     common::Encode::HexEncode(tx->key()).c_str());
@@ -924,11 +924,19 @@ Status BlockAcceptor::addTxsToPool(
             }
             
             // Verify node information consistency (90% threshold)
-            if (!ValidateStatisticNodeConsistency(leader_statistic, msg_ptr->address_info->pool_index())) {
+            if (!ValidateStatisticNodeConsistency(leader_statistic, pool_idx())) {
                 SETH_WARN("statistic node consistency validation failed (< 90%%), rejecting proposal. "
                     "pool=%u, key=%s",
-                    msg_ptr->address_info->pool_index(),
+                    pool_idx(),
                     common::Encode::HexEncode(tx->key()).c_str());
+                create_success = false;
+                break;
+            }
+            
+            // Get address_info for statistic transaction
+            address_info = account_mgr_->pools_address_info(tx->step(), pool_idx());
+            if (!address_info) {
+                SETH_WARN("failed to get address_info for statistic tx, pool=%u", pool_idx());
                 create_success = false;
                 break;
             }
