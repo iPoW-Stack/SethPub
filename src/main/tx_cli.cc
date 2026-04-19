@@ -454,6 +454,308 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    // ── Mode 4: 10,000 Account Stress Test ────────────────────────────────
+    // Usage: txcli 4 <shard> <pool> <ip> <port> [threads]
+    if (argv[1][0] == '4') {
+        const uint32_t kAccountCount = 10000;
+        uint32_t num_threads = (argc >= 7) ? std::stoi(argv[6]) : 16;
+        
+        if (argc >= 4) {
+            shardnum = std::stoi(argv[2]);
+            global_pool_idx = std::stoi(argv[3]);
+        }
+        if (argc >= 6) {
+            global_chain_node_ip = argv[4];
+            global_chain_node_http_port = std::stoi(argv[5]) + 10000;
+        }
+
+        std::cout << "\n=== 10,000 Account Stress Test ===" << std::endl;
+        std::cout << "Shard: " << shardnum << ", Pool: " << global_pool_idx << std::endl;
+        std::cout << "Node: " << global_chain_node_ip << ":" << (global_chain_node_http_port - 10000) << std::endl;
+        std::cout << "Threads: " << num_threads << std::endl;
+
+        LoadAllAccounts(shardnum);
+        SignalRegister();
+        WriteDefaultLogConf();
+
+        // Setup transport
+        transport::MultiThreadHandler net_handler;
+        std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
+        auto db_ptr = std::make_shared<db::Db>();
+        if (!db_ptr->Init(db_path + "_stress_10k")) {
+            std::cerr << "init db failed" << std::endl;
+            return 1;
+        }
+        if (net_handler.Init(db_ptr, sec) != 0) {
+            std::cerr << "init net handler failed" << std::endl;
+            return 1;
+        }
+        if (transport::TcpTransport::Instance()->Init("127.0.0.1:13793", 128, false, &net_handler) != 0) {
+            std::cerr << "init tcp failed" << std::endl;
+            return 1;
+        }
+        if (transport::TcpTransport::Instance()->Start(false) != 0) {
+            std::cerr << "start tcp failed" << std::endl;
+            return 1;
+        }
+
+        // Phase 1: Generate 10,000 accounts
+        std::cout << "\n[Phase 1] Generating " << kAccountCount << " accounts..." << std::endl;
+        std::vector<std::string> test_prikeys;
+        std::vector<std::string> test_addrs;
+        std::unordered_map<std::string, std::string> test_pri_addr_map;
+
+        for (uint32_t i = 0; i < kAccountCount; ++i) {
+            // Generate random private key
+            std::string prikey;
+            prikey.resize(32);
+            for (uint32_t j = 0; j < 32; ++j) {
+                prikey[j] = static_cast<char>(common::Random::RandomUint32() % 256);
+            }
+
+            std::shared_ptr<security::Security> test_sec = std::make_shared<security::Ecdsa>();
+            test_sec->SetPrivateKey(prikey);
+            std::string addr = test_sec->GetAddress();
+
+            test_prikeys.push_back(prikey);
+            test_addrs.push_back(addr);
+            test_pri_addr_map[prikey] = addr;
+
+            if ((i + 1) % 1000 == 0) {
+                std::cout << "  Generated " << (i + 1) << " accounts..." << std::endl;
+            }
+        }
+        std::cout << "✓ Generated " << kAccountCount << " accounts" << std::endl;
+
+        // Phase 2: Create accounts on blockchain (send initial transactions)
+        std::cout << "\n[Phase 2] Creating accounts on blockchain..." << std::endl;
+        std::cout << "  Using " << g_prikeys.size() << " funded accounts to create test accounts..." << std::endl;
+
+        SethSDK sdk(global_chain_node_ip, global_chain_node_http_port);
+        std::atomic<uint32_t> created_count{0};
+        std::atomic<uint32_t> failed_count{0};
+
+        // Use existing funded accounts to send initial coins to test accounts
+        auto create_account_thread = [&](uint32_t thread_id, uint32_t start_idx, uint32_t end_idx) {
+            // Use one of the funded accounts from g_prikeys
+            uint32_t funder_idx = thread_id % g_prikeys.size();
+            std::string funder_prikey = g_prikeys[funder_idx];
+            std::shared_ptr<security::Security> funder_sec = std::make_shared<security::Ecdsa>();
+            funder_sec->SetPrivateKey(funder_prikey);
+            std::string funder_addr = funder_sec->GetAddress();
+
+            // Get initial nonce
+            int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(funder_addr));
+            if (nonce < 0) {
+                std::cerr << "  Thread " << thread_id << ": Failed to fetch nonce" << std::endl;
+                return;
+            }
+
+            for (uint32_t i = start_idx; i < end_idx && !global_stop; ++i) {
+                // Send 1000 coins to test account
+                auto tx_msg_ptr = CreateTransactionWithAttr(
+                    funder_sec,
+                    ++nonce,
+                    funder_prikey,
+                    test_addrs[i],
+                    "",
+                    "",
+                    1000,  // Initial balance
+                    1000,
+                    1,
+                    shardnum);
+
+                if (tx_msg_ptr && transport::TcpTransport::Instance()->Send(
+                        global_chain_node_ip, 
+                        global_chain_node_http_port - 10000, 
+                        tx_msg_ptr->header) == 0) {
+                    ++created_count;
+                } else {
+                    ++failed_count;
+                }
+
+                // Rate limiting
+                usleep(1000);  // 1ms delay
+            }
+        };
+
+        std::vector<std::thread> create_threads;
+        uint32_t accounts_per_thread = kAccountCount / num_threads;
+        for (uint32_t t = 0; t < num_threads; ++t) {
+            uint32_t start_idx = t * accounts_per_thread;
+            uint32_t end_idx = (t == num_threads - 1) ? kAccountCount : (start_idx + accounts_per_thread);
+            create_threads.emplace_back(create_account_thread, t, start_idx, end_idx);
+        }
+
+        // Progress monitor
+        std::thread progress_thread([&]() {
+            while (created_count + failed_count < kAccountCount && !global_stop) {
+                usleep(2000000);  // 2 seconds
+                std::cout << "  Progress: " << created_count.load() << " created, " 
+                          << failed_count.load() << " failed" << std::endl;
+            }
+        });
+
+        for (auto& th : create_threads) {
+            th.join();
+        }
+        progress_thread.join();
+
+        std::cout << "✓ Account creation complete: " << created_count.load() 
+                  << " created, " << failed_count.load() << " failed" << std::endl;
+
+        // Phase 3: Wait for accounts to be confirmed
+        std::cout << "\n[Phase 3] Waiting for accounts to be confirmed (30 seconds)..." << std::endl;
+        usleep(30000000);  // 30 seconds
+
+        // Phase 4: Verify accounts exist
+        std::cout << "\n[Phase 4] Verifying accounts..." << std::endl;
+        std::atomic<uint32_t> verified_count{0};
+        std::atomic<uint32_t> verify_failed_count{0};
+
+        auto verify_thread = [&](uint32_t start_idx, uint32_t end_idx) {
+            for (uint32_t i = start_idx; i < end_idx && !global_stop; ++i) {
+                int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(test_addrs[i]));
+                if (nonce >= 0) {
+                    ++verified_count;
+                    src_prikey_with_nonce[test_addrs[i]] = nonce;
+                    prikey_with_nonce[test_addrs[i]] = nonce;
+                } else {
+                    ++verify_failed_count;
+                }
+                usleep(10000);  // 10ms delay to avoid overwhelming the node
+            }
+        };
+
+        std::vector<std::thread> verify_threads;
+        for (uint32_t t = 0; t < num_threads; ++t) {
+            uint32_t start_idx = t * accounts_per_thread;
+            uint32_t end_idx = (t == num_threads - 1) ? kAccountCount : (start_idx + accounts_per_thread);
+            verify_threads.emplace_back(verify_thread, start_idx, end_idx);
+        }
+
+        for (auto& th : verify_threads) {
+            th.join();
+        }
+
+        std::cout << "✓ Verification complete: " << verified_count.load() 
+                  << " verified, " << verify_failed_count.load() << " not found" << std::endl;
+
+        if (verified_count.load() < kAccountCount / 2) {
+            std::cerr << "ERROR: Less than 50% of accounts verified. Aborting stress test." << std::endl;
+            return 1;
+        }
+
+        // Phase 5: Stress test - random transfers
+        std::cout << "\n[Phase 5] Starting stress test - random transfers..." << std::endl;
+        std::cout << "  Press Ctrl+C to stop" << std::endl;
+
+        std::atomic<uint64_t> tx_count{0};
+        std::atomic<uint64_t> tx_failed{0};
+
+        auto stress_test_thread = [&](uint32_t thread_id, uint32_t start_idx, uint32_t end_idx) {
+            for (uint32_t i = start_idx; i < end_idx && !global_stop; ) {
+                // Random from account (within this thread's range)
+                uint32_t from_idx = start_idx + (common::Random::RandomUint32() % (end_idx - start_idx));
+                
+                // Random to account (any account except from)
+                uint32_t to_idx;
+                do {
+                    to_idx = common::Random::RandomUint32() % kAccountCount;
+                } while (to_idx == from_idx);
+
+                std::string from_prikey = test_prikeys[from_idx];
+                std::string from_addr = test_addrs[from_idx];
+                std::string to_addr = test_addrs[to_idx];
+
+                // Check nonce
+                if (src_prikey_with_nonce[from_addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[from_addr]) {
+                    usleep(1000000);  // Wait 1 second
+                    continue;
+                }
+
+                std::shared_ptr<security::Security> from_sec = std::make_shared<security::Ecdsa>();
+                from_sec->SetPrivateKey(from_prikey);
+
+                // Random amount between 1 and 10
+                uint64_t amount = 1 + (common::Random::RandomUint32() % 10);
+
+                auto tx_msg_ptr = CreateTransactionWithAttr(
+                    from_sec,
+                    ++prikey_with_nonce[from_addr],
+                    from_prikey,
+                    to_addr,
+                    "",
+                    "",
+                    amount,
+                    1000,
+                    1,
+                    shardnum);
+
+                if (tx_msg_ptr && transport::TcpTransport::Instance()->Send(
+                        global_chain_node_ip,
+                        global_chain_node_http_port - 10000,
+                        tx_msg_ptr->header) == 0) {
+                    ++tx_count;
+                } else {
+                    ++tx_failed;
+                }
+
+                ++i;
+                usleep(5000);  // 5ms delay
+            }
+        };
+
+        // Start stress test threads
+        std::vector<std::thread> stress_threads;
+        for (uint32_t t = 0; t < num_threads; ++t) {
+            uint32_t start_idx = t * accounts_per_thread;
+            uint32_t end_idx = (t == num_threads - 1) ? kAccountCount : (start_idx + accounts_per_thread);
+            stress_threads.emplace_back(stress_test_thread, t, start_idx, end_idx);
+        }
+
+        // TPS monitor
+        std::thread tps_thread([&]() {
+            uint64_t prev_count = 0;
+            while (!global_stop) {
+                usleep(3000000);  // 3 seconds
+                uint64_t cur_count = tx_count.load();
+                uint64_t tps = (cur_count - prev_count) / 3;
+                std::cout << "[Stress Test] TPS: " << tps 
+                          << ", Total: " << cur_count 
+                          << ", Failed: " << tx_failed.load() << std::endl;
+                prev_count = cur_count;
+            }
+        });
+
+        // Nonce update thread
+        std::thread nonce_update_thread([&]() {
+            while (!global_stop) {
+                usleep(15000000);  // 15 seconds
+                std::cout << "  Updating nonces..." << std::endl;
+                for (uint32_t i = 0; i < kAccountCount && !global_stop; i += 100) {
+                    int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(test_addrs[i]));
+                    if (nonce >= 0) {
+                        src_prikey_with_nonce[test_addrs[i]] = nonce;
+                    }
+                    usleep(10000);
+                }
+            }
+        });
+
+        for (auto& th : stress_threads) {
+            th.join();
+        }
+        tps_thread.join();
+        nonce_update_thread.join();
+
+        transport::TcpTransport::Instance()->Stop();
+        std::cout << "\n=== Stress Test Complete ===" << std::endl;
+        std::cout << "Total transactions: " << tx_count.load() << std::endl;
+        std::cout << "Failed transactions: " << tx_failed.load() << std::endl;
+        return 0;
+    }
+
     // Common setup for modes 1/2/3
     if (argc >= 4) {
         shardnum = std::stoi(argv[2]);
