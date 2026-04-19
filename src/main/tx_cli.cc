@@ -279,7 +279,6 @@ int tx_main(int argc, char** argv) {
     const std::string key = "";
     const std::string value = "";
     auto tx_thread = [&](std::vector<std::string> prikeys) {
-        std::string to = common::Encode::HexDecode("27d4c39244f26c157b5a87898569ef4ce5807413");
         uint32_t prikey_pos = 0;
         auto from_prikey = prikeys[0];
         std::shared_ptr<security::Security> thread_security = std::make_shared<security::Ecdsa>();
@@ -313,6 +312,13 @@ int tx_main(int argc, char** argv) {
                     continue;
                 }
             }
+
+            // Randomly select a 'to' address from g_addrs, ensuring it's different from 'from'
+            std::string to;
+            do {
+                uint32_t random_idx = common::Random::RandomUint32() % g_addrs.size();
+                to = g_addrs[random_idx];
+            } while (to == addr && g_addrs.size() > 1);  // Avoid sending to self if there are other options
 
             auto tx_msg_ptr = CreateTransactionWithAttr(
                 thread_security,
