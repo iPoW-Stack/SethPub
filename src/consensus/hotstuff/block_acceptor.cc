@@ -77,25 +77,38 @@ void BlockAcceptor::StopVerifyThreadPool() {
 // Submit tasks and block until all complete.
 void BlockAcceptor::RunVerifyBatch(std::vector<std::function<void()>>& tasks) {
     if (tasks.empty()) return;
-    std::atomic<int> remaining(static_cast<int>(tasks.size()));
-    std::mutex done_mutex;
-    std::condition_variable done_cv;
+
+    const int n = static_cast<int>(tasks.size());
+    std::atomic<int> remaining(n);
+    // Use a shared_ptr so the mutex/cv outlive RunVerifyBatch even if a worker
+    // fires notify_one() after the wait() predicate check but before wait() sleeps.
+    struct Sync {
+        std::mutex mu;
+        std::condition_variable cv;
+    };
+    auto sync = std::make_shared<Sync>();
 
     {
         std::lock_guard<std::mutex> lk(verify_mutex_);
         for (auto& fn : tasks) {
-            verify_task_queue_.push({[&remaining, &done_cv, f = std::move(fn)]() mutable {
-                f();
-                if (--remaining == 0) {
-                    done_cv.notify_one();
+            verify_task_queue_.push({
+                [sync, &remaining, f = std::move(fn)]() mutable {
+                    f();
+                    // Decrement under the lock so the waiter cannot miss the
+                    // notification between checking remaining and sleeping.
+                    {
+                        std::lock_guard<std::mutex> g(sync->mu);
+                        --remaining;
+                    }
+                    sync->cv.notify_one();
                 }
-            }});
+            });
         }
     }
     verify_cv_.notify_all();
 
-    std::unique_lock<std::mutex> lk(done_mutex);
-    done_cv.wait(lk, [&remaining] { return remaining.load() == 0; });
+    std::unique_lock<std::mutex> lk(sync->mu);
+    sync->cv.wait(lk, [&remaining] { return remaining.load() == 0; });
 }
 
 void BlockAcceptor::Init(
