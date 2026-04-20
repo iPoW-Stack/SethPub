@@ -333,7 +333,7 @@ int tx_main(int argc, char** argv) {
                 shardnum);
             if (transport::TcpTransport::Instance()->Send(ip, port, tx_msg_ptr->header) != 0) {
                 std::cout << "send tcp client failed!" << std::endl;
-                return 1;
+                // Do not return — just skip this tx and keep running
             }
 
             count++;
@@ -384,10 +384,29 @@ int tx_main(int argc, char** argv) {
 
     thread_vec.push_back(std::thread(tps_thread));
     thread_vec.push_back(std::thread(update_nonce_thread));
+
+    // When Ctrl+C fires, global_stop becomes true but the nonce thread may be
+    // sleeping in wait_for(15s).  Wake it so join() returns promptly.
+    // We spin-wait briefly for all tx threads to notice global_stop, then kick
+    // the nonce condvar.
+    std::thread waker([&]() {
+        while (!global_stop) {
+            usleep(100000);
+        }
+        update_nonce_con.notify_all();
+    });
+
+    for (uint32_t i = 0; i < thread_vec.size(); ++i) {
+        thread_vec[i].join();
+    }
+    waker.join();
     for (uint32_t i = 0; i < thread_vec.size(); ++i) {
         thread_vec[i].join();
     }
 
+    // All worker threads have exited — safe to stop the transport now.
+    transport::TcpTransport::Instance()->Stop();
+    usleep(200000);
     return 0;
 }
 
@@ -449,8 +468,7 @@ int InitPrefund(const std::string& contract_address) {
 int main(int argc, char** argv) {
     if (argv[1][0] == '0') {
         tx_main(argc, argv);
-        transport::TcpTransport::Instance()->Stop();
-        usleep(1000000);
+        // Stop() is already called inside tx_main after all threads join.
         return 0;
     }
 
