@@ -208,10 +208,8 @@ public:
         auto local_idx = GetLocalMemberIdx();
         View out_view = 0;
         auto leader = pool_tx_leader_.load();
-        if (leader && leader->index == local_idx) {
-            if (leader->pubkey != crypto_->security()->GetPublicKey()) {
-                return leader;
-            }
+        if (leader && leader->index != local_idx) {
+            return leader;
         }
         
         return nullptr;
@@ -321,7 +319,6 @@ private:
             int64_t leader_tm_sec = 0,
             bool debug = true) {
         // auto members = elect_item->valid_leaders();
-        pool_tx_leader_.store(nullptr);
         auto members = Members(common::GlobalInfo::Instance()->network_id());
         if (members == nullptr || members->empty()) {
             return nullptr;
