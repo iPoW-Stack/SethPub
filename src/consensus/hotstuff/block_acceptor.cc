@@ -34,7 +34,69 @@ namespace hotstuff {
 
 BlockAcceptor::BlockAcceptor() {}
 
-BlockAcceptor::~BlockAcceptor() {}
+BlockAcceptor::~BlockAcceptor() {
+    StopVerifyThreadPool();
+}
+
+// ── Persistent verify thread pool ────────────────────────────────────────────
+
+void BlockAcceptor::StartVerifyThreadPool(int n) {
+    verify_stop_ = false;
+    verify_threads_.reserve(n);
+    for (int i = 0; i < n; ++i) {
+        verify_threads_.emplace_back([this] {
+            while (true) {
+                std::function<void()> fn;
+                {
+                    std::unique_lock<std::mutex> lk(verify_mutex_);
+                    verify_cv_.wait(lk, [this] {
+                        return verify_stop_ || !verify_task_queue_.empty();
+                    });
+                    if (verify_stop_ && verify_task_queue_.empty()) return;
+                    fn = std::move(verify_task_queue_.front().fn);
+                    verify_task_queue_.pop();
+                }
+                fn();
+            }
+        });
+    }
+}
+
+void BlockAcceptor::StopVerifyThreadPool() {
+    {
+        std::lock_guard<std::mutex> lk(verify_mutex_);
+        verify_stop_ = true;
+    }
+    verify_cv_.notify_all();
+    for (auto& t : verify_threads_) {
+        if (t.joinable()) t.join();
+    }
+    verify_threads_.clear();
+}
+
+// Submit tasks and block until all complete.
+void BlockAcceptor::RunVerifyBatch(std::vector<std::function<void()>>& tasks) {
+    if (tasks.empty()) return;
+    std::atomic<int> remaining(static_cast<int>(tasks.size()));
+    std::mutex done_mutex;
+    std::condition_variable done_cv;
+
+    {
+        std::lock_guard<std::mutex> lk(verify_mutex_);
+        for (auto& fn : tasks) {
+            verify_task_queue_.push({[&remaining, &done_cv, f = std::move(fn)]() mutable {
+                f();
+                if (--remaining == 0) {
+                    done_cv.notify_one();
+                }
+            }});
+        }
+    }
+    verify_cv_.notify_all();
+
+    std::unique_lock<std::mutex> lk(done_mutex);
+    done_cv.wait(lk, [&remaining] { return remaining.load() == 0; });
+}
 
 void BlockAcceptor::Init(
         const uint32_t& pool_idx,
@@ -64,7 +126,14 @@ void BlockAcceptor::Init(
     view_block_chain_ = view_block_chain;
     bls_mgr_ = bls_mgr;
     tx_pools_ = std::make_shared<consensus::WaitingTxsPools>(pools_mgr_, block_mgr_, tm_block_mgr_);
-    prefix_db_ = std::make_shared<protos::PrefixDb>(db_);    
+    prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
+
+    // Start persistent verify thread pool — threads are reused across all addTxsToPool calls.
+    // Use min(hw_concurrency, 8) threads; at least 2.
+    int nthreads = static_cast<int>(std::thread::hardware_concurrency());
+    if (nthreads < 2)  nthreads = 2;
+    if (nthreads > 8)  nthreads = 8;
+    StartVerifyThreadPool(nthreads);
 }
 
 // Accept verifies the new proposal information of the Leader, executes txs, and modifies the block
@@ -600,93 +669,16 @@ Status BlockAcceptor::addTxsToPool(
     // temp_items: Store created TxItemPtr (Main thread writes, Child threads read)
     std::vector<pools::TxItemPtr> temp_items(txs.size(), nullptr);
     
-    // verify_results: Store verification results (0: pending, 1: success, -1: failure) - Child threads write
-    // Using int8_t to save space
-    std::vector<int8_t> verify_results(txs.size(), 0); 
-    
-    // Task queue and synchronization primitives
-    std::deque<int> task_queue;
-    std::mutex queue_mutex;
-    std::condition_variable queue_cv;
-    bool producer_done = false; // Flag to indicate production is finished
+    // verify_results: 0=pending, 1=success, -1=failure; written exclusively per-index (no races).
+    std::vector<int8_t> verify_results(txs.size(), 0);
     
     bool is_leader = msg_ptr->is_leader;
     bool need_verify = !is_leader; // Leader skips verification, Follower verifies
 
-    // --- Define Worker Thread Function ---
-    auto worker_func = [&]() {
-        while (true) {
-            int idx = -1;
-            {
-                std::unique_lock<std::mutex> lock(queue_mutex);
-                // Wait condition: Queue has data OR producer has finished
-                queue_cv.wait(lock, [&] { return !task_queue.empty() || producer_done; });
-                
-                if (task_queue.empty() && producer_done) {
-                    return; // Queue is empty and production is done, exit thread
-                }
-                
-                if (!task_queue.empty()) {
-                    idx = task_queue.front();
-                    task_queue.pop_front();
-                }
-            }
-
-            // Process task
-            if (idx != -1) {
-                // Note: At this point, temp_items[idx] has been assigned by the main thread
-                // and the main thread will not modify it again, so reading is safe.
-                auto tx_ptr = temp_items[idx];
-                
-                if (tx_ptr == nullptr || tx_ptr->tx_info == nullptr) {
-                    verify_results[idx] = -1; // Invalid object
-                    continue;
-                }
-
-                // Execute signature verification (Time-consuming operation)
-                const auto* tx = &txs[idx];
-                auto tx_hash = pools::GetTxMessageHash(*tx);
-                bool valid = true;
-
-                if (pools::IsUserTransaction(tx_ptr->tx_info->step())) {
-                    // Fix: Changed kError to kSecurityError
-                    int verify_ret = security::kSecurityError; 
-                    
-                    if (tx->pubkey().size() == 64u) {
-                        security::GmSsl gmssl;
-                        verify_ret = gmssl.Verify(tx_hash, tx_ptr->tx_info->pubkey(), tx_ptr->tx_info->sign());
-                    } else if (tx->pubkey().size() > 128u) {
-                        security::Oqs oqs;
-                        verify_ret = oqs.Verify(tx_hash, tx_ptr->tx_info->pubkey(), tx_ptr->tx_info->sign());
-                    } else {
-                        // Assuming security_ptr_ is thread-safe or read-only
-                        verify_ret = security_ptr_->Verify(tx_hash, tx_ptr->tx_info->pubkey(), tx_ptr->tx_info->sign());
-                    }
-
-                    if (verify_ret != security::kSecuritySuccess) {
-                        valid = false;
-                        // assert(false); // Avoid assert in multi-threaded environment, use logging if needed
-                    }
-                }
-
-                // Write result (Lock-free, exclusive idx access)
-                verify_results[idx] = valid ? 1 : -1;
-            }
-        }
-    };
-
-    // --- Start Thread Pool ---
-    std::vector<std::shared_ptr<std::thread>> threads;
+    // verify_tasks: built during the main loop, dispatched to the persistent pool in one shot.
+    std::vector<std::function<void()>> verify_tasks;
     if (need_verify) {
-        int thread_count = 8;
-        // Simple adaptation: Do not start too many threads if tasks are few
-        if (txs.size() < (size_t)thread_count) thread_count = (int)txs.size();
-        if (thread_count > 0) {
-            threads.reserve(thread_count);
-            for (int i = 0; i < thread_count; ++i) {
-                threads.emplace_back(std::make_shared<std::thread>(worker_func));
-            }
-        }
+        verify_tasks.reserve(txs.size());
     }
 
     // ========================================================================
@@ -1027,21 +1019,43 @@ Status BlockAcceptor::addTxsToPool(
 
         // --- Core Logic: Submit Task ---
         if (create_success && tx_ptr != nullptr) {
-            temp_items[i] = tx_ptr; // Store object first
+            temp_items[i] = tx_ptr;
 
             if (!need_verify) {
-                // Leader path: Mark success directly
+                // Leader path: mark success directly, no signature check needed.
                 verify_results[i] = 1;
             } else {
-                // Follower path: Push to queue, wake up consumers
-                {
-                    std::lock_guard<std::mutex> lock(queue_mutex);
-                    task_queue.push_back(i);
-                }
-                queue_cv.notify_one();
+                // Follower path: build a verify task for the persistent thread pool.
+                // Capture by value what the worker needs; temp_items[i] is already set
+                // and will not be modified again by the main thread.
+                const int   idx  = i;
+                const auto* ptx  = &txs[i];
+                verify_tasks.emplace_back([this, idx, ptx, &temp_items, &verify_results]() {
+                    auto& tx_ptr2 = temp_items[idx];
+                    if (!tx_ptr2 || !tx_ptr2->tx_info) {
+                        verify_results[idx] = -1;
+                        return;
+                    }
+                    if (!pools::IsUserTransaction(tx_ptr2->tx_info->step())) {
+                        verify_results[idx] = 1;
+                        return;
+                    }
+                    auto tx_hash = pools::GetTxMessageHash(*ptx);
+                    int ret = security::kSecurityError;
+                    if (ptx->pubkey().size() == 64u) {
+                        security::GmSsl gmssl;
+                        ret = gmssl.Verify(tx_hash, tx_ptr2->tx_info->pubkey(), tx_ptr2->tx_info->sign());
+                    } else if (ptx->pubkey().size() > 128u) {
+                        security::Oqs oqs;
+                        ret = oqs.Verify(tx_hash, tx_ptr2->tx_info->pubkey(), tx_ptr2->tx_info->sign());
+                    } else {
+                        ret = security_ptr_->Verify(tx_hash, tx_ptr2->tx_info->pubkey(), tx_ptr2->tx_info->sign());
+                    }
+                    verify_results[idx] = (ret == security::kSecuritySuccess) ? 1 : -1;
+                });
             }
         } else {
-            verify_results[i] = -1; // Creation failed
+            verify_results[i] = -1;
         }
     } // End of loop
 
@@ -1049,20 +1063,10 @@ Status BlockAcceptor::addTxsToPool(
     // 3. Finish and Collect
     // ========================================================================
 
-    if (need_verify) {
-        // Notify to stop production
-        {
-            std::lock_guard<std::mutex> lock(queue_mutex);
-            producer_done = true;
-        }
-        queue_cv.notify_all();
-
-        // Wait for all consumers to finish
-        for (auto& t : threads) {
-            if (t && t->joinable()) {
-                t->join();
-            }
-        }
+    if (need_verify && !verify_tasks.empty()) {
+        // Dispatch all verify tasks to the persistent thread pool and block until done.
+        // No thread creation/destruction overhead — threads were started in Init().
+        RunVerifyBatch(verify_tasks);
     }
 
     if (!create_success) {

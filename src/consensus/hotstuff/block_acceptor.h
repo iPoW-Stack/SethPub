@@ -14,6 +14,14 @@
 #include <protos/pools.pb.h>
 #include <timeblock/time_block_manager.h>
 
+#include <atomic>
+#include <condition_variable>
+#include <functional>
+#include <mutex>
+#include <queue>
+#include <thread>
+#include <vector>
+
 namespace seth {
 
 namespace vss {
@@ -183,6 +191,23 @@ public:
     double cur_tps_ = 0;
     std::shared_ptr<ViewBlockChain> view_block_chain_;
     common::LRUSet<std::string> checked_tx_hash_{10 * common::kMaxTxCount};
+
+    // ── Persistent verify thread pool ────────────────────────────────────────
+    // Threads are created once in Init() and reused across all addTxsToPool calls,
+    // eliminating per-call thread creation/destruction overhead.
+    struct VerifyTask {
+        std::function<void()> fn;
+    };
+    std::vector<std::thread>        verify_threads_;
+    std::queue<VerifyTask>          verify_task_queue_;
+    std::mutex                      verify_mutex_;
+    std::condition_variable         verify_cv_;
+    bool                            verify_stop_ = false;
+
+    void StartVerifyThreadPool(int n);
+    void StopVerifyThreadPool();
+    // Submit n tasks and block until all complete.
+    void RunVerifyBatch(std::vector<std::function<void()>>& tasks);
 
 };
 
