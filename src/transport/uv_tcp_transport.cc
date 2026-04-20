@@ -255,6 +255,7 @@ void on_new_connection(uv_stream_t* server, int status) {
     }
 
     ex_uv_tcp_t* ex_uv_tcp = (ex_uv_tcp_t*)malloc(sizeof(ex_uv_tcp_t));
+    memset(ex_uv_tcp, 0, sizeof(ex_uv_tcp_t));
     uv_tcp_init(loop, &ex_uv_tcp->uv_tcp);
     ex_uv_tcp->uv_tcp.data = ex_uv_tcp;
     ex_uv_tcp->msg_decoder = new MsgDecoder();
@@ -274,10 +275,14 @@ void on_new_connection(uv_stream_t* server, int status) {
         uv_read_start((uv_stream_t*)&ex_uv_tcp->uv_tcp, alloc_buffer, on_read);
         tcp_transport->AddConnection(ex_uv_tcp);
     } else {
+        // uv_accept failed: close and free the handle.
+        // h->data is already set to ex_uv_tcp above, so the callback is safe.
         uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, [](uv_handle_t* h) {
-            auto tmp_ex_uv_tcp = reinterpret_cast<ex_uv_tcp_t*>(h->data);
-            delete tmp_ex_uv_tcp->msg_decoder;
-            free(tmp_ex_uv_tcp);
+            auto tmp = reinterpret_cast<ex_uv_tcp_t*>(h->data);
+            if (tmp) {
+                delete tmp->msg_decoder;
+                free(tmp);
+            }
         });
     }
 }
@@ -286,15 +291,22 @@ void on_new_connection(uv_stream_t* server, int status) {
 void signal_handler(uv_signal_t* handle, int signum) {
     SETH_WARN("uv tcp server signal coming: %d", signum);
     uv_signal_stop(handle);
-    uv_walk(loop, [](uv_handle_t* handle, void*) {
-        if (!uv_is_closing(handle)) {
-            uv_close(handle, [](uv_handle_t* h) {
-                if (uv_handle_get_type(h) == UV_TCP) {
-                    auto tmp_ex_uv_tcp = reinterpret_cast<ex_uv_tcp_t*>(h->data);
-                    delete tmp_ex_uv_tcp->msg_decoder;
-                    free(tmp_ex_uv_tcp);
-                }
-            });
+    uv_walk(loop, [](uv_handle_t* h, void*) {
+        if (!uv_is_closing(h)) {
+            if (uv_handle_get_type(h) == UV_TCP) {
+                // Only UV_TCP handles carry an ex_uv_tcp_t in data.
+                uv_close(h, [](uv_handle_t* ch) {
+                    auto tmp = reinterpret_cast<ex_uv_tcp_t*>(ch->data);
+                    if (tmp) {
+                        delete tmp->msg_decoder;
+                        tmp->msg_decoder = nullptr;
+                        free(tmp);
+                    }
+                });
+            } else {
+                // Signal, async, and other handle types: close without freeing ex_uv_tcp_t.
+                uv_close(h, nullptr);
+            }
         }
     }, nullptr);
 }
