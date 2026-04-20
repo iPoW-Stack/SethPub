@@ -334,7 +334,7 @@ int TcpTransport::Start(bool hold) {
         Run();
     } else {
         run_thread_ = std::make_shared<std::thread>(std::bind(&TcpTransport::Run, this));
-        run_thread_->detach();
+        // Do NOT detach — we need to join in Stop() for clean shutdown.
     }
 
     return kTransportSuccess;
@@ -345,16 +345,36 @@ void TcpTransport::Stop() {
         return;
     }
 
+    destroy_ = true;
+
+    // Signal the Output() thread to exit and wake it up.
+    output_con_.notify_all();
+    if (output_thread_ != nullptr && output_thread_->joinable()) {
+        output_thread_->join();
+        output_thread_ = nullptr;
+    }
+
+    // Signal the libuv loop to stop, then wait for Run() to exit.
+    // uv_stop() is safe to call from any thread.
+    if (loop != nullptr) {
+        uv_stop(loop);
+        // Also send an async wakeup in case the loop is blocked waiting for I/O.
+        uv_async_send(&async_handle);
+    }
+
+    if (run_thread_ != nullptr && run_thread_->joinable()) {
+        run_thread_->join();
+        run_thread_ = nullptr;
+    }
+
+    // Now it is safe to close the loop — Run() has exited.
+    if (loop != nullptr) {
+        uv_loop_close(loop);
+    }
+
     if (output_queues_ != nullptr) {
         delete[] output_queues_;
         output_queues_ = nullptr;
-    }
-    
-    destroy_ = true;
-    free(handle_);
-    uv_loop_close(loop);
-    if (output_thread_ != nullptr) {
-        output_thread_->join();
     }
 }
 
@@ -599,12 +619,14 @@ void TcpTransport::Run() {
     uv_async_init(loop, &async_handle, uv_async_cb);
     output_thread_ = std::make_shared<std::thread>(&TcpTransport::Output, this);
     uv_transport_inited = true;
-    while (true) {
+    while (!destroy_) {
         if (uv_run(loop, UV_RUN_DEFAULT) != 0) {
             SETH_ERROR("uv run failed!");
         }
 
-        std::this_thread::sleep_for(std::chrono::microseconds(10000ull));
+        if (!destroy_) {
+            std::this_thread::sleep_for(std::chrono::microseconds(10000ull));
+        }
     }
 
     uv_loop_close(loop);
