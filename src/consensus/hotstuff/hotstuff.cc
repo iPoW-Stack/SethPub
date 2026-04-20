@@ -300,6 +300,18 @@ Status Hotstuff::Propose(
         transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
         SETH_DEBUG("0 success add local message: %lu, leader_view: %lu", 
             tmp_msg_ptr->header.hash64(), leader_view);
+        {
+            // Check propose message size before sending.
+            static const int kMaxProposeMsgBytes = 1 * 1024 * 1024; // 1 MB
+            int msg_size = tmp_msg_ptr->header.ByteSizeLong();
+            if (msg_size > kMaxProposeMsgBytes) {
+                SETH_WARN("pool: %d, propose msg OVERSIZED: %d bytes (limit %d), "
+                    "txs=%d, view=%lu — message will be dropped by receivers",
+                    pool_idx_, msg_size, kMaxProposeMsgBytes,
+                    hotstuff_msg->pro_msg().tx_propose().txs_size(),
+                    hotstuff_msg->pro_msg().view_item().qc().view());
+            }
+        }
         network::Route::Instance()->Send(tmp_msg_ptr);
 #ifndef NDEBUG
         ++sendout_bft_message_count_;
@@ -462,6 +474,18 @@ Status Hotstuff::Propose(
     tmp_msg_ptr->header.set_debug(std::to_string(tmp_msg_ptr->header.hash64()));
     transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
     // SETH_DEBUG("1 success add local message: %lu", tmp_msg_ptr->header.hash64());
+    {
+        // Check propose message size before broadcasting.
+        static const int kMaxProposeMsgBytes = 1 * 1024 * 1024; // 1 MB
+        int msg_size = tmp_msg_ptr->header.ByteSizeLong();
+        if (msg_size > kMaxProposeMsgBytes) {
+            SETH_WARN("pool: %d, NEW propose msg OVERSIZED: %d bytes (limit %d), "
+                "txs=%d, view=%lu — receivers will reject this message",
+                pool_idx_, msg_size, kMaxProposeMsgBytes,
+                hotstuff_msg->pro_msg().tx_propose().txs_size(),
+                hotstuff_msg->pro_msg().view_item().qc().view());
+        }
+    }
     network::Route::Instance()->Send(tmp_msg_ptr);
     if (hotstuff_msg->pro_msg().tx_propose().txs_size() > 0) {
         latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();

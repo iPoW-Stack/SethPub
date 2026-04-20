@@ -157,9 +157,12 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
         return false;
     }
 
-    if (len >= kTcpBuffLength) {
-        SETH_DEBUG("message coming failed 3");
-        return false;
+    // Reject oversized packets — normal consensus messages are well under 1 MB.
+    static const uint32_t kMaxPacketBytes = 1u * 1024u * 1024u;  // 1 MB hard limit
+    if (len == 0 || len > kMaxPacketBytes) {
+        SETH_WARN("oversized or empty packet from %s:%d, len=%u — closing connection",
+                  from_ip, from_port, len);
+        return false;  // caller (on_read) will close on false
     }
 
     MessagePtr msg_ptr = std::make_shared<TransportMessage>();
@@ -167,8 +170,7 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
         SETH_ERROR("Message ParseFromString from string failed!"
             "[%s:%d][len: %d]",
             from_ip, from_port, len);
-        SETH_DEBUG("message coming failed 4");
-        return false;
+        return false;  // caller closes connection
     }
 
     if (msg_ptr->header.has_broadcast()) {
@@ -204,8 +206,14 @@ void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
         auto packet = ex_uv_tcp->msg_decoder->GetPacket();
         SETH_DEBUG("get packet data: %d", (packet != nullptr));
         while (packet != nullptr) {
-            OnClientPacket(ex_uv_tcp, *packet);
+            bool ok = OnClientPacket(ex_uv_tcp, *packet);
             packet->Free();
+            if (!ok) {
+                // Bad packet (parse error, oversized, invalid port) — drop the connection.
+                delete[] buf->base;
+                tcp_transport->FreeConnection(ex_uv_tcp);
+                return;
+            }
             packet = ex_uv_tcp->msg_decoder->GetPacket();
         }
     } else {
