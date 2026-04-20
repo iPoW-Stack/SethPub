@@ -321,11 +321,14 @@ private:
         // auto members = elect_item->valid_leaders();
         auto members = Members(common::GlobalInfo::Instance()->network_id());
         if (members == nullptr || members->empty()) {
+            SETH_WARN("pool: %u, get leader failed, members is null or empty, sharding_id: %u", 
+                pool_idx_, common::GlobalInfo::Instance()->network_id());
             return nullptr;
         }
 
         auto high_view_block = view_block_chain_->HighViewBlock();
         if (!high_view_block) {
+            SETH_WARN("pool: %u, get leader failed, high_view_block is null", pool_idx_);
             return nullptr;
         }
 
@@ -439,6 +442,8 @@ private:
         auto elect_item = elect_info_->GetElectItemWithShardingId(common::GlobalInfo::Instance()->network_id());
         if (elect_item == nullptr) {
             // assert(false);
+            SETH_WARN("pool: %u, get leader failed, elect item is null, sharding_id: %u", 
+                pool_idx_, common::GlobalInfo::Instance()->network_id());
             return nullptr;
         }
 
