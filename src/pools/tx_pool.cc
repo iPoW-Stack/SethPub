@@ -452,9 +452,14 @@ void TxPool::GetTxSyncToLeader(
                         continue;
                     }
                     
-                    SETH_DEBUG("pool: %d, tx_key invalid: %s",
+                    SETH_DEBUG("break trace tx invalid tx, pool: %d, tx_key invalid: %s, res: %d, from: %s, to: %s, nonce: %lu, step: %u",
                         pool_index_,
-                        common::Encode::HexEncode(tx_ptr->tx_key).c_str());
+                        common::Encode::HexEncode(tx_ptr->tx_key).c_str(),
+                        res,
+                        common::Encode::HexEncode(tx_ptr->tx_info->pubkey()).c_str(),
+                        common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
+                        tx_ptr->tx_info->nonce(),
+                        (int32_t)tx_ptr->tx_info->step());
                     break;
                 }
             } else {
