@@ -225,7 +225,12 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
 
     auto leader = hotstuff_mgr_->is_other_leader(msg_ptr->address_info->pool_index());
     if (leader) {
-        auto dht = network::UniversalManager::Instance()->GetUniversal(network::kRootCongressNetworkId);
+        auto network_id = network::GetLocalConsensusNetworkId();
+        auto dht = network::DhtManager::Instance()->GetUniversal(network_id);
+        if (dht == nullptr) {
+            dht = network::UniversalManager::Instance()->GetUniversal(network::kNodeNetworkId);
+        }
+        
         auto dht_vec = dht->readonly_hash_sort_dht();
         auto node_it = std::find_if(dht_vec->begin(), dht_vec->end(), [&](const auto& item) {
             return item->id == leader->id;
