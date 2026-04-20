@@ -237,8 +237,24 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
                 found_node->public_ip, 
                 found_node->public_port, 
                 msg_ptr->header);
+            SETH_DEBUG("send tx message to leader, leader id: %s, ip: %s, port: %d, hash64: %lu, from: %s, to: %s, nonce: %lu", 
+                common::Encode::HexEncode(leader->id).c_str(),
+                found_node->public_ip.c_str(),
+                found_node->public_port,
+                header.hash64(),
+                common::Encode::HexEncode(security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str(),
+                common::Encode::HexEncode( tx_msg.pubkey()).c_str(),
+                common::Encode::HexEncode(tx_msg.to()).c_str(),
+                tx_msg.nonce());
         } else {
             network::Route::Instance()->Send(msg_ptr);
+            SETH_DEBUG("send tx message to leader, leader id: %s, by route, hash64: %lu, from: %s, to: %s, nonce: %lu", 
+                common::Encode::HexEncode(leader->id).c_str(),
+                header.hash64(),
+                common::Encode::HexEncode(security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str(),
+                common::Encode::HexEncode( tx_msg.pubkey()).c_str(),
+                common::Encode::HexEncode(tx_msg.to()).c_str(),
+                tx_msg.nonce());
         }
     }
 
