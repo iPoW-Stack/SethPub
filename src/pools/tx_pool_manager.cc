@@ -256,6 +256,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
                 common::Encode::HexEncode(tx_msg.to()).c_str(),
                 tx_msg.nonce());
         }
+        
     }
 
     tx_msg.set_tx_hash(msg_ptr->msg_hash);
