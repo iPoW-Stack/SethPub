@@ -132,7 +132,7 @@ private:
         std::string tx_hash_hex;
         transport::MessageHandleStatus status;
     };
-    common::ThreadSafeQueue<TxStatusItem, 4096> status_queue_;
+    common::ThreadSafeQueue<TxStatusItem, 4096> status_queue_[common::kMaxThreadCount];
 
     // Subscription maps — accessed only from the libuv loop thread, no lock needed.
     std::mutex mutex_;

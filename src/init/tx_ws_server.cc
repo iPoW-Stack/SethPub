@@ -96,7 +96,8 @@ void TxWsServer::OnTxStatusChange(const std::string& tx_hash_hex,
                                    transport::MessageHandleStatus status) {
     if (!running_.load(std::memory_order_acquire)) return;
     if (tx_hash_hex.empty()) return;
-    status_queue_.push({tx_hash_hex, status});
+    auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
+    status_queue_[thread_idx].push({tx_hash_hex, status});
     uv_async_send(&async_);
 }
 
@@ -106,10 +107,12 @@ void TxWsServer::OnAsync(uv_async_t* handle) {
     auto* self = static_cast<TxWsServer*>(handle->data);
 
     // ── drain status-change queue (tx rejected/invalid before block) ─────────
-    TxStatusItem item;
-    while (self->status_queue_.pop(&item)) {
-        self->CompleteAndPush(item.tx_hash_hex,
-                              BuildStatusJson(item.tx_hash_hex, item.status));
+    for (uint32_t i = 0; i < common::kMaxThreadCount; ++i) {
+        TxStatusItem item;
+        while (self->status_queue_[i].pop(&item)) {
+            self->CompleteAndPush(item.tx_hash_hex,
+                                BuildStatusJson(item.tx_hash_hex, item.status));
+        }
     }
 
     // ── drain block queue ─────────────────────────────────────────────────────
