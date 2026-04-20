@@ -248,7 +248,6 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
                 found_node->public_port,
                 header.hash64(),
                 common::Encode::HexEncode(security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str(),
-                common::Encode::HexEncode( tx_msg.pubkey()).c_str(),
                 common::Encode::HexEncode(tx_msg.to()).c_str(),
                 tx_msg.nonce());
         } else {
@@ -257,7 +256,6 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
                 common::Encode::HexEncode(leader->id).c_str(),
                 header.hash64(),
                 common::Encode::HexEncode(security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str(),
-                common::Encode::HexEncode( tx_msg.pubkey()).c_str(),
                 common::Encode::HexEncode(tx_msg.to()).c_str(),
                 tx_msg.nonce());
         }
