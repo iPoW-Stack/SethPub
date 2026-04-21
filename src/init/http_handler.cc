@@ -1715,69 +1715,7 @@ HttpHandler::~HttpHandler() {
     }
 }
 
-void HttpHandler::Run() {
-    SETH_INFO("HTTPS server starting on %s:%d", http_ip_.c_str(), http_port_);
-    
-    // Helper to safely handle requests with exception protection
-    auto safeHandler = [](auto handler, const char* endpoint) {
-        return [handler, endpoint](auto *res, auto *req) {
-            auto body = std::make_shared<std::string>();
-            auto responded = std::make_shared<bool>(false);
-            
-            res->onAborted([responded]() {
-                *responded = true;
-            });
-            
-            res->onData([res, req, body, handler, endpoint, responded](std::string_view data, bool last) {
-                if (*responded) return;
-                
-                try {
-                    body->append(data.data(), data.size());
-                    if (last) {
-                        UWSRequest uws_req(req, *body);
-                        UWSResponse uws_res;
-                        handler(uws_req, uws_res);
-                        
-                        if (!*responded) {
-                            res->writeStatus("200 OK")
-                               ->writeHeader("Content-Type", uws_res.content_type())
-                               ->end(uws_res.content());
-                            *responded = true;
-                        }
-                    }
-                } catch (const std::exception& e) {
-                    SETH_ERROR("Exception in %s: %s", endpoint, e.what());
-                    if (!*responded) {
-                        res->writeStatus("500 Internal Server Error")
-                           ->end("Internal server error");
-                        *responded = true;
-                    }
-                } catch (...) {
-                    SETH_ERROR("Unknown exception in %s", endpoint);
-                    if (!*responded) {
-                        res->writeStatus("500 Internal Server Error")
-                           ->end("Internal server error");
-                        *responded = true;
-                    }
-                }
-            });
-        };
-    };
-    
-// ── MetaMask / Ethereum JSON-RPC compatibility ────────────────────────────────
-//
-// MetaMask sends POST requests to the RPC endpoint with a JSON body:
-//   {"jsonrpc":"2.0","id":1,"method":"eth_getBalance","params":["0x...","latest"]}
-//
-// We implement the minimal set of methods MetaMask requires:
-//   net_version, eth_chainId, eth_blockNumber, eth_getBalance,
-//   eth_getTransactionCount, eth_sendRawTransaction, eth_getTransactionReceipt,
-//   eth_call, eth_estimateGas, eth_gasPrice, eth_getCode
-//
-// Seth address format: 20-byte hex without 0x prefix (internal).
-// Ethereum address format: 0x + 40 hex chars (MetaMask).
-// ─────────────────────────────────────────────────────────────────────────────
-
+// ── MetaMask / Ethereum JSON-RPC helpers ─────────────────────────────────────
 // Chain ID for Seth — matches kGlobalChainId in hotstuff/types.h.
 static constexpr uint64_t kSethChainId = hotstuff::kGlobalChainId;
 
@@ -1786,11 +1724,8 @@ static inline std::string EthAddr(const std::string& raw20) {
 }
 
 static inline std::string SethAddr(const std::string& eth_addr) {
-    // Strip leading "0x" or "0X"
     std::string s = eth_addr;
-    if (s.size() >= 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
-        s = s.substr(2);
-    }
+    if (s.size() >= 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) s = s.substr(2);
     return common::Encode::HexDecode(s);
 }
 
@@ -2279,7 +2214,8 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
 }
 
 // ── End MetaMask / Ethereum JSON-RPC ─────────────────────────────────────────
-        .key_file_name = key_file_.c_str(),
+
+void HttpHandler::Run() {
         .cert_file_name = cert_file_.c_str(),
         .passphrase = ""
     }).post("/transaction", safeHandler(HttpTransaction, "/transaction")
