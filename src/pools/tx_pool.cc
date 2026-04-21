@@ -421,6 +421,11 @@ void TxPool::GetTxSyncToLeader(
             auto tx_ptr = nonce_iter->second;
             if (tx_ptr->synced_leaders_.Valid(leader_idx)) {
                 if (tx_ptr->elect_height == latest_elect_height_) {
+                    SETH_DEBUG("trace tx pool: %d, already synced to leader: %u, tx_key: %s, from: %s, to: %s, nonce: %lu, step: %d", 
+                        pool_index_, leader_idx, common::Encode::HexEncode(tx_ptr->tx_key).c_str(), 
+                        common::Encode::HexEncode(security_->GetAddress(tx_ptr->tx_info->pubkey())).c_str(),
+                        common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
+                        tx_ptr->tx_info->nonce(), (int32_t)tx_ptr->tx_info->step());
                     continue;
                 }
 
@@ -441,7 +446,7 @@ void TxPool::GetTxSyncToLeader(
                             pool_index_,
                             common::Encode::HexEncode(tx_ptr->tx_key).c_str(),
                             res,
-                            common::Encode::HexEncode(tx_ptr->tx_info->pubkey()).c_str(),
+                            common::Encode::HexEncode(security_->GetAddress(tx_ptr->tx_info->pubkey())).c_str(),
                             common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
                             tx_ptr->tx_info->nonce(),
                             (int32_t)tx_ptr->tx_info->step());
@@ -457,7 +462,7 @@ void TxPool::GetTxSyncToLeader(
                         pool_index_,
                         common::Encode::HexEncode(tx_ptr->tx_key).c_str(),
                         res,
-                        common::Encode::HexEncode(tx_ptr->tx_info->pubkey()).c_str(),
+                        common::Encode::HexEncode(security_->GetAddress(tx_ptr->tx_info->pubkey())).c_str(),
                         common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
                         tx_ptr->tx_info->nonce(),
                         (int32_t)tx_ptr->tx_info->step());
