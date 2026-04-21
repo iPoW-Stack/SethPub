@@ -2182,20 +2182,23 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             block::protobuf::KeyValueInfo kv_info;
             block::protobuf::TxHashStatus tx_status;
             if (kv_info.ParseFromString(res) && tx_status.ParseFromString(kv_info.value())) {
-                // Build Ethereum-compatible receipt
+                // Build Ethereum-compatible receipt.
+                // TxHashStatus only has: status, output, events.
+                // Block-level fields (height, hash, from, to, gasUsed) are not stored
+                // in TxHashStatus — fill with neutral defaults.
                 nlohmann::json receipt;
-                receipt["transactionHash"] = "0x" + tx_hash_hex;
-                receipt["status"] = (tx_status.status() == 0) ? "0x1" : "0x0";
-                receipt["blockNumber"] = ToHex64(tx_status.height());
-                receipt["blockHash"] = "0x" + common::Encode::HexEncode(tx_status.block_hash());
-                receipt["transactionIndex"] = "0x0";
-                receipt["from"] = EthAddr(tx_status.from());
-                receipt["to"] = tx_status.to().empty() ? nullptr : nlohmann::json(EthAddr(tx_status.to()));
-                receipt["gasUsed"] = ToHex64(tx_status.gas_used());
-                receipt["cumulativeGasUsed"] = ToHex64(tx_status.gas_used());
-                receipt["contractAddress"] = nullptr;
-                receipt["logs"] = nlohmann::json::array();
-                receipt["logsBloom"] = "0x" + std::string(512, '0');
+                receipt["transactionHash"]   = "0x" + tx_hash_hex;
+                receipt["status"]            = (tx_status.status() == 0) ? "0x1" : "0x0";
+                receipt["blockNumber"]       = "0x0";
+                receipt["blockHash"]         = "0x" + std::string(64, '0');
+                receipt["transactionIndex"]  = "0x0";
+                receipt["from"]              = "0x" + std::string(40, '0');
+                receipt["to"]                = nullptr;
+                receipt["gasUsed"]           = ToHex64(5000000);
+                receipt["cumulativeGasUsed"] = ToHex64(5000000);
+                receipt["contractAddress"]   = nullptr;
+                receipt["logs"]              = nlohmann::json::array();
+                receipt["logsBloom"]         = "0x" + std::string(512, '0');
                 http_res.set_content(RpcOk(id, receipt).dump(), "application/json");
             } else {
                 http_res.set_content(RpcOk(id, nullptr).dump(), "application/json");
@@ -2216,6 +2219,41 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
 // ── End MetaMask / Ethereum JSON-RPC ─────────────────────────────────────────
 
 void HttpHandler::Run() {
+    SETH_INFO("HTTPS server starting on %s:%d", http_ip_.c_str(), http_port_);
+
+    auto safeHandler = [](auto handler, const char* endpoint) {
+        return [handler, endpoint](auto *res, auto *req) {
+            auto body = std::make_shared<std::string>();
+            auto responded = std::make_shared<bool>(false);
+            res->onAborted([responded]() { *responded = true; });
+            res->onData([res, req, body, handler, endpoint, responded](std::string_view data, bool last) {
+                if (*responded) return;
+                try {
+                    body->append(data.data(), data.size());
+                    if (last) {
+                        UWSRequest uws_req(req, *body);
+                        UWSResponse uws_res;
+                        handler(uws_req, uws_res);
+                        if (!*responded) {
+                            res->writeStatus("200 OK")
+                               ->writeHeader("Content-Type", uws_res.content_type())
+                               ->end(uws_res.content());
+                            *responded = true;
+                        }
+                    }
+                } catch (const std::exception& e) {
+                    SETH_ERROR("Exception in %s: %s", endpoint, e.what());
+                    if (!*responded) { res->writeStatus("500 Internal Server Error")->end("Internal server error"); *responded = true; }
+                } catch (...) {
+                    SETH_ERROR("Unknown exception in %s", endpoint);
+                    if (!*responded) { res->writeStatus("500 Internal Server Error")->end("Internal server error"); *responded = true; }
+                }
+            });
+        };
+    };
+
+    uWS::SSLApp({
+        .key_file_name  = key_file_.c_str(),
         .cert_file_name = cert_file_.c_str(),
         .passphrase = ""
     }).post("/transaction", safeHandler(HttpTransaction, "/transaction")
