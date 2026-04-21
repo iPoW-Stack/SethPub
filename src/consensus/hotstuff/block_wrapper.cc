@@ -94,9 +94,23 @@ Status BlockWrapper::Wrap(
         (txs_ptr != nullptr ? txs_ptr->txs.size() : 0));
     view_block->set_parent_hash(prev_view_block->qc().view_block_hash());
     if (txs_ptr) {
+        // Hard limit: stop adding txs once the propose message would exceed 1 MB.
+        // This prevents receivers from dropping the message due to the packet size limit.
+        static const int kMaxProposeMsgBytes = 900 * 1024;  // 900 KB — leave headroom for headers/sig
+        int current_size = view_block->ByteSizeLong();
+
         for (auto it = txs_ptr->txs.begin(); it != txs_ptr->txs.end(); it++) {
+            int tx_size = (*it)->tx_info->ByteSizeLong();
+            if (current_size + tx_size > kMaxProposeMsgBytes) {
+                SETH_WARN("pool: %d, propose msg size limit reached: current=%d bytes, "
+                    "tx_size=%d, limit=%d — stopping at %d/%zu txs",
+                    pool_idx_, current_size, tx_size, kMaxProposeMsgBytes,
+                    tx_propose->txs_size(), txs_ptr->txs.size());
+                break;
+            }
             auto* tx_info = tx_propose->add_txs();
             *tx_info = *((*it)->tx_info);
+            current_size += tx_size;
             if (tx_info->step() == pools::protobuf::kConsensusRootElectShard) {
                 pools::protobuf::ElectStatistic elect_statistic;
                 if (elect_statistic.ParseFromString(tx_info->value())) {
@@ -104,18 +118,10 @@ Status BlockWrapper::Wrap(
                     elect_block->set_shard_network_id(elect_statistic.sharding_id());
                     bls_mgr_->AddBlsConsensusInfo(*elect_block);
                     tx_info->set_value(SerializeDeterministic(elect_statistic));
+                    // Update size estimate after elect block inflation.
+                    current_size += tx_info->ByteSizeLong() - tx_size;
                 }
             }
-            // ADD_TX_DEBUG_INFO(tx_info);
-            // SETH_DEBUG("add tx pool: %d, prehash: %s, height: %lu, "
-            //     "step: %d, to: %s, nonce: %lu, tx info: %s",
-            //     view_block->qc().pool_index(),
-            //     common::Encode::HexEncode(view_block->parent_hash()).c_str(),
-            //     block->height(),
-            //     tx_info->step(),
-            //     common::Encode::HexEncode(tx_info->to()).c_str(),
-            //     tx_info->nonce(),
-            //     "ProtobufToJson(*tx_info).c_str()");
         }
 
         tx_propose->set_tx_type(txs_ptr->tx_type);

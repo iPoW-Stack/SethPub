@@ -158,7 +158,7 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
     }
 
     // Reject oversized packets — normal consensus messages are well under 1 MB.
-    static const uint32_t kMaxPacketBytes = 1u * 1024u * 1024u;  // 1 MB hard limit
+    static const uint32_t kMaxPacketBytes = 1u * 1024u * 1024u + 1024  * 512;  // 1.5 MB hard limit
     if (len == 0 || len > kMaxPacketBytes) {
         SETH_WARN("oversized or empty packet from %s:%d, len=%u — closing connection",
                   from_ip, from_port, len);
