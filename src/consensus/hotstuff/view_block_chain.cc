@@ -656,20 +656,23 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
 
         AddNewBlock(tmp_block, db_batch);
         (*iter)->valid = true;
-        if ((*iter)->acc_balance_map_ptr) {
-            for (auto acc_iter = (*iter)->acc_balance_map_ptr->begin(); 
-                    acc_iter != (*iter)->acc_balance_map_ptr->end(); ++acc_iter) {
-                auto acc_ptr = account_lru_map_.get(acc_iter->first);
-                if (!acc_ptr || 
-                        acc_ptr->latest_height() < acc_iter->second->latest_height() || 
-                        (acc_ptr->latest_height() == acc_iter->second->latest_height() && 
-                        acc_ptr->tx_index() < acc_iter->second->tx_index())) {
-                    account_lru_map_.insert(acc_iter->second);
-                    SETH_DEBUG("success update address: %s, balance: %lu, nonce: %lu",
-                        common::Encode::HexEncode(acc_iter->second->addr()).c_str(),
-                        acc_iter->second->balance(),
-                        acc_iter->second->nonce());
-                }
+        // Always update the LRU from address_array in the committed block.
+        // address_array contains post-execution balances/nonces written by DoTransactions.
+        // acc_balance_map_ptr holds pre-execution copies from addTxsToPool and must NOT
+        // be used here — it would overwrite correct post-execution state with stale data.
+        for (int32_t ai = 0; ai < tmp_block->block_info().address_array_size(); ++ai) {
+            auto new_addr_info = std::make_shared<address::protobuf::AddressInfo>(
+                tmp_block->block_info().address_array(ai));
+            auto acc_ptr = account_lru_map_.get(new_addr_info->addr());
+            if (!acc_ptr ||
+                    acc_ptr->latest_height() < new_addr_info->latest_height() ||
+                    (acc_ptr->latest_height() == new_addr_info->latest_height() &&
+                     acc_ptr->tx_index() < new_addr_info->tx_index())) {
+                account_lru_map_.insert(new_addr_info);
+                SETH_DEBUG("success update address: %s, balance: %lu, nonce: %lu",
+                    common::Encode::HexEncode(new_addr_info->addr()).c_str(),
+                    new_addr_info->balance(),
+                    new_addr_info->nonce());
             }
         }
 

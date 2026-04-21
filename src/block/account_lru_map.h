@@ -23,19 +23,23 @@ public:
 
     void insert(AccountPtr value) {
         common::AutoSpinLock spinlock(spin_mutex_);
-        auto& key = value->addr();
-        if (item_map_.count(key)) {
+        const auto& key = value->addr();
+        auto it = value_map_.find(key);
+        if (it != value_map_.end()) {
+            // Key exists: remove from LRU list and update value.
             item_list_.erase(item_map_[key]);
             item_map_.erase(key);
+            value_map_.erase(it);
         }
 
         item_list_.push_front(key);
         item_map_[key] = item_list_.begin();
-        uint32_t index = common::Hash::Hash32(key) % kBucketSize;
-        index_data_map_[index] = value;
+        value_map_[key] = value;
+
         if (item_list_.size() > kBucketSize) {
-            std::string& last = item_list_.back();
+            const std::string& last = item_list_.back();
             item_map_.erase(last);
+            value_map_.erase(last);
             item_list_.pop_back();
         }
 
@@ -44,21 +48,18 @@ public:
 
     AccountPtr get(const std::string& key) {
         common::AutoSpinLock spinlock(spin_mutex_);
-        uint32_t index = common::Hash::Hash32(key) % kBucketSize;
-        auto item_ptr = index_data_map_[index];
-        if (item_ptr != nullptr && item_ptr->addr() == key) {
-            return item_ptr;
+        auto it = value_map_.find(key);
+        if (it != value_map_.end()) {
+            return it->second;
         }
-        
         return nullptr;
     }
 
 private:
     std::list<std::string> item_list_;
     std::unordered_map<std::string, typename std::list<std::string>::iterator> item_map_;
-    AccountPtr index_data_map_[kBucketSize] = { nullptr };
+    std::unordered_map<std::string, AccountPtr> value_map_;
     common::SpinMutex spin_mutex_;
-
 };
 
 };  // namespace block

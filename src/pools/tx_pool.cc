@@ -299,9 +299,10 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
         
         remove_tx_func(tx_map_);
         remove_tx_func(consensus_tx_map_);
-        SETH_DEBUG("trace tx pool: %d, step: %d, to: %s, unique hash: %s, over tx addr: %s, nonce: %lu", 
+        SETH_DEBUG("trace tx pool: %d, step: %d, from: %s, to: %s, unique hash: %s, over tx addr: %s, nonce: %lu", 
             pool_index_,
             (int32_t)tx_info.step(),
+            common::Encode::HexEncode(tx_info.from()).c_str(), 
             common::Encode::HexEncode(tx_info.to()).c_str(), 
             common::Encode::HexEncode(tx_info.unique_hash()).c_str(), 
             common::Encode::HexEncode(addr).c_str(), 
