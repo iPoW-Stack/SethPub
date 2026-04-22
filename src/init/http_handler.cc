@@ -2115,8 +2115,12 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             return;
         }
 
+        // Prepend 0x04 uncompressed prefix so GetAddressWithPublicKey routes
+        // to ECDSA (65 bytes) instead of GmSSL (64 bytes).
+        std::string pubkey_with_prefix = std::string(1, '\x04') + pubkey;
+
         // Derive sender address from recovered pubkey
-        std::string sender_addr = http_handler->security_ptr()->GetAddressWithPublicKey(pubkey);
+        std::string sender_addr = http_handler->security_ptr()->GetAddressWithPublicKey(pubkey_with_prefix);
         SETH_WARN("eth_sendRawTransaction: pubkey_len=%zu, pubkey_hex=%s, sender=%s",
             pubkey.size(), common::Encode::HexEncode(pubkey).c_str(),
             common::Encode::HexEncode(sender_addr).c_str());
@@ -2147,7 +2151,7 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
 
         auto new_tx = msg.mutable_tx_proto();
         new_tx->set_nonce(nonce);
-        new_tx->set_pubkey(pubkey);   // recovered uncompressed pubkey (64 bytes, no prefix)
+        new_tx->set_pubkey(pubkey_with_prefix);   // 65-byte uncompressed pubkey (0x04 + X + Y)
         new_tx->set_step(static_cast<pools::protobuf::StepType>(step));
         new_tx->set_to(to.empty() ? std::string(20, '\0') : to);
         new_tx->set_amount(value);
