@@ -2426,7 +2426,7 @@ def _eth_sign_and_send(client, pk_hex: str, to: bytes, value: int, data: bytes,
         "jsonrpc": "2.0",
         "id": 1,
         "method": "eth_sendRawTransaction",
-        "params": ["0x" + raw_tx_hex]
+        "params": [raw_tx_hex]  # no 0x prefix — C++ HexDecode doesn't expect it
     }
     resp = _req.post(rpc_url, json=rpc_body, verify=client.verify_ssl)
     result = resp.json()
