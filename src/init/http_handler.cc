@@ -24,6 +24,7 @@
 #include "security/gmssl/gmssl.h"
 #include "security/oqs/oqs.h"
 #include "security/ecdsa/ecdsa.h"
+#include "security/ecdsa/secp256k1.h"
 #include "transport/tcp_transport.h"
 #include "sethvm/execution.h"
 #include "sethvm/seth_host.h"
@@ -2077,9 +2078,12 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
         sign_for_recover.append(s);
         sign_for_recover.push_back(static_cast<char>(v_byte));
 
-        // Recover compressed public key (33 bytes)
-        security::Ecdsa ecdsa;
-        std::string pubkey = ecdsa.Recover(sign_for_recover, signing_hash);
+        // Recover uncompressed public key (64 bytes, no prefix).
+        // Ecdsa::Recover returns compressed (32 bytes) which doesn't match
+        // GetAddressWithPublicKey's expected sizes. Use Secp256k1 directly
+        // with compressed=false to get 64 bytes (kPublicKeyUncompressSize - 1).
+        std::string pubkey = security::Secp256k1::Instance()->Recover(
+            sign_for_recover, signing_hash, false);
         if (pubkey.empty()) {
             SETH_WARN("eth_sendRawTransaction: failed to recover pubkey from signature");
             http_res.set_content(RpcErr(id, -32602, "signature recovery failed").dump(), "application/json");
@@ -2115,7 +2119,7 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
 
         auto new_tx = msg.mutable_tx_proto();
         new_tx->set_nonce(nonce);
-        new_tx->set_pubkey(pubkey);   // recovered compressed pubkey
+        new_tx->set_pubkey(pubkey);   // recovered uncompressed pubkey (64 bytes, no prefix)
         new_tx->set_step(static_cast<pools::protobuf::StepType>(step));
         new_tx->set_to(to.empty() ? std::string(20, '\0') : to);
         new_tx->set_amount(value);
