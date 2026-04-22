@@ -2060,13 +2060,29 @@ Status Hotstuff::ConstructVoteMsg(
     vote_msg->set_sign_y(sign_y);
     if (!msg_ptr->is_leader) {
         ADD_DEBUG_PROCESS_TIMESTAMP();
+        // Build a map of addr → max_nonce+1 from the leader's proposed block.
+        // This tells GetTxSyncToLeader which nonces the leader already has,
+        // so it can skip them and search forward for new txs.
+        LeaderNonceMap leader_nonce_map;
+        for (int i = 0; i < msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size(); ++i) {
+            auto& tx = msg_ptr->header.hotstuff().pro_msg().tx_propose().txs(i);
+            if (pools::IsUserTransaction(tx.step()) && !tx.pubkey().empty()) {
+                std::string addr = security_ptr_->GetAddressWithPublicKey(tx.pubkey());
+                auto it = leader_nonce_map.find(addr);
+                if (it == leader_nonce_map.end() || tx.nonce() >= it->second) {
+                    leader_nonce_map[addr] = tx.nonce() + 1;
+                }
+            }
+        }
+
         auto* txs = vote_msg->mutable_txs();
         wrapper()->GetTxSyncToLeader(
             v_block->qc().leader_idx(), 
             consensus::kSyncToLeaderTxCount,
             view_block_chain_, 
             view_block_chain_->HighQC().view_block_hash(), 
-            txs);
+            txs,
+            leader_nonce_map);
         if (txs->size() > 0)
         SETH_DEBUG("tps now vote message get tx sync to leader: %d", txs->size());
         ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -2416,7 +2432,8 @@ void Hotstuff::SyncLocalTxToLeader(
         1,
         view_block_chain_, 
         view_block_chain_->HighQC().view_block_hash(), 
-        txs);
+        txs,
+        LeaderNonceMap());  // empty map — no leader block context here
     
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (txs->empty()) {

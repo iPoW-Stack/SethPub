@@ -326,7 +326,8 @@ void TxPool::GetTxSyncToLeader(
         uint32_t leader_idx, 
         uint32_t count,
         ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs,
-        pools::CheckAddrNonceValidFunction tx_valid_func) {
+        pools::CheckAddrNonceValidFunction tx_valid_func,
+        const hotstuff::LeaderNonceMap& leader_nonce_map) {
     // CheckThreadIdValid();
     TxItemPtr tx_ptr;
     while (added_txs_.pop(&tx_ptr)) {
@@ -417,10 +418,25 @@ void TxPool::GetTxSyncToLeader(
     // SETH_WARN("now tx size: %u", all_tx_size());
     for (auto iter = tx_map_.begin(); iter != tx_map_.end(); ++iter) {
         uint64_t valid_nonce = common::kInvalidUint64;
+        // Check if the leader already has txs for this address.
+        // If so, start searching from the leader's max nonce.
+        auto leader_it = leader_nonce_map.find(iter->first);
+        uint64_t leader_known_nonce = (leader_it != leader_nonce_map.end()) ? leader_it->second : 0;
+
         for (auto nonce_iter = iter->second.begin(); nonce_iter != iter->second.end(); ++nonce_iter) {
             auto tx_ptr = nonce_iter->second;
+
+            // Skip nonces the leader already has
+            if (leader_known_nonce > 0 && tx_ptr->tx_info->nonce() < leader_known_nonce) {
+                continue;
+            }
+
             if (tx_ptr->synced_leaders_.Valid(leader_idx)) {
                 if (tx_ptr->elect_height == latest_elect_height_) {
+                    // If leader has a nonce map for this addr, don't break — keep searching forward
+                    if (leader_known_nonce > 0) {
+                        continue;
+                    }
                     SETH_DEBUG("trace tx pool: %d, already synced to leader: %u, tx_key: %s, from: %s, to: %s, nonce: %lu, step: %d", 
                         pool_index_, leader_idx, common::Encode::HexEncode(tx_ptr->tx_key).c_str(), 
                         (tx_ptr->tx_info->pubkey().size() == (security::kPublicKeyUncompressSize - 1)) ? 
