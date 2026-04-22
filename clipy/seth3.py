@@ -2413,10 +2413,25 @@ def _eth_sign_and_send(client, pk_hex: str, to: bytes, value: int, data: bytes,
     r_bytes = sig[:32]
     s_bytes = sig[32:64]
 
-    # 4. Determine v (EIP-155: v = chain_id * 2 + 35 + recovery_id)
-    # Try recovery_id 0 and 1
-    pub_uncompressed = sk.verifying_key.to_string("uncompressed")
-    v_val = chain_id * 2 + 35  # try recovery_id = 0 first
+    # 4. Determine correct recovery_id (0 or 1) by trying both and checking
+    #    which one recovers to our address.
+    expected_addr = client.get_address(pk_hex)
+    from ecdsa import VerifyingKey
+    recovery_id = 0
+    for rid in (0, 1):
+        try:
+            vk = VerifyingKey.from_public_key_recovery_with_digest(
+                sig[:64], signing_hash, SECP256k1, hashfunc=__import__('hashlib').sha256)
+            if rid < len(vk):
+                pub_uncompressed = vk[rid].to_string()  # 64 bytes (no prefix)
+                recovered_addr = _keccak.new(digest_bits=256).update(pub_uncompressed).digest()[-20:].hex()
+                if recovered_addr == expected_addr:
+                    recovery_id = rid
+                    break
+        except Exception:
+            pass
+
+    v_val = chain_id * 2 + 35 + recovery_id
 
     # 5. Build signed tx RLP: RLP([nonce, gasPrice, gasLimit, to, value, data, v, r, s])
     signed_payload = b''
