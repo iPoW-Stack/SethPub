@@ -53,15 +53,22 @@ Content-Type: application/x-www-form-urlencoded
 address=abc123def456...
 ```
 
-**Response:**
+**Response (JSON with camelCase keys):**
 ```json
 {
-  "sharding_id": 2,
-  "pool_index": 4,
-  "balance": 0,
-  "nonce": 0
+  "balance": "0",
+  "shardingId": 3,
+  "poolIndex": 21,
+  "addr": "shTzhb3S85Rsk5iM0vOCBjLS5M0=",
+  "type": "kNormal",
+  "bytesCode": "...",
+  "latestHeight": "17",
+  "txIndex": 0,
+  "nonce": "0"
 }
 ```
+
+**Note:** The API returns camelCase field names (`shardingId`, `poolIndex`), not snake_case (`sharding_id`, `pool_index`).
 
 ## Running the Demo
 
@@ -118,8 +125,9 @@ def query_address_info(w3, address: str, max_wait: int = 60):
         
         if result.status_code == 200:
             data = result.json()
-            shard_id = data.get('sharding_id') or data.get('shard_id')
-            pool_index = data.get('pool_index')
+            # API returns camelCase: 'shardingId' and 'poolIndex'
+            shard_id = data.get('shardingId') or data.get('sharding_id') or data.get('shard_id')
+            pool_index = data.get('poolIndex') or data.get('pool_index')
             
             if shard_id is not None and pool_index is not None:
                 return {

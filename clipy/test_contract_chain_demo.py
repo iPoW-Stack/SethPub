@@ -346,9 +346,9 @@ def query_address_info(w3, address: str, max_wait: int = 60):
                 data = result.json()
                 
                 # Check if address exists and has shard/pool info
-                # The API might return 'sharding_id' or 'shard_id'
-                shard_id = data.get('sharding_id') or data.get('shard_id')
-                pool_index = data.get('pool_index')
+                # API returns camelCase: 'shardingId' and 'poolIndex'
+                shard_id = data.get('shardingId') or data.get('sharding_id') or data.get('shard_id')
+                pool_index = data.get('poolIndex') or data.get('pool_index')
                 
                 if shard_id is not None and pool_index is not None:
                     elapsed = time.time() - start_time
@@ -364,6 +364,7 @@ def query_address_info(w3, address: str, max_wait: int = 60):
                 else:
                     # Address exists but no shard/pool info yet
                     print(f"  ⏳ Address found but shard/pool not yet assigned...")
+                    print(f"     Debug: data keys = {list(data.keys())}")
                     
         except requests.exceptions.RequestException as e:
             print(f"  ⚠️  Request error: {e}")

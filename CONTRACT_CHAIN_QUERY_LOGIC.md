@@ -29,11 +29,28 @@ def query_address_info(w3, address: str, max_wait: int = 60):
 **API Response Format:**
 ```json
 {
-  "sharding_id": 1,      // or "shard_id"
-  "pool_index": 3,
-  "balance": 10000000,
-  "nonce": 0
+  "balance": "0",
+  "shardingId": 3,
+  "poolIndex": 21,
+  "addr": "shTzhb3S85Rsk5iM0vOCBjLS5M0=",
+  "type": "kNormal",
+  "bytesCode": "...",
+  "latestHeight": "17",
+  "txIndex": 0,
+  "nonce": "0"
 }
+```
+
+**Important:** The API returns camelCase field names:
+- `shardingId` (not `sharding_id` or `shard_id`)
+- `poolIndex` (not `pool_index`)
+- `latestHeight` (not `latest_height`)
+- `txIndex` (not `tx_index`)
+
+The query function handles multiple naming conventions for compatibility:
+```python
+shard_id = data.get('shardingId') or data.get('sharding_id') or data.get('shard_id')
+pool_index = data.get('poolIndex') or data.get('pool_index')
 ```
 
 ### 2. Query After ContractA Deployment
