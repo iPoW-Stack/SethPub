@@ -2401,6 +2401,7 @@ def _eth_sign_and_send(client, pk_hex: str, to: bytes, value: int, data: bytes,
         'value': value,
         'data': data,
         'chainId': chain_id,
+        'type': 0,  # Force legacy transaction (not EIP-1559/EIP-2930)
     }
     if to:
         tx['to'] = _to_ck('0x' + to.hex())
@@ -2410,6 +2411,7 @@ def _eth_sign_and_send(client, pk_hex: str, to: bytes, value: int, data: bytes,
     signed = Account.sign_transaction(tx, '0x' + pk_hex)
     raw_tx_bytes = getattr(signed, 'raw_transaction', None) or signed.rawTransaction
     raw_tx_hex = raw_tx_bytes.hex()
+    print(f"  [DEBUG] raw_tx first bytes: {raw_tx_hex[:20]}... (len={len(raw_tx_bytes)})")
 
     # Verify: recovered address should match our Seth address
     expected_addr = client.get_address(pk_hex)

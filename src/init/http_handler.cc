@@ -1765,6 +1765,14 @@ static bool DecodeEthRawTx(
     size_t len = raw_bytes.size();
     if (len < 1) return false;
 
+    // EIP-2718 typed transactions start with a byte in [0x00, 0x7f].
+    // We only support legacy (starts with 0xc0..0xff = RLP list).
+    if (p[0] < 0xc0) {
+        SETH_WARN("DecodeEthRawTx: typed transaction (type=0x%02x) not supported, "
+                  "only legacy RLP format is accepted", p[0]);
+        return false;
+    }
+
     // Outer list
     size_t list_len = 0;
     size_t hdr = 0;
