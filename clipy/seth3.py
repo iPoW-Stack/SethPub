@@ -2412,6 +2412,22 @@ def _eth_sign_and_send(client, pk_hex: str, to: bytes, value: int, data: bytes,
     raw_tx_hex = raw_tx_bytes.hex()
     print(f"  [DEBUG] raw_tx first bytes: {raw_tx_hex[:20]}... (len={len(raw_tx_bytes)})")
 
+    # Compute and print the signing RLP for comparison with C++ side
+    _sp = b''
+    _sp += _eth_rlp_encode_uint(nonce)
+    _sp += _eth_rlp_encode_uint(gas_price)
+    _sp += _eth_rlp_encode_uint(gas_limit)
+    _sp += _eth_rlp_encode_bytes(to)
+    _sp += _eth_rlp_encode_uint(value)
+    _sp += _eth_rlp_encode_bytes(data)
+    _sp += _eth_rlp_encode_uint(chain_id)
+    _sp += _eth_rlp_encode_uint(0)
+    _sp += _eth_rlp_encode_uint(0)
+    _srlp = _eth_rlp_list(_sp)
+    _shash = _keccak.new(digest_bits=256).update(_srlp).digest()
+    print(f"  [DEBUG] Python signing_rlp={_srlp.hex()}")
+    print(f"  [DEBUG] Python signing_hash={_shash.hex()}")
+
     # Verify: recovered address should match our Seth address
     expected_addr = client.get_address(pk_hex)
     recovered_addr = Account.recover_transaction(raw_tx_bytes).lower().replace('0x', '')

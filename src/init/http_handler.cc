@@ -2088,6 +2088,14 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
 
         // keccak256 of the signing RLP
         std::string signing_hash = common::Hash::keccak256(signing_rlp);
+        SETH_WARN("eth_sendRawTransaction: signing_rlp_hex=%s, signing_hash=%s, "
+            "nonce=%lu, gas_price=%lu, gas_limit=%lu, value=%lu, to_hex=%s, data_len=%zu, "
+            "chain_id=%lu, v_byte=%u",
+            common::Encode::HexEncode(signing_rlp).c_str(),
+            common::Encode::HexEncode(signing_hash).c_str(),
+            nonce, gas_price, gas_limit, value,
+            common::Encode::HexEncode(to).c_str(),
+            data.size(), kSethChainId, v_byte);
 
         // Build Seth-format signature: r (32 bytes) || s (32 bytes) || v (1 byte)
         std::string sign_for_recover;
