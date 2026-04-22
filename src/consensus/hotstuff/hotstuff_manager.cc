@@ -29,6 +29,7 @@
 #include "protos/pools.pb.h"
 #include "security/gmssl/gmssl.h"
 #include "security/oqs/oqs.h"
+#include "security/eth_verify.h"
 #include "transport/processor.h"
 #include "types.h"
 
@@ -527,7 +528,17 @@ void HotstuffManager::PopPoolsMessage() {
             }
             
             if (tx_ptr != nullptr) {
-                if (tx_ptr->tx_info->pubkey().size() == 64u) {
+                // ETH-format tx: re-verify using EIP-155 signing hash.
+                if (tx_ptr->tx_info->has_eth_raw_tx() && !tx_ptr->tx_info->eth_raw_tx().empty()) {
+                    if (security::VerifyEthSignature(
+                            tx_ptr->tx_info->eth_raw_tx(),
+                            tx_ptr->tx_info->pubkey(),
+                            tx_ptr->tx_info->sign())) {
+                        pools_mgr_->BackupConsensusAddTxs(msg_ptr, address_info->pool_index(), tx_ptr);
+                    } else {
+                        SETH_WARN("ETH tx verify failed in hotstuff_manager");
+                    }
+                } else if (tx_ptr->tx_info->pubkey().size() == 64u) {
                     security::GmSsl gmssl;
                     if (gmssl.Verify(
                             tx_hash,

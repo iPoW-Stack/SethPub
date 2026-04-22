@@ -26,6 +26,7 @@
 #include "protos/zbft.pb.h"
 #include "security/gmssl/gmssl.h"
 #include "security/oqs/oqs.h"
+#include "security/eth_verify.h"
 #include "sethvm/sethvm_utils.h"
 
 namespace seth {
@@ -1054,10 +1055,11 @@ Status BlockAcceptor::addTxsToPool(
                         return;
                     }
 
-                    // ETH-format tx: pubkey was recovered at HTTP layer,
-                    // signature was verified via EIP-155 hash — skip Seth-native verify.
+                    // ETH-format tx: re-verify using EIP-155 signing hash.
                     if (ptx->has_eth_raw_tx() && !ptx->eth_raw_tx().empty()) {
-                        verify_results[idx] = (!ptx->pubkey().empty() && !ptx->sign().empty()) ? 1 : -1;
+                        bool ok = security::VerifyEthSignature(
+                            ptx->eth_raw_tx(), ptx->pubkey(), ptx->sign());
+                        verify_results[idx] = ok ? 1 : -1;
                         return;
                     }
 

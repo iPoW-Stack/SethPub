@@ -16,6 +16,7 @@
 #include "protos/prefix_db.h"
 #include "security/ecdsa/secp256k1.h"
 #include "security/ecdsa/ecdsa.h"
+#include "security/eth_verify.h"
 #include "security/gmssl/gmssl.h"
 #include "security/oqs/oqs.h"
 #include "transport/processor.h"
@@ -158,16 +159,16 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
     }
 
     // ── ETH-format transaction (from eth_sendRawTransaction) ─────────────
-    // When eth_raw_tx is set, the signature was made over the EIP-155 RLP hash,
-    // not the Seth-native hash.  The public key was already recovered in the
-    // HTTP handler.  We verify by re-recovering the pubkey from the ETH signing
-    // hash and checking it matches the pubkey in the tx.
     if (tx_msg.has_eth_raw_tx() && !tx_msg.eth_raw_tx().empty()) {
-        // The HTTP handler already recovered the pubkey and set it.
-        // We trust the recovery done at the HTTP layer (same node).
-        // The pubkey was derived from secp256k1_ecdsa_recover on the EIP-155 hash.
         if (tx_msg.pubkey().empty() || tx_msg.sign().empty()) {
             SETH_ERROR("ETH tx missing pubkey or sign");
+            msg_ptr->set_status(transport::kTxInvalidSignature);
+            return transport::kFirewallCheckError;
+        }
+
+        // Re-verify ETH signature by rebuilding EIP-155 hash and recovering pubkey
+        if (!security::VerifyEthSignature(tx_msg.eth_raw_tx(), tx_msg.pubkey(), tx_msg.sign())) {
+            SETH_ERROR("ETH tx signature verification failed");
             msg_ptr->set_status(transport::kTxInvalidSignature);
             return transport::kFirewallCheckError;
         }
@@ -182,12 +183,8 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
             msg_ptr->set_status(transport::kTxInvalidAddress);
             return transport::kFirewallCheckError;
         }
-
-        return transport::kFirewallCheckSuccess;
-    }
-
-    // ── Seth-native signature verification ───────────────────────────────
-    if (tx_msg.pubkey().size() == 64u) {
+        // Fall through to shard check + leader routing below
+    } else if (tx_msg.pubkey().size() == 64u) {
         security::GmSsl gmssl;
         if (gmssl.Verify(
                 msg_ptr->msg_hash,
