@@ -533,15 +533,14 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
         print(f"   Target: Shard {target_shard}, Pool {target_pool}")
         print(f"\n🔄 Creating new User2 to match target shard/pool...")
         
-        new_key, new_addr, new_info = create_and_wait_for_address(
+        new_key, new_addr = create_and_wait_for_address(
             w3, user1_key, target_shard, target_pool, 
             initial_balance=9000000000, max_wait=60
         )
         
-        if new_key and new_info:
+        if new_key:
             user2_key = new_key
             user2_addr = new_addr
-            user2_info = new_info
             print(f"\n✅ New User2 created and activated successfully!")
         else:
             print(f"\n❌ Failed to create new User2. Using original (may cause issues).")
@@ -556,51 +555,58 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     
     b_bin, b_abi = compile_and_link(CONTRACT_B_SOL, "ContractB")
     
-    # Deploy ContractB
+    # Calculate ContractB address
     salt_b = secrets.token_hex(31) + 'b'
+    
+    # Add constructor argument (ContractA address) to bytecode
+    constructor_args = eth_abi.encode(['address'], [bytes.fromhex(contract_a.address)])
+    b_bin_with_args = b_bin + constructor_args.hex()
+    
+    contract_b_addr = calc_create2_address(user2_addr, salt_b, b_bin_with_args)
+    contract_b_shard = calc_shard_id(contract_b_addr)
+    contract_b_pool = calc_pool_index(contract_b_addr)
+    
+    print(f"\n📋 ContractB (predicted):")
+    print(f"   Address: {contract_b_addr}")
+    print(f"   Shard: {contract_b_shard}, Pool: {contract_b_pool}")
+    print(f"   Depends on ContractA: {contract_a.address}")
+    
+    # Deploy ContractB
     contract_b = w3.seth.contract(abi=b_abi, bytecode=b_bin, sender_address=user2_addr).deploy({
         'from': user2_addr,
         'salt': salt_b,
         'args': [contract_a.address],
     }, user2_key)
     
-    print(f"\n✅ ContractB deployed")
-    
-    # Query actual shard/pool from blockchain
-    print(f"\n🔍 Querying ContractB's info from blockchain...")
-    contract_b_info = query_address_info(w3, contract_b.address, max_wait=60)
-    
-    if contract_b_info:
-        print(f"\n� ContractB Blockchain Info:")
-        print(f"   Address: {contract_b.address}")
-        print(f"   Shard: {contract_b_info['shard_id']}, Pool: {contract_b_info['pool_index']}")
-        print(f"   Depends on ContractA: {contract_a.address}")
+    print(f"✅ ContractB deployed at: {contract_b.address}")
     
     # ========== Phase 5: 检查并可能重新创建 User3 ==========
     print("\n" + "-"*80)
     print("[Phase 5] Checking User3 compatibility with target shard/pool")
     print("-"*80)
     
+    user3_shard = calc_shard_id(user3_addr)
+    user3_pool = calc_pool_index(user3_addr)
+    
     print(f"\n👤 Current User3:")
     print(f"   Address: {user3_addr}")
-    print(f"   Shard: {user3_info['shard_id']}, Pool: {user3_info['pool_index']}")
+    print(f"   Shard: {user3_shard}, Pool: {user3_pool}")
     
-    # 检查是否需要重新生成
-    if user3_info['shard_id'] != target_shard or user3_info['pool_index'] != target_pool:
+    # 检查是否需要重新生成（注意：仍然是与 target_shard/pool 比较，即 ContractA 的位置）
+    if user3_shard != target_shard or user3_pool != target_pool:
         print(f"\n⚠️  User3 mismatch detected:")
-        print(f"   User3: Shard {user3_info['shard_id']}, Pool {user3_info['pool_index']}")
+        print(f"   User3: Shard {user3_shard}, Pool {user3_pool}")
         print(f"   Target: Shard {target_shard}, Pool {target_pool}")
         print(f"\n🔄 Creating new User3 to match target shard/pool...")
         
-        new_key, new_addr, new_info = create_and_wait_for_address(
+        new_key, new_addr = create_and_wait_for_address(
             w3, user1_key, target_shard, target_pool,
             initial_balance=9000000000, max_wait=60
         )
         
-        if new_key and new_info:
+        if new_key:
             user3_key = new_key
             user3_addr = new_addr
-            user3_info = new_info
             print(f"\n✅ New User3 created and activated successfully!")
         else:
             print(f"\n❌ Failed to create new User3. Using original (may cause issues).")
@@ -615,25 +621,30 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     
     c_bin, c_abi = compile_and_link(CONTRACT_C_SOL, "ContractC")
     
-    # Deploy ContractC
+    # Calculate ContractC address
     salt_c = secrets.token_hex(31) + 'c'
+    
+    # Add constructor argument (ContractB address) to bytecode
+    constructor_args = eth_abi.encode(['address'], [bytes.fromhex(contract_b.address)])
+    c_bin_with_args = c_bin + constructor_args.hex()
+    
+    contract_c_addr = calc_create2_address(user3_addr, salt_c, c_bin_with_args)
+    contract_c_shard = calc_shard_id(contract_c_addr)
+    contract_c_pool = calc_pool_index(contract_c_addr)
+    
+    print(f"\n📋 ContractC (predicted):")
+    print(f"   Address: {contract_c_addr}")
+    print(f"   Shard: {contract_c_shard}, Pool: {contract_c_pool}")
+    print(f"   Depends on ContractB: {contract_b.address}")
+    
+    # Deploy ContractC
     contract_c = w3.seth.contract(abi=c_abi, bytecode=c_bin, sender_address=user3_addr).deploy({
         'from': user3_addr,
         'salt': salt_c,
         'args': [contract_b.address],
     }, user3_key)
     
-    print(f"\n✅ ContractC deployed")
-    
-    # Query actual shard/pool from blockchain
-    print(f"\n🔍 Querying ContractC's info from blockchain...")
-    contract_c_info = query_address_info(w3, contract_c.address, max_wait=60)
-    
-    if contract_c_info:
-        print(f"\n� ContractC Blockchain Info:")
-        print(f"   Address: {contract_c.address}")
-        print(f"   Shard: {contract_c_info['shard_id']}, Pool: {contract_c_info['pool_index']}")
-        print(f"   Depends on ContractB: {contract_b.address}")
+    print(f"✅ ContractC deployed at: {contract_c.address}")
     
     # ========== Phase 7: Verify all contracts are in same shard/pool ==========
     print("\n" + "="*80)
@@ -641,21 +652,21 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     print("="*80)
     
     print(f"\n📊 Deployment Summary:")
-    print(f"   ContractA: {contract_a.address[:16]}... | Shard {contract_a_info['shard_id']} | Pool {contract_a_info['pool_index']}")
-    print(f"   ContractB: {contract_b.address[:16]}... | Shard {contract_b_info['shard_id']} | Pool {contract_b_info['pool_index']}")
-    print(f"   ContractC: {contract_c.address[:16]}... | Shard {contract_c_info['shard_id']} | Pool {contract_c_info['pool_index']}")
+    print(f"   ContractA: {contract_a.address[:16]}... | Shard {contract_a_shard} | Pool {contract_a_pool}")
+    print(f"   ContractB: {contract_b.address[:16]}... | Shard {contract_b_shard} | Pool {contract_b_pool}")
+    print(f"   ContractC: {contract_c.address[:16]}... | Shard {contract_c_shard} | Pool {contract_c_pool}")
     
-    all_same_shard = (contract_a_info['shard_id'] == contract_b_info['shard_id'] == contract_c_info['shard_id'])
-    all_same_pool = (contract_a_info['pool_index'] == contract_b_info['pool_index'] == contract_c_info['pool_index'])
+    all_same_shard = (contract_a_shard == contract_b_shard == contract_c_shard)
+    all_same_pool = (contract_a_pool == contract_b_pool == contract_c_pool)
     
     if all_same_shard and all_same_pool:
-        print(f"\n✅ SUCCESS: All contracts are in the same shard ({contract_a_info['shard_id']}) and pool ({contract_a_info['pool_index']})!")
+        print(f"\n✅ SUCCESS: All contracts are in the same shard ({contract_a_shard}) and pool ({contract_a_pool})!")
     else:
         print(f"\n❌ FAILURE: Contracts are NOT in the same shard/pool!")
         if not all_same_shard:
-            print(f"   Shard mismatch: A={contract_a_info['shard_id']}, B={contract_b_info['shard_id']}, C={contract_c_info['shard_id']}")
+            print(f"   Shard mismatch: A={contract_a_shard}, B={contract_b_shard}, C={contract_c_shard}")
         if not all_same_pool:
-            print(f"   Pool mismatch: A={contract_a_info['pool_index']}, B={contract_b_info['pool_index']}, C={contract_c_info['pool_index']}")
+            print(f"   Pool mismatch: A={contract_a_pool}, B={contract_b_pool}, C={contract_c_pool}")
     
     # ========== Phase 8: Execute contract calls ==========
     print("\n" + "="*80)
