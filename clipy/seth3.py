@@ -2200,6 +2200,10 @@ SELFBALANCE_TEST_SOL = """
 pragma solidity ^0.8.20;
 
 contract SelfBalanceTest {
+    constructor() payable {}
+
+    receive() external payable {}
+
     function getSelfBalance() external view returns (uint256) {
         return address(this).balance;
     }
