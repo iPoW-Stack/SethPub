@@ -25,7 +25,7 @@ void ContractManager::Init(std::shared_ptr<security::Security>& secptr) {
     auto create2 = std::make_shared<ContractCreate2>("");
     auto ecrecover = std::make_shared<Ecrecover>("", secptr);
     auto contract_sha256 = std::make_shared<ContractSha256>("");
-    auto contract_rip160 = std::make_shared<Ripemd160Enc>("");
+    auto contract_rip160 = std::make_shared<Ripemd160>("");
     auto contract_identity = std::make_shared<Identity>("");
     auto modexp = std::make_shared<Modexp>("");
     auto alt_add = std::make_shared<ContractAltBn128G1Add>("");
