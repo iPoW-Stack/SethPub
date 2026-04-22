@@ -2042,11 +2042,10 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             std::string be;
             while (v > 0) { be.push_back(static_cast<char>(v & 0xff)); v >>= 8; }
             std::reverse(be.begin(), be.end());
-            if (static_cast<uint8_t>(be[0]) < 0x80) {
-                // Single byte: encode as-is (RLP single byte)
+            // RLP: single byte < 0x80 encodes as itself; otherwise 0x80+len prefix
+            if (be.size() == 1 && static_cast<uint8_t>(be[0]) < 0x80) {
                 return be;
             }
-            // Multi-byte: 0x80 + len prefix
             return std::string(1, static_cast<char>(0x80 + be.size())) + be;
         };
         auto rlp_encode_bytes = [](const std::string& b) -> std::string {
