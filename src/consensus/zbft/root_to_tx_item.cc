@@ -1,5 +1,6 @@
 #include "consensus/zbft/root_to_tx_item.h"
 
+#include "common/hash.h"
 #include "consensus/hotstuff/view_block_chain.h"
 #include "network/network_utils.h"
 #include "protos/tx_storage_key.h"
@@ -68,8 +69,8 @@ int RootToTxItem::HandleTx(
         }
 
         if (sharding_id == 0) {
-            std::mt19937_64 g2(view_block.block_info().height() ^ vss_mgr_->EpochRandom());
-            sharding_id = (g2() % (max_sharding_id_ - network::kConsensusShardBeginNetworkId + 1)) +
+            uint64_t hash_value = common::Hash::Hash64(to_addr);
+            sharding_id = (hash_value % (max_sharding_id_ - network::kConsensusShardBeginNetworkId + 1)) +
                 network::kConsensusShardBeginNetworkId;
         }
 
