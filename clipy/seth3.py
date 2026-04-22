@@ -2392,18 +2392,19 @@ def _eth_sign_and_send(client, pk_hex: str, to: bytes, value: int, data: bytes,
     from Crypto.Hash import keccak as _keccak
 
     # Build legacy transaction dict
+    # eth_account requires checksummed 'to' address
+    from eth_utils import to_checksum_address as _to_ck
     tx = {
         'nonce': nonce,
         'gasPrice': gas_price,
         'gas': gas_limit,
-        'to': ('0x' + to.hex()) if to else None,  # None = contract creation
         'value': value,
         'data': data,
         'chainId': chain_id,
     }
-    # Remove 'to' key entirely for contract creation (eth_account expects this)
-    if not to:
-        del tx['to']
+    if to:
+        tx['to'] = _to_ck('0x' + to.hex())
+    # If 'to' is absent → contract creation
 
     # Sign with eth_account — handles EIP-155, recovery_id, canonical s, etc.
     signed = Account.sign_transaction(tx, '0x' + pk_hex)
