@@ -34,7 +34,7 @@ public:
             std::shared_ptr<ViewBlockChain>& view_block_chain, 
             const std::string& parent_hash,
             ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs,
-            const LeaderNonceMap& leader_nonce_map) = 0;
+            const std::unordered_map<std::string, uint64_t>& leader_nonce_map) = 0;
     virtual bool HasSingleTx(
         const transport::MessagePtr& msg_ptr,
         pools::CheckAddrNonceValidFunction tx_valid_func) = 0;
@@ -73,7 +73,7 @@ public:
             std::shared_ptr<ViewBlockChain>& view_block_chain, 
             const std::string& parent_hash,
             ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs,
-            const LeaderNonceMap& leader_nonce_map) override {
+            const std::unordered_map<std::string, uint64_t>& leader_nonce_map) override {
         auto tx_valid_func = [&](
                 const address::protobuf::AddressInfo& addr_info, 
                 const pools::protobuf::TxMessage& tx_info,

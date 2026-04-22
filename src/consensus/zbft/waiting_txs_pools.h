@@ -36,7 +36,7 @@ public:
             uint32_t count,
             ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs,
             pools::CheckAddrNonceValidFunction tx_valid_func,
-            const hotstuff::LeaderNonceMap& leader_nonce_map) {
+            const std::unordered_map<std::string, uint64_t>& leader_nonce_map) {
         pool_mgr_->GetTxSyncToLeader(leader_idx, pool_index, count, txs, tx_valid_func, leader_nonce_map);
     }
 

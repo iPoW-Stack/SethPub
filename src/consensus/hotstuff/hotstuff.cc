@@ -2063,7 +2063,7 @@ Status Hotstuff::ConstructVoteMsg(
         // Build a map of addr → max_nonce+1 from the leader's proposed block.
         // This tells GetTxSyncToLeader which nonces the leader already has,
         // so it can skip them and search forward for new txs.
-        LeaderNonceMap leader_nonce_map;
+        std::unordered_map<std::string, uint64_t> leader_nonce_map;
         for (int i = 0; i < msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size(); ++i) {
             auto& tx = msg_ptr->header.hotstuff().pro_msg().tx_propose().txs(i);
             if (pools::IsUserTransaction(tx.step()) && !tx.pubkey().empty()) {
@@ -2433,7 +2433,7 @@ void Hotstuff::SyncLocalTxToLeader(
         view_block_chain_, 
         view_block_chain_->HighQC().view_block_hash(), 
         txs,
-        LeaderNonceMap());  // empty map — no leader block context here
+        std::unordered_map<std::string, uint64_t>());  // empty map — no leader block context here
     
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (txs->empty()) {

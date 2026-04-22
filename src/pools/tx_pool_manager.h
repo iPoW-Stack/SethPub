@@ -25,11 +25,6 @@
 
 namespace seth {
 
-namespace hotstuff {
-// Forward declaration — full definition in consensus/hotstuff/hotstuff_utils.h
-using LeaderNonceMap = std::unordered_map<std::string, uint64_t>;
-}  // namespace hotstuff
-
 namespace pools {
 
 namespace block {
@@ -64,7 +59,7 @@ public:
         uint32_t count,
         ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs,
         pools::CheckAddrNonceValidFunction tx_valid_func,
-        const hotstuff::LeaderNonceMap& leader_nonce_map);
+        const std::unordered_map<std::string, uint64_t>& leader_nonce_map);
     void InitCrossPools();
     void BftCheckInvalidGids(
         uint32_t pool_index, 

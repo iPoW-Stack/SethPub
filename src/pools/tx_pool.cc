@@ -327,7 +327,7 @@ void TxPool::GetTxSyncToLeader(
         uint32_t count,
         ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs,
         pools::CheckAddrNonceValidFunction tx_valid_func,
-        const hotstuff::LeaderNonceMap& leader_nonce_map) {
+        const std::unordered_map<std::string, uint64_t>& leader_nonce_map) {
     // CheckThreadIdValid();
     TxItemPtr tx_ptr;
     while (added_txs_.pop(&tx_ptr)) {

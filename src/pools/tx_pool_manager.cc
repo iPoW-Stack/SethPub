@@ -1469,7 +1469,7 @@ void TxPoolManager::GetTxSyncToLeader(
         uint32_t count,
         ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs,
         pools::CheckAddrNonceValidFunction tx_valid_func,
-        const hotstuff::LeaderNonceMap& leader_nonce_map) {
+        const std::unordered_map<std::string, uint64_t>& leader_nonce_map) {
     tx_pool_[pool_index].GetTxSyncToLeader(leader_idx, count, txs, tx_valid_func, leader_nonce_map);    
 }
 
