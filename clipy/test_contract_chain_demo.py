@@ -223,12 +223,13 @@ def generate_user_for_target_shard_pool(target_shard: int, target_pool: int, max
         k = keccak.new(digest_bits=256)
         k.update(pub)
         address = k.digest()[-20:].hex()
+        if target_shard == 0:
+            return private_key, address
         
         # Check shard and pool
         shard = calc_shard_id(address)
         pool = calc_pool_index(address)
         
-        print(f"address: {address}, shard: {shard}, pool: {pool}")
         if shard == target_shard and pool == target_pool:
             print(f"  ✅ Found matching address after {attempt + 1} attempts")
             print(f"     Address: {address}")
