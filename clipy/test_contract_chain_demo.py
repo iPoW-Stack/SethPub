@@ -444,7 +444,7 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     print(f"\n  💰 Creating User2 on-chain with initial balance...")
     user2_key, user2_addr = create_and_wait_for_address(
         w3, user1_key, user2_shard, user2_pool,
-        initial_balance=10000000, max_wait=60
+        initial_balance=10000000000, max_wait=60
     )
     
     if not user2_key:
@@ -473,7 +473,7 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     print(f"\n  💰 Creating User3 on-chain with initial balance...")
     user3_key, user3_addr = create_and_wait_for_address(
         w3, user1_key, user3_shard, user3_pool,
-        initial_balance=10000000, max_wait=60
+        initial_balance=10000000000, max_wait=60
     )
     
     if not user3_key:
@@ -553,7 +553,7 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
         
         new_key, new_addr = create_and_wait_for_address(
             w3, user1_key, target_shard, target_pool, 
-            initial_balance=10000000, max_wait=60
+            initial_balance=9000000000, max_wait=60
         )
         
         if new_key:
@@ -619,7 +619,7 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
         
         new_key, new_addr = create_and_wait_for_address(
             w3, user1_key, target_shard, target_pool,
-            initial_balance=10000000, max_wait=60
+            initial_balance=9000000000, max_wait=60
         )
         
         if new_key:
