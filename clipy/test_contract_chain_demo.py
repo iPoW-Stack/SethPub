@@ -21,15 +21,20 @@ import struct
 import time
 import requests
 import eth_abi
+import xxhash
 from Crypto.Hash import keccak
 from ecdsa import SigningKey, SECP256k1
 from seth_sdk import SethWeb3Mock, StepType, compile_and_link
 
 # Constants matching C++ implementation
-CONSENSUS_SHARD_BEGIN_NETWORK_ID = 3
+CONSENSUS_SHARD_BEGIN_NETWORK_ID = 1
 MAX_SHARD_ID = 3
 IMMUTABLE_POOL_SIZE = 7
 UNICAST_ADDRESS_LENGTH = 20
+
+# Hash seeds from C++ (src/common/hash.h)
+HASH_SEED_U32 = 623453345
+HASH_SEED_1 = 23456785675590
 
 # Contract source code
 CONTRACT_A_SOL = """
@@ -144,21 +149,13 @@ contract ContractC {
 
 
 def hash32(data: bytes) -> int:
-    """Calculate 32-bit hash matching C++ Hash::Hash32"""
-    # Use first 4 bytes of keccak256 as hash32
-    k = keccak.new(digest_bits=256)
-    k.update(data)
-    digest = k.digest()
-    return struct.unpack('<I', digest[:4])[0]
+    """Calculate 32-bit hash matching C++ Hash::Hash32 using xxHash"""
+    return xxhash.xxh32(data, seed=HASH_SEED_U32).intdigest()
 
 
 def hash64(data: bytes) -> int:
-    """Calculate 64-bit hash matching C++ Hash::Hash64"""
-    # Use first 8 bytes of keccak256 as hash64
-    k = keccak.new(digest_bits=256)
-    k.update(data)
-    digest = k.digest()
-    return struct.unpack('<Q', digest[:8])[0]
+    """Calculate 64-bit hash matching C++ Hash::Hash64 using xxHash"""
+    return xxhash.xxh64(data, seed=HASH_SEED_1).intdigest()
 
 
 def calc_shard_id(address: str) -> int:
