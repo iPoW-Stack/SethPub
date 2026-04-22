@@ -2007,8 +2007,16 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             return;
         }
         std::string raw_hex = params[0].get<std::string>();
-        if (raw_hex.size() >= 2 && raw_hex[0] == '0') raw_hex = raw_hex.substr(2);
+        // Strip "0x" or "0X" prefix if present
+        if (raw_hex.size() >= 2 && raw_hex[0] == '0' && (raw_hex[1] == 'x' || raw_hex[1] == 'X')) {
+            raw_hex = raw_hex.substr(2);
+        }
         std::string raw_bytes = common::Encode::HexDecode(raw_hex);
+        if (raw_bytes.empty()) {
+            SETH_WARN("eth_sendRawTransaction: HexDecode failed, raw_hex_len=%zu", raw_hex.size());
+            http_res.set_content(RpcErr(id, -32602, "invalid hex encoding").dump(), "application/json");
+            return;
+        }
 
         uint64_t nonce = 0, value = 0, gas_limit = 0, gas_price = 0;
         std::string to, data, r, s;
