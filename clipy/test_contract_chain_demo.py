@@ -262,11 +262,11 @@ def create_and_wait_for_address(w3, funder_key: str, target_shard: int, target_p
     
     # Send transaction to create the address on-chain
     try:
-        # Use kRootCreateAddress to create the address
+        # Use kNormalFrom for standard transfer to create the address
         tx_hash = w3.client.send_transaction_auto(
             funder_key,
             address,
-            StepType.kRootCreateAddress,
+            StepType.kNormalFrom,
             amount=initial_balance
         )
         
