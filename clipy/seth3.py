@@ -2431,6 +2431,11 @@ def _eth_sign_and_send(client, pk_hex: str, to: bytes, value: int, data: bytes,
     # Verify: recovered address should match our Seth address
     expected_addr = client.get_address(pk_hex)
     recovered_addr = Account.recover_transaction(raw_tx_bytes).lower().replace('0x', '')
+    # Also print the expected uncompressed pubkey for comparison with C++ side
+    from ecdsa import SigningKey as _SK, SECP256k1 as _S
+    _sk = _SK.from_string(bytes.fromhex(pk_hex), curve=_S)
+    _pub_uncompressed_no_prefix = _sk.verifying_key.to_string().hex()  # 64 bytes
+    print(f"  [DEBUG] expected pubkey (64B no prefix): {_pub_uncompressed_no_prefix}")
     print(f"  [DEBUG] expected_addr={expected_addr}, recovered_addr={recovered_addr}")
     if recovered_addr != expected_addr:
         print(f"  [WARN] Address mismatch! ETH recovery gives different address than Seth.")

@@ -2117,6 +2117,9 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
 
         // Derive sender address from recovered pubkey
         std::string sender_addr = http_handler->security_ptr()->GetAddressWithPublicKey(pubkey);
+        SETH_WARN("eth_sendRawTransaction: pubkey_len=%zu, pubkey_hex=%s, sender=%s",
+            pubkey.size(), common::Encode::HexEncode(pubkey).c_str(),
+            common::Encode::HexEncode(sender_addr).c_str());
         if (sender_addr.empty() || sender_addr.size() != 20) {
             http_res.set_content(RpcErr(id, -32602, "invalid sender address").dump(), "application/json");
             return;
