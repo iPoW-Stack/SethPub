@@ -2401,7 +2401,6 @@ def _eth_sign_and_send(client, pk_hex: str, to: bytes, value: int, data: bytes,
         'value': value,
         'data': data,
         'chainId': chain_id,
-        'type': 0,  # Force legacy transaction (not EIP-1559/EIP-2930)
     }
     if to:
         tx['to'] = _to_ck('0x' + to.hex())
