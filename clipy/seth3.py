@@ -2187,6 +2187,106 @@ def test_ripemd160_precompile(w3, MY, KEY):
         print("  ❌ RIPEMD-160 Precompile Test FAILED")
     print("=" * 70)
 
+
+# ---------------------------------------------------------------------------
+# SELFBALANCE Test
+#
+# Deploys a contract, transfers native SETH to it, then calls
+# getSelfBalance() to verify address(this).balance matches the
+# transferred amount.
+# ---------------------------------------------------------------------------
+
+SELFBALANCE_TEST_SOL = """
+pragma solidity ^0.8.20;
+
+contract SelfBalanceTest {
+    function getSelfBalance() external view returns (uint256) {
+        return address(this).balance;
+    }
+}
+"""
+
+
+def test_selfbalance(w3, MY, KEY):
+    """
+    Test SELFBALANCE opcode:
+    1. Deploy SelfBalanceTest contract (with initial value)
+    2. Query getSelfBalance() — should equal the deploy amount
+    3. Transfer additional SETH to the contract address
+    4. Query getSelfBalance() again — should equal deploy + transfer
+    """
+    print("\n" + "=" * 70)
+    print("  TEST CASE: SELFBALANCE (address(this).balance)")
+    print("=" * 70)
+
+    salt = secrets.token_hex(31)
+    deploy_amount = 1_000_000
+
+    # 1. Deploy with initial value
+    print(f"\n[1] Deploying SelfBalanceTest with {deploy_amount} SETH...")
+    sb_bin, sb_abi = compile_and_link(SELFBALANCE_TEST_SOL, "SelfBalanceTest")
+    sb_contract = w3.seth.contract(abi=sb_abi, bytecode=sb_bin, sender_address=MY)
+    sb_contract.deploy({
+        'from': MY,
+        'salt': salt + 'selfbal',
+        'amount': deploy_amount,
+    }, KEY)
+    print(f"    SelfBalanceTest @ {sb_contract.address}")
+
+    # 2. Query balance — should be deploy_amount
+    print(f"\n[2] Calling getSelfBalance() (expect {deploy_amount})...")
+    result = sb_contract.functions.getSelfBalance().call()
+    balance = result[0] if isinstance(result, tuple) else result
+    print(f"    getSelfBalance() = {balance}")
+    if balance == deploy_amount:
+        print(f"    ✅ MATCH: contract balance == {deploy_amount}")
+    else:
+        print(f"    ❌ MISMATCH: expected {deploy_amount}, got {balance}")
+
+    # 3. Transfer additional SETH to the contract
+    transfer_amount = 500_000
+    print(f"\n[3] Transferring {transfer_amount} SETH to contract {sb_contract.address}...")
+    receipt = w3.seth.send_transaction({
+        'to': sb_contract.address,
+        'value': transfer_amount,
+    }, KEY)
+    print(f"    Transfer status: {receipt.get('status')}")
+
+    # 4. Wait for balance to settle and query again
+    expected_total = deploy_amount + transfer_amount
+    print(f"\n[4] Calling getSelfBalance() (expect {expected_total})...")
+    count = 0
+    final_balance = 0
+    while count < 30:
+        time.sleep(2)
+        result = sb_contract.functions.getSelfBalance().call()
+        final_balance = result[0] if isinstance(result, tuple) else result
+        if final_balance == expected_total:
+            break
+        count += 1
+
+    print(f"    getSelfBalance() = {final_balance}")
+    if final_balance == expected_total:
+        print(f"    ✅ MATCH: contract balance == {expected_total}")
+    else:
+        print(f"    ❌ MISMATCH: expected {expected_total}, got {final_balance}")
+
+    # 5. Also verify via external balance query
+    print(f"\n[5] Cross-check: querying contract balance via get_balance()...")
+    ext_balance = w3.client.get_balance(sb_contract.address)
+    print(f"    get_balance({sb_contract.address}) = {ext_balance}")
+    if ext_balance == expected_total:
+        print(f"    ✅ External balance matches")
+    else:
+        print(f"    ⚠️  External balance differs (may need more time to sync)")
+
+    print("\n" + "=" * 70)
+    if final_balance == expected_total:
+        print("  ✅ SELFBALANCE Test PASSED")
+    else:
+        print("  ❌ SELFBALANCE Test FAILED")
+    print("=" * 70)
+
     
 def ecdsa_sign_test():
     IP, PORT, KEY = "127.0.0.1", 23001, "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
@@ -2205,6 +2305,7 @@ def ecdsa_sign_test():
     test_iweth9_existing_contract(w3, MY, KEY)
     test_iweth9_demo(w3, MY, KEY)
     test_ripemd160_precompile(w3, MY, KEY)
+    test_selfbalance(w3, MY, KEY)
 
 
 def oqs_sign_test():
