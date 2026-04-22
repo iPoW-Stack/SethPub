@@ -179,4 +179,9 @@ message TxMessage {
     repeated TxDelayTestInfo tx_debug = 15;
     optional uint64 tx_debug_timeout_seconds = 16;
     optional bytes tx_hash = 17;
+    // When set, this tx was submitted via eth_sendRawTransaction.
+    // Contains the original RLP-encoded signed transaction bytes.
+    // Signature verification uses the ETH signing hash (EIP-155)
+    // instead of the Seth-native hash format.
+    optional bytes eth_raw_tx = 18;
 }

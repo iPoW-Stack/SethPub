@@ -1053,6 +1053,14 @@ Status BlockAcceptor::addTxsToPool(
                         verify_results[idx] = 1;
                         return;
                     }
+
+                    // ETH-format tx: pubkey was recovered at HTTP layer,
+                    // signature was verified via EIP-155 hash — skip Seth-native verify.
+                    if (ptx->has_eth_raw_tx() && !ptx->eth_raw_tx().empty()) {
+                        verify_results[idx] = (!ptx->pubkey().empty() && !ptx->sign().empty()) ? 1 : -1;
+                        return;
+                    }
+
                     auto tx_hash = pools::GetTxMessageHash(*ptx);
                     int ret = security::kSecurityError;
                     if (ptx->pubkey().size() == 64u) {

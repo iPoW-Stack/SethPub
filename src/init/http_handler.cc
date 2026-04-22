@@ -2132,6 +2132,10 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
         sign.push_back(static_cast<char>(v_byte));
         new_tx->set_sign(sign);
 
+        // Store original RLP bytes so the pool manager can verify using
+        // the ETH signing hash instead of the Seth-native hash.
+        new_tx->set_eth_raw_tx(raw_bytes);
+
         auto tx_hash = pools::GetTxMessageHash(*new_tx);
         msg_ptr->msg_hash = tx_hash;
         msg.set_hash64(common::Random::RandomUint64());
