@@ -27,9 +27,9 @@ from ecdsa import SigningKey, SECP256k1
 from seth_sdk import SethWeb3Mock, StepType, compile_and_link
 
 # Constants matching C++ implementation
-CONSENSUS_SHARD_BEGIN_NETWORK_ID = 1
+CONSENSUS_SHARD_BEGIN_NETWORK_ID = 3
 MAX_SHARD_ID = 3
-IMMUTABLE_POOL_SIZE = 7
+IMMUTABLE_POOL_SIZE = 32
 UNICAST_ADDRESS_LENGTH = 20
 
 # Hash seeds from C++ (src/common/hash.h)
