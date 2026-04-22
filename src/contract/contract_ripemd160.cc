@@ -39,9 +39,10 @@ int Ripemd160::call(
     static constexpr size_t kOutputSize = 32;
     static constexpr size_t kPadding    = kOutputSize - RIPEMD160_DIGEST_LENGTH;  // 12
 
-    res->output_data = new uint8_t[kOutputSize];
-    memset(res->output_data, 0, kPadding);
-    memcpy(res->output_data + kPadding, digest, RIPEMD160_DIGEST_LENGTH);
+    uint8_t* out = new uint8_t[kOutputSize];
+    memset(out, 0, kPadding);
+    memcpy(out + kPadding, digest, RIPEMD160_DIGEST_LENGTH);
+    res->output_data = out;
     res->output_size = kOutputSize;
 
     memcpy(res->create_address.bytes,
