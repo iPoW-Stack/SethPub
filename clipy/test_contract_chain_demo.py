@@ -19,6 +19,7 @@ import secrets
 import hashlib
 import struct
 import time
+import requests
 import eth_abi
 from Crypto.Hash import keccak
 from ecdsa import SigningKey, SECP256k1
@@ -311,28 +312,98 @@ def create_and_wait_for_address(w3, funder_key: str, target_shard: int, target_p
         return None, None
 
 
+def query_address_info(w3, address: str, max_wait: int = 60):
+    """
+    Query address information from the blockchain, including shard and pool.
+    
+    Args:
+        w3: Web3 mock instance
+        address: Address to query (without 0x prefix)
+        max_wait: Maximum wait time in seconds
+    
+    Returns:
+        dict: Address info with 'shard_id' and 'pool_index', or None if failed
+    """
+    print(f"  🔍 Querying address info from blockchain...")
+    
+    # Clean address format
+    clean_addr = address.replace('0x', '')
+    
+    start_time = time.time()
+    check_interval = 2
+    
+    while time.time() - start_time < max_wait:
+        try:
+            # Use the query_url from the client
+            result = requests.post(
+                w3.client.query_url, 
+                data={"address": clean_addr}, 
+                timeout=5, 
+                verify=w3.client.verify_ssl
+            )
+            
+            if result.status_code == 200:
+                data = result.json()
+                
+                # Check if address exists and has shard/pool info
+                # The API might return 'sharding_id' or 'shard_id'
+                shard_id = data.get('sharding_id') or data.get('shard_id')
+                pool_index = data.get('pool_index')
+                
+                if shard_id is not None and pool_index is not None:
+                    elapsed = time.time() - start_time
+                    print(f"  ✅ Address info retrieved! (took {elapsed:.1f}s)")
+                    print(f"     Shard: {shard_id}, Pool: {pool_index}")
+                    print(f"     Balance: {data.get('balance', 0)}")
+                    return {
+                        'shard_id': int(shard_id),
+                        'pool_index': int(pool_index),
+                        'balance': int(data.get('balance', 0)),
+                        'nonce': int(data.get('nonce', 0))
+                    }
+                else:
+                    # Address exists but no shard/pool info yet
+                    print(f"  ⏳ Address found but shard/pool not yet assigned...")
+                    
+        except requests.exceptions.RequestException as e:
+            print(f"  ⚠️  Request error: {e}")
+        except Exception as e:
+            print(f"  ⚠️  Parse error: {e}")
+        
+        time.sleep(check_interval)
+    
+    # Timeout - return None
+    elapsed = time.time() - start_time
+    print(f"  ⚠️  Timeout after {elapsed:.1f}s, could not retrieve address info")
+    return None
+
+
 def test_contract_chain_same_shard_pool(w3, MY, KEY):
     """
     Test contract chain deployment ensuring all contracts are in the same shard and pool.
     
     Flow:
-    1. User1 deploys ContractA
-    2. User2 checks if their address is in the same shard/pool as ContractA
-       - If not, generate and create a new User2 address on-chain
-    3. User2 deploys ContractB (depends on ContractA)
-    4. User3 checks if their address is in the same shard/pool as ContractB
-       - If not, generate and create a new User3 address on-chain
-    5. User3 deploys ContractC (depends on ContractB)
-    6. All three users call their respective contract methods
+    0. 准备 User1（资金提供者）
+    1. 预先创建 User2 和 User3（通过转币交易）并验证链上合法
+    2. User1 deploys ContractA (直接部署，不做任何检查)
+    3. 根据 ContractA 的 shard/pool 确定目标位置
+    4. 检查 User2 是否与目标在同一 shard/pool
+       - 如果不是，重新生成并创建新 User2
+    5. User2 部署 ContractB (依赖 ContractA)
+    6. 检查 User3 是否与目标在同一 shard/pool
+       - 如果不是，重新生成并创建新 User3
+    7. User3 部署 ContractC (依赖 ContractB)
+    8. 验证所有合约在同一 shard/pool
+    9. 执行合约调用链
     """
     print("\n" + "="*80)
     print("TEST: Contract Chain with Same Shard/Pool Enforcement")
     print("="*80)
     
-    # ========== Phase 1: Create initial users ==========
-    print("\n[Phase 1] Creating initial users...")
+    # ========== Phase 0: 准备 User1 ==========
+    print("\n[Phase 0] Preparing User1 (Funder)")
     
-    # User1 - will deploy ContractA (use the provided account)
+    # User1 - 使用提供的账户作为资金提供者
     user1_key = KEY
     user1_addr = MY
     
@@ -340,7 +411,13 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     print(f"   Address: {user1_addr}")
     print(f"   Shard: {calc_shard_id(user1_addr)}, Pool: {calc_pool_index(user1_addr)}")
     
-    # User2 - initial (may be regenerated)
+    # ========== Phase 1: 预先创建 User2 和 User3 ==========
+    print("\n" + "="*80)
+    print("[Phase 1] Pre-creating User2 and User3 on-chain")
+    print("="*80)
+    
+    print("\n[1.1] Creating User2...")
+    # 生成初始 User2
     user2_sk = SigningKey.generate(curve=SECP256k1)
     user2_key = user2_sk.to_string().hex()
     user2_pub = user2_sk.verifying_key.to_string("uncompressed")[1:]
@@ -348,11 +425,28 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     k.update(user2_pub)
     user2_addr = k.digest()[-20:].hex()
     
-    print(f"\n👤 User2 (initial):")
-    print(f"   Address: {user2_addr}")
-    print(f"   Shard: {calc_shard_id(user2_addr)}, Pool: {calc_pool_index(user2_addr)}")
+    user2_shard = calc_shard_id(user2_addr)
+    user2_pool = calc_pool_index(user2_addr)
     
-    # User3 - initial (may be regenerated)
+    print(f"\n👤 User2 (generated):")
+    print(f"   Address: {user2_addr}")
+    print(f"   Shard: {user2_shard}, Pool: {user2_pool}")
+    
+    # 通过转币交易创建 User2
+    print(f"\n  💰 Creating User2 on-chain with initial balance...")
+    user2_key, user2_addr = create_and_wait_for_address(
+        w3, user1_key, user2_shard, user2_pool,
+        initial_balance=10000000, max_wait=60
+    )
+    
+    if not user2_key:
+        print(f"  ❌ Failed to create User2")
+        return
+    
+    print(f"  ✅ User2 created and verified on-chain")
+    
+    print("\n[1.2] Creating User3...")
+    # 生成初始 User3
     user3_sk = SigningKey.generate(curve=SECP256k1)
     user3_key = user3_sk.to_string().hex()
     user3_pub = user3_sk.verifying_key.to_string("uncompressed")[1:]
@@ -360,13 +454,33 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     k.update(user3_pub)
     user3_addr = k.digest()[-20:].hex()
     
-    print(f"\n👤 User3 (initial):")
-    print(f"   Address: {user3_addr}")
-    print(f"   Shard: {calc_shard_id(user3_addr)}, Pool: {calc_pool_index(user3_addr)}")
+    user3_shard = calc_shard_id(user3_addr)
+    user3_pool = calc_pool_index(user3_addr)
     
-    # ========== Phase 2: Deploy ContractA ==========
+    print(f"\n👤 User3 (generated):")
+    print(f"   Address: {user3_addr}")
+    print(f"   Shard: {user3_shard}, Pool: {user3_pool}")
+    
+    # 通过转币交易创建 User3
+    print(f"\n  💰 Creating User3 on-chain with initial balance...")
+    user3_key, user3_addr = create_and_wait_for_address(
+        w3, user1_key, user3_shard, user3_pool,
+        initial_balance=10000000, max_wait=60
+    )
+    
+    if not user3_key:
+        print(f"  ❌ Failed to create User3")
+        return
+    
+    print(f"  ✅ User3 created and verified on-chain")
+    
+    print("\n" + "="*80)
+    print("✅ User2 and User3 are now valid on-chain")
+    print("="*80)
+    
+    # ========== Phase 2: 直接部署 ContractA ==========
     print("\n" + "-"*80)
-    print("[Phase 2] User1 deploys ContractA")
+    print("[Phase 2] User1 deploys ContractA (no shard/pool check)")
     print("-"*80)
     
     a_bin, a_abi = compile_and_link(CONTRACT_A_SOL, "ContractA")
@@ -374,14 +488,11 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     # Calculate ContractA address
     salt_a = secrets.token_hex(31) + 'a'
     contract_a_addr = calc_create2_address(user1_addr, salt_a, a_bin)
-    contract_a_shard = calc_shard_id(contract_a_addr)
-    contract_a_pool = calc_pool_index(contract_a_addr)
     
     print(f"\n📋 ContractA (predicted):")
     print(f"   Address: {contract_a_addr}")
-    print(f"   Shard: {contract_a_shard}, Pool: {contract_a_pool}")
     
-    # Deploy ContractA
+    # Deploy ContractA directly
     contract_a = w3.seth.contract(abi=a_abi, bytecode=a_bin, sender_address=user1_addr).deploy({
         'from': user1_addr,
         'salt': salt_a,
@@ -389,35 +500,63 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     
     print(f"✅ ContractA deployed at: {contract_a.address}")
     
-    # ========== Phase 3: Ensure User2 is in same shard/pool as ContractA ==========
+    # ========== 确定目标 shard/pool（从链上查询）==========
+    print(f"\n🔍 Querying ContractA's actual shard/pool from blockchain...")
+    
+    # Query the actual shard and pool from blockchain
+    contract_a_info = query_address_info(w3, contract_a.address, max_wait=60)
+    
+    if contract_a_info:
+        # Use the actual shard/pool from blockchain
+        target_shard = contract_a_info['shard_id']
+        target_pool = contract_a_info['pool_index']
+        
+        print(f"\n✅ ContractA info retrieved from blockchain:")
+        print(f"   Actual Shard: {target_shard}")
+        print(f"   Actual Pool: {target_pool}")
+    else:
+        # Fallback to calculated values if query fails
+        print(f"\n⚠️  Could not query from blockchain, using calculated values:")
+        sys.exist(1)
+    
+    print(f"\n🎯 Target shard/pool determined:")
+    print(f"   Target Shard: {target_shard}")
+    print(f"   Target Pool: {target_pool}")
+    print(f"   All subsequent contracts will be deployed in this shard/pool")
+    
+    # ========== Phase 3: 检查并可能重新创建 User2 ==========
     print("\n" + "-"*80)
-    print("[Phase 3] Ensuring User2 is in same shard/pool as ContractA")
+    print("[Phase 3] Checking User2 compatibility with target shard/pool")
     print("-"*80)
     
     user2_shard = calc_shard_id(user2_addr)
     user2_pool = calc_pool_index(user2_addr)
     
-    if user2_shard != contract_a_shard or user2_pool != contract_a_pool:
+    print(f"\n👤 Current User2:")
+    print(f"   Address: {user2_addr}")
+    print(f"   Shard: {user2_shard}, Pool: {user2_pool}")
+    
+    # 检查是否需要重新生成
+    if user2_shard != target_shard or user2_pool != target_pool:
         print(f"\n⚠️  User2 mismatch detected:")
         print(f"   User2: Shard {user2_shard}, Pool {user2_pool}")
-        print(f"   ContractA: Shard {contract_a_shard}, Pool {contract_a_pool}")
-        print(f"\n🔄 Creating new User2 to match ContractA's shard/pool...")
+        print(f"   Target: Shard {target_shard}, Pool {target_pool}")
+        print(f"\n🔄 Creating new User2 to match target shard/pool...")
         
         new_key, new_addr = create_and_wait_for_address(
-            w3, user1_key, contract_a_shard, contract_a_pool, 
+            w3, user1_key, target_shard, target_pool, 
             initial_balance=10000000, max_wait=60
         )
         
         if new_key:
             user2_key = new_key
             user2_addr = new_addr
-            print(f"\n✅ User2 created and activated successfully!")
+            print(f"\n✅ New User2 created and activated successfully!")
         else:
-            print(f"\n❌ Failed to create User2. Using original (may cause issues).")
+            print(f"\n❌ Failed to create new User2. Using original (may cause issues).")
     else:
         print(f"\n✅ User2 already in correct shard/pool!")
-        print(f"   User2: Shard {user2_shard}, Pool {user2_pool}")
-        print(f"   ContractA: Shard {contract_a_shard}, Pool {contract_a_pool}")
+        print(f"   No need to regenerate")
     
     # ========== Phase 4: Deploy ContractB ==========
     print("\n" + "-"*80)
@@ -451,35 +590,39 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     
     print(f"✅ ContractB deployed at: {contract_b.address}")
     
-    # ========== Phase 5: Ensure User3 is in same shard/pool as ContractB ==========
+    # ========== Phase 5: 检查并可能重新创建 User3 ==========
     print("\n" + "-"*80)
-    print("[Phase 5] Ensuring User3 is in same shard/pool as ContractB")
+    print("[Phase 5] Checking User3 compatibility with target shard/pool")
     print("-"*80)
     
     user3_shard = calc_shard_id(user3_addr)
     user3_pool = calc_pool_index(user3_addr)
     
-    if user3_shard != contract_b_shard or user3_pool != contract_b_pool:
+    print(f"\n👤 Current User3:")
+    print(f"   Address: {user3_addr}")
+    print(f"   Shard: {user3_shard}, Pool: {user3_pool}")
+    
+    # 检查是否需要重新生成（注意：仍然是与 target_shard/pool 比较，即 ContractA 的位置）
+    if user3_shard != target_shard or user3_pool != target_pool:
         print(f"\n⚠️  User3 mismatch detected:")
         print(f"   User3: Shard {user3_shard}, Pool {user3_pool}")
-        print(f"   ContractB: Shard {contract_b_shard}, Pool {contract_b_pool}")
-        print(f"\n🔄 Creating new User3 to match ContractB's shard/pool...")
+        print(f"   Target: Shard {target_shard}, Pool {target_pool}")
+        print(f"\n🔄 Creating new User3 to match target shard/pool...")
         
         new_key, new_addr = create_and_wait_for_address(
-            w3, user1_key, contract_b_shard, contract_b_pool,
+            w3, user1_key, target_shard, target_pool,
             initial_balance=10000000, max_wait=60
         )
         
         if new_key:
             user3_key = new_key
             user3_addr = new_addr
-            print(f"\n✅ User3 created and activated successfully!")
+            print(f"\n✅ New User3 created and activated successfully!")
         else:
-            print(f"\n❌ Failed to create User3. Using original (may cause issues).")
+            print(f"\n❌ Failed to create new User3. Using original (may cause issues).")
     else:
         print(f"\n✅ User3 already in correct shard/pool!")
-        print(f"   User3: Shard {user3_shard}, Pool {user3_pool}")
-        print(f"   ContractB: Shard {contract_b_shard}, Pool {contract_b_pool}")
+        print(f"   No need to regenerate")
     
     # ========== Phase 6: Deploy ContractC ==========
     print("\n" + "-"*80)
@@ -576,4 +719,4 @@ if __name__ == "__main__":
     MY = w3.client.get_address(KEY)
     
     # Run the test
-    test_contract_chain_same_shard_pool(w3, KEY, MY)
+    test_contract_chain_same_shard_pool(w3, MY, KEY)
