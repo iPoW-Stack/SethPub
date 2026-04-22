@@ -2291,6 +2291,319 @@ def test_selfbalance(w3, MY, KEY):
         print("  ❌ SELFBALANCE Test FAILED")
     print("=" * 70)
 
+
+# ---------------------------------------------------------------------------
+# ETH Signing Test — send transactions using Ethereum RLP + EIP-155 format
+# to the /eth JSON-RPC endpoint, testing MetaMask compatibility.
+# ---------------------------------------------------------------------------
+
+ETH_KILL_SOL = """
+pragma solidity ^0.8.20;
+
+contract EthKill {
+    address public owner;
+    uint256 public data;
+
+    constructor() payable {
+        owner = msg.sender;
+    }
+
+    receive() external payable {}
+
+    function setData(uint256 v) external {
+        data = v;
+    }
+
+    function getData() external view returns (uint256) {
+        return data;
+    }
+
+    function kill(address payable recipient) external {
+        require(msg.sender == owner, "not owner");
+        selfdestruct(recipient);
+    }
+}
+"""
+
+
+def _eth_rlp_encode_uint(v: int) -> bytes:
+    """RLP-encode a uint."""
+    if v == 0:
+        return b'\x80'
+    be = v.to_bytes((v.bit_length() + 7) // 8, 'big')
+    if len(be) == 1 and be[0] < 0x80:
+        return be
+    return bytes([0x80 + len(be)]) + be
+
+
+def _eth_rlp_encode_bytes(b: bytes) -> bytes:
+    """RLP-encode a byte string."""
+    if len(b) == 0:
+        return b'\x80'
+    if len(b) == 1 and b[0] < 0x80:
+        return b
+    if len(b) <= 55:
+        return bytes([0x80 + len(b)]) + b
+    len_be = len(b).to_bytes((len(b).bit_length() + 7) // 8, 'big')
+    return bytes([0xb7 + len(len_be)]) + len_be + b
+
+
+def _eth_rlp_list(payload: bytes) -> bytes:
+    """RLP-encode a list from its concatenated payload."""
+    if len(payload) <= 55:
+        return bytes([0xc0 + len(payload)]) + payload
+    len_be = len(payload).to_bytes((len(payload).bit_length() + 7) // 8, 'big')
+    return bytes([0xf7 + len(len_be)]) + len_be + payload
+
+
+def _eth_sign_and_send(client, pk_hex: str, to: bytes, value: int, data: bytes,
+                       nonce: int, gas_limit: int = 5000000, gas_price: int = 1,
+                       chain_id: int = 3355103125) -> str:
+    """
+    Build an EIP-155 signed transaction, send via /eth JSON-RPC, return tx_hash hex.
+    """
+    from Crypto.Hash import keccak as _keccak
+    from ecdsa import SigningKey, SECP256k1
+
+    # 1. Build EIP-155 signing payload: RLP([nonce, gasPrice, gasLimit, to, value, data, chainId, 0, 0])
+    payload = b''
+    payload += _eth_rlp_encode_uint(nonce)
+    payload += _eth_rlp_encode_uint(gas_price)
+    payload += _eth_rlp_encode_uint(gas_limit)
+    payload += _eth_rlp_encode_bytes(to)
+    payload += _eth_rlp_encode_uint(value)
+    payload += _eth_rlp_encode_bytes(data)
+    payload += _eth_rlp_encode_uint(chain_id)
+    payload += _eth_rlp_encode_uint(0)
+    payload += _eth_rlp_encode_uint(0)
+    signing_rlp = _eth_rlp_list(payload)
+
+    # 2. keccak256 hash
+    signing_hash = _keccak.new(digest_bits=256).update(signing_rlp).digest()
+
+    # 3. ECDSA sign
+    sk = SigningKey.from_string(bytes.fromhex(pk_hex), curve=SECP256k1)
+    sig = sk.sign_digest_deterministic(signing_hash, hashfunc=__import__('hashlib').sha256,
+                                       sigencode=__import__('ecdsa.util', fromlist=['sigencode_string_canonize']).sigencode_string_canonize)
+    r_bytes = sig[:32]
+    s_bytes = sig[32:64]
+
+    # 4. Determine v (EIP-155: v = chain_id * 2 + 35 + recovery_id)
+    # Try recovery_id 0 and 1
+    pub_uncompressed = sk.verifying_key.to_string("uncompressed")
+    v_val = chain_id * 2 + 35  # try recovery_id = 0 first
+
+    # 5. Build signed tx RLP: RLP([nonce, gasPrice, gasLimit, to, value, data, v, r, s])
+    signed_payload = b''
+    signed_payload += _eth_rlp_encode_uint(nonce)
+    signed_payload += _eth_rlp_encode_uint(gas_price)
+    signed_payload += _eth_rlp_encode_uint(gas_limit)
+    signed_payload += _eth_rlp_encode_bytes(to)
+    signed_payload += _eth_rlp_encode_uint(value)
+    signed_payload += _eth_rlp_encode_bytes(data)
+    signed_payload += _eth_rlp_encode_uint(v_val)
+    signed_payload += _eth_rlp_encode_bytes(r_bytes)
+    signed_payload += _eth_rlp_encode_bytes(s_bytes)
+    raw_tx = _eth_rlp_list(signed_payload)
+
+    # 6. Send via /eth JSON-RPC
+    import requests as _req
+    rpc_url = f"{client.base_url}/eth"
+    rpc_body = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "eth_sendRawTransaction",
+        "params": ["0x" + raw_tx.hex()]
+    }
+    resp = _req.post(rpc_url, json=rpc_body, verify=client.verify_ssl)
+    result = resp.json()
+    print(f"  [eth_sendRawTransaction] {result}")
+    if "error" in result:
+        raise RuntimeError(f"eth_sendRawTransaction failed: {result['error']}")
+    return result.get("result", "")
+
+
+def _eth_wait_receipt(client, tx_hash_hex: str, timeout: int = 120) -> dict:
+    """Poll eth_getTransactionReceipt until non-null or timeout."""
+    import requests as _req
+    rpc_url = f"{client.base_url}/eth"
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        rpc_body = {
+            "jsonrpc": "2.0", "id": 1,
+            "method": "eth_getTransactionReceipt",
+            "params": [tx_hash_hex]
+        }
+        resp = _req.post(rpc_url, json=rpc_body, verify=client.verify_ssl)
+        result = resp.json().get("result")
+        if result is not None:
+            return result
+        time.sleep(2)
+    return None
+
+
+def _eth_get_nonce(client, addr_hex: str) -> int:
+    """Get nonce via eth_getTransactionCount."""
+    import requests as _req
+    rpc_url = f"{client.base_url}/eth"
+    rpc_body = {
+        "jsonrpc": "2.0", "id": 1,
+        "method": "eth_getTransactionCount",
+        "params": ["0x" + addr_hex, "latest"]
+    }
+    resp = _req.post(rpc_url, json=rpc_body, verify=client.verify_ssl)
+    return int(resp.json().get("result", "0x0"), 16)
+
+
+def test_eth_signing(w3, MY, KEY):
+    """
+    Full ETH signing test via /eth JSON-RPC endpoint:
+    1. Native transfer (ETH-signed)
+    2. Contract deployment (ETH-signed)
+    3. Prefund (Seth-native, needed for contract calls)
+    4. Contract call setData() (ETH-signed)
+    5. Query getData() via eth_call
+    6. Refund (Seth-native)
+    7. Selfdestruct (ETH-signed)
+    """
+    print("\n" + "=" * 70)
+    print("  TEST CASE: ETH Signing (RLP + EIP-155) via /eth endpoint")
+    print("=" * 70)
+
+    client = w3.client
+    my_addr = client.get_address(KEY)
+    pk_bytes = bytes.fromhex(KEY)
+
+    # ── 1. Native transfer ────────────────────────────────────────────────
+    print("\n[1] ETH-signed native transfer...")
+    dest = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
+    nonce = _eth_get_nonce(client, my_addr) + 1
+    tx_hash = _eth_sign_and_send(
+        client, KEY,
+        to=bytes.fromhex(dest),
+        value=100000,
+        data=b'',
+        nonce=nonce
+    )
+    receipt = _eth_wait_receipt(client, tx_hash)
+    print(f"    Receipt: {receipt}")
+    if receipt and receipt.get('status') == '0x1':
+        print("    ✅ ETH transfer succeeded")
+    else:
+        print("    ❌ ETH transfer failed")
+
+    # ── 2. Contract deployment ────────────────────────────────────────────
+    print("\n[2] ETH-signed contract deployment...")
+    from seth_sdk import compile_and_link as _compile
+    c_bin, c_abi = _compile(ETH_KILL_SOL, "EthKill")
+    contract_bytecode = bytes.fromhex(c_bin)
+
+    nonce = _eth_get_nonce(client, my_addr) + 1
+    tx_hash = _eth_sign_and_send(
+        client, KEY,
+        to=b'',  # empty = contract creation
+        value=1000000,  # send value to payable constructor
+        data=contract_bytecode,
+        nonce=nonce
+    )
+    receipt = _eth_wait_receipt(client, tx_hash)
+    print(f"    Receipt: {receipt}")
+    if receipt and receipt.get('status') == '0x1':
+        print("    ✅ ETH contract deploy succeeded")
+    else:
+        print(f"    ❌ ETH contract deploy failed: {receipt}")
+
+    # For subsequent calls we need the contract address.
+    # Since Seth uses CREATE2, we compute it from the deployer address.
+    from seth_sdk import calc_create2_address
+    contract_addr = calc_create2_address(my_addr, str(nonce), c_bin)
+    print(f"    Contract address: {contract_addr}")
+
+    # ── 3. Prefund (Seth-native — needed for contract gas) ────────────────
+    print("\n[3] Seth-native prefund on contract...")
+    contract_obj = w3.seth.contract(address=contract_addr, abi=c_abi, sender_address=my_addr)
+    contract_obj.prefund(10000000, KEY)
+    print("    ✅ Prefund set")
+
+    # ── 4. Contract call setData(42) via ETH signing ──────────────────────
+    print("\n[4] ETH-signed contract call: setData(42)...")
+    # Build ABI-encoded input for setData(uint256)
+    from Crypto.Hash import keccak as _keccak
+    import eth_abi as _eth_abi
+    selector = _keccak.new(digest_bits=256).update(b"setData(uint256)").digest()[:4]
+    call_input = selector + _eth_abi.encode(["uint256"], [42])
+
+    nonce = _eth_get_nonce(client, my_addr) + 1
+    tx_hash = _eth_sign_and_send(
+        client, KEY,
+        to=bytes.fromhex(contract_addr),
+        value=0,
+        data=call_input,
+        nonce=nonce
+    )
+    receipt = _eth_wait_receipt(client, tx_hash)
+    print(f"    Receipt: {receipt}")
+    if receipt and receipt.get('status') == '0x1':
+        print("    ✅ ETH setData(42) succeeded")
+    else:
+        print(f"    ❌ ETH setData(42) failed: {receipt}")
+
+    # ── 5. Query getData() via eth_call ───────────────────────────────────
+    print("\n[5] eth_call: getData()...")
+    get_selector = _keccak.new(digest_bits=256).update(b"getData()").digest()[:4]
+    import requests as _req
+    rpc_url = f"{client.base_url}/eth"
+    call_body = {
+        "jsonrpc": "2.0", "id": 1,
+        "method": "eth_call",
+        "params": [{
+            "to": "0x" + contract_addr,
+            "data": "0x" + get_selector.hex()
+        }, "latest"]
+    }
+    resp = _req.post(rpc_url, json=call_body, verify=client.verify_ssl)
+    result_hex = resp.json().get("result", "0x")
+    if result_hex and len(result_hex) > 2:
+        decoded = int(result_hex, 16)
+        print(f"    getData() = {decoded}")
+        if decoded == 42:
+            print("    ✅ eth_call returned correct value")
+        else:
+            print(f"    ❌ Expected 42, got {decoded}")
+    else:
+        print(f"    ❌ eth_call returned: {result_hex}")
+
+    # ── 6. Refund (Seth-native) ───────────────────────────────────────────
+    print("\n[6] Seth-native refund...")
+    contract_obj.refund(KEY)
+    print("    ✅ Refund done")
+
+    # ── 7. Selfdestruct via ETH signing ───────────────────────────────────
+    print("\n[7] ETH-signed selfdestruct: kill()...")
+    kill_selector = _keccak.new(digest_bits=256).update(b"kill(address)").digest()[:4]
+    kill_input = kill_selector + _eth_abi.encode(["address"], [
+        "0x" + "0" * 40  # send remaining to zero address
+    ])
+
+    nonce = _eth_get_nonce(client, my_addr) + 1
+    tx_hash = _eth_sign_and_send(
+        client, KEY,
+        to=bytes.fromhex(contract_addr),
+        value=0,
+        data=kill_input,
+        nonce=nonce
+    )
+    receipt = _eth_wait_receipt(client, tx_hash)
+    print(f"    Receipt: {receipt}")
+    if receipt and receipt.get('status') == '0x1':
+        print("    ✅ ETH selfdestruct succeeded")
+    else:
+        print(f"    ❌ ETH selfdestruct failed: {receipt}")
+
+    print("\n" + "=" * 70)
+    print("  ✅ ETH Signing Test Complete")
+    print("=" * 70)
+
     
 def ecdsa_sign_test():
     IP, PORT, KEY = "127.0.0.1", 23001, "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
@@ -2310,6 +2623,7 @@ def ecdsa_sign_test():
     test_iweth9_demo(w3, MY, KEY)
     test_ripemd160_precompile(w3, MY, KEY)
     test_selfbalance(w3, MY, KEY)
+    test_eth_signing(w3, MY, KEY)
 
 
 def oqs_sign_test():
