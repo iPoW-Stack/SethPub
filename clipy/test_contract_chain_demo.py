@@ -35,6 +35,7 @@ UNICAST_ADDRESS_LENGTH = 20
 # Hash seeds from C++ (src/common/hash.h)
 HASH_SEED_U32 = 623453345
 HASH_SEED_1 = 23456785675590
+kInitAccountMount = 100000000
 
 # Contract source code
 CONTRACT_A_SOL = """
@@ -448,7 +449,7 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     # 通过转币交易创建 User2
     user2_key, user2_addr, user2_info = create_and_wait_for_address(
         w3, user1_key, 0, 0,  # target不重要，会从链上查询
-        initial_balance=10000000000, max_wait=60
+        initial_balance=kInitAccountMount, max_wait=60
     )
     
     if not user2_key:
@@ -469,7 +470,7 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     # 通过转币交易创建 User3
     user3_key, user3_addr, user3_info = create_and_wait_for_address(
         w3, user1_key, 0, 0,  # target不重要，会从链上查询
-        initial_balance=10000000000, max_wait=60
+        initial_balance=kInitAccountMount, max_wait=60
     )
     
     if not user3_key:
@@ -533,10 +534,12 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
         print(f"   User2: Shard {user2_info['shard_id']}, Pool: {user2_info['pool_index']}")
         print(f"   Target: Shard {target_shard}, Pool {target_pool}")
         print(f"\n🔄 Creating new User2 to match target shard/pool...")
+        print(f"   Using old User2 to fund the new User2...")
         
+        # 用旧的 User2 去转账创建新的 User2
         new_key, new_addr, new_info = create_and_wait_for_address(
-            w3, user1_key, target_shard, target_pool, 
-            initial_balance=5000000000, max_wait=60
+            w3, user2_key, target_shard, target_pool, 
+            initial_balance=(kInitAccountMount / 2), max_wait=60
         )
         
         if new_key and new_info:
@@ -592,10 +595,12 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
         print(f"   User3: Shard {user3_info['shard_id']}, Pool {user3_info['pool_index']}")
         print(f"   Target: Shard {target_shard}, Pool {target_pool}")
         print(f"\n🔄 Creating new User3 to match target shard/pool...")
+        print(f"   Using old User3 to fund the new User3...")
         
+        # 用旧的 User3 去转账创建新的 User3
         new_key, new_addr, new_info = create_and_wait_for_address(
-            w3, user1_key, target_shard, target_pool,
-            initial_balance=5000000000, max_wait=60
+            w3, user3_key, target_shard, target_pool,
+            initial_balance=(kInitAccountMount / 2), max_wait=60
         )
         
         if new_key and new_info:
@@ -694,7 +699,7 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
 
 
 if __name__ == "__main__":
-    IP, PORT, KEY = "127.0.0.1", 23001, "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
+    IP, PORT, KEY = "127.0.0.1", 23001, "7c5b4ec643cfe561eba395569a41c04697920688e2daa4535e30969ffc8a4f66"
     w3 = SethWeb3Mock(IP, PORT)
     MY = w3.client.get_address(KEY)
     
