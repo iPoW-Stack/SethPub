@@ -25,7 +25,6 @@
 
 namespace seth {
 
-namespace pools {
 
 namespace block {
     class AccountManager;
@@ -36,7 +35,7 @@ namespace consensus {
 }
 
 namespace pools {
-
+    
 class TxPoolManager {
 public:
     TxPoolManager(
