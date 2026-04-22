@@ -27,17 +27,20 @@ Seth 提供**池内全序**和**跨池因果序**，而非全局全序。这是�
 
 ### 1.3 跨池排序的传播机制
 
-排序传播机制在 `ToTxsPools`（`src/pools/to_txs_pools.cc`）中实现：
+排序传播机制在 `ToTxsPools`（`src/pools/to_txs_pools.cc`）中实现。跨分片转账到达目标分片之前，需要经历**两个独立的 FastHotStuff 共识阶段**。转账仅在源区块满足 **FastHotStuff 连续两个合法 QC 块提交规则**后才进入 GBP，而 `CreateToTxWithHeights` 生成的 `kNormalTo` 交易本身也必须在源分片中经过 FastHotStuff **提议、投票并提交**，目标分片才能获取和验证跨分片数据：
 
 ```
 源池（分片 S）
     │
-    │ 区块提交，包含 cross_shard_to_array
-    │ （转账按目标地址索引）
+    │ Block(h) 提议并投票
+    │ Block(h+1) QC + Block(h+2) QC 到达
+    │ → Block(h) 已提交（FastHotStuff 两 QC 规则）
+    │ → cross_shard_to_array 条目现可进入 GBP
     ▼
 ToTxsPools::NewBlock()
-    │ 按 (pool_idx, height, destination) 索引存储转账
-    │ 高度追踪：pool_consensus_heihgts_[pool_idx]
+    │ 按 (pool_idx, 已提交高度, destination) 索引存储转账
+    │ 高度追踪：pool_consensus_heights_[pool_idx]
+    │ 缺口检查：区块缺失 → CrossBlockManager 同步后再推进
     ▼
 ToTxsPools::LeaderCreateToHeights()
     │ 领导者选择高度范围进行批处理
@@ -46,9 +49,18 @@ ToTxsPools::LeaderCreateToHeights()
     ▼
 ToTxsPools::CreateToTxWithHeights()
     │ 聚合高度范围内相同目标的转账
-    │ 路由至目标分片（直接路由或经由根分片）
+    │ 生成 kNormalTo 交易（此时其他分片尚不可见）
+    ▼
+── 第二阶段：kNormalTo 必须经 FastHotStuff 提交 ──────────────────
+    │
+    │ kNormalTo 交易在源分片共识中提议
+    │ Block(h') 投票 → Block(h'+1) QC + Block(h'+2) QC 到达
+    │ → 包含 kNormalTo 的 Block(h') 已提交
+    │ → 目标分片现可获取并验证
     ▼
 目标池（分片 D）
+    │ 从源分片获取已提交的 kNormalTo 区块
+    │ 验证高度连续性：所有源高度必须连续
     │ 接收 kConsensusLocalTos 交易
     │ 包含序列化的 ToTxMessageItem（金额 + 唯一哈希）
     ▼
@@ -179,54 +191,109 @@ function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 a
 
 ### 3.2 形式化定义
 
-**GBP 不是一个独立的共识层。** 它是嵌入在每个分片现有共识流程中的**确定性聚合与路由机制**。具体而言：
+**GBP 不是一个独立的共识层。** 它是嵌入在每个分片现有 FastHotStuff 共识流程中的**确定性聚合与路由机制**。具体而言：
 
-**定义**：GBP 是 `ToTxsPools` 组件（`src/pools/to_txs_pools.cc`），负责聚合已提交区块中的跨分片转账输出，并将其作为批量交易路由至目标分片。
+**定义**：GBP 是 `ToTxsPools` 组件（`src/pools/to_txs_pools.cc`），负责聚合**已提交**区块中的跨分片转账输出，并将其作为批量交易路由至目标分片。整个流程包含**两个必经的 FastHotStuff 共识阶段**：
 
-### 3.3 GBP 规格说明
+1. **第一阶段——源区块提交**：携带 `cross_shard_to_array` 的源分片区块必须满足 FastHotStuff 连续两个合法 QC 块规则并提交，其转账才能进入 GBP。
+2. **第二阶段——kNormalTo 区块提交**：`CreateToTxWithHeights` 将转账聚合为 `kNormalTo` 交易后，该交易本身必须在源分片中经过 FastHotStuff **提议、投票并提交**。只有在第二次提交完成后，目标分片才能获取并验证跨分片数据。
+
+这种两阶段设计保证了跨分片转账既具有**原子性**（区块级别的全有或全无），又具有**实时性**（目标分片在数据不可逆提交的瞬间立即处理，无轮询延迟）。
+
+### 3.3 FastHotStuff 提交规则与 GBP 资格
+
+GBP 中的跨分片转账仅来源于**已提交**的区块。在 FastHotStuff 下，高度为 `h` 的区块 `B` 在**连续两个携带合法 QC 的区块**延伸它时才被提交。该规则在 GBP 流水线中**应用两次**：
+
+```
+第一阶段（源数据区块）：
+
+Block(h)  ←QC─  Block(h+1)  ←QC─  Block(h+2)
+   │
+   └── Block(h) 已提交
+       → cross_shard_to_array 条目可进入 GBP
+       → CreateToTxWithHeights 聚合为 kNormalTo 交易
+
+第二阶段（聚合转账区块）：
+
+包含 kNormalTo 的 Block(h')  ←QC─  Block(h'+1)  ←QC─  Block(h'+2)
+   │
+   └── Block(h') 已提交
+       → 目标分片现可获取并处理转账
+```
+
+两阶段提交规则为跨分片安全提供三项关键保证：
+
+1. **区块链完整性**：只有不可逆地属于规范链的区块才能向 GBP 贡献转账。任何分叉都无法追溯性地使已提交的转账失效。
+2. **高度连续性**：GBP 追踪 `pool_consensus_heights_[pool_idx]`，仅在连续的已提交高度可用时才推进。缺口会触发 `CrossBlockManager` 同步缺失区块，然后才处理更高高度的转账。目标分片在接受任何跨分片数据之前，必须验证所有源高度连续。
+3. **原子性与实时性**：在 `kNormalTo` 区块提交（连续两个 QC 块到达）之前，聚合的转账对目标分片不可见。第二次提交完成的瞬间，目标分片立即获取并处理数据——同时保证全有或全无的原子性和最小延迟的实时性。
+
+### 3.4 GBP 规格说明
 
 | 方面 | 描述 |
 |------|------|
-| **输入** | 已提交区块中的 `cross_shard_to_array` —— `(destination_address, amount)` 对的列表 |
-| **输出** | 包含按目标分片分组的批量转账的 `ToTxMessage` |
-| **状态** | `network_txs_pools_[pool_idx][height]` —— 按池和高度索引的待处理转账 |
-| **触发条件** | 当有新高度可用时，领导者提议一笔 `kNormalTo` 交易 |
-| **共识** | 使用与常规交易**相同的** HotStuff 共识——无额外共识层 |
+| **输入** | 仅来自**已提交**区块的 `cross_shard_to_array`（FastHotStuff 两 QC 规则已满足） |
+| **输出** | 经 FastHotStuff 提交的 `kNormalTo` 区块；目标分片在第二次提交后获取 |
+| **状态** | `network_txs_pools_[pool_idx][height]` —— 按池和已提交高度索引的待处理转账 |
+| **高度不变量** | 高度必须连续；缺口阻塞处理直至 `CrossBlockManager` 填补 |
+| **触发条件** | 当有新的连续已提交高度可用时，领导者提议一笔 `kNormalTo` 交易 |
+| **共识** | **两次 FastHotStuff 提交**：(1) 源区块提交，(2) `kNormalTo` 区块提交——无额外共识层 |
+| **原子性** | 已提交源区块的所有转账打包为一笔 `kNormalTo` 交易——全有或全无 |
+| **实时性** | 目标分片在 `kNormalTo` 区块提交后立即获取——无轮询延迟 |
 
-### 3.4 GBP 数据流
+### 3.5 GBP 数据流
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    GBP 内部结构                               │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  输入：包含 cross_shard_to_array 的已提交区块                  │
-│    │                                                         │
-│    ▼                                                         │
-│  network_txs_pools_[pool_idx][height] = {dest → amount}     │
-│    │                                                         │
-│    ▼                                                         │
-│  LeaderCreateToHeights()                                     │
-│    │ 选择高度范围：prev_heights → leader_heights              │
-│    │ 约束：单调递增                                           │
-│    ▼                                                         │
-│  CreateToTxWithHeights()                                     │
-│    │ 按目标聚合转账                                           │
-│    │ 合并相同目标的金额                                       │
-│    ▼                                                         │
-│  输出：ToTxMessage（按目标分组的批量转账）                      │
-│    │                                                         │
-│    ▼                                                         │
-│  路由决策：                                                   │
-│    ├─ des_sharding_id 已知 → 直接路由至目标分片                │
-│    └─ des_sharding_id 未知 → 经由根分片解析                    │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                    GBP 内部结构                                        │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  ── 第一阶段：源区块提交 ──────────────────────────────────────────  │
+│                                                                       │
+│  源分片：Block(h) 提议并投票                                           │
+│    │                                                                  │
+│    ▼                                                                  │
+│  FastHotStuff：Block(h+1) QC + Block(h+2) QC 到达                    │
+│    │  → Block(h) 已提交（连续两 QC 规则）                              │
+│    │  → cross_shard_to_array 条目现可进入 GBP                         │
+│    ▼                                                                  │
+│  network_txs_pools_[pool_idx][h] = {dest → amount}                   │
+│    │                                                                  │
+│    ▼                                                                  │
+│  高度连续性检查（CrossBlockManager）                                   │
+│    │  prev_height + 1 == h ?                                          │
+│    │  否 → 同步缺失区块，阻塞处理                                      │
+│    │  是 → 继续                                                       │
+│    ▼                                                                  │
+│  LeaderCreateToHeights()                                              │
+│    │ 选择高度范围：prev_heights → leader_heights                       │
+│    │ 约束：单调递增，无缺口                                            │
+│    ▼                                                                  │
+│  CreateToTxWithHeights()                                              │
+│    │ 按目标聚合转账                                                    │
+│    │ 合并相同目标的金额                                                │
+│    │ 生成 kNormalTo 交易                                              │
+│    ▼                                                                  │
+│  ── 第二阶段：kNormalTo 区块提交 ──────────────────────────────────  │
+│                                                                       │
+│  kNormalTo 交易在源分片共识中提议                                      │
+│    │                                                                  │
+│    ▼                                                                  │
+│  FastHotStuff：连续两个 QC 区块到达                                    │
+│    │  → kNormalTo 区块已提交                                          │
+│    │  → 目标分片现可获取并验证                                         │
+│    ▼                                                                  │
+│  路由决策：                                                            │
+│    ├─ des_sharding_id 已知 → 直接路由至目标分片                        │
+│    └─ des_sharding_id 未知 → 经由根分片解析                            │
+│                                                                       │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.5 为何 GBP 不是独立的共识层
+### 3.6 为何 GBP 不是独立的共识层
 
-GBP 的 `kNormalTo` 交易通过与处理所有其他交易**相同的** HotStuff 共识进行提议和提交。不存在额外的投票轮次、独立的委员会或额外的延迟。领导者只是将 `kNormalTo` 交易与常规交易一起包含在同一区块提案中。
+GBP 的 `kNormalTo` 交易通过与处理所有其他交易**相同的** HotStuff 共识进行提议和提交。不存在额外的投票轮次、独立的委员会或额外的共识协议。领导者只是将 `kNormalTo` 交易与常规交易一起包含在同一区块提案中。
+
+GBP 所增加的是对**现有 FastHotStuff 提交规则的第二次应用**：`kNormalTo` 区块本身也必须获得连续两个 QC 区块，目标分片才能对其采取行动。这不是额外的机制——而是同一安全规则的两次应用，一次针对源数据区块，一次针对聚合转账区块。其结果是在不增加任何协议复杂度的前提下，实现了可证明安全的实时跨分片交付。
 
 ---
 
@@ -280,7 +347,31 @@ GBP 的 `kNormalTo` 交易通过与处理所有其他交易**相同的** HotStuf
 
 > 为何目标池不能直接验证源池的 QC 并自行处理转账，而需要经过 GBP 层？
 
-### 5.2 GBP 解决的问题
+### 5.2 FastHotStuff 两 QC 提交要求
+
+在回答架构问题之前，必须先理解源区块的转账**何时**可以安全地被处理。在 FastHotStuff 下，一个区块只有在**连续两个携带合法 QC 的区块**延伸它时才被提交，其跨分片转账才变得不可撤销。该规则在 GBP 流水线中**应用两次**：
+
+```
+源分片 S，池 P —— 第一阶段（源数据区块）：
+
+  Block(h)  ←QC─  Block(h+1)  ←QC─  Block(h+2)
+     │
+     └── 已提交：Block(h) 中的 cross_shard_to_array 已最终确定
+         → CreateToTxWithHeights 聚合为 kNormalTo 交易
+
+源分片 S，池 P —— 第二阶段（聚合转账区块）：
+
+  包含 kNormalTo 的 Block(h')  ←QC─  Block(h'+1)  ←QC─  Block(h'+2)
+     │
+     └── 已提交：kNormalTo 区块已最终确定
+         目标分片现可安全获取并处理转账
+
+  仅 Block(h) 单独，或 kNormalTo 区块单独（无两个 QC 后继）：
+     └── 尚未提交：不得处理转账
+         （区块仍可能被分叉替换）
+```
+
+这意味着任何跨分片机制——无论是 GBP 还是直接 QC 验证——都必须在**每个阶段**等待连续两个 QC 区块后才能行动。GBP 通过仅从已提交的源区块中摄取转账，并要求 `kNormalTo` 区块本身提交后目标分片才能获取，来强制执行这一要求。
 
 **问题 1：转账聚合**
 

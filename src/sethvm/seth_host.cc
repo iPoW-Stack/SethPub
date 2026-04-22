@@ -307,14 +307,36 @@ size_t SethhainHost::get_code_size(const evmc::address& addr) const noexcept {
 }
 
 evmc::bytes32 SethhainHost::get_code_hash(const evmc::address& addr) const noexcept {
-    assert(false);
     SETH_DEBUG("called 5");
-    std::string code;
-     
+    std::string id = std::string((char*)addr.bytes, sizeof(addr.bytes));
 
-    std::string code_hash = common::Hash::keccak256(code);
+    // 1. Check in-flight create2 accounts first
+    auto create2_iter = create2_accounts_.find(addr);
+    if (create2_iter != create2_accounts_.end()) {
+        const auto& code = create2_iter->second.code;
+        if (code.empty()) {
+            return {};
+        }
+        std::string code_str(code.begin(), code.end());
+        std::string code_hash = common::Hash::keccak256(code_str);
+        evmc::bytes32 tmp_val{};
+        memcpy(tmp_val.bytes, code_hash.c_str(), sizeof(tmp_val.bytes));
+        return tmp_val;
+    }
+
+    // 2. Look up committed account info via chain
+    protos::AddressInfoPtr acc_info = view_block_chain_->ChainGetAccountInfo(id);
+    if (acc_info == nullptr || acc_info->bytes_code().empty()) {
+        SETH_DEBUG("get_code_hash: no code for addr: %s", common::Encode::HexEncode(id).c_str());
+        return {};
+    }
+
+    std::string code_hash = common::Hash::keccak256(acc_info->bytes_code());
     evmc::bytes32 tmp_val{};
     memcpy(tmp_val.bytes, code_hash.c_str(), sizeof(tmp_val.bytes));
+    SETH_DEBUG("get_code_hash addr: %s, hash: %s",
+        common::Encode::HexEncode(id).c_str(),
+        common::Encode::HexEncode(code_hash).c_str());
     return tmp_val;
 }
 
@@ -323,11 +345,27 @@ size_t SethhainHost::copy_code(
         size_t code_offset,
         uint8_t* buffer_data,
         size_t buffer_size) const noexcept {
-    assert(false);
     SETH_DEBUG("called 6");
     std::string id = std::string((char*)addr.bytes, sizeof(addr.bytes));
+
+    // 1. Check in-flight create2 accounts first
+    auto create2_iter = create2_accounts_.find(addr);
+    if (create2_iter != create2_accounts_.end()) {
+        const auto& code = create2_iter->second.code;
+        if (code_offset >= code.size()) {
+            return 0;
+        }
+        const auto n = (std::min)(buffer_size, code.size() - code_offset);
+        if (n > 0) {
+            std::copy_n(code.data() + code_offset, n, buffer_data);
+        }
+        return n;
+    }
+
+    // 2. Look up committed account info via chain
     protos::AddressInfoPtr acc_info = view_block_chain_->ChainGetAccountInfo(id);
     if (acc_info == nullptr) {
+        SETH_DEBUG("copy_code: no account for addr: %s", common::Encode::HexEncode(id).c_str());
         return 0;
     }
 
@@ -338,9 +376,11 @@ size_t SethhainHost::copy_code(
 
     const auto n = (std::min)(buffer_size, code.size() - code_offset);
     if (n > 0) {
-        std::copy_n(&code[code_offset], n, buffer_data);
+        std::copy_n(reinterpret_cast<const uint8_t*>(code.data()) + code_offset, n, buffer_data);
     }
 
+    SETH_DEBUG("copy_code addr: %s, offset: %zu, copied: %zu",
+        common::Encode::HexEncode(id).c_str(), code_offset, n);
     return n;
 }
 
@@ -549,9 +589,54 @@ evmc_tx_context SethhainHost::get_tx_context() const noexcept {
 }
 
 evmc::bytes32 SethhainHost::get_block_hash(int64_t block_number) const noexcept {
-    SETH_DEBUG("called 10");
-    assert(false);
-    return {};
+    SETH_DEBUG("called 10, block_number: %ld", block_number);
+    
+    // EVM BLOCKHASH opcode: returns hash of one of the 256 most recent complete blocks.
+    // block_number must be in range [current_block - 256, current_block).
+    int64_t current_block = static_cast<int64_t>(tx_context_.block_number);
+    
+    if (block_number >= current_block || block_number < 0) {
+        SETH_DEBUG("get_block_hash: block_number %ld out of range (current: %ld)", 
+            block_number, current_block);
+        return {};
+    }
+    
+    if (current_block - block_number > 256) {
+        SETH_DEBUG("get_block_hash: block_number %ld too old (current: %ld)", 
+            block_number, current_block);
+        return {};
+    }
+
+    // Use view_block_chain to get the block at the requested height.
+    // We need network_id and pool_index — get from view_block_chain.
+    uint32_t pool_idx = view_block_chain_->pool_index();
+    
+    // For network_id, we need to get it from the chain's committed blocks.
+    // The LatestCommittedBlock should have the network_id.
+    auto latest_block = view_block_chain_->LatestCommittedBlock();
+    if (!latest_block) {
+        SETH_DEBUG("get_block_hash: no latest committed block");
+        return {};
+    }
+    
+    uint32_t network_id = latest_block->qc().network_id();
+    uint64_t height = static_cast<uint64_t>(block_number);
+    
+    auto view_block = view_block_chain_->GetViewBlockWithHeight(network_id, height);
+    if (!view_block || view_block->qc().view_block_hash().empty()) {
+        SETH_DEBUG("get_block_hash: no block at height %lu for network %u pool %u", 
+            height, network_id, pool_idx);
+        return {};
+    }
+
+    const std::string& block_hash = view_block->qc().view_block_hash();
+    evmc::bytes32 result{};
+    size_t copy_len = (std::min)(sizeof(result.bytes), block_hash.size());
+    memcpy(result.bytes, block_hash.data(), copy_len);
+    
+    SETH_DEBUG("get_block_hash: block_number %ld -> hash %s", 
+        block_number, common::Encode::HexEncode(block_hash).c_str());
+    return result;
 }
 
 void SethhainHost::emit_log(const evmc::address& addr,
