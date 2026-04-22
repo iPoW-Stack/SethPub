@@ -831,7 +831,7 @@ Status BlockAcceptor::addTxsToPool(
                     elect_info_->max_consensus_sharding_id(),
                     msg_ptr, i, vss_mgr_, account_mgr_, security_ptr_, address_info);
             break;
-        case pools::protobuf::kContractCreate:
+        case pools::protobuf::kCreateContract:
             tx_ptr = std::make_shared<consensus::ContractUserCreateCall>(
                     contract_mgr_, db_, msg_ptr, i, account_mgr_, security_ptr_, address_info);
             contract_prefund_id = tx->to() + from_id;

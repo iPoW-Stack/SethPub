@@ -125,7 +125,7 @@ static int CreateOqsTransactionWithAttr(
     std::string contract_bytes;
     if (!contract_bytes_hex.empty()) {
         contract_bytes = common::Encode::HexDecode(contract_bytes_hex);
-        if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kContractCreate) {
+        if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kCreateContract) {
             if (common::IsContractBytescodeValid(contract_bytes) != common::ValidationStatus::SUCCESS) {
                 SETH_DEBUG("create contract not has valid code: %s", common::Encode::HexEncode(contract_bytes).c_str());
                 return kHttpError;
@@ -325,7 +325,7 @@ static int CreateGmTransactionWithAttr(
     std::string contract_bytes;
     if (!contract_bytes_hex.empty()) {
         contract_bytes = common::Encode::HexDecode(contract_bytes_hex);
-        if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kContractCreate) {
+        if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kCreateContract) {
             if (common::IsContractBytescodeValid(contract_bytes) != common::ValidationStatus::SUCCESS) {
                 return kHttpError;
             }
@@ -505,7 +505,7 @@ static int CreateTransactionWithAttr(
     }
 
     auto contract_bytes = req.get_param_value("bytes_code");
-    if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kContractCreate) {
+    if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kCreateContract) {
         contract_bytes = common::Encode::HexDecode(contract_bytes);
         if (common::IsContractBytescodeValid(contract_bytes) != common::ValidationStatus::SUCCESS) {
             SETH_DEBUG("create contract not has valid contract code: %s",

@@ -624,7 +624,7 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
             handle_status = HandleNormalFromTx(msg_ptr);
             break;
         case pools::protobuf::kCreateLibrary:
-        case pools::protobuf::kContractCreate:
+        case pools::protobuf::kCreateContract:
             handle_status = HandleCreateContractTx(msg_ptr);
             break;
         case pools::protobuf::kContractGasPrefund:
@@ -1192,7 +1192,7 @@ int32_t TxPoolManager::HandleCreateContractTx(const transport::MessagePtr& msg_p
 
     uint64_t default_gas = consensus::kCallContractDefaultUseGas
         + consensus::CalcKvStorageGas(0, tx_msg.value().size(), true);
-    if (tx_msg.step() == pools::protobuf::kContractCreate) {
+    if (tx_msg.step() == pools::protobuf::kCreateContract) {
         if (common::IsContractBytescodeValid(tx_msg.contract_code()) != common::ValidationStatus::SUCCESS) {
             return consensus::kConsensusContractBytesCodeError;
         }
@@ -1273,7 +1273,7 @@ void TxPoolManager::BftCheckInvalidGids(
 //     new_tx->set_gas_price(gas_price);
 //     if (!key.empty()) {
 //         if (key == "create_contract") {
-//             new_tx->set_step(pools::protobuf::kContractCreate);
+//             new_tx->set_step(pools::protobuf::kCreateContract);
 //             new_tx->set_contract_code(val);
 //             new_tx->set_contract_prefund(9000000000lu);
 //         } else if (key == "prefund") {

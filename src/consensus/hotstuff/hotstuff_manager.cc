@@ -465,7 +465,7 @@ void HotstuffManager::PopPoolsMessage() {
                         msg_ptr, i, account_mgr_, security_ptr_, address_info);
                 // ADD_TX_DEBUG_INFO((const_cast<pools::protobuf::TxMessage*>(tx)));
                 break;
-            case pools::protobuf::kContractCreate:
+            case pools::protobuf::kCreateContract:
                 tx_ptr = std::make_shared<consensus::ContractUserCreateCall>(
                         contract_mgr_, 
                         db_, 
@@ -544,7 +544,8 @@ void HotstuffManager::PopPoolsMessage() {
                             tx_hash,
                             tx_ptr->tx_info->pubkey(),
                             tx_ptr->tx_info->sign()) != security::kSecuritySuccess) {
-                        assert(false);
+                        SETH_WARN("GmSsl verify failed in PopPoolsMessage, addr=%s",
+                            common::Encode::HexEncode(address_info->addr()).c_str());
                     } else {
                         pools_mgr_->BackupConsensusAddTxs(msg_ptr, address_info->pool_index(), tx_ptr);
                     }
@@ -554,7 +555,8 @@ void HotstuffManager::PopPoolsMessage() {
                             tx_hash,
                             tx_ptr->tx_info->pubkey(),
                             tx_ptr->tx_info->sign()) != security::kSecuritySuccess) {
-                        assert(false);
+                        SETH_WARN("Oqs verify failed in PopPoolsMessage, addr=%s",
+                            common::Encode::HexEncode(address_info->addr()).c_str());
                     } else {
                         pools_mgr_->BackupConsensusAddTxs(msg_ptr, address_info->pool_index(), tx_ptr);
                     }
@@ -563,7 +565,9 @@ void HotstuffManager::PopPoolsMessage() {
                             tx_hash,
                             tx_ptr->tx_info->pubkey(),
                             tx_ptr->tx_info->sign()) != security::kSecuritySuccess) {
-                        assert(false);
+                        SETH_WARN("ECDSA verify failed in PopPoolsMessage, addr=%s, pk_len=%zu",
+                            common::Encode::HexEncode(address_info->addr()).c_str(),
+                            tx_ptr->tx_info->pubkey().size());
                     } else {
                         pools_mgr_->BackupConsensusAddTxs(msg_ptr, address_info->pool_index(), tx_ptr);
                     }
@@ -610,7 +614,7 @@ void HotstuffManager::RegisterCreateTxCallbacks() {
         pools::protobuf::kRootCreateAddress,
         std::bind(&HotstuffManager::CreateRootToTxItem, this, std::placeholders::_1));
     pools_mgr_->RegisterCreateTxFunction(
-        pools::protobuf::kContractCreate,
+        pools::protobuf::kCreateContract,
         std::bind(&HotstuffManager::CreateContractUserCreateCallTx, this, std::placeholders::_1));
     pools_mgr_->RegisterCreateTxFunction(
         pools::protobuf::kContractGasPrefund,

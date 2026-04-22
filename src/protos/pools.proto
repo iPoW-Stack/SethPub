@@ -11,7 +11,7 @@ enum StepType {
     kConsensusRootTimeBlock = 3;  // create time block, time block transaction
     kConsensusCreateGenesisAcount = 4;  // Genesis account transaction
     kConsensusLocalTos = 5;  // Cross-shard confirmation transaction (cumulative transaction from the 'to' side)
-    kContractCreate = 6;  // Contract creation transaction
+    kCreateContract = 6;  // Contract creation transaction
     kContractGasPrefund = 7;  // Set prefund for contract calls
     kContractExcute = 8;  // Execute contract
     kRootCreateAddress = 9;  // Create new address in root network
