@@ -1,4 +1,4 @@
-#include "contract/contract_ripemd160.h"
+#include "contract/contract_ripemd160_enc.h"
 
 #include "common/hash.h"
 #include "common/split.h"
