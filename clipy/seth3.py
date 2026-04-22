@@ -2408,11 +2408,12 @@ def _eth_sign_and_send(client, pk_hex: str, to: bytes, value: int, data: bytes,
 
     # Sign with eth_account — handles EIP-155, recovery_id, canonical s, etc.
     signed = Account.sign_transaction(tx, '0x' + pk_hex)
-    raw_tx_hex = signed.raw_transaction.hex()
+    raw_tx_bytes = getattr(signed, 'raw_transaction', None) or signed.rawTransaction
+    raw_tx_hex = raw_tx_bytes.hex()
 
     # Verify: recovered address should match our Seth address
     expected_addr = client.get_address(pk_hex)
-    recovered_addr = Account.recover_transaction(signed.raw_transaction).lower().replace('0x', '')
+    recovered_addr = Account.recover_transaction(raw_tx_bytes).lower().replace('0x', '')
     print(f"  [DEBUG] expected_addr={expected_addr}, recovered_addr={recovered_addr}")
     if recovered_addr != expected_addr:
         print(f"  [WARN] Address mismatch! ETH recovery gives different address than Seth.")
