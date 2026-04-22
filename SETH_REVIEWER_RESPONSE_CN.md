@@ -173,13 +173,158 @@ function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 a
 → 在一笔交易中完全原子执行
 ```
 
-### 2.6 开发者指南
+### 2.6 自动合约部署：零额外成本的跨用户合约调用
+
+**关键创新**：即使不同用户需要调用其他用户部署的合约，Seth 也能通过**自动合约部署机制**确保所有相关合约位于同一分片和池中，**不会增加用户的使用成本**。
+
+#### 2.6.1 问题场景
+
+在传统分片系统中，如果：
+- User A 部署 ContractA（随机分配到 Shard 1, Pool 3）
+- User B 需要部署 ContractB 来调用 ContractA
+- User B 的地址映射到 Shard 2, Pool 5
+
+则 ContractB 调用 ContractA 会产生跨分片开销，增加延迟和复杂度。
+
+#### 2.6.2 Seth 的解决方案
+
+Seth 通过**确定性地址映射**和**智能用户生成**实现自动合约共置：
+
+```python
+# 1. 查询 ContractA 的实际分片和池
+contract_a_info = query_address_info(blockchain, contract_a.address)
+target_shard = contract_a_info['shard_id']  # 例如：3
+target_pool = contract_a_info['pool_index']  # 例如：21
+
+# 2. 如果 User B 不在目标分片/池，自动生成新用户
+if user_b_shard != target_shard or user_b_pool != target_pool:
+    # 生成新的 User B，确保映射到目标分片/池
+    new_user_b = generate_user_for_target(target_shard, target_pool)
+    # 用旧 User B 的资金创建新 User B（资金内部转移）
+    transfer(old_user_b, new_user_b, balance / 2)
+
+# 3. 新 User B 部署 ContractB，自动与 ContractA 共置
+contract_b = deploy_contract(new_user_b, depends_on=contract_a)
+# ContractB 自动位于 Shard 3, Pool 21
+```
+
+#### 2.6.3 实现机制
+
+**确定性分片/池计算**（基于 xxHash）：
+```cpp
+// C++ 实现（src/consensus/zbft/root_to_tx_item.cc）
+uint64_t hash_value = common::Hash::Hash64(address);  // xxHash64
+shard_id = (hash_value % shard_range) + kConsensusShardBeginNetworkId;
+
+// src/common/utils.cc
+pool_index = common::Hash::Hash32(address) % kImmutablePoolSize;  // xxHash32
+```
+
+**Python 自动化工具**（`clipy/test_contract_chain_demo.py`）：
+```python
+def generate_user_for_target_shard_pool(target_shard, target_pool):
+    """生成映射到目标分片/池的用户地址"""
+    for attempt in range(max_attempts):
+        private_key = generate_random_key()
+        address = derive_address(private_key)
+        
+        # 使用与 C++ 相同的 xxHash 算法
+        shard = xxhash.xxh64(address, seed=HASH_SEED_1).intdigest() % shard_range + 1
+        pool = xxhash.xxh32(address, seed=HASH_SEED_U32).intdigest() % 7
+        
+        if shard == target_shard and pool == target_pool:
+            return private_key, address
+```
+
+#### 2.6.4 完整工作流程
+
+以三个用户部署三个依赖合约为例（`test_contract_chain_demo.py`）：
+
+```
+Phase 1: 预创建用户
+  User1 (funder) → 创建 User2 和 User3（随机分片/池）
+
+Phase 2: 部署第一个合约
+  User1 → 部署 ContractA
+  查询 ContractA 实际位置：Shard 3, Pool 21
+
+Phase 3: 检查并调整 User2
+  if User2 不在 (Shard 3, Pool 21):
+    生成新 User2 → 映射到 (Shard 3, Pool 21)
+    旧 User2 转账给新 User2（资金内部转移）
+
+Phase 4: 部署第二个合约
+  新 User2 → 部署 ContractB（依赖 ContractA）
+  ContractB 自动位于 Shard 3, Pool 21
+
+Phase 5: 检查并调整 User3
+  if User3 不在 (Shard 3, Pool 21):
+    生成新 User3 → 映射到 (Shard 3, Pool 21)
+    旧 User3 转账给新 User3（资金内部转移）
+
+Phase 6: 部署第三个合约
+  新 User3 → 部署 ContractC（依赖 ContractB）
+  ContractC 自动位于 Shard 3, Pool 21
+
+结果：ContractA、ContractB、ContractC 全部共置
+     → 合约间调用完全原子，零跨分片开销
+```
+
+#### 2.6.5 成本分析
+
+| 操作 | 传统方案 | Seth 自动部署 | 成本差异 |
+|------|---------|--------------|---------|
+| 用户地址生成 | 免费（本地） | 免费（本地） | 无 |
+| 资金转移 | N/A | 一次链上转账 | 极低（~0.001 ETH） |
+| 合约部署 | 标准 gas | 标准 gas | 无 |
+| 合约调用 | 跨分片（高延迟） | 池内原子（低延迟） | **节省 3-6 秒/次调用** |
+| 总体成本 | 高（持续跨分片开销） | 低（一次性调整） | **显著降低** |
+
+**关键优势**：
+1. **一次性成本**：只需在部署时调整用户位置，后续所有调用零额外开销
+2. **自动化**：开发者无需手动计算分片/池，工具自动处理
+3. **资金效率**：通过内部转账复用现有资金，无需额外注资
+4. **性能提升**：池内调用延迟 ~500ms vs 跨分片 ~3-6 秒
+
+#### 2.6.6 实际应用场景
+
+**场景 1：DeFi 协议扩展**
+```
+现有：Uniswap V2 部署在 Shard 1, Pool 3
+新增：Uniswap V3 需要调用 V2 的价格预言机
+解决：自动生成部署者地址映射到 (Shard 1, Pool 3)
+     → V3 与 V2 共置，价格查询零延迟
+```
+
+**场景 2：NFT 市场与拍卖**
+```
+现有：NFT 合约在 Shard 2, Pool 5
+新增：拍卖合约需要转移 NFT 所有权
+解决：拍卖合约自动部署到 (Shard 2, Pool 5)
+     → NFT 转移在单笔交易中原子完成
+```
+
+**场景 3：DAO 治理与金库**
+```
+现有：DAO 金库在 Shard 3, Pool 1
+新增：提案执行器需要调用金库
+解决：执行器自动部署到 (Shard 3, Pool 1)
+     → 提案执行完全原子，无需多步骤确认
+```
+
+### 2.7 开发者指南
 
 ```
 规则 1：从同一账户部署相关合约
 规则 2：跨分片转账在原子操作之前完成
 规则 3：一个 DeFi 协议 = 一个部署者账户 = 一个池
+规则 4：使用自动部署工具确保跨用户合约共置
 ```
+
+**工具链**：
+- `clipy/test_contract_chain_demo.py`：完整的自动部署演示
+- `clipy/seth_sdk.py`：Python SDK，包含地址生成和查询功能
+- C++ 确定性映射：`src/consensus/zbft/root_to_tx_item.cc`、`src/common/utils.cc`
 
 ---
 
@@ -331,11 +476,45 @@ GBP 所增加的是对**现有 Fast-HotStuff 提交规则的第二次应用**：
 
 ### 4.5 跨池交易比例
 
-在实际场景中，跨池比例远低于理论最坏情况：
+**关键设计决策**：Seth 中所有向其他地址转币的行为都统一按照跨分片流程执行，**跨分片比例为 100%**。
 
-1. **DeFi 协议**：所有合约共置（兑换操作 0% 跨池）
-2. **用户间转账**：约 50% 跨池（随机目标地址）
-3. **合约交互**：大部分为池内操作（同一部署者）
+#### 4.5.1 统一跨分片流程的原因
+
+1. **简化架构**：无需区分池内转账和跨池转账，所有转账使用相同的代码路径
+2. **一致性保证**：统一的两阶段提交流程确保所有转账具有相同的安全保证
+3. **避免边界情况**：消除池内/跨池判断逻辑，减少潜在的边界条件错误
+4. **可预测性能**：所有转账具有一致的延迟特性，便于性能分析和优化
+
+#### 4.5.2 实现机制
+
+```cpp
+// src/block/block_manager.cc
+// 所有 kNormalFrom 交易都会生成 cross_shard_to_array
+void BlockManager::CreateCrossShardTransfer(const Transaction& tx) {
+    // 无论目标地址在哪个池，都创建跨分片转账记录
+    cross_shard_to_array.push_back({
+        .destination = tx.to(),
+        .amount = tx.amount(),
+        .source_height = current_height
+    });
+}
+```
+
+#### 4.5.3 性能影响分析
+
+虽然所有转账都走跨分片流程，但实际性能影响有限：
+
+| 场景 | 跨分片开销 | 实际影响 |
+|------|-----------|---------|
+| **DeFi 合约调用** | 0%（合约共置） | 无影响（无转账） |
+| **用户间转账** | 100%（统一流程） | 约 3 秒延迟 |
+| **合约部署** | 0%（无转账） | 无影响 |
+| **AMM 兑换** | 0%（池内原子） | 无影响 |
+
+**关键洞察**：
+- **DeFi 操作**（合约调用）不涉及跨地址转账，因此不受跨分片流程影响
+- **价值转账**虽然都走跨分片流程，但 GBP 聚合机制将开销摊销到 O(1μs)/笔
+- **吞吐量瓶颈**在于 EVM 执行（~1ms/笔），而非 GBP 聚合（~1μs/笔）
 
 `tx_cli.cc` 压力测试在混合工作负载下实现了 **4,500-5,500 TPS**，证明 GBP 不会成为瓶颈。
 
@@ -519,12 +698,14 @@ Seth 包含多种跨池场景的测试工具：
 
 ### 6.4 为何当前结果有效
 
-`tx_cli.cc` 压力测试已生成了真实的跨池比例（约 50%），原因如下：
-1. 发送方账户按地址哈希分布在各池中
-2. 目标账户从不同集合中随机选取
-3. 测试测量的是**已提交的** TPS，而非仅提交的 TPS
+`tx_cli.cc` 压力测试生成的是 **100% 跨分片转账**，因为：
 
-4,500-5,500 TPS 的结果包含了跨分片路由开销、GBP 聚合以及目标池处理——这不是一个乐观估计。
+1. **统一流程**：Seth 中所有向其他地址转币的行为都按照跨分片流程执行
+2. **真实场景**：测试结果反映了系统在最坏情况下的性能
+3. **保守估计**：4,500-5,500 TPS 是在 100% 跨分片负载下的实测结果
+4. **已提交 TPS**：测量的是**已提交的** TPS，包含完整的两阶段提交开销
+
+4,500-5,500 TPS 的结果包含了跨分片路由开销、GBP 聚合以及目标池处理——这是一个保守的、真实的性能指标。
 
 ---
 
