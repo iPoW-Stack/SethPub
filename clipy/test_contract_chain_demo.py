@@ -528,9 +528,9 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     print(f"   Shard: {user2_info['shard_id']}, Pool: {user2_info['pool_index']}")
     
     # 检查是否需要重新生成
-    if user2_shard != target_shard or user2_pool != target_pool:
+    if user2_info['shard_id'] != target_shard or user2_info['pool_index'] != target_pool:
         print(f"\n⚠️  User2 mismatch detected:")
-        print(f"   User2: Shard {user2_shard}, Pool {user2_pool}")
+        print(f"   User2: Shard {user2_info['shard_id']}, Pool: {user2_info['pool_index']}")
         print(f"   Target: Shard {target_shard}, Pool {target_pool}")
         print(f"\n🔄 Creating new User2 to match target shard/pool...")
         
