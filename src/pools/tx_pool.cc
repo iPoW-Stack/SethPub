@@ -446,7 +446,8 @@ void TxPool::GetTxSyncToLeader(
                             pool_index_,
                             common::Encode::HexEncode(tx_ptr->tx_key).c_str(),
                             res,
-                            common::Encode::HexEncode(security_->GetAddress(tx_ptr->tx_info->pubkey())).c_str(),
+                            (tx_ptr->tx_info->pubkey().size() == (security::kPublicKeyUncompressSize - 1)) ? 
+                                common::Encode::HexEncode(security_->GetAddress(tx_ptr->tx_info->pubkey())).c_str() : "",
                             common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
                             tx_ptr->tx_info->nonce(),
                             (int32_t)tx_ptr->tx_info->step());
@@ -462,7 +463,8 @@ void TxPool::GetTxSyncToLeader(
                         pool_index_,
                         common::Encode::HexEncode(tx_ptr->tx_key).c_str(),
                         res,
-                        common::Encode::HexEncode(security_->GetAddress(tx_ptr->tx_info->pubkey())).c_str(),
+                        (tx_ptr->tx_info->pubkey().size() == (security::kPublicKeyUncompressSize - 1)) ? 
+                            common::Encode::HexEncode(security_->GetAddress(tx_ptr->tx_info->pubkey())).c_str() : "",
                         common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
                         tx_ptr->tx_info->nonce(),
                         (int32_t)tx_ptr->tx_info->step());

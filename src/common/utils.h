@@ -344,7 +344,7 @@ static const uint8_t kMaxThreadCount = 32u;
 static const uint32_t kSingleBlockMaxMBytes = 2u;
 static const uint32_t kVpnShareStakingPrice = 1u;
 
-static const uint64_t kSethMaxAmount = 2100llu * 10000llu * kSethMiniTransportUnit;
+static const uint64_t kSethMaxAmount = 10llu * 100000000llu * kSethMiniTransportUnit;
 static const uint32_t kTransactionNoVersion = 0u;
 static const uint32_t kTransactionVersion = 1u;
 // 10% 
