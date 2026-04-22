@@ -279,7 +279,8 @@ private:
         hotstuff::protobuf::VoteMsg* vote_msg,
         uint64_t elect_height,
         uint64_t tm_height,
-        const std::shared_ptr<ViewBlock>& v_block);
+        const std::shared_ptr<ViewBlock>& v_block,
+        const LeaderNonceMap* leader_nonce_map = nullptr);
     Status ConstructViewBlock(
         View leader_view,
         common::BftMemberPtr leader,

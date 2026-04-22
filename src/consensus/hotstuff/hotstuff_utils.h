@@ -41,6 +41,7 @@ public:
     std::shared_ptr<ViewBlock> view_block_ptr;
     BalanceAndNonceMapPtr acc_balance_and_nonce_map_ptr;
     std::shared_ptr<sethvm::SethhainHost> seth_host_ptr;
+    std::shared_ptr<LeaderNonceMap> leader_nonce_map; // built during addTxsToPool, used in vote step
     Breakpoint breakpoint; // 断点位置
     int tried_times;
     common::BftMemberPtr leader;

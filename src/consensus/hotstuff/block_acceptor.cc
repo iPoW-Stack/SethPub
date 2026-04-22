@@ -156,7 +156,8 @@ Status BlockAcceptor::Accept(
         bool no_tx_allowed,
         bool directly_user_leader_txs,
         BalanceAndNonceMap& balance_and_nonce_map,
-        sethvm::SethhainHost& seth_host) {
+        sethvm::SethhainHost& seth_host,
+        std::unordered_map<std::string, uint64_t>* out_leader_nonce_map) {
     auto& msg_ptr = pro_msg_wrap->msg_ptr;
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto& propose_msg = pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().tx_propose();
@@ -222,7 +223,8 @@ Status BlockAcceptor::Accept(
         directly_user_leader_txs, 
         txs_ptr, 
         balance_and_nonce_map,
-        seth_host);
+        seth_host,
+        out_leader_nonce_map);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (s != Status::kSuccess) {
         SETH_WARN("GetAndAddTxsLocally error!");
@@ -662,7 +664,8 @@ Status BlockAcceptor::addTxsToPool(
         bool directly_user_leader_txs,
         std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
         BalanceAndNonceMap& now_balance_map,
-        sethvm::SethhainHost& seth_host) {
+        sethvm::SethhainHost& seth_host,
+        std::unordered_map<std::string, uint64_t>* out_leader_nonce_map) {
 
     // 0. Basic check
     if (txs.size() == 0) {
@@ -724,6 +727,25 @@ Status BlockAcceptor::addTxsToPool(
         // --- Serial Logic: Get Account ID (Very short time) ---
         if (pools::IsUserTransaction(tx->step())) {
             from_id = security_ptr_->GetAddressWithPublicKey(tx->pubkey());
+        }
+
+        // Build leader_nonce_map during this single traversal.
+        // For contract execute/prefund/refund use the prefund composite key (to+from_id).
+        // For plain user txs use from_id directly.
+        if (out_leader_nonce_map != nullptr && pools::IsUserTransaction(tx->step()) && !tx->pubkey().empty()) {
+            std::string nonce_key;
+            if (tx->step() == pools::protobuf::kContractExcute ||
+                    tx->step() == pools::protobuf::kContractGasPrefund ||
+                    tx->step() == pools::protobuf::kContractRefund ||
+                    tx->step() == pools::protobuf::kCreateContract) {
+                nonce_key = tx->to() + from_id;
+            } else {
+                nonce_key = from_id;
+            }
+            auto it = out_leader_nonce_map->find(nonce_key);
+            if (it == out_leader_nonce_map->end() || tx->nonce() >= it->second) {
+                (*out_leader_nonce_map)[nonce_key] = tx->nonce() + 1;
+            }
         }
         
         // --- Serial Logic: DB Query & AddressInfo Retrieval (Must be serial) ---
@@ -1118,7 +1140,8 @@ Status BlockAcceptor::GetAndAddTxsLocally(
         bool directly_user_leader_txs,
         std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
         BalanceAndNonceMap& balance_map,
-        sethvm::SethhainHost& seth_host) {
+        sethvm::SethhainHost& seth_host,
+        std::unordered_map<std::string, uint64_t>* out_leader_nonce_map) {
     auto add_txs_status = addTxsToPool(
         msg_ptr,
         parent_hash, 
@@ -1126,7 +1149,8 @@ Status BlockAcceptor::GetAndAddTxsLocally(
         directly_user_leader_txs, 
         txs_ptr,
         balance_map,
-        seth_host);
+        seth_host,
+        out_leader_nonce_map);
     if (add_txs_status != Status::kSuccess) {
         SETH_ERROR("invalid consensus, add_txs_status failed: %d.", (int32_t)add_txs_status);
         return add_txs_status;

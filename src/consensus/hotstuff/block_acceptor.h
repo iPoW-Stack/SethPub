@@ -67,7 +67,8 @@ public:
         bool no_tx_allowed,
         bool directly_user_leader_txs,
         BalanceAndNonceMap& balance_map,
-        sethvm::SethhainHost& seth_host) = 0;
+        sethvm::SethhainHost& seth_host,
+        std::unordered_map<std::string, uint64_t>* out_leader_nonce_map = nullptr) = 0;
     // Accept a block and txs in it from sync msg.
     virtual Status AcceptSync(const view_block::protobuf::ViewBlockItem& block) = 0;
     // Commit a block
@@ -109,7 +110,8 @@ public:
         bool no_tx_allowed,
         bool directly_user_leader_txs,
         BalanceAndNonceMap& balance_map,
-        sethvm::SethhainHost& seth_host) override;
+        sethvm::SethhainHost& seth_host,
+        std::unordered_map<std::string, uint64_t>* out_leader_nonce_map = nullptr) override;
     // Accept a synced block.
     Status AcceptSync(const view_block::protobuf::ViewBlockItem& block) override;
 
@@ -125,7 +127,8 @@ public:
         bool directly_user_leader_txs,
         std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
         BalanceAndNonceMap& now_balance_map,
-        sethvm::SethhainHost& seth_host);
+        sethvm::SethhainHost& seth_host,
+        std::unordered_map<std::string, uint64_t>* out_leader_nonce_map = nullptr);
     bool IsBlockValid(const view_block::protobuf::ViewBlockItem&);
     Status DoTransactions(
         const std::shared_ptr<consensus::WaitingTxsItem>&,
@@ -139,7 +142,8 @@ public:
         bool directly_user_leader_txs,
         std::shared_ptr<consensus::WaitingTxsItem>&,
         BalanceAndNonceMap& balance_map,
-        sethvm::SethhainHost& seth_host);
+        sethvm::SethhainHost& seth_host,
+        std::unordered_map<std::string, uint64_t>* out_leader_nonce_map = nullptr);
     void UpdateDesShardingId(
         pools::protobuf::ToTxMessageItem* to_addr_info, 
         sethvm::SethhainHost& seth_host);

@@ -1113,12 +1113,14 @@ Status Hotstuff::HandleProposeMsgStep_TxAccept(std::shared_ptr<ProposeMsgWrapper
     pro_msg_wrap->seth_host_ptr = std::make_shared<sethvm::SethhainHost>();
     auto btime = common::TimeUtils::TimestampMs();
     sethvm::SethhainHost& seth_host = *pro_msg_wrap->seth_host_ptr;
+    pro_msg_wrap->leader_nonce_map = std::make_shared<std::unordered_map<std::string, uint64_t>>();
     Status s = acceptor()->Accept(
         pro_msg_wrap, 
         true, 
         false, 
         balance_and_nonce_map,
-        seth_host);
+        seth_host,
+        pro_msg_wrap->leader_nonce_map.get());
     if (s != Status::kSuccess) {
 #ifndef NDEBUG
         SETH_DEBUG("====1.1.2 Accept pool: %d, verify view block failed, "
@@ -1239,7 +1241,8 @@ Status Hotstuff::HandleProposeMsgStep_Vote(std::shared_ptr<ProposeMsgWrapper>& p
         vote_msg, 
         pro_msg_wrap->view_block_ptr->qc().elect_height(), 
         pro_msg_wrap->view_block_ptr->qc().tm_height(), 
-        pro_msg_wrap->view_block_ptr);
+        pro_msg_wrap->view_block_ptr,
+        pro_msg_wrap->leader_nonce_map.get());
     if (s != Status::kSuccess) {
         SETH_ERROR("pool: %d, ConstructVoteMsg error %d, hash64: %lu",
             pool_idx_, (int32_t)s, pro_msg_wrap->msg_ptr->header.hash64());
@@ -2005,7 +2008,8 @@ Status Hotstuff::ConstructVoteMsg(
         hotstuff::protobuf::VoteMsg* vote_msg,
         uint64_t elect_height, 
         uint64_t tm_height, 
-        const std::shared_ptr<ViewBlock>& v_block) {
+        const std::shared_ptr<ViewBlock>& v_block,
+        const LeaderNonceMap* leader_nonce_map) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto elect_item = elect_info_->GetElectItem(
         common::GlobalInfo::Instance()->network_id(), 
@@ -2060,20 +2064,10 @@ Status Hotstuff::ConstructVoteMsg(
     vote_msg->set_sign_y(sign_y);
     if (!msg_ptr->is_leader) {
         ADD_DEBUG_PROCESS_TIMESTAMP();
-        // Build a map of addr → max_nonce+1 from the leader's proposed block.
-        // This tells GetTxSyncToLeader which nonces the leader already has,
-        // so it can skip them and search forward for new txs.
-        std::unordered_map<std::string, uint64_t> leader_nonce_map;
-        for (int i = 0; i < msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size(); ++i) {
-            auto& tx = msg_ptr->header.hotstuff().pro_msg().tx_propose().txs(i);
-            if (pools::IsUserTransaction(tx.step()) && !tx.pubkey().empty()) {
-                std::string addr = security_ptr_->GetAddressWithPublicKey(tx.pubkey());
-                auto it = leader_nonce_map.find(addr);
-                if (it == leader_nonce_map.end() || tx.nonce() >= it->second) {
-                    leader_nonce_map[addr] = tx.nonce() + 1;
-                }
-            }
-        }
+        // Use the leader_nonce_map built during addTxsToPool (single traversal).
+        // Fall back to an empty map if not provided.
+        static const LeaderNonceMap kEmptyMap;
+        const LeaderNonceMap& nonce_map = leader_nonce_map ? *leader_nonce_map : kEmptyMap;
 
         auto* txs = vote_msg->mutable_txs();
         wrapper()->GetTxSyncToLeader(
@@ -2082,7 +2076,7 @@ Status Hotstuff::ConstructVoteMsg(
             view_block_chain_, 
             view_block_chain_->HighQC().view_block_hash(), 
             txs,
-            leader_nonce_map);
+            nonce_map);
         if (txs->size() > 0)
         SETH_DEBUG("tps now vote message get tx sync to leader: %d", txs->size());
         ADD_DEBUG_PROCESS_TIMESTAMP();
