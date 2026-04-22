@@ -539,7 +539,7 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
         # 用旧的 User2 去转账创建新的 User2
         new_key, new_addr, new_info = create_and_wait_for_address(
             w3, user2_key, target_shard, target_pool, 
-            initial_balance=(kInitAccountMount / 2), max_wait=60
+            initial_balance=int(kInitAccountMount / 2), max_wait=60
         )
         
         if new_key and new_info:
@@ -600,7 +600,7 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
         # 用旧的 User3 去转账创建新的 User3
         new_key, new_addr, new_info = create_and_wait_for_address(
             w3, user3_key, target_shard, target_pool,
-            initial_balance=(kInitAccountMount / 2), max_wait=60
+            initial_balance=int(kInitAccountMount / 2), max_wait=60
         )
         
         if new_key and new_info:
