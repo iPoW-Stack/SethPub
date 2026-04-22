@@ -2386,74 +2386,44 @@ def _eth_sign_and_send(client, pk_hex: str, to: bytes, value: int, data: bytes,
                        chain_id: int = 3355103125) -> str:
     """
     Build an EIP-155 signed transaction, send via /eth JSON-RPC, return tx_hash hex.
+    Uses eth_account for correct Ethereum-compatible signing.
     """
+    from eth_account import Account
     from Crypto.Hash import keccak as _keccak
-    from ecdsa import SigningKey, SECP256k1
 
-    # 1. Build EIP-155 signing payload: RLP([nonce, gasPrice, gasLimit, to, value, data, chainId, 0, 0])
-    payload = b''
-    payload += _eth_rlp_encode_uint(nonce)
-    payload += _eth_rlp_encode_uint(gas_price)
-    payload += _eth_rlp_encode_uint(gas_limit)
-    payload += _eth_rlp_encode_bytes(to)
-    payload += _eth_rlp_encode_uint(value)
-    payload += _eth_rlp_encode_bytes(data)
-    payload += _eth_rlp_encode_uint(chain_id)
-    payload += _eth_rlp_encode_uint(0)
-    payload += _eth_rlp_encode_uint(0)
-    signing_rlp = _eth_rlp_list(payload)
+    # Build legacy transaction dict
+    tx = {
+        'nonce': nonce,
+        'gasPrice': gas_price,
+        'gas': gas_limit,
+        'to': ('0x' + to.hex()) if to else None,  # None = contract creation
+        'value': value,
+        'data': data,
+        'chainId': chain_id,
+    }
+    # Remove 'to' key entirely for contract creation (eth_account expects this)
+    if not to:
+        del tx['to']
 
-    # 2. keccak256 hash
-    signing_hash = _keccak.new(digest_bits=256).update(signing_rlp).digest()
+    # Sign with eth_account — handles EIP-155, recovery_id, canonical s, etc.
+    signed = Account.sign_transaction(tx, '0x' + pk_hex)
+    raw_tx_hex = signed.raw_transaction.hex()
 
-    # 3. ECDSA sign
-    sk = SigningKey.from_string(bytes.fromhex(pk_hex), curve=SECP256k1)
-    sig = sk.sign_digest_deterministic(signing_hash, hashfunc=__import__('hashlib').sha256,
-                                       sigencode=__import__('ecdsa.util', fromlist=['sigencode_string_canonize']).sigencode_string_canonize)
-    r_bytes = sig[:32]
-    s_bytes = sig[32:64]
-
-    # 4. Determine correct recovery_id (0 or 1) by trying both and checking
-    #    which one recovers to our address.
+    # Verify: recovered address should match our Seth address
     expected_addr = client.get_address(pk_hex)
-    from ecdsa import VerifyingKey
-    recovery_id = 0
-    for rid in (0, 1):
-        try:
-            vk = VerifyingKey.from_public_key_recovery_with_digest(
-                sig[:64], signing_hash, SECP256k1, hashfunc=__import__('hashlib').sha256)
-            if rid < len(vk):
-                pub_uncompressed = vk[rid].to_string()  # 64 bytes (no prefix)
-                recovered_addr = _keccak.new(digest_bits=256).update(pub_uncompressed).digest()[-20:].hex()
-                if recovered_addr == expected_addr:
-                    recovery_id = rid
-                    break
-        except Exception:
-            pass
+    recovered_addr = Account.recover_transaction(signed.raw_transaction).lower().replace('0x', '')
+    print(f"  [DEBUG] expected_addr={expected_addr}, recovered_addr={recovered_addr}")
+    if recovered_addr != expected_addr:
+        print(f"  [WARN] Address mismatch! ETH recovery gives different address than Seth.")
 
-    v_val = chain_id * 2 + 35 + recovery_id
-
-    # 5. Build signed tx RLP: RLP([nonce, gasPrice, gasLimit, to, value, data, v, r, s])
-    signed_payload = b''
-    signed_payload += _eth_rlp_encode_uint(nonce)
-    signed_payload += _eth_rlp_encode_uint(gas_price)
-    signed_payload += _eth_rlp_encode_uint(gas_limit)
-    signed_payload += _eth_rlp_encode_bytes(to)
-    signed_payload += _eth_rlp_encode_uint(value)
-    signed_payload += _eth_rlp_encode_bytes(data)
-    signed_payload += _eth_rlp_encode_uint(v_val)
-    signed_payload += _eth_rlp_encode_bytes(r_bytes)
-    signed_payload += _eth_rlp_encode_bytes(s_bytes)
-    raw_tx = _eth_rlp_list(signed_payload)
-
-    # 6. Send via /eth JSON-RPC
+    # Send via /eth JSON-RPC
     import requests as _req
     rpc_url = f"{client.base_url}/eth"
     rpc_body = {
         "jsonrpc": "2.0",
         "id": 1,
         "method": "eth_sendRawTransaction",
-        "params": ["0x" + raw_tx.hex()]
+        "params": ["0x" + raw_tx_hex]
     }
     resp = _req.post(rpc_url, json=rpc_body, verify=client.verify_ssl)
     result = resp.json()
