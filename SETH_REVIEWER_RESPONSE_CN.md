@@ -23,18 +23,18 @@ Seth 提供**池内全序**和**跨池因果序**，而非全局全序。这是�
       所有节点对该精确序列达成一致。
 ```
 
-**跨池因果序**：当池 A 中的交易产生一笔到池 B 的跨分片转账时，该转账仅在池 A 中提交并通过路由层中继**之后**才会在池 B 中被处理。这保证了因果排序：目标池中的效果始终跟随其在源池中的原因。
+**跨池因果序**：当池 A 中的交易产生一笔到池 B 的跨分片转账时，该转账仅在池 A 中提交、由 GBP 聚合为 `kNormalTo` 交易、再次通过共识提交、并且完整区块链被池 B 验证确认**之后**才会在池 B 中被处理。这保证了因果排序：目标池中的效果始终跟随其在源池中的原因。
 
 ### 1.3 跨池排序的传播机制
 
-排序传播机制在 `ToTxsPools`（`src/pools/to_txs_pools.cc`）中实现。跨分片转账到达目标分片之前，需要经历**两个独立的 FastHotStuff 共识阶段**。转账仅在源区块满足 **FastHotStuff 连续两个合法 QC 块提交规则**后才进入 GBP，而 `CreateToTxWithHeights` 生成的 `kNormalTo` 交易本身也必须在源分片中经过 FastHotStuff **提议、投票并提交**，目标分片才能获取和验证跨分片数据：
+排序传播机制在 `ToTxsPools`（`src/pools/to_txs_pools.cc`）中实现。跨分片转账到达目标分片之前，需要经历**两个独立的 Fast-HotStuff 共识阶段**。转账仅在源区块满足 **Fast-HotStuff 两阶段提交规则**后才进入 GBP，而 `CreateToTxWithHeights` 生成的 `kNormalTo` 交易本身也必须在源分片中经过 Fast-HotStuff **提议、投票并提交**，目标分片才能获取和验证跨分片数据：
 
 ```
 源池（分片 S）
     │
     │ Block(h) 提议并投票
-    │ Block(h+1) QC + Block(h+2) QC 到达
-    │ → Block(h) 已提交（FastHotStuff 两 QC 规则）
+    │ Block(h+1) 携带 Block(h) 的 QC 到达
+    │ → Block(h) 已提交（Fast-HotStuff 两阶段规则）
     │ → cross_shard_to_array 条目现可进入 GBP
     ▼
 ToTxsPools::NewBlock()
@@ -51,10 +51,10 @@ ToTxsPools::CreateToTxWithHeights()
     │ 聚合高度范围内相同目标的转账
     │ 生成 kNormalTo 交易（此时其他分片尚不可见）
     ▼
-── 第二阶段：kNormalTo 必须经 FastHotStuff 提交 ──────────────────
+── 第二阶段：kNormalTo 必须经 Fast-HotStuff 提交 ──────────────────
     │
     │ kNormalTo 交易在源分片共识中提议
-    │ Block(h') 投票 → Block(h'+1) QC + Block(h'+2) QC 到达
+    │ Block(h') 投票 → Block(h'+1) 携带 Block(h') 的 QC 到达
     │ → 包含 kNormalTo 的 Block(h') 已提交
     │ → 目标分片现可获取并验证
     ▼
@@ -191,23 +191,23 @@ function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 a
 
 ### 3.2 形式化定义
 
-**GBP 不是一个独立的共识层。** 它是嵌入在每个分片现有 FastHotStuff 共识流程中的**确定性聚合与路由机制**。具体而言：
+**GBP 不是一个独立的共识层。** 它是嵌入在每个分片现有 Fast-HotStuff 共识流程中的**确定性聚合与路由机制**。具体而言：
 
-**定义**：GBP 是 `ToTxsPools` 组件（`src/pools/to_txs_pools.cc`），负责聚合**已提交**区块中的跨分片转账输出，并将其作为批量交易路由至目标分片。整个流程包含**两个必经的 FastHotStuff 共识阶段**：
+**定义**：GBP 是 `ToTxsPools` 组件（`src/pools/to_txs_pools.cc`），负责聚合**已提交**区块中的跨分片转账输出，并将其作为批量交易路由至目标分片。整个流程包含**两个必经的 Fast-HotStuff 共识阶段**：
 
-1. **第一阶段——源区块提交**：携带 `cross_shard_to_array` 的源分片区块必须满足 FastHotStuff 连续两个合法 QC 块规则并提交，其转账才能进入 GBP。
-2. **第二阶段——kNormalTo 区块提交**：`CreateToTxWithHeights` 将转账聚合为 `kNormalTo` 交易后，该交易本身必须在源分片中经过 FastHotStuff **提议、投票并提交**。只有在第二次提交完成后，目标分片才能获取并验证跨分片数据。
+1. **第一阶段——源区块提交**：携带 `cross_shard_to_array` 的源分片区块必须满足 Fast-HotStuff 两阶段提交规则（区块提议，然后下一个携带 QC 的区块到达）并提交，其转账才能进入 GBP。
+2. **第二阶段——kNormalTo 区块提交**：`CreateToTxWithHeights` 将转账聚合为 `kNormalTo` 交易后，该交易本身必须在源分片中经过 Fast-HotStuff **提议、投票并提交**。只有在第二次提交完成后，目标分片才能获取并验证跨分片数据。
 
 这种两阶段设计保证了跨分片转账既具有**原子性**（区块级别的全有或全无），又具有**实时性**（目标分片在数据不可逆提交的瞬间立即处理，无轮询延迟）。
 
-### 3.3 FastHotStuff 提交规则与 GBP 资格
+### 3.3 Fast-HotStuff 提交规则与 GBP 资格
 
-GBP 中的跨分片转账仅来源于**已提交**的区块。在 FastHotStuff 下，高度为 `h` 的区块 `B` 在**连续两个携带合法 QC 的区块**延伸它时才被提交。该规则在 GBP 流水线中**应用两次**：
+GBP 中的跨分片转账仅来源于**已提交**的区块。在 Fast-HotStuff 下，高度为 `h` 的区块 `B` 在**下一个携带其 QC 的区块**到达时才被提交。该规则在 GBP 流水线中**应用两次**：
 
 ```
 第一阶段（源数据区块）：
 
-Block(h)  ←QC─  Block(h+1)  ←QC─  Block(h+2)
+Block(h) 提议  →  Block(h+1) 携带 Block(h) 的 QC 到达
    │
    └── Block(h) 已提交
        → cross_shard_to_array 条目可进入 GBP
@@ -215,7 +215,7 @@ Block(h)  ←QC─  Block(h+1)  ←QC─  Block(h+2)
 
 第二阶段（聚合转账区块）：
 
-包含 kNormalTo 的 Block(h')  ←QC─  Block(h'+1)  ←QC─  Block(h'+2)
+包含 kNormalTo 的 Block(h') 提议  →  Block(h'+1) 携带 Block(h') 的 QC 到达
    │
    └── Block(h') 已提交
        → 目标分片现可获取并处理转账
@@ -225,18 +225,18 @@ Block(h)  ←QC─  Block(h+1)  ←QC─  Block(h+2)
 
 1. **区块链完整性**：只有不可逆地属于规范链的区块才能向 GBP 贡献转账。任何分叉都无法追溯性地使已提交的转账失效。
 2. **高度连续性**：GBP 追踪 `pool_consensus_heights_[pool_idx]`，仅在连续的已提交高度可用时才推进。缺口会触发 `CrossBlockManager` 同步缺失区块，然后才处理更高高度的转账。目标分片在接受任何跨分片数据之前，必须验证所有源高度连续。
-3. **原子性与实时性**：在 `kNormalTo` 区块提交（连续两个 QC 块到达）之前，聚合的转账对目标分片不可见。第二次提交完成的瞬间，目标分片立即获取并处理数据——同时保证全有或全无的原子性和最小延迟的实时性。
+3. **原子性与实时性**：在 `kNormalTo` 区块提交（下一个携带 QC 的区块到达）之前，聚合的转账对目标分片不可见。提交完成的瞬间，目标分片立即获取并处理数据——同时保证全有或全无的原子性和最小延迟的实时性。
 
 ### 3.4 GBP 规格说明
 
 | 方面 | 描述 |
 |------|------|
-| **输入** | 仅来自**已提交**区块的 `cross_shard_to_array`（FastHotStuff 两 QC 规则已满足） |
-| **输出** | 经 FastHotStuff 提交的 `kNormalTo` 区块；目标分片在第二次提交后获取 |
+| **输入** | 仅来自**已提交**区块的 `cross_shard_to_array`（Fast-HotStuff 两阶段提交已满足） |
+| **输出** | 经 Fast-HotStuff 提交的 `kNormalTo` 区块；目标分片在第二次提交后获取 |
 | **状态** | `network_txs_pools_[pool_idx][height]` —— 按池和已提交高度索引的待处理转账 |
 | **高度不变量** | 高度必须连续；缺口阻塞处理直至 `CrossBlockManager` 填补 |
 | **触发条件** | 当有新的连续已提交高度可用时，领导者提议一笔 `kNormalTo` 交易 |
-| **共识** | **两次 FastHotStuff 提交**：(1) 源区块提交，(2) `kNormalTo` 区块提交——无额外共识层 |
+| **共识** | **两次 Fast-HotStuff 提交**：(1) 源区块提交，(2) `kNormalTo` 区块提交——无额外共识层 |
 | **原子性** | 已提交源区块的所有转账打包为一笔 `kNormalTo` 交易——全有或全无 |
 | **实时性** | 目标分片在 `kNormalTo` 区块提交后立即获取——无轮询延迟 |
 
@@ -252,8 +252,8 @@ Block(h)  ←QC─  Block(h+1)  ←QC─  Block(h+2)
 │  源分片：Block(h) 提议并投票                                           │
 │    │                                                                  │
 │    ▼                                                                  │
-│  FastHotStuff：Block(h+1) QC + Block(h+2) QC 到达                    │
-│    │  → Block(h) 已提交（连续两 QC 规则）                              │
+│  Fast-HotStuff：Block(h+1) 携带 Block(h) 的 QC 到达                  │
+│    │  → Block(h) 已提交（两阶段规则）                                  │
 │    │  → cross_shard_to_array 条目现可进入 GBP                         │
 │    ▼                                                                  │
 │  network_txs_pools_[pool_idx][h] = {dest → amount}                   │
@@ -278,7 +278,7 @@ Block(h)  ←QC─  Block(h+1)  ←QC─  Block(h+2)
 │  kNormalTo 交易在源分片共识中提议                                      │
 │    │                                                                  │
 │    ▼                                                                  │
-│  FastHotStuff：连续两个 QC 区块到达                                    │
+│  Fast-HotStuff：下一个携带 QC 的区块到达                               │
 │    │  → kNormalTo 区块已提交                                          │
 │    │  → 目标分片现可获取并验证                                         │
 │    ▼                                                                  │
@@ -293,7 +293,7 @@ Block(h)  ←QC─  Block(h+1)  ←QC─  Block(h+2)
 
 GBP 的 `kNormalTo` 交易通过与处理所有其他交易**相同的** HotStuff 共识进行提议和提交。不存在额外的投票轮次、独立的委员会或额外的共识协议。领导者只是将 `kNormalTo` 交易与常规交易一起包含在同一区块提案中。
 
-GBP 所增加的是对**现有 FastHotStuff 提交规则的第二次应用**：`kNormalTo` 区块本身也必须获得连续两个 QC 区块，目标分片才能对其采取行动。这不是额外的机制——而是同一安全规则的两次应用，一次针对源数据区块，一次针对聚合转账区块。其结果是在不增加任何协议复杂度的前提下，实现了可证明安全的实时跨分片交付。
+GBP 所增加的是对**现有 Fast-HotStuff 提交规则的第二次应用**：`kNormalTo` 区块本身也必须被提交（下一个携带 QC 的区块到达），目标分片才能对其采取行动。这不是额外的机制——而是同一安全规则的两次应用，一次针对源数据区块，一次针对聚合转账区块。其结果是在不增加任何协议复杂度的前提下，实现了可证明安全的实时跨分片交付。
 
 ---
 
@@ -347,35 +347,35 @@ GBP 所增加的是对**现有 FastHotStuff 提交规则的第二次应用**：`
 
 > 为何目标池不能直接验证源池的 QC 并自行处理转账，而需要经过 GBP 层？
 
-### 5.2 FastHotStuff 两 QC 提交要求
+### 5.2 Fast-HotStuff 两阶段提交要求
 
-在回答架构问题之前，必须先理解源区块的转账**何时**可以安全地被处理。在 FastHotStuff 下，一个区块只有在**连续两个携带合法 QC 的区块**延伸它时才被提交，其跨分片转账才变得不可撤销。该规则在 GBP 流水线中**应用两次**：
+在回答架构问题之前，必须先理解源区块的转账**何时**可以安全地被处理。在 Fast-HotStuff 下，一个区块只有在**下一个携带其 QC 的区块**到达时才被提交，其跨分片转账才变得不可撤销。该规则在 GBP 流水线中**应用两次**：
 
 ```
 源分片 S，池 P —— 第一阶段（源数据区块）：
 
-  Block(h)  ←QC─  Block(h+1)  ←QC─  Block(h+2)
+  Block(h) 提议  →  Block(h+1) 携带 Block(h) 的 QC 到达
      │
      └── 已提交：Block(h) 中的 cross_shard_to_array 已最终确定
          → CreateToTxWithHeights 聚合为 kNormalTo 交易
 
 源分片 S，池 P —— 第二阶段（聚合转账区块）：
 
-  包含 kNormalTo 的 Block(h')  ←QC─  Block(h'+1)  ←QC─  Block(h'+2)
+  包含 kNormalTo 的 Block(h') 提议  →  Block(h'+1) 携带 Block(h') 的 QC 到达
      │
      └── 已提交：kNormalTo 区块已最终确定
          目标分片现可安全获取并处理转账
 
-  仅 Block(h) 单独，或 kNormalTo 区块单独（无两个 QC 后继）：
+  仅 Block(h) 单独，或 kNormalTo 区块单独（无携带 QC 的后继区块）：
      └── 尚未提交：不得处理转账
          （区块仍可能被分叉替换）
 ```
 
-这意味着任何跨分片机制——无论是 GBP 还是直接 QC 验证——都必须在**每个阶段**等待连续两个 QC 区块后才能行动。GBP 通过仅从已提交的源区块中摄取转账，并要求 `kNormalTo` 区块本身提交后目标分片才能获取，来强制执行这一要求。
+这意味着任何跨分片机制——无论是 GBP 还是直接 QC 验证——都必须在**每个阶段**等待下一个携带 QC 的区块后才能行动。GBP 通过仅从已提交的源区块中摄取转账，并要求 `kNormalTo` 区块本身提交后目标分片才能获取，来强制执行这一要求。
 
 ### 5.3 高度连续性：区块链完整性要求
 
-除两 QC 规则外，目标分片还必须验证源分片的链在被处理的高度之前**完整且连续**。在高度 `h-1` 缺失的情况下处理高度 `h` 的转账将会：
+除两阶段提交规则外，目标分片还必须验证源分片的链在被处理的高度之前**完整且连续**。在高度 `h-1` 缺失的情况下处理高度 `h` 的转账将会：
 
 - 允许攻击者选择性地只中继对自己有利的区块
 - 破坏因果排序保证（高度 `h` 的转账可能依赖于高度 `h-1` 建立的状态）
@@ -392,7 +392,7 @@ CrossBlockManager 定时检查（每 10 秒）：
       → 阻塞该池的所有 GBP 处理，直至缺口填补
 
   仅当 Block(h-1) 和 Block(h) 均存在，且
-  Block(h) 满足两 QC 提交规则时：
+  Block(h) 满足两阶段提交规则时：
     → GBP 将 pool_consensus_heights_[pool_idx] 推进至 h
     → Block(h) 的转账可进入 kNormalTo 提议
 ```
@@ -420,7 +420,7 @@ GBP 确保目标分片中的所有节点以**相同顺序**（按源池已提交
 
 **问题 4：通过提交门控实现原子性**
 
-通过在**两个阶段**（源区块和 `kNormalTo` 区块）均应用 FastHotStuff 两 QC 提交规则，GBP 保证转账在**区块级别原子处理**：已提交源区块的所有转账要么最终全部被处理，要么全部不被处理。不存在一个区块中部分转账被应用而其他转账未被应用的中间状态。此外，由于目标分片在 `kNormalTo` 区块提交后立即获取数据，交付是**实时的**——不存在轮询间隔或人为延迟。
+通过在**两个阶段**（源区块和 `kNormalTo` 区块）均应用 Fast-HotStuff 两阶段提交规则，GBP 保证转账在**区块级别原子处理**：已提交源区块的所有转账要么最终全部被处理，要么全部不被处理。不存在一个区块中部分转账被应用而其他转账未被应用的中间状态。此外，由于目标分片在 `kNormalTo` 区块提交后立即获取数据，交付是**实时的**——不存在轮询间隔或人为延迟。
 
 **问题 5：重放保护**
 
@@ -430,8 +430,8 @@ GBP 生成全局唯一且可验证的唯一哈希（`keccak256(block_hash + BLS_
 
 | 方面 | 直接 QC 验证 | GBP |
 |------|-------------|-----|
-| 提交安全性（源区块） | 必须独立实现两 QC 规则 | 由 FastHotStuff 提交事件强制执行 |
-| 提交安全性（转账区块） | 无等效机制——仅单阶段 | `kNormalTo` 区块同样经两 QC 规则提交 |
+| 提交安全性（源区块） | 必须独立实现两阶段提交 | 由 Fast-HotStuff 提交事件强制执行 |
+| 提交安全性（转账区块） | 无等效机制——仅单阶段 | `kNormalTo` 区块同样经两阶段规则提交 |
 | 链完整性 | 必须独立验证高度连续性 | 由 `CrossBlockManager` 高度追踪强制执行 |
 | 每区块消息数 | O(转账数) | O(1) 聚合 |
 | 状态追踪 | O(pools × shards) | 每分片 O(pools) |
@@ -443,13 +443,13 @@ GBP 生成全局唯一且可验证的唯一哈希（`keccak256(block_hash + BLS_
 
 ### 5.6 端到端跨分片延迟
 
-两阶段两 QC 提交要求在跨分片转账被处理之前增加了有界延迟。以典型 FastHotStuff 轮次时间约 500ms 计算：
+两阶段提交要求在跨分片转账被处理之前增加了有界延迟。以典型 Fast-HotStuff 轮次时间约 500ms 计算：
 
 ```
 源分片时间线：
   t=0:    Block(h) 提议并投票（包含 cross_shard_to_array）
   t=500:  Block(h+1) 提议并投票（包含 Block(h) 的 QC）
-  t=1000: Block(h+2) 提议并投票（包含 Block(h+1) 的 QC）
+  t=1000: Block(h+1) 提议并投票（包含 Block(h+1) 的 QC）
            → Block(h) 已提交（第一阶段完成）
            → GBP 摄取 Block(h) 的跨分片转账
            → CreateToTxWithHeights 生成 kNormalTo 交易
@@ -464,7 +464,7 @@ GBP 生成全局唯一且可验证的唯一哈希（`keccak256(block_hash + BLS_
 跨分片总延迟：约 3 秒（6 个共识轮次）
 ```
 
-这是两阶段 FastHotStuff 安全要求所施加的最低延迟。在不削弱提交规则的情况下无法降低——而削弱提交规则将允许分叉使已处理的跨分片转账失效。有界延迟是可证明原子性和实时交付的代价。
+这是两阶段 Fast-HotStuff 安全要求所施加的最低延迟。在不削弱提交规则的情况下无法降低——而削弱提交规则将允许分叉使已处理的跨分片转账失效。有界延迟是可证明原子性和实时交付的代价。
 
 ---
 
@@ -532,11 +532,11 @@ Seth 包含多种跨池场景的测试工具：
 
 | 关注点 | 回应 |
 |--------|------|
-| 1. 排序 | 池内全序 + 跨池因果序；两阶段 FastHotStuff 提交门控 GBP 资格与 kNormalTo 交付；基于高度的确定性路由；三层重放保护 |
+| 1. 排序 | 池内全序 + 跨池因果序；两阶段 Fast-HotStuff 提交门控 GBP 资格与 kNormalTo 交付；基于高度的确定性路由；三层重放保护 |
 | 2. 原子性 | 池内完全原子（EVM REVERT）；可组合合约在设计上共置；无需开发者编写补偿逻辑 |
-| 3. GBP 定义 | 两阶段 FastHotStuff 提交：源区块提交后 kNormalTo 区块提交；CrossBlockManager 强制高度连续性；非独立共识层 |
+| 3. GBP 定义 | 两阶段 Fast-HotStuff 提交：源区块提交后 kNormalTo 区块提交；CrossBlockManager 强制高度连续性；非独立共识层 |
 | 4. GBP 瓶颈 | 每池并行 GBP；O(1μs) 聚合 vs O(1ms) EVM 执行；非瓶颈 |
-| 5. 为何采用 GBP | 两阶段两 QC 提交安全性；高度连续性保证链完整性；转账聚合；确定性排序；区块级原子性；事件驱动实时交付；重放保护 |
+| 5. 为何采用 GBP | 两阶段提交安全性；高度连续性保证链完整性；转账聚合；确定性排序；区块级原子性；事件驱动实时交付；重放保护 |
 | 6. 实验 | 现有压力测试覆盖混合工作负载；拟增补跨池比例实验 |
 
 ---
