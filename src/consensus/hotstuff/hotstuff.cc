@@ -2063,6 +2063,7 @@ Status Hotstuff::ConstructVoteMsg(
         auto* txs = vote_msg->mutable_txs();
         wrapper()->GetTxSyncToLeader(
             v_block->qc().leader_idx(), 
+            consensus::kSyncToLeaderTxCount,
             view_block_chain_, 
             view_block_chain_->HighQC().view_block_hash(), 
             txs);
@@ -2412,6 +2413,7 @@ void Hotstuff::SyncLocalTxToLeader(
     auto* txs = pre_rst_timer_msg->mutable_txs();
     wrapper()->GetTxSyncToLeader(
         leader->index, 
+        1,
         view_block_chain_, 
         view_block_chain_->HighQC().view_block_hash(), 
         txs);

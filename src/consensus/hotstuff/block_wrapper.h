@@ -30,6 +30,7 @@ public:
             std::shared_ptr<ViewBlockChain>& view_block_chain) = 0;
     virtual void GetTxSyncToLeader(
             uint32_t leader_idx, 
+            uint32_t count,
             std::shared_ptr<ViewBlockChain>& view_block_chain, 
             const std::string& parent_hash,
             ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs) = 0;
@@ -67,6 +68,7 @@ public:
         pools::CheckAddrNonceValidFunction tx_valid_func) override;
     void GetTxSyncToLeader(
             uint32_t leader_idx, 
+            uint32_t count,
             std::shared_ptr<ViewBlockChain>& view_block_chain, 
             const std::string& parent_hash,
             ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs) override {
@@ -80,7 +82,7 @@ public:
         };
 
         txs_pools_->GetTxSyncToLeader(
-            leader_idx, pool_idx_, consensus::kSyncToLeaderTxCount, 
+            leader_idx, pool_idx_, count, 
             txs, tx_valid_func);
     }
 

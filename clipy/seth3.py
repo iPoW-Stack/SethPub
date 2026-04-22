@@ -2036,6 +2036,157 @@ def test_iweth9_demo(w3, MY, KEY):
         import traceback
         traceback.print_exc()
         return False
+
+
+# ---------------------------------------------------------------------------
+# RIPEMD-160 Precompile Test (address 0x03)
+#
+# Ethereum precompile at address 0x0000...0003 computes RIPEMD-160.
+# Input : arbitrary bytes
+# Output: 32 bytes (12 zero-bytes + 20-byte RIPEMD-160 digest)
+#
+# We deploy a thin wrapper contract that calls the precompile via
+# staticcall and returns the result.
+# ---------------------------------------------------------------------------
+
+RIPEMD160_TEST_SOL = """
+pragma solidity ^0.8.0;
+
+contract Ripemd160Test {
+    /// @notice Call the RIPEMD-160 precompile (address 0x03) and return the
+    ///         32-byte result (12 zero bytes + 20-byte digest).
+    function ripemd160Hash(bytes memory data) public view returns (bytes32) {
+        (bool ok, bytes memory result) = address(3).staticcall(data);
+        require(ok, "ripemd160 precompile call failed");
+        require(result.length == 32, "unexpected output length");
+        return abi.decode(result, (bytes32));
+    }
+
+    /// @notice Convenience: hash a UTF-8 string.
+    function ripemd160String(string memory s) public view returns (bytes32) {
+        return ripemd160Hash(bytes(s));
+    }
+
+    /// @notice Use Solidity's built-in ripemd160() for comparison.
+    function ripemd160Builtin(bytes memory data) public pure returns (bytes20) {
+        return ripemd160(data);
+    }
+}
+"""
+
+
+def test_ripemd160_precompile(w3, MY, KEY):
+    """
+    Test the RIPEMD-160 precompile (address 0x03).
+    1. Deploy a wrapper contract
+    2. Call ripemd160Hash with known inputs
+    3. Verify against Python hashlib.new('ripemd160')
+    4. Compare with Solidity built-in ripemd160()
+    """
+    import hashlib
+
+    print("\n" + "=" * 70)
+    print("  TEST CASE: RIPEMD-160 Precompile (address 0x03)")
+    print("=" * 70)
+
+    salt = secrets.token_hex(31)
+
+    # 1. Deploy wrapper contract
+    print("\n[1] Deploying Ripemd160Test contract...")
+    r_bin, r_abi = compile_and_link(RIPEMD160_TEST_SOL, "Ripemd160Test")
+    rip_contract = w3.seth.contract(abi=r_abi, bytecode=r_bin, sender_address=MY)
+    rip_contract.deploy({'from': MY, 'salt': salt + 'rip160'}, KEY)
+    print(f"    Ripemd160Test @ {rip_contract.address}")
+
+    # 2. Test vectors
+    test_vectors = [
+        (b"",            "empty string"),
+        (b"hello",       "hello"),
+        (b"hello world", "hello world"),
+        (b"\x00" * 32,   "32 zero bytes"),
+        (b"The quick brown fox jumps over the lazy dog", "pangram"),
+    ]
+
+    all_passed = True
+    for data, label in test_vectors:
+        # Python reference
+        h = hashlib.new('ripemd160')
+        h.update(data)
+        expected_digest = h.hexdigest()  # 40 hex chars = 20 bytes
+        # Precompile returns 32 bytes: 12 zero bytes + 20-byte digest
+        expected_bytes32 = "0" * 24 + expected_digest
+
+        # Call precompile via wrapper
+        hex_input = data.hex()
+        print(f"\n[2] ripemd160Hash({label}) input=0x{hex_input[:40]}{'...' if len(hex_input) > 40 else ''}")
+
+        result = rip_contract.functions.ripemd160Hash(data).call()
+        if isinstance(result, tuple):
+            result = result[0]
+        if isinstance(result, bytes):
+            result_hex = result.hex()
+        else:
+            result_hex = str(result).replace('0x', '')
+
+        print(f"    Expected: {expected_bytes32}")
+        print(f"    Got:      {result_hex}")
+
+        if result_hex.lower() == expected_bytes32.lower():
+            print(f"    ✅ MATCH")
+        else:
+            print(f"    ❌ MISMATCH")
+            all_passed = False
+
+    # 3. Test ripemd160String convenience function
+    print(f"\n[3] ripemd160String('seth blockchain')...")
+    result_str = rip_contract.functions.ripemd160String("seth blockchain").call()
+    if isinstance(result_str, tuple):
+        result_str = result_str[0]
+    if isinstance(result_str, bytes):
+        result_str_hex = result_str.hex()
+    else:
+        result_str_hex = str(result_str).replace('0x', '')
+
+    h = hashlib.new('ripemd160')
+    h.update(b"seth blockchain")
+    expected_str = "0" * 24 + h.hexdigest()
+    print(f"    Expected: {expected_str}")
+    print(f"    Got:      {result_str_hex}")
+    if result_str_hex.lower() == expected_str.lower():
+        print(f"    ✅ MATCH")
+    else:
+        print(f"    ❌ MISMATCH")
+        all_passed = False
+
+    # 4. Test Solidity built-in ripemd160() for comparison
+    print(f"\n[4] ripemd160Builtin(b'hello') — Solidity built-in...")
+    result_builtin = rip_contract.functions.ripemd160Builtin(b"hello").call()
+    if isinstance(result_builtin, tuple):
+        result_builtin = result_builtin[0]
+    if isinstance(result_builtin, bytes):
+        builtin_hex = result_builtin.hex()
+    else:
+        builtin_hex = str(result_builtin).replace('0x', '')
+
+    h = hashlib.new('ripemd160')
+    h.update(b"hello")
+    expected_builtin = h.hexdigest()  # 20 bytes = 40 hex chars
+    # Solidity ripemd160() returns bytes20, so no zero padding
+    print(f"    Expected (bytes20): {expected_builtin}")
+    print(f"    Got:                {builtin_hex}")
+    if builtin_hex.lower().endswith(expected_builtin.lower()) or builtin_hex.lower() == expected_builtin.lower():
+        print(f"    ✅ MATCH")
+    else:
+        print(f"    ❌ MISMATCH")
+        all_passed = False
+
+    print("\n" + "=" * 70)
+    if all_passed:
+        print("  ✅ RIPEMD-160 Precompile Test PASSED")
+    else:
+        print("  ❌ RIPEMD-160 Precompile Test FAILED")
+    print("=" * 70)
+
     
 def ecdsa_sign_test():
     IP, PORT, KEY = "127.0.0.1", 23001, "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
@@ -2053,6 +2204,7 @@ def ecdsa_sign_test():
     test_struct_demo(w3, MY, KEY)
     test_iweth9_existing_contract(w3, MY, KEY)
     test_iweth9_demo(w3, MY, KEY)
+    test_ripemd160_precompile(w3, MY, KEY)
 
 
 def oqs_sign_test():
