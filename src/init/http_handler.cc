@@ -2130,15 +2130,52 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
         }
         // ── End pubkey recovery ───────────────────────────────────────────────
 
-        // Determine step type
+        // ── Auto-infer Seth step type from ETH transaction fields ──────────
+        // ETH transactions don't carry a "step" field. We infer it:
+        //
+        //   to empty  + data non-empty  → kCreateContract (6)
+        //     Deploy a new contract. 'data' is the creation bytecode.
+        //
+        //   to present + data non-empty + target has bytecode → kContractExcute (8)
+        //     Call an existing contract. 'data' is the ABI-encoded call.
+        //
+        //   to present + data non-empty + target has NO bytecode → kNormalFrom (0)
+        //     Transfer with memo/data to an EOA. Treat as plain transfer.
+        //
+        //   to present + data empty → kNormalFrom (0)
+        //     Plain native transfer.
+        //
+        //   to empty + data empty → invalid (reject)
+        //
         uint32_t step = 0;
         if (to.empty() && !data.empty()) {
-            step = 6;  // kCreateContract
+            step = pools::protobuf::kCreateContract;  // 6
         } else if (!to.empty() && !data.empty()) {
-            step = 8;  // kContractExcute
+            // Check if the target address is a deployed contract
+            auto target_info = prefix_db->GetAddressInfo(to);
+            if (target_info && !target_info->bytes_code().empty()) {
+                step = pools::protobuf::kContractExcute;  // 8
+            } else {
+                // Target is an EOA or unknown address — treat data as memo,
+                // send as plain transfer.
+                step = pools::protobuf::kNormalFrom;  // 0
+                SETH_INFO("eth_sendRawTransaction: to=%s has no bytecode, "
+                    "treating as plain transfer with data (memo)",
+                    common::Encode::HexEncode(to).c_str());
+            }
+        } else if (!to.empty() && data.empty()) {
+            step = pools::protobuf::kNormalFrom;  // 0
         } else {
-            step = 0;  // kNormalFrom
+            // to empty + data empty = invalid
+            http_res.set_content(RpcErr(id, -32602, "empty to and empty data").dump(), "application/json");
+            return;
         }
+
+        SETH_INFO("eth_sendRawTransaction: inferred step=%u (%s), to=%s, data_len=%zu",
+            step,
+            step == 6 ? "CreateContract" : step == 8 ? "ContractExcute" : "NormalFrom",
+            to.empty() ? "(empty)" : common::Encode::HexEncode(to).c_str(),
+            data.size());
 
         auto msg_ptr = std::make_shared<transport::TransportMessage>();
         auto& msg = msg_ptr->header;
