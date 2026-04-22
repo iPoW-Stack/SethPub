@@ -202,7 +202,7 @@ def calc_create2_address(sender: str, salt: str, bytecode: str) -> str:
     return k.digest()[-20:].hex().lower()
 
 
-def generate_user_for_target_shard_pool(target_shard: int, target_pool: int, max_attempts: int = 10000):
+def generate_user_for_target_shard_pool(target_shard: int, target_pool: int, max_attempts: int = 100000):
     """
     Generate a new user (private key + address) that maps to the target shard and pool.
     
@@ -210,6 +210,11 @@ def generate_user_for_target_shard_pool(target_shard: int, target_pool: int, max
         tuple: (private_key_hex, address_hex) or (None, None) if not found
     """
     print(f"  🔍 Searching for user address in shard {target_shard}, pool {target_pool}...")
+    
+    # Calculate expected probability
+    shard_range = MAX_SHARD_ID - CONSENSUS_SHARD_BEGIN_NETWORK_ID + 1
+    expected_attempts = shard_range * IMMUTABLE_POOL_SIZE
+    print(f"     Expected attempts: ~{expected_attempts} (shard_range={shard_range}, pool_size={IMMUTABLE_POOL_SIZE})")
     
     for attempt in range(max_attempts):
         # Generate random private key
@@ -231,6 +236,10 @@ def generate_user_for_target_shard_pool(target_shard: int, target_pool: int, max
             print(f"     Address: {address}")
             print(f"     Shard: {shard}, Pool: {pool}")
             return private_key, address
+        
+        # Progress indicator every 10000 attempts
+        if (attempt + 1) % 10000 == 0:
+            print(f"     Progress: {attempt + 1}/{max_attempts} attempts...")
     
     print(f"  ❌ Failed to find matching address after {max_attempts} attempts")
     return None, None
