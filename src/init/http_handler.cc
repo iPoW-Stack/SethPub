@@ -1821,15 +1821,15 @@ static bool DecodeEthRawTx(
     };
 
     std::string s_nonce, s_gasprice, s_gaslimit, s_to, s_value, s_data, s_v, s_r, s_s;
-    if (!decode_item(p, len, s_nonce))    return false;
-    if (!decode_item(p, len, s_gasprice)) return false;
-    if (!decode_item(p, len, s_gaslimit)) return false;
-    if (!decode_item(p, len, s_to))       return false;
-    if (!decode_item(p, len, s_value))    return false;
-    if (!decode_item(p, len, s_data))     return false;
-    if (!decode_item(p, len, s_v))        return false;
-    if (!decode_item(p, len, s_r))        return false;
-    if (!decode_item(p, len, s_s))        return false;
+    if (!decode_item(p, len, s_nonce))    { SETH_WARN("RLP decode failed at: nonce"); return false; }
+    if (!decode_item(p, len, s_gasprice)) { SETH_WARN("RLP decode failed at: gasprice"); return false; }
+    if (!decode_item(p, len, s_gaslimit)) { SETH_WARN("RLP decode failed at: gaslimit"); return false; }
+    if (!decode_item(p, len, s_to))       { SETH_WARN("RLP decode failed at: to"); return false; }
+    if (!decode_item(p, len, s_value))    { SETH_WARN("RLP decode failed at: value"); return false; }
+    if (!decode_item(p, len, s_data))     { SETH_WARN("RLP decode failed at: data"); return false; }
+    if (!decode_item(p, len, s_v))        { SETH_WARN("RLP decode failed at: v"); return false; }
+    if (!decode_item(p, len, s_r))        { SETH_WARN("RLP decode failed at: r"); return false; }
+    if (!decode_item(p, len, s_s))        { SETH_WARN("RLP decode failed at: s"); return false; }
 
     nonce     = be_to_u64(s_nonce);
     gas_price = be_to_u64(s_gasprice);
@@ -2014,6 +2014,8 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
         std::string to, data, r, s;
         uint8_t v_byte = 0;
         if (!DecodeEthRawTx(raw_bytes, nonce, to, value, gas_limit, gas_price, data, v_byte, r, s)) {
+            SETH_WARN("eth_sendRawTransaction: DecodeEthRawTx failed, raw_hex_len=%zu, first_byte=0x%02x",
+                raw_bytes.size(), raw_bytes.empty() ? 0 : (uint8_t)raw_bytes[0]);
             http_res.set_content(RpcErr(id, -32602, "invalid raw transaction").dump(), "application/json");
             return;
         }
