@@ -792,8 +792,18 @@ Status BlockAcceptor::addTxsToPool(
             }
         }
 
-        if (!address_info || tx_valid_func(*address_info, *tx, nullptr) != 0) {
+        if (!address_info) {
             SETH_WARN("get address failed nonce: %lu", tx->nonce());
+            verify_results[i] = -1;
+            continue;
+        }
+
+        if (tx_valid_func(*address_info, *tx, nullptr) != 0) {
+            SETH_WARN("transaction invalid at initial check, addr: %s, nonce: %lu, step: %u, from: %s, to: %s, key: %s", 
+                common::Encode::HexEncode(address_info->addr()).c_str(), tx->nonce(), (uint32_t)tx->step(),
+                common::Encode::HexEncode(tx->from()).c_str(),
+                common::Encode::HexEncode(tx->to()).c_str(),
+                common::Encode::HexEncode(tx->key()).c_str());
             verify_results[i] = -1;
             continue;
         }
