@@ -416,14 +416,41 @@ void TxPool::GetTxSyncToLeader(
     }
 
     // SETH_WARN("now tx size: %u", all_tx_size());
+    // Budget: vote messages must fit within the network max packet size.
+    // Reserve 256 KB for the vote message envelope (QC, signatures, etc.);
+    // the remaining budget is available for piggybacked tx data.
+    static const uint32_t kMaxVoteMsgTxBytes = 768 * 1024;  // 768 KB for tx payload
+    static const uint32_t kMaxTxPerAddr      = 256;         // per-address tx cap
+    uint32_t accumulated_bytes = 0;
+
     for (auto iter = tx_map_.begin(); iter != tx_map_.end(); ++iter) {
+        if ((uint32_t)txs->size() >= count) {
+            break;
+        }
+
+        if (accumulated_bytes >= kMaxVoteMsgTxBytes) {
+            break;
+        }
+
         uint64_t valid_nonce = common::kInvalidUint64;
+        uint32_t addr_tx_count = 0;  // per-address counter, capped at kMaxTxPerAddr
+
         // Check if the leader already has txs for this address.
         // If so, start searching from the leader's max nonce.
+        auto nonce_iter = iter->second.begin();
+        uint64_t leader_known_nonce = 0;
         auto leader_it = leader_nonce_map.find(iter->first);
-        uint64_t leader_known_nonce = (leader_it != leader_nonce_map.end()) ? leader_it->second : 0;
+        if (leader_it != leader_nonce_map.end()) {
+            leader_known_nonce = leader_it->second;
+            auto tmp_iter = iter->second.lower_bound(leader_known_nonce);
+            if (tmp_iter != iter->second.end()) {
+                nonce_iter = tmp_iter;
+            } else {
+                continue;  // all txs for this addr already known to leader
+            }
+        }
 
-        for (auto nonce_iter = iter->second.begin(); nonce_iter != iter->second.end(); ++nonce_iter) {
+        for (; nonce_iter != iter->second.end(); ++nonce_iter) {
             auto tx_ptr = nonce_iter->second;
 
             // Skip nonces the leader already has
@@ -437,6 +464,7 @@ void TxPool::GetTxSyncToLeader(
                     if (leader_known_nonce > 0) {
                         continue;
                     }
+                    
                     SETH_DEBUG("trace tx pool: %d, already synced to leader: %u, tx_key: %s, from: %s, to: %s, nonce: %lu, step: %d", 
                         pool_index_, leader_idx, common::Encode::HexEncode(tx_ptr->tx_key).c_str(), 
                         (tx_ptr->tx_info->pubkey().size() == (security::kPublicKeyUncompressSize - 1)) ? 
@@ -485,7 +513,7 @@ void TxPool::GetTxSyncToLeader(
                         common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
                         tx_ptr->tx_info->nonce(),
                         (int32_t)tx_ptr->tx_info->step());
-                    break;
+                    // break;
                 }
             } else {
                 if (valid_nonce + 1 != tx_ptr->tx_info->nonce()) {
@@ -501,19 +529,38 @@ void TxPool::GetTxSyncToLeader(
                     tx_ptr->tx_info->nonce(), 
                     (int32_t)tx_ptr->tx_info->step());
             } else {
+                // Per-address cap: at most kMaxTxPerAddr txs per address per sync round.
+                if (addr_tx_count >= kMaxTxPerAddr) {
+                    SETH_DEBUG("trace tx pool: %d, addr tx cap reached addr: %s, count: %u",
+                        pool_index_,
+                        common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
+                        addr_tx_count);
+                    break;
+                }
+
+                // Byte budget: estimate serialized size and stop if over limit.
+                uint32_t tx_bytes = static_cast<uint32_t>(tx_ptr->tx_info->ByteSizeLong());
+                if (accumulated_bytes + tx_bytes > kMaxVoteMsgTxBytes) {
+                    SETH_DEBUG("trace tx pool: %d, byte budget exhausted: accumulated=%u tx_bytes=%u limit=%u",
+                        pool_index_, accumulated_bytes, tx_bytes, kMaxVoteMsgTxBytes);
+                    break;
+                }
+
                 SETH_DEBUG("trace tx pool: %d, to leader tx addr: %s, nonce: %lu", 
                     pool_index_,
                     common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
                     tx_ptr->tx_info->nonce());
                 auto* tx = txs->Add();
                 *tx = *tx_ptr->tx_info;
+                accumulated_bytes += tx_bytes;
+                ++addr_tx_count;
                 if ((uint32_t)txs->size() >= count) {
                     break;
                 }
             }
         }
 
-        if ((uint32_t)txs->size() >= count) {
+        if ((uint32_t)txs->size() >= count || accumulated_bytes >= kMaxVoteMsgTxBytes) {
             break;
         }
     }
