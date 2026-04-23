@@ -24,9 +24,10 @@
 #include "consensus/zbft/join_elect_tx_item.h"
 #include "protos/pools.pb.h"
 #include "protos/zbft.pb.h"
+#include "security/ecdsa/ecdsa.h"
+#include "security/eth_verify.h"
 #include "security/gmssl/gmssl.h"
 #include "security/oqs/oqs.h"
-#include "security/eth_verify.h"
 #include "sethvm/sethvm_utils.h"
 
 namespace seth {
@@ -799,9 +800,11 @@ Status BlockAcceptor::addTxsToPool(
         }
 
         if (tx_valid_func(*address_info, *tx, nullptr) != 0) {
+            security::Ecdsa ecdsa;
             SETH_WARN("transaction invalid at initial check, addr: %s, nonce: %lu, step: %u, from: %s, to: %s, key: %s", 
                 common::Encode::HexEncode(address_info->addr()).c_str(), tx->nonce(), (uint32_t)tx->step(),
-                common::Encode::HexEncode(tx->from()).c_str(),
+                (tx->pubkey().size() == (security::kPublicKeyUncompressSize - 1)) ? 
+                    common::Encode::HexEncode(ecdsa.GetAddress(tx->pubkey())).c_str() : "",
                 common::Encode::HexEncode(tx->to()).c_str(),
                 common::Encode::HexEncode(tx->key()).c_str());
             verify_results[i] = -1;
