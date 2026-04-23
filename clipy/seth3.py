@@ -2761,6 +2761,26 @@ def oqs_sign_test():
     w3 = SethWeb3Mock(IP, PORT)
     MY_OQS = w3.client.get_oqs_address(OQS_PK)
 
+    # ── Fund OQS address from ECDSA account before running OQS tests ──────
+    # OQS addresses need native tokens to pay for gas. Transfer from the
+    # standard ECDSA funder account and wait for the balance to arrive.
+    ECDSA_KEY = "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
+    fund_amount = 500_000_000
+    print(f"\n[OQS Setup] Funding OQS address {MY_OQS[:16]}... with {fund_amount} from ECDSA account")
+    fund_receipt = w3.seth.send_transaction({'to': MY_OQS, 'value': fund_amount}, ECDSA_KEY)
+    print(f"    Fund tx status: {fund_receipt.get('status') if fund_receipt else 'None'}")
+
+    # Wait for the OQS address to have a positive balance on-chain
+    print(f"    Waiting for OQS balance to arrive...")
+    for _retry in range(30):
+        oqs_balance = w3.client.get_balance(MY_OQS)
+        if oqs_balance > 0:
+            break
+        time.sleep(2)
+    print(f"    OQS balance: {oqs_balance}")
+    assert oqs_balance > 0, f"❌ OQS address not funded after transfer! balance={oqs_balance}"
+    print(f"    ✅ OQS address funded: {oqs_balance}")
+
     test_oqs_transfer(w3, MY_OQS, OQS_KEY, OQS_PK)
     test_oqs_contract_deploy_and_call(w3, MY_OQS, OQS_KEY, OQS_PK)
     test_oqs_library_with_contract(w3, MY_OQS, OQS_KEY, OQS_PK)
