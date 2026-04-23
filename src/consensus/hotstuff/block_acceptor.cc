@@ -799,7 +799,8 @@ Status BlockAcceptor::addTxsToPool(
             continue;
         }
 
-        if (tx_valid_func(*address_info, *tx, nullptr) != 0) {
+        uint64_t new_nonce = 0lu;
+        if (tx_valid_func(*address_info, *tx, &new_nonce) != 0) {
             security::Ecdsa ecdsa;
             SETH_WARN("transaction invalid at initial check, addr: %s, nonce: %lu, step: %u, from: %s, to: %s, key: %s", 
                 common::Encode::HexEncode(address_info->addr()).c_str(), tx->nonce(), (uint32_t)tx->step(),
