@@ -1838,11 +1838,18 @@ static bool DecodeEthRawTx(
     to        = s_to;   // 20 bytes or empty (contract creation)
     data      = s_data;
 
-    // EIP-155: v = chain_id * 2 + 35 or 36 → recover parity
+    // EIP-155: v = chain_id * 2 + 35 + parity (where parity is 0 or 1)
+    // To recover parity: parity = v - chain_id * 2 - 35
+    // For legacy (pre-EIP-155): v = 27 + parity
     uint64_t v_val = be_to_u64(s_v);
     if (v_val >= 35) {
-        v_byte = static_cast<uint8_t>((v_val - 35) % 2);
+        // EIP-155 format
+        v_byte = static_cast<uint8_t>(v_val - kSethChainId * 2 - 35);
+    } else if (v_val >= 27) {
+        // Legacy format: v = 27 or 28
+        v_byte = static_cast<uint8_t>(v_val - 27);
     } else {
+        // Raw parity value (0 or 1)
         v_byte = static_cast<uint8_t>(v_val);
     }
 
