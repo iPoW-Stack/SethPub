@@ -555,7 +555,10 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
     // pop_tx_con_.notify_one();
     TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    if (msg_ptr->handle_status == transport::kMessageHandle || msg_ptr->handle_status == transport::kTxAccept) {
+    if (header.has_tx_proto() && IsUserTransaction(header.tx_proto().step()) && 
+            (msg_ptr->handle_status == transport::kMessageHandle || 
+            msg_ptr->handle_status == transport::kTxAccept)) {
+        auto& tx_msg = header.tx_proto();
         auto leader = hotstuff_mgr_->is_other_leader(msg_ptr->address_info->pool_index());
         if (leader) {
             auto network_id = network::GetLocalConsensusNetworkId();
