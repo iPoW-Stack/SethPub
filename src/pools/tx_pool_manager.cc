@@ -688,7 +688,8 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
         }
 
         if (handle_status != transport::kMessageHandle) {
-            msg_ptr->set_status(transport::kTxInvalidAddress);
+            msg_ptr->set_status(handle_status);
+            return;
         }
 
         if (pool_index == common::kInvalidPoolIndex) {
