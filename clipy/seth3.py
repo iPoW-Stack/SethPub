@@ -2544,6 +2544,24 @@ def test_eth_signing(w3, MY, KEY):
     my_addr = client.get_address(KEY)
     pk_bytes = bytes.fromhex(KEY)
 
+    # ── 0. Get chain ID from blockchain ───────────────────────────────────
+    print("\n[0] Fetching chain ID from blockchain...")
+    import requests as _req
+    rpc_url = f"{client.base_url}/eth"
+    rpc_body = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "eth_chainId",
+        "params": []
+    }
+    resp = _req.post(rpc_url, json=rpc_body, verify=client.verify_ssl)
+    chain_id_result = resp.json()
+    if "error" in chain_id_result:
+        raise RuntimeError(f"Failed to get chain ID: {chain_id_result['error']}")
+    chain_id_hex = chain_id_result.get("result", "0x0")
+    chain_id = int(chain_id_hex, 16)
+    print(f"    Chain ID: {chain_id} (0x{chain_id:x})")
+
     # ── 1. Native transfer ────────────────────────────────────────────────
     print("\n[1] ETH-signed native transfer...")
     dest = "620a1c023fdef21f3c10bf3d468de37d5ecfdc7b"
@@ -2553,7 +2571,8 @@ def test_eth_signing(w3, MY, KEY):
         to=bytes.fromhex(dest),
         value=100000,
         data=b'',
-        nonce=nonce
+        nonce=nonce,
+        chain_id=chain_id
     )
     receipt = _eth_wait_receipt(client, tx_hash)
     print(f"    Receipt: {receipt}")
@@ -2574,7 +2593,8 @@ def test_eth_signing(w3, MY, KEY):
         to=b'',  # empty = contract creation
         value=1000000,  # send value to payable constructor
         data=contract_bytecode,
-        nonce=nonce
+        nonce=nonce,
+        chain_id=chain_id
     )
     receipt = _eth_wait_receipt(client, tx_hash)
     print(f"    Receipt: {receipt}")
@@ -2644,7 +2664,8 @@ def test_eth_signing(w3, MY, KEY):
         to=bytes.fromhex(contract_addr),
         value=0,
         data=call_input,
-        nonce=prefund_nonce
+        nonce=prefund_nonce,
+        chain_id=chain_id
     )
     receipt = _eth_wait_receipt(client, tx_hash)
     print(f"    Receipt: {receipt}")
@@ -2714,7 +2735,8 @@ def test_eth_signing(w3, MY, KEY):
         to=bytes.fromhex(contract_addr),
         value=0,
         data=kill_input,
-        nonce=kill_nonce
+        nonce=kill_nonce,
+        chain_id=chain_id
     )
     receipt = _eth_wait_receipt(client, tx_hash)
     print(f"    Receipt: {receipt}")

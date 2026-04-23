@@ -1839,12 +1839,15 @@ static bool DecodeEthRawTx(
     data      = s_data;
 
     // EIP-155: v = chain_id * 2 + 35 + parity (where parity is 0 or 1)
-    // To recover parity: parity = v - chain_id * 2 - 35
+    // Since chain_id * 2 is always even and 35 is odd:
+    //   - if parity = 0, then v = even + odd + 0 = odd
+    //   - if parity = 1, then v = even + odd + 1 = even
+    // Therefore: parity = (v + 1) % 2
     // For legacy (pre-EIP-155): v = 27 + parity
     uint64_t v_val = be_to_u64(s_v);
-    if (v_val >= 35) {
-        // EIP-155 format
-        v_byte = static_cast<uint8_t>(v_val - kSethChainId * 2 - 35);
+    if (v_val >= 37) {
+        // EIP-155 format (v >= 37 means chain_id >= 1)
+        v_byte = static_cast<uint8_t>((v_val + 1) % 2);
     } else if (v_val >= 27) {
         // Legacy format: v = 27 or 28
         v_byte = static_cast<uint8_t>(v_val - 27);
@@ -1881,6 +1884,23 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
     // ── eth_chainId ──────────────────────────────────────────────────────────
     if (method == "eth_chainId") {
         http_res.set_content(RpcOk(id, ToHex64(kSethChainId)).dump(), "application/json");
+        return;
+    }
+
+    // ── seth_getChainInfo ────────────────────────────────────────────────────
+    // Returns basic chain information: chainId, maxShardId, poolSize
+    if (method == "seth_getChainInfo") {
+        nlohmann::json chain_info;
+        chain_info["chainId"] = kSethChainId;
+        chain_info["chainIdHex"] = ToHex64(kSethChainId);
+        // Use current valid end shard instead of static max
+        uint32_t current_max_shard = common::GlobalInfo::Instance()->now_valid_end_shard();
+        chain_info["maxShardId"] = current_max_shard;
+        chain_info["shardBeginId"] = network::kConsensusShardBeginNetworkId;
+        chain_info["shardEndId"] = current_max_shard + 1;  // end is exclusive
+        chain_info["poolSize"] = common::kImmutablePoolSize;
+        chain_info["rootShardId"] = network::kRootCongressNetworkId;
+        http_res.set_content(RpcOk(id, chain_info).dump(), "application/json");
         return;
     }
 
