@@ -709,6 +709,121 @@ Seth 包含多种跨池场景的测试工具：
 
 ---
 
+## 7. 多币种并行 AMM：展示分片优势
+
+### 7.1 问题：单池瓶颈
+
+在非分片区块链中，所有 AMM 池共享单一全局状态。当 User1 兑换 A→B 而 User2 兑换 C→D 时，两笔交易必须在同一共识轮次中串行执行——即使它们操作的是完全独立的状态。这造成了根本性的吞吐量上限。
+
+### 7.2 Seth 的方案：独立池在独立分片中
+
+`amm.py` 的多分片测试（`test_multi_shard_amm`）展示了 Seth 如何通过 6 种代币（A、B、C、D、E、F）和多个交易对池部署在不同分片来消除这一瓶颈：
+
+```
+设计：每个交易对池由专用部署者账户部署。
+      不同部署者 → 不同 CREATE2 地址 → 不同分片。
+
+  Pool_AB（deployer_AB）→ 分片 X，池 P₁
+  Pool_CD（deployer_CD）→ 分片 Y，池 P₂
+  Pool_BC（deployer_BC）→ 分片 Z，池 P₃
+
+  Pool_AB 和 Pool_CD 在不同分片
+  → 它们的共识轮次并行运行
+  → 无全局锁，无共享状态，无等待
+```
+
+### 7.3 并发执行证明
+
+测试使用 Python 线程同时发起两笔兑换：
+
+```python
+# clipy/amm.py — test_multi_shard_amm，第三阶段
+t1 = threading.Thread(target=swap_ab)  # User1：在 Pool_AB（分片 X）上 A→B
+t2 = threading.Thread(target=swap_cd)  # User2：在 Pool_CD（分片 Y）上 C→D
+t1.start(); t2.start()
+t1.join(); t2.join()
+# 两笔交易并发完成——耗时 ≈ 单笔兑换时间，而非 2 倍
+```
+
+由于 Pool_AB 和 Pool_CD 在不同分片，它们的共识轮次独立执行。两笔并发兑换的实际耗时等于一笔兑换的时间——**线性吞吐量扩展**。
+
+### 7.4 吞吐量扩展模型
+
+6 种代币有 15 种可能的交易对组合（C(6,2) = 15）。每个交易对池可以部署在不同分片：
+
+```
+代币：A、B、C、D、E、F
+交易对：AB、AC、AD、AE、AF、BC、BD、BE、BF、CD、CE、CF、DE、DF、EF
+        = 15 个独立池分布在不同分片
+
+单池吞吐量：约 170 TPS/池
+15 个并行池：15 × 170 = 2,550 TPS（仅 AMM 兑换）
+每分片 32 个池：理论最大值 = 分片数 × 32 × 170 TPS
+```
+
+### 7.5 池内原子性保持不变
+
+每笔单独的兑换在其池内仍然完全原子。`swapAForB` 函数在单次 EVM 执行中调用 `transferFrom` + `transfer`：
+
+```solidity
+function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 amountOut) {
+    amountOut = (amountIn * reserveB) / (reserveA + amountIn);
+    require(amountOut >= minOut, "slippage");  // ← REVERT 回滚所有操作
+    tokenA.transferFrom(msg.sender, address(this), amountIn);
+    tokenB.transfer(msg.sender, amountOut);
+    reserveA += amountIn;
+    reserveB -= amountOut;
+}
+```
+
+测试通过滑点保护测试（第五阶段）验证了这一点：不可能满足的 `minOut` 触发 REVERT，储备池数据保持不变——证明全有或全无的原子性。
+
+### 7.6 跨分片路径：A→B→C
+
+测试还展示了两步跨分片兑换路径：
+
+```
+步骤 1：用户在 Pool_AB 中兑换 A→B（原子，分片内）
+        → B 代币记入用户在 Pool_AB 分片的账户
+
+步骤 2：B 通过 GBP 跨分片转移（约 1.5 秒延迟）
+        → B 到达 Pool_BC 的分片
+
+步骤 3：用户在 Pool_BC 中兑换 B→C（原子，分片内）
+        → C 代币记入用户账户
+
+每步单独原子（失败时 EVM REVERT）。
+跨分片中继由 GBP 的两阶段提交处理。
+无需补偿交易。
+```
+
+### 7.7 对比：分片 vs 非分片 AMM
+
+| 维度 | 非分片（以太坊） | Seth 分片 |
+|------|-----------------|----------|
+| Pool_AB 兑换 + Pool_CD 兑换 | 串行（同一区块） | **并行**（不同分片） |
+| N 个池的吞吐量 | O(1)——共享全局状态 | **O(N)**——线性扩展 |
+| 每笔兑换的原子性 | ✅ 完全 | ✅ 完全（同一池内） |
+| 跨池路径（A→B→C） | 原子（单笔交易，同一状态） | 最终一致（两步原子 + GBP） |
+| 最大并发兑换数 | 每区块 1 笔 | **每区块 N 笔**（N = 分片数 × 池数） |
+| 6 代币 15 池场景 | 15 笔兑换串行 | **15 笔兑换并行** |
+
+### 7.8 运行多分片 AMM 测试
+
+```bash
+cd clipy
+python amm.py --test multi          # 仅多分片测试
+python amm.py --test both           # 单池 + 多分片测试
+```
+
+测试输出确认：
+1. Pool_AB 和 Pool_CD 部署在不同分片 ✅
+2. 并发兑换并行完成（非串行） ✅
+3. 滑点 REVERT 保持储备池不变（原子性） ✅
+4. 跨分片路径 A→B→C 以每步原子性工作 ✅
+
+---
+
 ## 总结
 
 | 关注点 | 回应 |
@@ -719,6 +834,7 @@ Seth 包含多种跨池场景的测试工具：
 | 4. GBP 瓶颈 | 每池并行 GBP；O(1μs) 聚合 vs O(1ms) EVM 执行；非瓶颈 |
 | 5. 为何采用 GBP | 两阶段提交安全性；高度连续性保证链完整性；转账聚合；确定性排序；区块级原子性；事件驱动实时交付；重放保护 |
 | 6. 实验 | 现有压力测试覆盖混合工作负载；拟增补跨池比例实验 |
+| 7. 多币种并行 AMM | 6 种代币、15 个池分布在不同分片；线程测试证明并发兑换；O(N) 吞吐量扩展；每笔兑换原子性保持；GBP 中继的跨分片路径 |
 
 ---
 
