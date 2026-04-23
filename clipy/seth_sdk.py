@@ -206,6 +206,45 @@ def get_sm2_public_key(private_key_hex: str) -> str:
     except Exception as e:
         raise RuntimeError(f"SM2 derivation critical failure: {str(e)}")
 
+def calc_create_address(sender: str, nonce: int) -> str:
+    """
+    Ethereum CREATE address formula: keccak256(RLP([sender, nonce]))[-20:]
+    Matches Seth's GetContractAddress(sender, nonce_bytes).
+    """
+    sender_bytes = bytes.fromhex(sender.lower().replace('0x', ''))
+    # Normalise to 20 bytes
+    if len(sender_bytes) < 20:
+        sender_bytes = b'\x00' * (20 - len(sender_bytes)) + sender_bytes
+    else:
+        sender_bytes = sender_bytes[-20:]
+
+    def rlp_bytes(b: bytes) -> bytes:
+        if len(b) == 0:
+            return b'\x80'
+        if len(b) == 1 and b[0] < 0x80:
+            return b
+        if len(b) <= 55:
+            return bytes([0x80 + len(b)]) + b
+        len_be = len(b).to_bytes((len(b).bit_length() + 7) // 8, 'big')
+        return bytes([0xb7 + len(len_be)]) + len_be + b
+
+    def rlp_list(payload: bytes) -> bytes:
+        if len(payload) <= 55:
+            return bytes([0xc0 + len(payload)]) + payload
+        len_be = len(payload).to_bytes((len(payload).bit_length() + 7) // 8, 'big')
+        return bytes([0xf7 + len(len_be)]) + len_be + payload
+
+    # nonce as minimal big-endian bytes (empty for 0)
+    if nonce == 0:
+        nonce_bytes = b''
+    else:
+        nonce_bytes = nonce.to_bytes((nonce.bit_length() + 7) // 8, 'big')
+
+    payload = rlp_bytes(sender_bytes) + rlp_bytes(nonce_bytes)
+    rlp = rlp_list(payload)
+    return keccak.new(digest_bits=256).update(rlp).digest()[-20:].hex().lower()
+
+
 def calc_create2_address(sender: str, salt: str, bytecode: str) -> str:
     sender = sender.lower().replace('0x', '')
     bytecode = bytecode.lower().replace('0x', '')
