@@ -717,6 +717,11 @@ Status BlockAcceptor::addTxsToPool(
             now_nonce);
     };
 
+    // Per-address nonce continuity tracking (mirrors TempGetTxIdempotently logic).
+    // Maps address → last accepted nonce for that address in this block.
+    // Ensures the leader cannot propose nonce gaps or duplicate nonces.
+    std::unordered_map<std::string, uint64_t> addr_valid_nonce_map;
+
     bool create_success = true;
     for (int i = 0; i < txs.size(); i++) {
         auto* tx = &txs[i];
@@ -799,34 +804,48 @@ Status BlockAcceptor::addTxsToPool(
             continue;
         }
 
-        uint64_t new_nonce = 0lu;
-        if (tx_valid_func(*address_info, *tx, &new_nonce) != 0) {
-            security::Ecdsa ecdsa;
-            SETH_WARN("transaction invalid at initial check, addr: %s, nonce: %lu, step: %u, from: %s, to: %s, key: %s", 
-                common::Encode::HexEncode(address_info->addr()).c_str(), tx->nonce(), (uint32_t)tx->step(),
-                (tx->pubkey().size() == (security::kPublicKeyUncompressSize - 1)) ? 
-                    common::Encode::HexEncode(ecdsa.GetAddress(tx->pubkey())).c_str() : "",
-                common::Encode::HexEncode(tx->to()).c_str(),
-                common::Encode::HexEncode(tx->key()).c_str());
-            verify_results[i] = -1;
-            continue;
+        // --- Serial Logic: Nonce validity + continuity check (mirrors TempGetTxIdempotently) ---
+        // For user transactions we enforce two rules:
+        //   1. The nonce must be valid against the chain state (CheckTransactionValid).
+        //   2. If this address already appeared earlier in this block, the nonce must be
+        //      exactly prev_nonce + 1 — no gaps, no duplicates.
+        // This prevents a malicious leader from proposing nonce gaps or replays.
+        if (pools::IsUserTransaction(tx->step())) {
+            const std::string& nonce_addr = address_info->addr();
+            auto prev_it = addr_valid_nonce_map.find(nonce_addr);
+            if (prev_it == addr_valid_nonce_map.end()) {
+                // First tx from this address in this block: validate against chain state.
+                uint64_t now_nonce = 0lu;
+                int res = tx_valid_func(*address_info, *tx, &now_nonce);
+                if (res != 0) {
+                    SETH_WARN("nonce invalid (chain check) addr: %s, tx_nonce: %lu, "
+                        "chain_nonce: %lu, res: %d, step: %u",
+                        common::Encode::HexEncode(nonce_addr).c_str(),
+                        tx->nonce(), now_nonce, res, (uint32_t)tx->step());
+                    verify_results[i] = -1;
+                    create_success = false;
+                    break;
+                }
+                addr_valid_nonce_map[nonce_addr] = tx->nonce();
+            } else {
+                // Subsequent tx from same address: must be exactly prev + 1.
+                uint64_t expected = prev_it->second + 1;
+                if (tx->nonce() != expected) {
+                    SETH_WARN("nonce continuity violation addr: %s, expected: %lu, got: %lu, step: %u",
+                        common::Encode::HexEncode(nonce_addr).c_str(),
+                        expected, tx->nonce(), (uint32_t)tx->step());
+                    verify_results[i] = -1;
+                    create_success = false;
+                    break;
+                }
+                prev_it->second = tx->nonce();
+            }
         }
 
-        // --- Serial Logic: Nonce Check & Balance Update (State dependency, must be serial) ---
+        // --- Serial Logic: Balance map update (State dependency, must be serial) ---
         auto now_map_iter = now_balance_map.find(address_info->addr());
         if (now_map_iter == now_balance_map.end()) {
-            if (pools::IsUserTransaction(tx->step())) {
-                uint64_t now_nonce = 0lu;
-                if (view_block_chain_ && view_block_chain_->CheckTxNonceValid(
-                        address_info->addr(), tx->nonce(), parent_hash, &now_nonce) != 0) {
-                    SETH_WARN("check tx nonce addr: %s, failed: %lu, phash: %s", 
-                        common::Encode::HexEncode(address_info->addr()).c_str(),
-                        tx->nonce(), 
-                        common::Encode::HexEncode(parent_hash).c_str());
-                    verify_results[i] = -1;
-                    continue;
-                }
-            } else {
+            if (!pools::IsUserTransaction(tx->step())) {
                 std::string val;
                 if (seth_host.GetKeyValue(tx->to(), tx->key(), &val) == sethvm::kSethvmSuccess) {
                     SETH_WARN("invalid add tx now get local to tx to: %s, unique hash: %s", 
