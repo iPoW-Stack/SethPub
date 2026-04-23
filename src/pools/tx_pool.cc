@@ -445,8 +445,6 @@ void TxPool::GetTxSyncToLeader(
             auto tmp_iter = iter->second.lower_bound(leader_known_nonce);
             if (tmp_iter != iter->second.end()) {
                 nonce_iter = tmp_iter;
-            } else {
-                continue;  // all txs for this addr already known to leader
             }
         }
 
@@ -546,10 +544,12 @@ void TxPool::GetTxSyncToLeader(
                     break;
                 }
 
-                SETH_DEBUG("trace tx pool: %d, to leader tx addr: %s, nonce: %lu", 
-                    pool_index_,
-                    common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
-                    tx_ptr->tx_info->nonce());
+                SETH_DEBUG("trace tx pool: %d, success sync to leader: %u, tx_key: %s, from: %s, to: %s, nonce: %lu, step: %d", 
+                    pool_index_, leader_idx, common::Encode::HexEncode(tx_ptr->tx_key).c_str(), 
+                    (tx_ptr->tx_info->pubkey().size() == (security::kPublicKeyUncompressSize - 1)) ? 
+                        common::Encode::HexEncode(security_->GetAddress(tx_ptr->tx_info->pubkey())).c_str() : "",
+                    common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
+                    tx_ptr->tx_info->nonce(), (int32_t)tx_ptr->tx_info->step());
                 auto* tx = txs->Add();
                 *tx = *tx_ptr->tx_info;
                 accumulated_bytes += tx_bytes;
