@@ -2458,11 +2458,19 @@ def _eth_sign_and_send(client, pk_hex: str, to: bytes, value: int, data: bytes,
 
 
 def _eth_wait_receipt(client, tx_hash_hex: str, timeout: int = 120) -> dict:
-    """Poll eth_getTransactionReceipt until non-null or timeout."""
+    """
+    Poll eth_getTransactionReceipt until non-null or timeout.
+    
+    Also polls the Seth-native /transaction_receipt endpoint to check intermediate
+    status. If the tx is in status 10001 (kMessageHandle = pending in pool) or
+    10003 (kTxAccept = accepted, waiting for consensus), keep waiting.
+    If it's a terminal error status, return early with the error info.
+    """
     import requests as _req
     rpc_url = f"{client.base_url}/eth"
     deadline = time.time() + timeout
     while time.time() < deadline:
+        # 1. Try ETH-format receipt first (returns non-null only after on-chain commit)
         rpc_body = {
             "jsonrpc": "2.0", "id": 1,
             "method": "eth_getTransactionReceipt",
@@ -2472,6 +2480,34 @@ def _eth_wait_receipt(client, tx_hash_hex: str, timeout: int = 120) -> dict:
         result = resp.json().get("result")
         if result is not None:
             return result
+
+        # 2. Check Seth-native receipt for intermediate status
+        # Strip 0x prefix for the Seth endpoint
+        tx_hash_raw = tx_hash_hex
+        if tx_hash_raw.startswith("0x") or tx_hash_raw.startswith("0X"):
+            tx_hash_raw = tx_hash_raw[2:]
+        try:
+            seth_resp = _req.post(
+                client.receipt_url,
+                data={"tx_hash": tx_hash_raw},
+                verify=client.verify_ssl
+            ).json()
+            seth_status = seth_resp.get("status", 10001)
+            # 10001 = kMessageHandle (pending in pool), 10003 = kTxAccept (accepted, waiting consensus)
+            # These are transient — keep polling.
+            if seth_status not in (10001, 10003):
+                # Terminal status: either success (0) or an error.
+                # If success (0), the ETH receipt should appear soon — keep polling a few more rounds.
+                # If error, return immediately with the error info.
+                if seth_status != 0:
+                    print(f"    [_eth_wait_receipt] Seth-native status={seth_status} "
+                          f"({seth_resp.get('msg', '?')}), returning error")
+                    return {"status": "0x0", "seth_error": seth_status,
+                            "seth_msg": seth_resp.get("msg", "unknown")}
+                # status == 0 means committed — ETH receipt should appear next poll
+        except Exception:
+            pass  # Seth-native endpoint may not be available; just keep polling ETH
+
         time.sleep(2)
     return None
 
@@ -2548,16 +2584,40 @@ def test_eth_signing(w3, MY, KEY):
         print(f"    ❌ ETH contract deploy failed: {receipt}")
 
     # For subsequent calls we need the contract address.
-    # Since Seth uses CREATE2, we compute it from the deployer address.
-    from seth_sdk import calc_create2_address
-    contract_addr = calc_create2_address(my_addr, str(nonce), c_bin)
-    print(f"    Contract address: {contract_addr}")
+    # The ETH JSON-RPC path uses Ethereum's CREATE formula: keccak256(RLP([sender, nonce]))[-20:]
+    from seth_sdk import calc_create_address
+    contract_addr = calc_create_address(my_addr, nonce)
+    print(f"    Contract address (CREATE): {contract_addr}")
+
+    # Also check if the receipt returned contractAddress
+    if receipt and receipt.get('contractAddress'):
+        receipt_addr = receipt['contractAddress'].replace('0x', '').lower()
+        print(f"    Contract address (receipt): {receipt_addr}")
+        if receipt_addr == contract_addr:
+            print("    ✅ CREATE address matches receipt")
+        else:
+            print(f"    ⚠ Address mismatch: computed={contract_addr}, receipt={receipt_addr}")
+            contract_addr = receipt_addr  # use receipt address as authoritative
 
     # ── 3. Prefund (Seth-native — needed for contract gas) ────────────────
     print("\n[3] Seth-native prefund on contract...")
     contract_obj = w3.seth.contract(address=contract_addr, abi=c_abi, sender_address=my_addr)
-    contract_obj.prefund(10000000, KEY)
-    print("    ✅ Prefund set")
+    prefund_amount = 10000000
+    contract_obj.prefund(prefund_amount, KEY)
+    print(f"    Prefund submitted ({prefund_amount}), waiting for on-chain confirmation...")
+
+    # Wait until the prefund balance is actually set on-chain.
+    # Prefund ID = contract_addr + user_addr
+    prefund_id = contract_addr.lower().replace('0x', '') + my_addr.lower().replace('0x', '')
+    for _retry in range(30):
+        pf_balance = client.get_prefund(prefund_id) if hasattr(client, 'get_prefund') else 0
+        if pf_balance >= prefund_amount:
+            break
+        time.sleep(2)
+    print(f"    Prefund balance: {pf_balance}")
+    assert pf_balance >= prefund_amount, \
+        f"❌ Prefund not confirmed: expected >={prefund_amount}, got {pf_balance}"
+    print("    ✅ Prefund confirmed on-chain")
 
     # ── 4. Contract call setData(42) via ETH signing ──────────────────────
     print("\n[4] ETH-signed contract call: setData(42)...")
@@ -2567,13 +2627,24 @@ def test_eth_signing(w3, MY, KEY):
     selector = _keccak.new(digest_bits=256).update(b"setData(uint256)").digest()[:4]
     call_input = selector + _eth_abi.encode(["uint256"], [42])
 
-    nonce = _eth_get_nonce(client, my_addr) + 1
+    # For contract calls (kContractExcute), the nonce is looked up from the
+    # prefund composite address: contract_addr + sender_addr.
+    # Query the prefund account's nonce, not the sender's nonce.
+    prefund_nonce_addr = contract_addr.lower().replace('0x', '') + my_addr.lower().replace('0x', '')
+    try:
+        import requests as _req2
+        r = _req2.post(client.query_url, data={"address": prefund_nonce_addr}, verify=client.verify_ssl).json()
+        prefund_nonce = int(r.get("nonce", 0)) + 1
+    except Exception:
+        prefund_nonce = 1
+    print(f"    Prefund nonce: {prefund_nonce}")
+
     tx_hash = _eth_sign_and_send(
         client, KEY,
         to=bytes.fromhex(contract_addr),
         value=0,
         data=call_input,
-        nonce=nonce
+        nonce=prefund_nonce
     )
     receipt = _eth_wait_receipt(client, tx_hash)
     print(f"    Receipt: {receipt}")
@@ -2619,13 +2690,31 @@ def test_eth_signing(w3, MY, KEY):
         "0x" + "0" * 40  # send remaining to zero address
     ])
 
-    nonce = _eth_get_nonce(client, my_addr) + 1
+    # Re-prefund for the selfdestruct call (refund in step 6 reclaimed the previous prefund)
+    print("    Re-prefunding for selfdestruct call...")
+    contract_obj.prefund(prefund_amount, KEY)
+    for _retry in range(30):
+        pf_balance = client.get_prefund(prefund_id) if hasattr(client, 'get_prefund') else 0
+        if pf_balance >= prefund_amount:
+            break
+        time.sleep(2)
+    assert pf_balance >= prefund_amount, f"❌ Re-prefund failed: {pf_balance}"
+    print(f"    ✅ Re-prefund confirmed: {pf_balance}")
+
+    # Get prefund nonce for the selfdestruct contract call
+    try:
+        r = _req2.post(client.query_url, data={"address": prefund_nonce_addr}, verify=client.verify_ssl).json()
+        kill_nonce = int(r.get("nonce", 0)) + 1
+    except Exception:
+        kill_nonce = 1
+    print(f"    Kill nonce (prefund): {kill_nonce}")
+
     tx_hash = _eth_sign_and_send(
         client, KEY,
         to=bytes.fromhex(contract_addr),
         value=0,
         data=kill_input,
-        nonce=nonce
+        nonce=kill_nonce
     )
     receipt = _eth_wait_receipt(client, tx_hash)
     print(f"    Receipt: {receipt}")
@@ -2671,6 +2760,26 @@ def oqs_sign_test():
 
     w3 = SethWeb3Mock(IP, PORT)
     MY_OQS = w3.client.get_oqs_address(OQS_PK)
+
+    # ── Fund OQS address from ECDSA account before running OQS tests ──────
+    # OQS addresses need native tokens to pay for gas. Transfer from the
+    # standard ECDSA funder account and wait for the balance to arrive.
+    ECDSA_KEY = "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
+    fund_amount = 500_000_000
+    print(f"\n[OQS Setup] Funding OQS address {MY_OQS[:16]}... with {fund_amount} from ECDSA account")
+    fund_receipt = w3.seth.send_transaction({'to': MY_OQS, 'value': fund_amount}, ECDSA_KEY)
+    print(f"    Fund tx status: {fund_receipt.get('status') if fund_receipt else 'None'}")
+
+    # Wait for the OQS address to have a positive balance on-chain
+    print(f"    Waiting for OQS balance to arrive...")
+    for _retry in range(30):
+        oqs_balance = w3.client.get_balance(MY_OQS)
+        if oqs_balance > 0:
+            break
+        time.sleep(2)
+    print(f"    OQS balance: {oqs_balance}")
+    assert oqs_balance > 0, f"❌ OQS address not funded after transfer! balance={oqs_balance}"
+    print(f"    ✅ OQS address funded: {oqs_balance}")
 
     test_oqs_transfer(w3, MY_OQS, OQS_KEY, OQS_PK)
     test_oqs_contract_deploy_and_call(w3, MY_OQS, OQS_KEY, OQS_PK)

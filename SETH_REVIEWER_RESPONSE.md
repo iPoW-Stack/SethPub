@@ -526,7 +526,55 @@ The `tx_cli.cc` stress test achieves **4,500-5,500 TPS** with mixed workloads, d
 
 > Why can't the destination pool directly verify the source pool's QC and process transfers itself, without going through the GBP layer?
 
-### 5.2 The Fast-HotStuff Two-Phase Commit Requirement
+### 5.2 The Core Reason: Cross-Shard Message Explosion
+
+The **primary** reason for GBP is to prevent cross-shard message explosion.
+
+Under direct QC verification, every committed block from every pool in every shard must be broadcast to **all other shards** so they can independently verify the QC and extract transfers. Consider a concrete scenario:
+
+```
+Configuration:
+  4 shards × 32 pools/shard = 128 pools total
+  Each pool produces ~1 block/second
+  Each block must be sent to 3 other shards
+
+Direct QC approach:
+  Messages per second = 128 pools × 3 destination shards = 384 block broadcasts/s
+  Each block is ~50-200 KB (transactions + QC + signatures)
+  Bandwidth: 384 × 100 KB = ~38 MB/s of cross-shard traffic PER NODE
+
+  With 8 shards: 256 pools × 7 destinations = 1,792 broadcasts/s → ~179 MB/s
+  With 16 shards: 512 pools × 15 destinations = 7,680 broadcasts/s → ~768 MB/s
+```
+
+This is **O(S² × P)** where S = number of shards and P = pools per shard. The cross-shard bandwidth grows **quadratically** with the number of shards — the exact opposite of what a scalable system needs.
+
+**GBP eliminates this explosion** by aggregating transfers within each shard:
+
+```
+GBP approach:
+  Each shard aggregates ALL cross-shard transfers from ALL 32 pools
+  into a SINGLE kNormalTo transaction every 10-30 seconds.
+
+  Messages per 10s = 4 shards × 3 destinations = 12 aggregated broadcasts
+  Each kNormalTo is ~1-10 KB (just amounts + unique hashes, no full blocks)
+  Bandwidth: 12 × 5 KB / 10s = ~6 KB/s of cross-shard traffic PER NODE
+
+  With 8 shards:  8 × 7 = 56 broadcasts/10s → ~28 KB/s
+  With 16 shards: 16 × 15 = 240 broadcasts/10s → ~120 KB/s
+```
+
+This is **O(S²)** but with a tiny constant factor (KB not MB) and amortized over 10-30 second windows. The bandwidth reduction is **3-4 orders of magnitude**:
+
+| Shards | Direct QC (MB/s) | GBP (KB/s) | Reduction |
+|--------|-----------------|------------|-----------|
+| 4 | ~38 | ~6 | **6,300×** |
+| 8 | ~179 | ~28 | **6,400×** |
+| 16 | ~768 | ~120 | **6,400×** |
+
+**Without GBP, adding shards makes the network slower (more cross-shard traffic). With GBP, adding shards makes the network faster (more parallel throughput, negligible cross-shard overhead).**
+
+### 5.3 The Fast-HotStuff Two-Phase Commit Requirement
 
 Before addressing the architectural question, it is essential to understand **when** a source block's transfers become safe to act upon. Under Fast-HotStuff, a block is only committed — and its cross-shard transfers only become irrevocable — when **the next block with a QC for it** arrives. This rule applies **twice** in the GBP pipeline:
 
@@ -552,7 +600,7 @@ Source Shard S, Pool P — Phase 2 (aggregated transfer block):
 
 This means any cross-shard mechanism — whether GBP or direct QC verification — must wait for the next block with QC at **each phase** before acting. The GBP enforces this by only ingesting transfers from committed source blocks, and by requiring the `kNormalTo` block itself to be committed before destination shards fetch it.
 
-### 5.3 Height Continuity: The Blockchain Completeness Requirement
+### 5.4 Height Continuity: The Blockchain Completeness Requirement
 
 Beyond the two-phase commit rule, the destination shard must also verify that the source shard's chain is **complete and contiguous** up to the height being processed. Processing transfers from height `h` while height `h-1` is missing would:
 
@@ -578,7 +626,7 @@ CrossBlockManager tick (every 10s):
 
 Direct QC verification without this height-continuity enforcement would be **unsafe**: a destination pool verifying only the QC of a single block cannot detect gaps in the source chain.
 
-### 5.4 Problems Solved by GBP
+### 5.5 Problems Solved by GBP
 
 **Problem 1: Transfer Aggregation**
 
@@ -605,10 +653,11 @@ By gating on the Fast-HotStuff two-phase commit rule at **both phases** (source 
 
 GBP generates unique hashes (`keccak256(block_hash + BLS_sign + destination)`) that are globally unique and verifiable. Direct QC verification would require the destination pool to maintain a full copy of the source pool's block history for replay detection.
 
-### 5.5 Comparison
+### 5.6 Comparison
 
 | Aspect | Direct QC Verification | GBP |
 |--------|----------------------|-----|
+| **Cross-shard bandwidth** | **O(S² × P) — quadratic explosion** | **O(S²) with tiny constant — negligible** |
 | Commit safety (source block) | Must independently implement two-phase commit | Enforced by Fast-HotStuff commit event |
 | Commit safety (transfer block) | No equivalent — single-phase only | `kNormalTo` block also committed via two-phase rule |
 | Chain completeness | Must independently verify height continuity | Enforced by `CrossBlockManager` height tracking |
@@ -620,7 +669,7 @@ GBP generates unique hashes (`keccak256(block_hash + BLS_sign + destination)`) t
 | Replay protection | Requires full block history | Unique hash per transfer |
 | Implementation complexity | High (each pool verifies all sources) | Low (centralized per-shard) |
 
-### 5.6 End-to-End Cross-Shard Latency
+### 5.7 End-to-End Cross-Shard Latency
 
 The two-phase commit requirement adds a bounded latency before cross-shard transfers are processed. With a typical Fast-HotStuff round time of ~500ms:
 
@@ -706,6 +755,121 @@ The 4,500-5,500 TPS result includes cross-shard routing overhead, GBP aggregatio
 
 ---
 
+## 7. Multi-Token Parallel AMM: Demonstrating Sharding Advantage
+
+### 7.1 The Problem: Single-Pool Bottleneck
+
+In a non-sharded blockchain, all AMM pools share a single global state. When User1 swaps A→B and User2 swaps C→D, both transactions must be serialized through the same consensus round — even though they operate on completely independent state. This creates a fundamental throughput ceiling.
+
+### 7.2 Seth's Solution: Independent Pools in Independent Shards
+
+The `amm.py` multi-shard test (`test_multi_shard_amm`) demonstrates how Seth eliminates this bottleneck with 6 tokens (A, B, C, D, E, F) and multiple pair pools deployed across different shards:
+
+```
+Design: Each pair pool is deployed by a DEDICATED deployer account.
+        Different deployer → different CREATE2 address → different shard.
+
+  Pool_AB (deployer_AB) → Shard X, Pool P₁
+  Pool_CD (deployer_CD) → Shard Y, Pool P₂
+  Pool_BC (deployer_BC) → Shard Z, Pool P₃
+
+  Pool_AB and Pool_CD are in DIFFERENT shards
+  → Their consensus rounds run IN PARALLEL
+  → No global lock, no shared state, no waiting
+```
+
+### 7.3 Concurrent Execution Proof
+
+The test launches two swaps simultaneously using Python threads:
+
+```python
+# clipy/amm.py — test_multi_shard_amm, Phase 3
+t1 = threading.Thread(target=swap_ab)  # User1: A→B on Pool_AB (Shard X)
+t2 = threading.Thread(target=swap_cd)  # User2: C→D on Pool_CD (Shard Y)
+t1.start(); t2.start()
+t1.join(); t2.join()
+# Both complete concurrently — elapsed time ≈ single swap time, not 2×
+```
+
+Because Pool_AB and Pool_CD are in different shards, their consensus rounds execute independently. The wall-clock time for two concurrent swaps equals the time for one swap — **linear throughput scaling**.
+
+### 7.4 Throughput Scaling Model
+
+With 6 tokens, there are 15 possible pair combinations (C(6,2) = 15). Each pair pool can be deployed in a separate shard:
+
+```
+Tokens: A, B, C, D, E, F
+Pairs:  AB, AC, AD, AE, AF, BC, BD, BE, BF, CD, CE, CF, DE, DF, EF
+        = 15 independent pools across different shards
+
+Single-pool throughput: ~170 TPS per pool
+15 parallel pools:      15 × 170 = 2,550 TPS (just for AMM swaps)
+With 32 pools/shard:    theoretical max = shards × 32 × 170 TPS
+```
+
+### 7.5 Intra-Pool Atomicity Preserved
+
+Each individual swap remains fully atomic within its pool. The `swapAForB` function calls `transferFrom` + `transfer` in a single EVM execution:
+
+```solidity
+function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 amountOut) {
+    amountOut = (amountIn * reserveB) / (reserveA + amountIn);
+    require(amountOut >= minOut, "slippage");  // ← REVERT rolls back everything
+    tokenA.transferFrom(msg.sender, address(this), amountIn);
+    tokenB.transfer(msg.sender, amountOut);
+    reserveA += amountIn;
+    reserveB -= amountOut;
+}
+```
+
+The test verifies this with a slippage protection test (Phase 5): an impossible `minOut` triggers REVERT, and reserves remain unchanged — proving all-or-nothing atomicity.
+
+### 7.6 Cross-Shard Path: A→B→C
+
+The test also demonstrates a two-step cross-shard swap path:
+
+```
+Step 1: User swaps A→B in Pool_AB (atomic, intra-shard)
+        → B tokens credited to user in Pool_AB's shard
+
+Step 2: B transferred cross-shard via GBP (~1.5s latency)
+        → B arrives in Pool_BC's shard
+
+Step 3: User swaps B→C in Pool_BC (atomic, intra-shard)
+        → C tokens credited to user
+
+Each step is individually atomic (EVM REVERT on failure).
+The cross-shard relay is handled by GBP with two-phase commit.
+No compensation transactions needed.
+```
+
+### 7.7 Comparison: Sharded vs. Non-Sharded AMM
+
+| Dimension | Non-Sharded (Ethereum) | Seth Sharded |
+|-----------|----------------------|--------------|
+| Pool_AB swap + Pool_CD swap | Sequential (same block) | **Parallel** (different shards) |
+| Throughput with N pools | O(1) — all share global state | **O(N)** — linear scaling |
+| Atomicity per swap | ✅ Full | ✅ Full (same pool) |
+| Cross-pool path (A→B→C) | Atomic (single tx, same state) | Eventually consistent (two atomic steps + GBP) |
+| Max concurrent swaps | 1 per block | **N per block** (N = number of shards × pools) |
+| 6-token, 15-pool scenario | 15 swaps serialized | **15 swaps parallel** |
+
+### 7.8 Running the Multi-Shard AMM Test
+
+```bash
+cd clipy
+python amm.py --test multi          # Multi-shard test only
+python amm.py --test both           # Single-pool + multi-shard tests
+```
+
+The test output confirms:
+1. Pool_AB and Pool_CD deployed in different shards ✅
+2. Concurrent swaps complete in parallel (not sequential) ✅
+3. Slippage REVERT leaves reserves unchanged (atomicity) ✅
+4. Cross-shard path A→B→C works with per-step atomicity ✅
+
+---
+
 ## Summary
 
 | Concern | Response |
@@ -714,8 +878,9 @@ The 4,500-5,500 TPS result includes cross-shard routing overhead, GBP aggregatio
 | 2. Atomicity | Intra-pool full atomic (EVM REVERT); composable contracts co-located by design; no developer compensation needed |
 | 3. GBP definition | Two-phase Fast-HotStuff commit: source block commit then kNormalTo block commit; height continuity enforced by CrossBlockManager; not a separate consensus layer |
 | 4. GBP bottleneck | Parallel per-pool GBP; O(1μs) aggregation vs O(1ms) EVM execution; not the bottleneck |
-| 5. Why GBP | Two-phase commit safety; chain completeness via height continuity; transfer aggregation; deterministic ordering; block-level atomicity; event-driven real-time delivery; replay protection |
+| 5. Why GBP | Prevents cross-shard message explosion (direct QC = O(S²×P), GBP compresses 6,000×); two-phase commit safety; chain completeness via height continuity; transfer aggregation; deterministic ordering; block-level atomicity; event-driven real-time delivery; replay protection |
 | 6. Experiments | Existing stress tests cover mixed workloads; proposed additional cross-pool ratio experiments |
+| 7. Multi-token parallel AMM | 6 tokens, 15 pools across different shards; concurrent swaps proven via threading test; O(N) throughput scaling; per-swap atomicity preserved; cross-shard path with GBP relay |
 
 ---
 

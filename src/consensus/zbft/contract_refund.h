@@ -68,7 +68,7 @@ public:
 
             if (block_tx.amount() >= from_balance) {
                 block_tx.set_status(kConsensusOutOfPrefund);
-                SETH_WARN("prepayent invalid user: %s, prefund: %lu, contract: %s,"
+                SETH_WARN("prefundent invalid user: %s, prefund: %lu, contract: %s,"
                     "amount: %lu, gas limit: %lu, gas price: %lu",
                     common::Encode::HexEncode(block_tx.from()).c_str(),
                     from_balance,

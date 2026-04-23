@@ -484,7 +484,7 @@ void TxPool::GetTxSyncToLeader(
                         &now_nonce);
                 if (res != 0) {
                     if (res == 3) {
-                        SetTxStatus(pools_mgr_, nonce_iter->second->msg_ptr, transport::kTxUserNonceInvalid);
+                        // SetTxStatus(pools_mgr_, nonce_iter->second->msg_ptr, transport::kTxUserNonceInvalid);
                         SETH_DEBUG("trace tx invalid tx, pool: %d, tx_key invalid: %s, res: %d, from: %s, to: %s, nonce: %lu, step: %u",
                             pool_index_,
                             common::Encode::HexEncode(tx_ptr->tx_key).c_str(),

@@ -260,8 +260,8 @@ static inline std::string GetTxMessageHash(const pools::protobuf::TxMessage& tx_
     }
 
     if (tx_info.has_contract_prefund()) {
-        uint64_t prepay = tx_info.contract_prefund();
-        message.append(std::string((char*)&prepay, sizeof(prepay)));
+        uint64_t prefund = tx_info.contract_prefund();
+        message.append(std::string((char*)&prefund, sizeof(prefund)));
     }
 
     if (tx_info.has_key()) {
@@ -278,7 +278,7 @@ static inline std::string GetTxMessageHash(const pools::protobuf::TxMessage& tx_
         tx_hash = common::Hash::keccak256(message);
     }
 
-    SETH_DEBUG("get tx message hash: %s, nonce: %lu, pk: %s, to: %s, amount: %lu, gas limit: %lu, price: %lu, step: %lu, contract code: %s, input: %s, prepay: %lu, key: %s, value: %s, msg: %s", 
+    SETH_DEBUG("get tx message hash: %s, nonce: %lu, pk: %s, to: %s, amount: %lu, gas limit: %lu, price: %lu, step: %lu, contract code: %s, input: %s, prefund: %lu, key: %s, value: %s, msg: %s", 
         common::Encode::HexEncode(tx_hash).c_str(),
         nonce,
         common::Encode::HexEncode(tx_info.pubkey()).c_str(),

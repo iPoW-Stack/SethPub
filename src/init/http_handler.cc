@@ -162,7 +162,7 @@ static int CreateOqsTransactionWithAttr(
     if (!prefund.empty()) {
         uint64_t prefund_val = 0;
         if (!common::StringUtil::ToUint64(prefund, &prefund_val)) {
-            SETH_WARN("get prepay failed %s", prefund.c_str());
+            SETH_WARN("get prefund failed %s", prefund.c_str());
             return kSignatureInvalid;
         }
         new_tx->set_contract_prefund(prefund_val);
@@ -543,7 +543,7 @@ static int CreateTransactionWithAttr(
     if (!prefund.empty()) {
         uint64_t prefund_val = 0;
         if (!common::StringUtil::ToUint64(prefund, &prefund_val)) {
-            SETH_WARN("get prepay failed %s", prefund);
+            SETH_WARN("get prefund failed %s", prefund);
             return kSignatureInvalid;
         }
 
@@ -2177,6 +2177,28 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             to.empty() ? "(empty)" : common::Encode::HexEncode(to).c_str(),
             data.size());
 
+        // For eth_sendRawTransaction (standard CREATE), the contract address follows
+        // Ethereum's CREATE formula: keccak256(RLP([sender, nonce]))[-20:]
+        // GetContractAddress now implements this formula internally — just pass the
+        // nonce as a minimal big-endian byte string (same as Ethereum's RLP uint encoding).
+        std::string nonce_str;
+        if (step == pools::protobuf::kCreateContract) {
+            // Encode nonce as minimal big-endian bytes (Ethereum RLP uint style)
+            if (nonce == 0) {
+                nonce_str = "";  // RLP of 0 is 0x80 (empty string), handled inside
+            } else {
+                uint64_t v = nonce;
+                while (v > 0) { nonce_str.push_back(static_cast<char>(v & 0xff)); v >>= 8; }
+                std::reverse(nonce_str.begin(), nonce_str.end());
+            }
+
+            to = security::GetContractAddress(sender_addr, nonce_str);
+            SETH_INFO("eth_sendRawTransaction: contract deploy (CREATE), sender=%s, nonce=%lu, "
+                "contract_addr=%s",
+                common::Encode::HexEncode(sender_addr).c_str(), nonce,
+                common::Encode::HexEncode(to).c_str());
+        }
+
         auto msg_ptr = std::make_shared<transport::TransportMessage>();
         auto& msg = msg_ptr->header;
         int32_t net_id = common::GlobalInfo::Instance()->network_id();
@@ -2190,12 +2212,17 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
         new_tx->set_nonce(nonce);
         new_tx->set_pubkey(pubkey_with_prefix);   // 65-byte uncompressed pubkey (0x04 + X + Y)
         new_tx->set_step(static_cast<pools::protobuf::StepType>(step));
-        new_tx->set_to(to.empty() ? std::string(20, '\0') : to);
+        // For contract creation, 'to' is the computed contract address (set above).
+        // For other steps, 'to' was decoded from the raw transaction.
+        new_tx->set_to(to);
         new_tx->set_amount(value);
         new_tx->set_gas_limit(gas_limit > 0 ? gas_limit : 5000000);
         new_tx->set_gas_price(gas_price > 0 ? gas_price : 1);
-        if (step == 6) new_tx->set_contract_code(data);
-        if (step == 8) new_tx->set_contract_input(data);
+        if (step == pools::protobuf::kCreateContract) {
+            new_tx->set_contract_code(data);
+        }
+
+        if (step == pools::protobuf::kContractExcute) new_tx->set_contract_input(data);
 
         // Seth signature: r || s || v
         std::string sign;
@@ -2224,19 +2251,40 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             return;
         }
 
-        http_handler->net_handler()->NewHttpServer(msg_ptr);
+        // Register in tx_msg_map BEFORE dispatching so any synchronous set_status()
+        // call from the pool manager (nonce invalid, signature error, pool full, etc.)
+        // is visible to eth_getTransactionReceipt immediately.
         msg_ptr->handle_status = transport::kMessageHandle;
         {
             std::lock_guard<std::mutex> lock(http_handler->tx_msg_map_mutex());
             http_handler->tx_msg_map().Put(tx_hash, msg_ptr);
         }
 
+        // Set status_notify_cb so that any set_status() call from the pool manager
+        // (FirewallCheckMessage, HandleTx, nonce validation, etc.) updates handle_status
+        // on this msg_ptr, which eth_getTransactionReceipt reads while the tx is pending.
+        {
+            auto weak_msg = std::weak_ptr<transport::TransportMessage>(msg_ptr);
+            msg_ptr->status_notify_cb = [weak_msg](
+                    const std::string& /*hash*/,
+                    transport::MessageHandleStatus s) {
+                auto m = weak_msg.lock();
+                if (m) {
+                    m->handle_status.store(s);
+                }
+            };
+        }
+
+        http_handler->net_handler()->NewHttpServer(msg_ptr);
+
         std::string tx_hash_hex = "0x" + common::Encode::HexEncode(tx_hash);
-        SETH_INFO("eth_sendRawTransaction: tx_hash=%s, step=%u, from=%s, to=%s, value=%lu",
+        SETH_INFO("eth_sendRawTransaction: tx_hash=%s, step=%u, from=%s, to=%s, value=%lu, "
+            "handle_status=%d",
             tx_hash_hex.c_str(), step,
             common::Encode::HexEncode(sender_addr).c_str(),
-            to.empty() ? "(contract create)" : common::Encode::HexEncode(to).c_str(),
-            value);
+            common::Encode::HexEncode(to).c_str(),
+            value,
+            (int32_t)msg_ptr->handle_status.load());
         http_res.set_content(RpcOk(id, tx_hash_hex).dump(), "application/json");
         return;
     }
@@ -2263,6 +2311,14 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
                 // TxHashStatus only has: status, output, events.
                 // Block-level fields (height, hash, from, to, gasUsed) are not stored
                 // in TxHashStatus — fill with neutral defaults.
+
+                // Look up the original tx to get step and contract address.
+                transport::MessagePtr orig_msg = nullptr;
+                {
+                    std::lock_guard<std::mutex> lock(http_handler->tx_msg_map_mutex());
+                    http_handler->tx_msg_map().Get(tx_hash, orig_msg);
+                }
+
                 nlohmann::json receipt;
                 receipt["transactionHash"]   = "0x" + tx_hash_hex;
                 receipt["status"]            = (tx_status.status() == 0) ? "0x1" : "0x0";
@@ -2270,12 +2326,29 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
                 receipt["blockHash"]         = "0x" + std::string(64, '0');
                 receipt["transactionIndex"]  = "0x0";
                 receipt["from"]              = "0x" + std::string(40, '0');
-                receipt["to"]                = nullptr;
                 receipt["gasUsed"]           = ToHex64(5000000);
                 receipt["cumulativeGasUsed"] = ToHex64(5000000);
-                receipt["contractAddress"]   = nullptr;
                 receipt["logs"]              = nlohmann::json::array();
                 receipt["logsBloom"]         = "0x" + std::string(512, '0');
+
+                // For contract deployments, populate contractAddress and set to=null.
+                // For regular calls/transfers, set to=contract/recipient and contractAddress=null.
+                if (orig_msg &&
+                        orig_msg->header.has_tx_proto() &&
+                        orig_msg->header.tx_proto().step() == pools::protobuf::kCreateContract) {
+                    const std::string& contract_addr = orig_msg->header.tx_proto().to();
+                    receipt["to"]              = nullptr;
+                    receipt["contractAddress"] = "0x" + common::Encode::HexEncode(contract_addr);
+                } else if (orig_msg && orig_msg->header.has_tx_proto()) {
+                    const std::string& to_addr = orig_msg->header.tx_proto().to();
+                    receipt["to"]              = to_addr.empty() ? nullptr
+                                                    : nlohmann::json("0x" + common::Encode::HexEncode(to_addr));
+                    receipt["contractAddress"] = nullptr;
+                } else {
+                    receipt["to"]              = nullptr;
+                    receipt["contractAddress"] = nullptr;
+                }
+
                 http_res.set_content(RpcOk(id, receipt).dump(), "application/json");
             } else {
                 http_res.set_content(RpcOk(id, nullptr).dump(), "application/json");

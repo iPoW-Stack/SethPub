@@ -723,8 +723,8 @@
 //     }
 
 //     if (tx_info.has_contract_prefund()) {
-//         uint64_t prepay = tx_info.contract_prefund();
-//         message.append(std::string((char*)&prepay, sizeof(prepay)));
+//         uint64_t prefund = tx_info.contract_prefund();
+//         message.append(std::string((char*)&prefund, sizeof(prefund)));
 //     }
 
 //     if (tx_info.has_key()) {
