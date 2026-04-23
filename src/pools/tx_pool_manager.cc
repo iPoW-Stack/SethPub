@@ -151,11 +151,22 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
 
     msg_ptr->msg_hash = pools::GetTxMessageHash(tx_msg);
     // Inject WS notify callback now that msg_hash is known.
+    // Chain with any existing callback (e.g. the HTTP handle_status updater set by http_handler).
     if (tx_status_cb_) {
         auto cb = tx_status_cb_;
-        msg_ptr->status_notify_cb = [cb](const std::string& hash, transport::MessageHandleStatus s) {
-            cb(common::Encode::HexEncode(hash), s);
-        };
+        auto existing_cb = msg_ptr->status_notify_cb;  // may be set by http_handler
+        if (existing_cb) {
+            // Chain: call both the existing callback and the WS callback
+            msg_ptr->status_notify_cb = [cb, existing_cb](
+                    const std::string& hash, transport::MessageHandleStatus s) {
+                existing_cb(hash, s);
+                cb(common::Encode::HexEncode(hash), s);
+            };
+        } else {
+            msg_ptr->status_notify_cb = [cb](const std::string& hash, transport::MessageHandleStatus s) {
+                cb(common::Encode::HexEncode(hash), s);
+            };
+        }
     }
 
     // ── ETH-format transaction (from eth_sendRawTransaction) ─────────────

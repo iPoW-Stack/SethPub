@@ -2251,19 +2251,40 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             return;
         }
 
-        http_handler->net_handler()->NewHttpServer(msg_ptr);
+        // Register in tx_msg_map BEFORE dispatching so any synchronous set_status()
+        // call from the pool manager (nonce invalid, signature error, pool full, etc.)
+        // is visible to eth_getTransactionReceipt immediately.
         msg_ptr->handle_status = transport::kMessageHandle;
         {
             std::lock_guard<std::mutex> lock(http_handler->tx_msg_map_mutex());
             http_handler->tx_msg_map().Put(tx_hash, msg_ptr);
         }
 
+        // Set status_notify_cb so that any set_status() call from the pool manager
+        // (FirewallCheckMessage, HandleTx, nonce validation, etc.) updates handle_status
+        // on this msg_ptr, which eth_getTransactionReceipt reads while the tx is pending.
+        {
+            auto weak_msg = std::weak_ptr<transport::TransportMessage>(msg_ptr);
+            msg_ptr->status_notify_cb = [weak_msg](
+                    const std::string& /*hash*/,
+                    transport::MessageHandleStatus s) {
+                auto m = weak_msg.lock();
+                if (m) {
+                    m->handle_status.store(s);
+                }
+            };
+        }
+
+        http_handler->net_handler()->NewHttpServer(msg_ptr);
+
         std::string tx_hash_hex = "0x" + common::Encode::HexEncode(tx_hash);
-        SETH_INFO("eth_sendRawTransaction: tx_hash=%s, step=%u, from=%s, to=%s, value=%lu",
+        SETH_INFO("eth_sendRawTransaction: tx_hash=%s, step=%u, from=%s, to=%s, value=%lu, "
+            "handle_status=%d",
             tx_hash_hex.c_str(), step,
             common::Encode::HexEncode(sender_addr).c_str(),
             common::Encode::HexEncode(to).c_str(),
-            value);
+            value,
+            (int32_t)msg_ptr->handle_status.load());
         http_res.set_content(RpcOk(id, tx_hash_hex).dump(), "application/json");
         return;
     }
