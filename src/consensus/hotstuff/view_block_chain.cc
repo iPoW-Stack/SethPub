@@ -669,10 +669,15 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
                     (acc_ptr->latest_height() == new_addr_info->latest_height() &&
                      acc_ptr->tx_index() < new_addr_info->tx_index())) {
                 account_lru_map_.insert(new_addr_info);
-                SETH_DEBUG("success update address: %s, balance: %lu, nonce: %lu",
+                SETH_DEBUG("success update address: %s, balance: %lu, nonce: %lu, "
+                    "latest height: %lu, tx index: %u, new latest height: %lu, new tx index: %u",
                     common::Encode::HexEncode(new_addr_info->addr()).c_str(),
                     new_addr_info->balance(),
-                    new_addr_info->nonce());
+                    new_addr_info->nonce(),
+                    acc_ptr->latest_height(),
+                    acc_ptr->tx_index(),
+                    new_addr_info->latest_height(),
+                    new_addr_info->tx_index());
             }
         }
 

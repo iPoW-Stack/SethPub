@@ -735,9 +735,7 @@ Status BlockAcceptor::addTxsToPool(
         if (out_leader_nonce_map != nullptr && pools::IsUserTransaction(tx->step()) && !tx->pubkey().empty()) {
             std::string nonce_key;
             if (tx->step() == pools::protobuf::kContractExcute ||
-                    tx->step() == pools::protobuf::kContractGasPrefund ||
-                    tx->step() == pools::protobuf::kContractRefund ||
-                    tx->step() == pools::protobuf::kCreateContract) {
+                    tx->step() == pools::protobuf::kContractRefund) {
                 nonce_key = tx->to() + from_id;
             } else {
                 nonce_key = from_id;
@@ -794,7 +792,7 @@ Status BlockAcceptor::addTxsToPool(
             }
         }
 
-        if (!address_info) {
+        if (!address_info || tx_valid_func(*address_info, *tx, nullptr) != 0) {
             SETH_WARN("get address failed nonce: %lu", tx->nonce());
             verify_results[i] = -1;
             continue;
@@ -842,7 +840,6 @@ Status BlockAcceptor::addTxsToPool(
         // --- Serial Logic: Object Factory Creation ---
         std::string contract_prefund_id;
         pools::TxItemPtr tx_ptr = nullptr;
-
         switch (tx->step()) {
         case pools::protobuf::kNormalFrom:
             tx_ptr = std::make_shared<consensus::FromTxItem>(
@@ -1056,7 +1053,6 @@ Status BlockAcceptor::addTxsToPool(
         // --- Core Logic: Submit Task ---
         if (create_success && tx_ptr != nullptr) {
             temp_items[i] = tx_ptr;
-
             if (!need_verify) {
                 // Leader path: mark success directly, no signature check needed.
                 verify_results[i] = 1;
