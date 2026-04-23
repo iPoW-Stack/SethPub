@@ -456,25 +456,25 @@ void TxPool::GetTxSyncToLeader(
                 continue;
             }
 
-            if (tx_ptr->synced_leaders_.Valid(leader_idx)) {
-                if (tx_ptr->elect_height == latest_elect_height_) {
-                    // If leader has a nonce map for this addr, don't break — keep searching forward
-                    if (leader_known_nonce > 0) {
-                        continue;
-                    }
+            // if (tx_ptr->synced_leaders_.Valid(leader_idx)) {
+            //     if (tx_ptr->elect_height == latest_elect_height_) {
+            //         // If leader has a nonce map for this addr, don't break — keep searching forward
+            //         if (leader_known_nonce > 0) {
+            //             continue;
+            //         }
                     
-                    SETH_DEBUG("trace tx pool: %d, already synced to leader: %u, tx_key: %s, from: %s, to: %s, nonce: %lu, step: %d", 
-                        pool_index_, leader_idx, common::Encode::HexEncode(tx_ptr->tx_key).c_str(), 
-                        (tx_ptr->tx_info->pubkey().size() == (security::kPublicKeyUncompressSize - 1)) ? 
-                            common::Encode::HexEncode(security_->GetAddress(tx_ptr->tx_info->pubkey())).c_str() : "",
-                        common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
-                        tx_ptr->tx_info->nonce(), (int32_t)tx_ptr->tx_info->step());
-                    break;
-                }
+            //         SETH_DEBUG("trace tx pool: %d, already synced to leader: %u, tx_key: %s, from: %s, to: %s, nonce: %lu, step: %d", 
+            //             pool_index_, leader_idx, common::Encode::HexEncode(tx_ptr->tx_key).c_str(), 
+            //             (tx_ptr->tx_info->pubkey().size() == (security::kPublicKeyUncompressSize - 1)) ? 
+            //                 common::Encode::HexEncode(security_->GetAddress(tx_ptr->tx_info->pubkey())).c_str() : "",
+            //             common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
+            //             tx_ptr->tx_info->nonce(), (int32_t)tx_ptr->tx_info->step());
+            //         break;
+            //     }
 
-                tx_ptr->synced_leaders_.clear();
-                tx_ptr->elect_height = latest_elect_height_;
-            }
+            //     tx_ptr->synced_leaders_.clear();
+            //     tx_ptr->elect_height = latest_elect_height_;
+            // }
 
             if (valid_nonce == common::kInvalidUint64) {
                 uint64_t now_nonce = 0ll;
