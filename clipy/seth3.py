@@ -2602,8 +2602,22 @@ def test_eth_signing(w3, MY, KEY):
     # ── 3. Prefund (Seth-native — needed for contract gas) ────────────────
     print("\n[3] Seth-native prefund on contract...")
     contract_obj = w3.seth.contract(address=contract_addr, abi=c_abi, sender_address=my_addr)
-    contract_obj.prefund(10000000, KEY)
-    print("    ✅ Prefund set")
+    prefund_amount = 10000000
+    contract_obj.prefund(prefund_amount, KEY)
+    print(f"    Prefund submitted ({prefund_amount}), waiting for on-chain confirmation...")
+
+    # Wait until the prefund balance is actually set on-chain.
+    # Prefund ID = contract_addr + user_addr
+    prefund_id = contract_addr.lower().replace('0x', '') + my_addr.lower().replace('0x', '')
+    for _retry in range(30):
+        pf_balance = client.get_prefund(prefund_id) if hasattr(client, 'get_prefund') else 0
+        if pf_balance >= prefund_amount:
+            break
+        time.sleep(2)
+    print(f"    Prefund balance: {pf_balance}")
+    assert pf_balance >= prefund_amount, \
+        f"❌ Prefund not confirmed: expected >={prefund_amount}, got {pf_balance}"
+    print("    ✅ Prefund confirmed on-chain")
 
     # ── 4. Contract call setData(42) via ETH signing ──────────────────────
     print("\n[4] ETH-signed contract call: setData(42)...")
@@ -2613,13 +2627,24 @@ def test_eth_signing(w3, MY, KEY):
     selector = _keccak.new(digest_bits=256).update(b"setData(uint256)").digest()[:4]
     call_input = selector + _eth_abi.encode(["uint256"], [42])
 
-    nonce = _eth_get_nonce(client, my_addr) + 1
+    # For contract calls (kContractExcute), the nonce is looked up from the
+    # prefund composite address: contract_addr + sender_addr.
+    # Query the prefund account's nonce, not the sender's nonce.
+    prefund_nonce_addr = contract_addr.lower().replace('0x', '') + my_addr.lower().replace('0x', '')
+    try:
+        import requests as _req2
+        r = _req2.post(client.query_url, data={"address": prefund_nonce_addr}, verify=client.verify_ssl).json()
+        prefund_nonce = int(r.get("nonce", 0)) + 1
+    except Exception:
+        prefund_nonce = 1
+    print(f"    Prefund nonce: {prefund_nonce}")
+
     tx_hash = _eth_sign_and_send(
         client, KEY,
         to=bytes.fromhex(contract_addr),
         value=0,
         data=call_input,
-        nonce=nonce
+        nonce=prefund_nonce
     )
     receipt = _eth_wait_receipt(client, tx_hash)
     print(f"    Receipt: {receipt}")
@@ -2665,13 +2690,31 @@ def test_eth_signing(w3, MY, KEY):
         "0x" + "0" * 40  # send remaining to zero address
     ])
 
-    nonce = _eth_get_nonce(client, my_addr) + 1
+    # Re-prefund for the selfdestruct call (refund in step 6 reclaimed the previous prefund)
+    print("    Re-prefunding for selfdestruct call...")
+    contract_obj.prefund(prefund_amount, KEY)
+    for _retry in range(30):
+        pf_balance = client.get_prefund(prefund_id) if hasattr(client, 'get_prefund') else 0
+        if pf_balance >= prefund_amount:
+            break
+        time.sleep(2)
+    assert pf_balance >= prefund_amount, f"❌ Re-prefund failed: {pf_balance}"
+    print(f"    ✅ Re-prefund confirmed: {pf_balance}")
+
+    # Get prefund nonce for the selfdestruct contract call
+    try:
+        r = _req2.post(client.query_url, data={"address": prefund_nonce_addr}, verify=client.verify_ssl).json()
+        kill_nonce = int(r.get("nonce", 0)) + 1
+    except Exception:
+        kill_nonce = 1
+    print(f"    Kill nonce (prefund): {kill_nonce}")
+
     tx_hash = _eth_sign_and_send(
         client, KEY,
         to=bytes.fromhex(contract_addr),
         value=0,
         data=kill_input,
-        nonce=nonce
+        nonce=kill_nonce
     )
     receipt = _eth_wait_receipt(client, tx_hash)
     print(f"    Receipt: {receipt}")

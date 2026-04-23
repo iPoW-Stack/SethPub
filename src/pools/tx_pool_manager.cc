@@ -261,45 +261,6 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
         return transport::kFirewallCheckError;
     }
 
-    auto leader = hotstuff_mgr_->is_other_leader(msg_ptr->address_info->pool_index());
-    if (leader) {
-        auto network_id = network::GetLocalConsensusNetworkId();
-        auto dht = network::DhtManager::Instance()->GetDht(network_id);
-        if (dht == nullptr) {
-            dht = network::UniversalManager::Instance()->GetUniversal(network::kNodeNetworkId);
-        }
-
-        auto dht_vec = dht->readonly_hash_sort_dht();
-        auto node_it = std::find_if(dht_vec->begin(), dht_vec->end(), [&](const auto& item) {
-            return item->id == leader->id;
-        });
-
-        if (node_it != dht_vec->end()) {
-            auto found_node = *node_it; 
-            transport::TcpTransport::Instance()->Send(
-                found_node->public_ip, 
-                found_node->public_port, 
-                msg_ptr->header);
-            SETH_DEBUG("send tx message to leader, leader id: %s, ip: %s, port: %d, hash64: %lu, from: %s, to: %s, nonce: %lu", 
-                common::Encode::HexEncode(leader->id).c_str(),
-                found_node->public_ip.c_str(),
-                found_node->public_port,
-                header.hash64(),
-                common::Encode::HexEncode(security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str(),
-                common::Encode::HexEncode(tx_msg.to()).c_str(),
-                tx_msg.nonce());
-        } else {
-            network::Route::Instance()->Send(msg_ptr);
-            SETH_DEBUG("send tx message to leader, leader id: %s, by route, hash64: %lu, from: %s, to: %s, nonce: %lu", 
-                common::Encode::HexEncode(leader->id).c_str(),
-                header.hash64(),
-                common::Encode::HexEncode(security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str(),
-                common::Encode::HexEncode(tx_msg.to()).c_str(),
-                tx_msg.nonce());
-        }
-        
-    }
-
     tx_msg.set_tx_hash(msg_ptr->msg_hash);
     return transport::kFirewallCheckSuccess;
 }
@@ -594,6 +555,46 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
     // pop_tx_con_.notify_one();
     TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
     ADD_DEBUG_PROCESS_TIMESTAMP();
+    if (msg_ptr->handle_status == transport::kMessageHandle || msg_ptr->handle_status == transport::kTxAccept) {
+        auto leader = hotstuff_mgr_->is_other_leader(msg_ptr->address_info->pool_index());
+        if (leader) {
+            auto network_id = network::GetLocalConsensusNetworkId();
+            auto dht = network::DhtManager::Instance()->GetDht(network_id);
+            if (dht == nullptr) {
+                dht = network::UniversalManager::Instance()->GetUniversal(network::kNodeNetworkId);
+            }
+
+            auto dht_vec = dht->readonly_hash_sort_dht();
+            auto node_it = std::find_if(dht_vec->begin(), dht_vec->end(), [&](const auto& item) {
+                return item->id == leader->id;
+            });
+
+            if (node_it != dht_vec->end()) {
+                auto found_node = *node_it; 
+                transport::TcpTransport::Instance()->Send(
+                    found_node->public_ip, 
+                    found_node->public_port, 
+                    msg_ptr->header);
+                SETH_DEBUG("send tx message to leader, leader id: %s, ip: %s, port: %d, hash64: %lu, from: %s, to: %s, nonce: %lu", 
+                    common::Encode::HexEncode(leader->id).c_str(),
+                    found_node->public_ip.c_str(),
+                    found_node->public_port,
+                    header.hash64(),
+                    common::Encode::HexEncode(security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str(),
+                    common::Encode::HexEncode(tx_msg.to()).c_str(),
+                    tx_msg.nonce());
+            } else {
+                network::Route::Instance()->Send(msg_ptr);
+                SETH_DEBUG("send tx message to leader, leader id: %s, by route, hash64: %lu, from: %s, to: %s, nonce: %lu", 
+                    common::Encode::HexEncode(leader->id).c_str(),
+                    header.hash64(),
+                    common::Encode::HexEncode(security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str(),
+                    common::Encode::HexEncode(tx_msg.to()).c_str(),
+                    tx_msg.nonce());
+            }
+            
+        }
+    }
 }
 
 int TxPoolManager::BackupConsensusAddTxs(
@@ -1020,6 +1021,20 @@ int32_t TxPoolManager::HandleContractExcute(const transport::MessagePtr& msg_ptr
         SETH_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         msg_ptr->address_info = nullptr;
         return transport::kTxInvalidAddress;
+    }
+
+    if (msg_ptr->address_info->balance() <= (tx_msg.amount() + consensus::kCallContractDefaultUseGas * tx_msg.gas_price())) {
+        SETH_WARN("address %s balance invalid: %lu, transfer amount: %lu, "
+            "default call contract gas: %lu, from: %s, to: %s",
+            common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
+            msg_ptr->address_info->balance(),
+            tx_msg.amount(),
+            consensus::kCallContractDefaultUseGas,
+            common::Encode::HexEncode(security_->GetAddressWithPublicKey(
+            msg_ptr->header.tx_proto().pubkey())).c_str(),
+            common::Encode::HexEncode(msg_ptr->header.tx_proto().to()).c_str());
+        msg_ptr->address_info = nullptr;
+        return consensus::kConsensusOutOfPrefund;
     }
 
     msg_ptr->msg_hash = pools::GetTxMessageHash(tx_msg);
