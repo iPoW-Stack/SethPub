@@ -144,6 +144,28 @@ uint32_t GetAddressPoolIndex(const std::string& addr) {
     return common::Hash::Hash32(addr.substr(0, kUnicastAddressLength)) % common::kImmutablePoolSize;
 }
 
+std::string GetPoolAddress(uint32_t pool_index) {
+    // Generate a deterministic pool address based on pool index
+    // Use a fixed prefix + pool index to create a unique address
+    std::string pool_seed = "POOL_ADDRESS_SEED_" + std::to_string(pool_index);
+    std::string pool_address = common::Hash::Hash256(pool_seed);
+    // Ensure it's the correct length for an address
+    if (pool_address.size() > kUnicastAddressLength) {
+        pool_address = pool_address.substr(0, kUnicastAddressLength);
+    }
+    return pool_address;
+}
+
+std::string GetRootStakePoolAddress() {
+    // Root shard stake pool address - deterministic and fixed
+    static const std::string kRootStakePoolSeed = "ROOT_STAKE_POOL_ADDRESS_SEED";
+    std::string pool_address = common::Hash::Hash256(kRootStakePoolSeed);
+    if (pool_address.size() > kUnicastAddressLength) {
+        pool_address = pool_address.substr(0, kUnicastAddressLength);
+    }
+    return pool_address;
+}
+
 uint32_t GetAddressMemberIndex(const std::string& addr) {
     return common::Hash::Hash32(addr) % kElectNodeMinMemberIndex;
 }

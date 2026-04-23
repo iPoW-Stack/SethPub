@@ -25,6 +25,7 @@
 
 namespace seth {
 
+
 namespace block {
     class AccountManager;
 };
@@ -34,7 +35,7 @@ namespace consensus {
 }
 
 namespace pools {
-
+    
 class TxPoolManager {
 public:
     TxPoolManager(
@@ -56,7 +57,8 @@ public:
         uint32_t pool_index,
         uint32_t count,
         ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs,
-        pools::CheckAddrNonceValidFunction tx_valid_func);
+        pools::CheckAddrNonceValidFunction tx_valid_func,
+        const std::unordered_map<std::string, uint64_t>& leader_nonce_map);
     void InitCrossPools();
     void BftCheckInvalidGids(
         uint32_t pool_index, 

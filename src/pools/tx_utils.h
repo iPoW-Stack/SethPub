@@ -113,7 +113,7 @@ struct StatisticMemberInfoItem {
 };
 
 struct AccoutPoceInfoItem {
-    uint64_t consensus_gap; // 边缘化程度 P
+    uint64_t consensus_gap; // Marginalization degree P (tenure time)
     uint64_t credit;
 };
 
@@ -308,7 +308,7 @@ static inline bool IsRootNode() {
 
 static inline bool IsUserTransaction(uint32_t step) {
     if (step != pools::protobuf::kNormalFrom && 
-            step != pools::protobuf::kContractCreate && 
+            step != pools::protobuf::kCreateContract && 
             step != pools::protobuf::kContractExcute && 
             step != pools::protobuf::kContractGasPrefund && 
             step != pools::protobuf::kContractRefund && 
@@ -333,7 +333,7 @@ static inline bool IsTxUseFromAddress(uint32_t step) {
         case pools::protobuf::kStatistic:
         case pools::protobuf::kPoolStatisticTag:
             return false;
-        case pools::protobuf::kContractCreate:
+        case pools::protobuf::kCreateContract:
         case pools::protobuf::kCreateLibrary:
         case pools::protobuf::kJoinElect:
         case pools::protobuf::kNormalFrom:

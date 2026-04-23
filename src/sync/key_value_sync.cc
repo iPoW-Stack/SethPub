@@ -89,6 +89,7 @@ void KeyValueSync::AddSyncView(
 void KeyValueSync::HotstuffConsensusTimerMessage(const transport::MessagePtr& msg_ptr) {
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     std::shared_ptr<view_block::protobuf::ViewBlockItem> pb_vblock = nullptr;
+    SETH_DEBUG("now call ConsensusTimerMessage thread_idx: %d", thread_idx);
     while (vblock_queues_[thread_idx].pop(&pb_vblock)) {
         if (pb_vblock) {
             SETH_DEBUG("hotstuff consensus timer message handle view block: %u_%u_%lu_%lu, timeblock_height: %lu",
@@ -783,12 +784,13 @@ void KeyValueSync::HandlerVerifiedBlock(const std::map<uint32_t, std::map<uint32
                 }
                 
                 vblock_queues_[thread_idx].push(pb_vblock);
-                SETH_DEBUG("1 success handle network new view block: %u_%u_%lu, height: %lu, now size: %lu", 
+                SETH_DEBUG("1 success handle network new view block: %u_%u_%lu, height: %lu, now size: %lu, thread_idx: %d", 
                     pb_vblock->qc().network_id(),
                     pb_vblock->qc().pool_index(),
                     pb_vblock->qc().view(),
                     pb_vblock->block_info().height(),
-                    vblock_queues_[thread_idx].size());
+                    vblock_queues_[thread_idx].size(),
+                    thread_idx);
             }
         }
     }

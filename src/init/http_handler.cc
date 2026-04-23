@@ -23,6 +23,8 @@
 #include "protos/view_block.pb.h"
 #include "security/gmssl/gmssl.h"
 #include "security/oqs/oqs.h"
+#include "security/ecdsa/ecdsa.h"
+#include "security/ecdsa/secp256k1.h"
 #include "transport/tcp_transport.h"
 #include "sethvm/execution.h"
 #include "sethvm/seth_host.h"
@@ -123,7 +125,7 @@ static int CreateOqsTransactionWithAttr(
     std::string contract_bytes;
     if (!contract_bytes_hex.empty()) {
         contract_bytes = common::Encode::HexDecode(contract_bytes_hex);
-        if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kContractCreate) {
+        if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kCreateContract) {
             if (common::IsContractBytescodeValid(contract_bytes) != common::ValidationStatus::SUCCESS) {
                 SETH_DEBUG("create contract not has valid code: %s", common::Encode::HexEncode(contract_bytes).c_str());
                 return kHttpError;
@@ -323,7 +325,7 @@ static int CreateGmTransactionWithAttr(
     std::string contract_bytes;
     if (!contract_bytes_hex.empty()) {
         contract_bytes = common::Encode::HexDecode(contract_bytes_hex);
-        if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kContractCreate) {
+        if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kCreateContract) {
             if (common::IsContractBytescodeValid(contract_bytes) != common::ValidationStatus::SUCCESS) {
                 return kHttpError;
             }
@@ -503,7 +505,7 @@ static int CreateTransactionWithAttr(
     }
 
     auto contract_bytes = req.get_param_value("bytes_code");
-    if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kContractCreate) {
+    if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kCreateContract) {
         contract_bytes = common::Encode::HexDecode(contract_bytes);
         if (common::IsContractBytescodeValid(contract_bytes) != common::ValidationStatus::SUCCESS) {
             SETH_DEBUG("create contract not has valid contract code: %s",
@@ -1714,29 +1716,601 @@ HttpHandler::~HttpHandler() {
     }
 }
 
+// ── MetaMask / Ethereum JSON-RPC helpers ─────────────────────────────────────
+// Chain ID for Seth — matches kGlobalChainId in hotstuff/types.h.
+static constexpr uint64_t kSethChainId = hotstuff::kGlobalChainId;
+
+static inline std::string EthAddr(const std::string& raw20) {
+    return "0x" + common::Encode::HexEncode(raw20);
+}
+
+static inline std::string SethAddr(const std::string& eth_addr) {
+    std::string s = eth_addr;
+    if (s.size() >= 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) s = s.substr(2);
+    return common::Encode::HexDecode(s);
+}
+
+static inline std::string ToHex64(uint64_t v) {
+    std::ostringstream ss;
+    ss << "0x" << std::hex << v;
+    return ss.str();
+}
+
+static nlohmann::json RpcOk(const nlohmann::json& id, const nlohmann::json& result) {
+    return {{"jsonrpc", "2.0"}, {"id", id}, {"result", result}};
+}
+
+static nlohmann::json RpcErr(const nlohmann::json& id, int code, const std::string& msg) {
+    return {{"jsonrpc", "2.0"}, {"id", id}, {"error", {{"code", code}, {"message", msg}}}};
+}
+
+// Decode an Ethereum legacy RLP-encoded signed transaction.
+// Returns false if decoding fails.
+// Fields populated: nonce, to (20 bytes), value, gas_limit, gas_price,
+//                   data (contract input / bytecode), v, r (32 bytes), s (32 bytes).
+static bool DecodeEthRawTx(
+        const std::string& raw_bytes,
+        uint64_t& nonce,
+        std::string& to,
+        uint64_t& value,
+        uint64_t& gas_limit,
+        uint64_t& gas_price,
+        std::string& data,
+        uint8_t& v_byte,
+        std::string& r,
+        std::string& s) {
+    // Minimal RLP decoder for legacy Ethereum transactions.
+    // Format: RLP([nonce, gasPrice, gasLimit, to, value, data, v, r, s])
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(raw_bytes.data());
+    size_t len = raw_bytes.size();
+    if (len < 1) return false;
+
+    // EIP-2718 typed transactions start with a byte in [0x00, 0x7f].
+    // We only support legacy (starts with 0xc0..0xff = RLP list).
+    if (p[0] < 0xc0) {
+        SETH_WARN("DecodeEthRawTx: typed transaction (type=0x%02x) not supported, "
+                  "only legacy RLP format is accepted", p[0]);
+        return false;
+    }
+
+    // Outer list
+    size_t list_len = 0;
+    size_t hdr = 0;
+    if (p[0] >= 0xf8) {
+        hdr = 1 + (p[0] - 0xf7);
+        if (hdr > len) return false;
+        for (size_t i = 1; i < hdr; ++i) list_len = (list_len << 8) | p[i];
+    } else if (p[0] >= 0xc0) {
+        hdr = 1;
+        list_len = p[0] - 0xc0;
+    } else {
+        return false;
+    }
+    p += hdr; len -= hdr;
+    if (len < list_len) return false;
+
+    // Helper: decode one RLP item, advance p/len, return bytes.
+    auto decode_item = [](const uint8_t*& pp, size_t& ll, std::string& out) -> bool {
+        if (ll < 1) return false;
+        if (pp[0] <= 0x7f) {
+            out = std::string(1, (char)pp[0]);
+            pp++; ll--;
+        } else if (pp[0] <= 0xb7) {
+            size_t item_len = pp[0] - 0x80;
+            if (ll < 1 + item_len) return false;
+            out = std::string((char*)pp + 1, item_len);
+            pp += 1 + item_len; ll -= 1 + item_len;
+        } else if (pp[0] <= 0xbf) {
+            size_t hlen = pp[0] - 0xb7;
+            if (ll < 1 + hlen) return false;
+            size_t item_len = 0;
+            for (size_t i = 1; i <= hlen; ++i) item_len = (item_len << 8) | pp[i];
+            if (ll < 1 + hlen + item_len) return false;
+            out = std::string((char*)pp + 1 + hlen, item_len);
+            pp += 1 + hlen + item_len; ll -= 1 + hlen + item_len;
+        } else {
+            return false;
+        }
+        return true;
+    };
+
+    auto be_to_u64 = [](const std::string& s) -> uint64_t {
+        uint64_t v = 0;
+        for (unsigned char c : s) v = (v << 8) | c;
+        return v;
+    };
+
+    std::string s_nonce, s_gasprice, s_gaslimit, s_to, s_value, s_data, s_v, s_r, s_s;
+    if (!decode_item(p, len, s_nonce))    { SETH_WARN("RLP decode failed at: nonce"); return false; }
+    if (!decode_item(p, len, s_gasprice)) { SETH_WARN("RLP decode failed at: gasprice"); return false; }
+    if (!decode_item(p, len, s_gaslimit)) { SETH_WARN("RLP decode failed at: gaslimit"); return false; }
+    if (!decode_item(p, len, s_to))       { SETH_WARN("RLP decode failed at: to"); return false; }
+    if (!decode_item(p, len, s_value))    { SETH_WARN("RLP decode failed at: value"); return false; }
+    if (!decode_item(p, len, s_data))     { SETH_WARN("RLP decode failed at: data"); return false; }
+    if (!decode_item(p, len, s_v))        { SETH_WARN("RLP decode failed at: v"); return false; }
+    if (!decode_item(p, len, s_r))        { SETH_WARN("RLP decode failed at: r"); return false; }
+    if (!decode_item(p, len, s_s))        { SETH_WARN("RLP decode failed at: s"); return false; }
+
+    nonce     = be_to_u64(s_nonce);
+    gas_price = be_to_u64(s_gasprice);
+    gas_limit = be_to_u64(s_gaslimit);
+    value     = be_to_u64(s_value);
+    to        = s_to;   // 20 bytes or empty (contract creation)
+    data      = s_data;
+
+    // EIP-155: v = chain_id * 2 + 35 or 36 → recover parity
+    uint64_t v_val = be_to_u64(s_v);
+    if (v_val >= 35) {
+        v_byte = static_cast<uint8_t>((v_val - 35) % 2);
+    } else {
+        v_byte = static_cast<uint8_t>(v_val);
+    }
+
+    // r and s must be 32 bytes (left-pad if shorter)
+    r = std::string(32 - std::min<size_t>(s_r.size(), 32), '\0') + s_r.substr(s_r.size() > 32 ? s_r.size() - 32 : 0);
+    s = std::string(32 - std::min<size_t>(s_s.size(), 32), '\0') + s_s.substr(s_s.size() > 32 ? s_s.size() - 32 : 0);
+    return true;
+}
+
+static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
+    nlohmann::json req_json, id = nullptr;
+    try {
+        req_json = nlohmann::json::parse(req.body);
+        id = req_json.value("id", nlohmann::json(nullptr));
+    } catch (...) {
+        http_res.set_content(RpcErr(nullptr, -32700, "Parse error").dump(), "application/json");
+        return;
+    }
+
+    auto method = req_json.value("method", std::string(""));
+    auto& params = req_json["params"];
+
+    // ── net_version ──────────────────────────────────────────────────────────
+    if (method == "net_version") {
+        http_res.set_content(RpcOk(id, std::to_string(kSethChainId)).dump(), "application/json");
+        return;
+    }
+
+    // ── eth_chainId ──────────────────────────────────────────────────────────
+    if (method == "eth_chainId") {
+        http_res.set_content(RpcOk(id, ToHex64(kSethChainId)).dump(), "application/json");
+        return;
+    }
+
+    // ── eth_gasPrice ─────────────────────────────────────────────────────────
+    if (method == "eth_gasPrice") {
+        http_res.set_content(RpcOk(id, "0x1").dump(), "application/json");
+        return;
+    }
+
+    // ── eth_estimateGas ──────────────────────────────────────────────────────
+    if (method == "eth_estimateGas") {
+        http_res.set_content(RpcOk(id, ToHex64(5000000)).dump(), "application/json");
+        return;
+    }
+
+    // ── eth_blockNumber ──────────────────────────────────────────────────────
+    if (method == "eth_blockNumber") {
+        // Return the latest committed height across all pools of the local shard.
+        uint64_t max_height = 0;
+        uint32_t net_id = common::GlobalInfo::Instance()->network_id();
+        for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
+            pools::protobuf::PoolLatestInfo pool_info;
+            if (prefix_db->GetLatestPoolInfo(net_id, i, &pool_info)) {
+                if (pool_info.height() > max_height) max_height = pool_info.height();
+            }
+        }
+        http_res.set_content(RpcOk(id, ToHex64(max_height)).dump(), "application/json");
+        return;
+    }
+
+    // ── eth_getBalance ───────────────────────────────────────────────────────
+    if (method == "eth_getBalance") {
+        if (!params.is_array() || params.empty()) {
+            http_res.set_content(RpcErr(id, -32602, "missing params").dump(), "application/json");
+            return;
+        }
+        std::string addr = SethAddr(params[0].get<std::string>());
+        auto addr_info = http_handler->acc_mgr()->GetAccountInfo(addr);
+        if (!addr_info) addr_info = prefix_db->GetAddressInfo(addr);
+        uint64_t balance = addr_info ? addr_info->balance() : 0;
+        http_res.set_content(RpcOk(id, ToHex64(balance)).dump(), "application/json");
+        return;
+    }
+
+    // ── eth_getTransactionCount (nonce) ──────────────────────────────────────
+    if (method == "eth_getTransactionCount") {
+        if (!params.is_array() || params.empty()) {
+            http_res.set_content(RpcErr(id, -32602, "missing params").dump(), "application/json");
+            return;
+        }
+        std::string addr = SethAddr(params[0].get<std::string>());
+        auto addr_info = http_handler->acc_mgr()->GetAccountInfo(addr);
+        if (!addr_info) addr_info = prefix_db->GetAddressInfo(addr);
+        uint64_t nonce = addr_info ? addr_info->nonce() : 0;
+        http_res.set_content(RpcOk(id, ToHex64(nonce)).dump(), "application/json");
+        return;
+    }
+
+    // ── eth_getCode ──────────────────────────────────────────────────────────
+    if (method == "eth_getCode") {
+        if (!params.is_array() || params.empty()) {
+            http_res.set_content(RpcErr(id, -32602, "missing params").dump(), "application/json");
+            return;
+        }
+        std::string addr = SethAddr(params[0].get<std::string>());
+        auto addr_info = prefix_db->GetAddressInfo(addr);
+        if (addr_info && !addr_info->bytes_code().empty()) {
+            http_res.set_content(
+                RpcOk(id, "0x" + common::Encode::HexEncode(addr_info->bytes_code())).dump(),
+                "application/json");
+        } else {
+            http_res.set_content(RpcOk(id, "0x").dump(), "application/json");
+        }
+        return;
+    }
+
+    // ── eth_call ─────────────────────────────────────────────────────────────
+    if (method == "eth_call") {
+        if (!params.is_array() || params.empty() || !params[0].is_object()) {
+            http_res.set_content(RpcErr(id, -32602, "missing params").dump(), "application/json");
+            return;
+        }
+        auto& tx_obj = params[0];
+        std::string to_eth  = tx_obj.value("to", std::string(""));
+        std::string data_hex = tx_obj.value("data", std::string("0x"));
+        std::string from_eth = tx_obj.value("from", std::string(""));
+
+        std::string contract_addr = SethAddr(to_eth);
+        std::string input = common::Encode::HexDecode(
+            data_hex.size() >= 2 && data_hex[0] == '0' ? data_hex.substr(2) : data_hex);
+        std::string from = from_eth.empty() ? std::string(20, '\0') : SethAddr(from_eth);
+
+        auto contract_addr_info = prefix_db->GetAddressInfo(contract_addr);
+        if (!contract_addr_info || contract_addr_info->bytes_code().empty()) {
+            http_res.set_content(RpcOk(id, "0x").dump(), "application/json");
+            return;
+        }
+
+        sethvm::SethhainHost seth_host;
+        seth_host.tx_context_.block_gas_limit = 9999999999lu;
+        uint64_t chain_id = hotstuff::kGlobalChainId;
+        sethvm::Uint64ToEvmcBytes32(seth_host.tx_context_.chain_id, chain_id);
+        seth_host.contract_mgr_ = contract_mgr;
+        seth_host.my_address_ = contract_addr;
+        seth_host.view_block_chain_ = http_handler->view_block_chain();
+        seth_host.AddTmpAccountBalance(from, 9999999999lu);
+        seth_host.AddTmpAccountBalance(contract_addr, contract_addr_info->balance());
+
+        evmc_result evmc_res = {};
+        evmc::Result result{evmc_res};
+        int exec_res = sethvm::Execution::Instance()->execute(
+            contract_addr_info->bytes_code(), input, from, contract_addr, from,
+            0, 9999999999lu, 0, sethvm::kJustCall, seth_host, &result);
+
+        if (exec_res != sethvm::kSethvmSuccess || result.status_code != EVMC_SUCCESS) {
+            http_res.set_content(
+                RpcErr(id, 3, "execution reverted: " + std::to_string(result.status_code)).dump(),
+                "application/json");
+            return;
+        }
+        std::string out((char*)result.output_data, result.output_size);
+        http_res.set_content(
+            RpcOk(id, "0x" + common::Encode::HexEncode(out)).dump(), "application/json");
+        return;
+    }
+
+    // ── eth_sendRawTransaction ────────────────────────────────────────────────
+    if (method == "eth_sendRawTransaction") {
+        if (!params.is_array() || params.empty()) {
+            http_res.set_content(RpcErr(id, -32602, "missing params").dump(), "application/json");
+            return;
+        }
+        std::string raw_hex = params[0].get<std::string>();
+        // Strip "0x" or "0X" prefix if present
+        if (raw_hex.size() >= 2 && raw_hex[0] == '0' && (raw_hex[1] == 'x' || raw_hex[1] == 'X')) {
+            raw_hex = raw_hex.substr(2);
+        }
+        std::string raw_bytes = common::Encode::HexDecode(raw_hex);
+        if (raw_bytes.empty()) {
+            SETH_WARN("eth_sendRawTransaction: HexDecode failed, raw_hex_len=%zu", raw_hex.size());
+            http_res.set_content(RpcErr(id, -32602, "invalid hex encoding").dump(), "application/json");
+            return;
+        }
+
+        uint64_t nonce = 0, value = 0, gas_limit = 0, gas_price = 0;
+        std::string to, data, r, s;
+        uint8_t v_byte = 0;
+        if (!DecodeEthRawTx(raw_bytes, nonce, to, value, gas_limit, gas_price, data, v_byte, r, s)) {
+            SETH_WARN("eth_sendRawTransaction: DecodeEthRawTx failed, raw_hex_len=%zu, first_byte=0x%02x",
+                raw_bytes.size(), raw_bytes.empty() ? 0 : (uint8_t)raw_bytes[0]);
+            http_res.set_content(RpcErr(id, -32602, "invalid raw transaction").dump(), "application/json");
+            return;
+        }
+
+        if (to.size() != 20 && !to.empty()) {
+            http_res.set_content(RpcErr(id, -32602, "invalid to address").dump(), "application/json");
+            return;
+        }
+
+        // ── Recover sender public key via EIP-155 signing hash ────────────────
+        // EIP-155 signing preimage: RLP([nonce, gasPrice, gasLimit, to, value, data, chainId, 0, 0])
+        // We build a minimal RLP encoder inline.
+        auto rlp_encode_uint = [](uint64_t v) -> std::string {
+            if (v == 0) return std::string(1, '\x80');
+            // Find minimal big-endian representation
+            std::string be;
+            while (v > 0) { be.push_back(static_cast<char>(v & 0xff)); v >>= 8; }
+            std::reverse(be.begin(), be.end());
+            // RLP: single byte < 0x80 encodes as itself; otherwise 0x80+len prefix
+            if (be.size() == 1 && static_cast<uint8_t>(be[0]) < 0x80) {
+                return be;
+            }
+            return std::string(1, static_cast<char>(0x80 + be.size())) + be;
+        };
+        auto rlp_encode_bytes = [](const std::string& b) -> std::string {
+            if (b.empty()) return std::string(1, '\x80');
+            if (b.size() == 1 && static_cast<uint8_t>(b[0]) < 0x80) return b;
+            if (b.size() <= 55) {
+                return std::string(1, static_cast<char>(0x80 + b.size())) + b;
+            }
+            // Long string
+            std::string len_be;
+            size_t sz = b.size();
+            while (sz > 0) { len_be.push_back(static_cast<char>(sz & 0xff)); sz >>= 8; }
+            std::reverse(len_be.begin(), len_be.end());
+            return std::string(1, static_cast<char>(0xb7 + len_be.size())) + len_be + b;
+        };
+        auto rlp_list = [](const std::string& payload) -> std::string {
+            if (payload.size() <= 55) {
+                return std::string(1, static_cast<char>(0xc0 + payload.size())) + payload;
+            }
+            std::string len_be;
+            size_t sz = payload.size();
+            while (sz > 0) { len_be.push_back(static_cast<char>(sz & 0xff)); sz >>= 8; }
+            std::reverse(len_be.begin(), len_be.end());
+            return std::string(1, static_cast<char>(0xf7 + len_be.size())) + len_be + payload;
+        };
+
+        // Build the 9-field RLP for EIP-155 signing
+        std::string payload;
+        payload += rlp_encode_uint(nonce);
+        payload += rlp_encode_uint(gas_price);
+        payload += rlp_encode_uint(gas_limit);
+        payload += rlp_encode_bytes(to);          // empty = contract creation
+        payload += rlp_encode_uint(value);
+        payload += rlp_encode_bytes(data);
+        payload += rlp_encode_uint(kSethChainId); // EIP-155: chain_id
+        payload += rlp_encode_uint(0);            // v = 0
+        payload += rlp_encode_uint(0);            // r = 0
+        std::string signing_rlp = rlp_list(payload);
+
+        // keccak256 of the signing RLP
+        std::string signing_hash = common::Hash::keccak256(signing_rlp);
+        SETH_WARN("eth_sendRawTransaction: signing_rlp_hex=%s, signing_hash=%s, "
+            "nonce=%lu, gas_price=%lu, gas_limit=%lu, value=%lu, to_hex=%s, data_len=%zu, "
+            "chain_id=%lu, v_byte=%u",
+            common::Encode::HexEncode(signing_rlp).c_str(),
+            common::Encode::HexEncode(signing_hash).c_str(),
+            nonce, gas_price, gas_limit, value,
+            common::Encode::HexEncode(to).c_str(),
+            data.size(), kSethChainId, v_byte);
+
+        // Build Seth-format signature: r (32 bytes) || s (32 bytes) || v (1 byte)
+        std::string sign_for_recover;
+        sign_for_recover.reserve(65);
+        sign_for_recover.append(r);
+        sign_for_recover.append(s);
+        sign_for_recover.push_back(static_cast<char>(v_byte));
+
+        // Recover uncompressed public key (64 bytes, no prefix).
+        // Ecdsa::Recover returns compressed (32 bytes) which doesn't match
+        // GetAddressWithPublicKey's expected sizes. Use Secp256k1 directly
+        // with compressed=false to get 64 bytes (kPublicKeyUncompressSize - 1).
+        std::string pubkey = security::Secp256k1::Instance()->Recover(
+            sign_for_recover, signing_hash, false);
+        if (pubkey.empty()) {
+            SETH_WARN("eth_sendRawTransaction: failed to recover pubkey from signature");
+            http_res.set_content(RpcErr(id, -32602, "signature recovery failed").dump(), "application/json");
+            return;
+        }
+
+        // Prepend 0x04 uncompressed prefix so GetAddressWithPublicKey routes
+        // to ECDSA (65 bytes) instead of GmSSL (64 bytes).
+        std::string pubkey_with_prefix = std::string(1, '\x04') + pubkey;
+
+        // Derive sender address from recovered pubkey
+        std::string sender_addr = http_handler->security_ptr()->GetAddressWithPublicKey(pubkey_with_prefix);
+        SETH_WARN("eth_sendRawTransaction: pubkey_len=%zu, pubkey_hex=%s, sender=%s",
+            pubkey.size(), common::Encode::HexEncode(pubkey).c_str(),
+            common::Encode::HexEncode(sender_addr).c_str());
+        if (sender_addr.empty() || sender_addr.size() != 20) {
+            http_res.set_content(RpcErr(id, -32602, "invalid sender address").dump(), "application/json");
+            return;
+        }
+        // ── End pubkey recovery ───────────────────────────────────────────────
+
+        // ── Auto-infer Seth step type from ETH transaction fields ──────────
+        // ETH transactions don't carry a "step" field. We infer it:
+        //
+        //   to empty  + data non-empty  → kCreateContract (6)
+        //     Deploy a new contract. 'data' is the creation bytecode.
+        //
+        //   to present + data non-empty + target has bytecode → kContractExcute (8)
+        //     Call an existing contract. 'data' is the ABI-encoded call.
+        //
+        //   to present + data non-empty + target has NO bytecode → kNormalFrom (0)
+        //     Transfer with memo/data to an EOA. Treat as plain transfer.
+        //
+        //   to present + data empty → kNormalFrom (0)
+        //     Plain native transfer.
+        //
+        //   to empty + data empty → invalid (reject)
+        //
+        uint32_t step = 0;
+        if (to.empty() && !data.empty()) {
+            step = pools::protobuf::kCreateContract;  // 6
+        } else if (!to.empty() && !data.empty()) {
+            // Check if the target address is a deployed contract
+            auto target_info = prefix_db->GetAddressInfo(to);
+            if (target_info && !target_info->bytes_code().empty()) {
+                step = pools::protobuf::kContractExcute;  // 8
+            } else {
+                // Target is an EOA or unknown address — treat data as memo,
+                // send as plain transfer.
+                step = pools::protobuf::kNormalFrom;  // 0
+                SETH_INFO("eth_sendRawTransaction: to=%s has no bytecode, "
+                    "treating as plain transfer with data (memo)",
+                    common::Encode::HexEncode(to).c_str());
+            }
+        } else if (!to.empty() && data.empty()) {
+            step = pools::protobuf::kNormalFrom;  // 0
+        } else {
+            // to empty + data empty = invalid
+            http_res.set_content(RpcErr(id, -32602, "empty to and empty data").dump(), "application/json");
+            return;
+        }
+
+        SETH_INFO("eth_sendRawTransaction: inferred step=%u (%s), to=%s, data_len=%zu",
+            step,
+            step == 6 ? "CreateContract" : step == 8 ? "ContractExcute" : "NormalFrom",
+            to.empty() ? "(empty)" : common::Encode::HexEncode(to).c_str(),
+            data.size());
+
+        auto msg_ptr = std::make_shared<transport::TransportMessage>();
+        auto& msg = msg_ptr->header;
+        int32_t net_id = common::GlobalInfo::Instance()->network_id();
+        dht::DhtKeyManager dht_key(net_id);
+        msg.set_src_sharding_id(net_id);
+        msg.set_des_dht_key(dht_key.StrKey());
+        msg.set_type(common::kPoolsMessage);
+        msg.set_hop_count(0);
+
+        auto new_tx = msg.mutable_tx_proto();
+        new_tx->set_nonce(nonce);
+        new_tx->set_pubkey(pubkey_with_prefix);   // 65-byte uncompressed pubkey (0x04 + X + Y)
+        new_tx->set_step(static_cast<pools::protobuf::StepType>(step));
+        new_tx->set_to(to.empty() ? std::string(20, '\0') : to);
+        new_tx->set_amount(value);
+        new_tx->set_gas_limit(gas_limit > 0 ? gas_limit : 5000000);
+        new_tx->set_gas_price(gas_price > 0 ? gas_price : 1);
+        if (step == 6) new_tx->set_contract_code(data);
+        if (step == 8) new_tx->set_contract_input(data);
+
+        // Seth signature: r || s || v
+        std::string sign;
+        sign.reserve(65);
+        sign.append(r);
+        sign.append(s);
+        sign.push_back(static_cast<char>(v_byte));
+        new_tx->set_sign(sign);
+
+        // Store original RLP bytes so the pool manager can verify using
+        // the ETH signing hash instead of the Seth-native hash.
+        new_tx->set_eth_raw_tx(raw_bytes);
+
+        auto tx_hash = pools::GetTxMessageHash(*new_tx);
+        msg_ptr->msg_hash = tx_hash;
+        msg.set_hash64(common::Random::RandomUint64());
+
+        // Look up address_info for the recovered sender
+        msg_ptr->address_info = http_handler->acc_mgr()->GetAccountInfo(sender_addr);
+        if (!msg_ptr->address_info) {
+            msg_ptr->address_info = prefix_db->GetAddressInfo(sender_addr);
+        }
+        if (!msg_ptr->address_info) {
+            std::string res = "address invalid: " + common::Encode::HexEncode(sender_addr);
+            http_res.set_content(RpcErr(id, -32602, res).dump(), "application/json");
+            return;
+        }
+
+        http_handler->net_handler()->NewHttpServer(msg_ptr);
+        msg_ptr->handle_status = transport::kMessageHandle;
+        {
+            std::lock_guard<std::mutex> lock(http_handler->tx_msg_map_mutex());
+            http_handler->tx_msg_map().Put(tx_hash, msg_ptr);
+        }
+
+        std::string tx_hash_hex = "0x" + common::Encode::HexEncode(tx_hash);
+        SETH_INFO("eth_sendRawTransaction: tx_hash=%s, step=%u, from=%s, to=%s, value=%lu",
+            tx_hash_hex.c_str(), step,
+            common::Encode::HexEncode(sender_addr).c_str(),
+            to.empty() ? "(contract create)" : common::Encode::HexEncode(to).c_str(),
+            value);
+        http_res.set_content(RpcOk(id, tx_hash_hex).dump(), "application/json");
+        return;
+    }
+
+    // ── eth_getTransactionReceipt ─────────────────────────────────────────────
+    if (method == "eth_getTransactionReceipt") {
+        if (!params.is_array() || params.empty()) {
+            http_res.set_content(RpcOk(id, nullptr).dump(), "application/json");
+            return;
+        }
+        std::string tx_hash_hex = params[0].get<std::string>();
+        if (tx_hash_hex.size() >= 2 && tx_hash_hex[0] == '0') tx_hash_hex = tx_hash_hex.substr(2);
+        std::string tx_hash = common::Encode::HexDecode(tx_hash_hex);
+
+        std::string res;
+        auto addr = evmc::address{};
+        auto id_str = std::string("tx");
+        memcpy(addr.bytes, id_str.c_str(), id_str.size());
+        if (prefix_db->GetTemporaryKv(std::string((char*)addr.bytes, sizeof(addr.bytes)) + tx_hash, &res)) {
+            block::protobuf::KeyValueInfo kv_info;
+            block::protobuf::TxHashStatus tx_status;
+            if (kv_info.ParseFromString(res) && tx_status.ParseFromString(kv_info.value())) {
+                // Build Ethereum-compatible receipt.
+                // TxHashStatus only has: status, output, events.
+                // Block-level fields (height, hash, from, to, gasUsed) are not stored
+                // in TxHashStatus — fill with neutral defaults.
+                nlohmann::json receipt;
+                receipt["transactionHash"]   = "0x" + tx_hash_hex;
+                receipt["status"]            = (tx_status.status() == 0) ? "0x1" : "0x0";
+                receipt["blockNumber"]       = "0x0";
+                receipt["blockHash"]         = "0x" + std::string(64, '0');
+                receipt["transactionIndex"]  = "0x0";
+                receipt["from"]              = "0x" + std::string(40, '0');
+                receipt["to"]                = nullptr;
+                receipt["gasUsed"]           = ToHex64(5000000);
+                receipt["cumulativeGasUsed"] = ToHex64(5000000);
+                receipt["contractAddress"]   = nullptr;
+                receipt["logs"]              = nlohmann::json::array();
+                receipt["logsBloom"]         = "0x" + std::string(512, '0');
+                http_res.set_content(RpcOk(id, receipt).dump(), "application/json");
+            } else {
+                http_res.set_content(RpcOk(id, nullptr).dump(), "application/json");
+            }
+        } else {
+            // Still pending
+            http_res.set_content(RpcOk(id, nullptr).dump(), "application/json");
+        }
+        return;
+    }
+
+    // ── Unsupported method ────────────────────────────────────────────────────
+    SETH_DEBUG("eth_rpc: unsupported method: %s", method.c_str());
+    http_res.set_content(
+        RpcErr(id, -32601, "Method not found: " + method).dump(), "application/json");
+}
+
+// ── End MetaMask / Ethereum JSON-RPC ─────────────────────────────────────────
+
 void HttpHandler::Run() {
     SETH_INFO("HTTPS server starting on %s:%d", http_ip_.c_str(), http_port_);
-    
-    // Helper to safely handle requests with exception protection
+
     auto safeHandler = [](auto handler, const char* endpoint) {
         return [handler, endpoint](auto *res, auto *req) {
             auto body = std::make_shared<std::string>();
             auto responded = std::make_shared<bool>(false);
-            
-            res->onAborted([responded]() {
-                *responded = true;
-            });
-            
+            res->onAborted([responded]() { *responded = true; });
             res->onData([res, req, body, handler, endpoint, responded](std::string_view data, bool last) {
                 if (*responded) return;
-                
                 try {
                     body->append(data.data(), data.size());
                     if (last) {
                         UWSRequest uws_req(req, *body);
                         UWSResponse uws_res;
                         handler(uws_req, uws_res);
-                        
                         if (!*responded) {
                             res->writeStatus("200 OK")
                                ->writeHeader("Content-Type", uws_res.content_type())
@@ -1746,26 +2320,17 @@ void HttpHandler::Run() {
                     }
                 } catch (const std::exception& e) {
                     SETH_ERROR("Exception in %s: %s", endpoint, e.what());
-                    if (!*responded) {
-                        res->writeStatus("500 Internal Server Error")
-                           ->end("Internal server error");
-                        *responded = true;
-                    }
+                    if (!*responded) { res->writeStatus("500 Internal Server Error")->end("Internal server error"); *responded = true; }
                 } catch (...) {
                     SETH_ERROR("Unknown exception in %s", endpoint);
-                    if (!*responded) {
-                        res->writeStatus("500 Internal Server Error")
-                           ->end("Internal server error");
-                        *responded = true;
-                    }
+                    if (!*responded) { res->writeStatus("500 Internal Server Error")->end("Internal server error"); *responded = true; }
                 }
             });
         };
     };
-    
-    // Create SSL App with certificate and key
+
     uWS::SSLApp({
-        .key_file_name = key_file_.c_str(),
+        .key_file_name  = key_file_.c_str(),
         .cert_file_name = cert_file_.c_str(),
         .passphrase = ""
     }).post("/transaction", safeHandler(HttpTransaction, "/transaction")
@@ -1788,6 +2353,8 @@ void HttpHandler::Run() {
     ).post("/get_block_with_hash", safeHandler(GetBlockWithHash, "/get_block_with_hash")
     ).post("/transaction_receipt", safeHandler(TransactionReceipt, "/transaction_receipt")
     ).post("/update_private_key", safeHandler(UpdatePrivateKey, "/update_private_key")
+    ).post("/eth", safeHandler(EthJsonRpc, "/eth")
+    ).get("/eth", safeHandler(EthJsonRpc, "/eth")
     ).listen("0.0.0.0", http_port_, [this](auto *listen_socket) {
         if (listen_socket) {
             SETH_INFO("HTTPS server listening on 0.0.0.0:%d", http_port_);

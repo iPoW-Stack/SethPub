@@ -300,6 +300,18 @@ Status Hotstuff::Propose(
         transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
         SETH_DEBUG("0 success add local message: %lu, leader_view: %lu", 
             tmp_msg_ptr->header.hash64(), leader_view);
+        {
+            // Check propose message size before sending.
+            static const int kMaxProposeMsgBytes = 1 * 1024 * 1024; // 1 MB
+            int msg_size = tmp_msg_ptr->header.ByteSizeLong();
+            if (msg_size > kMaxProposeMsgBytes) {
+                SETH_WARN("pool: %d, propose msg OVERSIZED: %d bytes (limit %d), "
+                    "txs=%d, view=%lu — message will be dropped by receivers",
+                    pool_idx_, msg_size, kMaxProposeMsgBytes,
+                    hotstuff_msg->pro_msg().tx_propose().txs_size(),
+                    hotstuff_msg->pro_msg().view_item().qc().view());
+            }
+        }
         network::Route::Instance()->Send(tmp_msg_ptr);
 #ifndef NDEBUG
         ++sendout_bft_message_count_;
@@ -351,7 +363,7 @@ Status Hotstuff::Propose(
     header.set_hop_count(0);
     auto* hotstuff_msg = header.mutable_hotstuff();
     auto* pb_pro_msg = hotstuff_msg->mutable_pro_msg();
-    SETH_INFO("pool: %d, leader begin construct propose msg, pre_vb: %u_%u_%lu, timeblock_height: %lu",
+    SETH_DEBUG("pool: %d, leader begin construct propose msg, pre_vb: %u_%u_%lu, timeblock_height: %lu",
         pool_idx_,
         pre_v_block->qc().network_id(),
         pre_v_block->qc().pool_index(),
@@ -462,6 +474,18 @@ Status Hotstuff::Propose(
     tmp_msg_ptr->header.set_debug(std::to_string(tmp_msg_ptr->header.hash64()));
     transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
     // SETH_DEBUG("1 success add local message: %lu", tmp_msg_ptr->header.hash64());
+    {
+        // Check propose message size before broadcasting.
+        static const int kMaxProposeMsgBytes = 1 * 1024 * 1024; // 1 MB
+        int msg_size = tmp_msg_ptr->header.ByteSizeLong();
+        if (msg_size > kMaxProposeMsgBytes) {
+            SETH_WARN("pool: %d, NEW propose msg OVERSIZED: %d bytes (limit %d), "
+                "txs=%d, view=%lu — receivers will reject this message",
+                pool_idx_, msg_size, kMaxProposeMsgBytes,
+                hotstuff_msg->pro_msg().tx_propose().txs_size(),
+                hotstuff_msg->pro_msg().view_item().qc().view());
+        }
+    }
     network::Route::Instance()->Send(tmp_msg_ptr);
     if (hotstuff_msg->pro_msg().tx_propose().txs_size() > 0) {
         latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
@@ -628,7 +652,7 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
         if (latest_view_block_ptr->block_info().tx_list_size() == 0 && 
                 latest_view_block_ptr->qc().view() == pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().tc().view()) {
             ADD_DEBUG_PROCESS_TIMESTAMP();
-            SETH_INFO("pool: %d, high view block tx size is 0, and not timeout "
+            SETH_DEBUG("pool: %d, high view block tx size is 0, and not timeout "
                 "and propose tx size is 0, ignore.", pool_idx_);
             return Status::kLeaderInvalid;
         }
@@ -690,7 +714,7 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
         &out_view,
         pro_msg_wrap->view_block_ptr->block_info().timestamp());
     if (!leader) {
-        SETH_INFO("pool: %d, propose message no leader info, leader idx: %u, tc view: %lu, "
+        SETH_DEBUG("pool: %d, propose message no leader info, leader idx: %u, tc view: %lu, "
             "propose_debug: %s",
             pool_idx_, view_item.qc().leader_idx(), 
             msg_ptr->header.hotstuff().pro_msg().tc().view(),
@@ -699,7 +723,7 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
     }
 
     if (view_item.qc().view() != out_view) {
-        SETH_INFO("pool: %d, propose message view not match leader view, "
+        SETH_DEBUG("pool: %d, propose message view not match leader view, "
             "leader view: %lu, propose view: %lu, hash: %lu, propose_debug: %s",
             pool_idx_, out_view, view_item.qc().view(), pro_msg_wrap->msg_ptr->header.hash64(),
             "");
@@ -1089,12 +1113,14 @@ Status Hotstuff::HandleProposeMsgStep_TxAccept(std::shared_ptr<ProposeMsgWrapper
     pro_msg_wrap->seth_host_ptr = std::make_shared<sethvm::SethhainHost>();
     auto btime = common::TimeUtils::TimestampMs();
     sethvm::SethhainHost& seth_host = *pro_msg_wrap->seth_host_ptr;
+    pro_msg_wrap->leader_nonce_map = std::make_shared<std::unordered_map<std::string, uint64_t>>();
     Status s = acceptor()->Accept(
         pro_msg_wrap, 
         true, 
         false, 
         balance_and_nonce_map,
-        seth_host);
+        seth_host,
+        pro_msg_wrap->leader_nonce_map.get());
     if (s != Status::kSuccess) {
 #ifndef NDEBUG
         SETH_DEBUG("====1.1.2 Accept pool: %d, verify view block failed, "
@@ -1215,7 +1241,8 @@ Status Hotstuff::HandleProposeMsgStep_Vote(std::shared_ptr<ProposeMsgWrapper>& p
         vote_msg, 
         pro_msg_wrap->view_block_ptr->qc().elect_height(), 
         pro_msg_wrap->view_block_ptr->qc().tm_height(), 
-        pro_msg_wrap->view_block_ptr);
+        pro_msg_wrap->view_block_ptr,
+        pro_msg_wrap->leader_nonce_map.get());
     if (s != Status::kSuccess) {
         SETH_ERROR("pool: %d, ConstructVoteMsg error %d, hash64: %lu",
             pool_idx_, (int32_t)s, pro_msg_wrap->msg_ptr->header.hash64());
@@ -1860,7 +1887,7 @@ Status Hotstuff::VerifyViewBlock(
         return Status::kError;
     }
 
-    SETH_ERROR("pool: %d, block view message is success. %lu, %lu, %s, %s, "
+    SETH_DEBUG("pool: %d, block view message is success. %lu, %lu, %s, %s, "
         "v_block.qc().view(): %lu, pacemaker()->CurView(): %lu, "
         "v_block.qc().view(): %lu",
         pool_idx_, v_block.qc().view(), view_block_chain->LatestCommittedBlock()->qc().view(),
@@ -1981,7 +2008,8 @@ Status Hotstuff::ConstructVoteMsg(
         hotstuff::protobuf::VoteMsg* vote_msg,
         uint64_t elect_height, 
         uint64_t tm_height, 
-        const std::shared_ptr<ViewBlock>& v_block) {
+        const std::shared_ptr<ViewBlock>& v_block,
+        const LeaderNonceMap* leader_nonce_map) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto elect_item = elect_info_->GetElectItem(
         common::GlobalInfo::Instance()->network_id(), 
@@ -2036,12 +2064,19 @@ Status Hotstuff::ConstructVoteMsg(
     vote_msg->set_sign_y(sign_y);
     if (!msg_ptr->is_leader) {
         ADD_DEBUG_PROCESS_TIMESTAMP();
+        // Use the leader_nonce_map built during addTxsToPool (single traversal).
+        // Fall back to an empty map if not provided.
+        static const LeaderNonceMap kEmptyMap;
+        const LeaderNonceMap& nonce_map = leader_nonce_map ? *leader_nonce_map : kEmptyMap;
+
         auto* txs = vote_msg->mutable_txs();
         wrapper()->GetTxSyncToLeader(
             v_block->qc().leader_idx(), 
+            consensus::kSyncToLeaderTxCount,
             view_block_chain_, 
             view_block_chain_->HighQC().view_block_hash(), 
-            txs);
+            txs,
+            nonce_map);
         if (txs->size() > 0)
         SETH_DEBUG("tps now vote message get tx sync to leader: %d", txs->size());
         ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -2300,7 +2335,7 @@ void Hotstuff::TryRecoverFromStuck(
 
     auto local_idx = GetLocalMemberIdx();
     View out_view = 0;
-    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view, false);
+    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view, true);
     if (!leader) {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
         return;
@@ -2388,9 +2423,11 @@ void Hotstuff::SyncLocalTxToLeader(
     auto* txs = pre_rst_timer_msg->mutable_txs();
     wrapper()->GetTxSyncToLeader(
         leader->index, 
+        1,
         view_block_chain_, 
         view_block_chain_->HighQC().view_block_hash(), 
-        txs);
+        txs,
+        std::unordered_map<std::string, uint64_t>());  // empty map — no leader block context here
     
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (txs->empty()) {

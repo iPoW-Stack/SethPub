@@ -84,7 +84,26 @@ public:
     }
 
     inline common::BftMemberPtr GetMemberByIdx(uint32_t member_idx) const {
-        return (*members_)[member_idx];
+        // Check if members_ is null
+        if (!members_) {
+            SETH_ERROR("GetMemberByIdx: members_ is null, elect_height: %lu", elect_height_);
+            return nullptr;
+        }
+        
+        // Check if member_idx is out of bounds
+        if (member_idx >= members_->size()) {
+            SETH_ERROR("GetMemberByIdx: member_idx %u out of range (size: %lu), elect_height: %lu",
+                member_idx, members_->size(), elect_height_);
+            return nullptr;
+        }
+        
+        auto member = (*members_)[member_idx];
+        if (!member) {
+            SETH_ERROR("GetMemberByIdx: member at idx %u is null, elect_height: %lu",
+                member_idx, elect_height_);
+        }
+        
+        return member;
     }
 
     inline uint64_t ElectHeight() const {

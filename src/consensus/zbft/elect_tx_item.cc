@@ -20,11 +20,11 @@ namespace consensus {
 // Define the area penalty coefficient default value (can be tuned)
 const double ElectTxItem::kAreaPenaltyCoefficient = 1.0;
 
-inline bool ElectNodeBalanceCompare(const NodeDetailPtr& left, const NodeDetailPtr& right) {
+inline bool ElectNodePosCompare(const NodeDetailPtr& left, const NodeDetailPtr& right) {
     return left->stoke < right->stoke;
 }
 
-inline bool ElectNodeBalanceDiffCompare(
+inline bool ElectNodePosDiffCompare(
         const NodeDetailPtr& left,
         const NodeDetailPtr& right) {
     return left->stoke_diff < right->stoke_diff;
@@ -1300,7 +1300,7 @@ void ElectTxItem::SmoothFtsValue(
 
         SETH_DEBUG("before sort: %s", ids.c_str());
     }
-    std::stable_sort(elect_nodes.begin(), elect_nodes.end(), ElectNodeBalanceCompare);
+    std::stable_sort(elect_nodes.begin(), elect_nodes.end(), ElectNodePosCompare);
     {
         std::string ids;
         for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
@@ -1321,7 +1321,7 @@ void ElectTxItem::SmoothFtsValue(
 
         SETH_DEBUG("after sort: %s", ids.c_str());
     }
-    std::stable_sort(elect_nodes.begin(), elect_nodes.end(), ElectNodeBalanceDiffCompare);
+    std::stable_sort(elect_nodes.begin(), elect_nodes.end(), ElectNodePosDiffCompare);
     {
         std::string ids;
         for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
@@ -1331,7 +1331,7 @@ void ElectTxItem::SmoothFtsValue(
         SETH_DEBUG("after sort 1: %s", ids.c_str());
     }
     uint64_t diff_2b3 = elect_nodes[elect_nodes.size() * 2 / 3]->stoke_diff;
-    std::stable_sort(elect_nodes.begin(), elect_nodes.end(), ElectNodeBalanceCompare);
+    std::stable_sort(elect_nodes.begin(), elect_nodes.end(), ElectNodePosCompare);
     {
         std::string ids;
         for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
@@ -1340,57 +1340,59 @@ void ElectTxItem::SmoothFtsValue(
 
         SETH_DEBUG("after sort 2: %s", ids.c_str());
     }
-    int32_t min_balance = (std::numeric_limits<int32_t>::max)();
-    int32_t blance_diff = 0;
-    std::vector<int32_t> blance_weight;
+    // Normalize PoS weight to [100, 10000]
+    std::vector<int32_t> pos_weight;
     {
-        blance_weight.resize(elect_nodes.size(), 0);
-        blance_weight[0] = 100;
-        int32_t max_balance = 0;
+        pos_weight.resize(elect_nodes.size(), 0);
+        pos_weight[0] = 100;
+        int32_t min_pos = 100;
+        int32_t max_pos = 100;
         auto &g2 = *g2_;
+        
+        // Calculate raw pos weights based on stoke
         for (uint32_t i = 1; i < elect_nodes.size(); ++i) {
             uint64_t fts_val_diff = elect_nodes[i]->stoke - elect_nodes[i - 1]->stoke;
             if (fts_val_diff == 0) {
-                blance_weight[i] = blance_weight[i - 1];
+                pos_weight[i] = pos_weight[i - 1];
             } else {
                 if (fts_val_diff < diff_2b3) {
                     auto rand_val = fts_val_diff + g2() % (diff_2b3 - fts_val_diff);
-                    blance_weight[i] = blance_weight[i - 1] + (20 * rand_val) / diff_2b3;
+                    pos_weight[i] = pos_weight[i - 1] + (20 * rand_val) / diff_2b3;
                 } else {
                     auto rand_val = diff_2b3 + g2() % (fts_val_diff + 1 - diff_2b3);
-                    blance_weight[i] = blance_weight[i - 1] + (20 * rand_val) / fts_val_diff;
+                    pos_weight[i] = pos_weight[i - 1] + (20 * rand_val) / fts_val_diff;
                 }
             }
 
-            if (min_balance > blance_weight[i]) {
-                min_balance = blance_weight[i];
+            if (min_pos > pos_weight[i]) {
+                min_pos = pos_weight[i];
             }
 
-            if (max_balance < blance_weight[i]) {
-                max_balance = blance_weight[i];
+            if (max_pos < pos_weight[i]) {
+                max_pos = pos_weight[i];
             }
         }
 
-        // at least [100, 1000] for fts
-        blance_diff = max_balance - min_balance;
-        if (max_balance - min_balance < 1000) {
-            auto old_balance_diff = max_balance - min_balance;
-            max_balance = min_balance + 1000;
-            blance_diff = max_balance - min_balance;
-            if (old_balance_diff > 0) {
-                int32_t balance_index = blance_diff / old_balance_diff;
-                for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
-                    blance_weight[i] = min_balance + balance_index * (blance_weight[i] - min_balance);
-                }
+        // Normalize to [100, 10000]
+        if (max_pos > min_pos) {
+            for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
+                pos_weight[i] = 100 + (pos_weight[i] - min_pos) * 9900 / (max_pos - min_pos);
+            }
+        } else {
+            // All nodes have same stoke
+            for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
+                pos_weight[i] = 100;
             }
         }
     }
 
+    // Normalize credit weight to [100, 10000]
     std::vector<int32_t> credit_weight;
     {
         credit_weight.resize(elect_nodes.size(), 0);
         int32_t min_credit = (std::numeric_limits<int32_t>::max)();
         int32_t max_credit = (std::numeric_limits<int32_t>::min)();
+        
         for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
             credit_weight[i] = elect_nodes[i]->credit;
             if (min_credit > credit_weight[i]) {
@@ -1402,21 +1404,26 @@ void ElectTxItem::SmoothFtsValue(
             }
         }
 
-        int32_t credit_diff = max_credit - min_credit;
-        if (credit_diff > 0) {
-            int32_t credit_index = blance_diff / credit_diff;
+        // Normalize to [100, 10000]
+        if (max_credit > min_credit) {
             for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
-                credit_weight[i] = min_balance + credit_index * (credit_weight[i] - min_credit);
+                credit_weight[i] = 100 + (credit_weight[i] - min_credit) * 9900 / (max_credit - min_credit);
+            }
+        } else {
+            // All nodes have same credit
+            for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
+                credit_weight[i] = 100;
             }
         }
     }
 
-    // Smooth area_weight using PoS-style normalization
+    // Normalize area weight to [100, 10000]
     std::vector<int32_t> area_weight_smooth;
     {
         area_weight_smooth.resize(elect_nodes.size(), 0);
         int32_t min_area_weight_smooth = (std::numeric_limits<int32_t>::max)();
         int32_t max_area_weight_smooth = (std::numeric_limits<int32_t>::min)();
+        
         for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
             // Convert area_weight to normalized weight
             // Larger area_weight = better dispersion (higher value)
@@ -1434,54 +1441,33 @@ void ElectTxItem::SmoothFtsValue(
             }
         }
         
-        // Normalize area weights to balance_diff range
-        int32_t area_weight_diff = max_area_weight_smooth - min_area_weight_smooth;
-        if (area_weight_diff > 0) {
-            int32_t area_weight_index = blance_diff / area_weight_diff;
+        // Normalize to [100, 10000]
+        if (max_area_weight_smooth > min_area_weight_smooth) {
             for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
-                area_weight_smooth[i] = min_balance + area_weight_index * 
-                    (area_weight_smooth[i] - min_area_weight_smooth);
+                area_weight_smooth[i] = 100 + (area_weight_smooth[i] - min_area_weight_smooth) * 9900 / 
+                    (max_area_weight_smooth - min_area_weight_smooth);
+            }
+        } else {
+            // All nodes have same area weight
+            for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
+                area_weight_smooth[i] = 100;
             }
         }
     }
 
-    std::vector<int32_t> ip_weight;
-    {
-        ip_weight.resize(elect_nodes.size(), 0);
-        int32_t min_ip_weight = (std::numeric_limits<int32_t>::max)();
-        int32_t max_ip_weight = (std::numeric_limits<int32_t>::min)();
-        for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
-                int32_t prefix_len = 0;
-                auto count = 0;
-                // Use smoothed area_weight instead of direct value
-                ip_weight[i] = area_weight_smooth[i];
-            if (ip_weight[i] > max_ip_weight) {
-                max_ip_weight = ip_weight[i];
-            }
-
-            if (ip_weight[i] < min_ip_weight) {
-                min_ip_weight = ip_weight[i];
-            }
-        }
-
-        int32_t weight_diff = max_ip_weight - min_ip_weight;
-        if (weight_diff > 0) {
-            int32_t weight_index = blance_diff / weight_diff;
-            for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
-                ip_weight[i] = min_balance + weight_index * (ip_weight[i] - min_ip_weight);
-            }
-        }
-    }
-
-      std::vector<int32_t> gap_weight;
+    // Normalize gap weight to [100, 10000]
+    // IMPORTANT: consensus_gap represents how many times a node has been elected.
+    // Higher consensus_gap = longer tenure = should be penalized (lower score).
+    // We invert the normalization: max_gap → 100, min_gap → 10000
+    std::vector<int32_t> gap_weight;
     {
         gap_weight.resize(elect_nodes.size(), 0);
         int32_t min_gap_weight = (std::numeric_limits<int32_t>::max)();
         int32_t max_gap_weight = (std::numeric_limits<int32_t>::min)();
+        
         for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
-            int32_t prefix_len = 0;
-            auto count = 0;
             gap_weight[i] = elect_nodes[i]->consensus_gap;
+            
             if (gap_weight[i] > max_gap_weight) {
                 max_gap_weight = gap_weight[i];
             }
@@ -1491,24 +1477,31 @@ void ElectTxItem::SmoothFtsValue(
             }
         }
 
-        int32_t weight_diff = max_gap_weight - min_gap_weight;
-        if (weight_diff > 0) {
-            int32_t weight_index = blance_diff / weight_diff;
+        // Normalize to [100, 10000] with INVERSION (penalty for long tenure)
+        // Higher consensus_gap → lower gap_weight → lower FTS → lower election probability
+        if (max_gap_weight > min_gap_weight) {
             for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
-                gap_weight[i] = min_balance + weight_index * (gap_weight[i] - min_gap_weight);
+                // Inverted formula: max_gap gets 100, min_gap gets 10000
+                gap_weight[i] = 10000 - (gap_weight[i] - min_gap_weight) * 9900 / (max_gap_weight - min_gap_weight);
+            }
+        } else {
+            // All nodes have same gap weight
+            for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
+                gap_weight[i] = 5050;  // Middle value when all equal
             }
         }
     }
 
+    // Normalize epoch weight to [100, 10000]
     std::vector<int32_t> epoch_weight;
     {
         epoch_weight.resize(elect_nodes.size(), 0);
         int32_t min_epoch_weight = (std::numeric_limits<int32_t>::max)();
         int32_t max_epoch_weight = (std::numeric_limits<int32_t>::min)();
+        
         for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
-            int32_t prefix_len = 0;
-            auto count = 0;
             epoch_weight[i] = elect_nodes[i]->tx_count;
+            
             if (epoch_weight[i] > max_epoch_weight) {
                 max_epoch_weight = epoch_weight[i];
             }
@@ -1518,28 +1511,29 @@ void ElectTxItem::SmoothFtsValue(
             }
         }
 
-        int32_t weight_diff = max_epoch_weight - min_epoch_weight;
-        if (weight_diff > 0) {
-            int32_t weight_index = blance_diff / weight_diff;
+        // Normalize to [100, 10000]
+        if (max_epoch_weight > min_epoch_weight) {
             for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
-                epoch_weight[i] = min_balance + weight_index * (epoch_weight[i] - min_epoch_weight);
+                epoch_weight[i] = 100 + (epoch_weight[i] - min_epoch_weight) * 9900 / (max_epoch_weight - min_epoch_weight);
+            }
+        } else {
+            // All nodes have same epoch weight
+            for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
+                epoch_weight[i] = 100;
             }
         }
     }
 
     std::string fts_val_str;
     for (uint32_t i = 0; i < elect_nodes.size(); ++i) {
-        // Include area_weight_smooth in fts_value calculation with weight coefficient
-        // area_weight contributes to geographic distribution (same weight as ip_weight)
-        elect_nodes[i]->fts_value = (2 * ip_weight[i] +
-                                     2 * credit_weight[i] +
-                                     2 * blance_weight[i] +
+        // FTS calculation with 5 factors (removed ip_weight)
+        elect_nodes[i]->fts_value = (2 * credit_weight[i] +
+                                     2 * pos_weight[i] +
                                      2 * epoch_weight[i] +
-                                     2 * area_weight_smooth[i]) +
-                                     2 * gap_weight[i];
-        fts_val_str += std::to_string(ip_weight[i]) + "," +
-                       std::to_string(credit_weight[i]) + "," +
-                       std::to_string(blance_weight[i]) + "," +
+                                     2 * area_weight_smooth[i] +
+                                     2 * gap_weight[i]);
+        fts_val_str += std::to_string(credit_weight[i]) + "," +
+                       std::to_string(pos_weight[i]) + "," +
                        std::to_string(epoch_weight[i]) + "," +
                        std::to_string(area_weight_smooth[i]) + "," +
                        std::to_string(gap_weight[i]) + "," +

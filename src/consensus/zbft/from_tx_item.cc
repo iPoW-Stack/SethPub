@@ -104,9 +104,11 @@ int FromTxItem::HandleTx(
             to_item_ptr->set_amount(block_tx.amount() + to_item_ptr->amount());
         }
     } else {
-        SETH_DEBUG("failed add cross to shard array: %s, %lu",
+        SETH_DEBUG("failed add cross to shard array: %s, %lu, nonce: %lu, status: %d",
             common::Encode::HexEncode(block_tx.to()).c_str(),
-            block_tx.amount());
+            block_tx.amount(),
+            block_tx.nonce(),
+            status_code);
     }
 
     block::protobuf::TxHashStatus tx_hash_status;
@@ -119,9 +121,12 @@ int FromTxItem::HandleTx(
     acc_balance_map[from]->set_nonce(block_tx.nonce());
     acc_balance_map[from]->set_latest_height(view_block.block_info().height());
     acc_balance_map[from]->set_tx_index(tx_index);
-    SETH_DEBUG("success add addr: %s, value: %s", 
+    SETH_DEBUG("success add addr: %s, value: %s, nonce: %lu, balance: %lu, status: %d", 
         common::Encode::HexEncode(from).c_str(), 
-        ProtobufToJson(*(acc_balance_map[from])).c_str());
+        ProtobufToJson(*(acc_balance_map[from])).c_str(),
+        block_tx.nonce(),
+        from_balance,
+        status_code);
     block_tx.set_balance(from_balance);
     block_tx.set_gas_used(gas_used);
     // SETH_DEBUG("handle tx success: %s, %lu, %lu, status: %d, from: %s, to: %s, amount: %lu, src_banalce: %lu, %u_%u_%lu, height: %lu",

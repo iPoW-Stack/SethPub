@@ -22,6 +22,9 @@ namespace hotstuff {
 using Breakpoint = int;
 using BalanceAndNonceMap = std::unordered_map<std::string, std::shared_ptr<address::protobuf::AddressInfo>>;
 using BalanceAndNonceMapPtr = std::shared_ptr<BalanceAndNonceMap>;
+// Maps address → max nonce already known by the leader (from current propose block).
+// Used by GetTxSyncToLeader to skip already-known nonces and search forward.
+using LeaderNonceMap = std::unordered_map<std::string, uint64_t>;
 
 class ProposeMsgWrapper {
 public:
@@ -38,6 +41,7 @@ public:
     std::shared_ptr<ViewBlock> view_block_ptr;
     BalanceAndNonceMapPtr acc_balance_and_nonce_map_ptr;
     std::shared_ptr<sethvm::SethhainHost> seth_host_ptr;
+    std::shared_ptr<LeaderNonceMap> leader_nonce_map; // built during addTxsToPool, used in vote step
     Breakpoint breakpoint; // 断点位置
     int tried_times;
     common::BftMemberPtr leader;

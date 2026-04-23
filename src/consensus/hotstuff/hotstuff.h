@@ -208,10 +208,8 @@ public:
         auto local_idx = GetLocalMemberIdx();
         View out_view = 0;
         auto leader = pool_tx_leader_.load();
-        if (leader && leader->index == local_idx) {
-            if (leader->pubkey != crypto_->security()->GetPublicKey()) {
-                return leader;
-            }
+        if (leader && leader->index != local_idx) {
+            return leader;
         }
         
         return nullptr;
@@ -281,7 +279,8 @@ private:
         hotstuff::protobuf::VoteMsg* vote_msg,
         uint64_t elect_height,
         uint64_t tm_height,
-        const std::shared_ptr<ViewBlock>& v_block);
+        const std::shared_ptr<ViewBlock>& v_block,
+        const LeaderNonceMap* leader_nonce_map = nullptr);
     Status ConstructViewBlock(
         View leader_view,
         common::BftMemberPtr leader,
@@ -321,14 +320,16 @@ private:
             int64_t leader_tm_sec = 0,
             bool debug = true) {
         // auto members = elect_item->valid_leaders();
-        pool_tx_leader_.store(nullptr);
         auto members = Members(common::GlobalInfo::Instance()->network_id());
         if (members == nullptr || members->empty()) {
+            SETH_WARN("pool: %u, get leader failed, members is null or empty, sharding_id: %u", 
+                pool_idx_, common::GlobalInfo::Instance()->network_id());
             return nullptr;
         }
 
         auto high_view_block = view_block_chain_->HighViewBlock();
         if (!high_view_block) {
+            SETH_WARN("pool: %u, get leader failed, high_view_block is null", pool_idx_);
             return nullptr;
         }
 
@@ -442,6 +443,8 @@ private:
         auto elect_item = elect_info_->GetElectItemWithShardingId(common::GlobalInfo::Instance()->network_id());
         if (elect_item == nullptr) {
             // assert(false);
+            SETH_WARN("pool: %u, get leader failed, elect item is null, sharding_id: %u", 
+                pool_idx_, common::GlobalInfo::Instance()->network_id());
             return nullptr;
         }
 

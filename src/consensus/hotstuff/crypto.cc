@@ -371,6 +371,13 @@ Status Crypto::VerifyMessage(const transport::MessagePtr& msg_ptr) {
     }
             
     auto mem_ptr = elect_item->GetMemberByIdx(leader_idx);
+    // Check if member pointer is valid
+    if (!mem_ptr) {
+        SETH_ERROR("VerifyMessage: failed to get member by idx %u, elect_height: %lu",
+            leader_idx, elect_item->ElectHeight());
+        return Status::kError;
+    }
+    
     if (mem_ptr->bls_publick_key == libff::alt_bn128_G2::zero()) {
         SETH_DEBUG("verify sign failed, backup invalid bls pk: %s",
             common::Encode::HexEncode(mem_ptr->id).c_str());

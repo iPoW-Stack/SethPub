@@ -16,6 +16,7 @@
 #include "protos/prefix_db.h"
 #include "security/ecdsa/secp256k1.h"
 #include "security/ecdsa/ecdsa.h"
+#include "security/eth_verify.h"
 #include "security/gmssl/gmssl.h"
 #include "security/oqs/oqs.h"
 #include "transport/processor.h"
@@ -157,7 +158,33 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
         };
     }
 
-    if (tx_msg.pubkey().size() == 64u) {
+    // ── ETH-format transaction (from eth_sendRawTransaction) ─────────────
+    if (tx_msg.has_eth_raw_tx() && !tx_msg.eth_raw_tx().empty()) {
+        if (tx_msg.pubkey().empty() || tx_msg.sign().empty()) {
+            SETH_ERROR("ETH tx missing pubkey or sign");
+            msg_ptr->set_status(transport::kTxInvalidSignature);
+            return transport::kFirewallCheckError;
+        }
+
+        // Re-verify ETH signature by rebuilding EIP-155 hash and recovering pubkey
+        if (!security::VerifyEthSignature(tx_msg.eth_raw_tx(), tx_msg.pubkey(), tx_msg.sign())) {
+            SETH_ERROR("ETH tx signature verification failed");
+            msg_ptr->set_status(transport::kTxInvalidSignature);
+            return transport::kFirewallCheckError;
+        }
+
+        auto tmp_acc_ptr = acc_mgr_.lock();
+        msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(
+            security_->GetAddressWithPublicKey(tx_msg.pubkey()));
+        if (msg_ptr->address_info == nullptr) {
+            SETH_DEBUG("ETH tx: address not found: %s",
+                common::Encode::HexEncode(
+                    security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str());
+            msg_ptr->set_status(transport::kTxInvalidAddress);
+            return transport::kFirewallCheckError;
+        }
+        // Fall through to shard check + leader routing below
+    } else if (tx_msg.pubkey().size() == 64u) {
         security::GmSsl gmssl;
         if (gmssl.Verify(
                 msg_ptr->msg_hash,
@@ -225,7 +252,12 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
 
     auto leader = hotstuff_mgr_->is_other_leader(msg_ptr->address_info->pool_index());
     if (leader) {
-        auto dht = network::UniversalManager::Instance()->GetUniversal(network::kRootCongressNetworkId);
+        auto network_id = network::GetLocalConsensusNetworkId();
+        auto dht = network::DhtManager::Instance()->GetDht(network_id);
+        if (dht == nullptr) {
+            dht = network::UniversalManager::Instance()->GetUniversal(network::kNodeNetworkId);
+        }
+
         auto dht_vec = dht->readonly_hash_sort_dht();
         auto node_it = std::find_if(dht_vec->begin(), dht_vec->end(), [&](const auto& item) {
             return item->id == leader->id;
@@ -237,9 +269,24 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
                 found_node->public_ip, 
                 found_node->public_port, 
                 msg_ptr->header);
+            SETH_DEBUG("send tx message to leader, leader id: %s, ip: %s, port: %d, hash64: %lu, from: %s, to: %s, nonce: %lu", 
+                common::Encode::HexEncode(leader->id).c_str(),
+                found_node->public_ip.c_str(),
+                found_node->public_port,
+                header.hash64(),
+                common::Encode::HexEncode(security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str(),
+                common::Encode::HexEncode(tx_msg.to()).c_str(),
+                tx_msg.nonce());
         } else {
             network::Route::Instance()->Send(msg_ptr);
+            SETH_DEBUG("send tx message to leader, leader id: %s, by route, hash64: %lu, from: %s, to: %s, nonce: %lu", 
+                common::Encode::HexEncode(leader->id).c_str(),
+                header.hash64(),
+                common::Encode::HexEncode(security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str(),
+                common::Encode::HexEncode(tx_msg.to()).c_str(),
+                tx_msg.nonce());
         }
+        
     }
 
     tx_msg.set_tx_hash(msg_ptr->msg_hash);
@@ -577,7 +624,7 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
             handle_status = HandleNormalFromTx(msg_ptr);
             break;
         case pools::protobuf::kCreateLibrary:
-        case pools::protobuf::kContractCreate:
+        case pools::protobuf::kCreateContract:
             handle_status = HandleCreateContractTx(msg_ptr);
             break;
         case pools::protobuf::kContractGasPrefund:
@@ -1145,7 +1192,7 @@ int32_t TxPoolManager::HandleCreateContractTx(const transport::MessagePtr& msg_p
 
     uint64_t default_gas = consensus::kCallContractDefaultUseGas
         + consensus::CalcKvStorageGas(0, tx_msg.value().size(), true);
-    if (tx_msg.step() == pools::protobuf::kContractCreate) {
+    if (tx_msg.step() == pools::protobuf::kCreateContract) {
         if (common::IsContractBytescodeValid(tx_msg.contract_code()) != common::ValidationStatus::SUCCESS) {
             return consensus::kConsensusContractBytesCodeError;
         }
@@ -1226,7 +1273,7 @@ void TxPoolManager::BftCheckInvalidGids(
 //     new_tx->set_gas_price(gas_price);
 //     if (!key.empty()) {
 //         if (key == "create_contract") {
-//             new_tx->set_step(pools::protobuf::kContractCreate);
+//             new_tx->set_step(pools::protobuf::kCreateContract);
 //             new_tx->set_contract_code(val);
 //             new_tx->set_contract_prefund(9000000000lu);
 //         } else if (key == "prefund") {
@@ -1244,7 +1291,7 @@ void TxPoolManager::BftCheckInvalidGids(
 //     }
 
 //     transport::TcpTransport::Instance()->SetMessageHash(msg);
-//     auto tx_hash = pools::GetTxMessageHash(*new_tx); // cout 输出信息
+//     auto tx_hash = pools::GetTxMessageHash(*new_tx); // cout output info
 //     std::string sign;
 //     if (security->Sign(tx_hash, &sign) != security::kSecuritySuccess) {
 //         assert(false);
@@ -1421,8 +1468,9 @@ void TxPoolManager::GetTxSyncToLeader(
         uint32_t pool_index,
         uint32_t count,
         ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs,
-        pools::CheckAddrNonceValidFunction tx_valid_func) {
-    tx_pool_[pool_index].GetTxSyncToLeader(leader_idx, count, txs, tx_valid_func);    
+        pools::CheckAddrNonceValidFunction tx_valid_func,
+        const std::unordered_map<std::string, uint64_t>& leader_nonce_map) {
+    tx_pool_[pool_index].GetTxSyncToLeader(leader_idx, count, txs, tx_valid_func, leader_nonce_map);    
 }
 
 void TxPoolManager::GetTxIdempotently(

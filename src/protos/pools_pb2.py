@@ -57,7 +57,7 @@ _STEPTYPE = _descriptor.EnumDescriptor(
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='kContractCreate', index=6, number=6,
+      name='kCreateContract', index=6, number=6,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
@@ -115,7 +115,7 @@ kConsensusRootElectShard = 2
 kConsensusRootTimeBlock = 3
 kConsensusCreateGenesisAcount = 4
 kConsensusLocalTos = 5
-kContractCreate = 6
+kCreateContract = 6
 kContractGasPrefund = 7
 kContractExcute = 8
 kRootCreateAddress = 9

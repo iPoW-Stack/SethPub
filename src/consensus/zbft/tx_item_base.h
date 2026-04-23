@@ -98,7 +98,7 @@ protected:
             block_tx->set_tx_hash(pools::GetTxMessageHash(tx_info));
         }
 
-        if (tx_info.step() == pools::protobuf::kContractCreate ||
+        if (tx_info.step() == pools::protobuf::kCreateContract ||
             tx_info.step() == pools::protobuf::kCreateLibrary||
             tx_info.step() == pools::protobuf::kContractGasPrefund ||
             tx_info.step() == pools::protobuf::kRootCreateAddress) {

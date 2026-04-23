@@ -30,9 +30,11 @@ public:
             std::shared_ptr<ViewBlockChain>& view_block_chain) = 0;
     virtual void GetTxSyncToLeader(
             uint32_t leader_idx, 
+            uint32_t count,
             std::shared_ptr<ViewBlockChain>& view_block_chain, 
             const std::string& parent_hash,
-            ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs) = 0;
+            ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs,
+            const std::unordered_map<std::string, uint64_t>& leader_nonce_map) = 0;
     virtual bool HasSingleTx(
         const transport::MessagePtr& msg_ptr,
         pools::CheckAddrNonceValidFunction tx_valid_func) = 0;
@@ -67,9 +69,11 @@ public:
         pools::CheckAddrNonceValidFunction tx_valid_func) override;
     void GetTxSyncToLeader(
             uint32_t leader_idx, 
+            uint32_t count,
             std::shared_ptr<ViewBlockChain>& view_block_chain, 
             const std::string& parent_hash,
-            ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs) override {
+            ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs,
+            const std::unordered_map<std::string, uint64_t>& leader_nonce_map) override {
         auto tx_valid_func = [&](
                 const address::protobuf::AddressInfo& addr_info, 
                 const pools::protobuf::TxMessage& tx_info,
@@ -80,8 +84,8 @@ public:
         };
 
         txs_pools_->GetTxSyncToLeader(
-            leader_idx, pool_idx_, consensus::kSyncToLeaderTxCount, 
-            txs, tx_valid_func);
+            leader_idx, pool_idx_, count, 
+            txs, tx_valid_func, leader_nonce_map);
     }
 
 private:

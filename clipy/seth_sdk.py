@@ -251,6 +251,30 @@ def compile_and_link(source: str, name: str, libs: Dict[str, str] = None):
 
 # --- 3. Web3 Mock Components ---
 
+def _print_receipt(label: str, receipt: dict, address: str = ""):
+    """Print decoded output and events from a transaction receipt."""
+    if not receipt or not isinstance(receipt, dict):
+        return
+    status = receipt.get('status', '?')
+    print(f"  [{label}] addr={address[:16]}{'...' if len(address) > 16 else ''} status={status}")
+    # Output
+    raw_out = receipt.get('output', '')
+    decoded_out = receipt.get('decoded_output')
+    if decoded_out is not None:
+        print(f"    output (decoded): {decoded_out}")
+    elif raw_out:
+        print(f"    output (raw): {raw_out[:120]}{'...' if len(str(raw_out)) > 120 else ''}")
+    # Events
+    decoded_events = receipt.get('decoded_events', [])
+    if decoded_events:
+        for i, ev in enumerate(decoded_events):
+            print(f"    event[{i}]: {ev.get('event', '?')} → {ev.get('args', {})}")
+    # Error message
+    msg = receipt.get('msg', '')
+    if status != 0 and msg:
+        print(f"    msg: {msg}")
+
+
 class SethMethod:
     def __init__(self, contract: SethContract, abi_item: dict):
         self.contract = contract
@@ -352,11 +376,13 @@ class SethMethod:
             )
 
         # 4. Wait for and return the receipt
-        return self.contract.client.wait_for_receipt(
+        receipt = self.contract.client.wait_for_receipt(
             tx_hash, 
             abi=self.contract.abi, 
             function_name=self.name
         )
+        _print_receipt(f"CALL {self.name}", receipt, self.contract.address)
+        return receipt
     
 class SethContract:
     def __init__(self, client: SethClient, address: Optional[str], abi: list, bytecode: str = None, sender_address: str = ""):
@@ -553,6 +579,7 @@ class SethContract:
 
         # 5. Wait for and return the result
         self.deploy_receipt = self.client.wait_for_receipt(tx_hash)
+        _print_receipt("DEPLOY", self.deploy_receipt, self.address)
         return self
 
 class SethWeb3Mock:

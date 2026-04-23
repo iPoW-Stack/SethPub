@@ -58,7 +58,8 @@ public:
         uint32_t leader_idx, 
         uint32_t count,
         ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage>* txs,
-        pools::CheckAddrNonceValidFunction tx_valid_func);
+        pools::CheckAddrNonceValidFunction tx_valid_func,
+        const std::unordered_map<std::string, uint64_t>& leader_nonce_map);
     uint32_t SyncMissingBlocks(uint64_t now_tm_ms);
     void ConsensusAddTxs(const pools::TxItemPtr& tx);
     uint64_t UpdateLatestInfo(

@@ -561,8 +561,8 @@ public:
 //     seth::json deploy_res = sdk.deploySolidity(
 //         private_key, 
 //         bytecode, 
-//         0,      // amount (转账金额)
-//         50000,  // gas_prefund (预付 Gas)
+//         0,      // amount (transfer amount)
+//         50000,  // gas_prefund (prepaid Gas)
 //         0,      // code_type (0=Contract)
 //         constructor_types, 
 //         constructor_args
@@ -631,23 +631,23 @@ public:
 //     }
 
 //     // -------------------------------------------------
-//     // Step 6: 查询合约 - 方式 B (ABI 自动解码)
-//     // 调用 get() 返回 (uint256, string)
+//     // Step 6: Query Contract - Method B (Auto ABI Decode)
+//     // Call get() returns (uint256, string)
 //     // -------------------------------------------------
 //     std::cout << "\n[Step 6B] Querying 'get()' (Auto ABI Decode)..." << std::endl;
 
 //     seth::json query_res_auto = sdk.queryContractWithABI(
 //         private_key,
 //         contract_address,
-//         abi_json_str, // 传入 Step 1 编译生成的 ABI 字符串
-//         "get",        // 函数名
-//         {},           // 输入类型 (get 无参数)
-//         {}            // 输入参数
+//         abi_json_str, // Pass the ABI string generated in Step 1
+//         "get",        // Function name
+//         {},           // Input types (get has no parameters)
+//         {}            // Input parameters
 //     );
 
 //     if (query_res_auto["status"] == 0) {
 //         std::cout << "-> Decoded Result: " << query_res_auto["decoded_response"].dump(4) << std::endl;
-//         // 预期输出: [88888, "SethAdmin"]
+//         // Expected output: [88888, "SethAdmin"]
 //     } else {
 //         std::cerr << "-> Query Failed: " << query_res_auto["msg"] << std::endl;
 //     }

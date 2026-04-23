@@ -157,9 +157,12 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
         return false;
     }
 
-    if (len >= kTcpBuffLength) {
-        SETH_DEBUG("message coming failed 3");
-        return false;
+    // Reject oversized packets — normal consensus messages are well under 1 MB.
+    static const uint32_t kMaxPacketBytes = 1u * 1024u * 1024u + 1024  * 512;  // 1.5 MB hard limit
+    if (len == 0 || len > kMaxPacketBytes) {
+        SETH_WARN("oversized or empty packet from %s:%d, len=%u — closing connection",
+                  from_ip, from_port, len);
+        return false;  // caller (on_read) will close on false
     }
 
     MessagePtr msg_ptr = std::make_shared<TransportMessage>();
@@ -167,8 +170,7 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
         SETH_ERROR("Message ParseFromString from string failed!"
             "[%s:%d][len: %d]",
             from_ip, from_port, len);
-        SETH_DEBUG("message coming failed 4");
-        return false;
+        return false;  // caller closes connection
     }
 
     if (msg_ptr->header.has_broadcast()) {
@@ -204,8 +206,14 @@ void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
         auto packet = ex_uv_tcp->msg_decoder->GetPacket();
         SETH_DEBUG("get packet data: %d", (packet != nullptr));
         while (packet != nullptr) {
-            OnClientPacket(ex_uv_tcp, *packet);
+            bool ok = OnClientPacket(ex_uv_tcp, *packet);
             packet->Free();
+            if (!ok) {
+                // Bad packet (parse error, oversized, invalid port) — drop the connection.
+                delete[] buf->base;
+                tcp_transport->FreeConnection(ex_uv_tcp);
+                return;
+            }
             packet = ex_uv_tcp->msg_decoder->GetPacket();
         }
     } else {
@@ -255,6 +263,7 @@ void on_new_connection(uv_stream_t* server, int status) {
     }
 
     ex_uv_tcp_t* ex_uv_tcp = (ex_uv_tcp_t*)malloc(sizeof(ex_uv_tcp_t));
+    memset(ex_uv_tcp, 0, sizeof(ex_uv_tcp_t));
     uv_tcp_init(loop, &ex_uv_tcp->uv_tcp);
     ex_uv_tcp->uv_tcp.data = ex_uv_tcp;
     ex_uv_tcp->msg_decoder = new MsgDecoder();
@@ -274,10 +283,14 @@ void on_new_connection(uv_stream_t* server, int status) {
         uv_read_start((uv_stream_t*)&ex_uv_tcp->uv_tcp, alloc_buffer, on_read);
         tcp_transport->AddConnection(ex_uv_tcp);
     } else {
+        // uv_accept failed: close and free the handle.
+        // h->data is already set to ex_uv_tcp above, so the callback is safe.
         uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, [](uv_handle_t* h) {
-            auto tmp_ex_uv_tcp = reinterpret_cast<ex_uv_tcp_t*>(h->data);
-            delete tmp_ex_uv_tcp->msg_decoder;
-            free(tmp_ex_uv_tcp);
+            auto tmp = reinterpret_cast<ex_uv_tcp_t*>(h->data);
+            if (tmp) {
+                delete tmp->msg_decoder;
+                free(tmp);
+            }
         });
     }
 }
@@ -286,15 +299,22 @@ void on_new_connection(uv_stream_t* server, int status) {
 void signal_handler(uv_signal_t* handle, int signum) {
     SETH_WARN("uv tcp server signal coming: %d", signum);
     uv_signal_stop(handle);
-    uv_walk(loop, [](uv_handle_t* handle, void*) {
-        if (!uv_is_closing(handle)) {
-            uv_close(handle, [](uv_handle_t* h) {
-                if (uv_handle_get_type(h) == UV_TCP) {
-                    auto tmp_ex_uv_tcp = reinterpret_cast<ex_uv_tcp_t*>(h->data);
-                    delete tmp_ex_uv_tcp->msg_decoder;
-                    free(tmp_ex_uv_tcp);
-                }
-            });
+    uv_walk(loop, [](uv_handle_t* h, void*) {
+        if (!uv_is_closing(h)) {
+            if (uv_handle_get_type(h) == UV_TCP) {
+                // Only UV_TCP handles carry an ex_uv_tcp_t in data.
+                uv_close(h, [](uv_handle_t* ch) {
+                    auto tmp = reinterpret_cast<ex_uv_tcp_t*>(ch->data);
+                    if (tmp) {
+                        delete tmp->msg_decoder;
+                        tmp->msg_decoder = nullptr;
+                        free(tmp);
+                    }
+                });
+            } else {
+                // Signal, async, and other handle types: close without freeing ex_uv_tcp_t.
+                uv_close(h, nullptr);
+            }
         }
     }, nullptr);
 }
@@ -334,7 +354,7 @@ int TcpTransport::Start(bool hold) {
         Run();
     } else {
         run_thread_ = std::make_shared<std::thread>(std::bind(&TcpTransport::Run, this));
-        run_thread_->detach();
+        // Do NOT detach — we need to join in Stop() for clean shutdown.
     }
 
     return kTransportSuccess;
@@ -345,16 +365,36 @@ void TcpTransport::Stop() {
         return;
     }
 
+    destroy_ = true;
+
+    // Signal the Output() thread to exit and wake it up.
+    output_con_.notify_all();
+    if (output_thread_ != nullptr && output_thread_->joinable()) {
+        output_thread_->join();
+        output_thread_ = nullptr;
+    }
+
+    // Signal the libuv loop to stop, then wait for Run() to exit.
+    // uv_stop() is safe to call from any thread.
+    if (loop != nullptr) {
+        uv_stop(loop);
+        // Also send an async wakeup in case the loop is blocked waiting for I/O.
+        uv_async_send(&async_handle);
+    }
+
+    if (run_thread_ != nullptr && run_thread_->joinable()) {
+        run_thread_->join();
+        run_thread_ = nullptr;
+    }
+
+    // Now it is safe to close the loop — Run() has exited.
+    if (loop != nullptr) {
+        uv_loop_close(loop);
+    }
+
     if (output_queues_ != nullptr) {
         delete[] output_queues_;
         output_queues_ = nullptr;
-    }
-    
-    destroy_ = true;
-    free(handle_);
-    uv_loop_close(loop);
-    if (output_thread_ != nullptr) {
-        output_thread_->join();
     }
 }
 
@@ -599,12 +639,14 @@ void TcpTransport::Run() {
     uv_async_init(loop, &async_handle, uv_async_cb);
     output_thread_ = std::make_shared<std::thread>(&TcpTransport::Output, this);
     uv_transport_inited = true;
-    while (true) {
+    while (!destroy_) {
         if (uv_run(loop, UV_RUN_DEFAULT) != 0) {
             SETH_ERROR("uv run failed!");
         }
 
-        std::this_thread::sleep_for(std::chrono::microseconds(10000ull));
+        if (!destroy_) {
+            std::this_thread::sleep_for(std::chrono::microseconds(10000ull));
+        }
     }
 
     uv_loop_close(loop);

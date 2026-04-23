@@ -24,6 +24,8 @@
 #include "consensus/zbft/join_elect_tx_item.h"
 #include "protos/pools.pb.h"
 #include "protos/zbft.pb.h"
+#include "security/ecdsa/ecdsa.h"
+#include "security/eth_verify.h"
 #include "security/gmssl/gmssl.h"
 #include "security/oqs/oqs.h"
 #include "sethvm/sethvm_utils.h"
@@ -34,7 +36,82 @@ namespace hotstuff {
 
 BlockAcceptor::BlockAcceptor() {}
 
-BlockAcceptor::~BlockAcceptor() {}
+BlockAcceptor::~BlockAcceptor() {
+    StopVerifyThreadPool();
+}
+
+// ── Persistent verify thread pool ────────────────────────────────────────────
+
+void BlockAcceptor::StartVerifyThreadPool(int n) {
+    verify_stop_ = false;
+    verify_threads_.reserve(n);
+    for (int i = 0; i < n; ++i) {
+        verify_threads_.emplace_back([this] {
+            while (true) {
+                std::function<void()> fn;
+                {
+                    std::unique_lock<std::mutex> lk(verify_mutex_);
+                    verify_cv_.wait(lk, [this] {
+                        return verify_stop_ || !verify_task_queue_.empty();
+                    });
+                    if (verify_stop_ && verify_task_queue_.empty()) return;
+                    fn = std::move(verify_task_queue_.front().fn);
+                    verify_task_queue_.pop();
+                }
+                fn();
+            }
+        });
+    }
+}
+
+void BlockAcceptor::StopVerifyThreadPool() {
+    {
+        std::lock_guard<std::mutex> lk(verify_mutex_);
+        verify_stop_ = true;
+    }
+    verify_cv_.notify_all();
+    for (auto& t : verify_threads_) {
+        if (t.joinable()) t.join();
+    }
+    verify_threads_.clear();
+}
+
+// Submit tasks and block until all complete.
+void BlockAcceptor::RunVerifyBatch(std::vector<std::function<void()>>& tasks) {
+    if (tasks.empty()) return;
+
+    const int n = static_cast<int>(tasks.size());
+    std::atomic<int> remaining(n);
+    // Use a shared_ptr so the mutex/cv outlive RunVerifyBatch even if a worker
+    // fires notify_one() after the wait() predicate check but before wait() sleeps.
+    struct Sync {
+        std::mutex mu;
+        std::condition_variable cv;
+    };
+    auto sync = std::make_shared<Sync>();
+
+    {
+        std::lock_guard<std::mutex> lk(verify_mutex_);
+        for (auto& fn : tasks) {
+            verify_task_queue_.push({
+                [sync, &remaining, f = std::move(fn)]() mutable {
+                    f();
+                    // Decrement under the lock so the waiter cannot miss the
+                    // notification between checking remaining and sleeping.
+                    {
+                        std::lock_guard<std::mutex> g(sync->mu);
+                        --remaining;
+                    }
+                    sync->cv.notify_one();
+                }
+            });
+        }
+    }
+    verify_cv_.notify_all();
+
+    std::unique_lock<std::mutex> lk(sync->mu);
+    sync->cv.wait(lk, [&remaining] { return remaining.load() == 0; });
+}
 
 void BlockAcceptor::Init(
         const uint32_t& pool_idx,
@@ -64,7 +141,14 @@ void BlockAcceptor::Init(
     view_block_chain_ = view_block_chain;
     bls_mgr_ = bls_mgr;
     tx_pools_ = std::make_shared<consensus::WaitingTxsPools>(pools_mgr_, block_mgr_, tm_block_mgr_);
-    prefix_db_ = std::make_shared<protos::PrefixDb>(db_);    
+    prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
+
+    // Start persistent verify thread pool — threads are reused across all addTxsToPool calls.
+    // Use min(hw_concurrency, 8) threads; at least 2.
+    int nthreads = static_cast<int>(std::thread::hardware_concurrency());
+    if (nthreads < 2)  nthreads = 2;
+    if (nthreads > 8)  nthreads = 8;
+    StartVerifyThreadPool(nthreads);
 }
 
 // Accept verifies the new proposal information of the Leader, executes txs, and modifies the block
@@ -73,7 +157,8 @@ Status BlockAcceptor::Accept(
         bool no_tx_allowed,
         bool directly_user_leader_txs,
         BalanceAndNonceMap& balance_and_nonce_map,
-        sethvm::SethhainHost& seth_host) {
+        sethvm::SethhainHost& seth_host,
+        std::unordered_map<std::string, uint64_t>* out_leader_nonce_map) {
     auto& msg_ptr = pro_msg_wrap->msg_ptr;
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto& propose_msg = pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().tx_propose();
@@ -139,7 +224,8 @@ Status BlockAcceptor::Accept(
         directly_user_leader_txs, 
         txs_ptr, 
         balance_and_nonce_map,
-        seth_host);
+        seth_host,
+        out_leader_nonce_map);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (s != Status::kSuccess) {
         SETH_WARN("GetAndAddTxsLocally error!");
@@ -304,6 +390,265 @@ void BlockAcceptor::UpdateDesShardingId(
     to_addr_info->set_des_sharding_id(network::kUniversalNetworkId);
 }
 
+// Validate statistic transaction node consistency (90% threshold)
+bool BlockAcceptor::ValidateStatisticNodeConsistency(
+        const pools::protobuf::ElectStatistic& leader_statistic,
+        uint32_t pool_index) {
+    
+    // Step 1: Get local statistic transaction from tx_pool
+    // TODO: Implement GetLocalStatisticFromTxPool when interface is available
+    // For now, we accept leader's version if we can't retrieve local statistic
+    pools::protobuf::ElectStatistic local_statistic;
+    // Placeholder: In production, uncomment this when GetLocalStatisticFromTxPool is implemented
+    // if (!GetLocalStatisticFromTxPool(pool_index, &local_statistic)) {
+    //     SETH_DEBUG("pool=%u, no local statistic found, accepting leader's version", pool_index);
+    //     return true;
+    // }
+    
+    // Temporary: Accept leader's version until we can get local statistic
+    SETH_DEBUG("pool=%u, statistic validation: accepting leader's version (local retrieval not implemented)",
+        pool_index);
+    return true;
+    
+    // Step 2: Verify non-node information is completely identical
+    // All fields except join_elect_nodes must match exactly
+    
+    // 2.1 Verify sharding_id
+    if (leader_statistic.sharding_id() != local_statistic.sharding_id()) {
+        SETH_WARN("pool=%u, sharding_id mismatch: leader=%u, local=%u",
+            pool_index, leader_statistic.sharding_id(), local_statistic.sharding_id());
+        return false;
+    }
+    
+    // 2.2 Verify statistic_height
+    if (leader_statistic.statistic_height() != local_statistic.statistic_height()) {
+        SETH_WARN("pool=%u, statistic_height mismatch: leader=%lu, local=%lu",
+            pool_index, leader_statistic.statistic_height(), local_statistic.statistic_height());
+        return false;
+    }
+    
+    // 2.3 Verify gas_amount
+    if (leader_statistic.gas_amount() != local_statistic.gas_amount()) {
+        SETH_WARN("pool=%u, gas_amount mismatch: leader=%lu, local=%lu",
+            pool_index, leader_statistic.gas_amount(), local_statistic.gas_amount());
+        return false;
+    }
+    
+    // 2.4 Verify lof_leaders (list of leaders)
+    if (leader_statistic.lof_leaders_size() != local_statistic.lof_leaders_size()) {
+        SETH_WARN("pool=%u, lof_leaders size mismatch: leader=%d, local=%d",
+            pool_index, leader_statistic.lof_leaders_size(), local_statistic.lof_leaders_size());
+        return false;
+    }
+    for (int i = 0; i < leader_statistic.lof_leaders_size(); ++i) {
+        if (leader_statistic.lof_leaders(i) != local_statistic.lof_leaders(i)) {
+            SETH_WARN("pool=%u, lof_leaders[%d] mismatch: leader=%u, local=%u",
+                pool_index, i, leader_statistic.lof_leaders(i), local_statistic.lof_leaders(i));
+            return false;
+        }
+    }
+    
+    // 2.5 Verify statistics (PoolStatisticItem array)
+    if (leader_statistic.statistics_size() != local_statistic.statistics_size()) {
+        SETH_WARN("pool=%u, statistics size mismatch: leader=%d, local=%d",
+            pool_index, leader_statistic.statistics_size(), local_statistic.statistics_size());
+        return false;
+    }
+    for (int i = 0; i < leader_statistic.statistics_size(); ++i) {
+        const auto& leader_stat = leader_statistic.statistics(i);
+        const auto& local_stat = local_statistic.statistics(i);
+        
+        // Compare all fields in PoolStatisticItem
+        if (leader_stat.elect_height() != local_stat.elect_height() ||
+            leader_stat.avg_geo_distance() != local_stat.avg_geo_distance() ||
+            leader_stat.tx_count_size() != local_stat.tx_count_size() ||
+            leader_stat.stokes_size() != local_stat.stokes_size() ||
+            leader_stat.gas_sum_size() != local_stat.gas_sum_size() ||
+            leader_stat.credit_size() != local_stat.credit_size() ||
+            leader_stat.consensus_gap_size() != local_stat.consensus_gap_size()) {
+            SETH_WARN("pool=%u, statistics[%d] structure mismatch", pool_index, i);
+            return false;
+        }
+        
+        // Compare arrays
+        for (int j = 0; j < leader_stat.tx_count_size(); ++j) {
+            if (leader_stat.tx_count(j) != local_stat.tx_count(j)) {
+                SETH_WARN("pool=%u, statistics[%d].tx_count[%d] mismatch", pool_index, i, j);
+                return false;
+            }
+        }
+        for (int j = 0; j < leader_stat.stokes_size(); ++j) {
+            if (leader_stat.stokes(j) != local_stat.stokes(j)) {
+                SETH_WARN("pool=%u, statistics[%d].stokes[%d] mismatch", pool_index, i, j);
+                return false;
+            }
+        }
+        for (int j = 0; j < leader_stat.gas_sum_size(); ++j) {
+            if (leader_stat.gas_sum(j) != local_stat.gas_sum(j)) {
+                SETH_WARN("pool=%u, statistics[%d].gas_sum[%d] mismatch", pool_index, i, j);
+                return false;
+            }
+        }
+        for (int j = 0; j < leader_stat.credit_size(); ++j) {
+            if (leader_stat.credit(j) != local_stat.credit(j)) {
+                SETH_WARN("pool=%u, statistics[%d].credit[%d] mismatch", pool_index, i, j);
+                return false;
+            }
+        }
+        for (int j = 0; j < leader_stat.consensus_gap_size(); ++j) {
+            if (leader_stat.consensus_gap(j) != local_stat.consensus_gap(j)) {
+                SETH_WARN("pool=%u, statistics[%d].consensus_gap[%d] mismatch", pool_index, i, j);
+                return false;
+            }
+        }
+    }
+    
+    // 2.6 Verify height_info (StatisticTxItem)
+    if (leader_statistic.has_height_info() != local_statistic.has_height_info()) {
+        SETH_WARN("pool=%u, height_info presence mismatch", pool_index);
+        return false;
+    }
+    if (leader_statistic.has_height_info()) {
+        const auto& leader_height = leader_statistic.height_info();
+        const auto& local_height = local_statistic.height_info();
+        
+        if (leader_height.sharding_id() != local_height.sharding_id() ||
+            leader_height.block_height() != local_height.block_height() ||
+            leader_height.tm_height() != local_height.tm_height() ||
+            leader_height.heights_size() != local_height.heights_size()) {
+            SETH_WARN("pool=%u, height_info mismatch", pool_index);
+            return false;
+        }
+        
+        for (int i = 0; i < leader_height.heights_size(); ++i) {
+            const auto& leader_pool_height = leader_height.heights(i);
+            const auto& local_pool_height = local_height.heights(i);
+            
+            if (leader_pool_height.pool_index() != local_pool_height.pool_index() ||
+                leader_pool_height.min_height() != local_pool_height.min_height() ||
+                leader_pool_height.max_height() != local_pool_height.max_height()) {
+                SETH_WARN("pool=%u, height_info.heights[%d] mismatch", pool_index, i);
+                return false;
+            }
+        }
+    }
+    
+    // Step 3: Verify node information consistency (90% threshold)
+    uint32_t total_nodes = leader_statistic.join_elect_nodes_size();
+    if (total_nodes == 0) {
+        // No nodes to validate, accept
+        SETH_DEBUG("pool=%u, no nodes in statistic, accepting", pool_index);
+        return true;
+    }
+    
+    // Check if local has same number of nodes
+    if (local_statistic.join_elect_nodes_size() != static_cast<int>(total_nodes)) {
+        SETH_WARN("pool=%u, node count mismatch: leader=%u, local=%d",
+            pool_index, total_nodes, local_statistic.join_elect_nodes_size());
+        return false;
+    }
+    
+    uint32_t matched_nodes = 0;
+    
+    // Build a map of local nodes for quick lookup
+    std::map<std::string, const pools::protobuf::JoinElectNode*> local_nodes_map;
+    for (int i = 0; i < local_statistic.join_elect_nodes_size(); ++i) {
+        const auto& node = local_statistic.join_elect_nodes(i);
+        std::string pubkey_str(node.pubkey().begin(), node.pubkey().end());
+        local_nodes_map[pubkey_str] = &node;
+    }
+    
+    // Compare each node from leader's statistic
+    for (int i = 0; i < leader_statistic.join_elect_nodes_size(); ++i) {
+        const auto& leader_node = leader_statistic.join_elect_nodes(i);
+        std::string pubkey_str(leader_node.pubkey().begin(), leader_node.pubkey().end());
+        
+        auto it = local_nodes_map.find(pubkey_str);
+        if (it == local_nodes_map.end()) {
+            SETH_DEBUG("pool=%u, node not found in local: %s",
+                pool_index, common::Encode::HexEncode(pubkey_str).c_str());
+            continue;
+        }
+        
+        const auto& local_node = *(it->second);
+        
+        // Compare all fields of JoinElectNode for complete match
+        bool node_match = true;
+        
+        // Compare stoke
+        if (leader_node.stoke() != local_node.stoke()) {
+            SETH_DEBUG("pool=%u, node %s stoke mismatch: leader=%lu, local=%lu",
+                pool_index, common::Encode::HexEncode(pubkey_str).c_str(),
+                leader_node.stoke(), local_node.stoke());
+            node_match = false;
+        }
+        
+        // Compare shard
+        if (leader_node.shard() != local_node.shard()) {
+            SETH_DEBUG("pool=%u, node %s shard mismatch: leader=%u, local=%u",
+                pool_index, common::Encode::HexEncode(pubkey_str).c_str(),
+                leader_node.shard(), local_node.shard());
+            node_match = false;
+        }
+        
+        // Compare elect_pos
+        if (leader_node.elect_pos() != local_node.elect_pos()) {
+            SETH_DEBUG("pool=%u, node %s elect_pos mismatch: leader=%d, local=%d",
+                pool_index, common::Encode::HexEncode(pubkey_str).c_str(),
+                leader_node.elect_pos(), local_node.elect_pos());
+            node_match = false;
+        }
+        
+        // Compare credit
+        if (leader_node.credit() != local_node.credit()) {
+            SETH_DEBUG("pool=%u, node %s credit mismatch: leader=%lu, local=%lu",
+                pool_index, common::Encode::HexEncode(pubkey_str).c_str(),
+                leader_node.credit(), local_node.credit());
+            node_match = false;
+        }
+        
+        // Compare consensus_gap
+        if (leader_node.consensus_gap() != local_node.consensus_gap()) {
+            SETH_DEBUG("pool=%u, node %s consensus_gap mismatch: leader=%lu, local=%lu",
+                pool_index, common::Encode::HexEncode(pubkey_str).c_str(),
+                leader_node.consensus_gap(), local_node.consensus_gap());
+            node_match = false;
+        }
+        
+        // Compare area_point
+        if (leader_node.has_area_point() != local_node.has_area_point()) {
+            SETH_DEBUG("pool=%u, node %s area_point presence mismatch",
+                pool_index, common::Encode::HexEncode(pubkey_str).c_str());
+            node_match = false;
+        } else if (leader_node.has_area_point()) {
+            if (leader_node.area_point().x() != local_node.area_point().x() ||
+                leader_node.area_point().y() != local_node.area_point().y()) {
+                SETH_DEBUG("pool=%u, node %s area_point mismatch: leader=(%d,%d), local=(%d,%d)",
+                    pool_index, common::Encode::HexEncode(pubkey_str).c_str(),
+                    leader_node.area_point().x(), leader_node.area_point().y(),
+                    local_node.area_point().x(), local_node.area_point().y());
+                node_match = false;
+            }
+        }
+        
+        if (node_match) {
+            matched_nodes++;
+            SETH_DEBUG("pool=%u, node matched: %s",
+                pool_index, common::Encode::HexEncode(pubkey_str).c_str());
+        }
+    }
+    
+    // Calculate consistency percentage
+    double consistency_rate = (double)matched_nodes / (double)total_nodes;
+    bool is_valid = consistency_rate >= 0.90;
+    
+    SETH_INFO("pool=%u, statistic validation: matched=%u, total=%u, consistency=%.2f%%, valid=%s",
+        pool_index, matched_nodes, total_nodes, consistency_rate * 100.0,
+        is_valid ? "true" : "false");
+    
+    return is_valid;
+}
+
 // AcceptSync verifies the synchronized block information and updates the transaction pool
 Status BlockAcceptor::AcceptSync(const view_block::protobuf::ViewBlockItem& view_block) {
     if (view_block.qc().pool_index() != pool_idx()) {
@@ -320,7 +665,8 @@ Status BlockAcceptor::addTxsToPool(
         bool directly_user_leader_txs,
         std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
         BalanceAndNonceMap& now_balance_map,
-        sethvm::SethhainHost& seth_host) {
+        sethvm::SethhainHost& seth_host,
+        std::unordered_map<std::string, uint64_t>* out_leader_nonce_map) {
 
     // 0. Basic check
     if (txs.size() == 0) {
@@ -341,93 +687,16 @@ Status BlockAcceptor::addTxsToPool(
     // temp_items: Store created TxItemPtr (Main thread writes, Child threads read)
     std::vector<pools::TxItemPtr> temp_items(txs.size(), nullptr);
     
-    // verify_results: Store verification results (0: pending, 1: success, -1: failure) - Child threads write
-    // Using int8_t to save space
-    std::vector<int8_t> verify_results(txs.size(), 0); 
-    
-    // Task queue and synchronization primitives
-    std::deque<int> task_queue;
-    std::mutex queue_mutex;
-    std::condition_variable queue_cv;
-    bool producer_done = false; // Flag to indicate production is finished
+    // verify_results: 0=pending, 1=success, -1=failure; written exclusively per-index (no races).
+    std::vector<int8_t> verify_results(txs.size(), 0);
     
     bool is_leader = msg_ptr->is_leader;
     bool need_verify = !is_leader; // Leader skips verification, Follower verifies
 
-    // --- Define Worker Thread Function ---
-    auto worker_func = [&]() {
-        while (true) {
-            int idx = -1;
-            {
-                std::unique_lock<std::mutex> lock(queue_mutex);
-                // Wait condition: Queue has data OR producer has finished
-                queue_cv.wait(lock, [&] { return !task_queue.empty() || producer_done; });
-                
-                if (task_queue.empty() && producer_done) {
-                    return; // Queue is empty and production is done, exit thread
-                }
-                
-                if (!task_queue.empty()) {
-                    idx = task_queue.front();
-                    task_queue.pop_front();
-                }
-            }
-
-            // Process task
-            if (idx != -1) {
-                // Note: At this point, temp_items[idx] has been assigned by the main thread
-                // and the main thread will not modify it again, so reading is safe.
-                auto tx_ptr = temp_items[idx];
-                
-                if (tx_ptr == nullptr || tx_ptr->tx_info == nullptr) {
-                    verify_results[idx] = -1; // Invalid object
-                    continue;
-                }
-
-                // Execute signature verification (Time-consuming operation)
-                const auto* tx = &txs[idx];
-                auto tx_hash = pools::GetTxMessageHash(*tx);
-                bool valid = true;
-
-                if (pools::IsUserTransaction(tx_ptr->tx_info->step())) {
-                    // Fix: Changed kError to kSecurityError
-                    int verify_ret = security::kSecurityError; 
-                    
-                    if (tx->pubkey().size() == 64u) {
-                        security::GmSsl gmssl;
-                        verify_ret = gmssl.Verify(tx_hash, tx_ptr->tx_info->pubkey(), tx_ptr->tx_info->sign());
-                    } else if (tx->pubkey().size() > 128u) {
-                        security::Oqs oqs;
-                        verify_ret = oqs.Verify(tx_hash, tx_ptr->tx_info->pubkey(), tx_ptr->tx_info->sign());
-                    } else {
-                        // Assuming security_ptr_ is thread-safe or read-only
-                        verify_ret = security_ptr_->Verify(tx_hash, tx_ptr->tx_info->pubkey(), tx_ptr->tx_info->sign());
-                    }
-
-                    if (verify_ret != security::kSecuritySuccess) {
-                        valid = false;
-                        // assert(false); // Avoid assert in multi-threaded environment, use logging if needed
-                    }
-                }
-
-                // Write result (Lock-free, exclusive idx access)
-                verify_results[idx] = valid ? 1 : -1;
-            }
-        }
-    };
-
-    // --- Start Thread Pool ---
-    std::vector<std::shared_ptr<std::thread>> threads;
+    // verify_tasks: built during the main loop, dispatched to the persistent pool in one shot.
+    std::vector<std::function<void()>> verify_tasks;
     if (need_verify) {
-        int thread_count = 8;
-        // Simple adaptation: Do not start too many threads if tasks are few
-        if (txs.size() < (size_t)thread_count) thread_count = (int)txs.size();
-        if (thread_count > 0) {
-            threads.reserve(thread_count);
-            for (int i = 0; i < thread_count; ++i) {
-                threads.emplace_back(std::make_shared<std::thread>(worker_func));
-            }
-        }
+        verify_tasks.reserve(txs.size());
     }
 
     // ========================================================================
@@ -448,6 +717,11 @@ Status BlockAcceptor::addTxsToPool(
             now_nonce);
     };
 
+    // Per-address nonce continuity tracking (mirrors TempGetTxIdempotently logic).
+    // Maps address → last accepted nonce for that address in this block.
+    // Ensures the leader cannot propose nonce gaps or duplicate nonces.
+    std::unordered_map<std::string, uint64_t> addr_valid_nonce_map;
+
     bool create_success = true;
     for (int i = 0; i < txs.size(); i++) {
         auto* tx = &txs[i];
@@ -459,6 +733,23 @@ Status BlockAcceptor::addTxsToPool(
         // --- Serial Logic: Get Account ID (Very short time) ---
         if (pools::IsUserTransaction(tx->step())) {
             from_id = security_ptr_->GetAddressWithPublicKey(tx->pubkey());
+        }
+
+        // Build leader_nonce_map during this single traversal.
+        // For contract execute/prefund/refund use the prefund composite key (to+from_id).
+        // For plain user txs use from_id directly.
+        if (out_leader_nonce_map != nullptr && pools::IsUserTransaction(tx->step()) && !tx->pubkey().empty()) {
+            std::string nonce_key;
+            if (tx->step() == pools::protobuf::kContractExcute ||
+                    tx->step() == pools::protobuf::kContractRefund) {
+                nonce_key = tx->to() + from_id;
+            } else {
+                nonce_key = from_id;
+            }
+            auto it = out_leader_nonce_map->find(nonce_key);
+            if (it == out_leader_nonce_map->end() || tx->nonce() >= it->second) {
+                (*out_leader_nonce_map)[nonce_key] = tx->nonce() + 1;
+            }
         }
         
         // --- Serial Logic: DB Query & AddressInfo Retrieval (Must be serial) ---
@@ -513,21 +804,48 @@ Status BlockAcceptor::addTxsToPool(
             continue;
         }
 
-        // --- Serial Logic: Nonce Check & Balance Update (State dependency, must be serial) ---
+        // --- Serial Logic: Nonce validity + continuity check (mirrors TempGetTxIdempotently) ---
+        // For user transactions we enforce two rules:
+        //   1. The nonce must be valid against the chain state (CheckTransactionValid).
+        //   2. If this address already appeared earlier in this block, the nonce must be
+        //      exactly prev_nonce + 1 — no gaps, no duplicates.
+        // This prevents a malicious leader from proposing nonce gaps or replays.
+        if (pools::IsUserTransaction(tx->step())) {
+            const std::string& nonce_addr = address_info->addr();
+            auto prev_it = addr_valid_nonce_map.find(nonce_addr);
+            if (prev_it == addr_valid_nonce_map.end()) {
+                // First tx from this address in this block: validate against chain state.
+                uint64_t now_nonce = 0lu;
+                int res = tx_valid_func(*address_info, *tx, &now_nonce);
+                if (res != 0) {
+                    SETH_WARN("nonce invalid (chain check) addr: %s, tx_nonce: %lu, "
+                        "chain_nonce: %lu, res: %d, step: %u",
+                        common::Encode::HexEncode(nonce_addr).c_str(),
+                        tx->nonce(), now_nonce, res, (uint32_t)tx->step());
+                    verify_results[i] = -1;
+                    create_success = false;
+                    break;
+                }
+                addr_valid_nonce_map[nonce_addr] = tx->nonce();
+            } else {
+                // Subsequent tx from same address: must be exactly prev + 1.
+                uint64_t expected = prev_it->second + 1;
+                if (tx->nonce() != expected) {
+                    SETH_WARN("nonce continuity violation addr: %s, expected: %lu, got: %lu, step: %u",
+                        common::Encode::HexEncode(nonce_addr).c_str(),
+                        expected, tx->nonce(), (uint32_t)tx->step());
+                    verify_results[i] = -1;
+                    create_success = false;
+                    break;
+                }
+                prev_it->second = tx->nonce();
+            }
+        }
+
+        // --- Serial Logic: Balance map update (State dependency, must be serial) ---
         auto now_map_iter = now_balance_map.find(address_info->addr());
         if (now_map_iter == now_balance_map.end()) {
-            if (pools::IsUserTransaction(tx->step())) {
-                uint64_t now_nonce = 0lu;
-                if (view_block_chain_ && view_block_chain_->CheckTxNonceValid(
-                        address_info->addr(), tx->nonce(), parent_hash, &now_nonce) != 0) {
-                    SETH_WARN("check tx nonce addr: %s, failed: %lu, phash: %s", 
-                        common::Encode::HexEncode(address_info->addr()).c_str(),
-                        tx->nonce(), 
-                        common::Encode::HexEncode(parent_hash).c_str());
-                    verify_results[i] = -1;
-                    continue;
-                }
-            } else {
+            if (!pools::IsUserTransaction(tx->step())) {
                 std::string val;
                 if (seth_host.GetKeyValue(tx->to(), tx->key(), &val) == sethvm::kSethvmSuccess) {
                     SETH_WARN("invalid add tx now get local to tx to: %s, unique hash: %s", 
@@ -555,7 +873,6 @@ Status BlockAcceptor::addTxsToPool(
         // --- Serial Logic: Object Factory Creation ---
         std::string contract_prefund_id;
         pools::TxItemPtr tx_ptr = nullptr;
-
         switch (tx->step()) {
         case pools::protobuf::kNormalFrom:
             tx_ptr = std::make_shared<consensus::FromTxItem>(
@@ -566,7 +883,7 @@ Status BlockAcceptor::addTxsToPool(
                     elect_info_->max_consensus_sharding_id(),
                     msg_ptr, i, vss_mgr_, account_mgr_, security_ptr_, address_info);
             break;
-        case pools::protobuf::kContractCreate:
+        case pools::protobuf::kCreateContract:
             tx_ptr = std::make_shared<consensus::ContractUserCreateCall>(
                     contract_mgr_, db_, msg_ptr, i, account_mgr_, security_ptr_, address_info);
             contract_prefund_id = tx->to() + from_id;
@@ -625,6 +942,64 @@ Status BlockAcceptor::addTxsToPool(
             break;
         }
         case pools::protobuf::kStatistic: {
+            // Follower validation for statistic transaction
+            // Parse leader's statistic transaction
+            pools::protobuf::ElectStatistic leader_statistic;
+            if (!leader_statistic.ParseFromString(tx->value())) {
+                SETH_WARN("failed to parse leader's elect statistic, rejecting proposal. "
+                    "pool=%u, key=%s",
+                    pool_idx(),
+                    common::Encode::HexEncode(tx->key()).c_str());
+                create_success = false;
+                break;
+            }
+            
+            // Verify sharding_id matches
+            if (leader_statistic.sharding_id() != msg_ptr->header.hotstuff().net_id()) {
+                SETH_WARN("statistic sharding_id mismatch, rejecting proposal. "
+                    "leader_shard=%u, expected_shard=%u, pool=%u",
+                    leader_statistic.sharding_id(),
+                    msg_ptr->header.hotstuff().net_id(),
+                    pool_idx());
+                create_success = false;
+                break;
+            }
+            
+            // Verify transaction exists in local tx_pool
+            if (!pools_mgr_->TxKeyExists(
+                    pool_idx(),
+                    tx->to(),
+                    tx->nonce(),
+                    tx->key())) {
+                SETH_WARN("statistic tx not found in local tx_pool, rejecting proposal. "
+                    "pool=%u, to=%s, nonce=%lu, key=%s",
+                    pool_idx(),
+                    common::Encode::HexEncode(tx->to()).c_str(),
+                    tx->nonce(),
+                    common::Encode::HexEncode(tx->key()).c_str());
+                create_success = false;
+                break;
+            }
+            
+            // Verify node information consistency (90% threshold)
+            if (!ValidateStatisticNodeConsistency(leader_statistic, pool_idx())) {
+                SETH_WARN("statistic node consistency validation failed (< 90%%), rejecting proposal. "
+                    "pool=%u, key=%s",
+                    pool_idx(),
+                    common::Encode::HexEncode(tx->key()).c_str());
+                create_success = false;
+                break;
+            }
+            
+            // Get address_info for statistic transaction
+            address_info = account_mgr_->pools_address_info(tx->step(), pool_idx());
+            if (!address_info) {
+                SETH_WARN("failed to get address_info for statistic tx, pool=%u", pool_idx());
+                create_success = false;
+                break;
+            }
+            
+            // All validations passed, create tx item
             tx_ptr = std::make_shared<consensus::StatisticTxItem>(
                 msg_ptr, i, account_mgr_, security_ptr_, address_info);
             break;
@@ -710,21 +1085,51 @@ Status BlockAcceptor::addTxsToPool(
 
         // --- Core Logic: Submit Task ---
         if (create_success && tx_ptr != nullptr) {
-            temp_items[i] = tx_ptr; // Store object first
-
+            temp_items[i] = tx_ptr;
             if (!need_verify) {
-                // Leader path: Mark success directly
+                // Leader path: mark success directly, no signature check needed.
                 verify_results[i] = 1;
             } else {
-                // Follower path: Push to queue, wake up consumers
-                {
-                    std::lock_guard<std::mutex> lock(queue_mutex);
-                    task_queue.push_back(i);
-                }
-                queue_cv.notify_one();
+                // Follower path: build a verify task for the persistent thread pool.
+                // Capture by value what the worker needs; temp_items[i] is already set
+                // and will not be modified again by the main thread.
+                const int   idx  = i;
+                const auto* ptx  = &txs[i];
+                verify_tasks.emplace_back([this, idx, ptx, &temp_items, &verify_results]() {
+                    auto& tx_ptr2 = temp_items[idx];
+                    if (!tx_ptr2 || !tx_ptr2->tx_info) {
+                        verify_results[idx] = -1;
+                        return;
+                    }
+                    if (!pools::IsUserTransaction(tx_ptr2->tx_info->step())) {
+                        verify_results[idx] = 1;
+                        return;
+                    }
+
+                    // ETH-format tx: re-verify using EIP-155 signing hash.
+                    if (ptx->has_eth_raw_tx() && !ptx->eth_raw_tx().empty()) {
+                        bool ok = security::VerifyEthSignature(
+                            ptx->eth_raw_tx(), ptx->pubkey(), ptx->sign());
+                        verify_results[idx] = ok ? 1 : -1;
+                        return;
+                    }
+
+                    auto tx_hash = pools::GetTxMessageHash(*ptx);
+                    int ret = security::kSecurityError;
+                    if (ptx->pubkey().size() == 64u) {
+                        security::GmSsl gmssl;
+                        ret = gmssl.Verify(tx_hash, tx_ptr2->tx_info->pubkey(), tx_ptr2->tx_info->sign());
+                    } else if (ptx->pubkey().size() > 128u) {
+                        security::Oqs oqs;
+                        ret = oqs.Verify(tx_hash, tx_ptr2->tx_info->pubkey(), tx_ptr2->tx_info->sign());
+                    } else {
+                        ret = security_ptr_->Verify(tx_hash, tx_ptr2->tx_info->pubkey(), tx_ptr2->tx_info->sign());
+                    }
+                    verify_results[idx] = (ret == security::kSecuritySuccess) ? 1 : -1;
+                });
             }
         } else {
-            verify_results[i] = -1; // Creation failed
+            verify_results[i] = -1;
         }
     } // End of loop
 
@@ -732,20 +1137,10 @@ Status BlockAcceptor::addTxsToPool(
     // 3. Finish and Collect
     // ========================================================================
 
-    if (need_verify) {
-        // Notify to stop production
-        {
-            std::lock_guard<std::mutex> lock(queue_mutex);
-            producer_done = true;
-        }
-        queue_cv.notify_all();
-
-        // Wait for all consumers to finish
-        for (auto& t : threads) {
-            if (t && t->joinable()) {
-                t->join();
-            }
-        }
+    if (need_verify && !verify_tasks.empty()) {
+        // Dispatch all verify tasks to the persistent thread pool and block until done.
+        // No thread creation/destruction overhead — threads were started in Init().
+        RunVerifyBatch(verify_tasks);
     }
 
     if (!create_success) {
@@ -774,7 +1169,8 @@ Status BlockAcceptor::GetAndAddTxsLocally(
         bool directly_user_leader_txs,
         std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
         BalanceAndNonceMap& balance_map,
-        sethvm::SethhainHost& seth_host) {
+        sethvm::SethhainHost& seth_host,
+        std::unordered_map<std::string, uint64_t>* out_leader_nonce_map) {
     auto add_txs_status = addTxsToPool(
         msg_ptr,
         parent_hash, 
@@ -782,7 +1178,8 @@ Status BlockAcceptor::GetAndAddTxsLocally(
         directly_user_leader_txs, 
         txs_ptr,
         balance_map,
-        seth_host);
+        seth_host,
+        out_leader_nonce_map);
     if (add_txs_status != Status::kSuccess) {
         SETH_ERROR("invalid consensus, add_txs_status failed: %d.", (int32_t)add_txs_status);
         return add_txs_status;
