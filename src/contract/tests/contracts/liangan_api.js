@@ -44,7 +44,7 @@ function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function create_tx(str_prikey, to, amount, gas_limit, gas_price, prepay, tx_type, key="", value="") {
+async function create_tx(str_prikey, to, amount, gas_limit, gas_price, prefund, tx_type, key="", value="") {
     var privateKeyBuf = Secp256k1.uint256(str_prikey, 16)
     var from_private_key = Secp256k1.uint256(privateKeyBuf, 16)
     var gid = GetValidHexString(Secp256k1.uint256(randomBytes(32)));
@@ -73,16 +73,16 @@ async function create_tx(str_prikey, to, amount, gas_limit, gas_price, prepay, t
     var low = (tx_type % MAX_UINT32) - big
     step_buf.writeUInt32LE(big, 0)
     step_buf.writeUInt32LE(low, 0)
-    var prepay_buf = new Buffer(8);
-    var big = ~~(prepay / MAX_UINT32)
-    var low = (prepay % MAX_UINT32) - big
-    prepay_buf.writeUInt32LE(big, 4)
-    prepay_buf.writeUInt32LE(low, 0)
+    var prefund_buf = new Buffer(8);
+    var big = ~~(prefund / MAX_UINT32)
+    var low = (prefund % MAX_UINT32) - big
+    prefund_buf.writeUInt32LE(big, 4)
+    prefund_buf.writeUInt32LE(low, 0)
 
     var buffer_array = [Buffer.from(gid, 'hex'),
         Buffer.from(frompk, 'hex'),
         Buffer.from(to, 'hex'),
-        amount_buf, gas_limit_buf, gas_price_buf, step_buf, prepay_buf];
+        amount_buf, gas_limit_buf, gas_price_buf, step_buf, prefund_buf];
     if (key != null && key != "") {
         buffer_array.push(Buffer.from(key));
         if (value != null && value != "") {
@@ -111,7 +111,7 @@ async function create_tx(str_prikey, to, amount, gas_limit, gas_price, prepay, t
         'sign_r': sigR.toString(16),
         'sign_s': sigS.toString(16),
         'sign_v': sig.v,
-        'prefund': prepay
+        'prefund': prefund
     }
 
     var post_data = querystring.stringify(data);

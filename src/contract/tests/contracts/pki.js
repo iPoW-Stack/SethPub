@@ -81,7 +81,7 @@ function GetValidHexString(uint256_bytes) {
     return str_res;
 }
 
-function param_contract(str_prikey, tx_type, gid, to, amount, gas_limit, gas_price, contract_bytes, input, prepay) {
+function param_contract(str_prikey, tx_type, gid, to, amount, gas_limit, gas_price, contract_bytes, input, prefund) {
     var privateKeyBuf = Secp256k1.uint256(str_prikey, 16)
     var from_private_key = Secp256k1.uint256(privateKeyBuf, 16)
     var gid = GetValidHexString(Secp256k1.uint256(randomBytes(32)));
@@ -112,11 +112,11 @@ function param_contract(str_prikey, tx_type, gid, to, amount, gas_limit, gas_pri
     step_buf.writeUInt32LE(big, 0)
     step_buf.writeUInt32LE(low, 0)
 
-    var prepay_buf = new Buffer(8);
-    var big = ~~(prepay / MAX_UINT32)
-    var low = (prepay % MAX_UINT32) - big
-    prepay_buf.writeUInt32LE(big, 4)
-    prepay_buf.writeUInt32LE(low, 0)
+    var prefund_buf = new Buffer(8);
+    var big = ~~(prefund / MAX_UINT32)
+    var low = (prefund % MAX_UINT32) - big
+    prefund_buf.writeUInt32LE(big, 4)
+    prefund_buf.writeUInt32LE(low, 0)
 
     var message_buf = Buffer.concat([
         Buffer.from(gid, 'hex'), 
@@ -125,7 +125,7 @@ function param_contract(str_prikey, tx_type, gid, to, amount, gas_limit, gas_pri
         amount_buf, gas_limit_buf, gas_price_buf, step_buf, 
         Buffer.from(contract_bytes, 'hex'), 
         Buffer.from(input, 'hex'), 
-        prepay_buf]);
+        prefund_buf]);
     var kechash = keccak256(message_buf)
     var digest = Secp256k1.uint256(kechash, 16)
     var sig = Secp256k1.ecsign(from_private_key, digest)
@@ -153,14 +153,14 @@ function param_contract(str_prikey, tx_type, gid, to, amount, gas_limit, gas_pri
         'attrs_size': 4,
         "bytes_code": contract_bytes,
         "input": input,
-        "prefund": prepay,
+        "prefund": prefund,
         'sign_r': sigR.toString(16),
         'sign_s': sigS.toString(16),
         'sign_v': sig.v,
     }
 }
 
-function create_tx(str_prikey, to, amount, gas_limit, gas_price, prepay, tx_type) {
+function create_tx(str_prikey, to, amount, gas_limit, gas_price, prefund, tx_type) {
     var privateKeyBuf = Secp256k1.uint256(str_prikey, 16)
     var from_private_key = Secp256k1.uint256(privateKeyBuf, 16)
     var gid = GetValidHexString(Secp256k1.uint256(randomBytes(32)));
@@ -189,14 +189,14 @@ function create_tx(str_prikey, to, amount, gas_limit, gas_price, prepay, tx_type
     var low = (tx_type % MAX_UINT32) - big
     step_buf.writeUInt32LE(big, 0)
     step_buf.writeUInt32LE(low, 0)
-    var prepay_buf = new Buffer(8);
-    var big = ~~(prepay / MAX_UINT32)
-    var low = (prepay % MAX_UINT32) - big
-    prepay_buf.writeUInt32LE(big, 4)
-    prepay_buf.writeUInt32LE(low, 0)
+    var prefund_buf = new Buffer(8);
+    var big = ~~(prefund / MAX_UINT32)
+    var low = (prefund % MAX_UINT32) - big
+    prefund_buf.writeUInt32LE(big, 4)
+    prefund_buf.writeUInt32LE(low, 0)
 
     var message_buf = Buffer.concat([Buffer.from(gid, 'hex'), Buffer.from(frompk, 'hex'), Buffer.from(to, 'hex'),
-        amount_buf, gas_limit_buf, gas_price_buf, step_buf, prepay_buf]);
+        amount_buf, gas_limit_buf, gas_price_buf, step_buf, prefund_buf]);
     var kechash = keccak256(message_buf)
     var digest = Secp256k1.uint256(kechash, 16)
     var sig = Secp256k1.ecsign(from_private_key, digest)
@@ -217,7 +217,7 @@ function create_tx(str_prikey, to, amount, gas_limit, gas_price, prepay, tx_type
         'sign_r': sigR.toString(16),
         'sign_s': sigS.toString(16),
         'sign_v': sig.v,
-        'prefund': prepay
+        'prefund': prefund
     }
 }
 
@@ -303,13 +303,13 @@ function QueryContract(str_prikey, input) {
     QueryPostCode('/query_contract', data);
 }
 
-function Prefund(str_prikey, prepay) {
-    var data = create_tx(str_prikey, contract_address, 0, 100000, 1, prepay, 7);
+function Prefund(str_prikey, prefund) {
+    var data = create_tx(str_prikey, contract_address, 0, 100000, 1, prefund, 7);
     PostCode(data);
 }
 
-function Prefund(str_prikey, prepay) {
-    var data = create_tx(str_prikey, contract_address, 0, 100000, 1, prepay, 7);
+function Prefund(str_prikey, prefund) {
+    var data = create_tx(str_prikey, contract_address, 0, 100000, 1, prefund, 7);
     PostCode(data);
 }
 

@@ -162,7 +162,7 @@ static int CreateOqsTransactionWithAttr(
     if (!prefund.empty()) {
         uint64_t prefund_val = 0;
         if (!common::StringUtil::ToUint64(prefund, &prefund_val)) {
-            SETH_WARN("get prepay failed %s", prefund.c_str());
+            SETH_WARN("get prefund failed %s", prefund.c_str());
             return kSignatureInvalid;
         }
         new_tx->set_contract_prefund(prefund_val);
@@ -543,7 +543,7 @@ static int CreateTransactionWithAttr(
     if (!prefund.empty()) {
         uint64_t prefund_val = 0;
         if (!common::StringUtil::ToUint64(prefund, &prefund_val)) {
-            SETH_WARN("get prepay failed %s", prefund);
+            SETH_WARN("get prefund failed %s", prefund);
             return kSignatureInvalid;
         }
 

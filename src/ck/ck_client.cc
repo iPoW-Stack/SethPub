@@ -210,10 +210,10 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
             {
                 auto contract = tx.to();
                 auto user = tx.from();
-                prepay_contract->Append(common::Encode::HexEncode(contract));
-                prepay_user->Append(common::Encode::HexEncode(user));
-                prepay_height->Append(block_item->height());
-                prepay_amount->Append(tx.balance());
+                prefund_contract->Append(common::Encode::HexEncode(contract));
+                prefund_user->Append(common::Encode::HexEncode(user));
+                prefund_height->Append(block_item->height());
+                prefund_amount->Append(tx.balance());
                 SETH_DEBUG("success add prefund contract: %s, address: %s, nonce: %lu, balance: %lu",
                     common::Encode::HexEncode(contract).c_str(), 
                     common::Encode::HexEncode(user).c_str(), 
@@ -271,10 +271,10 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
                 if (to_txs.tos(to_tx_idx).to().size() == common::kUnicastAddressLength * 2) {
                     auto contract = to_txs.tos(to_tx_idx).to().substr(0, common::kUnicastAddressLength);
                     auto user = to_txs.tos(to_tx_idx).to().substr(common::kUnicastAddressLength, common::kUnicastAddressLength);
-                    prepay_contract->Append(common::Encode::HexEncode(contract));
-                    prepay_user->Append(common::Encode::HexEncode(user));
-                    prepay_height->Append(block_item->height());
-                    prepay_amount->Append(to_txs.tos(to_tx_idx).balance());
+                    prefund_contract->Append(common::Encode::HexEncode(contract));
+                    prefund_user->Append(common::Encode::HexEncode(user));
+                    prefund_height->Append(block_item->height());
+                    prefund_amount->Append(to_txs.tos(to_tx_idx).balance());
                     SETH_DEBUG("success add prefund contract: %s, address: %s, nonce: %lu, balance: %lu",
                         common::Encode::HexEncode(contract).c_str(), 
                         common::Encode::HexEncode(user).c_str(), 
@@ -385,7 +385,7 @@ void ClickHouseClient::FlushToCkWithData() try {
             clickhouse::Block accounts;
             clickhouse::Block account_attrs;
             clickhouse::Block c2cs;
-            clickhouse::Block prepay;
+            clickhouse::Block prefund;
             blocks.AppendColumn("shard_id", block_shard_id);
             blocks.AppendColumn("pool_index", block_pool_index);
             blocks.AppendColumn("height", block_height);
@@ -463,10 +463,10 @@ void ClickHouseClient::FlushToCkWithData() try {
             c2cs.AppendColumn("amount", c2c_amount);
             c2cs.AppendColumn("contract", c2c_contract_addr);
 
-            prepay.AppendColumn("contract", prepay_contract);
-            prepay.AppendColumn("user", prepay_user);
-            prepay.AppendColumn("prefund", prepay_amount);
-            prepay.AppendColumn("height", prepay_height);
+            prefund.AppendColumn("contract", prefund_contract);
+            prefund.AppendColumn("user", prefund_user);
+            prefund.AppendColumn("prefund", prefund_amount);
+            prefund.AppendColumn("height", prefund_height);
 
             uint32_t idx = 0;
             clickhouse::Client ck_client(clickhouse::ClientOptions().
@@ -479,7 +479,7 @@ void ClickHouseClient::FlushToCkWithData() try {
             ck_client.Insert(kClickhouseAccountTableName, accounts);
             ck_client.Insert(kClickhouseAccountKvTableName, account_attrs);
             ck_client.Insert(kClickhouseC2cTableName, c2cs);
-            ck_client.Insert(kClickhousePrefundTableName, prepay);
+            ck_client.Insert(kClickhousePrefundTableName, prefund);
         }
 
         HandleBlsMessage();
@@ -854,10 +854,10 @@ void ClickHouseClient::ResetColumns() {
     c2c_amount = std::make_shared<clickhouse::ColumnUInt64>();
     c2c_contract_addr = std::make_shared<clickhouse::ColumnString>();
 
-    prepay_contract = std::make_shared<clickhouse::ColumnString>();
-    prepay_user = std::make_shared<clickhouse::ColumnString>();
-    prepay_amount = std::make_shared<clickhouse::ColumnUInt64>();
-    prepay_height = std::make_shared<clickhouse::ColumnUInt64>();
+    prefund_contract = std::make_shared<clickhouse::ColumnString>();
+    prefund_user = std::make_shared<clickhouse::ColumnString>();
+    prefund_amount = std::make_shared<clickhouse::ColumnUInt64>();
+    prefund_height = std::make_shared<clickhouse::ColumnUInt64>();
 }
 
 bool ClickHouseClient::CreateBlsElectInfoTable() {

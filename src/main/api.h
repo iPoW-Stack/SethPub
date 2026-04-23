@@ -262,7 +262,7 @@ public:
     Sign signMessage(security::Ecdsa& ecdsa, uint64_t nonce, const std::string& to, uint64_t amount,
                     uint64_t gas_limit, uint64_t gas_price, int step,
                     const std::string& contract_bytes, const std::string& input,
-                    uint64_t prepay, const std::string& key, const std::string& val) {
+                    uint64_t prefund, const std::string& key, const std::string& val) {
         std::string message;
         message.append(std::string((char*)&nonce, sizeof(nonce)));
         message.append(ecdsa.GetPublicKey());
@@ -274,8 +274,8 @@ public:
         message.append(std::string((char*)&tmp_step, sizeof(tmp_step)));
         if (!contract_bytes.empty()) message.append(common::Encode::HexDecode(contract_bytes));
         if (!input.empty()) message.append(common::Encode::HexDecode(input));
-        // Only append prepay when non-zero, matching seth_sdk.py behaviour.
-        if (prepay > 0) message.append(std::string((char*)&prepay, sizeof(prepay)));
+        // Only append prefund when non-zero, matching seth_sdk.py behaviour.
+        if (prefund > 0) message.append(std::string((char*)&prefund, sizeof(prefund)));
 
         std::string h_str = common::Hash::keccak256(message);
         std::string sign;
@@ -581,13 +581,13 @@ public:
 //     // -------------------------------------------------
 //     std::cout << "\n[Step 3] Setting Gas Prefund..." << std::endl;
     
-//     seth::json prepay_res = sdk.setGasPrefund(
+//     seth::json prefund_res = sdk.setGasPrefund(
 //         private_key, 
 //         contract_address, 
 //         10000 // Supplement Gas
 //     );
 
-//     std::cout << "-> Set Prefund: " << prepay_res["msg"] << std::endl;
+//     std::cout << "-> Set Prefund: " << prefund_res["msg"] << std::endl;
 
 //     // -------------------------------------------------
 //     // Step 4: Call Contract Function
