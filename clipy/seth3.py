@@ -2458,11 +2458,19 @@ def _eth_sign_and_send(client, pk_hex: str, to: bytes, value: int, data: bytes,
 
 
 def _eth_wait_receipt(client, tx_hash_hex: str, timeout: int = 120) -> dict:
-    """Poll eth_getTransactionReceipt until non-null or timeout."""
+    """
+    Poll eth_getTransactionReceipt until non-null or timeout.
+    
+    Also polls the Seth-native /transaction_receipt endpoint to check intermediate
+    status. If the tx is in status 10001 (kMessageHandle = pending in pool) or
+    10003 (kTxAccept = accepted, waiting for consensus), keep waiting.
+    If it's a terminal error status, return early with the error info.
+    """
     import requests as _req
     rpc_url = f"{client.base_url}/eth"
     deadline = time.time() + timeout
     while time.time() < deadline:
+        # 1. Try ETH-format receipt first (returns non-null only after on-chain commit)
         rpc_body = {
             "jsonrpc": "2.0", "id": 1,
             "method": "eth_getTransactionReceipt",
@@ -2472,6 +2480,34 @@ def _eth_wait_receipt(client, tx_hash_hex: str, timeout: int = 120) -> dict:
         result = resp.json().get("result")
         if result is not None:
             return result
+
+        # 2. Check Seth-native receipt for intermediate status
+        # Strip 0x prefix for the Seth endpoint
+        tx_hash_raw = tx_hash_hex
+        if tx_hash_raw.startswith("0x") or tx_hash_raw.startswith("0X"):
+            tx_hash_raw = tx_hash_raw[2:]
+        try:
+            seth_resp = _req.post(
+                client.receipt_url,
+                data={"tx_hash": tx_hash_raw},
+                verify=client.verify_ssl
+            ).json()
+            seth_status = seth_resp.get("status", 10001)
+            # 10001 = kMessageHandle (pending in pool), 10003 = kTxAccept (accepted, waiting consensus)
+            # These are transient — keep polling.
+            if seth_status not in (10001, 10003):
+                # Terminal status: either success (0) or an error.
+                # If success (0), the ETH receipt should appear soon — keep polling a few more rounds.
+                # If error, return immediately with the error info.
+                if seth_status != 0:
+                    print(f"    [_eth_wait_receipt] Seth-native status={seth_status} "
+                          f"({seth_resp.get('msg', '?')}), returning error")
+                    return {"status": "0x0", "seth_error": seth_status,
+                            "seth_msg": seth_resp.get("msg", "unknown")}
+                # status == 0 means committed — ETH receipt should appear next poll
+        except Exception:
+            pass  # Seth-native endpoint may not be available; just keep polling ETH
+
         time.sleep(2)
     return None
 
@@ -2548,10 +2584,20 @@ def test_eth_signing(w3, MY, KEY):
         print(f"    ❌ ETH contract deploy failed: {receipt}")
 
     # For subsequent calls we need the contract address.
-    # Since Seth uses CREATE2, we compute it from the deployer address.
-    from seth_sdk import calc_create2_address
-    contract_addr = calc_create2_address(my_addr, str(nonce), c_bin)
-    print(f"    Contract address: {contract_addr}")
+    # The ETH JSON-RPC path uses Ethereum's CREATE formula: keccak256(RLP([sender, nonce]))[-20:]
+    from seth_sdk import calc_create_address
+    contract_addr = calc_create_address(my_addr, nonce)
+    print(f"    Contract address (CREATE): {contract_addr}")
+
+    # Also check if the receipt returned contractAddress
+    if receipt and receipt.get('contractAddress'):
+        receipt_addr = receipt['contractAddress'].replace('0x', '').lower()
+        print(f"    Contract address (receipt): {receipt_addr}")
+        if receipt_addr == contract_addr:
+            print("    ✅ CREATE address matches receipt")
+        else:
+            print(f"    ⚠ Address mismatch: computed={contract_addr}, receipt={receipt_addr}")
+            contract_addr = receipt_addr  # use receipt address as authoritative
 
     # ── 3. Prefund (Seth-native — needed for contract gas) ────────────────
     print("\n[3] Seth-native prefund on contract...")
