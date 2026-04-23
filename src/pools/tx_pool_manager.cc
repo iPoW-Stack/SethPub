@@ -688,7 +688,7 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
         }
 
         if (handle_status != transport::kMessageHandle) {
-            msg_ptr->set_status(handle_status);
+            msg_ptr->set_status((transport::MessageHandleStatus)handle_status);
             return;
         }
 
