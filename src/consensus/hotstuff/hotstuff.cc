@@ -2335,7 +2335,7 @@ void Hotstuff::TryRecoverFromStuck(
 
     auto local_idx = GetLocalMemberIdx();
     View out_view = 0;
-    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view, true);
+    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view, false);
     if (!leader) {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
         return;

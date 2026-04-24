@@ -201,7 +201,6 @@ add_executable(tnets ${MAIN_DIR}/tnet_svr.cc)
 add_executable(tnetc ${MAIN_DIR}/tnet_cli.cc)
 add_executable(txcli ${MAIN_DIR}/tx_cli.cc)
 add_executable(blsmain ${MAIN_DIR}/bls_main.cc)
-add_executable(hotstuff ${MAIN_DIR}/hotstuff.cc)
 
 set(LINK_ARGS
     init
@@ -244,7 +243,7 @@ set(LINK_ARGS
 )
 
 # Unified Linking
-foreach(TARGET_NAME pkicli blsmain seth tnetc tnets txcli hotstuff)
+foreach(TARGET_NAME pkicli blsmain seth tnetc tnets txcli)
     target_link_libraries(${TARGET_NAME} ${LINK_ARGS})
 endforeach()
 
