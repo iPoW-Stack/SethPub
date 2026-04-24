@@ -644,7 +644,7 @@ int main(int argc, char** argv) {
         std::cout << "\n[Phase 3] Waiting for accounts to be confirmed (up to 120s)..." << std::endl;
         uint32_t accounts_per_thread = kAccountCount / num_threads;
         auto phase3_start = std::chrono::steady_clock::now();
-        const auto kPhase3Timeout = std::chrono::seconds(120);
+        const auto kPhase3Timeout = std::chrono::seconds(240);
         uint32_t confirmed_count = 0;
         uint32_t probe_idx = 0;
 
