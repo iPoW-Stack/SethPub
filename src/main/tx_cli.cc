@@ -712,8 +712,16 @@ int main(int argc, char** argv) {
         std::cout << "✓ Account confirmation complete: " << confirmed_count
                   << "/" << kAccountCount << " confirmed in " << total_secs << "s" << std::endl;
 
-        if (confirmed_count < kAccountCount / 2) {
-            std::cerr << "ERROR: Less than 50% of accounts confirmed. Aborting stress test." << std::endl;
+        if (confirmed_count < kAccountCount) {
+            uint32_t failed_total = kAccountCount - confirmed_count;
+            std::cerr << "\nERROR: " << failed_total << " accounts failed to confirm:" << std::endl;
+            for (uint32_t i = 0; i < kAccountCount; ++i) {
+                if (prikey_with_nonce.count(test_addrs[i]) == 0) {
+                    std::cerr << "  [" << i << "] " << common::Encode::HexEncode(test_addrs[i]) << std::endl;
+                }
+            }
+            std::cerr << "Aborting stress test." << std::endl;
+            transport::TcpTransport::Instance()->Stop();
             return 1;
         }
 
