@@ -277,6 +277,22 @@ int tx_main(int argc, char** argv) {
         UpdateAddressNonceThread();
     };
 
+    // Fetch leader routing table
+    SethSDK sdk(global_chain_node_ip, global_chain_node_http_port);
+    std::unordered_map<uint32_t, SethSDK::LeaderInfo> leader_map;
+    uint32_t leader_count = 0;
+    bool has_leader_routing = sdk.fetchLeaders(leader_map, leader_count);
+    std::mutex leader_mutex;  // Protect leader_map access
+    
+    if (has_leader_routing) {
+        std::cout << "Leader routing enabled: " << leader_count << " leaders" << std::endl;
+        for (auto& [mod, info] : leader_map) {
+            std::cout << "  pool " << mod << " -> " << info.ip << ":" << info.port << std::endl;
+        }
+    } else {
+        std::cout << "Leader routing unavailable, using default node" << std::endl;
+    }
+
     const std::string key = "";
     const std::string value = "";
     auto tx_thread = [&](std::vector<std::string> prikeys) {
@@ -332,7 +348,21 @@ int tx_main(int argc, char** argv) {
                 1000,
                 1,
                 shardnum);
-            if (transport::TcpTransport::Instance()->Send(ip, port, tx_msg_ptr->header) != 0) {
+            
+            // Route to the leader responsible for the sender's pool
+            std::string dest_ip = ip;
+            uint16_t dest_port = port;
+            if (has_leader_routing) {
+                uint32_t pool_idx = common::GetAddressPoolIndex(addr);
+                std::lock_guard<std::mutex> lock(leader_mutex);
+                auto it = leader_map.find(pool_idx);
+                if (it != leader_map.end()) {
+                    dest_ip = it->second.ip;
+                    dest_port = it->second.port;
+                }
+            }
+            
+            if (transport::TcpTransport::Instance()->Send(dest_ip, dest_port, tx_msg_ptr->header) != 0) {
                 std::cout << "send tcp client failed!" << std::endl;
                 // Do not return — just skip this tx and keep running
             }
@@ -385,6 +415,23 @@ int tx_main(int argc, char** argv) {
 
     thread_vec.push_back(std::thread(tps_thread));
     thread_vec.push_back(std::thread(update_nonce_thread));
+
+    // Leader synchronization thread - refreshes every 3 seconds
+    auto leader_sync_thread = [&]() {
+        while (!global_stop) {
+            usleep(3000000);  // 3 seconds
+            std::unordered_map<uint32_t, SethSDK::LeaderInfo> new_leaders;
+            uint32_t new_count = 0;
+            if (sdk.fetchLeaders(new_leaders, new_count) && !new_leaders.empty()) {
+                std::lock_guard<std::mutex> lock(leader_mutex);
+                leader_map = new_leaders;
+                leader_count = new_count;
+                has_leader_routing = true;
+                std::cout << "[Leader Sync] Refreshed: " << new_count << " leaders" << std::endl;
+            }
+        }
+    };
+    thread_vec.push_back(std::thread(leader_sync_thread));
 
     // When Ctrl+C fires, global_stop becomes true but the nonce thread may be
     // sleeping in wait_for(15s).  Wake it so join() returns promptly.
