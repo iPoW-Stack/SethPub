@@ -283,7 +283,7 @@ Shard X                              Cross-Shard Relay              Shard Y
 
 | Dimension | Scenario 1 (Co-located) | Scenario 2 (Parallel) | Scenario 3 (Cross-shard) |
 |-----------|------------------------|----------------------|--------------------------|
-| Topology | Same deployer OR auto-targeted deployer → same pool | Different deployers → different shards | Two pools on different shards |
+| Topology | Auto-targeted to same pool (any deployer) | Different deployers → different shards | Two pools on different shards |
 | Atomicity | ✅ Full (single tx) | ✅ Full per pool | Per-step atomic |
 | Throughput | Single pool TPS | O(N) parallel | Sequential (relay overhead) |
 | Slippage | Single `minOut` | Single `minOut` per pool | Per-hop `minOut` |
