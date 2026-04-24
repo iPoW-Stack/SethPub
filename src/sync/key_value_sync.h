@@ -5,6 +5,8 @@
 #include <memory>
 #include <queue>
 #include <string>
+#include <thread>
+#include <atomic>
 #include <unordered_map>
 
 #include "block/block_utils.h"
@@ -144,6 +146,7 @@ private:
     void ConsensusTimerMessage();
     void HotstuffConsensusTimerMessage(const transport::MessagePtr& msg_ptr);
     uint32_t PopKvMessage();
+    void KvConsumerLoop();
     void HandleKvMessage(const transport::MessagePtr& msg_ptr);
     void ResponseElectBlock(
         uint32_t network_id,
@@ -158,9 +161,12 @@ private:
     static const uint64_t kSyncPeriodUs = 300000lu;
     static const uint64_t kSyncTimeoutPeriodUs = 3000000lu;
     static const uint32_t kEachTimerHandleCount = 64u;
+    static const uint32_t kMaxBatchDrainCount = 4096u;
     static const uint32_t kCacheSyncKeyValueCount = 1024000u;
     static const uint32_t kSyncCount = 5u;
     static const uint32_t kMaxSyncLatestNotRootCount = 1024u;
+    // Max messages the dedicated consumer thread processes per wakeup
+    static const uint32_t kConsumerBatchSize = 1024u;
 
     std::shared_ptr<pools::TxPoolManager> tx_pool_mgr_ = nullptr;
     common::ThreadSafeQueue<SyncItemPtr> item_queues_[common::kMaxThreadCount];
@@ -170,6 +176,8 @@ private:
     uint32_t not_root_synced_res_map_count_ = 0;
     common::Tick kv_tick_;
     common::ThreadSafeQueue<std::shared_ptr<transport::TransportMessage>> kv_msg_queue_;
+    // Messages relayed by consumer thread, processed by timer thread
+    common::ThreadSafeQueue<std::shared_ptr<transport::TransportMessage>> kv_ready_queue_;
     uint64_t elect_net_heights_map_[network::kConsensusShardEndNetworkId] = { 0 };
     common::UniqueSet<std::string, kCacheSyncKeyValueCount> responsed_keys_;
     uint32_t max_sharding_id_ = network::kConsensusShardBeginNetworkId;
@@ -178,6 +186,8 @@ private:
     std::shared_ptr<consensus::HotstuffManager> hotstuff_mgr_ = nullptr;
     std::mutex wait_mutex_;
     std::condition_variable wait_con_;
+    std::shared_ptr<std::thread> kv_consumer_thread_ = nullptr;
+    std::atomic<bool> destroy_{false};
     uint64_t prev_sync_tm_ms_ = 0;
     uint64_t prev_sent_sync_tm_ms_ = 0;
 

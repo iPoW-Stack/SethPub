@@ -26,6 +26,11 @@ namespace sync {
 KeyValueSync::KeyValueSync() {}
 
 KeyValueSync::~KeyValueSync() {
+    destroy_ = true;
+    wait_con_.notify_all();
+    if (kv_consumer_thread_ && kv_consumer_thread_->joinable()) {
+        kv_consumer_thread_->join();
+    }
 }
 
 void KeyValueSync::Init(
@@ -52,6 +57,9 @@ void KeyValueSync::Init(
         common::kHotstuffSyncTimerMessage,
         std::bind(&KeyValueSync::HotstuffConsensusTimerMessage, this, std::placeholders::_1));    
     SETH_DEBUG("init key value sync 5");
+    // Start dedicated consumer thread for kv_msg_queue_ to avoid backlog
+    kv_consumer_thread_ = std::make_shared<std::thread>(&KeyValueSync::KvConsumerLoop, this);
+    SETH_DEBUG("init key value sync 6: consumer thread started");
 }
 
 int KeyValueSync::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
@@ -161,7 +169,7 @@ void KeyValueSync::BroadcastGlobalBlock() {
     broadcast::SetDefaultBroadcastParam(broadcast);
     transport::TcpTransport::Instance()->SetMessageHash(msg);
     network::Route::Instance()->Send(msg_ptr);
-    SETH_DEBUG("sync global block ok des: %u, des hash64: %lu",
+    SETH_DEBUG("sync global block ok des: %u, des hash64: %lu,",
         network::kNodeNetworkId, msg.hash64());
 }
 
@@ -190,7 +198,21 @@ void KeyValueSync::AddSyncViewHash(
 void KeyValueSync::ConsensusTimerMessage() {
     auto now_tm_us = common::TimeUtils::TimestampUs();
     auto now_tm_ms = common::TimeUtils::TimestampMs();
-    auto count = PopKvMessage();
+    // Drain messages relayed by the consumer thread. All processing
+    // (request handling + response handling) runs here on the single
+    // timer thread to avoid SPSC queue and shared-state races.
+    {
+        uint32_t processed = 0;
+        transport::MessagePtr msg_ptr = nullptr;
+        while (processed < kMaxBatchDrainCount) {
+            msg_ptr = nullptr;
+            if (!kv_ready_queue_.pop(&msg_ptr) || msg_ptr == nullptr) {
+                break;
+            }
+            HandleKvMessage(msg_ptr);
+            ++processed;
+        }
+    }
     auto now_tm_ms1 = common::TimeUtils::TimestampMs();
     PopItems();
     auto now_tm_ms2 = common::TimeUtils::TimestampMs();
@@ -215,8 +237,10 @@ void KeyValueSync::ConsensusTimerMessage() {
         prev_sync_tm_ms_ = now_tm_ms3;
     }
 
+    // If ready queue still has pending items, re-schedule faster to keep up
+    uint64_t next_interval = (kv_ready_queue_.size() > 64) ? 1000lu : 10000lu;
     kv_tick_.CutOff(
-        10000lu,
+        next_interval,
         std::bind(&KeyValueSync::ConsensusTimerMessage, this));
     // return count;
 }
@@ -426,17 +450,48 @@ void KeyValueSync::HandleMessage(const transport::MessagePtr& msg_ptr) {
 }
 
 uint32_t KeyValueSync::PopKvMessage() {
-    uint32_t count = 0;
-    while (count++ < kEachTimerHandleCount) {
-        transport::MessagePtr msg_ptr = nullptr;
-        if (!kv_msg_queue_.pop(&msg_ptr) || msg_ptr == nullptr) {
-            break;
+    // Legacy fallback — no longer used. All kv_msg_queue_ consumption is
+    // handled by KvConsumerLoop which relays to kv_ready_queue_.
+    // ConsensusTimerMessage drains kv_ready_queue_ directly.
+    return 0;
+}
+
+void KeyValueSync::KvConsumerLoop() {
+    // This thread's sole job is to relay messages from kv_msg_queue_ (fed by
+    // network threads) into kv_ready_queue_ as fast as possible.
+    //
+    // ALL actual processing (ProcessSyncValueRequest, ProcessSyncValueResponse)
+    // must happen on the timer thread because:
+    //   - ProcessSyncValueResponse writes non-thread-safe shared state
+    //   - ProcessSyncValueRequest calls hotstuff_mgr_->chain()->GetViewBlockWithHash()
+    //     which pops from a SPSC ReaderWriterQueue that the timer thread also pops
+    //
+    // By keeping this thread as a pure relay, we decouple the network push rate
+    // from the timer's processing rate without introducing any thread-safety issues.
+    common::GlobalInfo::Instance()->get_thread_index();
+    while (!destroy_) {
+        uint32_t drained = 0;
+        while (drained < kConsumerBatchSize) {
+            transport::MessagePtr msg_ptr = nullptr;
+            if (!kv_msg_queue_.pop(&msg_ptr) || msg_ptr == nullptr) {
+                break;
+            }
+
+            kv_ready_queue_.push(msg_ptr);
+            ++drained;
         }
 
-        HandleKvMessage(msg_ptr);
-    }
+        if (drained > 0) {
+            SETH_DEBUG("KvConsumerLoop relayed %u messages, kv_msg remaining: %u, ready: %u",
+                drained, (uint32_t)kv_msg_queue_.size(), (uint32_t)kv_ready_queue_.size());
+            if (drained >= kConsumerBatchSize) {
+                continue;
+            }
+        }
 
-    return count;
+        std::unique_lock<std::mutex> lock(wait_mutex_);
+        wait_con_.wait_for(lock, std::chrono::milliseconds(5));
+    }
 }
 
 void KeyValueSync::HandleKvMessage(const transport::MessagePtr& msg_ptr) {

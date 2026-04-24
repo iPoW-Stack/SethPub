@@ -215,7 +215,7 @@ public:
                     return nonce;
                 }
             } catch (std::exception& e) {
-                std::cout << "catch error fetch nonce failed: " << address << ": " << e.what() << std::endl;
+                // std::cout << "catch error fetch nonce failed: " << address << ": " << e.what() << std::endl;
                 return -1; 
             }
         }
@@ -342,6 +342,7 @@ public:
 
 private:
     secp256k1_context* ctx;
+public:
     std::string node_host_ = "127.0.0.1";
     int node_port_ = 23001;
 };
@@ -426,6 +427,53 @@ public:
     SethSDK(const std::string& node_host = "127.0.0.1", int node_port = 23001) : client(node_host, node_port) {}
     int64_t fetchNonce(const std::string& address) {
         return client.fetchNonce(address); 
+    }
+
+    // Fetch leader routing table: returns map of pool_index -> {ip, port}
+    // Each pool has its own leader. Client sends tx directly to the leader
+    // of the sender's pool: leaders[GetAddressPoolIndex(from_addr)]
+    struct LeaderInfo {
+        std::string ip;
+        uint16_t port;
+    };
+
+    bool fetchLeaders(
+            std::unordered_map<uint32_t, LeaderInfo>& leaders,
+            uint32_t& leader_count) {
+        httplib::SSLClient cli(client.node_host_, client.node_port_);
+        cli.enable_server_certificate_verification(false);
+        auto res = cli.Post("/query_leaders");
+        if (!res || res->status != 200) {
+            return false;
+        }
+
+        try {
+            json info = json::parse(res->body);
+            if (!info.contains("status") || info["status"] != 0) {
+                return false;
+            }
+
+            leader_count = info.value("pool_count", 0u);
+            if (leader_count == 0 || !info.contains("leaders")) {
+                return false;
+            }
+
+            for (auto& [key, val] : info["leaders"].items()) {
+                uint32_t pool_idx = std::stoi(key);
+                LeaderInfo li;
+                li.ip = val["ip"].get<std::string>();
+                li.port = val["port"].get<uint16_t>();
+                if (li.ip == "0.0.0.0" || li.port == 0) {
+                    continue;  // Skip invalid entries
+                }
+                leaders[pool_idx] = li;
+            }
+
+            return !leaders.empty();
+        } catch (std::exception& e) {
+            std::cerr << "fetchLeaders parse error: " << e.what() << std::endl;
+            return false;
+        }
     }
 
     json compileSolidity(const std::string& source_code) {

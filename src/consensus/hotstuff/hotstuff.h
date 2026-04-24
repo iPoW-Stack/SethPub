@@ -319,6 +319,7 @@ private:
             View* out_view,
             int64_t leader_tm_sec = 0,
             bool debug = true) {
+        debug = false;
         // auto members = elect_item->valid_leaders();
         auto members = Members(common::GlobalInfo::Instance()->network_id());
         if (members == nullptr || members->empty()) {
@@ -366,7 +367,7 @@ private:
         if (last_stable_leader_member_index_ == new_leader_idx) {
             do {
                 if (leader_latest_qc.view() != high_view_block->qc().view()) {
-            if (debug)
+                    if (debug)
                     SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is not equal with high view block qc view: %lu",
                         pool_idx_, leader_latest_qc.view(), high_view_block->qc().view());
                     break;

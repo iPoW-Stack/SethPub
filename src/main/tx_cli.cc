@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <chrono>
 #include <queue>
 #include <vector>
 #include <mutex>
@@ -25,7 +26,7 @@
 
 using namespace seth;
 static bool global_stop = false;
-static const std::string kBroadcastIp = "127.0.0.1";
+static const std::string kBroadcastIp = "10.10.1.115";
 static const uint16_t kBroadcastPort = 13001;
 static int shardnum = 3;
 static const int delayus = 0;
@@ -35,8 +36,8 @@ static const std::string db_path = "./txclidb";
 // http::HttpClient cli;
 std::mutex cli_mutex;
 std::condition_variable cli_con;
-std::string global_chain_node_ip = "127.0.0.1";
-uint16_t global_chain_node_http_port = 13001;
+std::string global_chain_node_ip = "10.10.1.115";
+uint16_t global_chain_node_http_port = 23001;
 std::unordered_map<std::string, uint64_t> prikey_with_nonce;
 std::unordered_map<std::string, uint64_t> src_prikey_with_nonce;
 uint64_t batch_nonce_check_count = 10240;
@@ -553,11 +554,15 @@ int main(int argc, char** argv) {
         std::atomic<uint32_t> created_count{0};
         std::atomic<uint32_t> failed_count{0};
 
+        // Limit thread count to number of funded accounts to avoid nonce collisions.
+        // Each funder must be used by exactly one thread.
+        uint32_t create_threads_count = std::min(num_threads, (uint32_t)g_prikeys.size());
+        uint32_t accounts_per_create_thread = kAccountCount / create_threads_count;
+
         // Use existing funded accounts to send initial coins to test accounts
         auto create_account_thread = [&](uint32_t thread_id, uint32_t start_idx, uint32_t end_idx) {
-            // Use one of the funded accounts from g_prikeys
-            uint32_t funder_idx = thread_id % g_prikeys.size();
-            std::string funder_prikey = g_prikeys[funder_idx];
+            // Each thread gets a unique funder (thread_id < g_prikeys.size() guaranteed)
+            std::string funder_prikey = g_prikeys[thread_id];
             std::shared_ptr<security::Security> funder_sec = std::make_shared<security::Ecdsa>();
             funder_sec->SetPrivateKey(funder_prikey);
             std::string funder_addr = funder_sec->GetAddress();
@@ -565,12 +570,19 @@ int main(int argc, char** argv) {
             // Get initial nonce
             int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(funder_addr));
             if (nonce < 0) {
-                std::cerr << "  Thread " << thread_id << ": Failed to fetch nonce" << std::endl;
+                std::cerr << "  Thread " << thread_id << ": Failed to fetch nonce for funder "
+                          <<  common::Encode::HexEncode(funder_prikey) << " : " << common::Encode::HexEncode(funder_addr) << std::endl;
+                failed_count += (end_idx - start_idx);
                 return;
             }
 
+            std::cout << "  Thread " << thread_id << ": funder="
+                      << common::Encode::HexEncode(funder_addr) << "..."
+                      << " nonce=" << nonce
+                      << " accounts=[" << start_idx << "," << end_idx << ")" << std::endl;
+
             for (uint32_t i = start_idx; i < end_idx && !global_stop; ++i) {
-                // Send 1000 coins to test account
+                // Send 1000 coins to test account to create it on-chain
                 auto tx_msg_ptr = CreateTransactionWithAttr(
                     funder_sec,
                     ++nonce,
@@ -578,8 +590,8 @@ int main(int argc, char** argv) {
                     test_addrs[i],
                     "",
                     "",
-                    1000,  // Initial balance
-                    1000,
+                    1000000000,  // Initial balance
+                    210000,
                     1,
                     shardnum);
 
@@ -588,8 +600,10 @@ int main(int argc, char** argv) {
                         global_chain_node_http_port - 10000, 
                         tx_msg_ptr->header) == 0) {
                     ++created_count;
+                    std::cout << "success send from: " << global_chain_node_ip << ":" << (global_chain_node_http_port - 10000) << ", from:" << common::Encode::HexEncode(funder_addr) << ", to:" << common::Encode::HexEncode(test_addrs[i]) << ", nonce: " << nonce << std::endl;
                 } else {
                     ++failed_count;
+                    std::cout << "failed send from: " << common::Encode::HexEncode(funder_addr) << ", to:" << common::Encode::HexEncode(test_addrs[i]) << ", nonce: " << nonce << std::endl;
                 }
 
                 // Rate limiting
@@ -598,11 +612,11 @@ int main(int argc, char** argv) {
         };
 
         std::vector<std::thread> create_threads;
-        uint32_t accounts_per_thread = kAccountCount / num_threads;
-        for (uint32_t t = 0; t < num_threads; ++t) {
-            uint32_t start_idx = t * accounts_per_thread;
-            uint32_t end_idx = (t == num_threads - 1) ? kAccountCount : (start_idx + accounts_per_thread);
+        for (uint32_t t = 0; t < create_threads_count; ++t) {
+            uint32_t start_idx = t * accounts_per_create_thread;
+            uint32_t end_idx = (t == create_threads_count - 1) ? kAccountCount : (start_idx + accounts_per_create_thread);
             create_threads.emplace_back(create_account_thread, t, start_idx, end_idx);
+            std::cout << "start create account thread " << t << ", " << start_idx << ", " << end_idx << std::endl;
         }
 
         // Progress monitor
@@ -622,57 +636,124 @@ int main(int argc, char** argv) {
         std::cout << "✓ Account creation complete: " << created_count.load() 
                   << " created, " << failed_count.load() << " failed" << std::endl;
 
-        // Phase 3: Wait for accounts to be confirmed
-        std::cout << "\n[Phase 3] Waiting for accounts to be confirmed (30 seconds)..." << std::endl;
-        usleep(30000000);  // 30 seconds
+        // Phase 3: Wait for accounts to be confirmed (active polling, 120s timeout)
+        // Instead of a fixed 30s sleep, poll accounts starting from index 0.
+        // Once an account is found, move to the next. If a query fails, wait
+        // a few seconds and retry. Stop when all accounts are confirmed or
+        // 120 seconds have elapsed.
+        std::cout << "\n[Phase 3] Waiting for accounts to be confirmed (up to 120s)..." << std::endl;
+        uint32_t accounts_per_thread = kAccountCount / num_threads;
+        auto phase3_start = std::chrono::steady_clock::now();
+        const auto kPhase3Timeout = std::chrono::seconds(240);
+        uint32_t confirmed_count = 0;
+        uint32_t probe_idx = 0;
 
-        // Phase 4: Verify accounts exist
-        std::cout << "\n[Phase 4] Verifying accounts..." << std::endl;
-        std::atomic<uint32_t> verified_count{0};
-        std::atomic<uint32_t> verify_failed_count{0};
-
-        auto verify_thread = [&](uint32_t start_idx, uint32_t end_idx) {
-            for (uint32_t i = start_idx; i < end_idx && !global_stop; ++i) {
-                int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(test_addrs[i]));
-                if (nonce >= 0) {
-                    ++verified_count;
-                    src_prikey_with_nonce[test_addrs[i]] = nonce;
-                    prikey_with_nonce[test_addrs[i]] = nonce;
-                } else {
-                    ++verify_failed_count;
-                }
-                usleep(10000);  // 10ms delay to avoid overwhelming the node
+        while (probe_idx < kAccountCount && !global_stop) {
+            auto elapsed = std::chrono::steady_clock::now() - phase3_start;
+            if (elapsed >= kPhase3Timeout) {
+                std::cout << "  Timeout reached (120s). Confirmed " << confirmed_count
+                          << "/" << kAccountCount << " accounts so far." << std::endl;
+                break;
             }
-        };
 
-        std::vector<std::thread> verify_threads;
-        for (uint32_t t = 0; t < num_threads; ++t) {
-            uint32_t start_idx = t * accounts_per_thread;
-            uint32_t end_idx = (t == num_threads - 1) ? kAccountCount : (start_idx + accounts_per_thread);
-            verify_threads.emplace_back(verify_thread, start_idx, end_idx);
+            int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(test_addrs[probe_idx]));
+            if (nonce >= 0) {
+                // Account exists on-chain, record nonce and advance
+                src_prikey_with_nonce[test_addrs[probe_idx]] = nonce;
+                prikey_with_nonce[test_addrs[probe_idx]] = nonce;
+                ++confirmed_count;
+                ++probe_idx;
+            } else {
+                // Not yet on-chain, wait 3 seconds and retry
+                auto secs = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
+                std::cout << "  [" << secs << "s] Account " << probe_idx
+                          << " not yet confirmed, waiting 3s... ("
+                          << confirmed_count << "/" << kAccountCount << " done)" << std::endl;
+                usleep(3000000);  // 3 seconds
+            }
         }
 
-        for (auto& th : verify_threads) {
-            th.join();
+        // If we confirmed the first batch via sequential probing, do a quick
+        // parallel sweep of any remaining accounts that might have been
+        // confirmed out of order.
+        if (confirmed_count < kAccountCount && !global_stop) {
+            std::cout << "  Running parallel verification for remaining accounts..." << std::endl;
+            std::atomic<uint32_t> extra_confirmed{0};
+            auto sweep_thread = [&](uint32_t start_idx, uint32_t end_idx) {
+                for (uint32_t i = start_idx; i < end_idx && !global_stop; ++i) {
+                    // Skip already confirmed
+                    if (prikey_with_nonce.count(test_addrs[i]) > 0) {
+                        continue;
+                    }
+                    int64_t n = sdk.fetchNonce(common::Encode::HexEncode(test_addrs[i]));
+                    if (n >= 0) {
+                        src_prikey_with_nonce[test_addrs[i]] = n;
+                        prikey_with_nonce[test_addrs[i]] = n;
+                        ++extra_confirmed;
+                    }
+                    usleep(10000);  // 10ms
+                }
+            };
+
+            std::vector<std::thread> sweep_threads;
+            for (uint32_t t = 0; t < num_threads; ++t) {
+                uint32_t s = t * accounts_per_thread;
+                uint32_t e = (t == num_threads - 1) ? kAccountCount : (s + accounts_per_thread);
+                sweep_threads.emplace_back(sweep_thread, s, e);
+            }
+            for (auto& th : sweep_threads) {
+                th.join();
+            }
+            confirmed_count += extra_confirmed.load();
         }
 
-        std::cout << "✓ Verification complete: " << verified_count.load() 
-                  << " verified, " << verify_failed_count.load() << " not found" << std::endl;
+        auto total_secs = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::steady_clock::now() - phase3_start).count();
+        std::cout << "✓ Account confirmation complete: " << confirmed_count
+                  << "/" << kAccountCount << " confirmed in " << total_secs << "s" << std::endl;
 
-        if (verified_count.load() < kAccountCount / 2) {
-            std::cerr << "ERROR: Less than 50% of accounts verified. Aborting stress test." << std::endl;
+        if (confirmed_count < kAccountCount) {
+            uint32_t failed_total = kAccountCount - confirmed_count;
+            std::cerr << "\nERROR: " << failed_total << " accounts failed to confirm:" << std::endl;
+            for (uint32_t i = 0; i < kAccountCount; ++i) {
+                if (prikey_with_nonce.count(test_addrs[i]) == 0) {
+                    std::cerr << "  [" << i << "] " << common::Encode::HexEncode(test_addrs[i]) << std::endl;
+                }
+            }
+            std::cerr << "Aborting stress test." << std::endl;
+            transport::TcpTransport::Instance()->Stop();
             return 1;
         }
 
-        // Phase 5: Stress test - random transfers
-        std::cout << "\n[Phase 5] Starting stress test - random transfers..." << std::endl;
+        // Phase 4: Stress test - random transfers
+        std::cout << "\n[Phase 4] Starting stress test - random transfers..." << std::endl;
         std::cout << "  Press Ctrl+C to stop" << std::endl;
+
+        // Fetch leader routing table so we can send transactions directly
+        // to the leader responsible for each pool, avoiding relay hops.
+        std::unordered_map<uint32_t, SethSDK::LeaderInfo> leader_map;
+        uint32_t leader_count = 0;
+        bool has_leader_routing = sdk.fetchLeaders(leader_map, leader_count);
+        if (has_leader_routing) {
+            std::cout << "  Leader routing enabled: " << leader_count << " leaders" << std::endl;
+            for (auto& [mod, info] : leader_map) {
+                std::cout << "    mod " << mod << " -> " << info.ip << ":" << info.port << std::endl;
+            }
+        } else {
+            std::cout << "  Leader routing unavailable, using default node" << std::endl;
+        }
+
+        // Pre-compute pool index for each test address
+        std::vector<uint32_t> addr_pool_idx(kAccountCount);
+        for (uint32_t i = 0; i < kAccountCount; ++i) {
+            addr_pool_idx[i] = common::GetAddressPoolIndex(test_addrs[i]);
+        }
 
         std::atomic<uint64_t> tx_count{0};
         std::atomic<uint64_t> tx_failed{0};
 
         auto stress_test_thread = [&](uint32_t thread_id, uint32_t start_idx, uint32_t end_idx) {
-            for (uint32_t i = start_idx; i < end_idx && !global_stop; ) {
+            while (!global_stop) {
                 // Random from account (within this thread's range)
                 uint32_t from_idx = start_idx + (common::Random::RandomUint32() % (end_idx - start_idx));
                 
@@ -686,9 +767,9 @@ int main(int argc, char** argv) {
                 std::string from_addr = test_addrs[from_idx];
                 std::string to_addr = test_addrs[to_idx];
 
-                // Check nonce
+                // Check nonce throttle
                 if (src_prikey_with_nonce[from_addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[from_addr]) {
-                    usleep(1000000);  // Wait 1 second
+                    usleep(100000);  // Wait 100ms then try a different account
                     continue;
                 }
 
@@ -697,7 +778,6 @@ int main(int argc, char** argv) {
 
                 // Random amount between 1 and 10
                 uint64_t amount = 1 + (common::Random::RandomUint32() % 10);
-
                 auto tx_msg_ptr = CreateTransactionWithAttr(
                     from_sec,
                     ++prikey_with_nonce[from_addr],
@@ -706,20 +786,34 @@ int main(int argc, char** argv) {
                     "",
                     "",
                     amount,
-                    1000,
+                    210000,
                     1,
                     shardnum);
 
-                if (tx_msg_ptr && transport::TcpTransport::Instance()->Send(
-                        global_chain_node_ip,
-                        global_chain_node_http_port - 10000,
-                        tx_msg_ptr->header) == 0) {
+                if (!tx_msg_ptr) {
+                    ++tx_failed;
+                    continue;
+                }
+
+                // Route to the leader responsible for the sender's pool
+                std::string dest_ip = global_chain_node_ip;
+                uint16_t dest_port = global_chain_node_http_port - 10000;
+                if (has_leader_routing) {
+                    uint32_t pool_idx = addr_pool_idx[from_idx];
+                    auto it = leader_map.find(pool_idx);
+                    if (it != leader_map.end()) {
+                        dest_ip = it->second.ip;
+                        dest_port = it->second.port;
+                    }
+                }
+
+                if (transport::TcpTransport::Instance()->Send(
+                        dest_ip, dest_port, tx_msg_ptr->header) == 0) {
                     ++tx_count;
                 } else {
                     ++tx_failed;
                 }
 
-                ++i;
                 usleep(5000);  // 5ms delay
             }
         };
@@ -746,17 +840,38 @@ int main(int argc, char** argv) {
             }
         });
 
-        // Nonce update thread
+        // Nonce update thread (also refreshes leader routing periodically)
         std::thread nonce_update_thread([&]() {
+            uint32_t refresh_counter = 0;
             while (!global_stop) {
-                usleep(15000000);  // 15 seconds
+                usleep(10000000);  // 10 seconds
                 std::cout << "  Updating nonces..." << std::endl;
-                for (uint32_t i = 0; i < kAccountCount && !global_stop; i += 100) {
-                    int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(test_addrs[i]));
-                    if (nonce >= 0) {
-                        src_prikey_with_nonce[test_addrs[i]] = nonce;
+                uint32_t updated = 0;
+                for (uint32_t i = 0; i < kAccountCount && !global_stop; ++i) {
+                    // Only update accounts that are nonce-throttled
+                    auto& addr = test_addrs[i];
+                    if (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount > prikey_with_nonce[addr]) {
+                        continue;  // Not throttled, skip
                     }
-                    usleep(10000);
+                    int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(addr));
+                    if (nonce >= 0) {
+                        src_prikey_with_nonce[addr] = nonce;
+                        ++updated;
+                    }
+                    usleep(1000);  // 1ms between queries
+                }
+                std::cout << "  Nonce update done: " << updated << " accounts refreshed" << std::endl;
+
+                // Refresh leader routing every ~60 seconds (6 iterations × 10s)
+                if (++refresh_counter % 6 == 0) {
+                    std::unordered_map<uint32_t, SethSDK::LeaderInfo> new_leaders;
+                    uint32_t new_count = 0;
+                    if (sdk.fetchLeaders(new_leaders, new_count) && !new_leaders.empty()) {
+                        leader_map = new_leaders;
+                        leader_count = new_count;
+                        has_leader_routing = true;
+                        std::cout << "  Leader routing refreshed: " << new_count << " leaders" << std::endl;
+                    }
                 }
             }
         });

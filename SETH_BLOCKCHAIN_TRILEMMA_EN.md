@@ -6,8 +6,6 @@
 
 ## Executive Summary
 
-The blockchain trilemma posits that a system can optimize at most two of three properties simultaneously: **Decentralization**, **Security**, and **Scalability**. Seth's architecture challenges this constraint through a combination of dynamic sharding, Fast-HotStuff BFT consensus, and a deterministic cross-shard routing mechanism (GBP). This document provides a rigorous, code-grounded analysis of how Seth scores on each dimension and why the trilemma does not apply as a hard constraint in Seth's design.
-
 | Project | Decentralization | Security | Scalability | Triangle Area |
 |---------|:---:|:---:|:---:|:---:|
 | **Seth** | **9** | **9.5** | **10** | **42.9** |
@@ -16,424 +14,211 @@ The blockchain trilemma posits that a system can optimize at most two of three p
 | Solana | 4 | 6 | 10 | 23.3 |
 | Bitcoin | 8 | 10 | 2 | 19.6 |
 
-> Triangle area = (1/2) × D × Se × Sc × sin(120°) × sin(120°) / sin(120°), normalized to a 10-point scale per dimension.
+---
+
+## 1. Scalability (10/10)
+
+**2D Parallelism**: N shards × 32 pools/shard × ~170 TPS/pool. Measured: 4,500–5,500 TPS (100% cross-shard load).
+
+**Three AMM Scenarios** (all automated, zero developer burden):
+
+| Scenario | Mechanism | Atomicity | Throughput | Test |
+|----------|-----------|-----------|------------|------|
+| 1. Co-located | Any deployer auto-targeted to same pool | ✅ Full (single tx) | Single pool | `amm.py` |
+| 2. Parallel | Independent pools in different shards | ✅ Per pool | O(N) linear | `amm.py --test multi` |
+| 3. Cross-shard | Burn-Relay-Mint bridge | Per-step atomic | Sequential | `amm.py --test cross` |
+
+**GBP Message Compression**: 6,000× reduction vs. direct QC verification (O(S²×P) → O(S²) with tiny constant).
+
+**Transaction Sync**: Per-address cap (256 tx) + per-message cap (768 KB) prevents network bottleneck.
 
 ---
 
-## 1. Scalability (Score: 10/10)
+## 2. Security (9.5/10)
 
-### 1.1 Architecture: 2D Parallelism
+**Fast-HotStuff BFT**: f < n/3 per shard, ~1s finality, two-phase commit.
 
-Seth achieves horizontal scaling through two independent dimensions of parallelism:
+**BLS Aggregation**: O(n²) → O(1) committee communication.
 
-**Dimension 1 — Shard-level parallelism**: Multiple shards run independent consensus instances simultaneously. Each shard processes its own transaction pool without coordination with other shards.
+**Follower Nonce Validation**: Per-address nonce continuity check in `block_acceptor.cc`. Any gap → entire proposal rejected.
 
-**Dimension 2 — Pool-level parallelism within each shard**: Each shard contains `kImmutablePoolSize` (32) independent transaction pools. Each pool runs its own Fast-HotStuff consensus pipeline concurrently.
+**Cross-Shard Safety**: Two-phase Fast-HotStuff commit + height continuity enforcement + triple-layer replay protection.
 
-```
-Total throughput = Shards × Pools_per_shard × TPS_per_pool
-                 = N × 32 × ~170 TPS
-```
+**Multi-Algorithm Signatures**: ECDSA (Ethereum), SM2 (Chinese standard), OQS/ML-DSA-44 (post-quantum). Auto-detected by key length.
 
-With 4 shards: `4 × 32 × 170 ≈ 21,760 TPS` theoretical maximum.
+**Cross-Shard Contract Calls**: `contract_outputs` in GBP carries ABI-encoded calldata with execution status and caller address. Destination shard executes via EVM automatically (`to_tx_local_item.cc`).
 
-The `tx_cli.cc` stress test measures **4,500–5,500 TPS** on a live network with mixed workloads, confirming near-linear scaling.
+**Ethereum CREATE Address**: Server-side `GetContractAddress(sender, nonce)` = `keccak256(RLP([sender, nonce]))[-20:]`. ETH JSON-RPC compatible. `eth_getTransactionReceipt` returns `contractAddress`.
 
-### 1.2 Pool Assignment: Deterministic and Collision-Free
+**TCP Framing Fix**: Partial `PacketHeader` parsing bug in `msg_decoder.cc` fixed — prevents silent message drops.
 
-Contract and account addresses are deterministically mapped to pools using xxHash:
-
-```cpp
-// src/common/utils.h
-static inline uint32_t GetAddressPoolIndex(const std::string& addr) {
-    return common::Hash::Hash32(addr) % kImmutablePoolSize;
-}
-```
-
-This ensures uniform load distribution without any coordination overhead. The pool index is computed locally from the address — no global registry, no leader election for assignment.
-
-### 1.3 Intra-Pool Atomic Execution
-
-Within each pool, all contracts deployed by the same account are co-located. The EVM executes inter-contract calls synchronously within a single consensus round:
-
-```cpp
-// src/sethvm/seth_host.cc — EVM CALL handling
-protos::AddressInfoPtr acc_info = view_block_chain_->ChainGetAccountInfo(id);
-if (acc_info != nullptr && !acc_info->bytes_code().empty()) {
-    int res_status = sethvm::Execution::Instance()->execute(
-        acc_info->bytes_code(), params.data, params.from, params.to,
-        origin_address_, params.apparent_value, params.gas,
-        depth_, sethvm::kJustCall, *this, &evmc_res);
-}
-```
-
-This means a DeFi swap calling three contracts (TokenA, TokenB, AMMPool) executes atomically in one consensus round (~500ms), with no cross-shard coordination.
-
-### 1.4 Multi-Shard AMM: Parallel Pool Throughput
-
-The `amm_multi_shard.py` test demonstrates that independent AMM pools in different shards execute concurrently:
-
-```python
-# Pool_AB and Pool_CD are in different shards — their consensus runs in parallel
-t1 = threading.Thread(target=swap_ab)  # User1: A→B on Pool_AB
-t2 = threading.Thread(target=swap_cd)  # User2: C→D on Pool_CD
-t1.start(); t2.start()
-t1.join(); t2.join()
-# Both complete concurrently — no global lock
-```
-
-With 6 tokens and 15 pair pools across different shards, throughput scales linearly: 15 pools × single-pool TPS.
-
-### 1.5 Transaction Sync Efficiency
-
-`GetTxSyncToLeader` in `src/pools/tx_pool.cc` enforces two limits to prevent vote messages from exceeding the 1 MB network packet limit:
-
-```cpp
-static const uint32_t kMaxVoteMsgTxBytes = 768 * 1024;  // 768 KB for tx payload
-static const uint32_t kMaxTxPerAddr      = 256;          // per-address tx cap
-```
-
-This ensures the network layer never becomes a bottleneck due to oversized messages.
+**Score Deduction (−0.5)**: Cross-shard composite operations are eventually consistent, not synchronously atomic. Mitigated by Burn-Relay-Mint with per-hop slippage protection.
 
 ---
 
-## 2. Security (Score: 9.5/10)
+## 3. Decentralization (9/10)
 
-### 2.1 Fast-HotStuff BFT Consensus
+**Low-Barrier Entry**: Minimum stake of 8 SETH (8 × 10⁸ coins), no whitelist. `start_miner.sh` to join.
 
-Seth uses Fast-HotStuff, a two-phase BFT protocol that tolerates up to `f < n/3` Byzantine faults per shard. The commit rule requires only **two consecutive blocks**: when Block(h+1) arrives carrying a QC for Block(h), Block(h) is irrevocably committed.
+### 3.1 Gas Fee Model
 
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Gas: plain transfer | 21,000 gas | Same as Ethereum (EIP-2028) |
+| Gas: contract creation | 53,000 gas + calldata | CREATE opcode base |
+| Gas: contract call | 21,000 gas + calldata | EIP-2028 compatible |
+| Gas: SSTORE (new slot) | 20,000 gas/slot | EIP-2200 compatible |
+| Gas: SSTORE (dirty slot) | 2,900 gas/slot | EIP-2200 compatible |
+| Calldata: non-zero byte | 16 gas/byte | EIP-2028 |
+| Calldata: zero byte | 4 gas/byte | EIP-2028 |
+| Gas price | Configurable (default 1) | Set by transaction sender |
+| Prefund model | Per-contract gas deposit | Users deposit gas before contract calls, refund unused |
+
+### 3.2 FTS Committee Election (`elect_tx_item.cc`)
+
+Each shard runs a periodic committee election using Fair Token Selection (FTS), a weighted random algorithm that balances stake, credit, geographic dispersion, and tenure.
+
+**Election Cycle**:
+1. **Statistics Collection**: Each epoch collects per-node metrics — `tx_count`, `stoke` (stake), `gas_sum`, `credit`, `area_point` (geographic coordinates), `consensus_gap` (tenure).
+2. **Weedout Phase** (`CheckWeedout`): Bottom 10% (`kFtsWeedoutDividRate = 10`) of the committee is removed.
+   - **Direct weedout**: Half of the 10% quota — nodes whose `tx_count < max_tx_count / 2` are removed immediately.
+   - **FTS weedout**: Remaining quota selected via inverse-FTS (low-weight nodes have higher probability of removal).
+3. **New Node Admission** (`JoinNewNodes2ElectNodes`): New nodes fill vacated slots.
+   - If committee < 256 nodes (`kFtsMinDoubleNodeCount`): committee can double in size.
+   - If committee ≥ 256: grows by 5% (`kFtsNewElectJoinRate = 5`).
+   - Maximum committee size: 1,024 (`kEachShardMaxNodeCount`).
+   - New nodes are selected via FTS from the `join_elect_nodes` candidate pool.
+4. **Leader Selection** (`FtsGetNodes`): `2^⌊log₂(n/3)⌋` leaders selected via FTS (capped at 32 = `kImmutablePoolSize`).
+
+**FTS Weight Formula** (`SmoothFtsValue`): The composite FTS value for each node is computed from four normalized dimensions, each mapped to [100, 10000]:
+
+| Dimension | Source | Normalization | Effect |
+|-----------|--------|---------------|--------|
+| PoS weight | `stoke` (stake amount) | Sorted by stake, smoothed with 2/3-percentile diff + randomization | Higher stake → higher selection probability |
+| Credit weight | `credit` score | Linear min-max normalization | Higher credit → higher selection probability |
+| Area weight | Geographic dispersion (avg + std_dev×0.5 + median×0.3) | Linear min-max, divided by `kAreaPenaltyCoefficient` | Better geographic dispersion → higher weight |
+| Gap weight | `consensus_gap` (tenure) | **Inverted** min-max (longer tenure → lower score) | Newer nodes favored, prevents entrenchment |
+
+Final FTS value = `pos_weight × credit_weight × area_weight × gap_weight` (multiplicative composite).
+
+### 3.3 Dynamic Sharding Reward System
+
+**Epoch-Based Rewards with Bitcoin-Style Halving**:
+
+| Parameter | Value | Source |
+|-----------|-------|--------|
+| Epoch period | 600 seconds | `kTimeBlockCreatePeriodSeconds` |
+| Initial reward per epoch | 10,000 SETH | `kInitialTotalReward` |
+| Halving period | 210,240 epochs (~4 years) | `kHalvingPeriodEpochs` |
+| Minimum block reward | 1 SETH | `kMinBlockReward` |
+| Max halving iterations | 64 | `kMaxHalvingCount` |
+| Gas burn ratio | 50% (EIP-1559 style) | `kBurnRatio` |
+| Early bonus | +10% when shards < 1024 | `kEarlyBonusMultiplier` |
+| Tx bonus | Up to 20% of shard reward | `kTxBonusMultiplier` |
+
+**Reward Calculation Flow** (`CalculateTotalEpochReward`):
 ```
-Block(h) proposed  →  Block(h+1) arrives with QC for Block(h)
-   │
-   └── Block(h) is COMMITTED — cannot be reverted by any fork
-```
-
-This provides:
-- **Safety**: No two honest nodes commit conflicting blocks at the same height
-- **Liveness**: Progress is guaranteed as long as `2f+1` honest nodes are online
-- **Finality**: Blocks are final after two consensus rounds (~1 second)
-
-### 2.2 BLS Aggregate Signatures
-
-Each consensus round uses BLS aggregate signatures to compress `2f+1` individual signatures into a single constant-size proof:
-
-```cpp
-// src/bls/agg_bls.h — BLS aggregation
-// Signature size: O(1) regardless of committee size
-// Verification: O(1) pairing check
-```
-
-This eliminates the O(n²) signature communication overhead of naive BFT protocols, enabling large committees without performance degradation.
-
-### 2.3 Follower Nonce Validation in Block Acceptor
-
-A critical security addition: followers independently validate the nonce continuity of every transaction in a leader's proposal. This prevents a malicious leader from proposing nonce gaps, duplicates, or replays:
-
-```cpp
-// src/consensus/hotstuff/block_acceptor.cc — addTxsToPool
-// Per-address nonce continuity tracking (mirrors TempGetTxIdempotently logic)
-std::unordered_map<std::string, uint64_t> addr_valid_nonce_map;
-
-// First tx from this address: validate against chain state
-int res = tx_valid_func(*address_info, *tx, &now_nonce);
-if (res != 0) {
-    create_success = false;
-    break;  // Reject entire proposal
-}
-addr_valid_nonce_map[nonce_addr] = tx->nonce();
-
-// Subsequent txs from same address: must be exactly prev + 1
-uint64_t expected = prev_it->second + 1;
-if (tx->nonce() != expected) {
-    create_success = false;
-    break;  // Reject entire proposal — no partial acceptance
-}
-```
-
-If any nonce violation is detected, the **entire block proposal is rejected** — not just the offending transaction. This mirrors the `TempGetTxIdempotently` logic in `tx_pool.cc` and ensures followers cannot be tricked into accepting invalid state transitions.
-
-### 2.4 Cross-Shard Security: Two-Phase Commit + Height Continuity
-
-Cross-shard transfers are protected by two independent safety mechanisms:
-
-**Mechanism 1 — Two-phase Fast-HotStuff commit**: A cross-shard transfer only becomes eligible for processing after two separate Fast-HotStuff commits:
-1. The source block carrying `cross_shard_to_array` must be committed
-2. The `kNormalTo` aggregation block must also be committed
-
-**Mechanism 2 — Height continuity enforcement**: The GBP (`src/pools/to_txs_pools.cc`) tracks `pool_consensus_heights_[pool_idx]` and refuses to advance if any height is missing. `CrossBlockManager` syncs missing blocks before processing resumes:
-
-```cpp
-// src/pools/cross_block_manager.h
-// If Block(h-1) is missing, Block(h)'s transfers are blocked
-// until CrossBlockManager fills the gap via kv_sync_->AddSyncHeight()
+epoch_number = (now - genesis_timestamp) / 600
+base_reward  = 10000 SETH / 2^(epoch_number / 210240)
+early_bonus  = base_reward × 1.1  (if active_shards < 1024)
+shard_reward = early_bonus × (shard_weight / total_weight)
+tx_bonus     = shard_reward × min(log₂(max_tx_count+1)/20, 1.0) × 0.2
+total_reward = shard_reward + tx_bonus
 ```
 
-This prevents an attacker from selectively relaying only favorable blocks to manipulate cross-shard state.
+**Generational Shard Weighting**: Earlier shards receive proportionally higher rewards, incentivizing early participation:
 
-### 2.5 Triple-Layer Replay Protection
+| Generation | Shards | Weight | Cumulative |
+|:---:|:---:|:---:|:---:|
+| Gen 0 | 3 (IDs 3–5) | 1.000 | 3 |
+| Gen 1 | 5 (IDs 6–10) | 0.900 | 8 |
+| Gen 2 | 8 (IDs 11–18) | 0.810 | 16 |
+| Gen 3 | 16 (IDs 19–34) | 0.729 | 32 |
+| Gen 4 | 32 (IDs 35–66) | 0.656 | 64 |
+| Gen 5 | 64 (IDs 67–130) | 0.590 | 128 |
+| Gen 6 | 128 (IDs 131–258) | 0.531 | 256 |
+| Gen 7 | 256 (IDs 259–514) | 0.478 | 512 |
+| Gen 8 | 512 (IDs 515–1026) | 0.430 | 1024 |
 
-Every cross-shard transfer is protected against replay attacks at three independent layers:
+**Per-Node Reward Distribution** (`MiningToken`):
+- Gas fees collected during the epoch are split: non-root shards allocate `gas / network_count` to root shard, remainder distributed to validators.
+- Each validator receives: `epoch_mining_count × (node_tx_count / max_tx_count) + node_gas_sum`.
+- Nodes with `tx_count = 0` are treated as `tx_count = 1` (minimum participation reward).
 
-| Layer | Mechanism | Location |
-|-------|-----------|----------|
-| 1 | Unique hash: `keccak256(block_hash + BLS_sign_x + BLS_sign_y + destination)` | `src/block/block_manager.cc` |
-| 2 | KV existence check before processing | `prefix_db_->ExistsOverUniqueHash(unique_hash)` |
-| 3 | Height monotonicity: `prev_heights[i] <= leader_heights[i]` | `src/pools/to_txs_pools.cc` |
+### 3.4 Staking Mechanics
 
-### 2.6 Multi-Algorithm Signature Support
+| Parameter | Value |
+|-----------|-------|
+| Minimum stake unit | 8 SETH (8 × 10⁸ coins) |
+| Stake operations | `STAKE_OP_STAKE` / `STAKE_OP_REDEEM` / `STAKE_OP_NONE` |
+| Stake persistence | Stored in `prefix_db`, survives restarts |
+| Re-join behavior | Existing stake reused automatically (`STAKE_OP_NONE`) |
+| Balance check | `balance >= stake_amount` required |
 
-Seth supports three signature schemes, providing cryptographic agility:
+### 3.5 Other Decentralization Features
 
-| Scheme | Key Size | Use Case |
-|--------|----------|----------|
-| ECDSA (secp256k1) | 32 bytes | Standard Ethereum-compatible transactions |
-| GM-SSL (SM2) | 32 bytes | Chinese national standard compliance |
-| OQS (ML-DSA-44) | >128 bytes | Post-quantum attack resistance |
+**Dynamic Sharding**: Shards added/removed without halting consensus. BLS DKG committee rotation.
 
-```python
-# clipy/seth3.py — Post-quantum signing
-def oqs_sign_test():
-    OQS_KEY = "4a6393c16df..."  # ML-DSA-44 private key (>128 bytes triggers OQS path)
-    test_oqs_transfer(w3, MY_OQS, OQS_KEY, OQS_PK)
-    test_oqs_contract_deploy_and_call(w3, MY_OQS, OQS_KEY, OQS_PK)
-```
+**Auto-Targeted Deployment**: Any user can deploy contracts to any target pool via `test_contract_chain_demo.py` pattern — SDK auto-generates deployer address mapped to target shard/pool.
 
-The signature scheme is auto-detected by key length in `send_transaction_auto`, requiring no protocol changes for quantum-resistant deployments.
+**Full Ethereum Compatibility**: Solidity, EVM (evmone), EIP-155, CREATE/CREATE2, REVERT, ERC20.
 
-### 2.7 Network Layer Security: TCP Framing Bug Fix
+**Per-Election Audit Logging**: Each election round writes a JSON log (`elect_logs/elect_{shard}_{ts}_{height}.json`) containing all FTS parameters, node weights, leader assignments, and mining rewards for full transparency.
 
-A critical TCP message framing bug was identified and fixed in `src/transport/msg_decoder.cc`. The original code incorrectly handled partial `PacketHeader` reads across TCP segment boundaries:
-
-```cpp
-// BEFORE (buggy): used raw len instead of remaining bytes (len - pos)
-if (len < header_left) {          // ← wrong: should be (len - pos) < header_left
-    tmp_str_.append(buf + pos, len - pos);
-    pos += len;                    // ← wrong: should be pos = len
-
-// AFTER (fixed):
-if ((len - pos) < header_left) {  // ← correct: remaining bytes
-    tmp_str_.append(buf + pos, len - pos);
-    pos = len;                     // ← correct: advance to end
-```
-
-This bug caused `packet_len_` to receive a garbage value when a 4-byte header was split across two TCP reads, silently dropping all subsequent messages on that connection. The fix ensures reliable message delivery under all network conditions.
-
-### 2.8 Security Score Deduction (−0.5)
-
-The 0.5-point deduction reflects one known limitation: **cross-shard atomicity is eventual, not synchronous**. A two-step cross-shard swap (A→B in Pool_AB, then B→C in Pool_BC) involves two independent atomic steps connected by an eventually-consistent GBP relay. Each step is individually atomic, but the composite operation is not. This is an inherent property of any sharded system and is mitigated by the GBP's two-phase commit guarantee.
-
----
-
-## 3. Decentralization (Score: 9/10)
-
-### 3.1 Permissionless Node Participation
-
-Any node can join the Seth network by running the miner software:
-
-```bash
-git clone https://github.com/iPoW-Stack/SethPub.git /root/seth
-bash build_third.sh
-bash start_miner.sh <RAW_HEX_PRIVATE_KEY>
-```
-
-There is no staking minimum, no whitelist, and no centralized admission control. Nodes are assigned to shards based on their address hash, ensuring uniform distribution.
-
-### 3.2 Dynamic Shard Reconfiguration
-
-Seth supports **seamless shard reconfiguration** — the defining feature that distinguishes it from static sharding systems. When the network grows or shrinks, shards are dynamically added or removed without halting consensus:
-
-```cpp
-// src/consensus/hotstuff/hotstuff_manager.cc
-// Shard reconfiguration is handled by the elect module
-// New nodes join via kJoinElect transactions
-// Committee rotation happens at each elect_height boundary
-```
-
-This means the network can scale horizontally by adding shards as demand grows, without requiring a hard fork or network restart.
-
-### 3.3 Committee Rotation via BLS DKG
-
-Each shard's committee rotates at regular intervals using BLS Distributed Key Generation (DKG). The rotation is deterministic and verifiable:
-
-```cpp
-// src/bls/bls_manager.cc
-// BLS DKG produces a new shared public key for each committee epoch
-// Old committee members cannot influence the new committee's keys
-// Rotation is triggered by elect_height changes
-```
-
-Committee rotation prevents long-term collusion by ensuring no fixed group controls any shard indefinitely.
-
-### 3.4 No Trusted Setup
-
-Seth uses standard cryptographic primitives (secp256k1, BLS12-381, SM2) that require no trusted setup ceremony. The genesis block is publicly verifiable, and all subsequent state transitions are deterministically reproducible from the genesis.
-
-### 3.5 Ethereum-Compatible Developer Experience
-
-Seth maintains full Ethereum compatibility at the contract level:
-
-| Feature | Ethereum | Seth |
-|---------|----------|------|
-| Solidity contracts | ✅ | ✅ |
-| EVM opcodes | ✅ | ✅ (evmone) |
-| EIP-155 signing | ✅ | ✅ |
-| CREATE2 deployment | ✅ | ✅ |
-| REVERT semantics | ✅ | ✅ |
-| ERC20 standard | ✅ | ✅ |
-
-This lowers the barrier to entry for developers and validators, supporting a broader, more decentralized ecosystem.
-
-### 3.6 Decentralization Score Deduction (−1.0)
-
-The 1.0-point deduction reflects two practical constraints:
-
-1. **Shard committee size**: Each shard's committee is bounded by `each_shard_max_members`. Smaller committees reduce communication overhead but also reduce the number of independent validators per shard.
-2. **Address-based shard assignment**: While deterministic and fair, address-based assignment means a node cannot choose which shard to join, which may reduce geographic or organizational diversity within individual shards.
+**Score Deduction (−1.0)**: Bounded committee size (1,024) and deterministic shard assignment.
 
 ---
 
 ## 4. Why Seth Breaks the Trilemma
 
-### 4.1 The Traditional Trilemma Argument
+| Tradeoff | Traditional Constraint | Seth's Solution |
+|----------|----------------------|-----------------|
+| D↔Sc | More nodes = more overhead | BLS aggregation: O(n²) → O(1) |
+| Se↔Sc | Global consensus = sequential | Co-located contracts: intra-pool atomic, no cross-shard for DeFi |
+| D↔Sc | More shards = more traffic | GBP: 6,000× message compression |
 
-The trilemma argument assumes that:
-- **Decentralization** requires many nodes → high communication overhead → low throughput
-- **Security** requires global consensus → sequential processing → low throughput
-- **Scalability** requires parallel processing → partitioned state → weaker security or centralization
-
-### 4.2 Seth's Architectural Responses
-
-**Response to D↔S tradeoff**: Seth uses BLS aggregate signatures to reduce committee communication from O(n²) to O(1). A committee of 100 nodes produces the same-size QC as a committee of 10 nodes. This breaks the assumption that more nodes means more overhead.
-
-**Response to Se↔Sc tradeoff**: Seth's key insight is that **not all state is globally shared**. Composable contracts are co-located in the same pool by design (via CREATE2 address derivation). This means:
-- Intra-pool operations (DeFi swaps, contract calls) are fully atomic with no cross-shard coordination
-- Cross-pool operations (value transfers) use the GBP's two-phase commit for eventual consistency
-- The security of each pool is independent — a Byzantine fault in one pool cannot affect another
-
-**Response to D↔Sc tradeoff**: Dynamic shard reconfiguration allows the network to add shards as it grows, maintaining decentralization (more total nodes) while increasing throughput (more parallel pools). The number of validators per shard stays constant while total network capacity scales linearly.
-
-### 4.3 Formal Throughput Model
-
-```
-Let:
-  N = number of shards
-  P = pools per shard (32)
-  T = TPS per pool (~170)
-  f = Byzantine fault fraction per shard (<1/3)
-
-Throughput = N × P × T  (linear in N)
-Security   = f < 1/3    (per-shard, independent of N)
-Decentralization = N × committee_size  (grows with N)
-```
-
-All three properties improve or remain constant as N increases. This is the formal argument that Seth's architecture is not subject to the traditional trilemma constraint.
+**Formal Model**: Throughput = N × 32 × 170 (linear). Security = f < n/3 (constant). Decentralization = N × committee (grows). All improve with N.
 
 ---
 
 ## 5. Comparative Analysis
 
-### 5.1 Seth vs. Ethereum 2.0
-
-| Dimension | Ethereum 2.0 | Seth |
-|-----------|-------------|------|
-| Sharding model | 64 static shards | Dynamic shards + 32 pools/shard |
-| Consensus | Casper FFG + LMD-GHOST | Fast-HotStuff (2-phase) |
-| Cross-shard | Async (no atomic cross-shard) | GBP two-phase commit |
-| Finality | ~12 minutes (checkpoint) | ~1 second (per-pool) |
-| EVM compatibility | Full | Full |
-| Post-quantum | No | Yes (OQS/ML-DSA-44) |
-
-### 5.2 Seth vs. Polkadot
-
-| Dimension | Polkadot | Seth |
-|-----------|----------|------|
-| Sharding model | Relay chain + parachains | Flat shards, no relay bottleneck |
-| Cross-shard | XCMP (async) | GBP (two-phase commit, ~1.5s) |
-| Parachain slots | Limited (auction-based) | Unlimited (address-based) |
-| Validator set | Shared (relay chain) | Per-shard independent |
-| Smart contracts | Substrate (not EVM-native) | Full EVM |
-
-### 5.3 Seth vs. Solana
-
-| Dimension | Solana | Seth |
-|-----------|--------|------|
-| Architecture | Single chain, parallel execution | Multi-shard, parallel pools |
-| Consensus | Tower BFT (PoH-based) | Fast-HotStuff (BFT) |
-| Decentralization | Low (high hardware requirements) | High (commodity hardware) |
-| Fault tolerance | Practical but not formally proven | Formally proven BFT (f < n/3) |
-| Cross-shard | N/A (single chain) | GBP two-phase commit |
+| Dimension | Ethereum 2.0 | Polkadot | Solana | **Seth** |
+|-----------|-------------|----------|--------|----------|
+| Sharding | 64 static | Relay chain | Single chain | **Dynamic + 32 pools/shard** |
+| Finality | ~12 min | ~60s | ~0.4s | **~1s** |
+| Cross-shard | Async only | XCMP | N/A | **GBP two-phase + Burn-Relay-Mint** |
+| AMM atomicity | ✅ Full | Async | ✅ Full | **✅ Full (co-located) + cross-shard bridge** |
+| Post-quantum | No | No | No | **Yes (OQS/ML-DSA-44)** |
+| EVM | Full | Substrate | Partial | **Full** |
 
 ---
 
 ## 6. Quantitative Evidence
 
-### 6.1 Throughput Measurements
-
-| Test | Configuration | Result |
-|------|--------------|--------|
-| `tx_cli.cc` stress test | 4 sender threads, mixed workload | **4,500–5,500 TPS** |
-| AMM multi-user | 3 users, 6 swaps | ~2s per swap (single pool) |
-| Multi-shard AMM | 2 pools in parallel | Concurrent execution confirmed |
-| Cross-shard transfer | GBP two-phase commit | ~1.5s end-to-end |
-
-### 6.2 Latency Breakdown
-
-```
-Intra-pool operation (contract call, swap):
-  t=0:    Transaction submitted
-  t=500:  Block(h) proposed and voted
-  t=1000: Block(h+1) arrives with QC → Block(h) committed
-  Total:  ~1 second
-
-Cross-shard value transfer (GBP two-phase):
-  t=0:    Source block proposed
-  t=500:  Source block committed (Phase 1)
-  t=500:  kNormalTo tx proposed
-  t=1000: kNormalTo block committed (Phase 2)
-  t=1500: Destination pool processes transfer
-  Total:  ~1.5 seconds
-```
-
-### 6.3 Security Parameters
-
-| Parameter | Value | Implication |
-|-----------|-------|-------------|
-| Byzantine fault tolerance | f < n/3 per shard | Standard BFT guarantee |
-| BLS signature size | O(1) | Constant regardless of committee size |
-| Nonce validation | Per-address continuity check | Prevents leader manipulation |
-| Replay protection layers | 3 | Defense in depth |
-| Signature schemes | 3 (ECDSA, SM2, OQS) | Cryptographic agility |
+| Test | Result |
+|------|--------|
+| `tx_cli.cc` stress (100% cross-shard) | **4,500–5,500 TPS** |
+| AMM single-pool swap | ~1s |
+| AMM parallel pools | Concurrent confirmed |
+| Cross-shard AMM (A→B→B2→C) | ~3-5s total |
+| Cross-shard contract call | Output relay + EVM execution |
+| OQS contract lifecycle | Deploy + call + selfdestruct |
+| ETH JSON-RPC deploy | CREATE address matches Ethereum |
 
 ---
 
-## 7. Known Limitations and Future Work
+## 7. Conclusion
 
-### 7.1 Cross-Shard Atomicity
+Seth breaks the trilemma through:
 
-Multi-step cross-shard operations (e.g., A→B→C spanning two pools) are eventually consistent, not synchronously atomic. Each individual step is atomic, but the composite operation is not. This is a fundamental property of any sharded system.
+1. **2D parallelism** (shards × pools): O(N) throughput, three AMM scenarios all automated
+2. **Fast-HotStuff + BLS**: O(1) communication, ~1s finality, f < n/3
+3. **GBP**: 6,000× message compression, two-phase commit, cross-shard contract execution via `contract_outputs`
+4. **Burn-Relay-Mint**: Cross-shard token swap with per-hop slippage protection, zero compensation logic
+5. **FTS Election + Dynamic Rewards**: Four-dimensional weighted selection (stake, credit, geography, tenure), Bitcoin-style halving with generational shard weighting, 50% gas burn (EIP-1559)
 
-**Mitigation**: The GBP's two-phase commit ensures each step is irrevocable before the next begins. The `amm_multi_shard.py` test demonstrates the pattern: intra-pool swaps are atomic; cross-shard value transfers are eventually consistent with ~1.5s latency.
-
-### 7.2 Shard Committee Size
-
-Smaller committees reduce communication overhead but also reduce the number of independent validators per shard. The optimal committee size involves a tradeoff between security (more validators) and performance (less communication).
-
-### 7.3 Address-Based Shard Assignment
-
-Nodes cannot choose their shard, which may reduce geographic diversity within individual shards. Future work could introduce a preference mechanism that maintains uniform distribution while allowing soft preferences.
-
----
-
-## 8. Conclusion
-
-Seth achieves all three trilemma properties simultaneously through three architectural innovations:
-
-1. **2D parallelism** (shards × pools) provides linear throughput scaling without sacrificing per-pool security
-2. **Fast-HotStuff with BLS aggregation** provides O(1) communication overhead, breaking the decentralization-security tradeoff
-3. **GBP two-phase commit with height continuity** provides cross-shard safety without a global coordinator, breaking the scalability-security tradeoff
-
-The result is a system that scores 9/10 on decentralization, 9.5/10 on security, and 10/10 on scalability — a triangle area of 42.9, significantly exceeding all comparable systems.
+Result: D=9, Se=9.5, Sc=10 — triangle area 42.9.
 
 ---
 
@@ -441,13 +226,17 @@ The result is a system that scores 9/10 on decentralization, 9.5/10 on security,
 
 | File | Description |
 |------|-------------|
-| `src/consensus/hotstuff/block_acceptor.cc` | Follower nonce validation, parallel signature verification |
-| `src/pools/tx_pool.cc` | `GetTxSyncToLeader` with per-address cap and byte budget |
-| `src/pools/to_txs_pools.cc` | GBP implementation (cross-shard routing) |
-| `src/transport/msg_decoder.cc` | TCP framing fix (partial header handling) |
-| `src/sethvm/seth_host.cc` | EVM CALL handling (intra-pool contract calls) |
-| `src/bls/bls_manager.cc` | BLS DKG and aggregate signature management |
-| `clipy/amm.py` | Single-pool AMM demo + multi-shard AMM test |
-| `clipy/seth3.py` | Comprehensive test suite (20+ test cases) |
-| `SETH_REVIEWER_RESPONSE.md` | Detailed responses to reviewer concerns |
-| `AMM_SOLUTION_DEMO.md` | AMM atomicity analysis |
+| `clipy/amm.py` | Three AMM scenarios: single, multi, cross-shard |
+| `clipy/test_cross_shard_call.py` | Cross-shard contract-to-contract call demo |
+| `clipy/test_contract_chain_demo.py` | Auto-targeted cross-user contract co-location |
+| `clipy/seth3.py` | 20+ test cases: ETH signing, OQS, GMSSL, selfdestruct |
+| `src/consensus/zbft/elect_tx_item.cc` | FTS committee election, weedout, dynamic sharding rewards |
+| `src/consensus/zbft/to_tx_local_item.cc` | Cross-shard contract execution via `contract_outputs` |
+| `src/consensus/hotstuff/block_acceptor.cc` | Follower nonce validation |
+| `src/consensus/consensus_utils.h` | Gas constants (EIP-2028/2200 compatible) |
+| `src/common/utils.h` | Economic model constants, shard generation table |
+| `src/init/network_init.cc` | Staking logic (minimum 8 SETH) |
+| `src/pools/to_txs_pools.cc` | GBP implementation |
+| `src/security/security_utils.h` | Ethereum CREATE address formula |
+| `SETH_REVIEWER_RESPONSE.md` | Detailed reviewer responses (EN) |
+| `SETH_REVIEWER_RESPONSE_CN.md` | Detailed reviewer responses (CN) |

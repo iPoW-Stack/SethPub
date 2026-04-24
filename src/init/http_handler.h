@@ -9,6 +9,7 @@
 #include "block/account_manager.h"
 #include "common/lru_map.h"
 #include "contract/contract_manager.h"
+#include "elect/elect_manager.h"
 #include "protos/prefix_db.h"
 #include "security/security.h"
 #include "transport/multi_thread.h"
@@ -18,6 +19,10 @@ namespace seth {
 
 namespace hotstuff {
     class ViewBlockChain;
+}
+
+namespace consensus {
+    class HotstuffManager;
 }
 
 namespace init {
@@ -34,6 +39,22 @@ public:
         std::shared_ptr<contract::ContractManager> tmp_contract_mgr,
         const std::string& ip,
         uint16_t port);
+
+    void set_elect_mgr(std::shared_ptr<elect::ElectManager> elect_mgr) {
+        elect_mgr_ = elect_mgr;
+    }
+
+    std::shared_ptr<elect::ElectManager> elect_mgr() {
+        return elect_mgr_;
+    }
+
+    void set_hotstuff_mgr(std::shared_ptr<consensus::HotstuffManager> hotstuff_mgr) {
+        hotstuff_mgr_ = hotstuff_mgr;
+    }
+
+    std::shared_ptr<consensus::HotstuffManager> hotstuff_mgr() {
+        return hotstuff_mgr_;
+    }
 
     std::shared_ptr<security::Security> security_ptr() {
         return security_ptr_;
@@ -90,6 +111,8 @@ private:
     std::shared_ptr<std::thread> http_svr_thread_ = nullptr;
     common::LRUMap<std::string, transport::MessagePtr> tx_msg_map_{10240};
     std::shared_ptr<hotstuff::ViewBlockChain> view_block_chain_ = nullptr;
+    std::shared_ptr<elect::ElectManager> elect_mgr_ = nullptr;
+    std::shared_ptr<consensus::HotstuffManager> hotstuff_mgr_ = nullptr;
     std::mutex tx_msg_map_mutex_;
     std::atomic<bool> running_{false};
 
