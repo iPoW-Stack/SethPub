@@ -116,16 +116,31 @@ def test_cross_shard_call(w3, deployer_addr, deployer_key):
     print(f"    status={receipt_a.get('status')}")
     assert receipt_a.get('status') == 0, f"encodeCrossCall failed: {receipt_a}"
 
-    # Extract output
-    output_hex = receipt_a.get('output', '')
-    if isinstance(output_hex, str) and output_hex.startswith('0x'):
-        output_hex = output_hex[2:]
-    print(f"    Output (hex): {output_hex[:80]}...")
+    # Extract output — server returns base64-encoded bytes in protobuf JSON
+    output_raw = receipt_a.get('output', '')
+    import base64
+    try:
+        # Try base64 decode first (protobuf JSON format)
+        cross_call_data = base64.b64decode(output_raw)
+    except Exception:
+        # Fallback: try hex decode
+        output_hex = output_raw
+        if isinstance(output_hex, str) and output_hex.startswith('0x'):
+            output_hex = output_hex[2:]
+        cross_call_data_raw = bytes.fromhex(output_hex)
+        import eth_abi
+        decoded = eth_abi.decode(['bytes'], cross_call_data_raw)
+        cross_call_data = decoded[0]
 
-    # Decode: the return type is bytes, so ABI-decode it
-    import eth_abi
-    decoded = eth_abi.decode(['bytes'], bytes.fromhex(output_hex))
-    cross_call_data = decoded[0]
+    # The output is ABI-encoded return value: abi.encode(bytes), so decode it
+    if len(cross_call_data) > 36:
+        import eth_abi
+        try:
+            decoded = eth_abi.decode(['bytes'], cross_call_data)
+            cross_call_data = decoded[0]
+        except Exception:
+            pass  # Already raw calldata
+
     print(f"    Cross-call data: {cross_call_data.hex()[:40]}...")
     print(f"    Selector: {cross_call_data[:4].hex()}")
     print(f"    ContractA produced calldata for ContractB.store({test_value})")
