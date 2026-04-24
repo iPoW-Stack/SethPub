@@ -36,7 +36,7 @@ static const std::string db_path = "./txclidb";
 std::mutex cli_mutex;
 std::condition_variable cli_con;
 std::string global_chain_node_ip = "10.10.1.115";
-uint16_t global_chain_node_http_port = 13001;
+uint16_t global_chain_node_http_port = 23001;
 std::unordered_map<std::string, uint64_t> prikey_with_nonce;
 std::unordered_map<std::string, uint64_t> src_prikey_with_nonce;
 uint64_t batch_nonce_check_count = 10240;
@@ -576,7 +576,7 @@ int main(int argc, char** argv) {
             }
 
             std::cout << "  Thread " << thread_id << ": funder="
-                      << common::Encode::HexEncode(funder_addr).substr(0, 12) << "..."
+                      << common::Encode::HexEncode(funder_addr) << "..."
                       << " nonce=" << nonce
                       << " accounts=[" << start_idx << "," << end_idx << ")" << std::endl;
 
