@@ -840,7 +840,8 @@ void TxPool::TempGetTxIdempotently(
                 }
 
                 if (!IsUserTransaction(tx_ptr->tx_info->step()) &&
-                        tx_ptr->tx_info->step() != pools::protobuf::kConsensusLocalTos) {
+                        tx_ptr->tx_info->step() != pools::protobuf::kConsensusLocalTos && 
+                        tx_ptr->tx_info->step() != pools::protobuf::kRootCreateAddress) {
                     auto iter = system_added_step.find(tx_ptr->tx_info->step());
                     if (iter != system_added_step.end()) {
                         SETH_DEBUG("trace tx pool: %d, failed add tx addr: %s, nonce: %lu, step: %d, unique hash: %s", 
