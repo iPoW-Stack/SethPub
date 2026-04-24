@@ -25,7 +25,7 @@
 
 using namespace seth;
 static bool global_stop = false;
-static const std::string kBroadcastIp = "127.0.0.1";
+static const std::string kBroadcastIp = "10.10.1.115";
 static const uint16_t kBroadcastPort = 13001;
 static int shardnum = 3;
 static const int delayus = 0;
@@ -35,7 +35,7 @@ static const std::string db_path = "./txclidb";
 // http::HttpClient cli;
 std::mutex cli_mutex;
 std::condition_variable cli_con;
-std::string global_chain_node_ip = "127.0.0.1";
+std::string global_chain_node_ip = "10.10.1.115";
 uint16_t global_chain_node_http_port = 13001;
 std::unordered_map<std::string, uint64_t> prikey_with_nonce;
 std::unordered_map<std::string, uint64_t> src_prikey_with_nonce;
@@ -553,24 +553,41 @@ int main(int argc, char** argv) {
         std::atomic<uint32_t> created_count{0};
         std::atomic<uint32_t> failed_count{0};
 
+        // Limit thread count to number of funded accounts to avoid nonce collisions.
+        // Each funder must be used by exactly one thread.
+        uint32_t create_threads_count = std::min(num_threads, (uint32_t)g_prikeys.size());
+        uint32_t accounts_per_create_thread = kAccountCount / create_threads_count;
+
         // Use existing funded accounts to send initial coins to test accounts
         auto create_account_thread = [&](uint32_t thread_id, uint32_t start_idx, uint32_t end_idx) {
-            // Use one of the funded accounts from g_prikeys
-            uint32_t funder_idx = thread_id % g_prikeys.size();
-            std::string funder_prikey = g_prikeys[funder_idx];
+            // Each thread gets a unique funder (thread_id < g_prikeys.size() guaranteed)
+            std::string funder_prikey = g_prikeys[thread_id];
             std::shared_ptr<security::Security> funder_sec = std::make_shared<security::Ecdsa>();
             funder_sec->SetPrivateKey(funder_prikey);
             std::string funder_addr = funder_sec->GetAddress();
 
             // Get initial nonce
-            int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(funder_addr));
+            int64_t nonce = -1;
+            for (int retry = 0; retry < 3 && nonce < 0; ++retry) {
+                nonce = sdk.fetchNonce(common::Encode::HexEncode(funder_addr));
+                if (nonce < 0 && retry < 2) {
+                    usleep(500000);
+                }
+            }
             if (nonce < 0) {
-                std::cerr << "  Thread " << thread_id << ": Failed to fetch nonce" << std::endl;
+                std::cerr << "  Thread " << thread_id << ": Failed to fetch nonce for funder "
+                          << common::Encode::HexEncode(funder_addr) << std::endl;
+                failed_count += (end_idx - start_idx);
                 return;
             }
 
+            std::cout << "  Thread " << thread_id << ": funder="
+                      << common::Encode::HexEncode(funder_addr).substr(0, 12) << "..."
+                      << " nonce=" << nonce
+                      << " accounts=[" << start_idx << "," << end_idx << ")" << std::endl;
+
             for (uint32_t i = start_idx; i < end_idx && !global_stop; ++i) {
-                // Send 1000 coins to test account
+                // Send 1000 coins to test account to create it on-chain
                 auto tx_msg_ptr = CreateTransactionWithAttr(
                     funder_sec,
                     ++nonce,
@@ -598,10 +615,9 @@ int main(int argc, char** argv) {
         };
 
         std::vector<std::thread> create_threads;
-        uint32_t accounts_per_thread = kAccountCount / num_threads;
-        for (uint32_t t = 0; t < num_threads; ++t) {
-            uint32_t start_idx = t * accounts_per_thread;
-            uint32_t end_idx = (t == num_threads - 1) ? kAccountCount : (start_idx + accounts_per_thread);
+        for (uint32_t t = 0; t < create_threads_count; ++t) {
+            uint32_t start_idx = t * accounts_per_create_thread;
+            uint32_t end_idx = (t == create_threads_count - 1) ? kAccountCount : (start_idx + accounts_per_create_thread);
             create_threads.emplace_back(create_account_thread, t, start_idx, end_idx);
         }
 
@@ -630,6 +646,7 @@ int main(int argc, char** argv) {
         std::cout << "\n[Phase 4] Verifying accounts..." << std::endl;
         std::atomic<uint32_t> verified_count{0};
         std::atomic<uint32_t> verify_failed_count{0};
+        uint32_t accounts_per_thread = kAccountCount / num_threads;
 
         auto verify_thread = [&](uint32_t start_idx, uint32_t end_idx) {
             for (uint32_t i = start_idx; i < end_idx && !global_stop; ++i) {
