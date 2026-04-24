@@ -576,7 +576,7 @@ int main(int argc, char** argv) {
             }
             if (nonce < 0) {
                 std::cerr << "  Thread " << thread_id << ": Failed to fetch nonce for funder "
-                          << common::Encode::HexEncode(funder_addr) << std::endl;
+                          <<  common::Encode::HexEncode(funder_prikey) << " : " << common::Encode::HexEncode(funder_addr) << std::endl;
                 failed_count += (end_idx - start_idx);
                 return;
             }
