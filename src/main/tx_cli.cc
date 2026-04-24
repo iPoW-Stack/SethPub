@@ -567,15 +567,7 @@ int main(int argc, char** argv) {
             std::string funder_addr = funder_sec->GetAddress();
 
             // Get initial nonce
-            int64_t nonce = -1;
-            for (int retry = 0; retry < 3 && nonce < 0; ++retry) {
-                nonce = sdk.fetchNonce(common::Encode::HexEncode(funder_addr));
-                if (nonce < 0) {
-                    std::cerr << "  Thread " << thread_id << ": Failed to fetch nonce for funder "
-                          <<  common::Encode::HexEncode(funder_prikey) << " : " << common::Encode::HexEncode(funder_addr) << std::endl;
-                    break;
-                }
-            }
+            int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(funder_addr));
             if (nonce < 0) {
                 std::cerr << "  Thread " << thread_id << ": Failed to fetch nonce for funder "
                           <<  common::Encode::HexEncode(funder_prikey) << " : " << common::Encode::HexEncode(funder_addr) << std::endl;
@@ -621,6 +613,7 @@ int main(int argc, char** argv) {
             uint32_t start_idx = t * accounts_per_create_thread;
             uint32_t end_idx = (t == create_threads_count - 1) ? kAccountCount : (start_idx + accounts_per_create_thread);
             create_threads.emplace_back(create_account_thread, t, start_idx, end_idx);
+            std::cout << "start create account thread " << t << ", " << start_idx << ", " << end_idx << std::endl;
         }
 
         // Progress monitor
