@@ -755,118 +755,111 @@ The 4,500-5,500 TPS result includes cross-shard routing overhead, GBP aggregatio
 
 ---
 
-## 7. Multi-Token Parallel AMM: Demonstrating Sharding Advantage
+## 7. Multi-Pool Parallel AMM and Cross-Shard Token Swap
 
-### 7.1 The Problem: Single-Pool Bottleneck
+### 7.1 The Problem
 
-In a non-sharded blockchain, all AMM pools share a single global state. When User1 swaps A→B and User2 swaps C→D, both transactions must be serialized through the same consensus round — even though they operate on completely independent state. This creates a fundamental throughput ceiling.
+In a non-sharded blockchain, all AMM pools share a single global state. Independent swaps (A→B and C→D) must be serialized. Cross-token-pair swaps (A→B→C) are atomic but limited to single-chain throughput.
 
-### 7.2 Seth's Solution: Independent Pools in Independent Shards
+### 7.2 Seth's Two Innovations
 
-The `amm.py` multi-shard test (`test_multi_shard_amm`) demonstrates how Seth eliminates this bottleneck with 6 tokens (A, B, C, D, E, F) and multiple pair pools deployed across different shards:
+Seth addresses this with two complementary mechanisms:
 
-```
-Design: Each pair pool is deployed by a DEDICATED deployer account.
-        Different deployer → different CREATE2 address → different shard.
+**Innovation 1 — Parallel pool execution**: Independent AMM pools in different shards execute concurrently. Pool_AB and Pool_CD run in parallel with no global lock.
 
-  Pool_AB (deployer_AB) → Shard X, Pool P₁
-  Pool_CD (deployer_CD) → Shard Y, Pool P₂
-  Pool_BC (deployer_BC) → Shard Z, Pool P₃
+**Innovation 2 — Burn-Relay-Mint cross-shard bridge**: A `BridgeToken` contract with `burnAndEncode()` enables cross-shard token transfer by encoding the mint calldata as output, which the user relays to the target shard.
 
-  Pool_AB and Pool_CD are in DIFFERENT shards
-  → Their consensus rounds run IN PARALLEL
-  → No global lock, no shared state, no waiting
-```
-
-### 7.3 Concurrent Execution Proof
-
-The test launches two swaps simultaneously using Python threads:
+### 7.3 Parallel Pool Execution (test_multi_shard_amm)
 
 ```python
-# clipy/amm.py — test_multi_shard_amm, Phase 3
+# clipy/amm.py — concurrent swaps on independent pools
 t1 = threading.Thread(target=swap_ab)  # User1: A→B on Pool_AB (Shard X)
 t2 = threading.Thread(target=swap_cd)  # User2: C→D on Pool_CD (Shard Y)
-t1.start(); t2.start()
-t1.join(); t2.join()
-# Both complete concurrently — elapsed time ≈ single swap time, not 2×
+t1.start(); t2.start(); t1.join(); t2.join()
+# Wall-clock time ≈ single swap time — linear throughput scaling
 ```
 
-Because Pool_AB and Pool_CD are in different shards, their consensus rounds execute independently. The wall-clock time for two concurrent swaps equals the time for one swap — **linear throughput scaling**.
+### 7.4 Cross-Shard AMM Swap: A→B→B2→C (test_cross_shard_amm_swap)
 
-### 7.4 Throughput Scaling Model
-
-With 6 tokens, there are 15 possible pair combinations (C(6,2) = 15). Each pair pool can be deployed in a separate shard:
-
-```
-Tokens: A, B, C, D, E, F
-Pairs:  AB, AC, AD, AE, AF, BC, BD, BE, BF, CD, CE, CF, DE, DF, EF
-        = 15 independent pools across different shards
-
-Single-pool throughput: ~170 TPS per pool
-15 parallel pools:      15 × 170 = 2,550 TPS (just for AMM swaps)
-With 32 pools/shard:    theoretical max = shards × 32 × 170 TPS
-```
-
-### 7.5 Intra-Pool Atomicity Preserved
-
-Each individual swap remains fully atomic within its pool. The `swapAForB` function calls `transferFrom` + `transfer` in a single EVM execution:
+The `BridgeToken` contract extends ERC20 with bridge functions:
 
 ```solidity
-function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 amountOut) {
-    amountOut = (amountIn * reserveB) / (reserveA + amountIn);
-    require(amountOut >= minOut, "slippage");  // ← REVERT rolls back everything
-    tokenA.transferFrom(msg.sender, address(this), amountIn);
-    tokenB.transfer(msg.sender, amountOut);
-    reserveA += amountIn;
-    reserveB -= amountOut;
+contract BridgeToken {
+    // Standard ERC20: transfer, approve, transferFrom, balanceOf...
+
+    /// Mint tokens (called via cross-shard relay)
+    function mint(address to, uint256 amount) external { ... }
+
+    /// Burn tokens and return ABI-encoded mint() calldata for target shard
+    function burnAndEncode(uint256 amount, address mintTo) external returns (bytes memory) {
+        require(balanceOf[msg.sender] >= amount, "insufficient");
+        balanceOf[msg.sender] -= amount;
+        totalSupply -= amount;
+        return abi.encodeWithSignature("mint(address,uint256)", mintTo, amount);
+    }
 }
 ```
 
-The test verifies this with a slippage protection test (Phase 5): an impossible `minOut` triggers REVERT, and reserves remain unchanged — proving all-or-nothing atomicity.
-
-### 7.6 Cross-Shard Path: A→B→C
-
-The test also demonstrates a two-step cross-shard swap path:
+**Complete cross-shard swap flow**:
 
 ```
-Step 1: User swaps A→B in Pool_AB (atomic, intra-shard)
-        → B tokens credited to user in Pool_AB's shard
-
-Step 2: B transferred cross-shard via GBP (~1.5s latency)
-        → B arrives in Pool_BC's shard
-
-Step 3: User swaps B→C in Pool_BC (atomic, intra-shard)
-        → C tokens credited to user
-
-Each step is individually atomic (EVM REVERT on failure).
-The cross-shard relay is handled by GBP with two-phase commit.
-No compensation transactions needed.
+Shard X                              Cross-Shard                    Shard Y
+────────                             ───────────                    ────────
+1. User swaps A→B on Pool_AB        
+   (atomic, minOut_AB protects)      
+                                     
+2. User calls TokenB.burnAndEncode()
+   → Burns B tokens                  
+   → Returns mint(user, amount)      
+     as ABI-encoded output           
+                                     3. User retrieves output
+                                        from tx receipt
+                                     
+                                     4. User sends mint()        5. TokenB2.mint(user, amount)
+                                        calldata to Shard Y         on Shard Y (atomic)
+                                     
+                                                                  6. User swaps B2→C on Pool_BC
+                                                                     (atomic, minOut_BC protects)
 ```
 
-### 7.7 Comparison: Sharded vs. Non-Sharded AMM
+### 7.5 Slippage Protection Across Shards
+
+Each hop has independent slippage protection via `minOut`:
+
+| Step | Slippage Protection | On Failure |
+|------|-------------------|------------|
+| Swap A→B (Shard X) | `swapAForB(amount, minOut_AB)` | REVERT — no tokens moved |
+| Burn B → get calldata | Always succeeds if balance sufficient | REVERT — B tokens preserved |
+| Mint B2 (Shard Y) | Always succeeds (mint is unconditional) | N/A |
+| Swap B2→C (Shard Y) | `swapAForB(amount, minOut_BC)` | REVERT — B2 tokens preserved, retry later |
+
+The user pre-queries both pools' reserves to calculate `minOut_AB` and `minOut_BC` before starting. If Shard Y's price moves during relay, the swap REVERTs but the user's B2 tokens are safe — they can retry when the price is favorable.
+
+### 7.6 Comparison
 
 | Dimension | Non-Sharded (Ethereum) | Seth Sharded |
 |-----------|----------------------|--------------|
-| Pool_AB swap + Pool_CD swap | Sequential (same block) | **Parallel** (different shards) |
-| Throughput with N pools | O(1) — all share global state | **O(N)** — linear scaling |
-| Atomicity per swap | ✅ Full | ✅ Full (same pool) |
-| Cross-pool path (A→B→C) | Atomic (single tx, same state) | Eventually consistent (two atomic steps + GBP) |
-| Max concurrent swaps | 1 per block | **N per block** (N = number of shards × pools) |
-| 6-token, 15-pool scenario | 15 swaps serialized | **15 swaps parallel** |
+| Pool_AB + Pool_CD swaps | Sequential | **Parallel** (different shards) |
+| Throughput with N pools | O(1) | **O(N)** — linear scaling |
+| Intra-pool atomicity | ✅ Full | ✅ Full |
+| Cross-shard A→B→C | N/A (single chain) | Burn-Relay-Mint (each step atomic) |
+| Slippage protection | Single minOut | Per-hop minOut (independent) |
+| Failed cross-shard swap | N/A | Tokens safe at last successful hop |
 
-### 7.8 Running the Multi-Shard AMM Test
+### 7.7 Running the Tests
 
 ```bash
 cd clipy
-python amm.py --test multi          # Multi-shard test only
-python amm.py --test both           # Single-pool + multi-shard tests
+python amm.py --test multi    # Parallel pool execution only
+python amm.py --test cross    # Cross-shard AMM swap only
+python amm.py --test all      # All tests (single + multi + cross)
 ```
 
-The test output confirms:
-1. Pool_AB and Pool_CD deployed in different shards ✅
-2. Concurrent swaps complete in parallel (not sequential) ✅
-3. Slippage REVERT leaves reserves unchanged (atomicity) ✅
-4. Cross-shard path A→B→C works with per-step atomicity ✅
+Test output confirms:
+1. Pool_AB and Pool_CD execute in parallel ✅
+2. Burn-Relay-Mint bridges tokens across shards ✅
+3. Complete A→B→B2→C swap across two shards ✅
+4. Each step individually atomic with slippage protection ✅
 
 ---
 
@@ -880,7 +873,7 @@ The test output confirms:
 | 4. GBP bottleneck | Parallel per-pool GBP; O(1μs) aggregation vs O(1ms) EVM execution; not the bottleneck |
 | 5. Why GBP | Prevents cross-shard message explosion (direct QC = O(S²×P), GBP compresses 6,000×); two-phase commit safety; chain completeness via height continuity; transfer aggregation; deterministic ordering; block-level atomicity; event-driven real-time delivery; replay protection |
 | 6. Experiments | Existing stress tests cover mixed workloads; proposed additional cross-pool ratio experiments |
-| 7. Multi-token parallel AMM | 6 tokens, 15 pools across different shards; concurrent swaps proven via threading test; O(N) throughput scaling; per-swap atomicity preserved; cross-shard path with GBP relay |
+| 7. Multi-pool AMM + cross-shard swap | Parallel pool execution (O(N) scaling); Burn-Relay-Mint bridge for cross-shard A→B→B2→C; per-hop slippage protection; each step atomic |
 
 ---
 

@@ -1017,16 +1017,334 @@ def test_multi_shard_amm(w3, deployer_addr: str, deployer_key: str):
 # Updated Entry Point — runs both tests
 # ---------------------------------------------------------------------------
 
+# ===========================================================================
+# Cross-Shard AMM Swap via Output Relay
+# ===========================================================================
+# Demonstrates a real cross-shard token swap:
+#   Shard X: Pool_AB has TokenA + TokenB. User swaps A→B.
+#   Shard Y: Pool_BC has TokenB2 + TokenC. User needs to get B2 tokens.
+#
+# The bridge pattern:
+#   1. User swaps A→B on Pool_AB (atomic, Shard X)
+#   2. Pool_AB.swapAndEncode() returns ABI-encoded mint(user, amount) calldata
+#   3. User retrieves the output from the tx receipt
+#   4. User sends the calldata to TokenB2.mint() on Shard Y
+#   5. User now has B2 tokens on Shard Y, can swap B2→C on Pool_BC
+# ===========================================================================
+
+import base64
+
+# BridgeToken: ERC20 with mint/burn controlled by the bridge pattern
+BRIDGE_TOKEN_SOL = """
+pragma solidity ^0.8.0;
+
+contract BridgeToken {
+    string  public name;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+    event Minted(address indexed to, uint256 amount);
+    event Burned(address indexed from, uint256 amount);
+
+    constructor(string memory _name, uint256 _initialSupply) {
+        name = _name;
+        totalSupply = _initialSupply;
+        balanceOf[msg.sender] = _initialSupply;
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        require(balanceOf[msg.sender] >= amount, "insufficient");
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(msg.sender, to, amount);
+        return true;
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        emit Approval(msg.sender, spender, amount);
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        require(allowance[from][msg.sender] >= amount, "not approved");
+        require(balanceOf[from] >= amount, "insufficient");
+        allowance[from][msg.sender] -= amount;
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(from, to, amount);
+        return true;
+    }
+
+    /// @notice Mint tokens to an address (called via cross-shard relay)
+    function mint(address to, uint256 amount) external {
+        balanceOf[to] += amount;
+        totalSupply += amount;
+        emit Minted(to, amount);
+        emit Transfer(address(0), to, amount);
+    }
+
+    /// @notice Burn tokens and return ABI-encoded mint calldata for the target shard
+    function burnAndEncode(uint256 amount, address mintTo) external returns (bytes memory) {
+        require(balanceOf[msg.sender] >= amount, "insufficient");
+        balanceOf[msg.sender] -= amount;
+        totalSupply -= amount;
+        emit Burned(msg.sender, amount);
+        emit Transfer(msg.sender, address(0), amount);
+        // Return ABI-encoded calldata for mint(mintTo, amount) on the target shard
+        return abi.encodeWithSignature("mint(address,uint256)", mintTo, amount);
+    }
+}
+"""
+
+
+def _decode_output(receipt):
+    """Extract and decode the output from a Seth receipt (base64 or hex)."""
+    output_raw = receipt.get('output', '')
+    if not output_raw:
+        return b''
+    try:
+        return base64.b64decode(output_raw)
+    except Exception:
+        if isinstance(output_raw, str) and output_raw.startswith('0x'):
+            output_raw = output_raw[2:]
+        return bytes.fromhex(output_raw)
+
+
+def test_cross_shard_amm_swap(w3, deployer_addr: str, deployer_key: str):
+    """
+    Cross-shard AMM swap demo:
+
+    Shard X: deployer_x deploys TokenA + TokenB + Pool_AB
+    Shard Y: deployer_y deploys TokenB2 + TokenC + Pool_BC
+
+    User swaps A→B on Shard X, then bridges B to B2 on Shard Y,
+    then swaps B2→C on Shard Y.
+
+    The bridge uses burnAndEncode() → relay output → mint() pattern.
+    """
+    print("\n" + "=" * 70)
+    print("  Cross-Shard AMM Swap via Output Relay")
+    print("=" * 70)
+
+    bt_bin, bt_abi = compile_and_link(BRIDGE_TOKEN_SOL, "BridgeToken")
+    pool_bin, pool_abi = compile_and_link(AMM_POOL_SOL, "AMMPool")
+
+    # ── Phase 1: Deploy on two shards ──────────────────────────────────────
+    print("\n--- Phase 1: Deploy Tokens and Pools on Two Shards ---")
+
+    # Deployer X (Shard X)
+    key_x = secrets.token_hex(32)
+    addr_x = w3.client.get_address(key_x)
+    # Deployer Y (Shard Y)
+    key_y = secrets.token_hex(32)
+    addr_y = w3.client.get_address(key_y)
+
+    for addr, label in [(addr_x, "deployer_X"), (addr_y, "deployer_Y")]:
+        print(f"  Funding {label}...")
+        r = w3.seth.send_transaction({'to': addr, 'value': 500_000_000}, deployer_key)
+        assert r and r.get('status') == 0
+        _wait_account_exists(w3.client, addr, label)
+
+    salt_x = secrets.token_hex(16)
+    salt_y = secrets.token_hex(16)
+
+    # Shard X: TokenA, TokenB, Pool_AB
+    print(f"\n  [Shard X] Deploying TokenA, TokenB, Pool_AB...")
+    tok_a = w3.seth.contract(abi=bt_abi, bytecode=bt_bin)
+    tok_a.deploy({'from': addr_x, 'salt': salt_x + 'ta', 'args': ["TokenA", 5_000_000]}, key_x)
+    tok_b = w3.seth.contract(abi=bt_abi, bytecode=bt_bin)
+    tok_b.deploy({'from': addr_x, 'salt': salt_x + 'tb', 'args': ["TokenB", 5_000_000]}, key_x)
+    pool_ab = w3.seth.contract(abi=pool_abi, bytecode=pool_bin)
+    pool_ab.deploy({'from': addr_x, 'salt': salt_x + 'pab',
+                    'args': [_ck(tok_a.address), _ck(tok_b.address)]}, key_x)
+    print(f"    TokenA @ {tok_a.address}")
+    print(f"    TokenB @ {tok_b.address}")
+    print(f"    Pool_AB @ {pool_ab.address}")
+
+    # Shard Y: TokenB2, TokenC, Pool_BC
+    print(f"\n  [Shard Y] Deploying TokenB2, TokenC, Pool_BC...")
+    tok_b2 = w3.seth.contract(abi=bt_abi, bytecode=bt_bin)
+    tok_b2.deploy({'from': addr_y, 'salt': salt_y + 'tb2', 'args': ["TokenB2", 5_000_000]}, key_y)
+    tok_c = w3.seth.contract(abi=bt_abi, bytecode=bt_bin)
+    tok_c.deploy({'from': addr_y, 'salt': salt_y + 'tc', 'args': ["TokenC", 5_000_000]}, key_y)
+    pool_bc = w3.seth.contract(abi=pool_abi, bytecode=pool_bin)
+    pool_bc.deploy({'from': addr_y, 'salt': salt_y + 'pbc',
+                    'args': [_ck(tok_b2.address), _ck(tok_c.address)]}, key_y)
+    print(f"    TokenB2 @ {tok_b2.address}")
+    print(f"    TokenC  @ {tok_c.address}")
+    print(f"    Pool_BC @ {pool_bc.address}")
+
+    # ── Phase 2: Add liquidity ─────────────────────────────────────────────
+    print("\n--- Phase 2: Add Liquidity ---")
+    pf = 50_000_000
+    liq = 200_000
+
+    # Shard X liquidity
+    for c in [tok_a, tok_b, pool_ab]:
+        c.prefund(pf, key_x)
+    _wait_prefund(tok_a, addr_x, pf)
+    _wait_prefund(tok_b, addr_x, pf)
+    _wait_prefund(pool_ab, addr_x, pf)
+    tok_a.functions.approve(_ck(pool_ab.address), liq).transact(key_x)
+    tok_b.functions.approve(_ck(pool_ab.address), liq).transact(key_x)
+    r = pool_ab.functions.addLiquidity(liq, liq).transact(key_x)
+    assert r.get('status') == 0
+    print(f"    Pool_AB liquidity: {liq}/{liq}")
+
+    # Shard Y liquidity
+    for c in [tok_b2, tok_c, pool_bc]:
+        c.prefund(pf, key_y)
+    _wait_prefund(tok_b2, addr_y, pf)
+    _wait_prefund(tok_c, addr_y, pf)
+    _wait_prefund(pool_bc, addr_y, pf)
+    tok_b2.functions.approve(_ck(pool_bc.address), liq).transact(key_y)
+    tok_c.functions.approve(_ck(pool_bc.address), liq).transact(key_y)
+    r = pool_bc.functions.addLiquidity(liq, liq).transact(key_y)
+    assert r.get('status') == 0
+    print(f"    Pool_BC liquidity: {liq}/{liq}")
+
+    # ── Phase 3: Create user and fund ──────────────────────────────────────
+    print("\n--- Phase 3: Create User ---")
+    user_key = secrets.token_hex(32)
+    user_addr = w3.client.get_address(user_key)
+    user_ck = _ck(user_addr)
+    w3.seth.send_transaction({'to': user_addr, 'value': 200_000_000}, deployer_key)
+    _wait_account_exists(w3.client, user_addr, "User")
+
+    # Give user some TokenA
+    tok_a.functions.transfer(user_ck, 50_000).transact(key_x)
+    _wait_balance(tok_a, user_ck, 50_000)
+    print(f"    User has 50,000 TokenA")
+
+    # User prefunds on all contracts they'll interact with
+    user_pf = 10_000_000
+    for c in [tok_a, tok_b, pool_ab]:
+        uc = w3.seth.contract(address=c.address, abi=bt_abi, sender_address=user_addr)
+        uc.prefund(user_pf, user_key)
+        _wait_prefund(uc, user_addr, user_pf)
+    # Also prefund on Pool_AB with pool_abi
+    uc_pool = w3.seth.contract(address=pool_ab.address, abi=pool_abi, sender_address=user_addr)
+    uc_pool.prefund(user_pf, user_key)
+    _wait_prefund(uc_pool, user_addr, user_pf)
+
+    for c in [tok_b2, tok_c, pool_bc]:
+        uc = w3.seth.contract(address=c.address, abi=bt_abi, sender_address=user_addr)
+        uc.prefund(user_pf, user_key)
+        _wait_prefund(uc, user_addr, user_pf)
+    uc_pool_bc = w3.seth.contract(address=pool_bc.address, abi=pool_abi, sender_address=user_addr)
+    uc_pool_bc.prefund(user_pf, user_key)
+    _wait_prefund(uc_pool_bc, user_addr, user_pf)
+    print(f"    User prefunded on all contracts")
+
+    # ── Phase 4: Swap A→B on Shard X ──────────────────────────────────────
+    print("\n--- Phase 4: Swap A→B on Pool_AB (Shard X) ---")
+    swap_amount = 10_000
+    u_tok_a = w3.seth.contract(address=tok_a.address, abi=bt_abi, sender_address=user_addr)
+    u_pool_ab = w3.seth.contract(address=pool_ab.address, abi=pool_abi, sender_address=user_addr)
+    u_tok_a.functions.approve(_ck(pool_ab.address), swap_amount * 2).transact(user_key)
+    r = u_pool_ab.functions.swapAForB(swap_amount, 0).transact(user_key)
+    assert r.get('status') == 0
+    print(f"    Swapped {swap_amount} A → B")
+
+    # Check user's TokenB balance
+    u_tok_b = w3.seth.contract(address=tok_b.address, abi=bt_abi, sender_address=user_addr)
+    bal_b = u_tok_b.functions.balanceOf(user_ck).call()[0]
+    print(f"    User TokenB balance: {bal_b}")
+    assert bal_b > 0, "No TokenB received from swap"
+
+    # ── Phase 5: Burn TokenB and get mint calldata ─────────────────────────
+    print("\n--- Phase 5: Burn TokenB → Get mint() calldata for Shard Y ---")
+    burn_amount = bal_b  # burn all B tokens
+    r = u_tok_b.functions.burnAndEncode(burn_amount, user_ck).transact(user_key)
+    assert r.get('status') == 0
+    print(f"    Burned {burn_amount} TokenB")
+
+    # Extract the output: ABI-encoded mint(user, amount) calldata
+    output_bytes = _decode_output(r)
+    print(f"    Output size: {len(output_bytes)} bytes")
+
+    # Decode the ABI return value (bytes)
+    import eth_abi
+    if len(output_bytes) > 36:
+        try:
+            decoded = eth_abi.decode(['bytes'], output_bytes)
+            mint_calldata = decoded[0]
+        except Exception:
+            mint_calldata = output_bytes
+    else:
+        mint_calldata = output_bytes
+
+    print(f"    Mint calldata: {mint_calldata.hex()[:60]}...")
+    print(f"    Selector: {mint_calldata[:4].hex()}")
+
+    # ── Phase 6: Relay mint calldata to TokenB2 on Shard Y ─────────────────
+    print("\n--- Phase 6: Mint TokenB2 on Shard Y (relay) ---")
+    # Decode the mint calldata to get the parameters
+    # mint(address,uint256) → selector(4) + address(32) + uint256(32)
+    mint_to = mint_calldata[4:36]  # padded address
+    mint_amount_bytes = mint_calldata[36:68]
+    mint_amount = int.from_bytes(mint_amount_bytes, 'big')
+    mint_to_addr = "0x" + mint_to[-20:].hex()
+    print(f"    Minting {mint_amount} TokenB2 to {mint_to_addr}")
+
+    u_tok_b2 = w3.seth.contract(address=tok_b2.address, abi=bt_abi, sender_address=user_addr)
+    r = u_tok_b2.functions.mint(mint_to_addr, mint_amount).transact(user_key)
+    assert r.get('status') == 0
+    print(f"    Minted {mint_amount} TokenB2")
+
+    bal_b2 = u_tok_b2.functions.balanceOf(user_ck).call()[0]
+    print(f"    User TokenB2 balance: {bal_b2}")
+    assert bal_b2 >= mint_amount
+
+    # ── Phase 7: Swap B2→C on Pool_BC (Shard Y) ───────────────────────────
+    print("\n--- Phase 7: Swap B2→C on Pool_BC (Shard Y) ---")
+    u_tok_b2.functions.approve(_ck(pool_bc.address), bal_b2 * 2).transact(user_key)
+    r = uc_pool_bc.functions.swapAForB(bal_b2, 0).transact(user_key)
+    assert r.get('status') == 0
+    print(f"    Swapped {bal_b2} B2 → C")
+
+    u_tok_c = w3.seth.contract(address=tok_c.address, abi=bt_abi, sender_address=user_addr)
+    bal_c = u_tok_c.functions.balanceOf(user_ck).call()[0]
+    print(f"    User TokenC balance: {bal_c}")
+    assert bal_c > 0, "No TokenC received"
+
+    # ── Summary ───────────────────────────────────────────────────────────
+    print("\n" + "=" * 70)
+    print("  ✅ Cross-Shard AMM Swap PASSED")
+    print("=" * 70)
+    print(f"""
+  COMPLETE FLOW: A → B → B2 → C (across two shards)
+  ──────────────────────────────────────────────────
+  Step 1: User swapped {swap_amount} TokenA → {bal_b} TokenB on Pool_AB (Shard X)  [atomic]
+  Step 2: User burned {burn_amount} TokenB → got mint() calldata                    [atomic]
+  Step 3: User relayed mint() calldata to TokenB2 on Shard Y                        [cross-shard]
+  Step 4: User minted {mint_amount} TokenB2 on Shard Y                              [atomic]
+  Step 5: User swapped {bal_b2} TokenB2 → {bal_c} TokenC on Pool_BC (Shard Y)       [atomic]
+
+  Each step is individually ATOMIC (EVM REVERT on failure).
+  The cross-shard relay (Step 3) is a standard Seth transaction.
+  Total: {swap_amount} TokenA → {bal_c} TokenC across two shards.
+""")
+
+
+# ---------------------------------------------------------------------------
+# Updated Entry Point
+# ---------------------------------------------------------------------------
+
 def main_multi():
     parser = argparse.ArgumentParser(
-        description="Seth Multi-Shard AMM Demo — 6 tokens, parallel pools")
+        description="Seth Multi-Shard AMM Demo — parallel pools + cross-shard swap")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=23001)
     parser.add_argument("--key",
                         default="71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6",
                         help="Master deployer ECDSA private key (hex)")
-    parser.add_argument("--test", choices=["single", "multi", "both"], default="both",
-                        help="Which test to run (default: both)")
+    parser.add_argument("--test", choices=["single", "multi", "cross", "all"], default="all",
+                        help="Which test to run (default: all)")
     parser.add_argument("--users", type=int, default=3,
                         help="Number of trader accounts for single-pool test")
     args = parser.parse_args()
@@ -1036,17 +1354,18 @@ def main_multi():
     print(f"Node     : https://{args.host}:{args.port}")
     print(f"Deployer : {deployer_addr}")
 
-    if args.test in ("single", "both"):
+    if args.test in ("single", "all"):
         test_amm(w3, deployer_addr, args.key, num_users=args.users)
 
-    if args.test in ("multi", "both"):
+    if args.test in ("multi", "all"):
         test_multi_shard_amm(w3, deployer_addr, args.key)
+
+    if args.test in ("cross", "all"):
+        test_cross_shard_amm_swap(w3, deployer_addr, args.key)
 
 
 if __name__ == "__main__":
     import sys
-    # If called as amm.py with no extra args, run original single-pool test for backward compat.
-    # If called with --test multi or --test both, run the new multi-shard test.
     if any(a.startswith("--test") for a in sys.argv[1:]):
         main_multi()
     else:
