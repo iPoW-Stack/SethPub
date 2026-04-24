@@ -58,7 +58,7 @@
 
 ## 3. Decentralization (9/10)
 
-**Permissionless**: No staking minimum, no whitelist. `start_miner.sh` to join.
+**Permissionless**: Minimum stake of 8 SETH required, no whitelist. `start_miner.sh` to join.
 
 **Dynamic Sharding**: Shards added/removed without halting consensus. BLS DKG committee rotation.
 
