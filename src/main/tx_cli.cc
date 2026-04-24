@@ -733,7 +733,7 @@ int main(int argc, char** argv) {
         std::atomic<uint64_t> tx_failed{0};
 
         auto stress_test_thread = [&](uint32_t thread_id, uint32_t start_idx, uint32_t end_idx) {
-            for (uint32_t i = start_idx; i < end_idx && !global_stop; ) {
+            while (!global_stop) {
                 // Random from account (within this thread's range)
                 uint32_t from_idx = start_idx + (common::Random::RandomUint32() % (end_idx - start_idx));
                 
@@ -747,9 +747,9 @@ int main(int argc, char** argv) {
                 std::string from_addr = test_addrs[from_idx];
                 std::string to_addr = test_addrs[to_idx];
 
-                // Check nonce
+                // Check nonce throttle
                 if (src_prikey_with_nonce[from_addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[from_addr]) {
-                    usleep(1000000);  // Wait 1 second
+                    usleep(100000);  // Wait 100ms then try a different account
                     continue;
                 }
 
@@ -758,7 +758,6 @@ int main(int argc, char** argv) {
 
                 // Random amount between 1 and 10
                 uint64_t amount = 1 + (common::Random::RandomUint32() % 10);
-
                 auto tx_msg_ptr = CreateTransactionWithAttr(
                     from_sec,
                     ++prikey_with_nonce[from_addr],
@@ -780,7 +779,6 @@ int main(int argc, char** argv) {
                     ++tx_failed;
                 }
 
-                ++i;
                 usleep(5000);  // 5ms delay
             }
         };
@@ -810,15 +808,23 @@ int main(int argc, char** argv) {
         // Nonce update thread
         std::thread nonce_update_thread([&]() {
             while (!global_stop) {
-                usleep(15000000);  // 15 seconds
+                usleep(10000000);  // 10 seconds
                 std::cout << "  Updating nonces..." << std::endl;
-                for (uint32_t i = 0; i < kAccountCount && !global_stop; i += 100) {
-                    int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(test_addrs[i]));
-                    if (nonce >= 0) {
-                        src_prikey_with_nonce[test_addrs[i]] = nonce;
+                uint32_t updated = 0;
+                for (uint32_t i = 0; i < kAccountCount && !global_stop; ++i) {
+                    // Only update accounts that are nonce-throttled
+                    auto& addr = test_addrs[i];
+                    if (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount > prikey_with_nonce[addr]) {
+                        continue;  // Not throttled, skip
                     }
-                    usleep(10000);
+                    int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(addr));
+                    if (nonce >= 0) {
+                        src_prikey_with_nonce[addr] = nonce;
+                        ++updated;
+                    }
+                    usleep(1000);  // 1ms between queries
                 }
+                std::cout << "  Nonce update done: " << updated << " accounts refreshed" << std::endl;
             }
         });
 
