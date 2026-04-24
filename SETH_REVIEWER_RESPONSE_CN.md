@@ -117,11 +117,13 @@ Seth 提供两个不同层级的原子性保证：
 
 ---
 
-#### 场景 1：同一部署者共置（DeFi 推荐模式）
+#### 场景 1：合约共置实现原子执行（DeFi 推荐模式）
 
-**拓扑**：TokenA、TokenB 和 AMMPool 由**同一账户**部署 → 全部在**同一分片和池**中。
+**拓扑**：TokenA、TokenB 和 AMMPool 全部在**同一分片和池**中 → 保证原子执行。
 
-**这是 Seth 中 DeFi 协议的主要设计模式。** 合约地址通过 CREATE2 从部署者地址派生。当开发者从同一账户部署所有协议合约时，它们保证落入同一池：
+**这是 Seth 中 DeFi 协议的主要设计模式。** 有两种方式实现共置：
+
+**方式 A — 同一部署者**：当开发者从同一账户部署所有协议合约时，它们保证落入同一池（CREATE2 地址派生）：
 
 ```python
 # clipy/amm.py — test_amm（单池演示）
@@ -130,6 +132,19 @@ token_b.deploy({'from': deployer_addr, 'salt': salt + 'tb', ...}, deployer_key)
 amm.deploy({'from': deployer_addr, 'salt': salt + 'am', ...}, deployer_key)
 # 3 个合约在同一分片和池 → 保证原子执行
 ```
+
+**方式 B — 自动生成目标部署者**（`test_contract_chain_demo.py`）：当不同用户需要部署相互依赖的合约时，SDK 自动生成映射到**目标合约所在分片和池**的部署者地址。完全自动化：
+
+```python
+# clipy/test_contract_chain_demo.py — 跨用户共置
+# 1. User1 部署 ContractA → 落入分片 3，池 21
+# 2. SDK 查询 ContractA 的实际分片/池
+# 3. SDK 自动生成映射到（分片 3，池 21）的新 User2 地址
+# 4. User2 部署 ContractB → 自动与 ContractA 共置
+# → ContractB 调用 ContractA 完全原子，零跨分片开销
+```
+
+这意味着**任何用户都可以将合约部署到任何目标池**——不限于原始部署者。SDK 自动处理地址生成，零开发者负担。
 
 **原子性**：`AMMPool.swapAForB()` 调用 `TokenA.transferFrom()` 和 `TokenB.transfer()` 时，所有状态变更在**单轮共识**（约 1 秒）中执行：
 
@@ -144,11 +159,11 @@ function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 a
 }
 ```
 
-**滑点失败**：`require` 触发 EVM `REVERT` → 整个交易回滚 → **无需补偿逻辑**。与以太坊的原子性模型完全一致。
+**滑点失败**：`require` 触发 EVM `REVERT` → 整个交易回滚 → **无需补偿逻辑**。与以太坊一致。
 
 **最终确认时间**：单轮共识（约 1 秒），而非多轮。
 
-**开发者负担**：零。标准 Solidity，标准 ERC20 approve/transferFrom 模式。
+**开发者负担**：零。标准 Solidity。SDK 自动处理池定位。
 
 | 属性 | 值 |
 |------|-----|
@@ -156,6 +171,7 @@ function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 a
 | 滑点保护 | 标准 `require` + REVERT |
 | 补偿逻辑 | 无需 |
 | 最终确认 | 约 1 秒 |
+| 共置方式 | 同一部署者 或 自动生成目标部署者 |
 | 开发体验 | 与以太坊一致 |
 
 ---
@@ -248,7 +264,7 @@ contract BridgeToken {
 
 | 维度 | 场景 1（共置） | 场景 2（并行） | 场景 3（跨分片） |
 |------|--------------|--------------|----------------|
-| 拓扑 | 同一部署者 → 同一池 | 不同部署者 → 不同分片 | 两个池在不同分片 |
+| 拓扑 | 同一部署者 或 自动目标部署者 → 同一池 | 不同部署者 → 不同分片 | 两个池在不同分片 |
 | 原子性 | ✅ 完全（单笔交易） | ✅ 每池完全 | 每步原子 |
 | 吞吐量 | 单池 TPS | O(N) 并行 | 串行（中继开销） |
 | 滑点 | 单个 `minOut` | 每池单个 `minOut` | 每跳独立 `minOut` |

@@ -117,11 +117,13 @@ This concern assumes that TokenX, TokenY, and the AMM pool are distributed acros
 
 ---
 
-#### Scenario 1: Same-Deployer Co-location (Recommended for DeFi)
+#### Scenario 1: Contract Co-location for Atomic Execution (Recommended for DeFi)
 
-**Topology**: TokenA, TokenB, and AMMPool deployed by the **same account** → all in the **same shard and pool**.
+**Topology**: TokenA, TokenB, and AMMPool all in the **same shard and pool** → atomic execution guaranteed.
 
-**This is the primary design pattern for DeFi protocols in Seth.** Contract addresses are derived from the deployer's address via CREATE2. When a developer deploys all protocol contracts from one account, they are guaranteed to land in the same pool:
+**This is the primary design pattern for DeFi protocols in Seth.** There are two ways to achieve co-location:
+
+**Method A — Same deployer**: When a developer deploys all protocol contracts from one account, they are guaranteed to land in the same pool (CREATE2 address derivation):
 
 ```python
 # clipy/amm.py — test_amm (single-pool demo)
@@ -130,6 +132,19 @@ token_b.deploy({'from': deployer_addr, 'salt': salt + 'tb', ...}, deployer_key)
 amm.deploy({'from': deployer_addr, 'salt': salt + 'am', ...}, deployer_key)
 # All 3 contracts in same shard & pool → atomic execution guaranteed
 ```
+
+**Method B — Auto-generated deployer targeting** (`test_contract_chain_demo.py`): When different users need to deploy contracts that depend on each other, the SDK automatically generates a deployer address mapped to the **same shard and pool** as the target contract. This is fully automated:
+
+```python
+# clipy/test_contract_chain_demo.py — cross-user co-location
+# 1. User1 deploys ContractA → lands in Shard 3, Pool 21
+# 2. SDK queries ContractA's actual shard/pool
+# 3. SDK auto-generates a new User2 address mapped to (Shard 3, Pool 21)
+# 4. User2 deploys ContractB → automatically co-located with ContractA
+# → ContractB calling ContractA is fully atomic, zero cross-shard overhead
+```
+
+This means **any user can deploy contracts to any target pool** — not just the original deployer. The SDK handles the address generation automatically with zero developer effort.
 
 **Atomicity**: When `AMMPool.swapAForB()` calls `TokenA.transferFrom()` and `TokenB.transfer()`, all three contract state changes execute within a **single consensus round** (~1 second):
 
@@ -144,13 +159,11 @@ function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 a
 }
 ```
 
-**Slippage failure**: `require` triggers EVM `REVERT` → entire transaction rolls back → **no compensation needed**. This is identical to Ethereum's atomicity model.
+**Slippage failure**: `require` triggers EVM `REVERT` → entire transaction rolls back → **no compensation needed**. Identical to Ethereum.
 
 **Finalization time**: Single consensus round (~1 second), NOT multiple rounds.
 
-**Developer burden**: Zero. Standard Solidity, standard ERC20 approve/transferFrom pattern.
-
-**Proven in code**: `clipy/amm.py` → `test_amm()` with 3 independent users, each performing approve → swap → reverse swap, all atomic.
+**Developer burden**: Zero. Standard Solidity. The SDK handles pool targeting automatically.
 
 | Property | Value |
 |----------|-------|
@@ -158,6 +171,7 @@ function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 a
 | Slippage protection | Standard `require` + REVERT |
 | Compensation logic | None needed |
 | Finalization | ~1 second |
+| Co-location | Same deployer OR auto-generated deployer targeting |
 | Developer experience | Identical to Ethereum |
 
 ---
@@ -269,7 +283,7 @@ Shard X                              Cross-Shard Relay              Shard Y
 
 | Dimension | Scenario 1 (Co-located) | Scenario 2 (Parallel) | Scenario 3 (Cross-shard) |
 |-----------|------------------------|----------------------|--------------------------|
-| Topology | Same deployer → same pool | Different deployers → different shards | Two pools on different shards |
+| Topology | Same deployer OR auto-targeted deployer → same pool | Different deployers → different shards | Two pools on different shards |
 | Atomicity | ✅ Full (single tx) | ✅ Full per pool | Per-step atomic |
 | Throughput | Single pool TPS | O(N) parallel | Sequential (relay overhead) |
 | Slippage | Single `minOut` | Single `minOut` per pool | Per-hop `minOut` |
