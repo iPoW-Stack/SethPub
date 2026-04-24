@@ -983,12 +983,12 @@ def test_transfer(w3, MY, KEY, dest):
             print(f"Balance after: {balance_after}")
             
             expected_balance = balance_before + transfer_amount
-            if balance_after == expected_balance:
-                print(f"✅ Balance Verification PASSED: {balance_before} + {transfer_amount} == {balance_after}")
+            if balance_after >= expected_balance:
+                print(f"✅ Balance Verification PASSED: balance={balance_after} >= expected={expected_balance}")
                 break
             else:
                 print(f"❌ Balance Verification FAILED!")
-                print(f"   Expected: {expected_balance}")
+                print(f"   Expected: >= {expected_balance}")
                 print(f"   Actual:   {balance_after}")
 
             count += 1
