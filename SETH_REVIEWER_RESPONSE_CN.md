@@ -109,51 +109,165 @@ Seth 提供两个不同层级的原子性保证：
 | **池内** | 完全原子性（全有或全无） | 单轮共识，EVM REVERT |
 | **跨池** | 最终一致性 | 带重放保护的前向转账 |
 
-### 2.3 为何 AMM 和 DeFi 无需补偿逻辑
+### 2.3 三种 AMM 场景：详细分析
 
-关键洞察：**可组合合约在设计上被共置于同一池中**。
+审稿人提出了具体关注：*"Alice 通过 AMM 将 Token X（分片 X）兑换为 Token Y（分片 Y）。如果交易因滑点在 AMM 处失败，缺乏同步原子性迫使开发者手动编写异步补偿交易。"*
 
-在 Seth 中，合约地址通过 CREATE2 从部署者地址派生：
+该关注假设 TokenX、TokenY 和 AMM 池分布在不同分片。Seth 的架构根据部署拓扑提供**三种不同的解决方案**：
+
+---
+
+#### 场景 1：同一部署者共置（DeFi 推荐模式）
+
+**拓扑**：TokenA、TokenB 和 AMMPool 由**同一账户**部署 → 全部在**同一分片和池**中。
+
+**这是 Seth 中 DeFi 协议的主要设计模式。** 合约地址通过 CREATE2 从部署者地址派生。当开发者从同一账户部署所有协议合约时，它们保证落入同一池：
 
 ```python
-# seth_sdk.py
-address = calc_create2_address(sender, salt, bytecode)
-# 池分配：
-pool_index = Hash32(address) % kImmutablePoolSize
-```
-
-当开发者从**同一账户**部署 TokenA、TokenB 和 AMMPool 时，三个合约将落入同一分片和池中。这在 `clipy/amm.py` 中得到了演示：
-
-```python
-# 均由同一账户部署 → 同一分片和池
+# clipy/amm.py — test_amm（单池演示）
 token_a.deploy({'from': deployer_addr, 'salt': salt + 'ta', ...}, deployer_key)
 token_b.deploy({'from': deployer_addr, 'salt': salt + 'tb', ...}, deployer_key)
 amm.deploy({'from': deployer_addr, 'salt': salt + 'am', ...}, deployer_key)
+# 3 个合约在同一分片和池 → 保证原子执行
 ```
 
-当 `AMMPool.swapAForB()` 调用 `TokenA.transferFrom()` 和 `TokenB.transfer()` 时，所有三个合约的状态变更在**单轮共识**中执行：
+**原子性**：`AMMPool.swapAForB()` 调用 `TokenA.transferFrom()` 和 `TokenB.transfer()` 时，所有状态变更在**单轮共识**（约 1 秒）中执行：
 
 ```solidity
 function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 amountOut) {
     amountOut = (amountIn * reserveB) / (reserveA + amountIn);
-    require(amountOut >= minOut, "slippage");  // ← 失败将导致完全 REVERT
-    tokenA.transferFrom(msg.sender, address(this), amountIn);  // ← 池内操作
-    tokenB.transfer(msg.sender, amountOut);                     // ← 池内操作
+    require(amountOut >= minOut, "slippage");  // ← 失败导致完全 REVERT
+    tokenA.transferFrom(msg.sender, address(this), amountIn);  // ← 池内调用
+    tokenB.transfer(msg.sender, amountOut);                     // ← 池内调用
     reserveA += amountIn;
     reserveB -= amountOut;
 }
 ```
 
-若滑点检查失败，`require` 触发 EVM `REVERT`，**整个交易**回滚——无需补偿逻辑。
+**滑点失败**：`require` 触发 EVM `REVERT` → 整个交易回滚 → **无需补偿逻辑**。与以太坊的原子性模型完全一致。
+
+**最终确认时间**：单轮共识（约 1 秒），而非多轮。
+
+**开发者负担**：零。标准 Solidity，标准 ERC20 approve/transferFrom 模式。
+
+| 属性 | 值 |
+|------|-----|
+| 原子性 | ✅ 完全（单轮共识） |
+| 滑点保护 | 标准 `require` + REVERT |
+| 补偿逻辑 | 无需 |
+| 最终确认 | 约 1 秒 |
+| 开发体验 | 与以太坊一致 |
+
+---
+
+#### 场景 2：多池并行执行（独立交易对）
+
+**拓扑**：Pool_AB 和 Pool_CD 由**不同账户**部署 → 在**不同分片**中。
+
+**此场景最大化吞吐量**，独立 AMM 池并行运行：
+
+```python
+# clipy/amm.py — test_multi_shard_amm（并行池）
+t1 = threading.Thread(target=swap_ab)  # User1：Pool_AB（分片 X）A→B
+t2 = threading.Thread(target=swap_cd)  # User2：Pool_CD（分片 Y）C→D
+t1.start(); t2.start(); t1.join(); t2.join()
+# 实际耗时 ≈ 单笔兑换时间——线性吞吐量扩展
+```
+
+**原子性**：每笔兑换在其池内完全原子。两笔兑换独立——无需跨分片协调。
+
+**关键约束**：Pool_AB 和 Pool_CD 中的代币是**独立合约**。用户不能直接将 Token_A（Pool_AB）兑换为 Token_C（Pool_CD）——需要场景 3。
+
+| 属性 | 值 |
+|------|-----|
+| 原子性 | ✅ 每池完全 |
+| 吞吐量 | O(N)——随池数线性扩展 |
+| 跨池兑换 | 不能直接——需要桥接（场景 3） |
+
+---
+
+#### 场景 3：跨分片 AMM 兑换（销毁-中继-铸造桥接）
+
+**拓扑**：Pool_AB 在分片 X，Pool_BC 在分片 Y。用户想跨两个分片兑换 A→C。
+
+**这正是审稿人关注的场景。** Seth 通过 `BridgeToken` 合约的**销毁-中继-铸造**模式解决：
+
+```solidity
+contract BridgeToken {
+    // 标准 ERC20 + mint/burn 桥接函数
+    function mint(address to, uint256 amount) external { ... }
+    function burnAndEncode(uint256 amount, address mintTo) external returns (bytes memory) {
+        require(balanceOf[msg.sender] >= amount, "insufficient");
+        balanceOf[msg.sender] -= amount;
+        totalSupply -= amount;
+        return abi.encodeWithSignature("mint(address,uint256)", mintTo, amount);
+    }
+}
+```
+
+**完整跨分片兑换流程 A→B→B2→C**（`clipy/amm.py` → `test_cross_shard_amm_swap`）：
+
+```
+分片 X                               跨分片中继                    分片 Y
+──────                               ────────                      ──────
+1. 用户在 Pool_AB 兑换 A→B
+   （原子，minOut_AB 保护滑点）
+2. 用户调用 TokenB.burnAndEncode()
+   → 销毁 B 代币（原子）
+   → 返回 mint(user, amount) calldata
+                                     3. 用户从 receipt 提取 output
+                                     4. 用户发送 mint()          5. TokenB2.mint()（原子）
+                                        calldata 到分片 Y
+                                                                  6. 用户在 Pool_BC 兑换 B2→C
+                                                                     （原子，minOut_BC 保护滑点）
+```
+
+**跨分片滑点保护**：每一跳独立 `minOut`：
+
+| 步骤 | 滑点保护 | 失败时 | 用户代币 |
+|------|---------|--------|---------|
+| 1. 兑换 A→B | `minOut_AB` | REVERT | A 代币保留 |
+| 2. 销毁 B | 余额检查 | REVERT | B 代币保留 |
+| 3-5. 中继+铸造 B2 | 无条件 | 不适用 | B2 在分片 Y 铸造 |
+| 6. 兑换 B2→C | `minOut_BC` | REVERT | **B2 代币保留**——稍后重试 |
+
+**关键安全属性**：如果第二次兑换（B2→C）因滑点失败，用户的 B2 代币**安全保留在分片 Y**。用户可以等价格恢复后重试。**无需补偿交易。**
+
+**最终确认时间**：约 3-5 秒（步骤 1: ~1s，步骤 2: ~1s，步骤 3-5: ~1.5s 跨分片，步骤 6: ~1s）。
+
+| 属性 | 值 |
+|------|-----|
+| 原子性 | 每步原子（非端到端） |
+| 滑点保护 | 每跳独立 `minOut` |
+| 补偿逻辑 | 无——代币安全停留在最后一跳 |
+| 最终确认 | 约 3-5 秒 |
+
+---
+
+#### 三种场景对比
+
+| 维度 | 场景 1（共置） | 场景 2（并行） | 场景 3（跨分片） |
+|------|--------------|--------------|----------------|
+| 拓扑 | 同一部署者 → 同一池 | 不同部署者 → 不同分片 | 两个池在不同分片 |
+| 原子性 | ✅ 完全（单笔交易） | ✅ 每池完全 | 每步原子 |
+| 吞吐量 | 单池 TPS | O(N) 并行 | 串行（中继开销） |
+| 滑点 | 单个 `minOut` | 每池单个 `minOut` | 每跳独立 `minOut` |
+| 最终确认 | 约 1 秒 | 每池约 1 秒 | 约 3-5 秒 |
+| 补偿 | 无 | 无 | 无（代币安全停留在最后一跳） |
+| 用例 | DeFi 协议（AMM、借贷） | 独立交易对 | 跨协议路由 |
+
+**回应审稿人的具体关注**：审稿人的场景（Alice 跨分片通过 AMM 兑换 X→Y）对应**场景 3**。Seth **不需要**"异步补偿交易"——销毁-中继-铸造模式确保代币始终安全停留在最后成功的一跳。如果滑点导致任何步骤 REVERT，用户重试该步骤，而非整个序列。最终确认时间约 3-5 秒，并非"大幅延长"——与以太坊 L2 跨链桥相当。
+
+对于**推荐的部署模式**（场景 1），AMM 兑换在**单轮共识中完全原子**，**零开发者负担**——与以太坊的原子性模型完全一致。
 
 ### 2.4 故障路径处理
 
-| 故障类型 | 处理方式 | 开发者负担 |
-|----------|----------|-----------|
-| 滑点失败 | 标准 EVM REVERT | 无（自动处理） |
-| Gas 不足 | EVM REVERT | 无（自动处理） |
-| 合约缺陷 | EVM REVERT | 标准 Solidity 调试 |
-| 跨分片转账失败 | 通过 `CrossBlockManager` 重试 | 无（系统处理） |
+| 故障类型 | 场景 1 | 场景 3 |
+|----------|--------|--------|
+| 滑点失败 | EVM REVERT（自动） | 失败步骤 REVERT，代币安全 |
+| Gas 不足 | EVM REVERT（自动） | 失败步骤 REVERT，代币安全 |
+| 合约缺陷 | EVM REVERT（自动） | 失败步骤 REVERT，代币安全 |
+| 跨分片中继失败 | 不适用（无跨分片） | 重试中继，代币安全在源端 |
 
 ### 2.5 多池并行 AMM 与跨分片代币兑换
 

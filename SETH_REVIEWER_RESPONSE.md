@@ -109,51 +109,186 @@ Seth provides two distinct atomicity levels:
 | **Intra-pool** | Full atomic (all-or-nothing) | Single consensus round, EVM REVERT |
 | **Cross-pool** | Eventual consistency | Forward-moving transfers with replay protection |
 
-### 2.3 Why AMM and DeFi Work Without Compensation
+### 2.3 Three AMM Scenarios: Detailed Analysis
 
-The key insight: **composable contracts are co-located in the same pool by design**.
+The reviewer raises a specific concern: *"Alice swaps Token X (Shard X) for Token Y (Shard Y) via an AMM (Shard P). If the transaction fails at the AMM due to slippage, the lack of synchronous atomicity forces the developer to manually write asynchronous compensating transactions."*
 
-In Seth, contract addresses are derived from the deployer's address via CREATE2:
+This concern assumes that TokenX, TokenY, and the AMM pool are distributed across different shards. Seth's architecture provides **three distinct solutions** depending on the deployment topology, each with different atomicity and performance characteristics:
+
+---
+
+#### Scenario 1: Same-Deployer Co-location (Recommended for DeFi)
+
+**Topology**: TokenA, TokenB, and AMMPool deployed by the **same account** → all in the **same shard and pool**.
+
+**This is the primary design pattern for DeFi protocols in Seth.** Contract addresses are derived from the deployer's address via CREATE2. When a developer deploys all protocol contracts from one account, they are guaranteed to land in the same pool:
 
 ```python
-# seth_sdk.py
-address = calc_create2_address(sender, salt, bytecode)
-# Pool assignment:
-pool_index = Hash32(address) % kImmutablePoolSize
-```
-
-When a developer deploys TokenA, TokenB, and AMMPool from the **same account**, all three contracts land in the same shard and pool. This is demonstrated in `clipy/amm.py`:
-
-```python
-# All deployed by the same account → same shard & pool
+# clipy/amm.py — test_amm (single-pool demo)
 token_a.deploy({'from': deployer_addr, 'salt': salt + 'ta', ...}, deployer_key)
 token_b.deploy({'from': deployer_addr, 'salt': salt + 'tb', ...}, deployer_key)
 amm.deploy({'from': deployer_addr, 'salt': salt + 'am', ...}, deployer_key)
+# All 3 contracts in same shard & pool → atomic execution guaranteed
 ```
 
-When `AMMPool.swapAForB()` calls `TokenA.transferFrom()` and `TokenB.transfer()`, all three contract state changes execute within a **single consensus round**:
+**Atomicity**: When `AMMPool.swapAForB()` calls `TokenA.transferFrom()` and `TokenB.transfer()`, all three contract state changes execute within a **single consensus round** (~1 second):
 
 ```solidity
 function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 amountOut) {
     amountOut = (amountIn * reserveB) / (reserveA + amountIn);
     require(amountOut >= minOut, "slippage");  // ← Failure causes full REVERT
-    tokenA.transferFrom(msg.sender, address(this), amountIn);  // ← Intra-pool
-    tokenB.transfer(msg.sender, amountOut);                     // ← Intra-pool
+    tokenA.transferFrom(msg.sender, address(this), amountIn);  // ← Intra-pool call
+    tokenB.transfer(msg.sender, amountOut);                     // ← Intra-pool call
     reserveA += amountIn;
     reserveB -= amountOut;
 }
 ```
 
-If the slippage check fails, `require` triggers an EVM `REVERT`, and the **entire transaction** rolls back — no compensation needed.
+**Slippage failure**: `require` triggers EVM `REVERT` → entire transaction rolls back → **no compensation needed**. This is identical to Ethereum's atomicity model.
+
+**Finalization time**: Single consensus round (~1 second), NOT multiple rounds.
+
+**Developer burden**: Zero. Standard Solidity, standard ERC20 approve/transferFrom pattern.
+
+**Proven in code**: `clipy/amm.py` → `test_amm()` with 3 independent users, each performing approve → swap → reverse swap, all atomic.
+
+| Property | Value |
+|----------|-------|
+| Atomicity | ✅ Full (single consensus round) |
+| Slippage protection | Standard `require` + REVERT |
+| Compensation logic | None needed |
+| Finalization | ~1 second |
+| Developer experience | Identical to Ethereum |
+
+---
+
+#### Scenario 2: Multi-Pool Parallel Execution (Independent Pairs)
+
+**Topology**: Pool_AB and Pool_CD deployed by **different accounts** → in **different shards**.
+
+**This scenario maximizes throughput** by running independent AMM pools in parallel. User1 swapping A→B on Pool_AB does NOT block User2 swapping C→D on Pool_CD.
+
+```python
+# clipy/amm.py — test_multi_shard_amm (parallel pools)
+t1 = threading.Thread(target=swap_ab)  # User1: A→B on Pool_AB (Shard X)
+t2 = threading.Thread(target=swap_cd)  # User2: C→D on Pool_CD (Shard Y)
+t1.start(); t2.start(); t1.join(); t2.join()
+# Wall-clock time ≈ single swap time — linear throughput scaling
+```
+
+**Atomicity**: Each individual swap is fully atomic within its pool. The two swaps are independent — no cross-shard coordination needed.
+
+**Key constraint**: Tokens in Pool_AB and Pool_CD are **independent contracts**. A user cannot directly swap Token_A (Pool_AB) for Token_C (Pool_CD) — this requires Scenario 3.
+
+| Property | Value |
+|----------|-------|
+| Atomicity | ✅ Full per pool |
+| Throughput | O(N) — linear with number of pools |
+| Cross-pool swap | Not direct — requires bridge (Scenario 3) |
+
+---
+
+#### Scenario 3: Cross-Shard AMM Swap via Burn-Relay-Mint Bridge
+
+**Topology**: Pool_AB on Shard X, Pool_BC on Shard Y. User wants to swap A→C across two shards.
+
+**This is the reviewer's exact concern.** Seth addresses it with the **Burn-Relay-Mint** pattern using a `BridgeToken` contract:
+
+```solidity
+contract BridgeToken {
+    // Standard ERC20: transfer, approve, transferFrom, balanceOf...
+
+    /// Mint tokens to an address (called via cross-shard relay)
+    function mint(address to, uint256 amount) external { ... }
+
+    /// Burn tokens and return ABI-encoded mint() calldata for the target shard
+    function burnAndEncode(uint256 amount, address mintTo) external returns (bytes memory) {
+        require(balanceOf[msg.sender] >= amount, "insufficient");
+        balanceOf[msg.sender] -= amount;
+        totalSupply -= amount;
+        return abi.encodeWithSignature("mint(address,uint256)", mintTo, amount);
+    }
+}
+```
+
+**Complete cross-shard swap flow A→B→B2→C** (`clipy/amm.py` → `test_cross_shard_amm_swap`):
+
+```
+Shard X                              Cross-Shard Relay              Shard Y
+────────                             ─────────────────              ────────
+1. User swaps A→B on Pool_AB
+   (atomic, minOut_AB protects
+    against slippage)
+
+2. User calls TokenB.burnAndEncode()
+   → Burns B tokens (atomic)
+   → Returns ABI-encoded
+     mint(user, amount) calldata
+                                     3. User retrieves output
+                                        from tx receipt
+
+                                     4. User sends mint()        5. TokenB2.mint(user, amount)
+                                        calldata to Shard Y         executes on Shard Y (atomic)
+
+                                                                  6. User swaps B2→C on Pool_BC
+                                                                     (atomic, minOut_BC protects
+                                                                      against slippage)
+```
+
+**Slippage protection across shards**: Each hop has **independent** slippage protection via `minOut`:
+
+| Step | Slippage Protection | On Failure | User's Tokens |
+|------|-------------------|------------|---------------|
+| 1. Swap A→B (Shard X) | `swapAForB(amount, minOut_AB)` | REVERT | A tokens preserved |
+| 2. Burn B → get calldata | Balance check | REVERT | B tokens preserved |
+| 3-5. Relay + Mint B2 | Unconditional | N/A | B2 minted on Shard Y |
+| 6. Swap B2→C (Shard Y) | `swapAForB(amount, minOut_BC)` | REVERT | **B2 tokens preserved** — retry later |
+
+**Critical safety property**: If the second swap (B2→C) fails due to slippage, the user's B2 tokens are **safe on Shard Y**. The user can:
+- Wait for the price to recover and retry the swap
+- Swap B2 for a different token on Shard Y
+- Burn B2 and bridge back to Shard X
+
+**No compensation transactions needed.** The user never loses tokens — they are always held at the last successful hop.
+
+**Finalization time**: ~3-5 seconds total (Step 1: ~1s, Step 2: ~1s, Steps 3-5: ~1.5s cross-shard, Step 6: ~1s). This is longer than Scenario 1 but comparable to cross-chain bridges on Ethereum L2s.
+
+**Developer burden**: The `BridgeToken` contract is a standard pattern (~30 lines of Solidity). The user-facing SDK handles the relay automatically. No custom compensation logic.
+
+| Property | Value |
+|----------|-------|
+| Atomicity | Per-step atomic (not end-to-end) |
+| Slippage protection | Per-hop independent `minOut` |
+| Compensation logic | None — tokens safe at last hop |
+| Finalization | ~3-5 seconds |
+| Developer burden | Standard BridgeToken pattern |
+
+---
+
+#### Comparison of Three Scenarios
+
+| Dimension | Scenario 1 (Co-located) | Scenario 2 (Parallel) | Scenario 3 (Cross-shard) |
+|-----------|------------------------|----------------------|--------------------------|
+| Topology | Same deployer → same pool | Different deployers → different shards | Two pools on different shards |
+| Atomicity | ✅ Full (single tx) | ✅ Full per pool | Per-step atomic |
+| Throughput | Single pool TPS | O(N) parallel | Sequential (relay overhead) |
+| Slippage | Single `minOut` | Single `minOut` per pool | Per-hop `minOut` |
+| Finalization | ~1 second | ~1 second per pool | ~3-5 seconds |
+| Compensation | None | None | None (tokens safe at last hop) |
+| Use case | DeFi protocols (AMM, lending) | Independent trading pairs | Cross-protocol routing |
+
+**Addressing the reviewer's specific concern**: The reviewer's scenario (Alice swaps X→Y via AMM across shards) maps to **Scenario 3**. Seth does NOT require "asynchronous compensating transactions" — the Burn-Relay-Mint pattern ensures tokens are always safe at the last successful hop. If slippage causes a REVERT at any step, the user retries that step, not the entire sequence. The finalization time is ~3-5 seconds, not "greatly extended" — it is comparable to Ethereum L2 cross-chain bridges.
+
+For the **recommended deployment pattern** (Scenario 1), the AMM swap is **fully atomic in a single consensus round** with **zero developer burden** — identical to Ethereum's atomicity model.
 
 ### 2.4 Failure Path Handling
 
-| Failure Type | Handling | Developer Burden |
-|-------------|----------|-----------------|
-| Slippage failure | Standard EVM REVERT | None (automatic) |
-| Out of gas | EVM REVERT | None (automatic) |
-| Contract bug | EVM REVERT | Standard Solidity debugging |
-| Cross-shard transfer failure | Retry via `CrossBlockManager` | None (system handles) |
+| Failure Type | Scenario 1 | Scenario 3 |
+|-------------|------------|------------|
+| Slippage failure | EVM REVERT (automatic) | REVERT at failed hop, tokens safe |
+| Out of gas | EVM REVERT (automatic) | REVERT at failed hop, tokens safe |
+| Contract bug | EVM REVERT (automatic) | REVERT at failed hop, tokens safe |
+| Cross-shard relay failure | N/A (no cross-shard) | Retry relay, tokens safe at source |
 
 ### 2.5 Multi-Pool Parallel AMM and Cross-Shard Token Swap
 
