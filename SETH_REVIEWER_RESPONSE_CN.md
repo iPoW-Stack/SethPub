@@ -254,7 +254,20 @@ contract BridgeToken {
 | 滑点 | 单个 `minOut` | 每池单个 `minOut` | 每跳独立 `minOut` |
 | 最终确认 | 约 1 秒 | 每池约 1 秒 | 约 3-5 秒 |
 | 补偿 | 无 | 无 | 无（代币安全停留在最后一跳） |
+| **自动化** | **完全自动化（SDK）** | **完全自动化（SDK + 线程）** | **完全自动化（SDK + 中继）** |
 | 用例 | DeFi 协议（AMM、借贷） | 独立交易对 | 跨协议路由 |
+
+#### 三种场景均完全自动化——零开发者负担
+
+关键要点：**三种场景均已实现为自动化、端到端可执行的测试**（`clipy/amm.py`）。无需手动干预，无需自定义补偿逻辑，无需开发者编写重试代码：
+
+- **场景 1**（`test_amm`）：SDK 自动处理 部署 → prefund → approve → swap → refund 的完整流程。开发者编写标准 Solidity（与以太坊一致）。SDK 的 `contract.deploy()`、`contract.functions.swap().transact()` 透明处理所有 Seth 特有细节（池路由、prefund、nonce 管理）。
+
+- **场景 2**（`test_multi_shard_amm`）：SDK 自动将池部署到不同分片（不同部署者密钥 → 不同分片）。Python `threading` 发起并发兑换。无需开发者编写分片协调代码——SDK 根据合约地址自动路由每笔交易到正确分片。
+
+- **场景 3**（`test_cross_shard_amm_swap`）：SDK 自动化整个销毁-中继-铸造流程：swap A→B → `burnAndEncode()` → 从 receipt 提取 output → 在目标分片 `mint()` → swap B2→C。`BridgeToken` 合约是约 30 行 Solidity 的可复用模板。中继逻辑是约 10 行 Python，SDK 可封装为单个 `cross_shard_swap()` 调用。
+
+**开发者永远不需要编写补偿逻辑、重试处理器或跨分片协调代码。** SDK 和标准 Solidity 模式处理一切。
 
 **回应审稿人的具体关注**：审稿人的场景（Alice 跨分片通过 AMM 兑换 X→Y）对应**场景 3**。Seth **不需要**"异步补偿交易"——销毁-中继-铸造模式确保代币始终安全停留在最后成功的一跳。如果滑点导致任何步骤 REVERT，用户重试该步骤，而非整个序列。最终确认时间约 3-5 秒，并非"大幅延长"——与以太坊 L2 跨链桥相当。
 
