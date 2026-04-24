@@ -215,7 +215,7 @@ public:
                     return nonce;
                 }
             } catch (std::exception& e) {
-                std::cout << "catch error fetch nonce failed: " << address << ": " << e.what() << std::endl;
+                // std::cout << "catch error fetch nonce failed: " << address << ": " << e.what() << std::endl;
                 return -1; 
             }
         }

@@ -570,7 +570,7 @@ int main(int argc, char** argv) {
             int64_t nonce = -1;
             for (int retry = 0; retry < 3 && nonce < 0; ++retry) {
                 nonce = sdk.fetchNonce(common::Encode::HexEncode(funder_addr));
-                if (nonce < 0 && retry < 2) {
+                if (nonce < 0) {
                     std::cerr << "  Thread " << thread_id << ": Failed to fetch nonce for funder "
                           <<  common::Encode::HexEncode(funder_prikey) << " : " << common::Encode::HexEncode(funder_addr) << std::endl;
                     break;
