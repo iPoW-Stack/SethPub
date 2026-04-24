@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <chrono>
 #include <queue>
 #include <vector>
 #include <mutex>
@@ -635,51 +636,89 @@ int main(int argc, char** argv) {
         std::cout << "✓ Account creation complete: " << created_count.load() 
                   << " created, " << failed_count.load() << " failed" << std::endl;
 
-        // Phase 3: Wait for accounts to be confirmed
-        std::cout << "\n[Phase 3] Waiting for accounts to be confirmed (30 seconds)..." << std::endl;
-        usleep(30000000);  // 30 seconds
-
-        // Phase 4: Verify accounts exist
-        std::cout << "\n[Phase 4] Verifying accounts..." << std::endl;
-        std::atomic<uint32_t> verified_count{0};
-        std::atomic<uint32_t> verify_failed_count{0};
+        // Phase 3: Wait for accounts to be confirmed (active polling, 120s timeout)
+        // Instead of a fixed 30s sleep, poll accounts starting from index 0.
+        // Once an account is found, move to the next. If a query fails, wait
+        // a few seconds and retry. Stop when all accounts are confirmed or
+        // 120 seconds have elapsed.
+        std::cout << "\n[Phase 3] Waiting for accounts to be confirmed (up to 120s)..." << std::endl;
         uint32_t accounts_per_thread = kAccountCount / num_threads;
+        auto phase3_start = std::chrono::steady_clock::now();
+        const auto kPhase3Timeout = std::chrono::seconds(120);
+        uint32_t confirmed_count = 0;
+        uint32_t probe_idx = 0;
 
-        auto verify_thread = [&](uint32_t start_idx, uint32_t end_idx) {
-            for (uint32_t i = start_idx; i < end_idx && !global_stop; ++i) {
-                int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(test_addrs[i]));
-                if (nonce >= 0) {
-                    ++verified_count;
-                    src_prikey_with_nonce[test_addrs[i]] = nonce;
-                    prikey_with_nonce[test_addrs[i]] = nonce;
-                } else {
-                    ++verify_failed_count;
-                }
-                usleep(10000);  // 10ms delay to avoid overwhelming the node
+        while (probe_idx < kAccountCount && !global_stop) {
+            auto elapsed = std::chrono::steady_clock::now() - phase3_start;
+            if (elapsed >= kPhase3Timeout) {
+                std::cout << "  Timeout reached (120s). Confirmed " << confirmed_count
+                          << "/" << kAccountCount << " accounts so far." << std::endl;
+                break;
             }
-        };
 
-        std::vector<std::thread> verify_threads;
-        for (uint32_t t = 0; t < num_threads; ++t) {
-            uint32_t start_idx = t * accounts_per_thread;
-            uint32_t end_idx = (t == num_threads - 1) ? kAccountCount : (start_idx + accounts_per_thread);
-            verify_threads.emplace_back(verify_thread, start_idx, end_idx);
+            int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(test_addrs[probe_idx]));
+            if (nonce >= 0) {
+                // Account exists on-chain, record nonce and advance
+                src_prikey_with_nonce[test_addrs[probe_idx]] = nonce;
+                prikey_with_nonce[test_addrs[probe_idx]] = nonce;
+                ++confirmed_count;
+                ++probe_idx;
+            } else {
+                // Not yet on-chain, wait 3 seconds and retry
+                auto secs = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
+                std::cout << "  [" << secs << "s] Account " << probe_idx
+                          << " not yet confirmed, waiting 3s... ("
+                          << confirmed_count << "/" << kAccountCount << " done)" << std::endl;
+                usleep(3000000);  // 3 seconds
+            }
         }
 
-        for (auto& th : verify_threads) {
-            th.join();
+        // If we confirmed the first batch via sequential probing, do a quick
+        // parallel sweep of any remaining accounts that might have been
+        // confirmed out of order.
+        if (confirmed_count < kAccountCount && !global_stop) {
+            std::cout << "  Running parallel verification for remaining accounts..." << std::endl;
+            std::atomic<uint32_t> extra_confirmed{0};
+            auto sweep_thread = [&](uint32_t start_idx, uint32_t end_idx) {
+                for (uint32_t i = start_idx; i < end_idx && !global_stop; ++i) {
+                    // Skip already confirmed
+                    if (prikey_with_nonce.count(test_addrs[i]) > 0) {
+                        continue;
+                    }
+                    int64_t n = sdk.fetchNonce(common::Encode::HexEncode(test_addrs[i]));
+                    if (n >= 0) {
+                        src_prikey_with_nonce[test_addrs[i]] = n;
+                        prikey_with_nonce[test_addrs[i]] = n;
+                        ++extra_confirmed;
+                    }
+                    usleep(10000);  // 10ms
+                }
+            };
+
+            std::vector<std::thread> sweep_threads;
+            for (uint32_t t = 0; t < num_threads; ++t) {
+                uint32_t s = t * accounts_per_thread;
+                uint32_t e = (t == num_threads - 1) ? kAccountCount : (s + accounts_per_thread);
+                sweep_threads.emplace_back(sweep_thread, s, e);
+            }
+            for (auto& th : sweep_threads) {
+                th.join();
+            }
+            confirmed_count += extra_confirmed.load();
         }
 
-        std::cout << "✓ Verification complete: " << verified_count.load() 
-                  << " verified, " << verify_failed_count.load() << " not found" << std::endl;
+        auto total_secs = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::steady_clock::now() - phase3_start).count();
+        std::cout << "✓ Account confirmation complete: " << confirmed_count
+                  << "/" << kAccountCount << " confirmed in " << total_secs << "s" << std::endl;
 
-        if (verified_count.load() < kAccountCount / 2) {
-            std::cerr << "ERROR: Less than 50% of accounts verified. Aborting stress test." << std::endl;
+        if (confirmed_count < kAccountCount / 2) {
+            std::cerr << "ERROR: Less than 50% of accounts confirmed. Aborting stress test." << std::endl;
             return 1;
         }
 
-        // Phase 5: Stress test - random transfers
-        std::cout << "\n[Phase 5] Starting stress test - random transfers..." << std::endl;
+        // Phase 4: Stress test - random transfers
+        std::cout << "\n[Phase 4] Starting stress test - random transfers..." << std::endl;
         std::cout << "  Press Ctrl+C to stop" << std::endl;
 
         std::atomic<uint64_t> tx_count{0};
