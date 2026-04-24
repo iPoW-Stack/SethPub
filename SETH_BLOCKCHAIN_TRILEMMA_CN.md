@@ -46,7 +46,7 @@
 
 **多算法签名**：ECDSA（以太坊）、SM2（中国标准）、OQS/ML-DSA-44（抗量子）。按密钥长度自动检测。
 
-**跨分片合约调用**：GBP 中的 `contract_outputs` 携带 ABI 编码的 calldata，包含执行状态和调用者地址。目标分片通过 EVM 自动执行（`to_tx_local_item.cc`）。交易签名中的 `cross_call_tag` 防止未授权中继。
+**跨分片合约调用**：GBP 中的 `contract_outputs` 携带 ABI 编码的 calldata，包含执行状态和调用者地址。目标分片通过 EVM 自动执行（`to_tx_local_item.cc`）。
 
 **以太坊 CREATE 地址**：服务端 `GetContractAddress(sender, nonce)` = `keccak256(RLP([sender, nonce]))[-20:]`。ETH JSON-RPC 兼容。`eth_getTransactionReceipt` 返回 `contractAddress`。
 

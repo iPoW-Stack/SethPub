@@ -46,7 +46,7 @@
 
 **Multi-Algorithm Signatures**: ECDSA (Ethereum), SM2 (Chinese standard), OQS/ML-DSA-44 (post-quantum). Auto-detected by key length.
 
-**Cross-Shard Contract Calls**: `contract_outputs` in GBP carries ABI-encoded calldata with execution status and caller address. Destination shard executes via EVM automatically (`to_tx_local_item.cc`). `cross_call_tag` in tx signature prevents unauthorized relay.
+**Cross-Shard Contract Calls**: `contract_outputs` in GBP carries ABI-encoded calldata with execution status and caller address. Destination shard executes via EVM automatically (`to_tx_local_item.cc`).
 
 **Ethereum CREATE Address**: Server-side `GetContractAddress(sender, nonce)` = `keccak256(RLP([sender, nonce]))[-20:]`. ETH JSON-RPC compatible. `eth_getTransactionReceipt` returns `contractAddress`.
 
