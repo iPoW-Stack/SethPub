@@ -237,4 +237,6 @@ Seth 通过以下创新打破不可能三角：
 | `src/common/utils.h` | 经济模型常量、分片分代表 |
 | `src/init/network_init.cc` | 质押逻辑（最低 8 SETH） |
 | `src/pools/to_txs_pools.cc` | GBP 实现 |
-| `src/security/security_utils.h` | 以太坊 CREATE �
+| `src/security/security_utils.h` | 以太坊 CREATE 地址公式 |
+| `SETH_REVIEWER_RESPONSE.md` | 审稿人回应详细文档（英文） |
+| `SETH_REVIEWER_RESPONSE_CN.md` | 审稿人回应详细文档（中文） |
