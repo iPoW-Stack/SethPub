@@ -1020,6 +1020,21 @@ class BlockTx : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   ::std::string* release_tx_hash();
   void set_allocated_tx_hash(::std::string* tx_hash);
 
+  // optional bytes output = 22;
+  bool has_output() const;
+  void clear_output();
+  static const int kOutputFieldNumber = 22;
+  const ::std::string& output() const;
+  void set_output(const ::std::string& value);
+  #if LANG_CXX11
+  void set_output(::std::string&& value);
+  #endif
+  void set_output(const char* value);
+  void set_output(const void* value, size_t size);
+  ::std::string* mutable_output();
+  ::std::string* release_output();
+  void set_allocated_output(::std::string* output);
+
   // optional uint64 nonce = 1;
   bool has_nonce() const;
   void clear_nonce();
@@ -1119,6 +1134,8 @@ class BlockTx : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   void clear_has_value();
   void set_has_tx_hash();
   void clear_has_tx_hash();
+  void set_has_output();
+  void clear_has_output();
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
@@ -1133,6 +1150,7 @@ class BlockTx : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   ::google::protobuf::internal::ArenaStringPtr key_;
   ::google::protobuf::internal::ArenaStringPtr value_;
   ::google::protobuf::internal::ArenaStringPtr tx_hash_;
+  ::google::protobuf::internal::ArenaStringPtr output_;
   ::google::protobuf::uint64 nonce_;
   ::google::protobuf::uint64 amount_;
   ::google::protobuf::uint64 gas_limit_;
@@ -6308,13 +6326,13 @@ TxHashStatus::events() const {
 
 // optional uint64 nonce = 1;
 inline bool BlockTx::has_nonce() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
+  return (_has_bits_[0] & 0x00000200u) != 0;
 }
 inline void BlockTx::set_has_nonce() {
-  _has_bits_[0] |= 0x00000100u;
+  _has_bits_[0] |= 0x00000200u;
 }
 inline void BlockTx::clear_has_nonce() {
-  _has_bits_[0] &= ~0x00000100u;
+  _has_bits_[0] &= ~0x00000200u;
 }
 inline void BlockTx::clear_nonce() {
   nonce_ = GOOGLE_ULONGLONG(0);
@@ -6464,13 +6482,13 @@ inline void BlockTx::set_allocated_to(::std::string* to) {
 
 // optional uint64 amount = 4;
 inline bool BlockTx::has_amount() const {
-  return (_has_bits_[0] & 0x00000200u) != 0;
+  return (_has_bits_[0] & 0x00000400u) != 0;
 }
 inline void BlockTx::set_has_amount() {
-  _has_bits_[0] |= 0x00000200u;
+  _has_bits_[0] |= 0x00000400u;
 }
 inline void BlockTx::clear_has_amount() {
-  _has_bits_[0] &= ~0x00000200u;
+  _has_bits_[0] &= ~0x00000400u;
 }
 inline void BlockTx::clear_amount() {
   amount_ = GOOGLE_ULONGLONG(0);
@@ -6488,13 +6506,13 @@ inline void BlockTx::set_amount(::google::protobuf::uint64 value) {
 
 // optional uint64 gas_limit = 5;
 inline bool BlockTx::has_gas_limit() const {
-  return (_has_bits_[0] & 0x00000400u) != 0;
+  return (_has_bits_[0] & 0x00000800u) != 0;
 }
 inline void BlockTx::set_has_gas_limit() {
-  _has_bits_[0] |= 0x00000400u;
+  _has_bits_[0] |= 0x00000800u;
 }
 inline void BlockTx::clear_has_gas_limit() {
-  _has_bits_[0] &= ~0x00000400u;
+  _has_bits_[0] &= ~0x00000800u;
 }
 inline void BlockTx::clear_gas_limit() {
   gas_limit_ = GOOGLE_ULONGLONG(0);
@@ -6512,13 +6530,13 @@ inline void BlockTx::set_gas_limit(::google::protobuf::uint64 value) {
 
 // optional uint64 gas_used = 6;
 inline bool BlockTx::has_gas_used() const {
-  return (_has_bits_[0] & 0x00000800u) != 0;
+  return (_has_bits_[0] & 0x00001000u) != 0;
 }
 inline void BlockTx::set_has_gas_used() {
-  _has_bits_[0] |= 0x00000800u;
+  _has_bits_[0] |= 0x00001000u;
 }
 inline void BlockTx::clear_has_gas_used() {
-  _has_bits_[0] &= ~0x00000800u;
+  _has_bits_[0] &= ~0x00001000u;
 }
 inline void BlockTx::clear_gas_used() {
   gas_used_ = GOOGLE_ULONGLONG(0);
@@ -6536,13 +6554,13 @@ inline void BlockTx::set_gas_used(::google::protobuf::uint64 value) {
 
 // optional uint64 gas_price = 7;
 inline bool BlockTx::has_gas_price() const {
-  return (_has_bits_[0] & 0x00001000u) != 0;
+  return (_has_bits_[0] & 0x00002000u) != 0;
 }
 inline void BlockTx::set_has_gas_price() {
-  _has_bits_[0] |= 0x00001000u;
+  _has_bits_[0] |= 0x00002000u;
 }
 inline void BlockTx::clear_has_gas_price() {
-  _has_bits_[0] &= ~0x00001000u;
+  _has_bits_[0] &= ~0x00002000u;
 }
 inline void BlockTx::clear_gas_price() {
   gas_price_ = GOOGLE_ULONGLONG(0);
@@ -6560,13 +6578,13 @@ inline void BlockTx::set_gas_price(::google::protobuf::uint64 value) {
 
 // optional uint64 balance = 8;
 inline bool BlockTx::has_balance() const {
-  return (_has_bits_[0] & 0x00002000u) != 0;
+  return (_has_bits_[0] & 0x00004000u) != 0;
 }
 inline void BlockTx::set_has_balance() {
-  _has_bits_[0] |= 0x00002000u;
+  _has_bits_[0] |= 0x00004000u;
 }
 inline void BlockTx::clear_has_balance() {
-  _has_bits_[0] &= ~0x00002000u;
+  _has_bits_[0] &= ~0x00004000u;
 }
 inline void BlockTx::clear_balance() {
   balance_ = GOOGLE_ULONGLONG(0);
@@ -6584,13 +6602,13 @@ inline void BlockTx::set_balance(::google::protobuf::uint64 value) {
 
 // optional .seth.pools.protobuf.StepType step = 9;
 inline bool BlockTx::has_step() const {
-  return (_has_bits_[0] & 0x00004000u) != 0;
+  return (_has_bits_[0] & 0x00008000u) != 0;
 }
 inline void BlockTx::set_has_step() {
-  _has_bits_[0] |= 0x00004000u;
+  _has_bits_[0] |= 0x00008000u;
 }
 inline void BlockTx::clear_has_step() {
-  _has_bits_[0] &= ~0x00004000u;
+  _has_bits_[0] &= ~0x00008000u;
 }
 inline void BlockTx::clear_step() {
   step_ = 0;
@@ -6609,13 +6627,13 @@ inline void BlockTx::set_step(::seth::pools::protobuf::StepType value) {
 
 // optional uint32 status = 10;
 inline bool BlockTx::has_status() const {
-  return (_has_bits_[0] & 0x00008000u) != 0;
+  return (_has_bits_[0] & 0x00010000u) != 0;
 }
 inline void BlockTx::set_has_status() {
-  _has_bits_[0] |= 0x00008000u;
+  _has_bits_[0] |= 0x00010000u;
 }
 inline void BlockTx::clear_has_status() {
-  _has_bits_[0] &= ~0x00008000u;
+  _has_bits_[0] &= ~0x00010000u;
 }
 inline void BlockTx::clear_status() {
   status_ = 0u;
@@ -6633,13 +6651,13 @@ inline void BlockTx::set_status(::google::protobuf::uint32 value) {
 
 // optional uint64 contract_prefund = 13;
 inline bool BlockTx::has_contract_prefund() const {
-  return (_has_bits_[0] & 0x00010000u) != 0;
+  return (_has_bits_[0] & 0x00020000u) != 0;
 }
 inline void BlockTx::set_has_contract_prefund() {
-  _has_bits_[0] |= 0x00010000u;
+  _has_bits_[0] |= 0x00020000u;
 }
 inline void BlockTx::clear_has_contract_prefund() {
-  _has_bits_[0] &= ~0x00010000u;
+  _has_bits_[0] &= ~0x00020000u;
 }
 inline void BlockTx::clear_contract_prefund() {
   contract_prefund_ = GOOGLE_ULONGLONG(0);
@@ -7106,6 +7124,72 @@ inline void BlockTx::set_allocated_tx_hash(::std::string* tx_hash) {
   }
   tx_hash_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), tx_hash);
   // @@protoc_insertion_point(field_set_allocated:seth.block.protobuf.BlockTx.tx_hash)
+}
+
+// optional bytes output = 22;
+inline bool BlockTx::has_output() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void BlockTx::set_has_output() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void BlockTx::clear_has_output() {
+  _has_bits_[0] &= ~0x00000100u;
+}
+inline void BlockTx::clear_output() {
+  output_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  clear_has_output();
+}
+inline const ::std::string& BlockTx::output() const {
+  // @@protoc_insertion_point(field_get:seth.block.protobuf.BlockTx.output)
+  return output_.GetNoArena();
+}
+inline void BlockTx::set_output(const ::std::string& value) {
+  set_has_output();
+  output_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:seth.block.protobuf.BlockTx.output)
+}
+#if LANG_CXX11
+inline void BlockTx::set_output(::std::string&& value) {
+  set_has_output();
+  output_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+  // @@protoc_insertion_point(field_set_rvalue:seth.block.protobuf.BlockTx.output)
+}
+#endif
+inline void BlockTx::set_output(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  set_has_output();
+  output_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:seth.block.protobuf.BlockTx.output)
+}
+inline void BlockTx::set_output(const void* value, size_t size) {
+  set_has_output();
+  output_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:seth.block.protobuf.BlockTx.output)
+}
+inline ::std::string* BlockTx::mutable_output() {
+  set_has_output();
+  // @@protoc_insertion_point(field_mutable:seth.block.protobuf.BlockTx.output)
+  return output_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* BlockTx::release_output() {
+  // @@protoc_insertion_point(field_release:seth.block.protobuf.BlockTx.output)
+  if (!has_output()) {
+    return NULL;
+  }
+  clear_has_output();
+  return output_.ReleaseNonDefaultNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void BlockTx::set_allocated_output(::std::string* output) {
+  if (output != NULL) {
+    set_has_output();
+  } else {
+    clear_has_output();
+  }
+  output_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), output);
+  // @@protoc_insertion_point(field_set_allocated:seth.block.protobuf.BlockTx.output)
 }
 
 // -------------------------------------------------------------------
