@@ -260,98 +260,20 @@ contract BridgeToken {
 
 对于**推荐的部署模式**（场景 1），AMM 兑换在**单轮共识中完全原子**，**零开发者负担**——与以太坊的原子性模型完全一致。
 
-### 2.4 故障路径处理
-
-| 故障类型 | 场景 1 | 场景 3 |
-|----------|--------|--------|
-| 滑点失败 | EVM REVERT（自动） | 失败步骤 REVERT，代币安全 |
-| Gas 不足 | EVM REVERT（自动） | 失败步骤 REVERT，代币安全 |
-| 合约缺陷 | EVM REVERT（自动） | 失败步骤 REVERT，代币安全 |
-| 跨分片中继失败 | 不适用（无跨分片） | 重试中继，代币安全在源端 |
-
-### 2.5 多池并行 AMM 与跨分片代币兑换
-
-#### 2.5.1 分片内：并行池执行
-
-不同分片中的独立 AMM 池并发执行。`amm.py` 测试（`test_multi_shard_amm`）证明了这一点：
-
-```python
-t1 = threading.Thread(target=swap_ab)  # User1：Pool_AB（分片 X）A→B
-t2 = threading.Thread(target=swap_cd)  # User2：Pool_CD（分片 Y）C→D
-t1.start(); t2.start(); t1.join(); t2.join()
-# 实际耗时 ≈ 单笔兑换时间——线性吞吐量扩展
-```
-
-每个池的部署者决定其分片。不同部署者 → 不同分片 → 并行共识。N 个独立池，吞吐量 O(N) 扩展。
-
-#### 2.5.2 跨分片：销毁-中继-铸造桥接
-
-`BridgeToken` 合约通过 `burnAndEncode()` 实现跨分片代币转移：
-
-```solidity
-contract BridgeToken {
-    // 标准 ERC20 + mint/burn 桥接函数
-
-    function mint(address to, uint256 amount) external { ... }
-
-    function burnAndEncode(uint256 amount, address mintTo) external returns (bytes memory) {
-        require(balanceOf[msg.sender] >= amount, "insufficient");
-        balanceOf[msg.sender] -= amount;
-        totalSupply -= amount;
-        return abi.encodeWithSignature("mint(address,uint256)", mintTo, amount);
-    }
-}
-```
-
-**完整跨分片兑换 A→B→B2→C**（`test_cross_shard_amm_swap`）：
-
-```
-分片 X                               跨分片                        分片 Y
-──────                               ──────                        ──────
-1. Pool_AB 兑换 A→B
-   （原子，minOut_AB）
-2. TokenB.burnAndEncode()
-   → 销毁 B，返回 mint calldata
-                                     3. 从 receipt 提取 output
-                                     4. 发送 mint() 到分片 Y    5. TokenB2.mint()（原子）
-                                                                 6. Pool_BC 兑换 B2→C
-                                                                    （原子，minOut_BC）
-```
-
-#### 2.5.3 跨分片滑点保护
-
-每一跳独立滑点保护：
-
-| 步骤 | 保护 | 失败时 |
-|------|------|--------|
-| 兑换 A→B | `minOut_AB` | REVERT——无代币移动 |
-| 销毁 B | 余额检查 | REVERT——B 保留 |
-| 铸造 B2 | 无条件 | 不适用 |
-| 兑换 B2→C | `minOut_BC` | REVERT——B2 保留，稍后重试 |
-
-分片 Y 价格在中继期间变化时，兑换 REVERT 但 B2 代币安全。
-
-#### 2.5.4 对比
-
-| 维度 | 非分片 | Seth 分片 |
-|------|--------|----------|
-| 独立池兑换 | 串行 | **并行** |
-| N 池吞吐量 | O(1) | **O(N)** |
-| 跨分片 A→B→C | 不适用 | 销毁-中继-铸造（每步原子） |
-| 滑点 | 单个 minOut | 每跳独立 minOut |
-| 跨分片失败 | 不适用 | 代币安全停留在最后一跳 |
+**运行 AMM 测试**（`clipy/amm.py`）：
 
 ```bash
-python amm.py --test multi    # 并行池
-python amm.py --test cross    # 跨分片 AMM 兑换
-python amm.py --test all      # 全部测试
+python amm.py                  # 场景 1：单池原子 AMM（默认）
+python amm.py --test multi     # 场景 2：并行池执行
+python amm.py --test cross     # 场景 3：跨分片 AMM 兑换
+python amm.py --test all       # 全部三种场景
 ```
 
-### 2.6 自动合约部署：零额外成本的跨用户合约调用
+### 2.4 自动合约部署：零额外成本的跨用户合约调用
 
 **关键创新**：即使不同用户需要调用其他用户部署的合约，Seth 也能通过**自动合约部署机制**确保所有相关合约位于同一分片和池中，**不会增加用户的使用成本**。
 
-#### 2.6.1 问题场景
+#### 2.4.1 问题场景
 
 在传统分片系统中，如果：
 - User A 部署 ContractA（随机分配到 Shard 1, Pool 3）
@@ -360,7 +282,7 @@ python amm.py --test all      # 全部测试
 
 则 ContractB 调用 ContractA 会产生跨分片开销，增加延迟和复杂度。
 
-#### 2.6.2 Seth 的解决方案
+#### 2.4.2 Seth 的解决方案
 
 Seth 通过**确定性地址映射**和**智能用户生成**实现自动合约共置：
 
@@ -382,7 +304,7 @@ contract_b = deploy_contract(new_user_b, depends_on=contract_a)
 # ContractB 自动位于 Shard 3, Pool 21
 ```
 
-#### 2.6.3 实现机制
+#### 2.4.3 实现机制
 
 **确定性分片/池计算**（基于 xxHash）：
 ```cpp
@@ -410,7 +332,7 @@ def generate_user_for_target_shard_pool(target_shard, target_pool):
             return private_key, address
 ```
 
-#### 2.6.4 完整工作流程
+#### 2.4.4 完整工作流程
 
 以三个用户部署三个依赖合约为例（`test_contract_chain_demo.py`）：
 
@@ -444,7 +366,7 @@ Phase 6: 部署第三个合约
      → 合约间调用完全原子，零跨分片开销
 ```
 
-#### 2.6.5 成本分析
+#### 2.4.5 成本分析
 
 | 操作 | 传统方案 | Seth 自动部署 | 成本差异 |
 |------|---------|--------------|---------|
@@ -460,7 +382,7 @@ Phase 6: 部署第三个合约
 3. **资金效率**：通过内部转账复用现有资金，无需额外注资
 4. **性能提升**：池内调用延迟 ~500ms vs 跨分片 ~3-6 秒
 
-#### 2.6.6 实际应用场景
+#### 2.4.6 实际应用场景
 
 **场景 1：DeFi 协议扩展**
 ```
@@ -486,7 +408,7 @@ Phase 6: 部署第三个合约
      → 提案执行完全原子，无需多步骤确认
 ```
 
-### 2.7 开发者指南
+### 2.5 开发者指南
 
 ```
 规则 1：从同一账户部署相关合约

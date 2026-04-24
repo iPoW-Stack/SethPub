@@ -281,98 +281,20 @@ Shard X                              Cross-Shard Relay              Shard Y
 
 For the **recommended deployment pattern** (Scenario 1), the AMM swap is **fully atomic in a single consensus round** with **zero developer burden** — identical to Ethereum's atomicity model.
 
-### 2.4 Failure Path Handling
-
-| Failure Type | Scenario 1 | Scenario 3 |
-|-------------|------------|------------|
-| Slippage failure | EVM REVERT (automatic) | REVERT at failed hop, tokens safe |
-| Out of gas | EVM REVERT (automatic) | REVERT at failed hop, tokens safe |
-| Contract bug | EVM REVERT (automatic) | REVERT at failed hop, tokens safe |
-| Cross-shard relay failure | N/A (no cross-shard) | Retry relay, tokens safe at source |
-
-### 2.5 Multi-Pool Parallel AMM and Cross-Shard Token Swap
-
-#### 2.5.1 Intra-Shard: Parallel Pool Execution
-
-Independent AMM pools in different shards execute concurrently. The `amm.py` test (`test_multi_shard_amm`) proves this:
-
-```python
-t1 = threading.Thread(target=swap_ab)  # User1: A→B on Pool_AB (Shard X)
-t2 = threading.Thread(target=swap_cd)  # User2: C→D on Pool_CD (Shard Y)
-t1.start(); t2.start(); t1.join(); t2.join()
-# Wall-clock time ≈ single swap time — linear throughput scaling
-```
-
-Each pool's deployer determines its shard. Different deployers → different shards → parallel consensus. With N independent pools, throughput scales as O(N).
-
-#### 2.5.2 Cross-Shard: Burn-Relay-Mint Bridge
-
-A `BridgeToken` contract enables cross-shard token transfer via `burnAndEncode()`:
-
-```solidity
-contract BridgeToken {
-    // Standard ERC20 + mint/burn bridge functions
-
-    function mint(address to, uint256 amount) external { ... }
-
-    function burnAndEncode(uint256 amount, address mintTo) external returns (bytes memory) {
-        require(balanceOf[msg.sender] >= amount, "insufficient");
-        balanceOf[msg.sender] -= amount;
-        totalSupply -= amount;
-        return abi.encodeWithSignature("mint(address,uint256)", mintTo, amount);
-    }
-}
-```
-
-**Complete cross-shard swap A→B→B2→C** (`test_cross_shard_amm_swap`):
-
-```
-Shard X                              Cross-Shard                    Shard Y
-────────                             ───────────                    ────────
-1. Swap A→B on Pool_AB               
-   (atomic, minOut_AB)               
-2. TokenB.burnAndEncode()            
-   → burn B, return mint calldata    
-                                     3. Retrieve output from receipt
-                                     4. Send mint() to Shard Y    5. TokenB2.mint() (atomic)
-                                                                   6. Swap B2→C on Pool_BC
-                                                                      (atomic, minOut_BC)
-```
-
-#### 2.5.3 Cross-Shard Slippage Protection
-
-Each hop has independent slippage protection:
-
-| Step | Protection | On Failure |
-|------|-----------|------------|
-| Swap A→B | `minOut_AB` | REVERT — no tokens moved |
-| Burn B | Balance check | REVERT — B preserved |
-| Mint B2 | Unconditional | N/A |
-| Swap B2→C | `minOut_BC` | REVERT — B2 preserved, retry later |
-
-If Shard Y's price moves during relay, the swap REVERTs but B2 tokens are safe.
-
-#### 2.5.4 Comparison
-
-| Dimension | Non-Sharded | Seth Sharded |
-|-----------|------------|--------------|
-| Independent pool swaps | Sequential | **Parallel** |
-| Throughput with N pools | O(1) | **O(N)** |
-| Cross-shard A→B→C | N/A | Burn-Relay-Mint (each step atomic) |
-| Slippage | Single minOut | Per-hop independent minOut |
-| Failed cross-shard | N/A | Tokens safe at last hop |
+**Running the AMM tests** (`clipy/amm.py`):
 
 ```bash
-python amm.py --test multi    # Parallel pools
-python amm.py --test cross    # Cross-shard AMM swap
-python amm.py --test all      # All tests
+python amm.py                  # Scenario 1: single-pool atomic AMM (default)
+python amm.py --test multi     # Scenario 2: parallel pool execution
+python amm.py --test cross     # Scenario 3: cross-shard AMM swap
+python amm.py --test all       # All three scenarios
 ```
 
-### 2.6 Automated Contract Deployment: Zero-Cost Cross-User Contract Calls
+### 2.4 Automated Contract Deployment: Zero-Cost Cross-User Contract Calls
 
 **Key Innovation**: Even when different users need to call contracts deployed by others, Seth ensures all related contracts are co-located in the same shard and pool through **automated contract deployment**, **without increasing user costs**.
 
-#### 2.6.1 Problem Scenario
+#### 2.4.1 Problem Scenario
 
 In traditional sharded systems, if:
 - User A deploys ContractA (randomly assigned to Shard 1, Pool 3)
@@ -381,7 +303,7 @@ In traditional sharded systems, if:
 
 Then ContractB calling ContractA incurs cross-shard overhead, increasing latency and complexity.
 
-#### 2.6.2 Seth's Solution
+#### 2.4.2 Seth's Solution
 
 Seth achieves automatic contract co-location through **deterministic address mapping** and **smart user generation**:
 
@@ -403,7 +325,7 @@ contract_b = deploy_contract(new_user_b, depends_on=contract_a)
 # ContractB automatically in Shard 3, Pool 21
 ```
 
-#### 2.6.3 Implementation Mechanism
+#### 2.4.3 Implementation Mechanism
 
 **Deterministic Shard/Pool Calculation** (based on xxHash):
 ```cpp
@@ -431,7 +353,7 @@ def generate_user_for_target_shard_pool(target_shard, target_pool):
             return private_key, address
 ```
 
-#### 2.6.4 Complete Workflow
+#### 2.4.4 Complete Workflow
 
 Example with three users deploying three dependent contracts (`test_contract_chain_demo.py`):
 
@@ -465,7 +387,7 @@ Result: ContractA, ContractB, ContractC all co-located
        → Inter-contract calls fully atomic, zero cross-shard overhead
 ```
 
-#### 2.6.5 Cost Analysis
+#### 2.4.5 Cost Analysis
 
 | Operation | Traditional | Seth Auto-Deploy | Cost Difference |
 |-----------|------------|------------------|-----------------|
@@ -481,7 +403,7 @@ Result: ContractA, ContractB, ContractC all co-located
 3. **Fund efficiency**: Reuse existing funds through internal transfers, no additional funding needed
 4. **Performance boost**: Intra-pool calls ~500ms vs cross-shard ~3-6s
 
-#### 2.6.6 Real-World Use Cases
+#### 2.4.6 Real-World Use Cases
 
 **Scenario 1: DeFi Protocol Extension**
 ```
@@ -507,7 +429,7 @@ Solution: Executor auto-deployed to (Shard 3, Pool 1)
          → Proposal execution fully atomic, no multi-step confirmation
 ```
 
-### 2.7 Developer Guidelines
+### 2.5 Developer Guidelines
 
 ```
 Rule 1: Deploy related contracts from the SAME account
