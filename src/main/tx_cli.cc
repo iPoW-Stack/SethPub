@@ -589,8 +589,8 @@ int main(int argc, char** argv) {
                     test_addrs[i],
                     "",
                     "",
-                    1000,  // Initial balance
-                    1000,
+                    1000000000,  // Initial balance
+                    210000,
                     1,
                     shardnum);
 
@@ -718,7 +718,7 @@ int main(int argc, char** argv) {
                     "",
                     "",
                     amount,
-                    1000,
+                    210000,
                     1,
                     shardnum);
 
