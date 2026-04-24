@@ -58,7 +58,22 @@
 
 ## 3. Decentralization (9/10)
 
-**Permissionless**: Minimum stake of 8 SETH required, no whitelist. `start_miner.sh` to join.
+**Low-Barrier Entry**: Minimum stake of 8 SETH required, no whitelist. `start_miner.sh` to join.
+
+**Economic Model**:
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Minimum stake | 8 SETH (8 × 10⁸ coins) | Per stake unit, configurable via `stake_units` |
+| Stake operations | Stake / Redeem / None | PoS weight based on staked amount |
+| Gas: plain transfer | 21,000 gas | Same as Ethereum |
+| Gas: contract creation | 53,000 gas + calldata | EIP-2028 compatible |
+| Gas: contract call | 21,000 gas + calldata | EIP-2028 compatible |
+| Gas: SSTORE (new slot) | 20,000 gas/slot | EIP-2200 compatible |
+| Gas: SSTORE (dirty slot) | 2,900 gas/slot | EIP-2200 compatible |
+| Gas price | Configurable (default 1) | Set by transaction sender |
+| Prefund model | Per-contract gas deposit | Users deposit gas before contract calls, refund unused |
+| Committee rotation | Per elect_height epoch | BLS DKG, stake-weighted selection |
 
 **Dynamic Sharding**: Shards added/removed without halting consensus. BLS DKG committee rotation.
 
