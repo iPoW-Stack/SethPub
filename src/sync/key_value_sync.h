@@ -176,8 +176,8 @@ private:
     uint32_t not_root_synced_res_map_count_ = 0;
     common::Tick kv_tick_;
     common::ThreadSafeQueue<std::shared_ptr<transport::TransportMessage>> kv_msg_queue_;
-    // Response messages parsed by consumer thread, processed by timer thread
-    common::ThreadSafeQueue<std::shared_ptr<transport::TransportMessage>> kv_response_queue_;
+    // Messages relayed by consumer thread, processed by timer thread
+    common::ThreadSafeQueue<std::shared_ptr<transport::TransportMessage>> kv_ready_queue_;
     uint64_t elect_net_heights_map_[network::kConsensusShardEndNetworkId] = { 0 };
     common::UniqueSet<std::string, kCacheSyncKeyValueCount> responsed_keys_;
     uint32_t max_sharding_id_ = network::kConsensusShardBeginNetworkId;

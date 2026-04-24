@@ -198,16 +198,19 @@ void KeyValueSync::AddSyncViewHash(
 void KeyValueSync::ConsensusTimerMessage() {
     auto now_tm_us = common::TimeUtils::TimestampUs();
     auto now_tm_ms = common::TimeUtils::TimestampMs();
-    // Process sync responses queued by the consumer thread.
-    // These write to non-thread-safe shared state so must run on this
-    // single timer thread only.
+    // Drain messages relayed by the consumer thread. All processing
+    // (request handling + response handling) runs here on the single
+    // timer thread to avoid SPSC queue and shared-state races.
     {
-        uint32_t resp_count = 0;
+        uint32_t processed = 0;
         transport::MessagePtr msg_ptr = nullptr;
-        while (resp_count < kMaxBatchDrainCount && kv_response_queue_.pop(&msg_ptr) && msg_ptr) {
-            ProcessSyncValueResponse(msg_ptr);
-            ++resp_count;
+        while (processed < kMaxBatchDrainCount) {
             msg_ptr = nullptr;
+            if (!kv_ready_queue_.pop(&msg_ptr) || msg_ptr == nullptr) {
+                break;
+            }
+            HandleKvMessage(msg_ptr);
+            ++processed;
         }
     }
     auto now_tm_ms1 = common::TimeUtils::TimestampMs();
@@ -234,8 +237,8 @@ void KeyValueSync::ConsensusTimerMessage() {
         prev_sync_tm_ms_ = now_tm_ms3;
     }
 
-    // If response queue still has pending items, re-schedule faster to keep up
-    uint64_t next_interval = (kv_response_queue_.size() > 64) ? 1000lu : 10000lu;
+    // If ready queue still has pending items, re-schedule faster to keep up
+    uint64_t next_interval = (kv_ready_queue_.size() > 64) ? 1000lu : 10000lu;
     kv_tick_.CutOff(
         next_interval,
         std::bind(&KeyValueSync::ConsensusTimerMessage, this));
@@ -447,64 +450,45 @@ void KeyValueSync::HandleMessage(const transport::MessagePtr& msg_ptr) {
 }
 
 uint32_t KeyValueSync::PopKvMessage() {
-    // The dedicated KvConsumerLoop thread handles the bulk of kv_msg_queue_.
-    // This timer-driven fallback only drains a small batch in case the
-    // consumer thread falls behind or hasn't woken up yet.
-    uint32_t count = 0;
-    while (count < kEachTimerHandleCount) {
-        transport::MessagePtr msg_ptr = nullptr;
-        if (!kv_msg_queue_.pop(&msg_ptr) || msg_ptr == nullptr) {
-            break;
-        }
-
-        HandleKvMessage(msg_ptr);
-        ++count;
-    }
-
-    return count;
+    // Legacy fallback — no longer used. All kv_msg_queue_ consumption is
+    // handled by KvConsumerLoop which relays to kv_ready_queue_.
+    // ConsensusTimerMessage drains kv_ready_queue_ directly.
+    return 0;
 }
 
 void KeyValueSync::KvConsumerLoop() {
-    // Register this thread so get_thread_index() works
+    // This thread's sole job is to relay messages from kv_msg_queue_ (fed by
+    // network threads) into kv_ready_queue_ as fast as possible.
+    //
+    // ALL actual processing (ProcessSyncValueRequest, ProcessSyncValueResponse)
+    // must happen on the timer thread because:
+    //   - ProcessSyncValueResponse writes non-thread-safe shared state
+    //   - ProcessSyncValueRequest calls hotstuff_mgr_->chain()->GetViewBlockWithHash()
+    //     which pops from a SPSC ReaderWriterQueue that the timer thread also pops
+    //
+    // By keeping this thread as a pure relay, we decouple the network push rate
+    // from the timer's processing rate without introducing any thread-safety issues.
     common::GlobalInfo::Instance()->get_thread_index();
     while (!destroy_) {
         uint32_t drained = 0;
-        // Drain all available messages in a tight loop
         while (drained < kConsumerBatchSize) {
             transport::MessagePtr msg_ptr = nullptr;
             if (!kv_msg_queue_.pop(&msg_ptr) || msg_ptr == nullptr) {
                 break;
             }
 
-            auto& header = msg_ptr->header;
-            // Process sync requests directly on this thread — they only read
-            // from hotstuff_mgr_->chain() and send TCP responses, no writes
-            // to shared state (synced_res_map_, responsed_keys_, etc.).
-            if (header.sync_proto().has_sync_value_req()) {
-                ProcessSyncValueRequest(msg_ptr);
-            }
-
-            // Sync responses write to non-thread-safe shared state
-            // (synced_res_map_, responsed_keys_, synced_map_,
-            // not_root_synced_res_map_count_). Queue them for the timer
-            // thread which is the sole writer of these structures.
-            if (header.sync_proto().has_sync_value_res()) {
-                kv_response_queue_.push(msg_ptr);
-            }
-
+            kv_ready_queue_.push(msg_ptr);
             ++drained;
         }
 
         if (drained > 0) {
-            SETH_DEBUG("KvConsumerLoop drained %u messages, remaining: %u",
-                drained, (uint32_t)kv_msg_queue_.size());
-            // If we hit the batch limit, there may be more — loop immediately
+            SETH_DEBUG("KvConsumerLoop relayed %u messages, kv_msg remaining: %u, ready: %u",
+                drained, (uint32_t)kv_msg_queue_.size(), (uint32_t)kv_ready_queue_.size());
             if (drained >= kConsumerBatchSize) {
                 continue;
             }
         }
 
-        // Queue is empty, wait for notification from HandleMessage producers
         std::unique_lock<std::mutex> lock(wait_mutex_);
         wait_con_.wait_for(lock, std::chrono::milliseconds(5));
     }
