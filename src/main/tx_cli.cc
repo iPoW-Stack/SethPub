@@ -729,6 +729,26 @@ int main(int argc, char** argv) {
         std::cout << "\n[Phase 4] Starting stress test - random transfers..." << std::endl;
         std::cout << "  Press Ctrl+C to stop" << std::endl;
 
+        // Fetch leader routing table so we can send transactions directly
+        // to the leader responsible for each pool, avoiding relay hops.
+        std::unordered_map<uint32_t, SethSDK::LeaderInfo> leader_map;
+        uint32_t leader_count = 0;
+        bool has_leader_routing = sdk.fetchLeaders(leader_map, leader_count);
+        if (has_leader_routing) {
+            std::cout << "  Leader routing enabled: " << leader_count << " leaders" << std::endl;
+            for (auto& [mod, info] : leader_map) {
+                std::cout << "    mod " << mod << " -> " << info.ip << ":" << info.port << std::endl;
+            }
+        } else {
+            std::cout << "  Leader routing unavailable, using default node" << std::endl;
+        }
+
+        // Pre-compute pool index for each test address
+        std::vector<uint32_t> addr_pool_idx(kAccountCount);
+        for (uint32_t i = 0; i < kAccountCount; ++i) {
+            addr_pool_idx[i] = common::GetAddressPoolIndex(test_addrs[i]);
+        }
+
         std::atomic<uint64_t> tx_count{0};
         std::atomic<uint64_t> tx_failed{0};
 
@@ -770,10 +790,25 @@ int main(int argc, char** argv) {
                     1,
                     shardnum);
 
-                if (tx_msg_ptr && transport::TcpTransport::Instance()->Send(
-                        global_chain_node_ip,
-                        global_chain_node_http_port - 10000,
-                        tx_msg_ptr->header) == 0) {
+                if (!tx_msg_ptr) {
+                    ++tx_failed;
+                    continue;
+                }
+
+                // Route to the leader responsible for the sender's pool
+                std::string dest_ip = global_chain_node_ip;
+                uint16_t dest_port = global_chain_node_http_port - 10000;
+                if (has_leader_routing) {
+                    uint32_t pool_idx = addr_pool_idx[from_idx];
+                    auto it = leader_map.find(pool_idx);
+                    if (it != leader_map.end()) {
+                        dest_ip = it->second.ip;
+                        dest_port = it->second.port;
+                    }
+                }
+
+                if (transport::TcpTransport::Instance()->Send(
+                        dest_ip, dest_port, tx_msg_ptr->header) == 0) {
                     ++tx_count;
                 } else {
                     ++tx_failed;
@@ -805,8 +840,9 @@ int main(int argc, char** argv) {
             }
         });
 
-        // Nonce update thread
+        // Nonce update thread (also refreshes leader routing periodically)
         std::thread nonce_update_thread([&]() {
+            uint32_t refresh_counter = 0;
             while (!global_stop) {
                 usleep(10000000);  // 10 seconds
                 std::cout << "  Updating nonces..." << std::endl;
@@ -825,6 +861,18 @@ int main(int argc, char** argv) {
                     usleep(1000);  // 1ms between queries
                 }
                 std::cout << "  Nonce update done: " << updated << " accounts refreshed" << std::endl;
+
+                // Refresh leader routing every ~60 seconds (6 iterations × 10s)
+                if (++refresh_counter % 6 == 0) {
+                    std::unordered_map<uint32_t, SethSDK::LeaderInfo> new_leaders;
+                    uint32_t new_count = 0;
+                    if (sdk.fetchLeaders(new_leaders, new_count) && !new_leaders.empty()) {
+                        leader_map = new_leaders;
+                        leader_count = new_count;
+                        has_leader_routing = true;
+                        std::cout << "  Leader routing refreshed: " << new_count << " leaders" << std::endl;
+                    }
+                }
             }
         });
 

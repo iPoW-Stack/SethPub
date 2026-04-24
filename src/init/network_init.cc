@@ -741,6 +741,8 @@ int NetworkInit::InitHttpServer() {
         if (private_key_received_) {
             http_handler_.set_net_handler(&net_handler_);
             http_handler_.set_contract_mgr(contract_mgr_);
+            http_handler_.set_elect_mgr(elect_mgr_);
+            http_handler_.set_hotstuff_mgr(hotstuff_mgr_);
         } else {
             http_handler_.SetPrivateKeyUpdateCallback(
                 [this](const std::string& new_private_key) -> int {
@@ -754,6 +756,8 @@ int NetworkInit::InitHttpServer() {
                 contract_mgr_, 
                 http_ip, 
                 http_port);
+            http_handler_.set_elect_mgr(elect_mgr_);
+            http_handler_.set_hotstuff_mgr(hotstuff_mgr_);
             private_key_received_ = true;
         }
        

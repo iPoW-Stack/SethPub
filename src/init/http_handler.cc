@@ -12,6 +12,7 @@
 #include "common/encode.h"
 #include "common/string_utils.h"
 #include "consensus/hotstuff/view_block_chain.h"
+#include "consensus/hotstuff/hotstuff_manager.h"
 #include "contract/contract_ars.h"
 #include "contract/contract_reencryption.h"
 #include "dht/dht_key.h"
@@ -981,6 +982,50 @@ static void AbiQueryContract(const UWSRequest& req, UWSResponse& http_res) {
     // std::string http_res(qdata.c_str() + 64, len);
     http_res.set_content(hex_data, "text/plain");
     SETH_INFO("query contract success data: %s", hex_data.c_str());
+}
+
+// Returns leader routing table: pool_index -> {ip, port} for the local shard.
+// Uses hotstuff_mgr_->is_other_leader(pool_index) to get the actual current
+// leader for each pool. If this node IS the leader for a pool, returns this
+// node's own IP:port for that pool.
+static void QueryLeaders(const UWSRequest& req, UWSResponse& http_res) {
+    nlohmann::json res_json;
+    res_json["status"] = 0;
+    res_json["leaders"] = nlohmann::json::object();
+
+    auto hotstuff_mgr = http_handler->hotstuff_mgr();
+    if (!hotstuff_mgr) {
+        res_json["status"] = 1;
+        res_json["msg"] = "hotstuff manager not available";
+        http_res.set_content(res_json.dump(), "application/json");
+        return;
+    }
+
+    auto network_id = common::GlobalInfo::Instance()->network_id();
+    std::string local_ip = common::GlobalInfo::Instance()->config_public_ip();
+    uint16_t local_port = common::GlobalInfo::Instance()->config_public_port();
+    res_json["network_id"] = network_id;
+
+    for (uint32_t pool_idx = 0; pool_idx < common::kImmutablePoolSize; ++pool_idx) {
+        auto leader = hotstuff_mgr->is_other_leader(pool_idx);
+        nlohmann::json leader_info;
+        if (leader) {
+            // Another node is the leader for this pool
+            leader_info["ip"] = common::Uint32ToIp(leader->public_ip);
+            leader_info["port"] = leader->public_port;
+            leader_info["index"] = leader->index;
+        } else {
+            // This node is the leader (or no leader known) — return self
+            leader_info["ip"] = local_ip;
+            leader_info["port"] = local_port;
+            leader_info["index"] = -1;
+        }
+        res_json["leaders"][std::to_string(pool_idx)] = leader_info;
+    }
+
+    res_json["pool_count"] = common::kImmutablePoolSize;
+    http_res.set_content(res_json.dump(), "application/json");
+    SETH_DEBUG("query_leaders: %s", res_json.dump().c_str());
 }
 
 static void QueryAccount(const UWSRequest& req, UWSResponse& http_res) {
@@ -2441,6 +2486,7 @@ void HttpHandler::Run() {
     ).post("/query_contract", safeHandler(QueryContract, "/query_contract")
     ).post("/abi_query_contract", safeHandler(AbiQueryContract, "/abi_query_contract")
     ).post("/query_account", safeHandler(QueryAccount, "/query_account")
+    ).post("/query_leaders", safeHandler(QueryLeaders, "/query_leaders")
     ).post("/query_init", safeHandler(QueryInit, "/query_init")
     ).post("/get_proxy_reenc_info", safeHandler(GetProxyReencInfo, "/get_proxy_reenc_info")
     ).post("/ars_create_sec_keys", safeHandler(ArsCreateSecKeys, "/ars_create_sec_keys")
