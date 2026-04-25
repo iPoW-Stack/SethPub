@@ -2281,7 +2281,7 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             payload += rlp_encode_bytes(to);
             payload += rlp_encode_uint(value);
             payload += rlp_encode_bytes(data);
-            payload += rlp_encode_bytes("");  // accessList (empty)
+            payload += std::string(1, '\xc0');  // accessList (empty list = 0xc0)
             std::string signing_rlp = rlp_list(payload);
             
             // Prepend type byte 0x02
