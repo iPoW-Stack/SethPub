@@ -528,16 +528,10 @@ void HotstuffManager::PopPoolsMessage() {
             }
             
             if (tx_ptr != nullptr) {
-                // ETH-format tx: re-verify using EIP-155 signing hash.
+                // ETH-format tx: signature already verified in http_handler.cc
+                // during RLP decoding and signature recovery. Skip verification here.
                 if (tx_ptr->tx_info->has_eth_raw_tx() && !tx_ptr->tx_info->eth_raw_tx().empty()) {
-                    if (security::VerifyEthSignature(
-                            tx_ptr->tx_info->eth_raw_tx(),
-                            tx_ptr->tx_info->pubkey(),
-                            tx_ptr->tx_info->sign())) {
-                        pools_mgr_->BackupConsensusAddTxs(msg_ptr, address_info->pool_index(), tx_ptr);
-                    } else {
-                        SETH_WARN("ETH tx verify failed in hotstuff_manager");
-                    }
+                    pools_mgr_->BackupConsensusAddTxs(msg_ptr, address_info->pool_index(), tx_ptr);
                 } else if (tx_ptr->tx_info->pubkey().size() == 64u) {
                     security::GmSsl gmssl;
                     if (gmssl.Verify(

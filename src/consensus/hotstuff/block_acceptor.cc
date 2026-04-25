@@ -1106,11 +1106,10 @@ Status BlockAcceptor::addTxsToPool(
                         return;
                     }
 
-                    // ETH-format tx: re-verify using EIP-155 signing hash.
+                    // ETH-format tx: signature already verified in http_handler.cc
+                    // during RLP decoding and signature recovery. Skip verification here.
                     if (ptx->has_eth_raw_tx() && !ptx->eth_raw_tx().empty()) {
-                        bool ok = security::VerifyEthSignature(
-                            ptx->eth_raw_tx(), ptx->pubkey(), ptx->sign());
-                        verify_results[idx] = ok ? 1 : -1;
+                        verify_results[idx] = 1;  // Already verified
                         return;
                     }
 

@@ -171,29 +171,36 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
 
     // ── ETH-format transaction (from eth_sendRawTransaction) ─────────────
     if (tx_msg.has_eth_raw_tx() && !tx_msg.eth_raw_tx().empty()) {
+        // ETH transactions have already been verified in http_handler.cc during
+        // RLP decoding and signature recovery. The address_info was also set there
+        // (including auto-registration for new addresses).
+        // Skip signature verification here to avoid redundant checks.
+        
         if (tx_msg.pubkey().empty() || tx_msg.sign().empty()) {
             SETH_ERROR("ETH tx missing pubkey or sign");
             msg_ptr->set_status(transport::kTxInvalidSignature);
             return transport::kFirewallCheckError;
         }
 
-        // Re-verify ETH signature by rebuilding EIP-155 hash and recovering pubkey
-        if (!security::VerifyEthSignature(tx_msg.eth_raw_tx(), tx_msg.pubkey(), tx_msg.sign())) {
-            SETH_ERROR("ETH tx signature verification failed");
-            msg_ptr->set_status(transport::kTxInvalidSignature);
-            return transport::kFirewallCheckError;
-        }
-
-        auto tmp_acc_ptr = acc_mgr_.lock();
-        msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(
-            security_->GetAddressWithPublicKey(tx_msg.pubkey()));
+        // Use address_info that was already set in http_handler.cc
         if (msg_ptr->address_info == nullptr) {
-            SETH_DEBUG("ETH tx: address not found: %s",
-                common::Encode::HexEncode(
-                    security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str());
-            msg_ptr->set_status(transport::kTxInvalidAddress);
-            return transport::kFirewallCheckError;
+            // Fallback: try to get from account manager
+            auto tmp_acc_ptr = acc_mgr_.lock();
+            msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(
+                security_->GetAddressWithPublicKey(tx_msg.pubkey()));
+            
+            if (msg_ptr->address_info == nullptr) {
+                SETH_DEBUG("ETH tx: address not found: %s",
+                    common::Encode::HexEncode(
+                        security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str());
+                msg_ptr->set_status(transport::kTxInvalidAddress);
+                return transport::kFirewallCheckError;
+            }
         }
+        
+        SETH_DEBUG("ETH tx passed firewall check, from: %s",
+            common::Encode::HexEncode(
+                security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str());
         // Fall through to shard check + leader routing below
     } else if (tx_msg.pubkey().size() == 64u) {
         security::GmSsl gmssl;
