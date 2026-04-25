@@ -2330,16 +2330,33 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
         sign_for_recover.append(s);
         sign_for_recover.push_back(static_cast<char>(v_byte));
         
+        SETH_WARN("eth_sendRawTransaction: trying recovery with v=%u, r=%s, s=%s, hash=%s",
+                  v_byte,
+                  common::Encode::HexEncode(r).c_str(),
+                  common::Encode::HexEncode(s).c_str(),
+                  common::Encode::HexEncode(signing_hash).c_str());
+        
         std::string pubkey = security::Secp256k1::Instance()->Recover(
             sign_for_recover, signing_hash, false);
+        
+        SETH_WARN("eth_sendRawTransaction: recovery with v=%u resulted in pubkey=%s (len=%zu)",
+                  v_byte,
+                  pubkey.empty() ? "EMPTY" : common::Encode::HexEncode(pubkey).c_str(),
+                  pubkey.size());
             
-        // If recovery fails with v_byte, try flipping it (0 <-> 1)
+        // If recovery fails or produces wrong result, try flipping v (0 <-> 1)
         if (pubkey.empty() || pubkey.size() != 64) {
+            uint8_t flipped_v = 1 - v_byte;
             SETH_WARN("eth_sendRawTransaction: recovery failed with v=%u, trying v=%u", 
-                      v_byte, 1 - v_byte);
-            sign_for_recover[64] = static_cast<char>(1 - v_byte);
+                      v_byte, flipped_v);
+            sign_for_recover[64] = static_cast<char>(flipped_v);
             pubkey = security::Secp256k1::Instance()->Recover(
                 sign_for_recover, signing_hash, false);
+            
+            SETH_WARN("eth_sendRawTransaction: recovery with v=%u resulted in pubkey=%s (len=%zu)",
+                      flipped_v,
+                      pubkey.empty() ? "EMPTY" : common::Encode::HexEncode(pubkey).c_str(),
+                      pubkey.size());
         }
         
         if (pubkey.empty() || pubkey.size() != 64) {
@@ -2361,7 +2378,7 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             pubkey.size(), common::Encode::HexEncode(pubkey).c_str(),
             common::Encode::HexEncode(sender_addr).c_str());
         if (sender_addr.empty() || sender_addr.size() != 20) {
-            http_res.set_content(RpcErr(id, -32602, "invalid sender address").dump(), "application/json");
+            http_res.set_content(RpcErr(id, -32602, "invalid sender address").dump(), "application/json")
             return;
         }
         // ── End pubkey recovery ───────────────────────────────────────────────
