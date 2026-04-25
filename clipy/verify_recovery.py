@@ -55,8 +55,10 @@ print(f"Expected Address: {account.address}")
 # Sign the hash
 signed = account.signHash(signing_hash)
 print()
-print(f"Signature r: {to_hex(to_bytes(signed.r).rjust(32, b'\\x00'))}")
-print(f"Signature s: {to_hex(to_bytes(signed.s).rjust(32, b'\\x00'))}")
+r_bytes = to_bytes(signed.r).rjust(32, b'\x00')
+s_bytes = to_bytes(signed.s).rjust(32, b'\x00')
+print(f"Signature r: {to_hex(r_bytes)}")
+print(f"Signature s: {to_hex(s_bytes)}")
 print(f"Signature v: {signed.v}")
 print()
 
@@ -69,7 +71,7 @@ key_api = KeyAPI(backend)
 
 # Try recovery with v as-is
 try:
-    signature_bytes = to_bytes(signed.r).rjust(32, b'\\x00') + to_bytes(signed.s).rjust(32, b'\\x00') + bytes([signed.v])
+    signature_bytes = r_bytes + s_bytes + bytes([signed.v])
     recovered_key = key_api.ecdsa_recover(signing_hash, key_api.Signature(signature_bytes))
     recovered_address = recovered_key.to_checksum_address()
     recovered_pubkey = recovered_key.to_bytes()
@@ -86,7 +88,7 @@ print()
 # Try recovery with v-27 (legacy format)
 try:
     v_legacy = signed.v - 27 if signed.v >= 27 else signed.v
-    signature_bytes = to_bytes(signed.r).rjust(32, b'\\x00') + to_bytes(signed.s).rjust(32, b'\\x00') + bytes([v_legacy])
+    signature_bytes = r_bytes + s_bytes + bytes([v_legacy])
     recovered_key = key_api.ecdsa_recover(signing_hash, key_api.Signature(signature_bytes))
     recovered_address = recovered_key.to_checksum_address()
     recovered_pubkey = recovered_key.to_bytes()
