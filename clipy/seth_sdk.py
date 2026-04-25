@@ -695,28 +695,50 @@ class SethClient:
         sk = SigningKey.from_string(bytes.fromhex(pk_hex.replace('0x', '')), curve=SECP256k1)
         pub = sk.verifying_key.to_string("uncompressed").hex()
 
-        msg = bytearray()
-        msg.extend(struct.pack('<Q', nonce))
-        msg.extend(bytes.fromhex(pub))
-        msg.extend(bytes.fromhex(to.replace('0x','')))
-        msg.extend(struct.pack('<Q', amount))
-        msg.extend(struct.pack('<Q', 5000000))
-        msg.extend(struct.pack('<Q', 1))
-        msg.extend(struct.pack('<Q', int(step)))
-        if contract_code: msg.extend(bytes.fromhex(contract_code))
-        if input_hex: msg.extend(bytes.fromhex(input_hex))
-        if prefund > 0: msg.extend(struct.pack('<Q', prefund))
+        def _build_and_send(_nonce):
+            msg = bytearray()
+            msg.extend(struct.pack('<Q', _nonce))
+            msg.extend(bytes.fromhex(pub))
+            msg.extend(bytes.fromhex(to.replace('0x','')))
+            msg.extend(struct.pack('<Q', amount))
+            msg.extend(struct.pack('<Q', 5000000))
+            msg.extend(struct.pack('<Q', 1))
+            msg.extend(struct.pack('<Q', int(step)))
+            if contract_code: msg.extend(bytes.fromhex(contract_code))
+            if input_hex: msg.extend(bytes.fromhex(input_hex))
+            if prefund > 0: msg.extend(struct.pack('<Q', prefund))
+            _txh = keccak.new(digest_bits=256).update(msg).digest()
+            _sig = sk.sign_digest_deterministic(_txh, hashfunc=hashlib.sha256, sigencode=sigencode_string_canonize)
+            _data = {"nonce": str(_nonce), "pubkey": pub, "to": to, "amount": str(amount), "gas_limit": "5000000", "gas_price": "1", "shard_id": "0", "type": str(int(step)), "sign_r": _sig[:32].hex(), "sign_s": _sig[32:64].hex(), "sign_v": "0"}
+            if contract_code: _data["bytes_code"] = contract_code
+            if input_hex: _data["input"] = input_hex
+            if prefund: _data["prefund"] = str(prefund)
+            _resp = requests.post(self.tx_url, data=_data, verify=self.verify_ssl)
+            return _txh, _resp
 
-        txh = keccak.new(digest_bits=256).update(msg).digest()
-        sig = sk.sign_digest_deterministic(txh, hashfunc=hashlib.sha256, sigencode=sigencode_string_canonize)
-        
-        data = {"nonce": str(nonce), "pubkey": pub, "to": to, "amount": str(amount), "gas_limit": "5000000", "gas_price": "1", "shard_id": "0", "type": str(int(step)), "sign_r": sig[:32].hex(), "sign_s": sig[32:64].hex(), "sign_v": "0"}
-        if contract_code: data["bytes_code"] = contract_code
-        if input_hex: data["input"] = input_hex
-        if prefund: data["prefund"] = str(prefund)
-        
-        resp = requests.post(self.tx_url, data=data, verify=self.verify_ssl)
-        print(f"[send_tx] status={resp.status_code} body={resp.text[:200]}")
+        txh, resp = _build_and_send(nonce)
+        body = resp.text[:200]
+        print(f"[send_tx] status={resp.status_code} body={body}")
+
+        # On nonce invalid: poll until nonce changes (previous tx confirmed), then resend
+        if 'kTxUserNonceInvalid' in body:
+            old_nonce = nonce - 1  # the nonce we queried before +1
+            for retry in range(30):
+                time.sleep(1)
+                try:
+                    r2 = requests.post(self.query_url, data={"address": nonce_addr}, verify=self.verify_ssl).json()
+                    cur = int(r2.get("nonce", 0))
+                except:
+                    continue
+                if cur != old_nonce:
+                    nonce = cur + 1
+                    txh, resp = _build_and_send(nonce)
+                    body = resp.text[:200]
+                    print(f"[send_tx retry] nonce={nonce} status={resp.status_code} body={body}")
+                    if 'kTxUserNonceInvalid' not in body:
+                        break
+                    old_nonce = cur
+
         return txh.hex()
 
     def wait_for_receipt(self, tx_hash: str, abi: list = None, function_name: str = None,
