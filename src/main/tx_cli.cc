@@ -890,27 +890,49 @@ int main(int argc, char** argv) {
         // Nonce update thread (also refreshes leader routing periodically)
         std::thread nonce_update_thread([&]() {
             uint32_t refresh_counter = 0;
+            uint32_t full_update_counter = 0;
             while (!global_stop) {
-                usleep(10000000);  // 10 seconds
-                std::cout << "  Updating nonces..." << std::endl;
+                usleep(5000000);  // 5 seconds
+                
+                // Do a full update every 30 seconds (6 iterations × 5s)
+                // Otherwise only update throttled accounts
+                bool do_full_update = (++full_update_counter % 6 == 0);
+                
+                if (do_full_update) {
+                    std::cout << "  [Full] Updating all nonces..." << std::endl;
+                } else {
+                    std::cout << "  [Quick] Updating throttled nonces..." << std::endl;
+                }
+                
                 uint32_t updated = 0;
+                uint32_t throttled = 0;
+                
                 for (uint32_t i = 0; i < kAccountCount && !global_stop; ++i) {
-                    // Only update accounts that are nonce-throttled
                     auto& addr = test_addrs[i];
-                    if (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount > prikey_with_nonce[addr]) {
-                        continue;  // Not throttled, skip
+                    bool is_throttled = (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[addr]);
+                    
+                    if (is_throttled) {
+                        ++throttled;
                     }
+                    
+                    // Skip non-throttled accounts unless doing full update
+                    if (!is_throttled && !do_full_update) {
+                        continue;
+                    }
+                    
                     int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(addr));
                     if (nonce >= 0) {
                         src_prikey_with_nonce[addr] = nonce;
                         ++updated;
                     }
-                    usleep(1000);  // 1ms between queries
+                    usleep(500);  // 0.5ms between queries
                 }
-                std::cout << "  Nonce update done: " << updated << " accounts refreshed" << std::endl;
+                
+                std::cout << "  Nonce update done: " << updated << " refreshed, " 
+                          << throttled << " throttled" << std::endl;
 
-                // Refresh leader routing every ~60 seconds (6 iterations × 10s)
-                if (++refresh_counter % 6 == 0) {
+                // Refresh leader routing every ~15 seconds (3 iterations × 5s)
+                if (++refresh_counter % 3 == 0) {
                     std::unordered_map<uint32_t, SethSDK::LeaderInfo> new_leaders;
                     uint32_t new_count = 0;
                     if (sdk.fetchLeaders(new_leaders, new_count) && !new_leaders.empty()) {
