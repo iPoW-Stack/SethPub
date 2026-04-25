@@ -2239,6 +2239,7 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
 
         // Determine transaction type and build signing hash
         std::string signing_hash;
+        std::string signing_rlp_for_debug;  // For logging only
         bool is_eip1559 = (raw_bytes[0] == 0x02);
         
         if (is_eip1559) {
@@ -2261,6 +2262,7 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             // Prepend type byte 0x02
             std::string type_and_rlp = std::string(1, '\x02') + signing_rlp;
             signing_hash = common::Hash::keccak256(type_and_rlp);
+            signing_rlp_for_debug = type_and_rlp;  // Store for logging
             
             SETH_INFO("EIP-1559 signing: type_and_rlp_hex=%s, signing_hash=%s",
                       common::Encode::HexEncode(type_and_rlp).c_str(),
@@ -2279,15 +2281,16 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             payload += rlp_encode_uint(0);            // r = 0
             std::string signing_rlp = rlp_list(payload);
             signing_hash = common::Hash::keccak256(signing_rlp);
+            signing_rlp_for_debug = signing_rlp;  // Store for logging
         }
         SETH_WARN("eth_sendRawTransaction: signing_rlp_hex=%s, signing_hash=%s, "
             "nonce=%lu, gas_price=%lu, gas_limit=%lu, value=%lu, to_hex=%s, data_len=%zu, "
-            "chain_id=%lu, v_byte=%u",
-            common::Encode::HexEncode(signing_rlp).c_str(),
+            "chain_id=%lu, v_byte=%u, is_eip1559=%d",
+            common::Encode::HexEncode(signing_rlp_for_debug).c_str(),
             common::Encode::HexEncode(signing_hash).c_str(),
             nonce, gas_price, gas_limit, value,
             common::Encode::HexEncode(to).c_str(),
-            data.size(), kSethChainId, v_byte);
+            data.size(), kSethChainId, v_byte, is_eip1559 ? 1 : 0);
 
         // Build Seth-format signature: r (32 bytes) || s (32 bytes) || v (1 byte)
         std::string sign_for_recover;
