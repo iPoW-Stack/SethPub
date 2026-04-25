@@ -566,6 +566,7 @@ private:
         const transport::MessagePtr& msg_ptr, 
         common::BftMemberPtr leader, 
         bool has_system_tx);
+    void ResendLeaderLatestProposeMessage();
 
     static const uint64_t kLatestPoposeSendTxToLeaderPeriodMs = 10000lu;
 
