@@ -2318,19 +2318,13 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             common::Encode::HexEncode(to).c_str(),
             data.size(), kSethChainId, v_byte, is_eip1559 ? 1 : 0);
 
-        // Build Seth-format signature: r (32 bytes) || s (32 bytes) || v (1 byte)
-        std::string sign_for_recover;
-        sign_for_recover.reserve(65);
-        sign_for_recover.append(r);
-        sign_for_recover.append(s);
-        sign_for_recover.push_back(static_cast<char>(v_byte));
-        
         SETH_INFO("eth_sendRawTransaction: signature for recovery: r=%s, s=%s, v=%u (flipped from tx)",
                   common::Encode::HexEncode(r).c_str(),
                   common::Encode::HexEncode(s).c_str(),
                   v_byte);
 
         // Recover uncompressed public key (64 bytes, no prefix).
+        // Build Seth-format signature: r (32 bytes) || s (32 bytes) || v (1 byte)
         std::string sign_for_recover;
         sign_for_recover.reserve(65);
         sign_for_recover.append(r);
