@@ -58,8 +58,8 @@ def test_eip1559_transfer(w3, MY, KEY):
     print("TEST CASE 1: EIP-1559 Native Token Transfer")
     print("=" * 70)
     
-    # Recipient address
-    recipient = secrets.token_hex(20)
+    # Recipient address - FIXED for testing signature recovery
+    recipient = "1234567890123456789012345678901234567890"
     transfer_amount = 1000000
     
     print(f"\n[1] Preparing EIP-1559 transfer...")
