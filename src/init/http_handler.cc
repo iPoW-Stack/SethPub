@@ -2472,10 +2472,25 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
         if (!msg_ptr->address_info) {
             msg_ptr->address_info = prefix_db->GetAddressInfo(sender_addr);
         }
+        
         if (!msg_ptr->address_info) {
-            std::string res = "address invalid: " + common::Encode::HexEncode(sender_addr);
-            http_res.set_content(RpcErr(id, -32602, res).dump(), "application/json");
-            return;
+            // For transactions from eth_sendRawTransaction (EIP-1559 or legacy),
+            // auto-create address info to allow Ethereum-style transactions where
+            // addresses don't need pre-registration.
+            SETH_WARN("Auto-registering sender from raw transaction: %s (pubkey: %s)", 
+                      common::Encode::HexEncode(sender_addr).c_str(),
+                      common::Encode::HexEncode(pubkey).c_str());
+            
+            auto new_addr_info = std::make_shared<block::protobuf::AddressInfo>();
+            new_addr_info->set_balance(0);  // Will be validated later
+            new_addr_info->set_nonce(0);
+            new_addr_info->set_type(0);  // Normal address
+            new_addr_info->set_pubkey(pubkey_with_prefix);
+            
+            msg_ptr->address_info = new_addr_info;
+            
+            // Note: This is a temporary address_info. If the transaction succeeds,
+            // the address will be properly registered in the system.
         }
 
         // Register in tx_msg_map BEFORE dispatching so any synchronous set_status()
