@@ -1912,11 +1912,10 @@ static bool DecodeEthRawTx(
         uint64_t v_val = be_to_u64(s_v);
         v_byte = static_cast<uint8_t>(v_val);
         
-        // IMPORTANT: For EIP-1559, eth_account library uses v=0/1 differently than libsecp256k1
-        // We need to flip the v value: 0 -> 1, 1 -> 0
-        // This is because eth_account's v represents y-parity, but libsecp256k1's recovery ID
-        // has a different convention.
-        v_byte = 1 - v_byte;  // Flip: 0->1, 1->0
+        // NOTE: For EIP-1559, we use the v value directly from the transaction
+        // without flipping. The eth_account library and libsecp256k1 appear to
+        // use the same convention for EIP-1559 transactions.
+        // v_byte = 1 - v_byte;  // DO NOT FLIP for EIP-1559
 
         // r and s must be 32 bytes (left-pad if shorter)
         r = std::string(32 - std::min<size_t>(s_r.size(), 32), '\0') + s_r.substr(s_r.size() > 32 ? s_r.size() - 32 : 0);
@@ -2318,7 +2317,7 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             common::Encode::HexEncode(to).c_str(),
             data.size(), kSethChainId, v_byte, is_eip1559 ? 1 : 0);
 
-        SETH_INFO("eth_sendRawTransaction: signature for recovery: r=%s, s=%s, v=%u (flipped from tx)",
+        SETH_INFO("eth_sendRawTransaction: signature for recovery: r=%s, s=%s, v=%u",
                   common::Encode::HexEncode(r).c_str(),
                   common::Encode::HexEncode(s).c_str(),
                   v_byte);
