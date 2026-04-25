@@ -72,7 +72,7 @@ def test_eip1559_transfer(w3, MY, KEY):
     print(f"    Recipient balance before: {balance_before}")
     
     # Get nonce
-    nonce = w3.client.get_nonce(MY)
+    nonce = w3.client.get_nonce(MY) + 1
     print(f"    Nonce: {nonce}")
     
     # Send EIP-1559 transaction
@@ -104,7 +104,7 @@ def test_eip1559_transfer(w3, MY, KEY):
         for i in range(max_wait):
             time.sleep(2)
             current_nonce = w3.client.get_nonce(MY)
-            if current_nonce > nonce:
+            if current_nonce >= nonce:
                 print(f"    ✅ Transaction confirmed! Nonce increased from {nonce} to {current_nonce}")
                 
                 # Check recipient balance
@@ -144,7 +144,7 @@ def test_eip1559_contract_deploy(w3, MY, KEY):
     print(f"\n[2] Deploying contract with EIP-1559...")
     
     # Get nonce
-    nonce = w3.client.get_nonce(MY)
+    nonce = w3.client.get_nonce(MY) + 1
     
     try:
         # Deploy using EIP-1559
@@ -221,7 +221,7 @@ def test_eip1559_contract_call(w3, MY, KEY, contract_addr, abi):
     new_value = 12345
     
     # Get nonce
-    nonce = w3.client.get_nonce(MY)
+    nonce = w3.client.get_nonce(MY) + 1
     
     # Encode function call
     from eth_abi import encode
