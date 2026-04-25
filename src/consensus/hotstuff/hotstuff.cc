@@ -477,18 +477,11 @@ void Hotstuff::ResendLeaderLatestProposeMessage() {
             leader_qc->set_view_block_hash(leader_view_block_hash_);
         }
 
-        if (leader->index != leader_qc->leader_idx()) {
-            SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
-            latest_leader_propose_message_ = nullptr;
-            last_leader_propose_view_ = 0llu;
-            return Status::kError;
-        }
-
         if (leader_view > leader_qc->view()) {
             SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
             latest_leader_propose_message_ = nullptr;
             last_leader_propose_view_ = 0llu;
-            return Status::kError;
+            return;
         }
 
         auto broadcast = tmp_msg_ptr->header.mutable_broadcast();
@@ -504,7 +497,7 @@ void Hotstuff::ResendLeaderLatestProposeMessage() {
         if (s != Status::kSuccess) {
             SETH_WARN("sign message failed pool: %d, view: %lu, construct hotstuff msg failed",
                 pool_idx_, hotstuff_msg->pro_msg().view_item().qc().view());
-            return s;
+            return;
         }
 
         transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
@@ -547,7 +540,6 @@ void Hotstuff::ResendLeaderLatestProposeMessage() {
             latest_qc_item_ptr_->view());
 #endif
         latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
-        return Status::kSuccess;
     }
 }
 
