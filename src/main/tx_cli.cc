@@ -403,6 +403,7 @@ int tx_main(int argc, char** argv) {
     auto tps_thread = [&]() {
         uint64_t now_tm_us = common::TimeUtils::TimestampUs();
         while (!global_stop) {
+            usleep(100000);  // Sleep 100ms to avoid busy-wait
             auto dur = common::TimeUtils::TimestampUs() - now_tm_us;
             if (dur >= 3000000lu) {
                 auto tps = all_count * 1000000lu / dur;
@@ -419,7 +420,12 @@ int tx_main(int argc, char** argv) {
     // Leader synchronization thread - refreshes every 3 seconds
     auto leader_sync_thread = [&]() {
         while (!global_stop) {
-            usleep(3000000);  // 3 seconds
+            // Sleep 3 seconds in 100ms chunks to allow quick exit
+            for (int i = 0; i < 30 && !global_stop; ++i) {
+                usleep(100000);  // 100ms
+            }
+            if (global_stop) break;
+            
             std::unordered_map<uint32_t, SethSDK::LeaderInfo> new_leaders;
             uint32_t new_count = 0;
             if (sdk.fetchLeaders(new_leaders, new_count) && !new_leaders.empty()) {
@@ -669,7 +675,12 @@ int main(int argc, char** argv) {
         // Progress monitor
         std::thread progress_thread([&]() {
             while (created_count + failed_count < kAccountCount && !global_stop) {
-                usleep(2000000);  // 2 seconds
+                // Sleep 2 seconds in 100ms chunks to allow quick exit
+                for (int i = 0; i < 20 && !global_stop; ++i) {
+                    usleep(100000);  // 100ms
+                }
+                if (global_stop) break;
+                
                 std::cout << "  Progress: " << created_count.load() << " created, " 
                           << failed_count.load() << " failed" << std::endl;
             }
@@ -877,7 +888,12 @@ int main(int argc, char** argv) {
         std::thread tps_thread([&]() {
             uint64_t prev_count = 0;
             while (!global_stop) {
-                usleep(3000000);  // 3 seconds
+                // Sleep 3 seconds in 100ms chunks to allow quick exit
+                for (int i = 0; i < 30 && !global_stop; ++i) {
+                    usleep(100000);  // 100ms
+                }
+                if (global_stop) break;
+                
                 uint64_t cur_count = tx_count.load();
                 uint64_t tps = (cur_count - prev_count) / 3;
                 std::cout << "[Stress Test] TPS: " << tps 
@@ -892,7 +908,11 @@ int main(int argc, char** argv) {
             uint32_t refresh_counter = 0;
             uint32_t full_update_counter = 0;
             while (!global_stop) {
-                usleep(5000000);  // 5 seconds
+                // Sleep 5 seconds in 100ms chunks to allow quick exit
+                for (int i = 0; i < 50 && !global_stop; ++i) {
+                    usleep(100000);  // 100ms
+                }
+                if (global_stop) break;
                 
                 // Do a full update every 30 seconds (6 iterations × 5s)
                 // Otherwise only update throttled accounts
@@ -925,8 +945,13 @@ int main(int argc, char** argv) {
                         src_prikey_with_nonce[addr] = nonce;
                         ++updated;
                     }
+                    
+                    // Check global_stop every 100 queries for faster exit
+                    if (i % 100 == 0 && global_stop) break;
                     usleep(500);  // 0.5ms between queries
                 }
+                
+                if (global_stop) break;
                 
                 std::cout << "  Nonce update done: " << updated << " refreshed, " 
                           << throttled << " throttled" << std::endl;
@@ -1242,7 +1267,12 @@ int main(int argc, char** argv) {
         threads.emplace_back([&]() {
             uint64_t prev = 0;
             while (!global_stop) {
-                usleep(3000000);
+                // Sleep 3 seconds in 100ms chunks to allow quick exit
+                for (int i = 0; i < 30 && !global_stop; ++i) {
+                    usleep(100000);  // 100ms
+                }
+                if (global_stop) break;
+                
                 uint64_t cur = call_count.load();
                 std::cout << "[Stress] tps=" << (cur - prev) / 3
                           << "  total=" << cur
