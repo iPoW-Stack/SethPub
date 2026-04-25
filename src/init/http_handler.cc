@@ -1789,10 +1789,11 @@ static nlohmann::json RpcErr(const nlohmann::json& id, int code, const std::stri
     return {{"jsonrpc", "2.0"}, {"id", id}, {"error", {{"code", code}, {"message", msg}}}};
 }
 
-// Decode an Ethereum legacy RLP-encoded signed transaction.
+// Decode an Ethereum RLP-encoded signed transaction (legacy or EIP-1559).
 // Returns false if decoding fails.
 // Fields populated: nonce, to (20 bytes), value, gas_limit, gas_price,
 //                   data (contract input / bytecode), v, r (32 bytes), s (32 bytes).
+// For EIP-1559 (Type 2), gas_price is set to maxFeePerGas.
 static bool DecodeEthRawTx(
         const std::string& raw_bytes,
         uint64_t& nonce,
@@ -1804,19 +1805,110 @@ static bool DecodeEthRawTx(
         uint8_t& v_byte,
         std::string& r,
         std::string& s) {
-    // Minimal RLP decoder for legacy Ethereum transactions.
-    // Format: RLP([nonce, gasPrice, gasLimit, to, value, data, v, r, s])
     const uint8_t* p = reinterpret_cast<const uint8_t*>(raw_bytes.data());
     size_t len = raw_bytes.size();
     if (len < 1) return false;
 
     // EIP-2718 typed transactions start with a byte in [0x00, 0x7f].
-    // We only support legacy (starts with 0xc0..0xff = RLP list).
+    // Type 2 (EIP-1559) = 0x02
+    // Legacy transactions start with 0xc0..0xff (RLP list).
+    if (p[0] == 0x02) {
+        // EIP-1559 (Type 2) transaction
+        // Format: 0x02 || RLP([chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList, v, r, s])
+        SETH_INFO("DecodeEthRawTx: EIP-1559 (Type 2) transaction detected");
+        p++; len--;  // Skip type byte
+        
+        // Decode outer RLP list
+        if (len < 1 || p[0] < 0xc0) return false;
+        
+        size_t list_len = 0;
+        size_t hdr = 0;
+        if (p[0] >= 0xf8) {
+            hdr = 1 + (p[0] - 0xf7);
+            if (hdr > len) return false;
+            for (size_t i = 1; i < hdr; ++i) list_len = (list_len << 8) | p[i];
+        } else if (p[0] >= 0xc0) {
+            hdr = 1;
+            list_len = p[0] - 0xc0;
+        } else {
+            return false;
+        }
+        p += hdr; len -= hdr;
+        if (len < list_len) return false;
+
+        // Helper: decode one RLP item
+        auto decode_item = [](const uint8_t*& pp, size_t& ll, std::string& out) -> bool {
+            if (ll < 1) return false;
+            if (pp[0] <= 0x7f) {
+                out = std::string(1, (char)pp[0]);
+                pp++; ll--;
+            } else if (pp[0] <= 0xb7) {
+                size_t item_len = pp[0] - 0x80;
+                if (ll < 1 + item_len) return false;
+                out = std::string((char*)pp + 1, item_len);
+                pp += 1 + item_len; ll -= 1 + item_len;
+            } else if (pp[0] <= 0xbf) {
+                size_t hlen = pp[0] - 0xb7;
+                if (ll < 1 + hlen) return false;
+                size_t item_len = 0;
+                for (size_t i = 1; i <= hlen; ++i) item_len = (item_len << 8) | pp[i];
+                if (ll < 1 + hlen + item_len) return false;
+                out = std::string((char*)pp + 1 + hlen, item_len);
+                pp += 1 + hlen + item_len; ll -= 1 + hlen + item_len;
+            } else {
+                return false;
+            }
+            return true;
+        };
+
+        auto be_to_u64 = [](const std::string& s) -> uint64_t {
+            uint64_t v = 0;
+            for (unsigned char c : s) v = (v << 8) | c;
+            return v;
+        };
+
+        // Decode EIP-1559 fields: chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList, v, r, s
+        std::string s_chainid, s_nonce, s_maxpriority, s_maxfee, s_gaslimit, s_to, s_value, s_data, s_accesslist, s_v, s_r, s_s;
+        if (!decode_item(p, len, s_chainid))      { SETH_WARN("EIP-1559 RLP decode failed at: chainId"); return false; }
+        if (!decode_item(p, len, s_nonce))        { SETH_WARN("EIP-1559 RLP decode failed at: nonce"); return false; }
+        if (!decode_item(p, len, s_maxpriority))  { SETH_WARN("EIP-1559 RLP decode failed at: maxPriorityFeePerGas"); return false; }
+        if (!decode_item(p, len, s_maxfee))       { SETH_WARN("EIP-1559 RLP decode failed at: maxFeePerGas"); return false; }
+        if (!decode_item(p, len, s_gaslimit))     { SETH_WARN("EIP-1559 RLP decode failed at: gasLimit"); return false; }
+        if (!decode_item(p, len, s_to))           { SETH_WARN("EIP-1559 RLP decode failed at: to"); return false; }
+        if (!decode_item(p, len, s_value))        { SETH_WARN("EIP-1559 RLP decode failed at: value"); return false; }
+        if (!decode_item(p, len, s_data))         { SETH_WARN("EIP-1559 RLP decode failed at: data"); return false; }
+        if (!decode_item(p, len, s_accesslist))   { SETH_WARN("EIP-1559 RLP decode failed at: accessList"); return false; }
+        if (!decode_item(p, len, s_v))            { SETH_WARN("EIP-1559 RLP decode failed at: v"); return false; }
+        if (!decode_item(p, len, s_r))            { SETH_WARN("EIP-1559 RLP decode failed at: r"); return false; }
+        if (!decode_item(p, len, s_s))            { SETH_WARN("EIP-1559 RLP decode failed at: s"); return false; }
+
+        nonce     = be_to_u64(s_nonce);
+        gas_price = be_to_u64(s_maxfee);  // Use maxFeePerGas as gas_price
+        gas_limit = be_to_u64(s_gaslimit);
+        value     = be_to_u64(s_value);
+        to        = s_to;
+        data      = s_data;
+
+        // EIP-1559: v is 0 or 1 (parity only, no chain_id encoding)
+        uint64_t v_val = be_to_u64(s_v);
+        v_byte = static_cast<uint8_t>(v_val);
+
+        // r and s must be 32 bytes (left-pad if shorter)
+        r = std::string(32 - std::min<size_t>(s_r.size(), 32), '\0') + s_r.substr(s_r.size() > 32 ? s_r.size() - 32 : 0);
+        s = std::string(32 - std::min<size_t>(s_s.size(), 32), '\0') + s_s.substr(s_s.size() > 32 ? s_s.size() - 32 : 0);
+
+        SETH_INFO("EIP-1559 decoded: nonce=%lu, maxFeePerGas=%lu, gasLimit=%lu, value=%lu, v=%u",
+                  nonce, gas_price, gas_limit, value, v_byte);
+        return true;
+    }
+    
+    // Legacy transaction (starts with 0xc0..0xff = RLP list)
     if (p[0] < 0xc0) {
-        SETH_WARN("DecodeEthRawTx: typed transaction (type=0x%02x) not supported, "
-                  "only legacy RLP format is accepted", p[0]);
+        SETH_WARN("DecodeEthRawTx: unsupported transaction type=0x%02x", p[0]);
         return false;
     }
+    
+    SETH_INFO("DecodeEthRawTx: Legacy transaction detected");
 
     // Outer list
     size_t list_len = 0;
@@ -2105,8 +2197,9 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             return;
         }
 
-        // ── Recover sender public key via EIP-155 signing hash ────────────────
-        // EIP-155 signing preimage: RLP([nonce, gasPrice, gasLimit, to, value, data, chainId, 0, 0])
+        // ── Recover sender public key ─────────────────────────────────────────
+        // For legacy: EIP-155 signing preimage: RLP([nonce, gasPrice, gasLimit, to, value, data, chainId, 0, 0])
+        // For EIP-1559: signing preimage: keccak256(0x02 || RLP([chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList]))
         // We build a minimal RLP encoder inline.
         auto rlp_encode_uint = [](uint64_t v) -> std::string {
             if (v == 0) return std::string(1, '\x80');
@@ -2144,21 +2237,49 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             return std::string(1, static_cast<char>(0xf7 + len_be.size())) + len_be + payload;
         };
 
-        // Build the 9-field RLP for EIP-155 signing
-        std::string payload;
-        payload += rlp_encode_uint(nonce);
-        payload += rlp_encode_uint(gas_price);
-        payload += rlp_encode_uint(gas_limit);
-        payload += rlp_encode_bytes(to);          // empty = contract creation
-        payload += rlp_encode_uint(value);
-        payload += rlp_encode_bytes(data);
-        payload += rlp_encode_uint(kSethChainId); // EIP-155: chain_id
-        payload += rlp_encode_uint(0);            // v = 0
-        payload += rlp_encode_uint(0);            // r = 0
-        std::string signing_rlp = rlp_list(payload);
-
-        // keccak256 of the signing RLP
-        std::string signing_hash = common::Hash::keccak256(signing_rlp);
+        // Determine transaction type and build signing hash
+        std::string signing_hash;
+        bool is_eip1559 = (raw_bytes[0] == 0x02);
+        
+        if (is_eip1559) {
+            // EIP-1559 (Type 2) signing hash
+            // signing_hash = keccak256(0x02 || RLP([chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList]))
+            // Note: We don't have maxPriorityFeePerGas stored separately, so we use gas_price for maxFeePerGas
+            // and assume maxPriorityFeePerGas = gas_price (simplified)
+            std::string payload;
+            payload += rlp_encode_uint(kSethChainId);
+            payload += rlp_encode_uint(nonce);
+            payload += rlp_encode_uint(gas_price);  // maxPriorityFeePerGas (simplified)
+            payload += rlp_encode_uint(gas_price);  // maxFeePerGas
+            payload += rlp_encode_uint(gas_limit);
+            payload += rlp_encode_bytes(to);
+            payload += rlp_encode_uint(value);
+            payload += rlp_encode_bytes(data);
+            payload += rlp_encode_bytes("");  // accessList (empty)
+            std::string signing_rlp = rlp_list(payload);
+            
+            // Prepend type byte 0x02
+            std::string type_and_rlp = std::string(1, '\x02') + signing_rlp;
+            signing_hash = common::Hash::keccak256(type_and_rlp);
+            
+            SETH_INFO("EIP-1559 signing: type_and_rlp_hex=%s, signing_hash=%s",
+                      common::Encode::HexEncode(type_and_rlp).c_str(),
+                      common::Encode::HexEncode(signing_hash).c_str());
+        } else {
+            // Legacy EIP-155 signing hash
+            std::string payload;
+            payload += rlp_encode_uint(nonce);
+            payload += rlp_encode_uint(gas_price);
+            payload += rlp_encode_uint(gas_limit);
+            payload += rlp_encode_bytes(to);          // empty = contract creation
+            payload += rlp_encode_uint(value);
+            payload += rlp_encode_bytes(data);
+            payload += rlp_encode_uint(kSethChainId); // EIP-155: chain_id
+            payload += rlp_encode_uint(0);            // v = 0
+            payload += rlp_encode_uint(0);            // r = 0
+            std::string signing_rlp = rlp_list(payload);
+            signing_hash = common::Hash::keccak256(signing_rlp);
+        }
         SETH_WARN("eth_sendRawTransaction: signing_rlp_hex=%s, signing_hash=%s, "
             "nonce=%lu, gas_price=%lu, gas_limit=%lu, value=%lu, to_hex=%s, data_len=%zu, "
             "chain_id=%lu, v_byte=%u",

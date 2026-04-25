@@ -2383,20 +2383,61 @@ def _eth_rlp_list(payload: bytes) -> bytes:
 
 def _eth_sign_and_send(client, pk_hex: str, to: bytes, value: int, data: bytes,
                        nonce: int, gas_limit: int = 5000000, gas_price: int = 1,
-                       chain_id: int = 3355103125) -> str:
+                       chain_id: int = 3355103125, use_eip1559: bool = False,
+                       max_priority_fee_per_gas: int = None, max_fee_per_gas: int = None) -> str:
     """
-    Build an EIP-155 signed transaction, send via /eth JSON-RPC, return tx_hash hex.
+    Build an EIP-155 (legacy) or EIP-1559 (Type 2) signed transaction, send via /eth JSON-RPC, return tx_hash hex.
     Uses eth_account for correct Ethereum-compatible signing.
+    
+    Args:
+        client: Seth client instance
+        pk_hex: Private key in hex
+        to: Recipient address (20 bytes)
+        value: Value to transfer
+        data: Transaction data
+        nonce: Transaction nonce
+        gas_limit: Gas limit
+        gas_price: Gas price (for legacy transactions)
+        chain_id: Chain ID
+        use_eip1559: If True, use EIP-1559 (Type 2) transaction format
+        max_priority_fee_per_gas: Max priority fee per gas (EIP-1559 only)
+        max_fee_per_gas: Max fee per gas (EIP-1559 only)
+    
+    Returns:
+        Transaction hash in hex format
     """
     from eth_account import Account
     from Crypto.Hash import keccak as _keccak
 
-    # Build legacy transaction dict
-    # eth_account requires checksummed 'to' address
+    # Build transaction dict
     from eth_utils import to_checksum_address as _to_ck
-    tx = {
-        'nonce': nonce,
-        'gasPrice': gas_price,
+    
+    if use_eip1559:
+        # EIP-1559 (Type 2) transaction
+        if max_priority_fee_per_gas is None:
+            max_priority_fee_per_gas = gas_price
+        if max_fee_per_gas is None:
+            max_fee_per_gas = gas_price
+            
+        tx = {
+            'type': 2,  # EIP-1559
+            'chainId': chain_id,
+            'nonce': nonce,
+            'maxPriorityFeePerGas': max_priority_fee_per_gas,
+            'maxFeePerGas': max_fee_per_gas,
+            'gas': gas_limit,
+            'to': _to_ck('0x' + to.hex()) if to else None,
+            'value': value,
+            'data': data,
+            'accessList': [],  # Empty access list
+        }
+        print(f"  [DEBUG] Building EIP-1559 transaction: nonce={nonce}, maxFeePerGas={max_fee_per_gas}, "
+              f"maxPriorityFeePerGas={max_priority_fee_per_gas}, gas={gas_limit}")
+    else:
+        # Legacy transaction
+        tx = {
+            'nonce': nonce,
+            'gasPrice': gas_price,
         'gas': gas_limit,
         'value': value,
         'data': data,
