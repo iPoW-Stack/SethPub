@@ -1793,7 +1793,7 @@ static nlohmann::json RpcErr(const nlohmann::json& id, int code, const std::stri
 // Returns false if decoding fails.
 // Fields populated: nonce, to (20 bytes), value, gas_limit, gas_price,
 //                   data (contract input / bytecode), v, r (32 bytes), s (32 bytes).
-// For EIP-1559 (Type 2), gas_price is set to maxFeePerGas.
+// For EIP-1559 (Type 2), gas_price is set to maxFeePerGas, and max_priority_fee is set to maxPriorityFeePerGas.
 static bool DecodeEthRawTx(
         const std::string& raw_bytes,
         uint64_t& nonce,
@@ -1804,7 +1804,8 @@ static bool DecodeEthRawTx(
         std::string& data,
         uint8_t& v_byte,
         std::string& r,
-        std::string& s) {
+        std::string& s,
+        uint64_t* max_priority_fee = nullptr) {
     const uint8_t* p = reinterpret_cast<const uint8_t*>(raw_bytes.data());
     size_t len = raw_bytes.size();
     if (len < 1) return false;
@@ -1901,6 +1902,11 @@ static bool DecodeEthRawTx(
         value     = be_to_u64(s_value);
         to        = s_to;
         data      = s_data;
+        
+        // Store maxPriorityFeePerGas if pointer provided
+        if (max_priority_fee) {
+            *max_priority_fee = be_to_u64(s_maxpriority);
+        }
 
         // EIP-1559: v is 0 or 1 (parity only, no chain_id encoding)
         uint64_t v_val = be_to_u64(s_v);
@@ -2195,10 +2201,10 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             return;
         }
 
-        uint64_t nonce = 0, value = 0, gas_limit = 0, gas_price = 0;
+        uint64_t nonce = 0, value = 0, gas_limit = 0, gas_price = 0, max_priority_fee = 0;
         std::string to, data, r, s;
         uint8_t v_byte = 0;
-        if (!DecodeEthRawTx(raw_bytes, nonce, to, value, gas_limit, gas_price, data, v_byte, r, s)) {
+        if (!DecodeEthRawTx(raw_bytes, nonce, to, value, gas_limit, gas_price, data, v_byte, r, s, &max_priority_fee)) {
             SETH_WARN("eth_sendRawTransaction: DecodeEthRawTx failed, raw_hex_len=%zu, first_byte=0x%02x",
                 raw_bytes.size(), raw_bytes.empty() ? 0 : (uint8_t)raw_bytes[0]);
             http_res.set_content(RpcErr(id, -32602, "invalid raw transaction").dump(), "application/json");
@@ -2258,12 +2264,10 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
         if (is_eip1559) {
             // EIP-1559 (Type 2) signing hash
             // signing_hash = keccak256(0x02 || RLP([chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList]))
-            // Note: We don't have maxPriorityFeePerGas stored separately, so we use gas_price for maxFeePerGas
-            // and assume maxPriorityFeePerGas = gas_price (simplified)
             std::string payload;
             payload += rlp_encode_uint(kSethChainId);
             payload += rlp_encode_uint(nonce);
-            payload += rlp_encode_uint(gas_price);  // maxPriorityFeePerGas (simplified)
+            payload += rlp_encode_uint(max_priority_fee);  // maxPriorityFeePerGas
             payload += rlp_encode_uint(gas_price);  // maxFeePerGas
             payload += rlp_encode_uint(gas_limit);
             payload += rlp_encode_bytes(to);
