@@ -257,7 +257,7 @@ public:
             handled(false), is_leader(false), latest_qc_view(0llu), system_message(false) {
         timeout = common::TimeUtils::TimestampUs() + kConsensusMessageTimeoutUs;
         handle_timeout = common::kInvalidUint64;
-        prev_timestamp = common::TimeUtils::TimestampUs() + kMessagePeriodUs;
+        prev_timestamp = common::TimeUtils::TimestampMs();
 // #ifndef NDEBUG
         memset(times, 0, sizeof(times));
 // #endif

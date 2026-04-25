@@ -226,17 +226,17 @@ Status Hotstuff::Propose(
         return Status::kError;
     }
 
-    ADD_DEBUG_PROCESS_TIMESTAMP();
-    if (latest_leader_propose_message_ &&
-            latest_leader_propose_message_->latest_qc_view < latest_qc_item_ptr_->view()) {
-        SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr, "
-            "latest_leader_propose_message_->latest_qc_view: %lu, latest_qc_item_ptr_->view: %lu", 
-            pool_idx_,
-            latest_leader_propose_message_->latest_qc_view,
-            latest_qc_item_ptr_->view());
-        latest_leader_propose_message_ = nullptr;
-        last_leader_propose_view_ = 0llu;
-    }
+    // ADD_DEBUG_PROCESS_TIMESTAMP();
+    // if (latest_leader_propose_message_ &&
+    //         latest_leader_propose_message_->latest_qc_view < latest_qc_item_ptr_->view()) {
+    //     SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr, "
+    //         "latest_leader_propose_message_->latest_qc_view: %lu, latest_qc_item_ptr_->view: %lu", 
+    //         pool_idx_,
+    //         latest_leader_propose_message_->latest_qc_view,
+    //         latest_qc_item_ptr_->view());
+    //     latest_leader_propose_message_ = nullptr;
+    //     last_leader_propose_view_ = 0llu;
+    // }
 
 #ifndef NDEBUG
     auto t1 = common::TimeUtils::TimestampMs();
@@ -246,100 +246,7 @@ Status Hotstuff::Propose(
         return Status::kError;
     }
 
-    if (latest_leader_propose_message_) {
-        SETH_DEBUG("pool: %d, latest_leader_propose_message_ view: %lu, leader_view: %lu, "
-            "latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view(): %lu >= "
-            "pacemaker_->CurView(): %lu",
-            pool_idx_, latest_leader_propose_message_->latest_qc_view, leader_view,
-            latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view(),
-            pacemaker_->CurView());
-    }
-
-    if (latest_leader_propose_message_ &&
-            latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view() >= 
-            pacemaker_->CurView()) {
-        auto tmp_msg_ptr = std::make_shared<transport::TransportMessage>();
-        tmp_msg_ptr->header.CopyFrom(latest_leader_propose_message_->header);
-        tmp_msg_ptr->is_leader = true;
-        tmp_msg_ptr->header.release_broadcast();
-        auto* leader_qc = tmp_msg_ptr->header.mutable_hotstuff()->mutable_pro_msg()->mutable_view_item()->mutable_qc();
-        if (!leader_view_block_hash_.empty()) {
-            leader_qc->set_view_block_hash(leader_view_block_hash_);
-        }
-
-        if (leader->index != leader_qc->leader_idx()) {
-            SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
-            latest_leader_propose_message_ = nullptr;
-            last_leader_propose_view_ = 0llu;
-            return Status::kError;
-        }
-
-        if (leader_view > leader_qc->view()) {
-            SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
-            latest_leader_propose_message_ = nullptr;
-            last_leader_propose_view_ = 0llu;
-            return Status::kError;
-        }
-
-        auto broadcast = tmp_msg_ptr->header.mutable_broadcast();
-        broadcast::SetDefaultBroadcastParam(broadcast);        auto* hotstuff_msg = tmp_msg_ptr->header.mutable_hotstuff();
-        if (tc != nullptr) {
-            auto* pb_pro_msg = hotstuff_msg->mutable_pro_msg();
-            *pb_pro_msg->mutable_tc() = *tc;
-        }
-
-        transport::TcpTransport::Instance()->SetMessageHash(tmp_msg_ptr->header);
-        auto s = crypto()->SignMessage(tmp_msg_ptr);
-        auto& header = tmp_msg_ptr->header;
-        if (s != Status::kSuccess) {
-            SETH_WARN("sign message failed pool: %d, view: %lu, construct hotstuff msg failed",
-                pool_idx_, hotstuff_msg->pro_msg().view_item().qc().view());
-            return s;
-        }
-
-        transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
-        SETH_DEBUG("0 success add local message: %lu, leader_view: %lu", 
-            tmp_msg_ptr->header.hash64(), leader_view);
-        {
-            // Check propose message size before sending.
-            static const int kMaxProposeMsgBytes = 1 * 1024 * 1024; // 1 MB
-            int msg_size = tmp_msg_ptr->header.ByteSizeLong();
-            if (msg_size > kMaxProposeMsgBytes) {
-                SETH_WARN("pool: %d, propose msg OVERSIZED: %d bytes (limit %d), "
-                    "txs=%d, view=%lu — message will be dropped by receivers",
-                    pool_idx_, msg_size, kMaxProposeMsgBytes,
-                    hotstuff_msg->pro_msg().tx_propose().txs_size(),
-                    hotstuff_msg->pro_msg().view_item().qc().view());
-            }
-        }
-        network::Route::Instance()->Send(tmp_msg_ptr);
-#ifndef NDEBUG
-        ++sendout_bft_message_count_;
-        transport::protobuf::ConsensusDebug cons_debug;
-        cons_debug.ParseFromString(header.debug());
-        SETH_INFO("pool: %d, header pool: %d, propose, txs size: %lu, view: %lu, "
-            "hash: %s, qc_view: %lu, hash64: %lu, propose_debug: %s, "
-            "msg view: %lu, cur view: %lu, propose msg: %s, sendout_bft_message_count_: %u, "
-            "latest_leader_propose_message_->latest_qc_view: %lu, latest_qc_item_ptr_->view(): %lu",
-            pool_idx_,
-            header.hotstuff().pool_index(),
-            hotstuff_msg->pro_msg().tx_propose().txs_size(),
-            hotstuff_msg->pro_msg().view_item().qc().view(),
-            common::Encode::HexEncode(hotstuff_msg->pro_msg().view_item().qc().view_block_hash()).c_str(),
-            view_block_chain()->HighViewBlock()->qc().view(),
-            header.hash64(),
-            ProtobufToJson(cons_debug).c_str(),
-            tmp_msg_ptr->header.hotstuff().pro_msg().view_item().qc().view(),
-            pacemaker_->CurView(),
-            ProtobufToJson(header.hotstuff().pro_msg()).c_str(),
-            sendout_bft_message_count_.fetch_add(0),
-            latest_leader_propose_message_->latest_qc_view,
-            latest_qc_item_ptr_->view());
-#endif
-        latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
-        return Status::kSuccess;
-    }
-
+    ResendLeaderLatestProposeMessage();
     if (max_view() != 0 && 
             max_view() <= last_leader_propose_view_ && 
             last_leader_propose_view_ >= leader_view) {
@@ -556,6 +463,94 @@ Status Hotstuff::Propose(
 #endif
     return Status::kSuccess;
 }
+
+void Hotstuff::ResendLeaderLatestProposeMessage() {
+    if (latest_leader_propose_message_ &&
+            latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view() >= 
+            pacemaker_->CurView()) {
+        auto tmp_msg_ptr = std::make_shared<transport::TransportMessage>();
+        tmp_msg_ptr->header.CopyFrom(latest_leader_propose_message_->header);
+        tmp_msg_ptr->is_leader = true;
+        tmp_msg_ptr->header.release_broadcast();
+        auto* leader_qc = tmp_msg_ptr->header.mutable_hotstuff()->mutable_pro_msg()->mutable_view_item()->mutable_qc();
+        if (!leader_view_block_hash_.empty()) {
+            leader_qc->set_view_block_hash(leader_view_block_hash_);
+        }
+
+        if (leader->index != leader_qc->leader_idx()) {
+            SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
+            latest_leader_propose_message_ = nullptr;
+            last_leader_propose_view_ = 0llu;
+            return Status::kError;
+        }
+
+        if (leader_view > leader_qc->view()) {
+            SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
+            latest_leader_propose_message_ = nullptr;
+            last_leader_propose_view_ = 0llu;
+            return Status::kError;
+        }
+
+        auto broadcast = tmp_msg_ptr->header.mutable_broadcast();
+        broadcast::SetDefaultBroadcastParam(broadcast);        auto* hotstuff_msg = tmp_msg_ptr->header.mutable_hotstuff();
+        if (tc != nullptr) {
+            auto* pb_pro_msg = hotstuff_msg->mutable_pro_msg();
+            *pb_pro_msg->mutable_tc() = *tc;
+        }
+
+        transport::TcpTransport::Instance()->SetMessageHash(tmp_msg_ptr->header);
+        auto s = crypto()->SignMessage(tmp_msg_ptr);
+        auto& header = tmp_msg_ptr->header;
+        if (s != Status::kSuccess) {
+            SETH_WARN("sign message failed pool: %d, view: %lu, construct hotstuff msg failed",
+                pool_idx_, hotstuff_msg->pro_msg().view_item().qc().view());
+            return s;
+        }
+
+        transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
+        SETH_DEBUG("0 success add local message: %lu, leader_view: %lu", 
+            tmp_msg_ptr->header.hash64(), leader_view);
+        {
+            // Check propose message size before sending.
+            static const int kMaxProposeMsgBytes = 1 * 1024 * 1024; // 1 MB
+            int msg_size = tmp_msg_ptr->header.ByteSizeLong();
+            if (msg_size > kMaxProposeMsgBytes) {
+                SETH_WARN("pool: %d, propose msg OVERSIZED: %d bytes (limit %d), "
+                    "txs=%d, view=%lu — message will be dropped by receivers",
+                    pool_idx_, msg_size, kMaxProposeMsgBytes,
+                    hotstuff_msg->pro_msg().tx_propose().txs_size(),
+                    hotstuff_msg->pro_msg().view_item().qc().view());
+            }
+        }
+        network::Route::Instance()->Send(tmp_msg_ptr);
+#ifndef NDEBUG
+        ++sendout_bft_message_count_;
+        transport::protobuf::ConsensusDebug cons_debug;
+        cons_debug.ParseFromString(header.debug());
+        SETH_INFO("pool: %d, header pool: %d, propose, txs size: %lu, view: %lu, "
+            "hash: %s, qc_view: %lu, hash64: %lu, propose_debug: %s, "
+            "msg view: %lu, cur view: %lu, propose msg: %s, sendout_bft_message_count_: %u, "
+            "latest_leader_propose_message_->latest_qc_view: %lu, latest_qc_item_ptr_->view(): %lu",
+            pool_idx_,
+            header.hotstuff().pool_index(),
+            hotstuff_msg->pro_msg().tx_propose().txs_size(),
+            hotstuff_msg->pro_msg().view_item().qc().view(),
+            common::Encode::HexEncode(hotstuff_msg->pro_msg().view_item().qc().view_block_hash()).c_str(),
+            view_block_chain()->HighViewBlock()->qc().view(),
+            header.hash64(),
+            ProtobufToJson(cons_debug).c_str(),
+            tmp_msg_ptr->header.hotstuff().pro_msg().view_item().qc().view(),
+            pacemaker_->CurView(),
+            ProtobufToJson(header.hotstuff().pro_msg()).c_str(),
+            sendout_bft_message_count_.fetch_add(0),
+            latest_leader_propose_message_->latest_qc_view,
+            latest_qc_item_ptr_->view());
+#endif
+        latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
+        return Status::kSuccess;
+    }
+}
+
 
 void Hotstuff::BroadcastGlobalPoolBlock(const std::shared_ptr<ViewBlock>& v_block) {
     if (!network::IsSameToLocalShard(network::kRootCongressNetworkId) &&
@@ -2349,6 +2344,14 @@ void Hotstuff::TryRecoverFromStuck(
 
     if (leader->index != local_idx) {
         SyncLocalTxToLeader(msg_ptr, leader, has_system_tx);
+        if (latest_leader_propose_message_) {
+            if (latest_leader_propose_message_->prev_timestamp + 3000lu > now_tm_ms) {
+                return;
+            }
+
+            ResendLeaderLatestProposeMessage();
+            latest_leader_propose_message_->prev_timestamp = now_tm_ms;
+        }
         return;
     }
 
