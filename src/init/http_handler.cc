@@ -2481,7 +2481,7 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
                       common::Encode::HexEncode(sender_addr).c_str(),
                       common::Encode::HexEncode(pubkey).c_str());
             
-            auto new_addr_info = std::make_shared<block::protobuf::AddressInfo>();
+            auto new_addr_info = std::make_shared<address::protobuf::AddressInfo>();
             new_addr_info->set_balance(0);  // Will be validated later
             new_addr_info->set_nonce(0);
             new_addr_info->set_type(0);  // Normal address
