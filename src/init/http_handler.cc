@@ -1911,6 +1911,12 @@ static bool DecodeEthRawTx(
         // EIP-1559: v is 0 or 1 (parity only, no chain_id encoding)
         uint64_t v_val = be_to_u64(s_v);
         v_byte = static_cast<uint8_t>(v_val);
+        
+        // IMPORTANT: For EIP-1559, eth_account library uses v=0/1 differently than libsecp256k1
+        // We need to flip the v value: 0 -> 1, 1 -> 0
+        // This is because eth_account's v represents y-parity, but libsecp256k1's recovery ID
+        // has a different convention.
+        v_byte = 1 - v_byte;  // Flip: 0->1, 1->0
 
         // r and s must be 32 bytes (left-pad if shorter)
         r = std::string(32 - std::min<size_t>(s_r.size(), 32), '\0') + s_r.substr(s_r.size() > 32 ? s_r.size() - 32 : 0);
@@ -2319,52 +2325,29 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
         sign_for_recover.append(s);
         sign_for_recover.push_back(static_cast<char>(v_byte));
         
-        SETH_INFO("eth_sendRawTransaction: signature for recovery: r=%s, s=%s, v=%u",
+        SETH_INFO("eth_sendRawTransaction: signature for recovery: r=%s, s=%s, v=%u (flipped from tx)",
                   common::Encode::HexEncode(r).c_str(),
                   common::Encode::HexEncode(s).c_str(),
                   v_byte);
 
         // Recover uncompressed public key (64 bytes, no prefix).
-        // For EIP-1559, try both recovery IDs (0 and 1) since there might be
-        // a mismatch between the v value in the transaction and the actual recovery ID needed.
-        std::string pubkey;
-        int working_v = -1;
+        std::string sign_for_recover;
+        sign_for_recover.reserve(65);
+        sign_for_recover.append(r);
+        sign_for_recover.append(s);
+        sign_for_recover.push_back(static_cast<char>(v_byte));
         
-        for (int try_v = 0; try_v <= 1; try_v++) {
-            std::string sign_try;
-            sign_try.reserve(65);
-            sign_try.append(r);
-            sign_try.append(s);
-            sign_try.push_back(static_cast<char>(try_v));
+        std::string pubkey = security::Secp256k1::Instance()->Recover(
+            sign_for_recover, signing_hash, false);
             
-            std::string pubkey_try = security::Secp256k1::Instance()->Recover(
-                sign_try, signing_hash, false);
-            
-            if (!pubkey_try.empty() && pubkey_try.size() == 64) {
-                // Got a valid public key, check if it matches expected format
-                pubkey = pubkey_try;
-                working_v = try_v;
-                
-                SETH_INFO("eth_sendRawTransaction: recovery with v=%d succeeded, pubkey=%s",
-                          try_v, common::Encode::HexEncode(pubkey).c_str());
-                
-                // If this matches the v from transaction, use it and stop
-                if (try_v == v_byte) {
-                    break;
-                }
-            }
-        }
-        
-        if (pubkey.empty()) {
-            SETH_WARN("eth_sendRawTransaction: failed to recover pubkey with both v=0 and v=1");
+        if (pubkey.empty() || pubkey.size() != 64) {
+            SETH_WARN("eth_sendRawTransaction: failed to recover pubkey with v=%u", v_byte);
             http_res.set_content(RpcErr(id, -32602, "signature recovery failed").dump(), "application/json");
             return;
         }
         
-        if (working_v != v_byte) {
-            SETH_WARN("eth_sendRawTransaction: v mismatch! Transaction has v=%u but recovery worked with v=%d",
-                      v_byte, working_v);
-        }
+        SETH_INFO("eth_sendRawTransaction: recovery succeeded, pubkey=%s",
+                  common::Encode::HexEncode(pubkey).c_str());
 
         // Prepend 0x04 uncompressed prefix so GetAddressWithPublicKey routes
         // to ECDSA (65 bytes) instead of GmSSL (64 bytes).
