@@ -2343,20 +2343,22 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
                   v_byte,
                   pubkey.empty() ? "EMPTY" : common::Encode::HexEncode(pubkey).c_str(),
                   pubkey.size());
-            
-        // If recovery fails or produces wrong result, try flipping v (0 <-> 1)
+        
+        // Also try with flipped v to see both results
+        uint8_t flipped_v = 1 - v_byte;
+        sign_for_recover[64] = static_cast<char>(flipped_v);
+        std::string pubkey_flipped = security::Secp256k1::Instance()->Recover(
+            sign_for_recover, signing_hash, false);
+        
+        SETH_WARN("eth_sendRawTransaction: recovery with v=%u resulted in pubkey=%s (len=%zu)",
+                  flipped_v,
+                  pubkey_flipped.empty() ? "EMPTY" : common::Encode::HexEncode(pubkey_flipped).c_str(),
+                  pubkey_flipped.size());
+        
+        // Use the flipped v if original failed
         if (pubkey.empty() || pubkey.size() != 64) {
-            uint8_t flipped_v = 1 - v_byte;
-            SETH_WARN("eth_sendRawTransaction: recovery failed with v=%u, trying v=%u", 
-                      v_byte, flipped_v);
-            sign_for_recover[64] = static_cast<char>(flipped_v);
-            pubkey = security::Secp256k1::Instance()->Recover(
-                sign_for_recover, signing_hash, false);
-            
-            SETH_WARN("eth_sendRawTransaction: recovery with v=%u resulted in pubkey=%s (len=%zu)",
-                      flipped_v,
-                      pubkey.empty() ? "EMPTY" : common::Encode::HexEncode(pubkey).c_str(),
-                      pubkey.size());
+            SETH_WARN("eth_sendRawTransaction: using flipped v=%u", flipped_v);
+            pubkey = pubkey_flipped;
         }
         
         if (pubkey.empty() || pubkey.size() != 64) {
