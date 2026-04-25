@@ -48,6 +48,11 @@ std::map<std::string, std::shared_ptr<nlohmann::json>> account_info_jsons;
 std::mutex upadte_nonce_mutex;
 std::condition_variable update_nonce_con;
 
+// Global leader routing for nonce updates
+std::unordered_map<uint32_t, SethSDK::LeaderInfo> g_leader_map;
+std::mutex g_leader_mutex;
+bool g_has_leader_routing = false;
+
 void UpdateAddressNonce();
 void UpdateAddressNonce(const std::string& addr);
 void UpdateAddressNonceThread() {
@@ -289,6 +294,11 @@ int tx_main(int argc, char** argv) {
         for (auto& [mod, info] : leader_map) {
             std::cout << "  pool " << mod << " -> " << info.ip << ":" << info.port << std::endl;
         }
+        
+        // Initialize global leader map for nonce updates
+        std::lock_guard<std::mutex> lock(g_leader_mutex);
+        g_leader_map = leader_map;
+        g_has_leader_routing = true;
     } else {
         std::cout << "Leader routing unavailable, using default node" << std::endl;
     }
@@ -429,10 +439,19 @@ int tx_main(int argc, char** argv) {
             std::unordered_map<uint32_t, SethSDK::LeaderInfo> new_leaders;
             uint32_t new_count = 0;
             if (sdk.fetchLeaders(new_leaders, new_count) && !new_leaders.empty()) {
+                // Update local leader map
                 std::lock_guard<std::mutex> lock(leader_mutex);
                 leader_map = new_leaders;
                 leader_count = new_count;
                 has_leader_routing = true;
+                
+                // Update global leader map for nonce updates
+                {
+                    std::lock_guard<std::mutex> g_lock(g_leader_mutex);
+                    g_leader_map = new_leaders;
+                    g_has_leader_routing = true;
+                }
+                
                 std::cout << "[Leader Sync] Refreshed: " << new_count << " leaders" << std::endl;
             }
         }
@@ -470,7 +489,6 @@ void UpdateAddressNonce() {
 }
 
 void UpdateAddressNonce(const std::string& contract_address) {
-    SethSDK client(global_chain_node_ip, global_chain_node_http_port);
     for (auto iter = g_prikeys.begin(); iter != g_prikeys.end(); ++iter) {
         std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
         security->SetPrivateKey(*iter);
@@ -484,6 +502,22 @@ void UpdateAddressNonce(const std::string& contract_address) {
         if (!contract_address.empty()) {
             addr = contract_address + addr;
         }
+
+        // Route nonce query to the leader of this account's pool
+        std::string query_ip = global_chain_node_ip;
+        uint16_t query_port = global_chain_node_http_port;
+        
+        if (g_has_leader_routing) {
+            uint32_t pool_idx = common::GetAddressPoolIndex(addr);
+            std::lock_guard<std::mutex> lock(g_leader_mutex);
+            auto it = g_leader_map.find(pool_idx);
+            if (it != g_leader_map.end()) {
+                query_ip = it->second.ip;
+                query_port = it->second.port + 10000;  // HTTP port = TCP port + 10000
+            }
+        }
+        
+        SethSDK client(query_ip, query_port);
 
         // Retry up to 3 times on transient failures.
         int64_t nonce = -1;
@@ -940,7 +974,20 @@ int main(int argc, char** argv) {
                         continue;
                     }
                     
-                    int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(addr));
+                    // Route nonce query to the leader of this account's pool
+                    std::string query_ip = global_chain_node_ip;
+                    uint16_t query_port = global_chain_node_http_port;
+                    if (has_leader_routing) {
+                        uint32_t pool_idx = addr_pool_idx[i];
+                        auto it = leader_map.find(pool_idx);
+                        if (it != leader_map.end()) {
+                            query_ip = it->second.ip;
+                            query_port = it->second.port + 10000;  // HTTP port = TCP port + 10000
+                        }
+                    }
+                    
+                    SethSDK query_sdk(query_ip, query_port);
+                    int64_t nonce = query_sdk.fetchNonce(common::Encode::HexEncode(addr));
                     if (nonce >= 0) {
                         src_prikey_with_nonce[addr] = nonce;
                         ++updated;
@@ -1176,6 +1223,17 @@ int main(int argc, char** argv) {
         }
         std::cout << "[Stress] Items created. Waiting 5s for consensus..." << std::endl;
         usleep(5000000);
+
+        // Initialize global leader routing for nonce updates
+        SethSDK sdk_init(global_chain_node_ip, global_chain_node_http_port);
+        std::unordered_map<uint32_t, SethSDK::LeaderInfo> init_leaders;
+        uint32_t init_count = 0;
+        if (sdk_init.fetchLeaders(init_leaders, init_count) && !init_leaders.empty()) {
+            std::lock_guard<std::mutex> lock(g_leader_mutex);
+            g_leader_map = init_leaders;
+            g_has_leader_routing = true;
+            std::cout << "[Stress] Leader routing enabled: " << init_count << " leaders" << std::endl;
+        }
 
         // Fetch nonces for all accounts
         UpdateAddressNonce();

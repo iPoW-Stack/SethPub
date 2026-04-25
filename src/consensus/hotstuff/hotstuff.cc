@@ -954,6 +954,7 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
         auto& qc = pro_msg.tc();
         pacemaker()->NewQcView(qc.view());
         view_block_chain()->UpdateHighViewBlock(qc);
+    ADD_DEBUG_PROCESS_TIMESTAMP();
         TryCommit(view_block_chain(), pro_msg_wrap->msg_ptr, qc);
         if (latest_qc_item_ptr_ == nullptr ||
                 tc_ptr->view() >= latest_qc_item_ptr_->view()) {
@@ -1706,7 +1707,9 @@ void Hotstuff::HandleSyncedViewBlock(
                 UpdateLatestQcItemPtr(std::make_shared<view_block::protobuf::QcItem>(vblock->qc()));
             }
         }
+    ADD_DEBUG_PROCESS_TIMESTAMP();
         TryCommit(view_block_chain(), msg_ptr, *latest_qc_item_ptr_);
+    ADD_DEBUG_PROCESS_TIMESTAMP();
         TryCommit(view_block_chain(), msg_ptr, vblock->qc());
         if (vblock->block_info().tx_list_size() > 0) {
             SyncLaterBlocks(
@@ -1725,6 +1728,7 @@ void Hotstuff::HandleSyncedViewBlock(
 
         root_view_block_chain_->Store(vblock, true, nullptr, nullptr, false);
         root_view_block_chain_->UpdateHighViewBlock(vblock->qc());
+    ADD_DEBUG_PROCESS_TIMESTAMP();
         TryCommit(root_view_block_chain_, msg_ptr, vblock->qc());
         // root_view_block_chain_->CommitSynced(vblock);
         if (vblock->block_info().tx_list_size() > 0) {
@@ -1745,6 +1749,7 @@ void Hotstuff::HandleSyncedViewBlock(
         auto cross_view_block_chain = cross_shard_view_block_chain_[vblock->qc().network_id()];
         cross_view_block_chain->Store(vblock, true, nullptr, nullptr, false);
         cross_view_block_chain->UpdateHighViewBlock(vblock->qc());
+    ADD_DEBUG_PROCESS_TIMESTAMP();
         TryCommit(cross_view_block_chain, msg_ptr, vblock->qc());
         if (vblock->block_info().tx_list_size() > 0) {
             SyncLaterBlocks(

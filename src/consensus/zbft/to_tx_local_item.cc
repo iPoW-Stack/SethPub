@@ -48,7 +48,7 @@ int ToTxLocalItem::HandleTx(
     block_tx.set_nonce(0);
     auto& block_to_txs = *view_block.mutable_block_info()->mutable_local_to();
     CreateLocalToTx(tx_index, view_block, seth_host, acc_balance_map, to_tx_item, block_to_txs);
-    SETH_WARN("success call to tx local block pool: %d, view: %lu, to_nonce: %lu. tx nonce: %lu, %s, %lu", 
+    SETH_DEBUG("success call to tx local block pool: %d, view: %lu, to_nonce: %lu. tx nonce: %lu, %s, %lu", 
         view_block.qc().pool_index(), view_block.qc().view(), src_to_nonce, block_tx.nonce(),
         common::Encode::HexEncode(to_tx_item.des()).c_str(), to_tx_item.amount());
     acc_balance_map[block_tx.to()]->set_balance(src_to_balance);
