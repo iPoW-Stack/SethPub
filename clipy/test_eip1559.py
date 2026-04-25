@@ -6,9 +6,28 @@ EIP-1559 Transaction Test for Seth Blockchain
 import sys
 import time
 import os
+import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from seth3 import SethWeb3Mock, _eth_sign_and_send
+
+
+def get_chain_id(host, port):
+    """Query chain ID from node via eth_chainId"""
+    url = f"https://{host}:{port}/eth"
+    payload = {"jsonrpc": "2.0", "method": "eth_chainId", "params": [], "id": 1}
+    try:
+        resp = requests.post(url, json=payload, verify=False, timeout=5)
+        result = resp.json().get("result", "0x0")
+        chain_id = int(result, 16)
+        print(f"Chain ID: {chain_id} (0x{chain_id:x})")
+        return chain_id
+    except Exception as e:
+        print(f"⚠️  Failed to get chain ID: {e}, using default 3355103125")
+        return 3355103125
 
 
 def wait_nonce(w3, addr, expected, timeout=60):
@@ -21,7 +40,7 @@ def wait_nonce(w3, addr, expected, timeout=60):
     return w3.client.get_nonce(addr)
 
 
-def test_eip1559_transfer(w3, MY, KEY):
+def test_eip1559_transfer(w3, MY, KEY, chain_id):
     """Test EIP-1559 native token transfer"""
     print("\n" + "=" * 70)
     print("TEST CASE 1: EIP-1559 Native Token Transfer")
@@ -30,14 +49,14 @@ def test_eip1559_transfer(w3, MY, KEY):
     recipient = "1234567890123456789012345678901234567890"
     transfer_amount = 1000000
 
-    # Query current nonce
     nonce = w3.client.get_nonce(MY)
-    tx_nonce = nonce + 1  # Seth expects nonce = current + 1
+    tx_nonce = nonce + 1
 
     print(f"  From:   {MY}")
     print(f"  To:     {recipient}")
     print(f"  Amount: {transfer_amount}")
     print(f"  Nonce:  {tx_nonce} (current={nonce})")
+    print(f"  ChainID:{chain_id}")
 
     sender_balance_before = w3.client.get_balance(MY)
     print(f"  Sender balance before: {sender_balance_before}")
@@ -52,7 +71,8 @@ def test_eip1559_transfer(w3, MY, KEY):
             gas_limit=21000,
             use_eip1559=True,
             max_priority_fee_per_gas=1,
-            max_fee_per_gas=2
+            max_fee_per_gas=2,
+            chain_id=chain_id
         )
         print(f"  ✅ TX sent: {tx_hash}")
     except Exception as e:
@@ -60,13 +80,12 @@ def test_eip1559_transfer(w3, MY, KEY):
         import traceback; traceback.print_exc()
         return False
 
-    # Wait for nonce to increase
     print("  Waiting for confirmation...", end='', flush=True)
     final_nonce = wait_nonce(w3, MY, tx_nonce, timeout=60)
     if final_nonce >= tx_nonce:
         print(f" ✅ confirmed (nonce={final_nonce})")
         sender_balance_after = w3.client.get_balance(MY)
-        print(f"  Sender balance after: {sender_balance_after}")
+        print(f"  Sender balance after:  {sender_balance_after}")
         print(f"  Sender balance change: -{sender_balance_before - sender_balance_after}")
         return True
     else:
@@ -74,7 +93,7 @@ def test_eip1559_transfer(w3, MY, KEY):
         return False
 
 
-def test_eip1559_transfer_2(w3, MY, KEY):
+def test_eip1559_transfer_2(w3, MY, KEY, chain_id):
     """Test second EIP-1559 transfer to verify sequential nonce works"""
     print("\n" + "=" * 70)
     print("TEST CASE 2: EIP-1559 Second Transfer (sequential nonce)")
@@ -101,7 +120,8 @@ def test_eip1559_transfer_2(w3, MY, KEY):
             gas_limit=21000,
             use_eip1559=True,
             max_priority_fee_per_gas=1,
-            max_fee_per_gas=2
+            max_fee_per_gas=2,
+            chain_id=chain_id
         )
         print(f"  ✅ TX sent: {tx_hash}")
     except Exception as e:
@@ -119,15 +139,13 @@ def test_eip1559_transfer_2(w3, MY, KEY):
         return False
 
 
-def test_eip1559_contract_deploy(w3, MY, KEY):
+def test_eip1559_contract_deploy(w3, MY, KEY, chain_id):
     """Test EIP-1559 contract deployment"""
     print("\n" + "=" * 70)
     print("TEST CASE 3: EIP-1559 Contract Deployment")
     print("=" * 70)
 
-    # Minimal contract bytecode: stores a value
-    # contract Store { uint256 public val; function set(uint256 v) public { val = v; } }
-    # Using pre-compiled bytecode to avoid solc dependency
+    # Minimal contract: Store { uint256 public val; function set(uint256 v) public { val = v; } }
     bytecode = (
         "6080604052348015600e575f5ffd5b5060"
         "c680601a5f395ff3fe6080604052348015"
@@ -148,20 +166,22 @@ def test_eip1559_contract_deploy(w3, MY, KEY):
     tx_nonce = nonce + 1
 
     print(f"  Deploying contract with EIP-1559...")
-    print(f"  Nonce: {tx_nonce} (current={nonce})")
+    print(f"  Nonce:   {tx_nonce} (current={nonce})")
+    print(f"  ChainID: {chain_id}")
     print(f"  Bytecode length: {len(bytecode)//2} bytes")
 
     try:
         tx_hash = _eth_sign_and_send(
             w3.client, KEY,
-            b'',  # Empty 'to' for contract creation
+            b'',
             0,
             bytes.fromhex(bytecode),
             tx_nonce,
             gas_limit=5000000,
             use_eip1559=True,
             max_priority_fee_per_gas=1,
-            max_fee_per_gas=2
+            max_fee_per_gas=2,
+            chain_id=chain_id
         )
         print(f"  ✅ Deploy TX sent: {tx_hash}")
     except Exception as e:
@@ -203,20 +223,16 @@ def main():
     print(f"Sender Balance: {balance}")
 
     nonce = w3.client.get_nonce(MY)
-    print(f"Current Nonce: {nonce}")
+    print(f"Current Nonce:  {nonce}")
+
+    # Query chain ID from node
+    chain_id = get_chain_id(args.host, args.port)
 
     results = []
+    results.append(("EIP-1559 Transfer #1",      test_eip1559_transfer(w3, MY, args.key, chain_id)))
+    results.append(("EIP-1559 Transfer #2",      test_eip1559_transfer_2(w3, MY, args.key, chain_id)))
+    results.append(("EIP-1559 Contract Deploy",  test_eip1559_contract_deploy(w3, MY, args.key, chain_id)))
 
-    # Test 1: Transfer
-    results.append(("EIP-1559 Transfer #1", test_eip1559_transfer(w3, MY, args.key)))
-
-    # Test 2: Second transfer (sequential nonce)
-    results.append(("EIP-1559 Transfer #2", test_eip1559_transfer_2(w3, MY, args.key)))
-
-    # Test 3: Contract deploy
-    results.append(("EIP-1559 Contract Deploy", test_eip1559_contract_deploy(w3, MY, args.key)))
-
-    # Summary
     print("\n" + "=" * 70)
     print("TEST SUMMARY")
     print("=" * 70)
