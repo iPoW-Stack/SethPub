@@ -2452,6 +2452,15 @@ def _eth_sign_and_send(client, pk_hex: str, to: bytes, value: int, data: bytes,
     raw_tx_bytes = getattr(signed, 'raw_transaction', None) or signed.rawTransaction
     raw_tx_hex = raw_tx_bytes.hex()
     print(f"  [DEBUG] raw_tx first bytes: {raw_tx_hex[:20]}... (len={len(raw_tx_bytes)})")
+    print(f"  [DEBUG] raw_tx full hex: {raw_tx_hex}")
+    
+    # Decode first few bytes to verify structure
+    if len(raw_tx_bytes) > 0:
+        print(f"  [DEBUG] First byte: 0x{raw_tx_bytes[0]:02x} (should be 0x02 for EIP-1559 or 0xc0-0xff for legacy)")
+        if raw_tx_bytes[0] == 0x02:
+            print(f"  [DEBUG] EIP-1559 transaction confirmed")
+            if len(raw_tx_bytes) > 1:
+                print(f"  [DEBUG] Second byte (RLP list start): 0x{raw_tx_bytes[1]:02x}")
 
     # Compute and print the signing RLP for comparison with C++ side
     _sp = b''
@@ -2484,12 +2493,19 @@ def _eth_sign_and_send(client, pk_hex: str, to: bytes, value: int, data: bytes,
     # Send via /eth JSON-RPC
     import requests as _req
     rpc_url = f"{client.base_url}/eth"
+    
+    # Try with 0x prefix first (standard Ethereum format)
+    raw_tx_with_prefix = "0x" + raw_tx_hex
+    
     rpc_body = {
         "jsonrpc": "2.0",
         "id": 1,
         "method": "eth_sendRawTransaction",
-        "params": [raw_tx_hex]  # no 0x prefix — C++ HexDecode doesn't expect it
+        "params": [raw_tx_with_prefix]
     }
+    print(f"  [DEBUG] Sending to: {rpc_url}")
+    print(f"  [DEBUG] RPC params: {raw_tx_with_prefix[:50]}...")
+    
     resp = _req.post(rpc_url, json=rpc_body, verify=client.verify_ssl)
     result = resp.json()
     print(f"  [eth_sendRawTransaction] {result}")

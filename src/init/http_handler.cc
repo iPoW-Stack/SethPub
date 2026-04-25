@@ -1855,8 +1855,21 @@ static bool DecodeEthRawTx(
                 if (ll < 1 + hlen + item_len) return false;
                 out = std::string((char*)pp + 1 + hlen, item_len);
                 pp += 1 + hlen + item_len; ll -= 1 + hlen + item_len;
+            } else if (pp[0] <= 0xf7) {
+                // Short list (0xc0-0xf7) - for accessList
+                size_t list_len = pp[0] - 0xc0;
+                if (ll < 1 + list_len) return false;
+                out = std::string((char*)pp + 1, list_len);  // Store list content
+                pp += 1 + list_len; ll -= 1 + list_len;
             } else {
-                return false;
+                // Long list (0xf8-0xff) - for accessList
+                size_t hlen = pp[0] - 0xf7;
+                if (ll < 1 + hlen) return false;
+                size_t list_len = 0;
+                for (size_t i = 1; i <= hlen; ++i) list_len = (list_len << 8) | pp[i];
+                if (ll < 1 + hlen + list_len) return false;
+                out = std::string((char*)pp + 1 + hlen, list_len);  // Store list content
+                pp += 1 + hlen + list_len; ll -= 1 + hlen + list_len;
             }
             return true;
         };
