@@ -2333,8 +2333,17 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
         std::string pubkey = security::Secp256k1::Instance()->Recover(
             sign_for_recover, signing_hash, false);
             
+        // If recovery fails with v_byte, try flipping it (0 <-> 1)
         if (pubkey.empty() || pubkey.size() != 64) {
-            SETH_WARN("eth_sendRawTransaction: failed to recover pubkey with v=%u", v_byte);
+            SETH_WARN("eth_sendRawTransaction: recovery failed with v=%u, trying v=%u", 
+                      v_byte, 1 - v_byte);
+            sign_for_recover[64] = static_cast<char>(1 - v_byte);
+            pubkey = security::Secp256k1::Instance()->Recover(
+                sign_for_recover, signing_hash, false);
+        }
+        
+        if (pubkey.empty() || pubkey.size() != 64) {
+            SETH_WARN("eth_sendRawTransaction: failed to recover pubkey with both v values");
             http_res.set_content(RpcErr(id, -32602, "signature recovery failed").dump(), "application/json");
             return;
         }
