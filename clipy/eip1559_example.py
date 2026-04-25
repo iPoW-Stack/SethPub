@@ -5,7 +5,11 @@ EIP-1559 Transaction Simple Example
 This is a minimal example showing how to send EIP-1559 transactions.
 """
 
-from seth_sdk import SethWeb3Mock, _eth_sign_and_send
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from seth3 import SethWeb3Mock, _eth_sign_and_send
 import argparse
 
 def main():

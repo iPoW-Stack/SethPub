@@ -1032,3 +1032,155 @@ class SethClient:
         requests.post(self.gmssl_url, data=data, verify=self.verify_ssl)
         return txh_hex
 
+
+
+# ===========================================================================
+# EIP-1559 Transaction Support
+# ===========================================================================
+
+def _eth_rlp_encode_uint(v: int) -> bytes:
+    """RLP-encode a uint."""
+    if v == 0:
+        return b'\x80'
+    be = v.to_bytes((v.bit_length() + 7) // 8, 'big')
+    if len(be) == 1 and be[0] < 0x80:
+        return be
+    return bytes([0x80 + len(be)]) + be
+
+
+def _eth_rlp_encode_bytes(b: bytes) -> bytes:
+    """RLP-encode a byte string."""
+    if len(b) == 0:
+        return b'\x80'
+    if len(b) == 1 and b[0] < 0x80:
+        return b
+    if len(b) <= 55:
+        return bytes([0x80 + len(b)]) + b
+    len_be = len(b).to_bytes((len(b).bit_length() + 7) // 8, 'big')
+    return bytes([0xb7 + len(len_be)]) + len_be + b
+
+
+def _eth_rlp_list(payload: bytes) -> bytes:
+    """RLP-encode a list from its concatenated payload."""
+    if len(payload) <= 55:
+        return bytes([0xc0 + len(payload)]) + payload
+    len_be = len(payload).to_bytes((len(payload).bit_length() + 7) // 8, 'big')
+    return bytes([0xf7 + len(len_be)]) + len_be + payload
+
+
+def _eth_sign_and_send(client, pk_hex: str, to: bytes, value: int, data: bytes,
+                       nonce: int, gas_limit: int = 5000000, gas_price: int = 1,
+                       chain_id: int = 3355103125, use_eip1559: bool = False,
+                       max_priority_fee_per_gas: int = None, max_fee_per_gas: int = None) -> str:
+    """
+    Build an EIP-155 (legacy) or EIP-1559 (Type 2) signed transaction, send via /eth JSON-RPC, return tx_hash hex.
+    Uses eth_account for correct Ethereum-compatible signing.
+    
+    Args:
+        client: Seth client instance
+        pk_hex: Private key in hex
+        to: Recipient address (20 bytes)
+        value: Value to transfer
+        data: Transaction data
+        nonce: Transaction nonce
+        gas_limit: Gas limit
+        gas_price: Gas price (for legacy transactions)
+        chain_id: Chain ID
+        use_eip1559: If True, use EIP-1559 (Type 2) transaction format
+        max_priority_fee_per_gas: Max priority fee per gas (EIP-1559 only)
+        max_fee_per_gas: Max fee per gas (EIP-1559 only)
+    
+    Returns:
+        Transaction hash in hex format
+    """
+    from eth_account import Account
+    from Crypto.Hash import keccak as _keccak
+
+    # Build transaction dict
+    from eth_utils import to_checksum_address as _to_ck
+    
+    if use_eip1559:
+        # EIP-1559 (Type 2) transaction
+        if max_priority_fee_per_gas is None:
+            max_priority_fee_per_gas = gas_price
+        if max_fee_per_gas is None:
+            max_fee_per_gas = gas_price
+            
+        tx = {
+            'type': 2,  # EIP-1559
+            'chainId': chain_id,
+            'nonce': nonce,
+            'maxPriorityFeePerGas': max_priority_fee_per_gas,
+            'maxFeePerGas': max_fee_per_gas,
+            'gas': gas_limit,
+            'to': _to_ck('0x' + to.hex()) if to else None,
+            'value': value,
+            'data': data,
+            'accessList': [],  # Empty access list
+        }
+        print(f"  [DEBUG] Building EIP-1559 transaction: nonce={nonce}, maxFeePerGas={max_fee_per_gas}, "
+              f"maxPriorityFeePerGas={max_priority_fee_per_gas}, gas={gas_limit}")
+    else:
+        # Legacy transaction
+        tx = {
+            'nonce': nonce,
+            'gasPrice': gas_price,
+            'gas': gas_limit,
+            'value': value,
+            'data': data,
+            'chainId': chain_id,
+        }
+        if to:
+            tx['to'] = _to_ck('0x' + to.hex())
+        # If 'to' is absent → contract creation
+
+    # Sign with eth_account — handles EIP-155, recovery_id, canonical s, etc.
+    signed = Account.sign_transaction(tx, '0x' + pk_hex)
+    raw_tx_bytes = getattr(signed, 'raw_transaction', None) or signed.rawTransaction
+    raw_tx_hex = raw_tx_bytes.hex()
+    print(f"  [DEBUG] raw_tx first bytes: {raw_tx_hex[:20]}... (len={len(raw_tx_bytes)})")
+
+    # Compute and print the signing RLP for comparison with C++ side (Legacy only)
+    if not use_eip1559:
+        _sp = b''
+        _sp += _eth_rlp_encode_uint(nonce)
+        _sp += _eth_rlp_encode_uint(gas_price)
+        _sp += _eth_rlp_encode_uint(gas_limit)
+        _sp += _eth_rlp_encode_bytes(to)
+        _sp += _eth_rlp_encode_uint(value)
+        _sp += _eth_rlp_encode_bytes(data)
+        _sp += _eth_rlp_encode_uint(chain_id)
+        _sp += _eth_rlp_encode_uint(0)
+        _sp += _eth_rlp_encode_uint(0)
+        _srlp = _eth_rlp_list(_sp)
+        _shash = _keccak.new(digest_bits=256).update(_srlp).digest()
+        print(f"  [DEBUG] Python signing_rlp={_srlp.hex()}")
+        print(f"  [DEBUG] Python signing_hash={_shash.hex()}")
+
+    # Verify: recovered address should match our Seth address
+    expected_addr = client.get_address(pk_hex)
+    recovered_addr = Account.recover_transaction(raw_tx_bytes).lower().replace('0x', '')
+    # Also print the expected uncompressed pubkey for comparison with C++ side
+    from ecdsa import SigningKey as _SK, SECP256k1 as _S
+    _sk = _SK.from_string(bytes.fromhex(pk_hex), curve=_S)
+    _pub_uncompressed_no_prefix = _sk.verifying_key.to_string().hex()  # 64 bytes
+    print(f"  [DEBUG] expected pubkey (64B no prefix): {_pub_uncompressed_no_prefix}")
+    print(f"  [DEBUG] expected_addr={expected_addr}, recovered_addr={recovered_addr}")
+    if recovered_addr != expected_addr:
+        print(f"  [WARN] Address mismatch! ETH recovery gives different address than Seth.")
+
+    # Send via /eth JSON-RPC
+    import requests as _req
+    rpc_url = f"{client.base_url}/eth"
+    rpc_body = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "eth_sendRawTransaction",
+        "params": [raw_tx_hex]  # no 0x prefix — C++ HexDecode doesn't expect it
+    }
+    resp = _req.post(rpc_url, json=rpc_body, verify=client.verify_ssl)
+    result = resp.json()
+    print(f"  [eth_sendRawTransaction] {result}")
+    if "error" in result:
+        raise RuntimeError(f"eth_sendRawTransaction failed: {result['error']}")
+    return result.get("result", "")

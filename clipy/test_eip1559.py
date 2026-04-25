@@ -15,7 +15,13 @@ Usage:
 import sys
 import time
 import secrets
-from seth_sdk import SethWeb3Mock, compile_and_link
+
+# Import from seth3 instead of seth_sdk
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from seth3 import SethWeb3Mock, compile_and_link, _eth_sign_and_send
 
 # Simple test contract
 TEST_CONTRACT_SOL = """
@@ -71,7 +77,6 @@ def test_eip1559_transfer(w3, MY, KEY):
     
     # Send EIP-1559 transaction
     print(f"\n[2] Sending EIP-1559 transaction...")
-    from seth_sdk import _eth_sign_and_send
     
     # Use EIP-1559 parameters
     max_priority_fee = 1
@@ -133,8 +138,6 @@ def test_eip1559_contract_deploy(w3, MY, KEY):
     
     # Get nonce
     nonce = w3.client.get_nonce(MY)
-    
-    from seth_sdk import _eth_sign_and_send
     
     try:
         # Deploy using EIP-1559
@@ -217,8 +220,6 @@ def test_eip1559_contract_call(w3, MY, KEY, contract_addr, abi):
     from eth_abi import encode
     function_selector = bytes.fromhex("55241077")  # setValue(uint256) selector
     encoded_data = function_selector + encode(['uint256'], [new_value])
-    
-    from seth_sdk import _eth_sign_and_send
     
     try:
         tx_hash = _eth_sign_and_send(
