@@ -477,20 +477,9 @@ void Hotstuff::ResendLeaderLatestProposeMessage() {
             leader_qc->set_view_block_hash(leader_view_block_hash_);
         }
 
-        if (leader_view > leader_qc->view()) {
-            SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
-            latest_leader_propose_message_ = nullptr;
-            last_leader_propose_view_ = 0llu;
-            return;
-        }
-
         auto broadcast = tmp_msg_ptr->header.mutable_broadcast();
-        broadcast::SetDefaultBroadcastParam(broadcast);        auto* hotstuff_msg = tmp_msg_ptr->header.mutable_hotstuff();
-        if (tc != nullptr) {
-            auto* pb_pro_msg = hotstuff_msg->mutable_pro_msg();
-            *pb_pro_msg->mutable_tc() = *tc;
-        }
-
+        broadcast::SetDefaultBroadcastParam(broadcast);       
+        auto* hotstuff_msg = tmp_msg_ptr->header.mutable_hotstuff();
         transport::TcpTransport::Instance()->SetMessageHash(tmp_msg_ptr->header);
         auto s = crypto()->SignMessage(tmp_msg_ptr);
         auto& header = tmp_msg_ptr->header;
@@ -501,8 +490,6 @@ void Hotstuff::ResendLeaderLatestProposeMessage() {
         }
 
         transport::TcpTransport::Instance()->AddLocalMessage(tmp_msg_ptr);
-        SETH_DEBUG("0 success add local message: %lu, leader_view: %lu", 
-            tmp_msg_ptr->header.hash64(), leader_view);
         {
             // Check propose message size before sending.
             static const int kMaxProposeMsgBytes = 1 * 1024 * 1024; // 1 MB
