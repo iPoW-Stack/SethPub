@@ -98,18 +98,25 @@ def test_eip1559_transfer(w3, MY, KEY):
         print(f"    ✅ Transaction sent!")
         print(f"    TX Hash: {tx_hash}")
         
-        # Wait for transaction to be mined
-        print(f"\n[3] Waiting for transaction confirmation...")
+        # Wait for transaction to be mined by checking nonce increase
+        print(f"\n[3] Waiting for transaction confirmation (nonce increase)...")
         max_wait = 30
         for i in range(max_wait):
             time.sleep(2)
-            balance_after = w3.client.get_balance(recipient)
-            if balance_after >= balance_before + transfer_amount:
-                print(f"    ✅ Transaction confirmed!")
+            current_nonce = w3.client.get_nonce(MY)
+            if current_nonce > nonce:
+                print(f"    ✅ Transaction confirmed! Nonce increased from {nonce} to {current_nonce}")
+                
+                # Check recipient balance
+                balance_after = w3.client.get_balance(recipient)
                 print(f"    Recipient balance after: {balance_after}")
-                print(f"    Balance increase: {balance_after - balance_before}")
-                return True
-            print(f"    [{i*2}s] Waiting... (balance: {balance_after})")
+                if balance_after >= balance_before + transfer_amount:
+                    print(f"    ✅ Balance increased by {balance_after - balance_before}")
+                    return True
+                else:
+                    print(f"    ⚠️  Balance did not increase as expected")
+                    return False
+            print(f"    [{i*2}s] Waiting... (nonce still {current_nonce})")
         
         print(f"    ⚠️  Transaction not confirmed within {max_wait*2}s")
         return False
