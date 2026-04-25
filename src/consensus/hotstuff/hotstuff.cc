@@ -954,7 +954,8 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
         auto& qc = pro_msg.tc();
         pacemaker()->NewQcView(qc.view());
         view_block_chain()->UpdateHighViewBlock(qc);
-    ADD_DEBUG_PROCESS_TIMESTAMP();
+        auto msg_ptr = pro_msg_wrap->msg_ptr;
+        ADD_DEBUG_PROCESS_TIMESTAMP();
         TryCommit(view_block_chain(), pro_msg_wrap->msg_ptr, qc);
         if (latest_qc_item_ptr_ == nullptr ||
                 tc_ptr->view() >= latest_qc_item_ptr_->view()) {
