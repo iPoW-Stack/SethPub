@@ -267,9 +267,11 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description='EIP-1559 Transaction Test')
-    parser.add_argument('--host', default='127.0.0.1', help='Seth node host')
-    parser.add_argument('--port', type=int, default=23001, help='Seth node port')
-    parser.add_argument('--key', required=True, help='Private key (hex)')
+    parser.add_argument('--host', default='127.0.0.1', help='Seth node host (default: 127.0.0.1)')
+    parser.add_argument('--port', type=int, default=23001, help='Seth node port (default: 23001)')
+    parser.add_argument('--key', 
+                        default='71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6',
+                        help='Private key (hex, default: test key)')
     
     args = parser.parse_args()
     

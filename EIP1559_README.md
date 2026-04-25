@@ -55,6 +55,11 @@ make -j$(nproc)
 
 ```bash
 cd clipy
+
+# 使用默认配置运行（无需参数）
+python test_eip1559.py
+
+# 或指定自定义配置
 python test_eip1559.py --host 127.0.0.1 --port 23001 --key <your_private_key>
 ```
 

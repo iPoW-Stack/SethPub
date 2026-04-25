@@ -6,20 +6,25 @@ This is a minimal example showing how to send EIP-1559 transactions.
 """
 
 from seth_sdk import SethWeb3Mock, _eth_sign_and_send
-
-# Configuration
-HOST = "127.0.0.1"
-PORT = 23001
-PRIVATE_KEY = "7c5b4ec643cfe561eba395569a41c04697920688e2daa4535e30969ffc8a4f66"
+import argparse
 
 def main():
+    parser = argparse.ArgumentParser(description='EIP-1559 Transaction Simple Example')
+    parser.add_argument('--host', default='127.0.0.1', help='Seth node host (default: 127.0.0.1)')
+    parser.add_argument('--port', type=int, default=23001, help='Seth node port (default: 23001)')
+    parser.add_argument('--key', 
+                        default='71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6',
+                        help='Private key (hex, default: test key)')
+    
+    args = parser.parse_args()
+    
     print("=" * 60)
     print("EIP-1559 Transaction Example")
     print("=" * 60)
     
     # Initialize client
-    w3 = SethWeb3Mock(HOST, PORT)
-    sender = w3.client.get_address(PRIVATE_KEY)
+    w3 = SethWeb3Mock(args.host, args.port)
+    sender = w3.client.get_address(args.key)
     
     print(f"\nSender: {sender}")
     print(f"Balance: {w3.client.get_balance(sender)}")
@@ -41,7 +46,7 @@ def main():
     try:
         tx_hash = _eth_sign_and_send(
             w3.client,
-            PRIVATE_KEY,
+            args.key,
             bytes.fromhex(recipient),
             value=1000000,
             data=b'',

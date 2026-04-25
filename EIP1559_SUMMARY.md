@@ -108,12 +108,20 @@ make -j$(nproc)
 # 进入 Python 目录
 cd clipy
 
-# 运行完整测试套件
+# 使用默认配置运行完整测试套件（推荐）
+python test_eip1559.py
+
+# 或使用自定义配置
 python test_eip1559.py --host 127.0.0.1 --port 23001 --key <your_private_key>
 
 # 运行简单示例
 python eip1559_example.py
 ```
+
+**默认配置**（与 amm.py 保持一致）：
+- Host: 127.0.0.1
+- Port: 23001
+- Private Key: 71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6
 
 ### 3. 在代码中使用
 
