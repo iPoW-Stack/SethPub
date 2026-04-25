@@ -2378,7 +2378,7 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             pubkey.size(), common::Encode::HexEncode(pubkey).c_str(),
             common::Encode::HexEncode(sender_addr).c_str());
         if (sender_addr.empty() || sender_addr.size() != 20) {
-            http_res.set_content(RpcErr(id, -32602, "invalid sender address").dump(), "application/json")
+            http_res.set_content(RpcErr(id, -32602, "invalid sender address").dump(), "application/json");
             return;
         }
         // ── End pubkey recovery ───────────────────────────────────────────────
