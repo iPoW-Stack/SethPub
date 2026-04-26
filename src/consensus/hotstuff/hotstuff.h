@@ -429,9 +429,9 @@ private:
         
         int64_t prev_qc_timestamp_sec = (high_view_block->block_info().timestamp() / 1000lu);
         int64_t now = get_consensus_timestamp(30);
-        if (leader_tm_sec != 0) {
-            // if (std::abs(leader_tm_sec - common::TimeUtils::TimestampSeconds()) < 15) {
-                now = leader_tm_sec / 1000lu;
+        if (leader_tm_ms != 0) {
+            // if (std::abs((leader_tm_ms / 1000lu) - common::TimeUtils::TimestampSeconds()) < 15) {
+                now = leader_tm_ms / 1000lu;
             // }
         }
 
