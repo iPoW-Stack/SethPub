@@ -227,10 +227,31 @@ clear_command() {
     run_cmd_count=0
     start_pos=1
     for ip in "${node_ips_array[@]}"; do
-        # 清理延迟限制
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 22 "tc qdisc del dev eth0 root 2>/dev/null || true; tc qdisc del dev eth1 root 2>/dev/null || true; tc qdisc del dev ens0 root 2>/dev/null || true; tc qdisc del dev ens1 root 2>/dev/null || true" &
+        # 检查和安装依赖，配置网络延迟
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 22 "
+# 检查和安装 iproute2
+if ! command -v tc &> /dev/null; then
+    echo '安装 iproute2...'
+    apt-get update > /dev/null 2>&1
+    apt-get install -y iproute2 > /dev/null 2>&1
+fi
+
+# 加载必要的内核模块
+modprobe sch_netem 2>/dev/null || true
+modprobe ifb 2>/dev/null || true
+
+# 清除旧的延迟限制
+for iface in \$(ip link show | grep '^[0-9]' | awk '{print \$2}' | sed 's/:$//' | grep -v '^lo$'); do
+    tc qdisc del dev \$iface root 2>/dev/null || true
+    tc qdisc del dev \$iface ingress 2>/dev/null || true
+done
+tc qdisc del dev ifb0 root 2>/dev/null || true
+
+# 清理旧的包和进程
+cd /root && rm -rf pkg*
+killall -9 seth 2>/dev/null || true
+" &
         
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 22 "cd /root && rm -rf pkg*; killall -9 seth" &
         run_cmd_count=$((run_cmd_count + 1))
         if ((start_pos==1)); then
             sleep 3
@@ -278,20 +299,64 @@ run_command() {
 
         leader_init_tm=$(date -u -d "+240 seconds" +%s)
         
-        # 应用网络延迟配置 (点对点50ms延迟 = 单向25ms)
+        # 检查依赖、安装软件、配置网络延迟
         sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 22 "
-# 获取所有活跃接口并应用延迟
-for iface in \$(ip link show | grep '^[0-9]' | awk '{print \$2}' | sed 's/:$//' | grep -v '^lo$'); do
-    if ip link show \$iface | grep -q 'UP'; then
-        tc qdisc del dev \$iface root 2>/dev/null || true
-        sleep 0.5
-        tc qdisc add dev \$iface root handle 1: fq_codel
-        tc qdisc add dev \$iface parent 1: handle 10: netem delay 25ms 10ms loss 0.01%
+# ========== 检查和安装依赖 ==========
+echo '检查依赖...'
+
+# 检查并安装 iproute2
+if ! command -v tc &> /dev/null; then
+    echo '  安装 iproute2...'
+    apt-get update > /dev/null 2>&1
+    apt-get install -y iproute2 > /dev/null 2>&1
+    if [ \$? -eq 0 ]; then
+        echo '  ✓ iproute2 安装成功'
+    else
+        echo '  ⚠️  iproute2 安装失败'
     fi
-done
+else
+    echo '  ✓ tc 命令已存在'
+fi
+
+# 加载必要的内核模块
+echo '加载内核模块...'
+modprobe sch_netem 2>/dev/null || true
+modprobe ifb 2>/dev/null || true
+echo '  ✓ 内核模块加载完成'
+
+# ========== 配置网络延迟 ==========
+echo '配置网络延迟...'
+
+# 获取主网络接口
+MAIN_IFACE=\$(ip route | grep default | awk '{print \$5}' | head -1)
+if [ -z \"\$MAIN_IFACE\" ]; then
+    echo '  ⚠️  无法检测网络接口，跳过延迟配置'
+else
+    echo \"  主接口: \$MAIN_IFACE\"
+    
+    # 清除旧配置
+    tc qdisc del dev \$MAIN_IFACE root 2>/dev/null || true
+    tc qdisc del dev \$MAIN_IFACE ingress 2>/dev/null || true
+    tc qdisc del dev ifb0 root 2>/dev/null || true
+    sleep 0.5
+    
+    # 配置出站流量延迟 (单向 25ms)
+    tc qdisc add dev \$MAIN_IFACE root handle 1: fq_codel 2>/dev/null
+    tc qdisc add dev \$MAIN_IFACE parent 1: handle 10: netem delay 25ms 10ms loss 0.01% 2>/dev/null
+    
+    # 配置入站流量延迟 (通过 ifb0)
+    ip link set dev ifb0 down 2>/dev/null || true
+    ip link set dev ifb0 up 2>/dev/null || true
+    tc qdisc add dev \$MAIN_IFACE ingress handle ffff: 2>/dev/null
+    tc filter add dev \$MAIN_IFACE parent ffff: protocol ip u32 match u32 0 0 flowid 1:1 action mirred egress redirect dev ifb0 2>/dev/null
+    tc qdisc add dev ifb0 root handle 1: fq_codel 2>/dev/null
+    tc qdisc add dev ifb0 parent 1: handle 10: netem delay 25ms 10ms loss 0.01% 2>/dev/null
+    
+    echo '  ✓ 网络延迟配置完成 (点对点 50ms)'
+fi
 " > /dev/null 2>&1 &
         
-        sleep 1
+        sleep 2
         
         sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 22 "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count 0 2 $end_shard $leader_init_tm"  > /dev/null 2>&1 &
         if ((start_pos==1)); then
