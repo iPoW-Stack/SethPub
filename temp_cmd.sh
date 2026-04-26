@@ -30,8 +30,12 @@ setup_network_simulation() {
     echo "  - 抖动: 10ms"
     echo "  - 丢包率: 0.01% (1/10000)"
     
-    # 清除旧配置
-    tc qdisc del dev "$interface" root 2>/dev/null || true
+    # 检查是否已经配置过，如果已配置则先清除
+    if tc qdisc show dev "$interface" 2>/dev/null | grep -q "root"; then
+        echo "检测到已有网络配置，清除旧配置..."
+        tc qdisc del dev "$interface" root 2>/dev/null || true
+        sleep 1
+    fi
     
     # 添加根 qdisc (HTB - Hierarchical Token Bucket)
     tc qdisc add dev "$interface" root handle 1: htb default 1
@@ -87,6 +91,13 @@ deploy_nodes() {
 
             prikey=`sed -n "$i""p" /root/pkg/shards$shard_id | awk -F'\t' '{print $1}'`
             pubkey=`sed -n "$i""p" /root/pkg/shards$shard_id | awk -F'\t' '{print $2}'`
+            
+            # 支持重复执行：如果目录已存在，先删除
+            if [ -d "/root/seths/s$shard_id'_'$i" ]; then
+                echo "节点 s$shard_id'_'$i 已存在，删除旧配置..."
+                rm -rf "/root/seths/s$shard_id'_'$i"
+            fi
+            
             cp -rf /root/pkg/temp /root/seths/s$shard_id'_'$i
             sed -i 's/PRIVATE_KEY/'$prikey'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
             sed -i 's/PUBLIC_IP/'$public_ip'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
@@ -134,16 +145,30 @@ deploy_nodes() {
             sed -i 's/TX_WS_PORT/'$port2'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
 
             echo /root/seths/s$shard_id'_'$i/seth
+            
+            # 支持重复执行：删除旧的符号链接
+            rm -f /root/seths/s$shard_id'_'$i/seth
+            rm -f /root/seths/s$shard_id'_'$i/txcli
+            rm -f /root/seths/s$shard_id'_'$i/conf/GeoLite2-City.mmdb
+            rm -f /root/seths/s$shard_id'_'$i/conf/log4cpp.properties
+            
             ln /root/pkg/seth /root/seths/s$shard_id'_'$i/seth
             ln /root/pkg/txcli /root/seths/s$shard_id'_'$i/txcli
             cp -rf /root/pkg/init_accounts* /root/seths/s$shard_id'_'$i/
             ln /root/pkg/GeoLite2-City.mmdb /root/seths/s$shard_id'_'$i/conf/GeoLite2-City.mmdb
             ln /root/pkg/log4cpp.properties /root/seths/s$shard_id'_'$i/conf/log4cpp.properties
             mkdir -p /root/seths/s$shard_id'_'$i/log
+            
+            # 支持重复执行：删除旧的数据库
+            rm -rf /root/seths/s$shard_id'_'$i/db
             cp -rf /root/pkg/shard_db_$shard_id /root/seths/s$shard_id'_'$i/db
             
             # Generate self-signed SSL certificate for HTTPS server
             echo "Generating SSL certificate for node s$shard_id'_'$i"
+            # 删除旧证书
+            rm -f /root/seths/s$shard_id'_'$i/server-key.pem
+            rm -f /root/seths/s$shard_id'_'$i/server-cert.pem
+            
             openssl req -x509 -newkey rsa:2048 -nodes \
                 -keyout /root/seths/s$shard_id'_'$i/server-key.pem \
                 -out /root/seths/s$shard_id'_'$i/server-cert.pem \
