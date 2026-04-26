@@ -218,11 +218,13 @@ static void LoadAllAccounts(int32_t shardnum=3) {
 }
 
 int tx_main(int argc, char** argv) {
-    // ./txcli 0 $net_id $pool_id $ip $port $delay_us $multi_pool
+    // ./txcli 0 $net_id $pool_id $ip $port $delay_us $multi_pool [$tps]
     auto ip = kBroadcastIp;
     auto port = kBroadcastPort;
     auto delayus_a = delayus;
     auto multi = multi_pool;
+    uint32_t target_tps = 0;  // 0 = unlimited
+
     if (argc >= 4) {
         shardnum = std::stoi(argv[2]);
         global_pool_idx = std::stoi(argv[3]);
@@ -243,7 +245,16 @@ int tx_main(int argc, char** argv) {
         multi = std::stoi(argv[7]);
     }
 
+    if (argc >= 9) {
+        target_tps = std::stoi(argv[8]);
+    }
+
     std::cout << "send tcp client ip_port" << ip << ": " << port << ", pool_id: " << global_pool_idx << std::endl;
+    if (target_tps > 0) {
+        std::cout << "Target TPS: " << target_tps << std::endl;
+    } else {
+        std::cout << "Target TPS: unlimited" << std::endl;
+    }
 
     LoadAllAccounts(shardnum);
     SignalRegister();
@@ -379,6 +390,9 @@ int tx_main(int argc, char** argv) {
 
             count++;
             ++all_count;
+            if (tps_interval_us > 0) {
+                usleep(tps_interval_us);
+            }
         }
     };
 
@@ -396,6 +410,16 @@ int tx_main(int argc, char** argv) {
 
     if (all_valid_keys.empty()) {
         return 1;
+    }
+
+    // Compute per-thread sleep interval to achieve target TPS
+    // interval_us = kThreadCount * 1000000 / target_tps
+    uint64_t tps_interval_us = 0;  // 0 = no sleep (unlimited)
+    if (target_tps > 0) {
+        tps_interval_us = (uint64_t)kThreadCount * 1000000ULL / target_tps;
+        if (tps_interval_us == 0) tps_interval_us = 1;
+        std::cout << "TPS interval: " << tps_interval_us << "us/thread ("
+                  << kThreadCount << " threads)" << std::endl;
     }
 
     uint32_t start = 0;
