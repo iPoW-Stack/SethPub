@@ -2,7 +2,7 @@
 #!/bin/bash
 
 pkill -9 seth
-systemctrl stop seth_miner
+systemctl stop seth_miner
 INSTALL_DIR=`pwd`
 # --- 1. Configuration & Variables ---
 CONFIG_FILE="$INSTALL_DIR/conf/seth.conf"
