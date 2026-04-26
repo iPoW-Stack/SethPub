@@ -132,7 +132,8 @@ public:
         common::BftMemberPtr leader,
         std::shared_ptr<TC> tc,
         std::shared_ptr<AggregateQC> agg_qc,
-        const transport::MessagePtr& msg_ptr);
+        const transport::MessagePtr& msg_ptr,
+        uint64_t leader_tm_ms);
     Status TryCommit(
         const std::shared_ptr<ViewBlockChain>& view_block_chain,
         const transport::MessagePtr& msg_ptr,
@@ -314,12 +315,12 @@ private:
         View view);
 
     uint64_t GetLeaderBlockTimestamp() {
-        auto pre_v_block = view_block_chain()->HighViewBlock();
+        auto prev_block = view_block_chain()->HighViewBlock();
         uint64_t cur_time = common::TimeUtils::TimestampMs();
-        if (pre_v_block == nullptr) {
+        if (prev_block == nullptr) {
             return cur_time;
         }
-        
+
         auto tm = prev_block->timestamp() > cur_time ? prev_block->timestamp() + 1 : cur_time;
         return tm;
     }
