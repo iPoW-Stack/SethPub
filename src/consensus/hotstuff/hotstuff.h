@@ -321,7 +321,7 @@ private:
             return cur_time;
         }
 
-        auto tm = prev_block->timestamp() > cur_time ? prev_block->timestamp() + 1 : cur_time;
+        auto tm = prev_block->block_info().timestamp() > cur_time ? prev_block->block_info().timestamp() + 1 : cur_time;
         return tm;
     }
 
