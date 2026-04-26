@@ -416,13 +416,13 @@ private:
         }
         
         int64_t prev_qc_timestamp_sec = (high_view_block->block_info().timestamp() / 1000lu);
-        int64_t now = get_consensus_timestamp(30);
         if (leader_tm_sec != 0) {
             if (std::abs(leader_tm_sec - common::TimeUtils::TimestampSeconds()) < 15) {
                 now = leader_tm_sec;
             }
         }
 
+        int64_t now = leader_tm_sec;  // get_consensus_timestamp(30);
         int64_t timeout = static_cast<int64_t>(
             common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
         int64_t elapsed = now - prev_qc_timestamp_sec;
