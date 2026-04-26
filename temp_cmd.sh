@@ -13,6 +13,67 @@ rm -rf /root/seths/
 mkdir -p /root/seths/
 
 local_ip=`hostname -I | awk '{print $1}'`
+
+# ========== 网络模拟配置 ==========
+# 模拟公网: 1G带宽, 点对点50ms延迟(单向25ms), 10ms抖动, 1/10000丢包率
+setup_network_simulation() {
+    local interface=$1
+    
+    if [ -z "$interface" ]; then
+        echo "警告: 未指定网络接口，跳过网络模拟配置"
+        return
+    fi
+    
+    echo "配置网络模拟: $interface"
+    echo "  - 带宽: 1Gbps"
+    echo "  - 点对点延迟: 50ms (单向 25ms)"
+    echo "  - 抖动: 10ms"
+    echo "  - 丢包率: 0.01% (1/10000)"
+    
+    # 清除旧配置
+    tc qdisc del dev "$interface" root 2>/dev/null || true
+    
+    # 添加根 qdisc (HTB - Hierarchical Token Bucket)
+    tc qdisc add dev "$interface" root handle 1: htb default 1
+    
+    # 创建类限制带宽为 1Gbps
+    tc class add dev "$interface" parent 1: classid 1:1 htb rate 1gbit
+    
+    # 添加 netem qdisc 用于延迟、抖动和丢包
+    # 单向延迟 25ms，点对点往返延迟 50ms
+    tc qdisc add dev "$interface" parent 1:1 handle 10: netem \
+        delay 25ms 10ms \
+        loss 0.01%
+    
+    echo "✓ 网络模拟配置完成"
+    
+    # 显示配置
+    echo "当前 qdisc 配置:"
+    tc qdisc show dev "$interface"
+}
+
+# 获取主网络接口 (排除 lo)
+get_main_interface() {
+    ip route | grep default | awk '{print $5}' | head -1
+}
+
+# 如果指定了网络接口参数，则进行网络模拟配置
+# 使用方式: ./temp_cmd.sh <public_ip> <start_pos> <node_count> <bootstrap> <start_shard> <end_shard> <leader_init_tm> [network_interface]
+if [ ! -z "$8" ]; then
+    setup_network_simulation "$8"
+else
+    # 自动检测主网络接口
+    main_interface=$(get_main_interface)
+    if [ ! -z "$main_interface" ]; then
+        echo "自动检测到网络接口: $main_interface"
+        read -p "是否配置网络模拟? (y/n) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            setup_network_simulation "$main_interface"
+        fi
+    fi
+fi
+# ========== 网络模拟配置结束 ==========
 deploy_nodes() {
     end_pos=$(($start_pos + $node_count - 1))
     for ((shard_id=$start_shard; shard_id<=$end_shard; shard_id++)); do
@@ -98,3 +159,17 @@ deploy_nodes() {
 killall -9 seth
 
 deploy_nodes
+
+# ========== 清除网络模拟配置 ==========
+# 如果需要清除网络模拟，可以运行:
+# tc qdisc del dev <interface> root
+# 或者在脚本中添加参数 "cleanup" 来自动清除
+if [ "$9" = "cleanup" ]; then
+    main_interface=$(get_main_interface)
+    if [ ! -z "$main_interface" ]; then
+        echo "清除网络模拟配置: $main_interface"
+        tc qdisc del dev "$main_interface" root 2>/dev/null || true
+        echo "✓ 网络模拟配置已清除"
+    fi
+fi
+# ========== 清除网络模拟配置结束 ==========
