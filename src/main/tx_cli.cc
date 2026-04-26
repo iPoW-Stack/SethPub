@@ -561,10 +561,11 @@ int main(int argc, char** argv) {
     }
 
     // ── Mode 4: 10,000 Account Stress Test ────────────────────────────────
-    // Usage: txcli 4 <shard> <pool> <ip> <port> [threads]
+    // Usage: txcli 4 <shard> <pool> <ip> <port> [threads] [tps]
     if (argv[1][0] == '4') {
         const uint32_t kAccountCount = 10000;
         uint32_t num_threads = (argc >= 7) ? std::stoi(argv[6]) : 16;
+        uint32_t target_tps  = (argc >= 8) ? std::stoi(argv[7]) : 0;  // 0 = unlimited
         
         if (argc >= 4) {
             shardnum = std::stoi(argv[2]);
@@ -575,10 +576,24 @@ int main(int argc, char** argv) {
             global_chain_node_http_port = std::stoi(argv[5]) + 10000;
         }
 
+        // Compute per-thread sleep interval (us) to achieve target TPS.
+        // interval_us = num_threads * 1000000 / target_tps
+        // 0 means no rate limiting (use the original 5ms delay).
+        uint64_t tps_interval_us = 5000;  // default 5ms
+        if (target_tps > 0) {
+            tps_interval_us = (uint64_t)num_threads * 1000000ULL / target_tps;
+            if (tps_interval_us == 0) tps_interval_us = 1;
+        }
+
         std::cout << "\n=== 10,000 Account Stress Test ===" << std::endl;
         std::cout << "Shard: " << shardnum << ", Pool: " << global_pool_idx << std::endl;
         std::cout << "Node: " << global_chain_node_ip << ":" << (global_chain_node_http_port - 10000) << std::endl;
         std::cout << "Threads: " << num_threads << std::endl;
+        if (target_tps > 0) {
+            std::cout << "Target TPS: " << target_tps << " (interval=" << tps_interval_us << "us/thread)" << std::endl;
+        } else {
+            std::cout << "Target TPS: unlimited (interval=5000us/thread)" << std::endl;
+        }
 
         LoadAllAccounts(shardnum);
         SignalRegister();
@@ -906,7 +921,7 @@ int main(int argc, char** argv) {
                     ++tx_failed;
                 }
 
-                usleep(5000);  // 5ms delay
+                usleep(tps_interval_us);  // Rate limiting: controlled by --tps parameter
             }
         };
 

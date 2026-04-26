@@ -264,9 +264,18 @@ def calc_create2_address(sender: str, salt: str, bytecode: str) -> str:
 def compile_and_link(source: str, name: str, libs: Dict[str, str] = None):
     """Compiles Solidity and replaces Library linking placeholders."""
     try:
-        solcx.install_solc("0.8.30")
-        solcx.set_solc_version("0.8.30")
-    except: pass
+        solcx.set_solc_version("0.8.34")
+    except:
+        try:
+            import shutil, os
+            solcx_dir = os.path.expanduser("~/.solcx")
+            os.makedirs(solcx_dir, exist_ok=True)
+            dst = os.path.join(solcx_dir, "solc-v0.8.34")
+            if not os.path.exists(dst):
+                shutil.copy("/usr/local/bin/solc", dst)
+                os.chmod(dst, 0o755)
+            solcx.set_solc_version("0.8.34")
+        except: pass
 
     compiled = solcx.compile_source(source, output_values=['bin', 'abi'], optimize=True, evm_version='shanghai')
     
