@@ -313,12 +313,23 @@ private:
         uint32_t pool_index,
         View view);
 
+    uint64_t GetLeaderBlockTimestamp() {
+        auto pre_v_block = view_block_chain()->HighViewBlock();
+        uint64_t cur_time = common::TimeUtils::TimestampMs();
+        if (pre_v_block == nullptr) {
+            return cur_time;
+        }
+        
+        auto tm = prev_block->timestamp() > cur_time ? prev_block->timestamp() + 1 : cur_time;
+        return tm;
+    }
+
     common::BftMemberPtr GetLeader(
             uint32_t new_leader_idx, 
             const view_block::protobuf::QcItem& leader_latest_qc, 
             View* out_view,
-            int64_t leader_tm_sec = 0,
-            bool debug = true) {
+            int64_t leader_tm_ms,
+            bool debug) {
         // debug = false;
         // auto members = elect_item->valid_leaders();
         auto members = Members(common::GlobalInfo::Instance()->network_id());
@@ -419,7 +430,7 @@ private:
         int64_t now = get_consensus_timestamp(30);
         if (leader_tm_sec != 0) {
             // if (std::abs(leader_tm_sec - common::TimeUtils::TimestampSeconds()) < 15) {
-                now = leader_tm_sec;
+                now = leader_tm_sec / 1000lu;
             // }
         }
 

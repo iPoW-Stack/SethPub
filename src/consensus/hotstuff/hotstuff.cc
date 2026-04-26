@@ -174,7 +174,8 @@ Status Hotstuff::Propose(
         common::BftMemberPtr leader,
         std::shared_ptr<TC> tc,
         std::shared_ptr<AggregateQC> agg_qc,
-        const transport::MessagePtr& msg_ptr) {
+        const transport::MessagePtr& msg_ptr,
+        uint64_t leader_tm_ms) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
     SETH_DEBUG("pool: %d, called propose!", pool_idx_);
 #ifndef NDEBUG
@@ -276,6 +277,7 @@ Status Hotstuff::Propose(
         pre_v_block->qc().pool_index(),
         pre_v_block->qc().view(),
         tm_block_mgr_->LatestTimestampHeight());
+    pb_pro_msg->mutable_view_item()->mutable_block_info()->set_timestamp(leader_tm_ms);
     Status s = ConstructProposeMsg(leader_view, leader, msg_ptr, pb_pro_msg);
     if (s != Status::kSuccess) {
         if (!tc) {
@@ -686,7 +688,8 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
         view_item.qc().leader_idx(), 
         msg_ptr->header.hotstuff().pro_msg().tc(), 
         &out_view,
-        pro_msg_wrap->view_block_ptr->block_info().timestamp());
+        pro_msg_wrap->view_block_ptr->block_info().timestamp(),
+        true);
     if (!leader) {
         SETH_DEBUG("pool: %d, propose message no leader info, leader idx: %u, tc view: %lu, "
             "propose_debug: %s",
@@ -1568,14 +1571,15 @@ void Hotstuff::HandlePreResetTimerMsg(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
     View out_view = 0;
     auto local_idx = GetLocalMemberIdx();
-    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view);
+    auto leader_block_tm = GetLeaderBlockTimestamp();
+    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view, leader_block_tm, false);
     if (!leader) {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
         return;
     }
 
     if (last_vote_view_ < out_view) {
-        Propose(out_view, leader, nullptr, nullptr, msg_ptr);
+        Propose(out_view, leader, nullptr, nullptr, msg_ptr, leader_block_tm);
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -2315,7 +2319,8 @@ void Hotstuff::TryRecoverFromStuck(
 
     auto local_idx = GetLocalMemberIdx();
     View out_view = 0;
-    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view, false);
+    auto leader_block_tm = GetLeaderBlockTimestamp();
+    auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view, leader_block_tm, false);
     if (!leader) {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
         return;
@@ -2371,7 +2376,7 @@ void Hotstuff::TryRecoverFromStuck(
         SETH_DEBUG("leader try recover from stuck, pool: %u, out_view: %lu, last_vote_view_: %lu",
             pool_idx_, out_view, last_vote_view_);
         if (last_vote_view_ < out_view) {
-            Propose(out_view, leader, nullptr, nullptr, msg_ptr);
+            Propose(out_view, leader, nullptr, nullptr, msg_ptr, leader_block_tm);
         }
         ADD_DEBUG_PROCESS_TIMESTAMP();
         if (latest_qc_item_ptr_) {

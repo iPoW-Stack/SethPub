@@ -51,8 +51,8 @@ Status BlockWrapper::Wrap(
         return Status::kInvalidArgument;
     }
 
-    uint64_t cur_time = common::TimeUtils::TimestampMs();
-    block->set_timestamp(prev_block->timestamp() > cur_time ? prev_block->timestamp() + 1 : cur_time);
+    // uint64_t cur_time = common::TimeUtils::TimestampMs();
+    // block->set_timestamp(prev_block->timestamp() > cur_time ? prev_block->timestamp() + 1 : cur_time);
     // Package transactions
     ADD_DEBUG_PROCESS_TIMESTAMP();
     std::shared_ptr<consensus::WaitingTxsItem> txs_ptr = nullptr;
