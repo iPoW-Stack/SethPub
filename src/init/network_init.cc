@@ -656,6 +656,7 @@ int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
     //     return kInitError;
     // }
     
+    security_ = new_security;
     if (is_initial_setup) {
         // For initial setup, just notify the waiting thread
         // The security_ object will be properly initialized by InitSecurity() after wait returns
@@ -670,7 +671,6 @@ int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
         private_key_wait_cv_.notify_one();
     } 
 
-    security_ = new_security;
     
     // NOTE: We do NOT call Init() on Route, UniversalManager, or Bootstrap
     // because they create new threads which would terminate the old running threads.
