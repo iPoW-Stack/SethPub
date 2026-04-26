@@ -620,33 +620,71 @@ int main(int argc, char** argv) {
             return 1;
         }
 
-        // Phase 1: Generate 10,000 accounts
-        std::cout << "\n[Phase 1] Generating " << kAccountCount << " accounts..." << std::endl;
+        // Phase 1: Generate accounts for exactly 4 pools
+        // We generate accounts until we have kAccountsPerPool accounts in each of 4 pools.
+        const uint32_t kTargetPools = 4;
+        const uint32_t kAccountsPerPool = kAccountCount / kTargetPools;
+
+        std::cout << "\n[Phase 1] Generating accounts for " << kTargetPools << " pools ("
+                  << kAccountsPerPool << " accounts/pool)..." << std::endl;
         std::vector<std::string> test_prikeys;
         std::vector<std::string> test_addrs;
         std::unordered_map<std::string, std::string> test_pri_addr_map;
 
-        for (uint32_t i = 0; i < kAccountCount; ++i) {
-            // Generate random private key
+        // Pick the first kTargetPools pool indices from the leader map (or 0..3 if unavailable)
+        std::vector<uint32_t> target_pool_ids;
+        {
+            // Fetch leaders early so we know which pools exist
+            SethSDK early_sdk(global_chain_node_ip, global_chain_node_http_port);
+            std::unordered_map<uint32_t, SethSDK::LeaderInfo> early_leaders;
+            uint32_t early_count = 0;
+            early_sdk.fetchLeaders(early_leaders, early_count);
+            for (auto& [pid, info] : early_leaders) {
+                target_pool_ids.push_back(pid);
+                if ((uint32_t)target_pool_ids.size() >= kTargetPools) break;
+            }
+        }
+        // Fallback: use pools 0..3
+        while ((uint32_t)target_pool_ids.size() < kTargetPools) {
+            target_pool_ids.push_back((uint32_t)target_pool_ids.size());
+        }
+        std::cout << "  Target pools: ";
+        for (auto p : target_pool_ids) std::cout << p << " ";
+        std::cout << std::endl;
+
+        // Generate accounts that hash into the target pools
+        std::unordered_map<uint32_t, uint32_t> pool_count;
+        for (auto p : target_pool_ids) pool_count[p] = 0;
+
+        uint32_t total_needed = kTargetPools * kAccountsPerPool;
+        while ((uint32_t)test_prikeys.size() < total_needed) {
             std::string prikey;
             prikey.resize(32);
             for (uint32_t j = 0; j < 32; ++j) {
                 prikey[j] = static_cast<char>(common::Random::RandomUint32() % 256);
             }
-
             std::shared_ptr<security::Security> test_sec = std::make_shared<security::Ecdsa>();
             test_sec->SetPrivateKey(prikey);
             std::string addr = test_sec->GetAddress();
+            uint32_t pool = common::GetAddressPoolIndex(addr);
 
-            test_prikeys.push_back(prikey);
-            test_addrs.push_back(addr);
-            test_pri_addr_map[prikey] = addr;
+            // Only keep if this is one of our target pools and not yet full
+            if (pool_count.count(pool) && pool_count[pool] < kAccountsPerPool) {
+                test_prikeys.push_back(prikey);
+                test_addrs.push_back(addr);
+                test_pri_addr_map[prikey] = addr;
+                ++pool_count[pool];
+            }
 
-            if ((i + 1) % 1000 == 0) {
-                std::cout << "  Generated " << (i + 1) << " accounts..." << std::endl;
+            if ((uint32_t)test_prikeys.size() % 1000 == 0 && !test_prikeys.empty()) {
+                std::cout << "  Generated " << test_prikeys.size() << "/" << total_needed << " accounts..." << std::endl;
             }
         }
-        std::cout << "✓ Generated " << kAccountCount << " accounts" << std::endl;
+        std::cout << "✓ Generated " << test_prikeys.size() << " accounts across "
+                  << kTargetPools << " pools" << std::endl;
+        for (auto p : target_pool_ids) {
+            std::cout << "  Pool " << p << ": " << pool_count[p] << " accounts" << std::endl;
+        }
 
         // Phase 2: Create accounts on blockchain (send initial transactions)
         std::cout << "\n[Phase 2] Creating accounts on blockchain..." << std::endl;
@@ -836,8 +874,8 @@ int main(int argc, char** argv) {
         std::cout << "\n[Phase 4] Starting stress test - random transfers..." << std::endl;
         std::cout << "  Press Ctrl+C to stop" << std::endl;
 
-        // Fetch leader routing table so we can send transactions directly
-        // to the leader responsible for each pool, avoiding relay hops.
+        // Fetch leader routing table — required for Phase 4.
+        // Transactions are only sent to the leader of each pool.
         std::unordered_map<uint32_t, SethSDK::LeaderInfo> leader_map;
         uint32_t leader_count = 0;
         bool has_leader_routing = sdk.fetchLeaders(leader_map, leader_count);
@@ -847,7 +885,9 @@ int main(int argc, char** argv) {
                 std::cout << "    mod " << mod << " -> " << info.ip << ":" << info.port << std::endl;
             }
         } else {
-            std::cout << "  Leader routing unavailable, using default node" << std::endl;
+            std::cerr << "ERROR: Leader routing unavailable. Mode 4 requires leader info to send transactions." << std::endl;
+            transport::TcpTransport::Instance()->Stop();
+            return 1;
         }
 
         // Pre-compute pool index for each test address
@@ -902,17 +942,20 @@ int main(int argc, char** argv) {
                     continue;
                 }
 
-                // Route to the leader responsible for the sender's pool
-                std::string dest_ip = global_chain_node_ip;
-                uint16_t dest_port = global_chain_node_http_port - 10000;
-                if (has_leader_routing) {
-                    uint32_t pool_idx = addr_pool_idx[from_idx];
-                    auto it = leader_map.find(pool_idx);
-                    if (it != leader_map.end()) {
-                        dest_ip = it->second.ip;
-                        dest_port = it->second.port;
-                    }
+                // Must route to the leader responsible for the sender's pool.
+                // If no leader info available, skip this transaction.
+                if (!has_leader_routing) {
+                    ++tx_failed;
+                    continue;
                 }
+                uint32_t pool_idx = addr_pool_idx[from_idx];
+                auto it = leader_map.find(pool_idx);
+                if (it == leader_map.end()) {
+                    ++tx_failed;
+                    continue;
+                }
+                std::string dest_ip   = it->second.ip;
+                uint16_t   dest_port  = it->second.port;
 
                 if (transport::TcpTransport::Instance()->Send(
                         dest_ip, dest_port, tx_msg_ptr->header) == 0) {
