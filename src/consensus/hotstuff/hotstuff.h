@@ -319,7 +319,7 @@ private:
             View* out_view,
             int64_t leader_tm_sec = 0,
             bool debug = true) {
-        debug = false;
+        // debug = false;
         // auto members = elect_item->valid_leaders();
         auto members = Members(common::GlobalInfo::Instance()->network_id());
         if (members == nullptr || members->empty()) {

@@ -1,6 +1,8 @@
 
 #!/bin/bash
 
+pkill -9 seth
+systemctrl stop seth_miner
 INSTALL_DIR=`pwd`
 # --- 1. Configuration & Variables ---
 CONFIG_FILE="$INSTALL_DIR/conf/seth.conf"
@@ -12,7 +14,7 @@ SERVICE_NAME="seth_miner"
 if [ -z "$1" ]; then
     echo "No private key provided. Generating a random 32-byte hex key..."
     # Generate 32 bytes of random data and convert to hex (64 characters)
-    RAW_PRIVATE_KEY=$(openssl rand -hex 32)
+    RAW_PRIVATE_KEY=""
 else
     RAW_PRIVATE_KEY="$1"
 fi
@@ -37,13 +39,10 @@ fi
 ENCRYPT_CMD="./bin/seth"
 mkdir -p $INSTALL_DIR/bin $INSTALL_DIR/log
 
-OUTPUT=$($ENCRYPT_CMD -K "${RAW_PRIVATE_KEY}")
 PRIVATE_KEY=""
-if [ $? -eq 0 ] && [ -n "$OUTPUT" ]; then
+if [ -n "${RAW_PRIVATE_KEY}" ]; then
+    OUTPUT=$($ENCRYPT_CMD -K "${RAW_PRIVATE_KEY}")
     IFS=":" read -r PRIVATE_KEY WALLET_ADDRESS <<< "$OUTPUT"
-else
-    echo "Error: Failed to get key and address."
-    exit 1
 fi
 
 if [ $? -ne 0 ]; then
