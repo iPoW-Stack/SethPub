@@ -1521,8 +1521,9 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     latest_propose_msg_tm_ms_ = 0;
     UpdateLatestQcItemPtr(qc_item_ptr);
     auto leader = LocalMember();
+    auto leader_tm = GetLeaderBlockTimestamp();
     if (leader) {
-        Propose(qc_item_ptr->view() + 1, leader, qc_item_ptr, nullptr, msg_ptr);
+        Propose(qc_item_ptr->view() + 1, leader, qc_item_ptr, nullptr, msg_ptr, leader_tm);
     } else {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
     }
