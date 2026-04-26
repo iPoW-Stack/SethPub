@@ -227,6 +227,9 @@ clear_command() {
     run_cmd_count=0
     start_pos=1
     for ip in "${node_ips_array[@]}"; do
+        # 清理延迟限制
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 2221 "tc qdisc del dev eth0 root 2>/dev/null || true; tc qdisc del dev eth1 root 2>/dev/null || true; tc qdisc del dev ens0 root 2>/dev/null || true; tc qdisc del dev ens1 root 2>/dev/null || true" &
+        
         sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 2221 "cd /root && rm -rf pkg*; killall -9 seth" &
         run_cmd_count=$((run_cmd_count + 1))
         if ((start_pos==1)); then
