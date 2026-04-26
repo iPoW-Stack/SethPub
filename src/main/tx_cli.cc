@@ -316,6 +316,17 @@ int tx_main(int argc, char** argv) {
 
     const std::string key = "";
     const std::string value = "";
+    
+    // Compute per-thread sleep interval to achieve target TPS
+    // interval_us = kThreadCount * 1000000 / target_tps
+    uint64_t tps_interval_us = 0;  // 0 = no sleep (unlimited)
+    if (target_tps > 0) {
+        tps_interval_us = (uint64_t)kThreadCount * 1000000ULL / target_tps;
+        if (tps_interval_us == 0) tps_interval_us = 1;
+        std::cout << "TPS interval: " << tps_interval_us << "us/thread ("
+                  << kThreadCount << " threads)" << std::endl;
+    }
+    
     auto tx_thread = [&](std::vector<std::string> prikeys) {
         uint32_t prikey_pos = 0;
         auto from_prikey = prikeys[0];
@@ -410,16 +421,6 @@ int tx_main(int argc, char** argv) {
 
     if (all_valid_keys.empty()) {
         return 1;
-    }
-
-    // Compute per-thread sleep interval to achieve target TPS
-    // interval_us = kThreadCount * 1000000 / target_tps
-    uint64_t tps_interval_us = 0;  // 0 = no sleep (unlimited)
-    if (target_tps > 0) {
-        tps_interval_us = (uint64_t)kThreadCount * 1000000ULL / target_tps;
-        if (tps_interval_us == 0) tps_interval_us = 1;
-        std::cout << "TPS interval: " << tps_interval_us << "us/thread ("
-                  << kThreadCount << " threads)" << std::endl;
     }
 
     uint32_t start = 0;
