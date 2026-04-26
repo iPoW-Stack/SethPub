@@ -37,15 +37,13 @@ setup_network_simulation() {
         sleep 1
     fi
     
-    # 添加根 qdisc (HTB - Hierarchical Token Bucket)
-    tc qdisc add dev "$interface" root handle 1: htb default 1
-    
-    # 创建类限制带宽为 1Gbps
-    tc class add dev "$interface" parent 1: classid 1:1 htb rate 1gbit
+    # 使用 fq_codel + netem 方案（更稳定可靠）
+    # 添加根 qdisc (fq_codel - Fair Queuing with Controlled Delay)
+    tc qdisc add dev "$interface" root handle 1: fq_codel
     
     # 添加 netem qdisc 用于延迟、抖动和丢包
     # 单向延迟 25ms，点对点往返延迟 50ms
-    tc qdisc add dev "$interface" parent 1:1 handle 10: netem \
+    tc qdisc add dev "$interface" parent 1: handle 10: netem \
         delay 25ms 10ms \
         loss 0.01%
     
@@ -54,6 +52,9 @@ setup_network_simulation() {
     # 显示配置
     echo "当前 qdisc 配置:"
     tc qdisc show dev "$interface"
+    echo ""
+    echo "详细配置信息:"
+    tc -s qdisc show dev "$interface"
 }
 
 # 获取主网络接口 (排除 lo)

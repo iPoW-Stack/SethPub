@@ -277,6 +277,22 @@ run_command() {
         fi
 
         leader_init_tm=$(date -u -d "+240 seconds" +%s)
+        
+        # 应用网络延迟配置 (点对点50ms延迟 = 单向25ms)
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 22 "
+# 获取所有活跃接口并应用延迟
+for iface in \$(ip link show | grep '^[0-9]' | awk '{print \$2}' | sed 's/:$//' | grep -v '^lo$'); do
+    if ip link show \$iface | grep -q 'UP'; then
+        tc qdisc del dev \$iface root 2>/dev/null || true
+        sleep 0.5
+        tc qdisc add dev \$iface root handle 1: fq_codel
+        tc qdisc add dev \$iface parent 1: handle 10: netem delay 25ms 10ms loss 0.01%
+    fi
+done
+" > /dev/null 2>&1 &
+        
+        sleep 1
+        
         sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 22 "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count 0 2 $end_shard $leader_init_tm"  > /dev/null 2>&1 &
         if ((start_pos==1)); then
             sleep 3
