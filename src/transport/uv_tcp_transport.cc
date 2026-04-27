@@ -162,7 +162,7 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
     if (len == 0 || len > kMaxPacketBytes) {
         SETH_WARN("oversized or empty packet from %s:%d, len=%u — closing connection",
                   from_ip, from_port, len);
-        return false;  // caller (on_read) will close on false
+        // return false;  // caller (on_read) will close on false
     }
 
     MessagePtr msg_ptr = std::make_shared<TransportMessage>();
