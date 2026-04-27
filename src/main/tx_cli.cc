@@ -789,9 +789,16 @@ int main(int argc, char** argv) {
         // Track which accounts are still pending confirmation
         std::vector<bool> is_confirmed(kAccountCount, false);
 
+        // Pending list: only query these indices each round.
+        // Accounts not found are kept in the list for the next round.
+        std::vector<uint32_t> pending_list;
+        pending_list.reserve(kAccountCount);
+        for (uint32_t i = 0; i < kAccountCount; ++i) {
+            pending_list.push_back(i);
+        }
+
         uint32_t round = 0;
-        uint32_t prev_confirmed = 0;
-        while (confirmed_count < kAccountCount && !global_stop) {
+        while (confirmed_count < kAccountCount && !pending_list.empty() && !global_stop) {
             auto elapsed = std::chrono::steady_clock::now() - phase3_start;
             if (elapsed >= kPhase3Timeout) {
                 auto secs = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
@@ -804,23 +811,24 @@ int main(int argc, char** argv) {
             auto round_start = std::chrono::steady_clock::now();
             uint32_t round_confirmed = 0;
 
-            // Batch-query all pending addresses
+            // Next round's pending list — accounts not found this round go here
+            std::vector<uint32_t> next_pending;
+            next_pending.reserve(pending_list.size());
+
+            // Batch-query only the pending addresses
             std::vector<std::string> batch_addrs;
             std::vector<uint32_t> batch_indices;
             batch_addrs.reserve(kBatchSize);
             batch_indices.reserve(kBatchSize);
 
-            // Collect addresses that failed batch query for individual retry
-            std::vector<uint32_t> retry_indices;
-
-            for (uint32_t i = 0; i < kAccountCount && !global_stop; ++i) {
-                if (is_confirmed[i]) continue;
-
+            for (uint32_t p = 0; p < pending_list.size() && !global_stop; ++p) {
+                uint32_t i = pending_list[p];
                 batch_addrs.push_back(common::Encode::HexEncode(test_addrs[i]));
                 batch_indices.push_back(i);
 
-                // When batch is full or we've reached the last pending account, fire the query
-                if (batch_addrs.size() >= kBatchSize || i == kAccountCount - 1) {
+                // When batch is full or last pending entry, fire the query
+                bool is_last = (p == pending_list.size() - 1);
+                if (batch_addrs.size() >= kBatchSize || is_last) {
                     auto batch_res = sdk.batchQueryAccounts(batch_addrs);
                     if (batch_res.contains("status") && batch_res["status"] == 0 &&
                         batch_res.contains("accounts")) {
@@ -841,14 +849,14 @@ int main(int argc, char** argv) {
                                 ++confirmed_count;
                                 ++round_confirmed;
                             } else {
-                                // Not found in batch result, queue for individual retry
-                                retry_indices.push_back(idx);
+                                // Not found — keep in pending for next round
+                                next_pending.push_back(idx);
                             }
                         }
                     } else {
-                        // Entire batch failed, queue all for individual retry
+                        // Entire batch request failed — keep all in pending
                         for (uint32_t k = 0; k < batch_indices.size(); ++k) {
-                            retry_indices.push_back(batch_indices[k]);
+                            next_pending.push_back(batch_indices[k]);
                         }
                     }
                     batch_addrs.clear();
@@ -856,40 +864,19 @@ int main(int argc, char** argv) {
                 }
             }
 
-            // Individual retry for accounts not found in batch query
-            // These may be on a different shard/node that the batch endpoint missed
-            if (!retry_indices.empty() && !global_stop) {
-                uint32_t retry_found = 0;
-                for (uint32_t idx : retry_indices) {
-                    if (global_stop) break;
-                    std::string hex_addr = common::Encode::HexEncode(test_addrs[idx]);
-                    int64_t nonce = sdk.fetchNonce(hex_addr);
-                    if (nonce >= 0) {
-                        src_prikey_with_nonce[test_addrs[idx]] = nonce;
-                        prikey_with_nonce[test_addrs[idx]] = nonce;
-                        is_confirmed[idx] = true;
-                        ++confirmed_count;
-                        ++round_confirmed;
-                        ++retry_found;
-                    }
-                }
-                if (retry_found > 0 || retry_indices.size() > 0) {
-                    std::cout << "    Retry: " << retry_found << "/" << retry_indices.size()
-                              << " recovered via individual query" << std::endl;
-                }
-            }
+            // Swap pending list for next round
+            pending_list = std::move(next_pending);
 
             auto round_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - round_start).count();
             auto total_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
                 std::chrono::steady_clock::now() - phase3_start).count();
-            uint32_t pending = kAccountCount - confirmed_count;
             std::cout << "  [Round " << round << ", " << total_elapsed << "s] +"
                       << round_confirmed << " confirmed, "
                       << confirmed_count << "/" << kAccountCount << " total, "
-                      << pending << " pending (" << round_ms << "ms)" << std::endl;
+                      << pending_list.size() << " pending (" << round_ms << "ms)" << std::endl;
 
-            if (confirmed_count >= kAccountCount) break;
+            if (confirmed_count >= kAccountCount || pending_list.empty()) break;
 
             // Adaptive wait: if we made progress this round, poll again quickly (2s).
             // If no progress, back off to 5s to avoid wasting HTTP calls.
@@ -897,7 +884,6 @@ int main(int argc, char** argv) {
             // On first round with zero progress, wait longer (8s) — consensus may still be running
             if (round == 1 && round_confirmed == 0) wait_ms = 8000;
             for (uint32_t w = 0; w < wait_ms / 100 && !global_stop; ++w) usleep(100000);
-            prev_confirmed = confirmed_count;
         }
 
         auto total_secs = std::chrono::duration_cast<std::chrono::seconds>(
