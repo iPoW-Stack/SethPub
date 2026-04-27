@@ -230,7 +230,7 @@ public:
 
     common::BftMemberPtr GetLeader() {
         auto leader = pool_tx_leader_.load();
-        if (leader && (leader->public_ip == 0 || leader->public_port == 0)) {
+        if (leader ) {
             auto dht_ptr = network::DhtManager::Instance()->GetDht(
                 common::GlobalInfo::Instance()->network_id());
             if (dht_ptr != nullptr) {
