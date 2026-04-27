@@ -728,7 +728,7 @@ int main(int argc, char** argv) {
                         global_chain_node_http_port - 10000, 
                         tx_msg_ptr->header) == 0) {
                     ++created_count;
-                    std::cout << "success send from: " << global_chain_node_ip << ":" << (global_chain_node_http_port - 10000) << ", from:" << common::Encode::HexEncode(funder_addr) << ", to:" << common::Encode::HexEncode(test_addrs[i]) << ", nonce: " << nonce << std::endl;
+                    // std::cout << "success send from: " << global_chain_node_ip << ":" << (global_chain_node_http_port - 10000) << ", from:" << common::Encode::HexEncode(funder_addr) << ", to:" << common::Encode::HexEncode(test_addrs[i]) << ", nonce: " << nonce << std::endl;
                 } else {
                     ++failed_count;
                     std::cout << "failed send from: " << common::Encode::HexEncode(funder_addr) << ", to:" << common::Encode::HexEncode(test_addrs[i]) << ", nonce: " << nonce << std::endl;
@@ -914,115 +914,139 @@ int main(int argc, char** argv) {
         std::cout << "\n[Phase 4] Starting stress test - random transfers..." << std::endl;
         std::cout << "  Press Ctrl+C to stop" << std::endl;
 
-        // Fetch leader routing table so we can send transactions directly
-        // to the leader responsible for each pool, avoiding relay hops.
-        std::unordered_map<uint32_t, SethSDK::LeaderInfo> leader_map;
-        uint32_t leader_count = 0;
-        bool has_leader_routing = sdk.fetchLeaders(leader_map, leader_count);
-        if (has_leader_routing) {
-            std::cout << "  Leader routing enabled: " << leader_count << " leaders" << std::endl;
-            // Show per-server distribution
-            std::unordered_map<std::string, std::vector<uint32_t>> server_pools;
-            for (auto& [mod, info] : leader_map) {
-                std::string key = info.ip + ":" + std::to_string(info.port);
-                server_pools[key].push_back(mod);
-            }
-            for (auto& [key, pools] : server_pools) {
-                std::cout << "    " << key << " -> " << pools.size() << " pools: [";
-                for (uint32_t i = 0; i < pools.size() && i < 10; ++i) {
-                    if (i > 0) std::cout << ",";
-                    std::cout << pools[i];
-                }
-                if (pools.size() > 10) std::cout << ",...";
-                std::cout << "]" << std::endl;
-            }
-        } else {
-            std::cout << "  Leader routing unavailable, using default node" << std::endl;
-        }
-
         // Pre-compute pool index for each test address
         std::vector<uint32_t> addr_pool_idx(kAccountCount);
         for (uint32_t i = 0; i < kAccountCount; ++i) {
             addr_pool_idx[i] = common::GetAddressPoolIndex(test_addrs[i]);
         }
 
+        // Per-account routing: dest_ip and dest_port, updated by leader sync thread
+        struct AccountRoute {
+            std::string ip;
+            uint16_t port;
+        };
+        std::vector<AccountRoute> account_route(kAccountCount);
+        std::mutex route_mutex;  // protects account_route updates
+
+        // Initialize all routes to default node
+        for (uint32_t i = 0; i < kAccountCount; ++i) {
+            account_route[i].ip = global_chain_node_ip;
+            account_route[i].port = global_chain_node_http_port - 10000;
+        }
+
         std::atomic<uint64_t> tx_count{0};
         std::atomic<uint64_t> tx_failed{0};
 
-        // Per-server statistics: keyed by "ip:port" (aggregates all pools on same server)
+        // Per-server statistics
         struct ServerStats {
             std::atomic<uint64_t> tx_sent{0};
             std::atomic<uint64_t> tx_failed{0};
             std::atomic<uint32_t> account_count{0};
             std::string ip;
             uint16_t port{0};
-            std::vector<uint32_t> pools;  // all pool indices routed to this server
+            std::vector<uint32_t> pools;
         };
         std::unordered_map<std::string, std::shared_ptr<ServerStats>> server_stats_map;
         std::mutex server_stats_mutex;
+        std::vector<std::shared_ptr<ServerStats>> account_server(kAccountCount);
 
-        // Build server stats from leader routing, grouping pools by ip:port
-        {
-            // Map each pool to its destination
-            std::unordered_map<std::string, std::shared_ptr<ServerStats>> tmp_map;
+        // Helper: rebuild routing and stats from a leader map
+        auto rebuild_routing = [&](const std::unordered_map<uint32_t, SethSDK::LeaderInfo>& leaders) {
+            // Build new server stats
+            std::unordered_map<std::string, std::shared_ptr<ServerStats>> new_stats;
             for (uint32_t pool_idx = 0; pool_idx < common::kImmutablePoolSize; ++pool_idx) {
                 std::string dest_ip = global_chain_node_ip;
                 uint16_t dest_port = global_chain_node_http_port - 10000;
-                if (has_leader_routing) {
-                    auto it = leader_map.find(pool_idx);
-                    if (it != leader_map.end()) {
-                        dest_ip = it->second.ip;
-                        dest_port = it->second.port;
-                    }
-                }
-                std::string key = dest_ip + ":" + std::to_string(dest_port);
-                if (tmp_map.find(key) == tmp_map.end()) {
-                    auto s = std::make_shared<ServerStats>();
-                    s->ip = dest_ip;
-                    s->port = dest_port;
-                    tmp_map[key] = s;
-                }
-                tmp_map[key]->pools.push_back(pool_idx);
-            }
-            server_stats_map = tmp_map;
-        }
-
-        // Pre-compute per-account server stats pointer
-        std::vector<std::shared_ptr<ServerStats>> account_server(kAccountCount);
-        for (uint32_t i = 0; i < kAccountCount; ++i) {
-            std::string dest_ip = global_chain_node_ip;
-            uint16_t dest_port = global_chain_node_http_port - 10000;
-            uint32_t pool_idx = addr_pool_idx[i];
-            if (has_leader_routing) {
-                auto it = leader_map.find(pool_idx);
-                if (it != leader_map.end()) {
+                auto it = leaders.find(pool_idx);
+                if (it != leaders.end()) {
                     dest_ip = it->second.ip;
                     dest_port = it->second.port;
                 }
+                std::string key = dest_ip + ":" + std::to_string(dest_port);
+                if (new_stats.find(key) == new_stats.end()) {
+                    auto s = std::make_shared<ServerStats>();
+                    s->ip = dest_ip;
+                    s->port = dest_port;
+                    new_stats[key] = s;
+                }
+                new_stats[key]->pools.push_back(pool_idx);
             }
-            std::string key = dest_ip + ":" + std::to_string(dest_port);
-            account_server[i] = server_stats_map[key];
-        }
-        // Count accounts per server
-        for (auto& [key, stats] : server_stats_map) {
-            uint32_t cnt = 0;
-            for (uint32_t i = 0; i < kAccountCount; ++i) {
-                if (account_server[i].get() == stats.get()) ++cnt;
+
+            // Update per-account routing and stats pointer
+            {
+                std::lock_guard<std::mutex> lock(route_mutex);
+                for (uint32_t i = 0; i < kAccountCount; ++i) {
+                    std::string dest_ip = global_chain_node_ip;
+                    uint16_t dest_port = global_chain_node_http_port - 10000;
+                    auto it = leaders.find(addr_pool_idx[i]);
+                    if (it != leaders.end()) {
+                        dest_ip = it->second.ip;
+                        dest_port = it->second.port;
+                    }
+                    account_route[i].ip = dest_ip;
+                    account_route[i].port = dest_port;
+                    std::string key = dest_ip + ":" + std::to_string(dest_port);
+                    account_server[i] = new_stats[key];
+                }
             }
-            stats->account_count.store(cnt);
+
+            // Count accounts per server
+            for (auto& [key, stats] : new_stats) {
+                uint32_t cnt = 0;
+                for (uint32_t i = 0; i < kAccountCount; ++i) {
+                    if (account_server[i].get() == stats.get()) ++cnt;
+                }
+                stats->account_count.store(cnt);
+            }
+
+            {
+                std::lock_guard<std::mutex> lock(server_stats_mutex);
+                server_stats_map = new_stats;
+            }
+            return new_stats;
+        };
+
+        // Initial leader fetch with retry (up to 30s)
+        {
+            std::unordered_map<uint32_t, SethSDK::LeaderInfo> leader_map;
+            uint32_t leader_count = 0;
+            std::cout << "  Fetching leader routing..." << std::endl;
+            for (int retry = 0; retry < 10 && !global_stop; ++retry) {
+                if (sdk.fetchLeaders(leader_map, leader_count) && !leader_map.empty()) {
+                    auto new_stats = rebuild_routing(leader_map);
+                    std::cout << "  Leader routing enabled: " << leader_count << " leaders, "
+                              << new_stats.size() << " servers" << std::endl;
+                    for (auto& [key, stats] : new_stats) {
+                        std::cout << "    " << key << " accounts=" << stats->account_count.load()
+                                  << " pools(" << stats->pools.size() << ")=[";
+                        for (uint32_t j = 0; j < stats->pools.size() && j < 8; ++j) {
+                            if (j > 0) std::cout << ",";
+                            std::cout << stats->pools[j];
+                        }
+                        if (stats->pools.size() > 8) std::cout << ",...";
+                        std::cout << "]" << std::endl;
+                    }
+                    break;
+                }
+                std::cout << "  Leader routing unavailable, retry " << (retry + 1) << "/10 in 3s..." << std::endl;
+                for (int w = 0; w < 30 && !global_stop; ++w) usleep(100000);
+            }
         }
 
         // Print initial routing summary
-        std::cout << "  Routing summary:" << std::endl;
-        for (auto& [key, stats] : server_stats_map) {
-            std::cout << "    " << key << " accounts=" << stats->account_count.load()
-                      << " pools(" << stats->pools.size() << ")=[";
-            for (uint32_t i = 0; i < stats->pools.size() && i < 8; ++i) {
-                if (i > 0) std::cout << ",";
-                std::cout << stats->pools[i];
+        {
+            std::lock_guard<std::mutex> lock(server_stats_mutex);
+            std::cout << "  Routing summary:" << std::endl;
+            for (auto& [key, stats] : server_stats_map) {
+                std::cout << "    " << key << " accounts=" << stats->account_count.load()
+                          << " pools(" << stats->pools.size() << ")=[";
+                for (uint32_t i = 0; i < stats->pools.size() && i < 8; ++i) {
+                    if (i > 0) std::cout << ",";
+                    std::cout << stats->pools[i];
+                }
+                if (stats->pools.size() > 8) std::cout << ",...";
+                std::cout << "]" << std::endl;
             }
-            if (stats->pools.size() > 8) std::cout << ",...";
-            std::cout << "]" << std::endl;
         }
 
         auto stress_test_thread = [&](uint32_t thread_id, uint32_t start_idx, uint32_t end_idx) {
@@ -1068,25 +1092,19 @@ int main(int argc, char** argv) {
                     continue;
                 }
 
-                // Route to the leader responsible for the sender's pool
-                std::string dest_ip = global_chain_node_ip;
-                uint16_t dest_port = global_chain_node_http_port - 10000;
-                if (has_leader_routing) {
-                    uint32_t pool_idx = addr_pool_idx[from_idx];
-                    auto it = leader_map.find(pool_idx);
-                    if (it != leader_map.end()) {
-                        dest_ip = it->second.ip;
-                        dest_port = it->second.port;
-                    }
-                }
+                // Read current route for this account (updated by leader sync thread)
+                std::string dest_ip = account_route[from_idx].ip;
+                uint16_t dest_port = account_route[from_idx].port;
 
                 if (transport::TcpTransport::Instance()->Send(
                         dest_ip, dest_port, tx_msg_ptr->header) == 0) {
                     ++tx_count;
-                    ++(account_server[from_idx]->tx_sent);
+                    auto srv = account_server[from_idx];
+                    if (srv) ++(srv->tx_sent);
                 } else {
                     ++tx_failed;
-                    ++(account_server[from_idx]->tx_failed);
+                    auto srv = account_server[from_idx];
+                    if (srv) ++(srv->tx_failed);
                 }
 
                 usleep(tps_interval_us);  // Rate limiting: controlled by --tps parameter
@@ -1139,9 +1157,8 @@ int main(int argc, char** argv) {
             }
         });
 
-        // Nonce update thread (batch mode, also refreshes leader routing periodically)
+        // Nonce update thread (batch mode only, leader sync is separate)
         std::thread nonce_update_thread([&]() {
-            uint32_t refresh_counter = 0;
             uint32_t full_update_counter = 0;
             const uint32_t kNonceBatchSize = 500;
             while (!global_stop) {
@@ -1216,70 +1233,29 @@ int main(int argc, char** argv) {
                 
                 std::cout << "  Nonce batch update done: " << updated << "/" << addrs_to_query.size()
                           << " refreshed, " << throttled << " throttled" << std::endl;
+            }
+        });
 
-                // Refresh leader routing every ~15 seconds (3 iterations × 5s)
-                if (++refresh_counter % 3 == 0) {
-                    std::unordered_map<uint32_t, SethSDK::LeaderInfo> new_leaders;
-                    uint32_t new_count = 0;
-                    if (sdk.fetchLeaders(new_leaders, new_count) && !new_leaders.empty()) {
-                        leader_map = new_leaders;
-                        leader_count = new_count;
-                        has_leader_routing = true;
+        // Leader sync thread: polls every 3 seconds, updates routing in real-time
+        std::thread leader_sync_thread([&]() {
+            while (!global_stop) {
+                // Sleep 3 seconds in 100ms chunks
+                for (int i = 0; i < 30 && !global_stop; ++i) {
+                    usleep(100000);
+                }
+                if (global_stop) break;
 
-                        // Rebuild server stats and account routing
-                        std::unordered_map<std::string, std::shared_ptr<ServerStats>> new_stats_map;
-                        for (uint32_t pool_idx = 0; pool_idx < common::kImmutablePoolSize; ++pool_idx) {
-                            std::string dest_ip = global_chain_node_ip;
-                            uint16_t dest_port = global_chain_node_http_port - 10000;
-                            auto it = new_leaders.find(pool_idx);
-                            if (it != new_leaders.end()) {
-                                dest_ip = it->second.ip;
-                                dest_port = it->second.port;
-                            }
-                            std::string key = dest_ip + ":" + std::to_string(dest_port);
-                            if (new_stats_map.find(key) == new_stats_map.end()) {
-                                auto s = std::make_shared<ServerStats>();
-                                s->ip = dest_ip;
-                                s->port = dest_port;
-                                new_stats_map[key] = s;
-                            }
-                            new_stats_map[key]->pools.push_back(pool_idx);
-                        }
-
-                        // Re-map accounts to new servers
-                        for (uint32_t i = 0; i < kAccountCount; ++i) {
-                            std::string dest_ip = global_chain_node_ip;
-                            uint16_t dest_port = global_chain_node_http_port - 10000;
-                            auto it = new_leaders.find(addr_pool_idx[i]);
-                            if (it != new_leaders.end()) {
-                                dest_ip = it->second.ip;
-                                dest_port = it->second.port;
-                            }
-                            std::string key = dest_ip + ":" + std::to_string(dest_port);
-                            account_server[i] = new_stats_map[key];
-                        }
-
-                        // Count accounts per server
-                        for (auto& [key, stats] : new_stats_map) {
-                            uint32_t cnt = 0;
-                            for (uint32_t i = 0; i < kAccountCount; ++i) {
-                                if (account_server[i].get() == stats.get()) ++cnt;
-                            }
-                            stats->account_count.store(cnt);
-                        }
-
-                        {
-                            std::lock_guard<std::mutex> lock(server_stats_mutex);
-                            server_stats_map = new_stats_map;
-                        }
-
-                        std::cout << "  Leader routing refreshed: " << new_count << " leaders, "
-                                  << new_stats_map.size() << " servers" << std::endl;
-                        for (auto& [key, stats] : new_stats_map) {
-                            std::cout << "    " << key << " accounts=" << stats->account_count.load()
-                                      << " pools=" << stats->pools.size() << std::endl;
-                        }
+                std::unordered_map<uint32_t, SethSDK::LeaderInfo> new_leaders;
+                uint32_t new_count = 0;
+                if (sdk.fetchLeaders(new_leaders, new_count) && !new_leaders.empty()) {
+                    auto new_stats = rebuild_routing(new_leaders);
+                    std::cout << "  [LeaderSync] " << new_count << " leaders, "
+                              << new_stats.size() << " servers:";
+                    for (auto& [key, stats] : new_stats) {
+                        std::cout << " " << key << "(" << stats->account_count.load() << "accs,"
+                                  << stats->pools.size() << "pools)";
                     }
+                    std::cout << std::endl;
                 }
             }
         });
@@ -1289,6 +1265,7 @@ int main(int argc, char** argv) {
         }
         tps_thread.join();
         nonce_update_thread.join();
+        leader_sync_thread.join();
 
         transport::TcpTransport::Instance()->Stop();
         std::cout << "\n=== Stress Test Complete ===" << std::endl;
