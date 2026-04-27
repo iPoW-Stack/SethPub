@@ -1014,12 +1014,16 @@ static void QueryLeaders(const UWSRequest& req, UWSResponse& http_res) {
             leader_info["ip"] = common::Uint32ToIp(leader->public_ip);
             leader_info["port"] = leader->public_port;
             leader_info["index"] = leader->index;
-            SETH_DEBUG
+            SETH_DEBUG("pool %u leader: %s:%u (index %d)", pool_idx, 
+                leader_info["ip"].get<std::string>().c_str(), 
+                leader_info["port"].get<uint16_t>(), 
+                leader_info["index"].get<int>());
         } else {
             // This node is the leader (or no leader known) — return self
             leader_info["ip"] = local_ip;
             leader_info["port"] = local_port;
             leader_info["index"] = -1;
+            SETH_DEBUG("pool %u leader: self %s:%u", pool_idx, local_ip.c_str(), local_port);
         }
         res_json["leaders"][std::to_string(pool_idx)] = leader_info;
     }
