@@ -14,60 +14,53 @@ mkdir -p /root/seths/
 
 local_ip=`hostname -I | awk '{print $1}'`
 
-# ========== 网络模拟配置 ==========
-# 模拟公网: 1G带宽, 点对点50ms延迟(单向25ms), 10ms抖动, 1/10000丢包率
-# 例外: 192.168.26.141 不限速、不丢包
-EXEMPT_IP="192.168.26.141"
+# ========== 网络控制 ==========
+# 清除旧的网络配置
+echo "清除旧的网络配置..."
+for iface in $(ip link show | grep "^[0-9]" | awk '{print $2}' | sed 's/:$//' | grep -v "^lo$"); do
+    tc qdisc del dev $iface root 2>/dev/null || true
+    tc qdisc del dev $iface ingress 2>/dev/null || true
+done
+tc qdisc del dev ifb0 root 2>/dev/null || true
 
-setup_network_simulation() {
-    # 设定网卡名称，通常为 eth0 或 ens33，请根据 ifconfig 结果修改
-    INTERFACE="eth0"
+echo "✓ 旧配置已清除"
 
-    # 1. 清除旧的配置
-    sudo tc qdisc del dev $INTERFACE root 2>/dev/null
-
-    # 2. 使用 prio qdisc 作为根，3 个频段（默认）
-    #    band 1 (prio 0): 白名单流量 — 无限制
-    #    band 2 (prio 1): 其余流量 — 限速 + 延迟 + 丢包
-    #    band 3 (prio 2): 未使用
-    sudo tc qdisc add dev $INTERFACE root handle 1: prio bands 3 \
-        priomap 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
-
-    # 3. band 1: 白名单流量直通，不做任何限制
-    sudo tc qdisc add dev $INTERFACE parent 1:1 handle 10: pfifo
-
-    # 4. band 2: 限速 1Gbps + 延迟 25ms + 抖动 5ms + 丢包 0.005%
-    sudo tc qdisc add dev $INTERFACE parent 1:2 handle 20: tbf \
-        rate 1gbit burst 128kb latency 25ms
-    sudo tc qdisc add dev $INTERFACE parent 20:1 handle 30: netem \
-        delay 25ms 5ms 25% \
-        loss 0.005%
-
-    # 5. band 3: 默认 pfifo（未使用）
-    sudo tc qdisc add dev $INTERFACE parent 1:3 handle 40: pfifo
-
-    # 6. 将 EXEMPT_IP 的流量分到 band 1（白名单）
-    sudo tc filter add dev $INTERFACE parent 1:0 protocol ip prio 1 \
-        u32 match ip dst $EXEMPT_IP/32 flowid 1:1
-    sudo tc filter add dev $INTERFACE parent 1:0 protocol ip prio 1 \
-        u32 match ip src $EXEMPT_IP/32 flowid 1:1
-
-    echo "公网模拟环境已就绪:"
-    echo "带宽: 1Gbps | 延迟: 25ms | 抖动: 5ms (相关性25%) | 丢包率: 0.005%"
-    echo "例外: $EXEMPT_IP 不限速、不丢包"
-}
-
-# 获取主网络接口 (排除 lo)
-get_main_interface() {
-    ip route | grep default | awk '{print $5}' | head -1
-}
-
-# 如果指定了网络接口参数，则进行网络模拟配置
-# 使用方式: ./temp_cmd.sh <public_ip> <start_pos> <node_count> <bootstrap> <start_shard> <end_shard> <leader_init_tm> [network_interface]
-if [ ! -z "$8" ]; then
-    setup_network_simulation
+# 获取主网络接口
+MAIN_IFACE=$(ip route | grep default | awk '{print $5}' | head -1)
+if [ -z "$MAIN_IFACE" ]; then
+    echo "⚠️  无法检测网络接口，跳过网络模拟"
+else
+    echo "配置网络模拟..."
+    echo "  接口: $MAIN_IFACE"
+    echo "  带宽: 1Gbps"
+    echo "  点对点延迟: 50ms (单向 25ms)"
+    echo "  抖动: 10ms"
+    echo "  丢包率: 0.01% (1/10000)"
+    
+    # 加载必要的内核模块
+    modprobe sch_netem 2>/dev/null || true
+    modprobe ifb 2>/dev/null || true
+    
+    # 配置出站流量延迟 (单向 25ms)
+    tc qdisc add dev $MAIN_IFACE root handle 1: fq_codel 2>/dev/null
+    tc qdisc add dev $MAIN_IFACE parent 1: handle 10: netem \
+        delay 25ms 10ms \
+        loss 0.01% 2>/dev/null
+    
+    # 配置入站流量延迟 (通过 ifb0)
+    ip link set dev ifb0 down 2>/dev/null || true
+    ip link set dev ifb0 up 2>/dev/null || true
+    tc qdisc add dev $MAIN_IFACE ingress handle ffff: 2>/dev/null
+    tc filter add dev $MAIN_IFACE parent ffff: protocol ip u32 match u32 0 0 flowid 1:1 action mirred egress redirect dev ifb0 2>/dev/null
+    tc qdisc add dev ifb0 root handle 1: fq_codel 2>/dev/null
+    tc qdisc add dev ifb0 parent 1: handle 10: netem \
+        delay 25ms 10ms \
+        loss 0.01% 2>/dev/null
+    
+    echo "✓ 网络模拟配置完成"
 fi
-# ========== 网络模拟配置结束 ==========
+# ========== 网络控制结束 ==========
+
 deploy_nodes() {
     end_pos=$(($start_pos + $node_count - 1))
     for ((shard_id=$start_shard; shard_id<=$end_shard; shard_id++)); do
@@ -174,17 +167,3 @@ deploy_nodes() {
 killall -9 seth
 
 deploy_nodes
-
-# ========== 清除网络模拟配置 ==========
-# 如果需要清除网络模拟，可以运行:
-# tc qdisc del dev <interface> root
-# 或者在脚本中添加参数 "cleanup" 来自动清除
-if [ "$9" = "cleanup" ]; then
-    main_interface=$(get_main_interface)
-    if [ ! -z "$main_interface" ]; then
-        echo "清除网络模拟配置: $main_interface"
-        tc qdisc del dev "$main_interface" root 2>/dev/null || true
-        echo "✓ 网络模拟配置已清除"
-    fi
-fi
-# ========== 清除网络模拟配置结束 ==========

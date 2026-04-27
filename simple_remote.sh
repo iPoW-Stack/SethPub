@@ -222,14 +222,11 @@ check_cmd_finished() {
 
 
 clear_command() {
-    echo 'run_command start'
+    echo 'clear_command start'
     node_ips_array=(${node_ips//,/ })
     run_cmd_count=0
     start_pos=1
     for ip in "${node_ips_array[@]}"; do
-        # 清理延迟限制
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 22 "tc qdisc del dev eth0 root 2>/dev/null || true; tc qdisc del dev eth1 root 2>/dev/null || true; tc qdisc del dev ens0 root 2>/dev/null || true; tc qdisc del dev ens1 root 2>/dev/null || true" &
-        
         sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 22 "cd /root && rm -rf pkg*; killall -9 seth" &
         run_cmd_count=$((run_cmd_count + 1))
         if ((start_pos==1)); then
@@ -244,7 +241,7 @@ clear_command() {
     done
 
     check_cmd_finished
-    echo 'run_command over'
+    echo 'clear_command over'
 }
 
 scp_package() {
@@ -277,7 +274,7 @@ run_command() {
         fi
 
         leader_init_tm=$(date -u -d "+240 days" +%s)
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 22 "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count 0 2 $end_shard $leader_init_tm 'eth0' "  > /dev/null 2>&1 &
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 22 "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count 0 2 $end_shard $leader_init_tm"  > /dev/null 2>&1 &
         if ((start_pos==1)); then
             sleep 3
         fi
