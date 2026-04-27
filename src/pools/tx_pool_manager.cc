@@ -448,7 +448,7 @@ void TxPoolManager::SyncRootBlockWithMaxHeights(uint32_t pool_idx, uint64_t heig
     kv_sync_->AddSyncHeight(
         network::kRootCongressNetworkId,
         pool_idx,
-        height,
+        height + 1,  // not commited
         sync::kSyncHigh);
 }
 
