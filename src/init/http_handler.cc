@@ -1133,6 +1133,17 @@ static void BatchQueryAccounts(const UWSRequest& req, UWSResponse& http_res) {
     http_res.set_content(json_str, "application/json");
     SETH_DEBUG("batch_query_accounts: %u found, %u not_found",
         (uint32_t)accounts_json.size(), (uint32_t)not_found_json.size());
+    if (!not_found_json.empty()) {
+        std::string nf_list;
+        for (uint32_t i = 0; i < not_found_json.size() && i < 20; ++i) {
+            if (!nf_list.empty()) nf_list += ",";
+            nf_list += not_found_json[i].get<std::string>();
+        }
+        if (not_found_json.size() > 20) {
+            nf_list += ",... +" + std::to_string(not_found_json.size() - 20) + " more";
+        }
+        SETH_DEBUG("batch_query not_found addrs: [%s]", nf_list.c_str());
+    }
 }
 
 static void AccountsValid(const UWSRequest& req, UWSResponse& http_res) {

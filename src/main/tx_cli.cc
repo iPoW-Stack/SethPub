@@ -728,7 +728,7 @@ int main(int argc, char** argv) {
                         global_chain_node_http_port - 10000, 
                         tx_msg_ptr->header) == 0) {
                     ++created_count;
-                    // std::cout << "success send from: " << global_chain_node_ip << ":" << (global_chain_node_http_port - 10000) << ", from:" << common::Encode::HexEncode(funder_addr) << ", to:" << common::Encode::HexEncode(test_addrs[i]) << ", nonce: " << nonce << std::endl;
+                    std::cout << "success send from: " << global_chain_node_ip << ":" << (global_chain_node_http_port - 10000) << ", from:" << common::Encode::HexEncode(funder_addr) << ", to:" << common::Encode::HexEncode(test_addrs[i]) << ", nonce: " << nonce << std::endl;
                 } else {
                     ++failed_count;
                     std::cout << "failed send from: " << common::Encode::HexEncode(funder_addr) << ", to:" << common::Encode::HexEncode(test_addrs[i]) << ", nonce: " << nonce << std::endl;
@@ -1006,30 +1006,30 @@ int main(int argc, char** argv) {
             return new_stats;
         };
 
-        // Initial leader fetch with retry (up to 30s)
+        // Try to fetch leader routing once; if unavailable, start with default node.
+        // The leader sync thread (every 3s) will pick up leaders as they become available.
         {
             std::unordered_map<uint32_t, SethSDK::LeaderInfo> leader_map;
             uint32_t leader_count = 0;
-            std::cout << "  Fetching leader routing..." << std::endl;
-            for (int retry = 0; retry < 10 && !global_stop; ++retry) {
-                if (sdk.fetchLeaders(leader_map, leader_count) && !leader_map.empty()) {
-                    auto new_stats = rebuild_routing(leader_map);
-                    std::cout << "  Leader routing enabled: " << leader_count << " leaders, "
-                              << new_stats.size() << " servers" << std::endl;
-                    for (auto& [key, stats] : new_stats) {
-                        std::cout << "    " << key << " accounts=" << stats->account_count.load()
-                                  << " pools(" << stats->pools.size() << ")=[";
-                        for (uint32_t j = 0; j < stats->pools.size() && j < 8; ++j) {
-                            if (j > 0) std::cout << ",";
-                            std::cout << stats->pools[j];
-                        }
-                        if (stats->pools.size() > 8) std::cout << ",...";
-                        std::cout << "]" << std::endl;
+            if (sdk.fetchLeaders(leader_map, leader_count) && !leader_map.empty()) {
+                auto new_stats = rebuild_routing(leader_map);
+                std::cout << "  Leader routing enabled: " << leader_count << " leaders, "
+                          << new_stats.size() << " servers" << std::endl;
+                for (auto& [key, stats] : new_stats) {
+                    std::cout << "    " << key << " accounts=" << stats->account_count.load()
+                              << " pools(" << stats->pools.size() << ")=[";
+                    for (uint32_t j = 0; j < stats->pools.size() && j < 8; ++j) {
+                        if (j > 0) std::cout << ",";
+                        std::cout << stats->pools[j];
                     }
-                    break;
+                    if (stats->pools.size() > 8) std::cout << ",...";
+                    std::cout << "]" << std::endl;
                 }
-                std::cout << "  Leader routing unavailable, retry " << (retry + 1) << "/10 in 3s..." << std::endl;
-                for (int w = 0; w < 30 && !global_stop; ++w) usleep(100000);
+            } else {
+                std::cout << "  Leader routing not yet available, using default node: "
+                          << global_chain_node_ip << ":" << (global_chain_node_http_port - 10000)
+                          << std::endl;
+                std::cout << "  Leader sync thread will update routing every 3s" << std::endl;
             }
         }
 
