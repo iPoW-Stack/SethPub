@@ -1049,12 +1049,27 @@ int main(int argc, char** argv) {
             }
         }
 
-        auto stress_test_thread = [&](uint32_t thread_id, uint32_t start_idx, uint32_t end_idx) {
+        // Group accounts by pool index
+        std::unordered_map<uint32_t, std::vector<uint32_t>> pool_accounts;  // pool_idx -> [account indices]
+        for (uint32_t i = 0; i < kAccountCount; ++i) {
+            pool_accounts[addr_pool_idx[i]].push_back(i);
+        }
+
+        std::cout << "  Account distribution by pool:" << std::endl;
+        for (auto& [pool_idx, accs] : pool_accounts) {
+            std::cout << "    pool " << pool_idx << ": " << accs.size() << " accounts" << std::endl;
+        }
+
+        // Each thread handles one or more pools (no cross-pool mixing)
+        auto stress_test_thread = [&](uint32_t thread_id, std::vector<uint32_t> my_account_indices) {
+            if (my_account_indices.empty()) return;
+            uint32_t pos = 0;
             while (!global_stop) {
-                // Random from account (within this thread's range)
-                uint32_t from_idx = start_idx + (common::Random::RandomUint32() % (end_idx - start_idx));
-                
-                // Random to account (any account except from)
+                // Round-robin through this thread's accounts
+                uint32_t from_idx = my_account_indices[pos % my_account_indices.size()];
+                ++pos;
+
+                // Random to account (any account, cross-pool is fine for destination)
                 uint32_t to_idx;
                 do {
                     to_idx = common::Random::RandomUint32() % kAccountCount;
@@ -1111,12 +1126,35 @@ int main(int argc, char** argv) {
             }
         };
 
-        // Start stress test threads
+        // Start one thread per pool. If num_threads < pool count, merge
+        // multiple pools into one thread. If num_threads > pool count,
+        // cap at pool count (one thread per pool max).
         std::vector<std::thread> stress_threads;
-        for (uint32_t t = 0; t < num_threads; ++t) {
-            uint32_t start_idx = t * accounts_per_thread;
-            uint32_t end_idx = (t == num_threads - 1) ? kAccountCount : (start_idx + accounts_per_thread);
-            stress_threads.emplace_back(stress_test_thread, t, start_idx, end_idx);
+        std::vector<uint32_t> pool_list;
+        for (auto& [pool_idx, accs] : pool_accounts) {
+            pool_list.push_back(pool_idx);
+        }
+        std::sort(pool_list.begin(), pool_list.end());
+
+        uint32_t actual_threads = std::min(num_threads, (uint32_t)pool_list.size());
+        std::cout << "  Starting " << actual_threads << " stress threads for "
+                  << pool_list.size() << " pools" << std::endl;
+
+        // Distribute pools across threads evenly
+        for (uint32_t t = 0; t < actual_threads; ++t) {
+            std::vector<uint32_t> thread_accounts;
+            // Assign pools to this thread: pool indices t, t+actual_threads, t+2*actual_threads, ...
+            for (uint32_t p = t; p < pool_list.size(); p += actual_threads) {
+                auto& accs = pool_accounts[pool_list[p]];
+                thread_accounts.insert(thread_accounts.end(), accs.begin(), accs.end());
+            }
+            std::cout << "    thread " << t << ": " << thread_accounts.size() << " accounts, pools=[";
+            for (uint32_t p = t; p < pool_list.size(); p += actual_threads) {
+                if (p != t) std::cout << ",";
+                std::cout << pool_list[p];
+            }
+            std::cout << "]" << std::endl;
+            stress_threads.emplace_back(stress_test_thread, t, std::move(thread_accounts));
         }
 
         // TPS monitor with per-server breakdown
