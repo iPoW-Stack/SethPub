@@ -1137,12 +1137,15 @@ int main(int argc, char** argv) {
                           << ", Total: " << cur_count 
                           << ", Failed: " << tx_failed.load() << std::endl;
 
-                // Per-server breakdown
+                // Per-server breakdown — rebuild prev_server_tx on each tick
+                // because leader sync may create new ServerStats with tx_sent=0
                 std::lock_guard<std::mutex> lock(server_stats_mutex);
+                std::unordered_map<std::string, uint64_t> new_prev;
                 for (auto& [key, stats] : server_stats_map) {
                     uint64_t cur_tx = stats->tx_sent.load();
-                    uint64_t prev_tx = prev_server_tx[key];
-                    uint64_t delta = cur_tx - prev_tx;
+                    uint64_t prev_tx = prev_server_tx.count(key) ? prev_server_tx[key] : 0;
+                    // Guard against underflow: if stats were rebuilt, cur_tx < prev_tx
+                    uint64_t delta = (cur_tx >= prev_tx) ? (cur_tx - prev_tx) : cur_tx;
                     uint64_t server_tps = delta / 3;
                     std::cout << "  -> " << stats->ip << ":" << stats->port
                               << " pools=" << stats->pools.size()
@@ -1150,8 +1153,9 @@ int main(int argc, char** argv) {
                               << " tps=" << server_tps
                               << " sent=" << cur_tx
                               << " fail=" << stats->tx_failed.load() << std::endl;
-                    prev_server_tx[key] = cur_tx;
+                    new_prev[key] = cur_tx;
                 }
+                prev_server_tx = std::move(new_prev);
 
                 prev_count = cur_count;
             }

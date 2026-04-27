@@ -113,9 +113,17 @@ public:
         update_latest_view_tm_ = true;
         if (latest_qc_item_ptr_ == nullptr || latest_elect_height_ > latest_qc_item_ptr_->elect_height()) {
             last_stable_leader_member_index_ = GetEpochLeaderIndex();
-            SETH_DEBUG("pool: %u, new elect block, elect height: %lu, leader index: %u",
+            SETH_INFO("pool: %u, new elect block, elect height: %lu, last_stable_leader_member_index_: %u",
                 pool_idx_, latest_elect_height_, last_stable_leader_member_index_.load());
         }
+
+        View out_view = 0;
+        GetLeader(
+            last_stable_leader_member_index_, 
+            latest_qc_item_ptr_, 
+            &out_view,
+            0,
+            true);
     }
 
     void OnTimeBlock() {
@@ -235,7 +243,7 @@ private:
     void UpdateLatestQcItemPtr(std::shared_ptr<view_block::protobuf::QcItem> qc_ptr) {
         if (qc_ptr->elect_height() >= latest_elect_height_ && qc_ptr->leader_idx() != common::kInvalidUint32) {
             last_stable_leader_member_index_ = qc_ptr->leader_idx();
-            SETH_DEBUG("pool: %u, update latest qc item ptr, elect height: %lu, leader index: %u, "
+            SETH_INFO("pool: %u, update latest qc item ptr, elect height: %lu, last_stable_leader_member_index_: %u, "
                 "old last_vote_view_: %lu,  new last_vote_view_: %lu",
                 pool_idx_, qc_ptr->elect_height(), last_stable_leader_member_index_.load(),
                 last_vote_view_,
