@@ -233,6 +233,8 @@ void KeyValueSync::ConsensusTimerMessage() {
     }
 
     if (prev_sync_tm_ms_ + 15000lu < now_tm_ms3) {
+        SETH_INFO("SyncAllLatestBlocks triggered, prev_sync_tm_ms: %lu, now: %lu",
+            prev_sync_tm_ms_, now_tm_ms3);
         SyncAllLatestBlocks();
         prev_sync_tm_ms_ = now_tm_ms3;
     }
@@ -853,6 +855,12 @@ void KeyValueSync::HandlerVerifiedBlock(const std::map<uint32_t, std::map<uint32
 
 
 void KeyValueSync::SyncAllLatestBlocks() {
+    auto local_net_id = common::GlobalInfo::Instance()->network_id();
+    auto end_shard = common::GlobalInfo::Instance()->now_valid_end_shard();
+    SETH_INFO("SyncAllLatestBlocks enter: local_net=%u, end_shard=%u, "
+        "synced_res_map size=%lu, not_root_count=%u",
+        local_net_id, end_shard,
+        synced_res_map_.size(), not_root_synced_res_map_count_);
     std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>> res_map;
     std::map<uint32_t, sync::protobuf::SyncMessage> sync_dht_map;
     auto add_sync_item = [&](uint32_t network, uint32_t pool_index, uint64_t height, bool global) {
@@ -996,6 +1004,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
 
     HandlerVerifiedBlock(res_map);
     std::set<uint64_t> sended_neigbors;
+    uint32_t sent_count = 0;
     for (auto iter = sync_dht_map.begin(); iter != sync_dht_map.end(); ++iter) {
         uint64_t choose_node = SendSyncRequest(
             iter->first,
@@ -1003,8 +1012,12 @@ void KeyValueSync::SyncAllLatestBlocks() {
             sended_neigbors);
         if (choose_node != 0) {
             sended_neigbors.insert(choose_node);
+            ++sent_count;
         }
     }
+    SETH_INFO("SyncAllLatestBlocks done: sync_dht_map size=%lu, sent=%u, "
+        "res_map size=%lu",
+        sync_dht_map.size(), sent_count, res_map.size());
 }
 
 }  // namespace sync
