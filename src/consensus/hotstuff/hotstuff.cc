@@ -2327,14 +2327,6 @@ void Hotstuff::TryRecoverFromStuck(
         return;
     }
 
-    if (now_tm_ms < latest_propose_msg_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs) {
-        // SETH_WARN("pool: %u now_tm_ms < latest_propose_msg_tm_ms_ + "
-        //     "kLatestPoposeSendTxToLeaderPeriodMs: %lu, %lu",
-        //     pool_idx_, now_tm_ms, 
-        //     (latest_propose_msg_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs));
-        return;
-    }
-
     if (leader->index != local_idx) {
         SyncLocalTxToLeader(msg_ptr, leader, has_system_tx);
         if (latest_leader_propose_message_) {
@@ -2348,6 +2340,13 @@ void Hotstuff::TryRecoverFromStuck(
         return;
     }
 
+    if (now_tm_ms < latest_propose_msg_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs) {
+        // SETH_WARN("pool: %u now_tm_ms < latest_propose_msg_tm_ms_ + "
+        //     "kLatestPoposeSendTxToLeaderPeriodMs: %lu, %lu",
+        //     pool_idx_, now_tm_ms, 
+        //     (latest_propose_msg_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs));
+        return;
+    }
 
     SETH_DEBUG("pool index: %d, GetLeader return leader: %d, out_view: %lu, local_idx: %d",
         pool_idx_, leader ? leader->index : -1, out_view, local_idx);

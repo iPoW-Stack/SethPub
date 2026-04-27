@@ -450,6 +450,10 @@ void TxPool::GetTxSyncToLeader(
         }
 
         for (; nonce_iter != iter->second.end(); ++nonce_iter) {
+            if (!IsUserTransaction(tx_ptr->tx_info->step())) {
+                break;
+            }
+
             auto tx_ptr = nonce_iter->second;
 
             // Skip nonces the leader already has
@@ -523,11 +527,6 @@ void TxPool::GetTxSyncToLeader(
             valid_nonce = tx_ptr->tx_info->nonce();
             tx_ptr->synced_leaders_.Set(leader_idx);
             if (!IsUserTransaction(tx_ptr->tx_info->step())) {
-                SETH_DEBUG("pool: %d, tx_nonce invalid: %lu, step is not user tx: %d", 
-                    pool_index_,
-                    tx_ptr->tx_info->nonce(), 
-                    (int32_t)tx_ptr->tx_info->step());
-            } else {
                 // Per-address cap: at most kMaxTxPerAddr txs per address per sync round.
                 if (addr_tx_count >= kMaxTxPerAddr) {
                     SETH_DEBUG("trace tx pool: %d, addr tx cap reached addr: %s, count: %u",

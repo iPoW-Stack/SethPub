@@ -656,6 +656,8 @@ ex_uv_tcp_t* TcpTransport::GetConnection(const std::string& ip, uint16_t port) {
     std::string peer_spec = ip + ":" + std::to_string(port);
     auto iter = conn_map_.find(peer_spec);
     if (iter != conn_map_.end()) {
+        SETH_DEBUG("GetConnection called: %s:%d %p!",
+            ip.c_str(), port, static_cast<void*>(&iter->second->uv_tcp));
         return iter->second;
     }
 
@@ -682,6 +684,8 @@ void TcpTransport::FreeConnection(ex_uv_tcp_t* ex_uv_tcp) {
     std::string peer_spec = std::string(ex_uv_tcp->ip) + ":" + std::to_string(ex_uv_tcp->port);
     auto iter = conn_map_.find(peer_spec);
     if (iter != conn_map_.end()) {
+        SETH_DEBUG("FreeConnection called: %s:%d %p!",
+            ex_uv_tcp->ip, ex_uv_tcp->port, static_cast<void*>(&ex_uv_tcp->uv_tcp));
         ex_uv_tcp->timeout = common::TimeUtils::TimestampSeconds();
         invalid_conns_.push(ex_uv_tcp);
         conn_map_.erase(iter);
