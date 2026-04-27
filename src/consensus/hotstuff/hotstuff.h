@@ -239,10 +239,11 @@ public:
                     if ((*iter)->id == leader->id) {
                         leader->public_ip = common::IpToUint32((*iter)->public_ip.c_str());
                         leader->public_port = (*iter)->public_port;
-                        SETH_DEBUG("GetLeader set member %s ip port %s:%d",
+                        SETH_DEBUG("succes query GetLeader set member %s ip port %s:%d, pool: %d",
                             common::Encode::HexEncode((*iter)->id).c_str(),
                             (*iter)->public_ip.c_str(),
-                            (*iter)->public_port);
+                            (*iter)->public_port,
+                            pool_idx_);
                         break;
                     }
                 }

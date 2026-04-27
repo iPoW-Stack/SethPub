@@ -1049,7 +1049,7 @@ int main(int argc, char** argv) {
             stress_threads.emplace_back(stress_test_thread, t, std::move(thread_accounts));
         }
 
-        // TPS monitor: per-pool breakdown grouped by destination server
+        // TPS monitor: per-pool detail showing pool -> server mapping
         std::thread tps_thread([&]() {
             uint64_t prev_count = 0;
             std::vector<uint64_t> prev_pool_tx(common::kImmutablePoolSize, 0);
@@ -1063,9 +1063,15 @@ int main(int argc, char** argv) {
                           << ", Total: " << cur_count
                           << ", Failed: " << tx_failed.load() << std::endl;
 
-                // Group pools by their current leader destination
-                std::map<std::string, std::vector<uint32_t>> server_pools;
-                std::map<std::string, uint64_t> server_sent, server_tps_map, server_fail;
+                // Per-pool detail: pool -> server, tps, sent
+                struct ServerAgg {
+                    std::vector<uint32_t> pools;
+                    uint32_t accounts = 0;
+                    uint64_t tps = 0;
+                    uint64_t sent = 0;
+                    uint64_t fail = 0;
+                };
+                std::map<std::string, ServerAgg> server_agg;
                 {
                     std::lock_guard<std::mutex> lock(leader_mutex);
                     for (uint32_t p = 0; p < common::kImmutablePoolSize; ++p) {
@@ -1076,29 +1082,33 @@ int main(int argc, char** argv) {
                         } else {
                             key = global_chain_node_ip + ":" + std::to_string(global_chain_node_http_port - 10000);
                         }
-                        server_pools[key].push_back(p);
 
                         uint64_t cur_tx = pool_stats[p].tx_sent.load();
                         uint64_t prev_tx = prev_pool_tx[p];
                         uint64_t delta = (cur_tx >= prev_tx) ? (cur_tx - prev_tx) : cur_tx;
-                        server_sent[key] += cur_tx;
-                        server_tps_map[key] += delta / 3;
-                        server_fail[key] += pool_stats[p].tx_failed.load();
+
+                        auto& agg = server_agg[key];
+                        agg.pools.push_back(p);
+                        if (pool_accounts.count(p)) agg.accounts += pool_accounts[p].size();
+                        agg.tps += delta / 3;
+                        agg.sent += cur_tx;
+                        agg.fail += pool_stats[p].tx_failed.load();
                         prev_pool_tx[p] = cur_tx;
                     }
                 }
 
-                for (auto& [key, pools] : server_pools) {
-                    uint32_t accs = 0;
-                    for (auto p : pools) {
-                        if (pool_accounts.count(p)) accs += pool_accounts[p].size();
-                    }
+                for (auto& [key, agg] : server_agg) {
                     std::cout << "  -> " << key
-                              << " pools=" << pools.size()
-                              << " accounts=" << accs
-                              << " tps=" << server_tps_map[key]
-                              << " sent=" << server_sent[key]
-                              << " fail=" << server_fail[key] << std::endl;
+                              << " pools=[";
+                    for (uint32_t i = 0; i < agg.pools.size(); ++i) {
+                        if (i > 0) std::cout << ",";
+                        std::cout << agg.pools[i];
+                    }
+                    std::cout << "]"
+                              << " accounts=" << agg.accounts
+                              << " tps=" << agg.tps
+                              << " sent=" << agg.sent
+                              << " fail=" << agg.fail << std::endl;
                 }
 
                 prev_count = cur_count;
