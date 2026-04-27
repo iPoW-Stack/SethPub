@@ -861,6 +861,18 @@ void KeyValueSync::SyncAllLatestBlocks() {
         "synced_res_map size=%lu, not_root_count=%u",
         local_net_id, end_shard,
         synced_res_map_.size(), not_root_synced_res_map_count_);
+    // Dump synced_res_map_ contents for debugging
+    for (auto& [net, pool_map] : synced_res_map_) {
+        for (auto& [pool, height_map] : pool_map) {
+            if (!height_map.empty()) {
+                auto first_h = height_map.begin()->first;
+                auto last_h = height_map.rbegin()->first;
+                SETH_INFO("  synced_res_map[net=%u][pool=%u]: %lu entries, "
+                    "heights=[%lu..%lu]",
+                    net, pool, height_map.size(), first_h, last_h);
+            }
+        }
+    }
     std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>> res_map;
     std::map<uint32_t, sync::protobuf::SyncMessage> sync_dht_map;
     auto add_sync_item = [&](uint32_t network, uint32_t pool_index, uint64_t height, bool global) {
@@ -918,6 +930,9 @@ void KeyValueSync::SyncAllLatestBlocks() {
                 add_sync_item(network_id, i, latest_height + 1, false);
                 continue;
             }
+
+            SETH_INFO("  pool %u net %u: latest_height=%lu, synced entries=%lu",
+                i, network_id, latest_height, pool_iter->second.size());
 
             auto latest_height_iter = pool_iter->second.find(latest_height);
             if (latest_height_iter != pool_iter->second.end()) {
