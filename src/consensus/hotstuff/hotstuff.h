@@ -118,11 +118,12 @@ public:
         }
 
         View out_view = 0;
+        auto leader_block_tm = GetLeaderBlockTimestamp();
         GetLeader(
             last_stable_leader_member_index_, 
-            latest_qc_item_ptr_, 
+            *latest_qc_item_ptr_, 
             &out_view,
-            0,
+            leader_block_tm,
             true);
     }
 
