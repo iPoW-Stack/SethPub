@@ -1007,13 +1007,14 @@ static void QueryLeaders(const UWSRequest& req, UWSResponse& http_res) {
     res_json["network_id"] = network_id;
 
     for (uint32_t pool_idx = 0; pool_idx < common::kImmutablePoolSize; ++pool_idx) {
-        auto leader = hotstuff_mgr->is_other_leader(pool_idx);
+        auto leader = hotstuff_mgr->GetLeader(pool_idx);
         nlohmann::json leader_info;
         if (leader) {
             // Another node is the leader for this pool
             leader_info["ip"] = common::Uint32ToIp(leader->public_ip);
             leader_info["port"] = leader->public_port;
             leader_info["index"] = leader->index;
+            SETH_DEBUG
         } else {
             // This node is the leader (or no leader known) — return self
             leader_info["ip"] = local_ip;

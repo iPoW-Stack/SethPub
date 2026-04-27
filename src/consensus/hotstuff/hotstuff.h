@@ -225,6 +225,11 @@ public:
         return nullptr;
     }
 
+    common::BftMemberPtr GetLeader() {
+        auto leader = pool_tx_leader_.load();
+        return leader;
+    }
+
 private:
     void InitAddNewViewBlock(
         std::shared_ptr<ViewBlockChain> view_block_chain,

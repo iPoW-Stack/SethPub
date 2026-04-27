@@ -166,6 +166,10 @@ public:
         return pool_hotstuff_[pool_index]->is_other_leader();
     }
 
+    common::BftMemberPtr GetLeader(uint32_t pool_index) {
+        return pool_hotstuff_[pool_index]->GetLeader();
+    }
+
 private:
     void HandleMessage(const transport::MessagePtr& msg_ptr);
     void HandleTimerMessage(const transport::MessagePtr& msg_ptr);
