@@ -14,6 +14,9 @@
 #include <protos/transport.pb.h>
 #include <protos/view_block.pb.h>
 #include <security/security.h>
+#include "network/dht_manager.h"
+#include "common/global_info.h"
+#include "common/encode.h"
 
 namespace seth {
 
@@ -227,6 +230,24 @@ public:
 
     common::BftMemberPtr GetLeader() {
         auto leader = pool_tx_leader_.load();
+        if (leader && (leader->public_ip == 0 || leader->public_port == 0)) {
+            auto dht_ptr = network::DhtManager::Instance()->GetDht(
+                common::GlobalInfo::Instance()->network_id());
+            if (dht_ptr != nullptr) {
+                auto nodes = dht_ptr->readonly_hash_sort_dht();
+                for (auto iter = nodes->begin(); iter != nodes->end(); ++iter) {
+                    if ((*iter)->id == leader->id) {
+                        leader->public_ip = common::IpToUint32((*iter)->public_ip.c_str());
+                        leader->public_port = (*iter)->public_port;
+                        SETH_DEBUG("GetLeader set member %s ip port %s:%d",
+                            common::Encode::HexEncode((*iter)->id).c_str(),
+                            (*iter)->public_ip.c_str(),
+                            (*iter)->public_port);
+                        break;
+                    }
+                }
+            }
+        }
         return leader;
     }
 
