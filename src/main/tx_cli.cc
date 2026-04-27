@@ -770,86 +770,100 @@ int main(int argc, char** argv) {
                   << " created, " << failed_count.load() << " failed" << std::endl;
 
         // Phase 3: Wait for accounts to be confirmed using batch query (up to 240s)
-        // Uses /batch_query_accounts to verify accounts in batches of 500,
-        // which is much faster than querying one-by-one.
-        std::cout << "\n[Phase 3] Waiting for accounts to be confirmed via batch query (up to 240s)..." << std::endl;
+        // Strategy:
+        //   1. Wait 10s upfront for consensus to process the creation txs.
+        //   2. Batch-query ALL pending addresses in one shot (500 per HTTP call).
+        //   3. Adaptive polling: if progress is being made, poll faster (2s);
+        //      if no progress, back off (5s). This avoids hammering the node
+        //      while accounts are still in the mempool.
+        std::cout << "\n[Phase 3] Waiting 10s for consensus before batch verification..." << std::endl;
+        for (int w = 0; w < 100 && !global_stop; ++w) usleep(100000);  // 10s in 100ms chunks
+
+        std::cout << "[Phase 3] Starting batch account verification (up to 240s)..." << std::endl;
         uint32_t accounts_per_thread = kAccountCount / num_threads;
         auto phase3_start = std::chrono::steady_clock::now();
         const auto kPhase3Timeout = std::chrono::seconds(240);
         uint32_t confirmed_count = 0;
         const uint32_t kBatchSize = 500;
 
-        // Collect all unconfirmed addresses into a pending set
-        std::set<uint32_t> pending_indices;
-        for (uint32_t i = 0; i < kAccountCount; ++i) {
-            pending_indices.insert(i);
-        }
+        // Track which accounts are still pending confirmation
+        std::vector<bool> is_confirmed(kAccountCount, false);
 
         uint32_t round = 0;
-        while (!pending_indices.empty() && !global_stop) {
+        uint32_t prev_confirmed = 0;
+        while (confirmed_count < kAccountCount && !global_stop) {
             auto elapsed = std::chrono::steady_clock::now() - phase3_start;
             if (elapsed >= kPhase3Timeout) {
                 auto secs = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
                 std::cout << "  Timeout reached (" << secs << "s). Confirmed " << confirmed_count
-                          << "/" << kAccountCount << " accounts so far." << std::endl;
+                          << "/" << kAccountCount << std::endl;
                 break;
             }
 
             ++round;
             auto round_start = std::chrono::steady_clock::now();
-
-            // Build batches from pending indices and query
-            std::vector<uint32_t> pending_vec(pending_indices.begin(), pending_indices.end());
             uint32_t round_confirmed = 0;
 
-            for (uint32_t offset = 0; offset < pending_vec.size() && !global_stop; offset += kBatchSize) {
-                uint32_t end = std::min(offset + kBatchSize, (uint32_t)pending_vec.size());
-                std::vector<std::string> batch_addrs;
-                batch_addrs.reserve(end - offset);
-                for (uint32_t j = offset; j < end; ++j) {
-                    batch_addrs.push_back(common::Encode::HexEncode(test_addrs[pending_vec[j]]));
-                }
+            // Batch-query all pending addresses
+            std::vector<std::string> batch_addrs;
+            std::vector<uint32_t> batch_indices;
+            batch_addrs.reserve(kBatchSize);
+            batch_indices.reserve(kBatchSize);
 
-                auto batch_res = sdk.batchQueryAccounts(batch_addrs);
-                if (batch_res.contains("status") && batch_res["status"] == 0 &&
-                    batch_res.contains("accounts")) {
-                    for (uint32_t j = offset; j < end; ++j) {
-                        uint32_t idx = pending_vec[j];
-                        std::string hex_addr = common::Encode::HexEncode(test_addrs[idx]);
-                        if (batch_res["accounts"].contains(hex_addr)) {
-                            auto& acc = batch_res["accounts"][hex_addr];
-                            int64_t nonce = 0;
-                            if (acc.contains("nonce")) {
-                                auto nonce_str = acc["nonce"].get<std::string>();
-                                std::from_chars(nonce_str.data(), nonce_str.data() + nonce_str.size(), nonce);
+            for (uint32_t i = 0; i < kAccountCount && !global_stop; ++i) {
+                if (is_confirmed[i]) continue;
+
+                batch_addrs.push_back(common::Encode::HexEncode(test_addrs[i]));
+                batch_indices.push_back(i);
+
+                // When batch is full or we've reached the last pending account, fire the query
+                if (batch_addrs.size() >= kBatchSize || i == kAccountCount - 1) {
+                    auto batch_res = sdk.batchQueryAccounts(batch_addrs);
+                    if (batch_res.contains("status") && batch_res["status"] == 0 &&
+                        batch_res.contains("accounts")) {
+                        for (uint32_t k = 0; k < batch_indices.size(); ++k) {
+                            uint32_t idx = batch_indices[k];
+                            const std::string& hex_addr = batch_addrs[k];
+                            if (batch_res["accounts"].contains(hex_addr)) {
+                                auto& acc = batch_res["accounts"][hex_addr];
+                                int64_t nonce = 0;
+                                if (acc.contains("nonce")) {
+                                    auto nonce_str = acc["nonce"].get<std::string>();
+                                    std::from_chars(nonce_str.data(),
+                                                    nonce_str.data() + nonce_str.size(), nonce);
+                                }
+                                src_prikey_with_nonce[test_addrs[idx]] = nonce;
+                                prikey_with_nonce[test_addrs[idx]] = nonce;
+                                is_confirmed[idx] = true;
+                                ++confirmed_count;
+                                ++round_confirmed;
                             }
-                            src_prikey_with_nonce[test_addrs[idx]] = nonce;
-                            prikey_with_nonce[test_addrs[idx]] = nonce;
-                            pending_indices.erase(idx);
-                            ++confirmed_count;
-                            ++round_confirmed;
                         }
                     }
-                } else {
-                    std::cout << "  Batch query failed for offset " << offset
-                              << ", will retry next round" << std::endl;
+                    batch_addrs.clear();
+                    batch_indices.clear();
                 }
             }
 
-            auto round_secs = std::chrono::duration_cast<std::chrono::milliseconds>(
+            auto round_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - round_start).count();
             auto total_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
                 std::chrono::steady_clock::now() - phase3_start).count();
+            uint32_t pending = kAccountCount - confirmed_count;
             std::cout << "  [Round " << round << ", " << total_elapsed << "s] +"
                       << round_confirmed << " confirmed, "
                       << confirmed_count << "/" << kAccountCount << " total, "
-                      << pending_indices.size() << " pending ("
-                      << round_secs << "ms)" << std::endl;
+                      << pending << " pending (" << round_ms << "ms)" << std::endl;
 
-            if (!pending_indices.empty() && !global_stop) {
-                // Wait 3 seconds before next round
-                usleep(3000000);
-            }
+            if (confirmed_count >= kAccountCount) break;
+
+            // Adaptive wait: if we made progress this round, poll again quickly (2s).
+            // If no progress, back off to 5s to avoid wasting HTTP calls.
+            uint32_t wait_ms = (round_confirmed > 0) ? 2000 : 5000;
+            // On first round with zero progress, wait longer (8s) — consensus may still be running
+            if (round == 1 && round_confirmed == 0) wait_ms = 8000;
+            for (uint32_t w = 0; w < wait_ms / 100 && !global_stop; ++w) usleep(100000);
+            prev_confirmed = confirmed_count;
         }
 
         auto total_secs = std::chrono::duration_cast<std::chrono::seconds>(
@@ -860,10 +874,16 @@ int main(int argc, char** argv) {
         if (confirmed_count < kAccountCount) {
             uint32_t failed_total = kAccountCount - confirmed_count;
             std::cerr << "\nERROR: " << failed_total << " accounts failed to confirm:" << std::endl;
-            for (uint32_t i = 0; i < kAccountCount; ++i) {
-                if (prikey_with_nonce.count(test_addrs[i]) == 0) {
+            uint32_t print_limit = std::min(failed_total, 20u);
+            uint32_t printed = 0;
+            for (uint32_t i = 0; i < kAccountCount && printed < print_limit; ++i) {
+                if (!is_confirmed[i]) {
                     std::cerr << "  [" << i << "] " << common::Encode::HexEncode(test_addrs[i]) << std::endl;
+                    ++printed;
                 }
+            }
+            if (failed_total > print_limit) {
+                std::cerr << "  ... and " << (failed_total - print_limit) << " more" << std::endl;
             }
             std::cerr << "Aborting stress test." << std::endl;
             transport::TcpTransport::Instance()->Stop();
@@ -990,10 +1010,11 @@ int main(int argc, char** argv) {
             }
         });
 
-        // Nonce update thread (also refreshes leader routing periodically)
+        // Nonce update thread (batch mode, also refreshes leader routing periodically)
         std::thread nonce_update_thread([&]() {
             uint32_t refresh_counter = 0;
             uint32_t full_update_counter = 0;
+            const uint32_t kNonceBatchSize = 500;
             while (!global_stop) {
                 // Sleep 5 seconds in 100ms chunks to allow quick exit
                 for (int i = 0; i < 50 && !global_stop; ++i) {
@@ -1006,55 +1027,66 @@ int main(int argc, char** argv) {
                 bool do_full_update = (++full_update_counter % 6 == 0);
                 
                 if (do_full_update) {
-                    std::cout << "  [Full] Updating all nonces..." << std::endl;
+                    std::cout << "  [Full] Batch updating all nonces..." << std::endl;
                 } else {
-                    std::cout << "  [Quick] Updating throttled nonces..." << std::endl;
+                    std::cout << "  [Quick] Batch updating throttled nonces..." << std::endl;
                 }
                 
-                uint32_t updated = 0;
+                // Collect addresses that need nonce refresh
+                std::vector<std::string> addrs_to_query;
+                std::vector<uint32_t> indices_to_query;
                 uint32_t throttled = 0;
                 
                 for (uint32_t i = 0; i < kAccountCount && !global_stop; ++i) {
                     auto& addr = test_addrs[i];
-                    bool is_throttled = (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[addr]);
+                    bool is_throttled_flag = (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[addr]);
                     
-                    if (is_throttled) {
+                    if (is_throttled_flag) {
                         ++throttled;
                     }
                     
                     // Skip non-throttled accounts unless doing full update
-                    if (!is_throttled && !do_full_update) {
+                    if (!is_throttled_flag && !do_full_update) {
                         continue;
                     }
                     
-                    // Route nonce query to the leader of this account's pool
-                    std::string query_ip = global_chain_node_ip;
-                    uint16_t query_port = global_chain_node_http_port;
-                    if (has_leader_routing) {
-                        uint32_t pool_idx = addr_pool_idx[i];
-                        auto it = leader_map.find(pool_idx);
-                        if (it != leader_map.end()) {
-                            query_ip = it->second.ip;
-                            query_port = it->second.port + 10000;  // HTTP port = TCP port + 10000
-                        }
-                    }
-                    
-                    SethSDK query_sdk(query_ip, query_port);
-                    int64_t nonce = query_sdk.fetchNonce(common::Encode::HexEncode(addr));
-                    if (nonce >= 0) {
-                        src_prikey_with_nonce[addr] = nonce;
-                        ++updated;
-                    }
-                    
-                    // Check global_stop every 100 queries for faster exit
-                    if (i % 100 == 0 && global_stop) break;
-                    usleep(500);  // 0.5ms between queries
+                    addrs_to_query.push_back(common::Encode::HexEncode(addr));
+                    indices_to_query.push_back(i);
                 }
                 
                 if (global_stop) break;
                 
-                std::cout << "  Nonce update done: " << updated << " refreshed, " 
-                          << throttled << " throttled" << std::endl;
+                // Batch query all collected addresses
+                uint32_t updated = 0;
+                for (uint32_t offset = 0; offset < addrs_to_query.size() && !global_stop; offset += kNonceBatchSize) {
+                    uint32_t end = std::min(offset + kNonceBatchSize, (uint32_t)addrs_to_query.size());
+                    std::vector<std::string> batch(addrs_to_query.begin() + offset, addrs_to_query.begin() + end);
+                    
+                    auto batch_res = sdk.batchQueryAccounts(batch);
+                    if (batch_res.contains("status") && batch_res["status"] == 0 &&
+                        batch_res.contains("accounts")) {
+                        for (uint32_t k = offset; k < end; ++k) {
+                            const std::string& hex_addr = addrs_to_query[k];
+                            uint32_t idx = indices_to_query[k];
+                            if (batch_res["accounts"].contains(hex_addr)) {
+                                auto& acc = batch_res["accounts"][hex_addr];
+                                if (acc.contains("nonce")) {
+                                    int64_t nonce = 0;
+                                    auto nonce_str = acc["nonce"].get<std::string>();
+                                    std::from_chars(nonce_str.data(),
+                                                    nonce_str.data() + nonce_str.size(), nonce);
+                                    src_prikey_with_nonce[test_addrs[idx]] = nonce;
+                                    ++updated;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if (global_stop) break;
+                
+                std::cout << "  Nonce batch update done: " << updated << "/" << addrs_to_query.size()
+                          << " refreshed, " << throttled << " throttled" << std::endl;
 
                 // Refresh leader routing every ~15 seconds (3 iterations × 5s)
                 if (++refresh_counter % 3 == 0) {
