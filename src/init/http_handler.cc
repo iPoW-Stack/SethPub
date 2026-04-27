@@ -1004,6 +1004,10 @@ static void QueryLeaders(const UWSRequest& req, UWSResponse& http_res) {
     auto network_id = common::GlobalInfo::Instance()->network_id();
     std::string local_ip = common::GlobalInfo::Instance()->config_public_ip();
     uint16_t local_port = common::GlobalInfo::Instance()->config_public_port();
+    // Fallback: if config_public_port is 0, use config_local_port
+    if (local_port == 0) {
+        local_port = common::GlobalInfo::Instance()->config_local_port();
+    }
     res_json["network_id"] = network_id;
 
     for (uint32_t pool_idx = 0; pool_idx < common::kImmutablePoolSize; ++pool_idx) {
@@ -1123,6 +1127,7 @@ static void BatchQueryAccounts(const UWSRequest& req, UWSResponse& http_res) {
         nlohmann::json acc;
         acc["nonce"] = std::to_string(addr_info->nonce());
         acc["balance"] = std::to_string(addr_info->balance());
+        acc["pool_index"] = common::GetAddressPoolIndex(addr);
         accounts_json[hex_addr] = acc;
     }
 
