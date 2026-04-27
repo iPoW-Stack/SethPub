@@ -276,37 +276,7 @@ run_command() {
             start_nodes_count=$FIRST_NODE_COUNT
         fi
 
-        leader_init_tm=$(date -u -d "+240 seconds" +%s)
-        
-        # 应用双向网络延迟配置 (点对点50ms延迟 = 单向25ms)
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 22 "
-# 清除旧配置
-for iface in \$(ip link show | grep '^[0-9]' | awk '{print \$2}' | sed 's/:$//' | grep -v '^lo$'); do
-    tc qdisc del dev \$iface root 2>/dev/null || true
-    tc qdisc del dev \$iface ingress 2>/dev/null || true
-done
-
-# 获取所有活跃接口并应用双向延迟
-for iface in \$(ip link show | grep '^[0-9]' | awk '{print \$2}' | sed 's/:$//' | grep -v '^lo$'); do
-    if ip link show \$iface | grep -q 'UP'; then
-        # 出站流量延迟
-        tc qdisc add dev \$iface root handle 1: fq_codel
-        tc qdisc add dev \$iface parent 1: handle 10: netem delay 25ms 10ms loss 0.01%
-        
-        # 入站流量延迟 (通过 ifb)
-        modprobe ifb 2>/dev/null || true
-        ip link set dev ifb0 down 2>/dev/null || true
-        ip link set dev ifb0 up 2>/dev/null || true
-        tc qdisc add dev \$iface ingress handle ffff:
-        tc filter add dev \$iface parent ffff: protocol ip u32 match u32 0 0 flowid 1:1 action mirred egress redirect dev ifb0
-        tc qdisc add dev ifb0 root handle 1: fq_codel
-        tc qdisc add dev ifb0 parent 1: handle 10: netem delay 25ms 10ms loss 0.01%
-    fi
-done
-" > /dev/null 2>&1 &
-        
-        sleep 2
-        
+        leader_init_tm=$(date -u -d "+240 days" +%s)
         sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 22 "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count 0 2 $end_shard $leader_init_tm 'eth0' "  > /dev/null 2>&1 &
         if ((start_pos==1)); then
             sleep 3
