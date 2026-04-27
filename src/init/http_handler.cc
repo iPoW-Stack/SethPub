@@ -1065,6 +1065,76 @@ static void QueryAccount(const UWSRequest& req, UWSResponse& http_res) {
     SETH_DEBUG("%s", json_str.c_str());
 }
 
+// Batch query multiple accounts at once.
+// Input:  POST param "addresses" — comma-separated hex addresses (max 500).
+// Output: JSON { "status":0, "accounts": { "<addr>": { "nonce":"...", "balance":"..." }, ... }, "not_found": ["addr1",...] }
+static void BatchQueryAccounts(const UWSRequest& req, UWSResponse& http_res) {
+    auto tmp_addrs = req.get_param_value("addresses");
+    if (tmp_addrs.empty()) {
+        nlohmann::json err;
+        err["status"] = 1;
+        err["msg"] = "param addresses is empty";
+        http_res.set_content(err.dump(), "application/json");
+        return;
+    }
+
+    auto addrs_splits = common::Split<2048>(tmp_addrs.c_str(), ',');
+    if (addrs_splits.Count() == 0) {
+        nlohmann::json err;
+        err["status"] = 1;
+        err["msg"] = "no valid addresses";
+        http_res.set_content(err.dump(), "application/json");
+        return;
+    }
+
+    if (addrs_splits.Count() > 500) {
+        nlohmann::json err;
+        err["status"] = 1;
+        err["msg"] = "too many addresses, max 500";
+        http_res.set_content(err.dump(), "application/json");
+        return;
+    }
+
+    nlohmann::json res_json;
+    res_json["status"] = 0;
+    res_json["msg"] = "ok";
+    nlohmann::json accounts_json = nlohmann::json::object();
+    nlohmann::json not_found_json = nlohmann::json::array();
+
+    for (uint32_t i = 0; i < addrs_splits.Count(); ++i) {
+        std::string hex_addr(addrs_splits[i]);
+        if (hex_addr.empty()) continue;
+
+        std::string addr = common::Encode::HexDecode(hex_addr);
+        if (addr.length() < 20) {
+            not_found_json.push_back(hex_addr);
+            continue;
+        }
+
+        auto addr_info = prefix_db->GetAddressInfo(addr);
+        if (addr_info == nullptr) {
+            addr_info = http_handler->acc_mgr()->GetAccountInfo(addr);
+        }
+
+        if (addr_info == nullptr) {
+            not_found_json.push_back(hex_addr);
+            continue;
+        }
+
+        nlohmann::json acc;
+        acc["nonce"] = std::to_string(addr_info->nonce());
+        acc["balance"] = std::to_string(addr_info->balance());
+        accounts_json[hex_addr] = acc;
+    }
+
+    res_json["accounts"] = accounts_json;
+    res_json["not_found"] = not_found_json;
+    auto json_str = res_json.dump();
+    http_res.set_content(json_str, "application/json");
+    SETH_DEBUG("batch_query_accounts: %u found, %u not_found",
+        (uint32_t)accounts_json.size(), (uint32_t)not_found_json.size());
+}
+
 static void AccountsValid(const UWSRequest& req, UWSResponse& http_res) {
     SETH_DEBUG("query account.");
     auto balance = req.get_param_value("balance");
@@ -2684,6 +2754,7 @@ void HttpHandler::Run() {
     ).post("/query_contract", safeHandler(QueryContract, "/query_contract")
     ).post("/abi_query_contract", safeHandler(AbiQueryContract, "/abi_query_contract")
     ).post("/query_account", safeHandler(QueryAccount, "/query_account")
+    ).post("/batch_query_accounts", safeHandler(BatchQueryAccounts, "/batch_query_accounts")
     ).post("/query_leaders", safeHandler(QueryLeaders, "/query_leaders")
     ).post("/query_init", safeHandler(QueryInit, "/query_init")
     ).post("/get_proxy_reenc_info", safeHandler(GetProxyReencInfo, "/get_proxy_reenc_info")

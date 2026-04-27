@@ -429,6 +429,64 @@ public:
         return client.fetchNonce(address); 
     }
 
+    // Batch query multiple accounts at once.
+    // Input:  vector of hex-encoded addresses.
+    // Output: JSON with "accounts" (found) and "not_found" (missing).
+    // Returns: { "status":0, "accounts": { addr: {nonce, balance} }, "not_found": [...] }
+    json batchQueryAccounts(const std::vector<std::string>& addresses) {
+        if (addresses.empty()) {
+            return {{"status", 1}, {"msg", "empty addresses"}};
+        }
+
+        // Build comma-separated address list, split into batches of 500
+        const size_t kBatchSize = 500;
+        json merged;
+        merged["status"] = 0;
+        merged["msg"] = "ok";
+        merged["accounts"] = json::object();
+        merged["not_found"] = json::array();
+
+        for (size_t offset = 0; offset < addresses.size(); offset += kBatchSize) {
+            size_t end = std::min(offset + kBatchSize, addresses.size());
+            std::string addr_list;
+            for (size_t i = offset; i < end; ++i) {
+                if (!addr_list.empty()) addr_list += ",";
+                addr_list += addresses[i];
+            }
+
+            httplib::SSLClient cli(client.node_host_, client.node_port_);
+            cli.enable_server_certificate_verification(false);
+            httplib::Params params;
+            params.emplace("addresses", addr_list);
+            auto res = cli.Post("/batch_query_accounts", params);
+            if (!res || res->status != 200) {
+                return {{"status", 1}, {"msg", "batch query request failed"}};
+            }
+
+            try {
+                json batch_res = json::parse(res->body);
+                if (!batch_res.contains("status") || batch_res["status"] != 0) {
+                    return {{"status", 1}, {"msg", batch_res.value("msg", "unknown error")}};
+                }
+
+                if (batch_res.contains("accounts")) {
+                    for (auto& [k, v] : batch_res["accounts"].items()) {
+                        merged["accounts"][k] = v;
+                    }
+                }
+                if (batch_res.contains("not_found")) {
+                    for (auto& addr : batch_res["not_found"]) {
+                        merged["not_found"].push_back(addr);
+                    }
+                }
+            } catch (std::exception& e) {
+                return {{"status", 1}, {"msg", std::string("parse error: ") + e.what()}};
+            }
+        }
+
+        return merged;
+    }
+
     // Fetch leader routing table: returns map of pool_index -> {ip, port}
     // Each pool has its own leader. Client sends tx directly to the leader
     // of the sender's pool: leaders[GetAddressPoolIndex(from_addr)]
