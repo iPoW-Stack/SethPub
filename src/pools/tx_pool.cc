@@ -329,6 +329,7 @@ void TxPool::GetTxSyncToLeader(
         pools::CheckAddrNonceValidFunction tx_valid_func,
         const std::unordered_map<std::string, uint64_t>& leader_nonce_map) {
     // CheckThreadIdValid();
+    return;
     TxItemPtr tx_ptr;
     while (added_txs_.pop(&tx_ptr)) {
         SETH_DEBUG("pool: %d, pop success add system tx nonce addr: %s, "
