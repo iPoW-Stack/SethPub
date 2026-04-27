@@ -17,44 +17,27 @@ local_ip=`hostname -I | awk '{print $1}'`
 # ========== 网络模拟配置 ==========
 # 模拟公网: 1G带宽, 点对点50ms延迟(单向25ms), 10ms抖动, 1/10000丢包率
 setup_network_simulation() {
-    local interface=$1
-    
-    if [ -z "$interface" ]; then
-        echo "警告: 未指定网络接口，跳过网络模拟配置"
-        return
-    fi
-    
-    echo "配置网络模拟: $interface"
-    echo "  - 带宽: 1Gbps"
-    echo "  - 点对点延迟: 50ms (单向 25ms)"
-    echo "  - 抖动: 10ms"
-    echo "  - 丢包率: 0.01% (1/10000)"
-    
-    # 检查是否已经配置过，如果已配置则先清除
-    if tc qdisc show dev "$interface" 2>/dev/null | grep -q "root"; then
-        echo "检测到已有网络配置，清除旧配置..."
-        tc qdisc del dev "$interface" root 2>/dev/null || true
-        sleep 1
-    fi
-    
-    # 使用 fq_codel + netem 方案（更稳定可靠）
-    # 添加根 qdisc (fq_codel - Fair Queuing with Controlled Delay)
-    tc qdisc add dev "$interface" root handle 1: fq_codel
-    
-    # 添加 netem qdisc 用于延迟、抖动和丢包
-    # 单向延迟 25ms，点对点往返延迟 50ms
-    tc qdisc add dev "$interface" parent 1: handle 10: netem \
-        delay 25ms 10ms \
-        loss 0.01%
-    
-    echo "✓ 网络模拟配置完成"
-    
-    # 显示配置
-    echo "当前 qdisc 配置:"
-    tc qdisc show dev "$interface"
-    echo ""
-    echo "详细配置信息:"
-    tc -s qdisc show dev "$interface"
+    #!/bin/bash
+
+    # 设定网卡名称，通常为 eth0 或 ens33，请根据 ifconfig 结果修改
+    INTERFACE="eth0"
+
+    # 1. 清除旧的配置
+    sudo tc qdisc del dev $INTERFACE root 2>/dev/null
+
+    # 2. 设置带宽限制 (1Gbit)
+    # 使用 tbf (Token Bucket Filter) 保证高带宽下的稳定性
+    sudo tc qdisc add dev $INTERFACE root handle 1: tbf \
+        rate 1gbit burst 128kb latency 25ms
+
+    # 3. 叠加网络模拟 (延迟 25ms, 抖动 5ms, 丢包率 0.01%)
+    # 0.01% 对应 1/10000 [cite: 414]
+    sudo tc qdisc add dev $INTERFACE parent 1:1 handle 10: netem \
+        delay 25ms 5ms 25% \
+        loss 0.005%
+
+    echo "公网模拟环境已就绪:"
+    echo "带宽: 1Gbps | 延迟: 25ms | 抖动: 5ms (相关性25%) | 丢包率: 0.01%"
 }
 
 # 获取主网络接口 (排除 lo)
@@ -65,18 +48,7 @@ get_main_interface() {
 # 如果指定了网络接口参数，则进行网络模拟配置
 # 使用方式: ./temp_cmd.sh <public_ip> <start_pos> <node_count> <bootstrap> <start_shard> <end_shard> <leader_init_tm> [network_interface]
 if [ ! -z "$8" ]; then
-    setup_network_simulation "$8"
-else
-    # 自动检测主网络接口
-    main_interface=$(get_main_interface)
-    if [ ! -z "$main_interface" ]; then
-        echo "自动检测到网络接口: $main_interface"
-        read -p "是否配置网络模拟? (y/n) " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            setup_network_simulation "$main_interface"
-        fi
-    fi
+    setup_network_simulation
 fi
 # ========== 网络模拟配置结束 ==========
 deploy_nodes() {

@@ -14,7 +14,7 @@ for ip in "${node_ips_array[@]}"; do
 done
 node_hash=$(printf "%d%d" "$nodes_count" "$each_nodes_count" | md5sum | cut -d ' ' -f1)
 
-bash cmd.sh $2 "pkill -9 seth;systemctl stop 'seth@*' 2>/dev/null; systemctl list-units --all 'seth@*' --no-legend | cut -d' ' -f1 | xargs -r -n1 sh -c 'systemctl stop \"\$0\"; systemctl disable \"\$0\"' 2>/dev/null; systemctl daemon-reload; systemctl reset-failed"
+bash cmd.sh $2 "sudo tc qdisc del dev eth0 root 2>/dev/null || true;pkill -9 seth;systemctl stop 'seth@*' 2>/dev/null; systemctl list-units --all 'seth@*' --no-legend | cut -d' ' -f1 | xargs -r -n1 sh -c 'systemctl stop \"\$0\"; systemctl disable \"\$0\"' 2>/dev/null; systemctl daemon-reload; systemctl reset-failed"
 init() {
     tmp_ips=(${node_ips//-/ })
     tmp_ips_len=(${#tmp_ips[*]})
