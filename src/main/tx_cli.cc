@@ -810,6 +810,9 @@ int main(int argc, char** argv) {
             batch_addrs.reserve(kBatchSize);
             batch_indices.reserve(kBatchSize);
 
+            // Collect addresses that failed batch query for individual retry
+            std::vector<uint32_t> retry_indices;
+
             for (uint32_t i = 0; i < kAccountCount && !global_stop; ++i) {
                 if (is_confirmed[i]) continue;
 
@@ -837,11 +840,42 @@ int main(int argc, char** argv) {
                                 is_confirmed[idx] = true;
                                 ++confirmed_count;
                                 ++round_confirmed;
+                            } else {
+                                // Not found in batch result, queue for individual retry
+                                retry_indices.push_back(idx);
                             }
+                        }
+                    } else {
+                        // Entire batch failed, queue all for individual retry
+                        for (uint32_t k = 0; k < batch_indices.size(); ++k) {
+                            retry_indices.push_back(batch_indices[k]);
                         }
                     }
                     batch_addrs.clear();
                     batch_indices.clear();
+                }
+            }
+
+            // Individual retry for accounts not found in batch query
+            // These may be on a different shard/node that the batch endpoint missed
+            if (!retry_indices.empty() && !global_stop) {
+                uint32_t retry_found = 0;
+                for (uint32_t idx : retry_indices) {
+                    if (global_stop) break;
+                    std::string hex_addr = common::Encode::HexEncode(test_addrs[idx]);
+                    int64_t nonce = sdk.fetchNonce(hex_addr);
+                    if (nonce >= 0) {
+                        src_prikey_with_nonce[test_addrs[idx]] = nonce;
+                        prikey_with_nonce[test_addrs[idx]] = nonce;
+                        is_confirmed[idx] = true;
+                        ++confirmed_count;
+                        ++round_confirmed;
+                        ++retry_found;
+                    }
+                }
+                if (retry_found > 0 || retry_indices.size() > 0) {
+                    std::cout << "    Retry: " << retry_found << "/" << retry_indices.size()
+                              << " recovered via individual query" << std::endl;
                 }
             }
 
