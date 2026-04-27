@@ -197,7 +197,7 @@ std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHeight(
     }
 
     auto latest_view_block = high_view_block_;
-    if (latest_view_block && latest_view_block->block_info()->height() == height) {
+    if (latest_view_block && latest_view_block->block_info().height() == height) {
         return latest_view_block;
     }
     
