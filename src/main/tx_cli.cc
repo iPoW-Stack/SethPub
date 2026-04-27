@@ -937,6 +937,57 @@ int main(int argc, char** argv) {
         std::atomic<uint64_t> tx_count{0};
         std::atomic<uint64_t> tx_failed{0};
 
+        // Per-server statistics: keyed by "ip:port"
+        // Each entry tracks tx count and the set of unique account indices that sent through it
+        struct ServerStats {
+            std::atomic<uint64_t> tx_sent{0};
+            std::atomic<uint64_t> tx_failed{0};
+            std::atomic<uint32_t> account_count{0};
+            std::string ip;
+            uint16_t port{0};
+            uint32_t pool_idx{0};
+        };
+        // Build server stats map from leader routing + default
+        std::unordered_map<std::string, std::shared_ptr<ServerStats>> server_stats_map;
+        std::mutex server_stats_mutex;
+
+        auto get_or_create_stats = [&](const std::string& ip, uint16_t port, uint32_t pool_idx) -> std::shared_ptr<ServerStats> {
+            std::string key = ip + ":" + std::to_string(port);
+            std::lock_guard<std::mutex> lock(server_stats_mutex);
+            auto it = server_stats_map.find(key);
+            if (it != server_stats_map.end()) return it->second;
+            auto s = std::make_shared<ServerStats>();
+            s->ip = ip;
+            s->port = port;
+            s->pool_idx = pool_idx;
+            server_stats_map[key] = s;
+            return s;
+        };
+
+        // Pre-compute per-account server stats pointer and count accounts per server
+        std::vector<std::shared_ptr<ServerStats>> account_server(kAccountCount);
+        for (uint32_t i = 0; i < kAccountCount; ++i) {
+            std::string dest_ip = global_chain_node_ip;
+            uint16_t dest_port = global_chain_node_http_port - 10000;
+            uint32_t pool_idx = addr_pool_idx[i];
+            if (has_leader_routing) {
+                auto it = leader_map.find(pool_idx);
+                if (it != leader_map.end()) {
+                    dest_ip = it->second.ip;
+                    dest_port = it->second.port;
+                }
+            }
+            account_server[i] = get_or_create_stats(dest_ip, dest_port, pool_idx);
+        }
+        // Count unique accounts per server
+        for (auto& [key, stats] : server_stats_map) {
+            uint32_t cnt = 0;
+            for (uint32_t i = 0; i < kAccountCount; ++i) {
+                if (account_server[i].get() == stats.get()) ++cnt;
+            }
+            stats->account_count.store(cnt);
+        }
+
         auto stress_test_thread = [&](uint32_t thread_id, uint32_t start_idx, uint32_t end_idx) {
             while (!global_stop) {
                 // Random from account (within this thread's range)
@@ -995,8 +1046,10 @@ int main(int argc, char** argv) {
                 if (transport::TcpTransport::Instance()->Send(
                         dest_ip, dest_port, tx_msg_ptr->header) == 0) {
                     ++tx_count;
+                    ++(account_server[from_idx]->tx_sent);
                 } else {
                     ++tx_failed;
+                    ++(account_server[from_idx]->tx_failed);
                 }
 
                 usleep(tps_interval_us);  // Rate limiting: controlled by --tps parameter
@@ -1011,9 +1064,11 @@ int main(int argc, char** argv) {
             stress_threads.emplace_back(stress_test_thread, t, start_idx, end_idx);
         }
 
-        // TPS monitor
+        // TPS monitor with per-server breakdown
         std::thread tps_thread([&]() {
             uint64_t prev_count = 0;
+            // Track previous tx_sent per server for delta calculation
+            std::unordered_map<std::string, uint64_t> prev_server_tx;
             while (!global_stop) {
                 // Sleep 3 seconds in 100ms chunks to allow quick exit
                 for (int i = 0; i < 30 && !global_stop; ++i) {
@@ -1023,9 +1078,26 @@ int main(int argc, char** argv) {
                 
                 uint64_t cur_count = tx_count.load();
                 uint64_t tps = (cur_count - prev_count) / 3;
-                std::cout << "[Stress Test] TPS: " << tps 
+                std::cout << "[Stress] TPS: " << tps 
                           << ", Total: " << cur_count 
                           << ", Failed: " << tx_failed.load() << std::endl;
+
+                // Per-server breakdown
+                std::lock_guard<std::mutex> lock(server_stats_mutex);
+                for (auto& [key, stats] : server_stats_map) {
+                    uint64_t cur_tx = stats->tx_sent.load();
+                    uint64_t prev_tx = prev_server_tx[key];
+                    uint64_t delta = cur_tx - prev_tx;
+                    uint64_t server_tps = delta / 3;
+                    std::cout << "  -> " << stats->ip << ":" << stats->port
+                              << " pool=" << stats->pool_idx
+                              << " accounts=" << stats->account_count.load()
+                              << " tps=" << server_tps
+                              << " sent=" << cur_tx
+                              << " fail=" << stats->tx_failed.load() << std::endl;
+                    prev_server_tx[key] = cur_tx;
+                }
+
                 prev_count = cur_count;
             }
         });
