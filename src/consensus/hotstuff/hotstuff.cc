@@ -2448,7 +2448,10 @@ void Hotstuff::TryRecoverFromStuck(
             // defer propose to accumulate more txs per block. This reduces consensus
             // overhead (BLS verify, broadcast) by packing more txs into each round.
             // Force propose after 15s timeout to prevent starvation.
-            if (pool_tx_count > 0 && pool_tx_count < kMinTxCountForImmediatePropose) {
+            // Pool 32 (global pool) is excluded — it handles system txs that must
+            // be proposed immediately (timeblock, elect, statistic, etc.).
+            if (pool_idx_ != common::kGlobalPoolIndex &&
+                    pool_tx_count > 0 && pool_tx_count < kMinTxCountForImmediatePropose) {
                 if (propose_defer_start_ms_ == 0) {
                     propose_defer_start_ms_ = now_tm_ms;
                 }
