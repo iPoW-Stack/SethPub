@@ -1284,7 +1284,7 @@ int ViewBlockChain::CheckTxNonceValid(
                         return 3;
                     }
 
-                    SETH_INFO("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
+                    SETH_DEBUG("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
                         common::Encode::HexEncode(addr).c_str(), 
                         nonce,
                         iter->second->nonce(),
@@ -1323,7 +1323,7 @@ int ViewBlockChain::CheckTxNonceValid(
             return 3;
         }
 
-        SETH_INFO("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
+        SETH_DEBUG("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
             common::Encode::HexEncode(addr).c_str(), 
             nonce,
             addr_info->nonce(),
@@ -1359,7 +1359,7 @@ void ViewBlockChain::RecoverHighViewBlock() {
             high_view_block_->qc().view() < view_block_ptr->qc().view()) {
         high_view_block_ = view_block_ptr;
         high_view_block_view_.store(high_view_block_->qc().view());
-        SETH_INFO("recovered high view block from db: %u_%u_%lu, height: %lu, hash: %s",
+        SETH_DEBUG("recovered high view block from db: %u_%u_%lu, height: %lu, hash: %s",
             high_view_block_->qc().network_id(),
             pool_index_,
             high_view_block_->qc().view(),

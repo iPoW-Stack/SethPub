@@ -166,7 +166,7 @@ int NetworkInit::Init(int argc, char** argv) {
     // random number
     vss_mgr_ = std::make_shared<vss::VssManager>();
     kv_sync_ = std::make_shared<sync::KeyValueSync>();
-    SETH_INFO("init 0 4");
+    SETH_DEBUG("init 0 4");
     InitLocalNetworkId();
     if (common::GlobalInfo::Instance()->network_id() == common::kInvalidUint32) {
         uint32_t config_net_id = 0;
@@ -181,29 +181,29 @@ int NetworkInit::Init(int argc, char** argv) {
         }
     }
 
-    SETH_INFO("id: %s, init sharding id: %u",
+    SETH_DEBUG("id: %s, init sharding id: %u",
         common::Encode::HexEncode(security_->GetAddress()).c_str(),
         common::GlobalInfo::Instance()->network_id());
-    SETH_INFO("init 0 5");
+    SETH_DEBUG("init 0 5");
     if (net_handler_.Init(db_, security_) != transport::kTransportSuccess) {
         return kInitError;
     }
 
-    SETH_INFO("init 0 6");
-    SETH_INFO("init 0 7");
+    SETH_DEBUG("init 0 6");
+    SETH_DEBUG("init 0 7");
     int transport_res = transport::TcpTransport::Instance()->Init(
         common::GlobalInfo::Instance()->config_local_ip() + ":" +
         std::to_string(common::GlobalInfo::Instance()->config_local_port()),
         128,
         true,
         &net_handler_);
-    SETH_INFO("init 0 8");
+    SETH_DEBUG("init 0 8");
     if (transport_res != transport::kTransportSuccess) {
         INIT_ERROR("int tcp transport failed!");
         return kInitError;
     }
 
-    SETH_INFO("init 0 9");
+    SETH_DEBUG("init 0 9");
     network::DhtManager::Instance();
     network::Route::Instance()->Init(security_);
     network::Route::Instance()->RegisterMessage(
@@ -214,7 +214,7 @@ int NetworkInit::Init(int argc, char** argv) {
         std::bind(&NetworkInit::HandleMessage, this, std::placeholders::_1));
     account_mgr_ = std::make_shared<block::AccountManager>();
     network::UniversalManager::Instance()->Init(security_, db_, account_mgr_);
-    SETH_INFO("init 0 10");
+    SETH_DEBUG("init 0 10");
     if (InitNetworkSingleton() != kInitSuccess) {
         INIT_ERROR("InitNetworkSingleton failed!");
         return kInitError;
@@ -311,7 +311,7 @@ int NetworkInit::Init(int argc, char** argv) {
     AddCmds();
     net_handler_.Start();
     transport::TcpTransport::Instance()->Start(false);
-    SETH_INFO("init 6");
+    SETH_DEBUG("init 6");
     if (InitHttpServer() != kInitSuccess) {
         INIT_ERROR("InitHttpServer failed!");
         return kInitError;
@@ -322,17 +322,17 @@ int NetworkInit::Init(int argc, char** argv) {
         // return kInitError;
     }
 
-    SETH_INFO("init 7");
+    SETH_DEBUG("init 7");
     if (InitCommand() != kInitSuccess) {
         INIT_ERROR("InitCommand failed!");
         return kInitError;
     }
 
-    SETH_INFO("init 8");
+    SETH_DEBUG("init 8");
     JoinInitNodes();
     inited_ = true;
     common::GlobalInfo::Instance()->set_main_inited_success();
-    SETH_INFO("init 9");
+    SETH_DEBUG("init 9");
     cmd_.AddCommand("gs", [this](const std::vector<std::string>& args) {
         if (args.size() < 3) {
             return;
@@ -411,7 +411,7 @@ int NetworkInit::InitWsServer() {
             [this](const std::string& tx_hash_hex, transport::MessageHandleStatus status) {
                 tx_ws_server_.OnTxStatusChange(tx_hash_hex, status);
             });
-        SETH_INFO("[TxWsServer] tx subscription websocket started on %s:%u", ws_ip.c_str(), ws_port);
+        SETH_DEBUG("[TxWsServer] tx subscription websocket started on %s:%u", ws_ip.c_str(), ws_port);
     }
 
     return kInitSuccess;
@@ -511,7 +511,7 @@ void NetworkInit::InitLocalNetworkId() {
         auto local_node_account_info = prefix_db_->GetAddressInfo(security_->GetAddress());
         if (local_node_account_info == nullptr) {
             if (!InitLocalNetworkIdWithLatestElectBlock()) {
-                SETH_INFO("failed get local account info id: %s",
+                SETH_DEBUG("failed get local account info id: %s",
                     common::Encode::HexEncode(security_->GetAddress()).c_str());
                 return;
             }
@@ -524,7 +524,7 @@ void NetworkInit::InitLocalNetworkId() {
         }
 
         prefix_db_->SaveJoinShard(got_sharding_id, des_sharding_id_);
-        SETH_INFO("success save local sharding %u, %u", got_sharding_id, des_sharding_id_);
+        SETH_DEBUG("success save local sharding %u, %u", got_sharding_id, des_sharding_id_);
     }
 
     for (uint32_t sharding_id = network::kRootCongressNetworkId;
@@ -538,11 +538,11 @@ void NetworkInit::InitLocalNetworkId() {
         auto& in = elect_block.in();
         for (int32_t member_idx = 0; member_idx < in.size(); ++member_idx) {
             auto id = security_->GetAddressWithPublicKey(in[member_idx].pubkey());
-            SETH_INFO("network: %d get member id: %s, local id: %s",
+            SETH_DEBUG("network: %d get member id: %s, local id: %s",
                 sharding_id, common::Encode::HexEncode(id).c_str(),
                 common::Encode::HexEncode(security_->GetAddress()).c_str()); // If the pubkey of this node is the same as the one recorded in the elect block, it will be assigned to the corresponding sharding
             if (id == security_->GetAddress()) {
-                SETH_INFO("should join network: %u", sharding_id);
+                SETH_DEBUG("should join network: %u", sharding_id);
                 des_sharding_id_ = sharding_id;
                 common::GlobalInfo::Instance()->set_network_id(sharding_id);
                 break;
@@ -556,7 +556,7 @@ void NetworkInit::InitLocalNetworkId() {
 
     auto waiting_network_id = got_sharding_id + network::kConsensusWaitingShardOffset;
     common::GlobalInfo::Instance()->set_network_id(waiting_network_id);
-    SETH_INFO("should join waiting network: %u", waiting_network_id);
+    SETH_DEBUG("should join waiting network: %u", waiting_network_id);
 }
 
 int NetworkInit::InitSecurity() {
@@ -595,7 +595,7 @@ int NetworkInit::InitSecurity() {
 }
 
 int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
-    SETH_INFO("Updating private key...");
+    SETH_DEBUG("Updating private key...");
     if (http_private_key_inited_) {
         SETH_ERROR("Private key already inited!");
         return kInitError;
@@ -639,18 +639,18 @@ int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
     
     if (!is_initial_setup) {
         std::string old_address = security_->GetAddress();
-        SETH_INFO("Private key update: old address: %s, new address: %s",
+        SETH_DEBUG("Private key update: old address: %s, new address: %s",
             common::Encode::HexEncode(old_address).c_str(),
             common::Encode::HexEncode(new_address).c_str());
     } else {
-        SETH_INFO("Initial private key setup: new address: %s",
+        SETH_DEBUG("Initial private key setup: new address: %s",
             common::Encode::HexEncode(new_address).c_str());
     }
     
     // // Update private key in configuration file (for persistence)
     // std::string prikey_hex = common::Encode::HexEncode(new_private_key);
     // if (conf_.Set("seth", "prikey", prikey_hex)) {
-    //     SETH_INFO("Configuration updated with new private key");
+    //     SETH_DEBUG("Configuration updated with new private key");
     // } else {
     //     SETH_ERROR("Failed to update configuration with new private key");
     //     return kInitError;
@@ -660,7 +660,7 @@ int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
     if (is_initial_setup) {
         // For initial setup, just notify the waiting thread
         // The security_ object will be properly initialized by InitSecurity() after wait returns
-        SETH_INFO("Private key received for initial setup");
+        SETH_DEBUG("Private key received for initial setup");
         
         // Notify waiting thread that private key has been received
         {
@@ -677,9 +677,9 @@ int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
     // These components will automatically use the updated security_ pointer
     // since they hold shared_ptr references to it.
     
-    SETH_INFO("Security object updated with new private key");
+    SETH_DEBUG("Security object updated with new private key");
     
-    SETH_INFO("Private key updated successfully! New address: %s",
+    SETH_DEBUG("Private key updated successfully! New address: %s",
         common::Encode::HexEncode(new_address).c_str());
     
     return kInitSuccess;
@@ -718,7 +718,7 @@ int NetworkInit::InitHttpServerForPrivateKeyWait() {
         http_port);
     
     std::this_thread::sleep_for(std::chrono::milliseconds{200});
-    SETH_INFO("HTTP server initialized for private key waiting on %s:%u", http_ip.c_str(), http_port);
+    SETH_DEBUG("HTTP server initialized for private key waiting on %s:%u", http_ip.c_str(), http_port);
     
     return kInitSuccess;
 }
@@ -764,18 +764,18 @@ int NetworkInit::InitHttpServer() {
         std::this_thread::sleep_for(std::chrono::milliseconds{200});
         // Note: HTTP client check removed as we migrated from httplib to uWebSockets
         // The server will be ready after the sleep delay
-        SETH_INFO("http init wait response coming.");
+        SETH_DEBUG("http init wait response coming.");
         {
             std::unique_lock<std::mutex> lock(wait_mutex_);
             wait_con_.notify_one();
         }
 
-        SETH_INFO("http init waiting response coming.");
+        SETH_DEBUG("http init waiting response coming.");
         {
             std::unique_lock<std::mutex> lock(wait_mutex_);
             wait_con_.wait_for(lock, std::chrono::milliseconds(10000));
         }
-        SETH_INFO("http init waiting response coming success.");
+        SETH_DEBUG("http init waiting response coming success.");
     }
 
     return kInitSuccess;
@@ -1560,7 +1560,7 @@ bool NetworkInit::DbNewBlockCallback(
 void NetworkInit::HandleTimeBlock(
         const std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block,
         const block::protobuf::BlockTx& tx) {
-    SETH_INFO("time block coming %u_%u_%lu, %u_%u_%lu, tm: %lu, vss: %lu",
+    SETH_DEBUG("time block coming %u_%u_%lu, %u_%u_%lu, tm: %lu, vss: %lu",
         view_block->qc().network_id(), 
         view_block->qc().pool_index(), 
         view_block->qc().view(), 
@@ -1576,7 +1576,7 @@ void NetworkInit::HandleTimeBlock(
         bls_mgr_->OnTimeBlock(block.timer_block().timestamp(), block.height(), vss_random);
         tm_block_mgr_->OnTimeBlock(block.timer_block().timestamp(), block.height(), vss_random);
         vss_mgr_->OnTimeBlock(view_block);
-        SETH_INFO("new time block called height: %lu, tm: %lu", block.height(), vss_random);
+        SETH_DEBUG("new time block called height: %lu, tm: %lu", block.height(), vss_random);
     }
 }
 
@@ -1775,7 +1775,7 @@ void NetworkInit::SendJoinElectTransaction() {
         // Send join_elect with stake_amount = 0 to participate using existing stake
         join_info.set_stake_op(bls::protobuf::STAKE_OP_NONE);
         join_info.set_stake_amount(0);
-        SETH_INFO("User already has stake: %lu coins, sending join_elect without additional stake",
+        SETH_DEBUG("User already has stake: %lu coins, sending join_elect without additional stake",
             existing_stake);
     } else if (stake_units > 0) {
         // User doesn't have stake, and config specifies stake amount
@@ -1796,7 +1796,7 @@ void NetworkInit::SendJoinElectTransaction() {
                 join_info.set_stake_elect_height(elect_block.elect_height());
             }
             
-            SETH_INFO("Sending initial stake transaction: %lu coins (%lu units) to root shard",
+            SETH_DEBUG("Sending initial stake transaction: %lu coins (%lu units) to root shard",
                 stake_amount, stake_units);
         } else {
             SETH_ERROR("Insufficient balance for staking: have %lu, need %lu",
@@ -1808,7 +1808,7 @@ void NetworkInit::SendJoinElectTransaction() {
         // Normal join_elect without staking
         join_info.set_stake_op(bls::protobuf::STAKE_OP_NONE);
         join_info.set_stake_amount(0);
-        SETH_INFO("Sending join_elect without stake");
+        SETH_DEBUG("Sending join_elect without stake");
     }
     
     // Check if user has already sent g2_req in a previous join_elect transaction
@@ -1824,7 +1824,7 @@ void NetworkInit::SendJoinElectTransaction() {
         previous_join_info.g2_req().verify_vec_size() == t) {
         // User has already sent g2_req in a previous transaction (confirmed in consensus block)
         // No need to send it again, leave join_info.g2_req empty
-        SETH_INFO("User has already sent g2_req in previous join_elect (found in consensus block), "
+        SETH_DEBUG("User has already sent g2_req in previous join_elect (found in consensus block), "
             "skipping g2_req in this transaction. verify_vec_size: %d",
             previous_join_info.g2_req().verify_vec_size());
     } else {
@@ -1838,7 +1838,7 @@ void NetworkInit::SendJoinElectTransaction() {
 #ifndef NDEBUG
         assert(req->verify_vec_size() >= t);
 #endif
-        SETH_INFO("First time sending join_elect or no valid g2_req in consensus block, "
+        SETH_DEBUG("First time sending join_elect or no valid g2_req in consensus block, "
             "including g2_req in transaction. verify_vec_size: %d", req->verify_vec_size());
     }
 
@@ -1924,7 +1924,7 @@ void NetworkInit::SendRedeemStakeTransaction() {
         previous_join_info.g2_req().verify_vec_size() == t) {
         // User has already sent g2_req in a previous transaction (confirmed in consensus block)
         // No need to send it again for redeem operation
-        SETH_INFO("Redeem: User has already sent g2_req in previous join_elect (found in consensus block), "
+        SETH_DEBUG("Redeem: User has already sent g2_req in previous join_elect (found in consensus block), "
             "skipping g2_req in redeem transaction. verify_vec_size: %d",
             previous_join_info.g2_req().verify_vec_size());
     } else {
@@ -1934,7 +1934,7 @@ void NetworkInit::SendRedeemStakeTransaction() {
         if (!res || req->verify_vec_size() != t) {
             CreateContribution(req);
         }
-        SETH_INFO("Redeem: Including g2_req in transaction. verify_vec_size: %d", req->verify_vec_size());
+        SETH_DEBUG("Redeem: Including g2_req in transaction. verify_vec_size: %d", req->verify_vec_size());
     }
     
     new_tx->set_value(SerializeDeterministic(join_info));
@@ -1949,7 +1949,7 @@ void NetworkInit::SendRedeemStakeTransaction() {
     new_tx->set_sign(sign);
     network::Route::Instance()->Send(msg_ptr);
     
-    SETH_INFO("Sent redeem stake transaction to root shard: addr=%s, nonce=%lu",
+    SETH_DEBUG("Sent redeem stake transaction to root shard: addr=%s, nonce=%lu",
         common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
         new_tx->nonce());
 }

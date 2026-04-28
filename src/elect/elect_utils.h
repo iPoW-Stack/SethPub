@@ -10,7 +10,7 @@
 #include "protos/elect.pb.h"
 
 #define ELECT_DEBUG(fmt, ...) SETH_DEBUG("[elect]" fmt, ## __VA_ARGS__)
-#define ELECT_INFO(fmt, ...) SETH_INFO("[elect]" fmt, ## __VA_ARGS__)
+#define ELECT_INFO(fmt, ...) SETH_DEBUG("[elect]" fmt, ## __VA_ARGS__)
 #define ELECT_WARN(fmt, ...) SETH_WARN("[elect]" fmt, ## __VA_ARGS__)
 #define ELECT_ERROR(fmt, ...) SETH_ERROR("[elect]" fmt, ## __VA_ARGS__)
 

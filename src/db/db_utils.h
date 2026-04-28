@@ -4,7 +4,7 @@
 #include "common/encode.h"
 
 #define DB_DEBUG(fmt, ...) SETH_DEBUG("[db]" fmt, ## __VA_ARGS__)
-#define DB_INFO(fmt, ...) SETH_INFO("[db]" fmt, ## __VA_ARGS__)
+#define DB_INFO(fmt, ...) SETH_DEBUG("[db]" fmt, ## __VA_ARGS__)
 #define DB_WARN(fmt, ...) SETH_WARN("[db]" fmt, ## __VA_ARGS__)
 #define DB_ERROR(fmt, ...) SETH_ERROR("[db]" fmt, ## __VA_ARGS__)
 

@@ -8,7 +8,7 @@
 #include "common/utils.h"
 
 #define CRYPTO_DEBUG(fmt, ...) SETH_DEBUG("[crypto]" fmt, ## __VA_ARGS__)
-#define CRYPTO_INFO(fmt, ...) SETH_INFO("[crypto]" fmt, ## __VA_ARGS__)
+#define CRYPTO_INFO(fmt, ...) SETH_DEBUG("[crypto]" fmt, ## __VA_ARGS__)
 #define CRYPTO_WARN(fmt, ...) SETH_WARN("[crypto]" fmt, ## __VA_ARGS__)
 #define CRYPTO_ERROR(fmt, ...) SETH_ERROR("[crypto]" fmt, ## __VA_ARGS__)
 

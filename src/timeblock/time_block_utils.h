@@ -5,7 +5,7 @@
 #include "common/encode.h"
 
 #define TMBLOCK_DEBUG(fmt, ...) SETH_DEBUG("[tmblock]" fmt, ## __VA_ARGS__)
-#define TMBLOCK_INFO(fmt, ...) SETH_INFO("[tmblock]" fmt, ## __VA_ARGS__)
+#define TMBLOCK_INFO(fmt, ...) SETH_DEBUG("[tmblock]" fmt, ## __VA_ARGS__)
 #define TMBLOCK_WARN(fmt, ...) SETH_WARN("[tmblock]" fmt, ## __VA_ARGS__)
 #define TMBLOCK_ERROR(fmt, ...) SETH_ERROR("[tmblock]" fmt, ## __VA_ARGS__)
 

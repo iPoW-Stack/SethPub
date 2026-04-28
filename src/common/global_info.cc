@@ -36,7 +36,7 @@ void GlobalInfo::Timer() {
             shared_obj_max_count_[i] = count;
         }
 
-        SETH_INFO("index %d get all shared object count now: %d, max: %d", 
+        SETH_DEBUG("index %d get all shared object count now: %d, max: %d", 
             i, count, shared_obj_max_count_[i]);
     }
 

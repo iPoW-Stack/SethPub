@@ -87,7 +87,7 @@ void ThreadHandler::HandleMessage() {
                 for (uint32_t i = 1; i < msg_ptr->times_idx; ++i) {
                     auto diff_time = msg_ptr->times[i] - msg_ptr->times[i - 1];
                     if (diff_time > 100000lu) {
-                        SETH_INFO("over handle message debug %lu timestamp: %lu, debug: %s, "
+                        SETH_DEBUG("over handle message debug %lu timestamp: %lu, debug: %s, "
                             "thread_idx: %d, maping_thread_idx: %d, all time: %lu",
                             msg_ptr->header.hash64(), msg_ptr->times[i], 
                             msg_ptr->debug_str[i].c_str(), thread_idx, maping_thread_idx, (etime - btime));
@@ -95,7 +95,7 @@ void ThreadHandler::HandleMessage() {
                 }
                 // SETH_DEBUG("end message handled msg hash: %lu, thread idx: %d, type: %d, use time: %lu", 
                 //     msg_ptr->header.hash64(), thread_idx, msg_ptr->header.type(), (etime - btime));
-                SETH_INFO("end message handled msg hash: %lu, thread idx: %d, type: %d, use time: %lu, protobuf: %s", 
+                SETH_DEBUG("end message handled msg hash: %lu, thread idx: %d, type: %d, use time: %lu, protobuf: %s", 
                     msg_ptr->header.hash64(), thread_idx, msg_ptr->header.type(), (etime - btime),
                     "ProtobufToJson(msg_ptr->header).c_str()");
             }
@@ -135,7 +135,7 @@ void ThreadHandler::HandleMessage() {
                     t += std::to_string(msg_ptr->times[i] - msg_ptr->times[i - 1]) + " ";
                 }
 
-                SETH_INFO("kPoolTimerMessage over handle message: %d, thread: %d use: %lu us, all: %s", 
+                SETH_DEBUG("kPoolTimerMessage over handle message: %d, thread: %d use: %lu us, all: %s", 
                     msg_ptr->header.type(), thread_idx, (etime - btime), t.c_str());
             }
 #endif

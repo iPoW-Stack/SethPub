@@ -375,7 +375,7 @@ void TcpTransport::Output() {
                     }
 
                     if (item_ptr->type == common::kHotstuffMessage) {
-                        SETH_INFO("send to tcp connection success[%s][%d][hash64: %llu] "
+                        SETH_DEBUG("send to tcp connection success[%s][%d][hash64: %llu] "
                             "res: %d, size: %u",
                             item_ptr->des_ip.c_str(), item_ptr->port, 
                             item_ptr->hash64, res, item_ptr->msg.size());

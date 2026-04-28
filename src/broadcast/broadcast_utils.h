@@ -5,7 +5,7 @@
 #include "protos/transport.pb.h"
 
 #define BROAD_DEBUG(fmt, ...) SETH_DEBUG("[broadcast]" fmt, ## __VA_ARGS__)
-#define BROAD_INFO(fmt, ...) SETH_INFO("[broadcast]" fmt, ## __VA_ARGS__)
+#define BROAD_INFO(fmt, ...) SETH_DEBUG("[broadcast]" fmt, ## __VA_ARGS__)
 #define BROAD_WARN(fmt, ...) SETH_WARN("[broadcast]" fmt, ## __VA_ARGS__)
 #define BROAD_ERROR(fmt, ...) SETH_ERROR("[broadcast]" fmt, ## __VA_ARGS__)
 

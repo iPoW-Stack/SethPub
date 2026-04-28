@@ -57,7 +57,7 @@ Status BlockWrapper::Wrap(
     // Package transactions
     ADD_DEBUG_PROCESS_TIMESTAMP();
     std::shared_ptr<consensus::WaitingTxsItem> txs_ptr = nullptr;
-    // SETH_INFO("pool: %d, txs count, all: %lu, valid: %lu, leader: %lu",
+    // SETH_DEBUG("pool: %d, txs count, all: %lu, valid: %lu, leader: %lu",
     //     pool_idx_, pools_mgr_->all_tx_size(pool_idx_), pools_mgr_->tx_size(pool_idx_), leader_idx);
     auto tx_valid_func = [&](
             const address::protobuf::AddressInfo& addr_info, 

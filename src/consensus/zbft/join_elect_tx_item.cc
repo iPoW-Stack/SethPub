@@ -174,13 +174,13 @@ int JoinElectTxItem::HandleTx(
                 *block_join_info = join_info;
                 
                 if (has_existing_stake) {
-                    SETH_INFO("Additional stake: added %lu coins (total now: %lu) to pool %u address %s, "
+                    SETH_DEBUG("Additional stake: added %lu coins (total now: %lu) to pool %u address %s, "
                         "lock period reset to block timestamp: %lu (previous: %lu)",
                         stake_amount, total_staked, pool_index,
                         common::Encode::HexEncode(pool_address).c_str(),
                         block_timestamp, existing_timestamp);
                 } else {
-                    SETH_INFO("Initial stake: %lu coins to pool %u address %s, block timestamp: %lu",
+                    SETH_DEBUG("Initial stake: %lu coins to pool %u address %s, block timestamp: %lu",
                         stake_amount, pool_index,
                         common::Encode::HexEncode(pool_address).c_str(),
                         block_timestamp);
@@ -198,10 +198,10 @@ int JoinElectTxItem::HandleTx(
                 uint64_t existing_stake = 0;
                 uint64_t existing_timestamp = 0;
                 if (prefix_db_->GetStakeInfo(from, &existing_stake, &existing_timestamp)) {
-                    SETH_INFO("Join elect with existing stake: addr=%s, existing_stake=%lu, no additional stake",
+                    SETH_DEBUG("Join elect with existing stake: addr=%s, existing_stake=%lu, no additional stake",
                         common::Encode::HexEncode(from).c_str(), existing_stake);
                 } else {
-                    SETH_INFO("Join elect without stake: addr=%s", common::Encode::HexEncode(from).c_str());
+                    SETH_DEBUG("Join elect without stake: addr=%s", common::Encode::HexEncode(from).c_str());
                 }
             } else {
                 if (from_balance >= (gas_used) * block_tx.gas_price()) {
@@ -369,14 +369,14 @@ int JoinElectTxItem::HandleStakeOperation(
     block_tx.set_gas_used(gas_used);
     
     if (has_existing_stake) {
-        SETH_INFO("Additional stake in root shard: addr=%s, added=%lu, total=%lu, "
+        SETH_DEBUG("Additional stake in root shard: addr=%s, added=%lu, total=%lu, "
             "block_timestamp=%lu (previous: %lu), pool=%s",
             common::Encode::HexEncode(from).c_str(),
             stake_amount, total_staked,
             block_timestamp, existing_timestamp,
             common::Encode::HexEncode(root_pool_address).c_str());
     } else {
-        SETH_INFO("Initial stake in root shard: addr=%s, amount=%lu, block_timestamp=%lu, pool=%s",
+        SETH_DEBUG("Initial stake in root shard: addr=%s, amount=%lu, block_timestamp=%lu, pool=%s",
             common::Encode::HexEncode(from).c_str(),
             stake_amount, block_timestamp,
             common::Encode::HexEncode(root_pool_address).c_str());
@@ -497,7 +497,7 @@ int JoinElectTxItem::HandleRedeemOperation(
     block_tx.set_balance(from_balance);
     block_tx.set_gas_used(gas_used);
     
-    SETH_INFO("Redeemed stake in root shard: addr=%s, amount=%lu, "
+    SETH_DEBUG("Redeemed stake in root shard: addr=%s, amount=%lu, "
         "seconds_passed=%lu, stake_timestamp=%lu, current_timestamp=%lu, pool=%s, stoke set to 0",
         common::Encode::HexEncode(from).c_str(),
         total_staked, seconds_passed, stake_timestamp, current_timestamp,

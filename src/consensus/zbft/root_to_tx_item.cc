@@ -40,13 +40,13 @@ int RootToTxItem::HandleTx(
     auto& unique_hash = tx_info->key();
     std::string val;
     if (seth_host.GetKeyValue(block_tx.to(), unique_hash, &val) == sethvm::kSethvmSuccess) {
-        SETH_INFO("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
+        SETH_DEBUG("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
         return consensus::kConsensusError;
     }
     
     pools::protobuf::ToTxMessageItem to_item;
     if (!to_item.ParseFromString(tx_info->value())) {
-        SETH_INFO("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
+        SETH_DEBUG("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
         assert(false);
         return consensus::kConsensusError;
     }
@@ -116,7 +116,7 @@ int RootToTxItem::HandleTx(
             }
         }
 
-        SETH_INFO("success add addr cross to: %s, sharding_id: %u, to info: %s", 
+        SETH_DEBUG("success add addr cross to: %s, sharding_id: %u, to info: %s", 
             common::Encode::HexEncode(to_item.des()).c_str(), 
             sharding_id,
             ProtobufToJson(*to_item_ptr).c_str());

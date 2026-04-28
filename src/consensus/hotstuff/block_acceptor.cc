@@ -648,7 +648,7 @@ bool BlockAcceptor::ValidateStatisticNodeConsistency(
     double consistency_rate = (double)matched_nodes / (double)total_nodes;
     bool is_valid = consistency_rate >= 0.90;
     
-    SETH_INFO("pool=%u, statistic validation: matched=%u, total=%u, consistency=%.2f%%, valid=%s",
+    SETH_DEBUG("pool=%u, statistic validation: matched=%u, total=%u, consistency=%.2f%%, valid=%s",
         pool_index, matched_nodes, total_nodes, consistency_rate * 100.0,
         is_valid ? "true" : "false");
     

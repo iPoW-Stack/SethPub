@@ -69,7 +69,7 @@
 //     CheckC2cStatus(ws_tx_res);
 //     if (ws_tx_res.txs_size() > 0 || ws_tx_res.has_init_info()) {
 //         // std::lock_guard<std::mutex> g(refresh_hdls_mutex_);
-//         SETH_INFO("success broadcast ws message: %d, %d", ws_tx_res.txs_size(), refresh_hdls_.size());
+//         SETH_DEBUG("success broadcast ws message: %d, %d", ws_tx_res.txs_size(), refresh_hdls_.size());
 //         std::string msg = common::Encode::HexEncode(ws_tx_res.SerializeAsString());
 //         for (auto iter = refresh_hdls_.begin(); iter != refresh_hdls_.end(); ++iter) {
 //             websocketpp::connection_hdl hdl = *iter;
@@ -94,7 +94,7 @@
 //                 SetUser(common::GlobalInfo::Instance()->ck_user()).
 //                 SetPassword(common::GlobalInfo::Instance()->ck_pass()));
 //             ck_client0.Select(cmd, [&](const clickhouse::Block& ck_block) {
-//                 SETH_INFO("run cmd: %s, get count: %d", cmd.c_str(), ck_block.GetRowCount());
+//                 SETH_DEBUG("run cmd: %s, get count: %d", cmd.c_str(), ck_block.GetRowCount());
 //                 if (ck_block.GetRowCount() > got_count) {
 //                     got_count = ck_block.GetRowCount();
 //                 }
@@ -122,7 +122,7 @@
 //                         user_balance_[user_info->id] = user_info->balance;
 //                     }
 
-//                     SETH_INFO("new tx coming: %s, %s, %lu, realid: %s", 
+//                     SETH_DEBUG("new tx coming: %s, %s, %lu, realid: %s", 
 //                         from_str.c_str(), to_str.c_str(), user_info->balance, common::Encode::HexEncode(user_info->id).c_str());
 //                 }
 //             });
@@ -142,7 +142,7 @@
 //             SetUser(common::GlobalInfo::Instance()->ck_user()).
 //             SetPassword(common::GlobalInfo::Instance()->ck_pass()));
 //         ck_client0.Select(cmd, [&](const clickhouse::Block& ck_block) {
-//             SETH_INFO("run cmd: %s, get count: %d", cmd.c_str(), ck_block.GetRowCount());
+//             SETH_DEBUG("run cmd: %s, get count: %d", cmd.c_str(), ck_block.GetRowCount());
 //             for (uint32_t i = 0; i < ck_block.GetRowCount(); ++i) {
 //                 auto* ws_item = ws_tx_res.add_txs();
 //                 std::string from_str(ck_block[0]->As<clickhouse::ColumnString>()->At(i));
@@ -174,7 +174,7 @@
 //                     user_info_queue_.push(user_info);
 //                 }
 
-//                 SETH_INFO("new tx coming: %s, %s, %lu, %lu, realid: %s", 
+//                 SETH_DEBUG("new tx coming: %s, %s, %lu, %lu, realid: %s", 
 //                     from_str.c_str(), to_str.c_str(), ws_item->amount(), 
 //                     ws_item->balance(), common::Encode::HexEncode(user_info->id).c_str());
 //             }
@@ -195,7 +195,7 @@
 //             SetUser(common::GlobalInfo::Instance()->ck_user()).
 //             SetPassword(common::GlobalInfo::Instance()->ck_pass()));
 //         ck_client0.Select(cmd, [&](const clickhouse::Block& ck_block) {
-//             SETH_INFO("run cmd: %s, get count: %d", cmd.c_str(), ck_block.GetRowCount());
+//             SETH_DEBUG("run cmd: %s, get count: %d", cmd.c_str(), ck_block.GetRowCount());
 //             for (uint32_t i = 0; i < ck_block.GetRowCount(); ++i) {
 //                 std::string user = common::Encode::HexDecode(std::string(ck_block[0]->As<clickhouse::ColumnString>()->At(i)));
 //                 auto prefund = ck_block[1]->As<clickhouse::ColumnUInt64>()->At(i);
@@ -224,7 +224,7 @@
 //                     }
 //                 }
 
-//                 SETH_INFO("new prefund coming: %s, %lu, %lu", 
+//                 SETH_DEBUG("new prefund coming: %s, %lu, %lu", 
 //                     common::Encode::HexEncode(user_info->id).c_str(), prefund, height);
 //             }
 //         });
@@ -240,7 +240,7 @@
 //         std::string cmd = "select seller, buyer, amount, receivable, all, now, mchecked, schecked, reported, orderId, height from seth_ck_c2c_table where contract='" + 
 //             c2c_contract_addr() + "' and height > " + std::to_string(max_c2c_height_) +  " order by height asc limit 1000;";
 //         uint32_t all_transactions = 0;
-//         SETH_INFO("run cmd: %s, get count: %d", cmd.c_str(), 0);
+//         SETH_DEBUG("run cmd: %s, get count: %d", cmd.c_str(), 0);
 //         try {
 //             clickhouse::Client ck_client0(clickhouse::ClientOptions().
 //                 SetHost(common::GlobalInfo::Instance()->ck_host()).
@@ -248,7 +248,7 @@
 //                 SetUser(common::GlobalInfo::Instance()->ck_user()).
 //                 SetPassword(common::GlobalInfo::Instance()->ck_pass()));
 //             ck_client0.Select(cmd, [&](const clickhouse::Block& ck_block) {
-//                 SETH_INFO("run cmd: %s, get count: %d", cmd.c_str(), ck_block.GetRowCount());
+//                 SETH_DEBUG("run cmd: %s, get count: %d", cmd.c_str(), ck_block.GetRowCount());
 //                 for (uint32_t i = 0; i < ck_block.GetRowCount(); ++i) {
 //                     std::string user(ck_block[0]->As<clickhouse::ColumnString>()->At(i));
 //                     std::string encode_buyer(ck_block[1]->As<clickhouse::ColumnString>()->At(i));
@@ -271,7 +271,7 @@
 //                         continue;
 //                     }
 
-//                     SETH_INFO("get all c2c seller: %s, buyer: %s, amount: %lu, height: %lu, exists height: %lu, status: %d, max height: %lu", 
+//                     SETH_DEBUG("get all c2c seller: %s, buyer: %s, amount: %lu, height: %lu, exists height: %lu, status: %d, max height: %lu", 
 //                         user.c_str(), encode_buyer.c_str(), amount, height, iter->second->height(), iter->second->status(), max_c2c_height_);
 //                     auto order_iter = order_map_.find(buyer);
 //                     if (iter->second->height() > height) {
@@ -503,7 +503,7 @@
 //                     }
 //                 }
 
-//                 SETH_INFO("get c2c seller: %s, buyer: %s, amount: %lu, height: %lu, exists height: %lu, status: %d, max height: %lu", 
+//                 SETH_DEBUG("get c2c seller: %s, buyer: %s, amount: %lu, height: %lu, exists height: %lu, status: %d, max height: %lu", 
 //                     user.c_str(), encode_buyer.c_str(), amount, height, sellptr->height(), sellptr->status(), max_c2c_height_);
 //                 if (sellptr->height() >= height) {
 //                     SETH_ERROR("local sell info height error: %s %lu, %lu!", user.c_str(), sellptr->height(), height);
@@ -594,7 +594,7 @@
 
 //                 auto* sellinfo = ws_tx_res.mutable_init_info()->mutable_c2c()->add_sells();
 //                 *sellinfo = *sellptr;
-//                 SETH_INFO("get sell info seller: %s, buyer: %s, status: %d", 
+//                 SETH_DEBUG("get sell info seller: %s, buyer: %s, status: %d", 
 //                     user.c_str(), encode_buyer.c_str(), sellptr->status());
 //             }
 //         });
@@ -622,7 +622,7 @@
 //                         std::string id = common::Encode::HexDecode(from_str);
 //                         uint64_t balance = ck_block[1]->As<clickhouse::ColumnUInt64>()->At(i);
 //                         user_balance_[id] = balance;
-//                         SETH_INFO("get balance: %s, balance: %lu", from_str.c_str(), balance);
+//                         SETH_DEBUG("get balance: %s, balance: %lu", from_str.c_str(), balance);
 //                     }
 //                 }
 //             });
@@ -672,7 +672,7 @@
 //             }
 //         }
         
-//         SETH_INFO("bandwidth message handle success %s: %lu", common::Encode::HexEncode(bw.id()).c_str(), all_bw);
+//         SETH_DEBUG("bandwidth message handle success %s: %lu", common::Encode::HexEncode(bw.id()).c_str(), all_bw);
 //     }
     
 //     if (bw_res.bws_size() > 0) {
@@ -922,7 +922,7 @@
 
 //     prefix_db_->SaveSellout(seller, *sell_ptr);
 //     C2cResponse(hdl, c2c_msg.msg_id(), ws::protobuf::kSellWaitingCreate, "ok");
-//     SETH_INFO("create new sell success create tm: %lu, seller: %s, username: %s, all; %lu, price : %lu",
+//     SETH_DEBUG("create new sell success create tm: %lu, seller: %s, username: %s, all; %lu, price : %lu",
 //         sell_ptr->create_timestamp(), 
 //         common::Encode::HexEncode(seller).c_str(), 
 //         sell_ptr->username().c_str(),
@@ -1175,7 +1175,7 @@
 //     }
     
 //     C2cResponse(hdl, c2c_msg.msg_id(), ws::protobuf::kSellWaitingPrefund, "ok");
-//     SETH_INFO("create new sell success create tm: %lu, seller: %s, username: %s, all: %lu, price: %lu, receivable size: %d",
+//     SETH_DEBUG("create new sell success create tm: %lu, seller: %s, username: %s, all: %lu, price: %lu, receivable size: %d",
 //         sell_ptr->create_timestamp(), 
 //         common::Encode::HexEncode(seller).c_str(), 
 //         sell_ptr->username().c_str(),
@@ -1282,7 +1282,7 @@
 
 //     prefix_db_->SaveSellout(seller, *sell_ptr);
 //     C2cResponse(hdl, c2c_msg.msg_id(), ws::protobuf::kSellUserWaitingRelease, "ok");
-//     SETH_INFO("cancelsell success create tm: %lu, seller: %s, username: %s, all; %lu, price : %lu",
+//     SETH_DEBUG("cancelsell success create tm: %lu, seller: %s, username: %s, all; %lu, price : %lu",
 //         sell_ptr->create_timestamp(), 
 //         common::Encode::HexEncode(seller).c_str(), 
 //         sell_ptr->username().c_str(),
@@ -1387,7 +1387,7 @@
 
 //     prefix_db_->SaveSellout(seller, *sell_ptr);
 //     C2cResponse(hdl, c2c_msg.msg_id(), ws::protobuf::kSellManagerWaitingRelease, "ok");
-//     SETH_INFO("manager cancel sell success create tm: %lu, seller: %s, username: %s, all; %lu, price : %lu",
+//     SETH_DEBUG("manager cancel sell success create tm: %lu, seller: %s, username: %s, all; %lu, price : %lu",
 //         sell_ptr->create_timestamp(), 
 //         common::Encode::HexEncode(seller).c_str(), 
 //         sell_ptr->username().c_str(),
@@ -1473,7 +1473,7 @@
 //     }
 
 //     C2cResponse(hdl, c2c_msg.msg_id(), 0, "ok");
-//     SETH_INFO("create transaction success create from: %s, amount: %lu",
+//     SETH_DEBUG("create transaction success create from: %s, amount: %lu",
 //         common::Encode::HexEncode(from_address).c_str(), 
 //         tx.amount());    
 // }
@@ -1568,7 +1568,7 @@
 //     }
 
 //     // C2cResponse(hdl, c2c_msg.msg_id(), ws::protobuf::kSellWaitingConfirm, "ok");
-//     SETH_INFO("purchase sell success create tm: %lu, seller: %s, buyer: %s, amount: %lu, username: %s, all; %lu, price : %lu",
+//     SETH_DEBUG("purchase sell success create tm: %lu, seller: %s, buyer: %s, amount: %lu, username: %s, all; %lu, price : %lu",
 //         sell_ptr->create_timestamp(), 
 //         common::Encode::HexEncode(seller).c_str(), 
 //         common::Encode::HexEncode(sell_ptr->buyer()).c_str(), 
@@ -1663,7 +1663,7 @@
 //     }
 
 //     // C2cResponse(hdl, c2c_msg.msg_id(), ws::protobuf::kSellWaitingConfirm, "ok");
-//     SETH_INFO("cancel order sell success create tm: %lu, seller: %s, buyer: %s, amount: %lu, username: %s, all; %lu, price : %lu",
+//     SETH_DEBUG("cancel order sell success create tm: %lu, seller: %s, buyer: %s, amount: %lu, username: %s, all; %lu, price : %lu",
 //         sell_ptr->create_timestamp(), 
 //         common::Encode::HexEncode(seller).c_str(), 
 //         common::Encode::HexEncode(sell_ptr->buyer()).c_str(), 
@@ -1791,7 +1791,7 @@
 
 //     prefix_db_->SaveSellout(seller, *sell_ptr);
 //     C2cResponse(hdl, c2c_msg.msg_id(), ws::protobuf::kSellWaitingConfirmTx, "ok");
-//     SETH_INFO("confirm order success create tm: %lu, seller: %s, username: %s, all; %lu, price : %lu",
+//     SETH_DEBUG("confirm order success create tm: %lu, seller: %s, username: %s, all; %lu, price : %lu",
 //         sell_ptr->create_timestamp(), 
 //         common::Encode::HexEncode(seller).c_str(), 
 //         sell_ptr->username().c_str(),
@@ -1897,7 +1897,7 @@
 
 //     prefix_db_->SaveSellout(seller, *sell_ptr);
 //     C2cResponse(hdl, c2c_msg.msg_id(), ws::protobuf::kSellForceReleaseWaitingTx, "ok");
-//     SETH_INFO("manager cancel force sell success create tm: %lu, seller: %s, username: %s, all; %lu, price : %lu",
+//     SETH_DEBUG("manager cancel force sell success create tm: %lu, seller: %s, username: %s, all; %lu, price : %lu",
 //         sell_ptr->create_timestamp(), 
 //         common::Encode::HexEncode(seller).c_str(), 
 //         sell_ptr->username().c_str(),
@@ -1983,7 +1983,7 @@
 //     }
 
 //     // C2cResponse(hdl, c2c_msg.msg_id(), ws::protobuf::kSellWaitingConfirm, "ok");
-//     SETH_INFO("manager reset sell success create tm: %lu, seller: %s, buyer: %s, amount: %lu, username: %s, all; %lu, price : %lu",
+//     SETH_DEBUG("manager reset sell success create tm: %lu, seller: %s, buyer: %s, amount: %lu, username: %s, all; %lu, price : %lu",
 //         sell_ptr->create_timestamp(), 
 //         common::Encode::HexEncode(seller).c_str(), 
 //         common::Encode::HexEncode(sell_ptr->buyer()).c_str(), 
@@ -2110,7 +2110,7 @@
 //     }
 
 //     // C2cResponse(hdl, c2c_msg.msg_id(), ws::protobuf::kSellWaitingConfirm, "ok");
-//     SETH_INFO("user appeal success create tm: %lu, seller: %s, buyer: %s, amount: %lu, username: %s, all; %lu, price : %lu",
+//     SETH_DEBUG("user appeal success create tm: %lu, seller: %s, buyer: %s, amount: %lu, username: %s, all; %lu, price : %lu",
 //         sell_ptr->create_timestamp(), 
 //         common::Encode::HexEncode(seller).c_str(), 
 //         common::Encode::HexEncode(sell_ptr->buyer()).c_str(), 

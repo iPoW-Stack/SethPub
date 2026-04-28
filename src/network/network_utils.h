@@ -6,7 +6,7 @@
 #include "common/global_info.h"
 
 #define NETWORK_DEBUG(fmt, ...) DEBUG("[network]" fmt, ## __VA_ARGS__)
-#define NETWORK_INFO(fmt, ...) SETH_INFO("[network]" fmt, ## __VA_ARGS__)
+#define NETWORK_INFO(fmt, ...) SETH_DEBUG("[network]" fmt, ## __VA_ARGS__)
 #define NETWORK_WARN(fmt, ...) SETH_WARN("[network]" fmt, ## __VA_ARGS__)
 #define NETWORK_ERROR(fmt, ...) SETH_ERROR("[network]" fmt, ## __VA_ARGS__)
 

@@ -1104,7 +1104,7 @@ void ShardStatistic::setElectStatistics(
                 geo_ss << (public_ip.empty() ? "unknown" : public_ip) << "(" << std::fixed << std::setprecision(4) << lat << "," << lon << ")";
             }
             std::string geo_details = geo_ss.str();
-            SETH_INFO("[GeoStat] elect_height=%lu members=%u pairs=%u avg_dist=%.1f km details=%s",
+            SETH_DEBUG("[GeoStat] elect_height=%lu members=%u pairs=%u avg_dist=%.1f km details=%s",
                       hiter->first, n, pair_count, avg_dist_km, geo_details.c_str());
         }
 

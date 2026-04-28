@@ -5,7 +5,7 @@
 #include "common/encode.h"
 
 #define CONTRACT_DEBUG(fmt, ...) SETH_DEBUG("[CONTRACT]" fmt, ## __VA_ARGS__)
-#define CONTRACT_INFO(fmt, ...) SETH_INFO("[CONTRACT]" fmt, ## __VA_ARGS__)
+#define CONTRACT_INFO(fmt, ...) SETH_DEBUG("[CONTRACT]" fmt, ## __VA_ARGS__)
 #define CONTRACT_WARN(fmt, ...) SETH_WARN("[CONTRACT]" fmt, ## __VA_ARGS__)
 #define CONTRACT_ERROR(fmt, ...) SETH_ERROR("[CONRTACT]" fmt, ## __VA_ARGS__)
 

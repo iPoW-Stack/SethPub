@@ -126,7 +126,7 @@ int ShardNetwork<DhtType>::JoinNewNodeValid(dht::NodePtr& node) {
             sharding_id_ < network::kConsensusShardEndNetworkId)) {
         protos::AddressInfoPtr account_info = acc_mgr_->GetAccountInfo(node->id);
         if (account_info == nullptr) {
-            SETH_INFO("get address: %s failed!", common::Encode::HexEncode(node->id).c_str());
+            SETH_DEBUG("get address: %s failed!", common::Encode::HexEncode(node->id).c_str());
             return dht::kDhtError;
         }
 

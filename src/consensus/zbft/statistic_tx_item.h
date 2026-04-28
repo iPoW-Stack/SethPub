@@ -53,25 +53,25 @@ public:
                 acc_balance_map, 
                 &to_balance, 
                 &to_nonce) != consensus::kConsensusSuccess) {
-            SETH_INFO("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
+            SETH_DEBUG("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
             return consensus::kConsensusError;
         }
 
         std::string val;
         if (seth_host.GetKeyValue(block_tx.to(), unique_hash, &val) == sethvm::kSethvmSuccess) {
-            SETH_INFO("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
+            SETH_DEBUG("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
             return consensus::kConsensusError;
         }
 
         pools::protobuf::ElectStatistic elect_statistic;
         if (!elect_statistic.ParseFromString(tx_info->value())) {
             assert(false);
-            SETH_INFO("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
+            SETH_DEBUG("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
             return consensus::kConsensusError;
         }
     
         if (elect_statistic.sharding_id() != view_block.qc().network_id()) {
-            SETH_INFO("invalid sharding id %u, %u", elect_statistic.sharding_id(), view_block.qc().network_id());
+            SETH_DEBUG("invalid sharding id %u, %u", elect_statistic.sharding_id(), view_block.qc().network_id());
             return consensus::kConsensusError;
         }
 

@@ -21,7 +21,7 @@
 #include "tnet/tcp_connection.h"
 
 #define TRANSPORT_DEBUG(fmt, ...) SETH_DEBUG("[transport]" fmt, ## __VA_ARGS__)
-#define TRANSPORT_INFO(fmt, ...) SETH_INFO("[transport]" fmt, ## __VA_ARGS__)
+#define TRANSPORT_INFO(fmt, ...) SETH_DEBUG("[transport]" fmt, ## __VA_ARGS__)
 #define TRANSPORT_WARN(fmt, ...) SETH_WARN("[transport]" fmt, ## __VA_ARGS__)
 #define TRANSPORT_ERROR(fmt, ...) SETH_ERROR("[transport]" fmt, ## __VA_ARGS__)
 

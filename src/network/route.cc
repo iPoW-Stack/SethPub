@@ -94,7 +94,7 @@ void Route::HandleMessage(const transport::MessagePtr& header_ptr) {
     }
 
     if (header.des_dht_key().size() != dht::kDhtKeySize) {
-        SETH_INFO("invalid dht key message: %lu, size: %u",
+        SETH_DEBUG("invalid dht key message: %lu, size: %u",
             header.hash64(), header.des_dht_key().size());
         return;
     }
@@ -252,7 +252,7 @@ void Route::RegisterMessage(uint32_t type, transport::MessageProcessor proc) {
     transport::Processor::Instance()->RegisterProcessor(
             type,
             std::bind(&Route::HandleMessage, this, std::placeholders::_1));
-    SETH_INFO("success register message type: %d", type);
+    SETH_DEBUG("success register message type: %d", type);
 }
 
 void Route::UnRegisterMessage(uint32_t type) {

@@ -233,7 +233,7 @@ void KeyValueSync::ConsensusTimerMessage() {
     }
 
     if (prev_sync_tm_ms_ + 3000lu < now_tm_ms3) {
-        SETH_INFO("SyncAllLatestBlocks triggered, prev_sync_tm_ms: %lu, now: %lu",
+        SETH_DEBUG("SyncAllLatestBlocks triggered, prev_sync_tm_ms: %lu, now: %lu",
             prev_sync_tm_ms_, now_tm_ms3);
         SyncAllLatestBlocks();
         prev_sync_tm_ms_ = now_tm_ms3;
@@ -888,7 +888,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
     // return;
     auto local_net_id = common::GlobalInfo::Instance()->network_id();
     auto end_shard = common::GlobalInfo::Instance()->now_valid_end_shard();
-    SETH_INFO("SyncAllLatestBlocks enter: local_net=%u, end_shard=%u, "
+    SETH_DEBUG("SyncAllLatestBlocks enter: local_net=%u, end_shard=%u, "
         "synced_res_map size=%lu, not_root_count=%u",
         local_net_id, end_shard,
         synced_res_map_.size(), not_root_synced_res_map_count_);
@@ -898,7 +898,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
             if (!height_map.empty()) {
                 auto first_h = height_map.begin()->first;
                 auto last_h = height_map.rbegin()->first;
-                SETH_INFO("  synced_res_map[net=%u][pool=%u]: %lu entries, "
+                SETH_DEBUG("  synced_res_map[net=%u][pool=%u]: %lu entries, "
                     "heights=[%lu..%lu]",
                     net, pool, height_map.size(), first_h, last_h);
             }
@@ -962,7 +962,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
                 continue;
             }
 
-            SETH_INFO("  pool %u net %u: latest_height=%lu, synced entries=%lu",
+            SETH_DEBUG("  pool %u net %u: latest_height=%lu, synced entries=%lu",
                 i, network_id, latest_height, pool_iter->second.size());
 
             auto latest_height_iter = pool_iter->second.find(latest_height);
@@ -1061,7 +1061,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
             ++sent_count;
         }
     }
-    SETH_INFO("SyncAllLatestBlocks done: sync_dht_map size=%lu, sent=%u, "
+    SETH_DEBUG("SyncAllLatestBlocks done: sync_dht_map size=%lu, sent=%u, "
         "res_map size=%lu",
         sync_dht_map.size(), sent_count, res_map.size());
 }

@@ -60,7 +60,7 @@ void TimeBlockManager::CreateTimeBlockTx() {
     tx_info.set_amount(0);
     tx_info.set_gas_price(common::kBuildinTransactionGasPrice);
     tmblock_tx_ptr_.store(create_tm_tx_cb_(msg_ptr));
-    SETH_INFO("success create timeblock tx key: %s",
+    SETH_DEBUG("success create timeblock tx key: %s",
         common::Encode::HexEncode(pools::GetTxKey(
             msg_ptr->address_info->addr(), 
             msg_ptr->address_info->nonce())).c_str());
@@ -223,7 +223,7 @@ void TimeBlockManager::OnTimeBlock(
         return;
     }
 
-    SETH_INFO("LeaderNewTimeBlockValid height[%lu:%lu], tm[%lu:%lu], vss[%lu]",
+    SETH_DEBUG("LeaderNewTimeBlockValid height[%lu:%lu], tm[%lu:%lu], vss[%lu]",
         latest_time_block_height,
         static_cast<uint64_t>(latest_time_block_height_),
         latest_time_block_tm,

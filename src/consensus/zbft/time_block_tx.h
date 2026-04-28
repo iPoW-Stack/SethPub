@@ -43,13 +43,13 @@ public:
         auto& unique_hash = tx_info->key();
         std::string val;
         if (seth_host.GetKeyValue(block_tx.to(), unique_hash, &val) == sethvm::kSethvmSuccess) {
-            SETH_INFO("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
+            SETH_DEBUG("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
             return consensus::kConsensusError;
         }
 
         auto& timer_block = *view_block.mutable_block_info()->mutable_timer_block();
         if (!timer_block.ParseFromString(tx_info->value())) {
-            SETH_INFO("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
+            SETH_DEBUG("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
             return consensus::kConsensusError;
         }
 

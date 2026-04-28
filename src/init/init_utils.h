@@ -15,7 +15,7 @@
 #include "protos/bls.pb.h"
 
 #define INIT_DEBUG(fmt, ...) SETH_DEBUG("[init]" fmt, ## __VA_ARGS__)
-#define INIT_INFO(fmt, ...) SETH_INFO("[init]" fmt, ## __VA_ARGS__)
+#define INIT_INFO(fmt, ...) SETH_DEBUG("[init]" fmt, ## __VA_ARGS__)
 #define INIT_WARN(fmt, ...) SETH_WARN("[init]" fmt, ## __VA_ARGS__)
 #define INIT_ERROR(fmt, ...) SETH_ERROR("[init]" fmt, ## __VA_ARGS__)
 

@@ -47,7 +47,7 @@ public:
                 acc_balance_map, 
                 &to_balance, 
                 &to_nonce) != consensus::kConsensusSuccess) {
-            SETH_INFO("get account balance failed, addr: %s, unique hash: %s", 
+            SETH_DEBUG("get account balance failed, addr: %s, unique hash: %s", 
                 common::Encode::HexEncode(block_tx.to()).c_str(), 
                 common::Encode::HexEncode(tx_info->key()).c_str());
             // return consensus::kConsensusError;
@@ -56,7 +56,7 @@ public:
 
         std::string val;
         if (seth_host.GetKeyValue(block_tx.to(), tx_info->key(), &val) == sethvm::kSethvmSuccess) {
-            SETH_INFO("unique hash has consensus: %s", common::Encode::HexEncode(tx_info->key()).c_str());
+            SETH_DEBUG("unique hash has consensus: %s", common::Encode::HexEncode(tx_info->key()).c_str());
             return consensus::kConsensusError;
         }
 

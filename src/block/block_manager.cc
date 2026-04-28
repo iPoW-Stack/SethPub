@@ -77,7 +77,7 @@ int BlockManager::Init(
             &statistic_info)) {
         latest_statistic_height_ = statistic_info.height();
         timeblock_height_pq_.push(statistic_info.height());
-        SETH_INFO("latest statisticed height: %lu", statistic_info.height());
+        SETH_DEBUG("latest statisticed height: %lu", statistic_info.height());
     }
 
     bool genesis = false;
@@ -423,7 +423,7 @@ void BlockManager::AddNewBlock(
             block_item->height(), 
             vss_random, 
             block_item->timer_block().nonce());
-        SETH_INFO("new time block called height: %lu, tm: %lu", block_item->height(), vss_random);
+        SETH_DEBUG("new time block called height: %lu, tm: %lu", block_item->height(), vss_random);
     }
 
     if (block_item->cross_shard_to_array_size() > 0) {
@@ -817,17 +817,17 @@ pools::TxItemPtr BlockManager::GetToTx(
             return nullptr;
         }
 
-        SETH_INFO("now leader get to to tx.");
+        SETH_DEBUG("now leader get to to tx.");
         leader_prev_get_to_tx_tm_ = cur_time + 3000lu;
         auto latest_to_block_ptr = latest_to_block_ptr_[latest_to_block_ptr_index_].load();
         if (latest_to_block_ptr != nullptr &&
                 latest_to_block_ptr->block_info().timestamp() + 10000lu >= cur_time) {
-            SETH_INFO("now leader get to to tx timestamp error");
+            SETH_DEBUG("now leader get to to tx timestamp error");
             return nullptr;
         }
 
         if (to_txs_pool_->LeaderCreateToHeights(heights) != pools::kPoolsSuccess) {
-            SETH_INFO("now leader get to to tx leader get error");
+            SETH_DEBUG("now leader get to to tx leader get error");
             return nullptr;
         }
     } else {
@@ -841,13 +841,13 @@ pools::TxItemPtr BlockManager::GetToTx(
     auto tx_ptr = HandleToTxsMessage(heights);
     if (tx_ptr != nullptr) {
         // heights_str_map_[height_hash] = tx_ptr;
-        SETH_INFO("success get to tx tx info: %s, nonce: %lu, val: %s, heights: %s",
+        SETH_DEBUG("success get to tx tx info: %s, nonce: %lu, val: %s, heights: %s",
             ProtobufToJson(*tx_ptr->tx_info).c_str(),
             tx_ptr->tx_info->nonce(), 
             "common::Encode::HexEncode(tx_ptr->tx_info.value()).c_str()",
             ProtobufToJson(heights).c_str());
     } else {
-        SETH_INFO("failed get to tx tx info: %s", ProtobufToJson(heights).c_str());
+        SETH_DEBUG("failed get to tx tx info: %s", ProtobufToJson(heights).c_str());
     }
 
     return tx_ptr;
@@ -871,12 +871,12 @@ pools::TxItemPtr BlockManager::HandleToTxsMessage(
                 heights,
                 to_tx) != pools::kPoolsSuccess) {
             all_to_txs.mutable_to_tx_arr()->RemoveLast();
-            SETH_INFO("1 failed get to tx tx info: %s", ProtobufToJson(heights).c_str());
+            SETH_DEBUG("1 failed get to tx tx info: %s", ProtobufToJson(heights).c_str());
         }
     }
 
     if (all_to_txs.to_tx_arr_size() == 0) {
-        SETH_INFO("2 failed get to tx tx info: %s", ProtobufToJson(heights).c_str());
+        SETH_DEBUG("2 failed get to tx tx info: %s", ProtobufToJson(heights).c_str());
         return nullptr;
     }
     
@@ -902,7 +902,7 @@ pools::TxItemPtr BlockManager::HandleToTxsMessage(
     tx->set_nonce(new_msg_ptr->address_info->nonce() + 1);
     auto tx_ptr = create_to_tx_cb_(new_msg_ptr);
     tx_ptr->time_valid += kToValidTimeout;
-    SETH_INFO("success get to tx unique hash: %s, heights: %s",
+    SETH_DEBUG("success get to tx unique hash: %s, heights: %s",
         common::Encode::HexEncode(tx->key()).c_str(), 
         ProtobufToJson(prev_heights).c_str());
     return tx_ptr;

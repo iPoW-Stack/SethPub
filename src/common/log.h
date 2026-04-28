@@ -45,7 +45,7 @@
 } while (0)
 #endif
 
-#define SETH_INFO(logfmt, ...)  do {\
+#define SETH_DEBUG(logfmt, ...)  do {\
     spdlog::info(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
 
@@ -78,9 +78,9 @@
 //     spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 // } while (0)
 #endif
-// #define SETH_INFO(logfmt, ...)
+// #define SETH_DEBUG(logfmt, ...)
 // #define SETH_WARN(logfmt, ...)
-#define SETH_INFO(logfmt, ...)  do {\
+#define SETH_DEBUG(logfmt, ...)  do {\
     spdlog::info(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
 
@@ -108,7 +108,7 @@
 
 #ifdef FOR_CONSOLE_DEBUG
 #undef DEBUG
-#undef SETH_INFO
+#undef SETH_DEBUG
 #undef SETH_WARN
 #undef SETH_ERROR
 
@@ -128,7 +128,7 @@
 */
 #endif
 
-#define SETH_INFO(logfmt, ...)  do {\
+#define SETH_DEBUG(logfmt, ...)  do {\
     printf("[INFO][%s][%s][%d] " fmt "\n", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
 } while (0)
 

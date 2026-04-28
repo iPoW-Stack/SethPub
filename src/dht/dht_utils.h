@@ -13,7 +13,7 @@
 #include "protos/dht.pb.h"
 
 #define DHT_DEBUG(fmt, ...) SETH_DEBUG("[dht]" fmt, ## __VA_ARGS__)
-#define DHT_INFO(fmt, ...) SETH_INFO("[dht]" fmt, ## __VA_ARGS__)
+#define DHT_INFO(fmt, ...) SETH_DEBUG("[dht]" fmt, ## __VA_ARGS__)
 #define DHT_WARN(fmt, ...) SETH_WARN("[dht]" fmt, ## __VA_ARGS__)
 #define DHT_ERROR(fmt, ...) SETH_ERROR("[dht]" fmt, ## __VA_ARGS__)
 

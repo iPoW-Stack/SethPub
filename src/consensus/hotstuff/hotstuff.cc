@@ -516,7 +516,7 @@ void Hotstuff::ResendLeaderLatestProposeMessage() {
         ++sendout_bft_message_count_;
         transport::protobuf::ConsensusDebug cons_debug;
         cons_debug.ParseFromString(header.debug());
-        SETH_INFO("pool: %d, header pool: %d, propose, txs size: %lu, view: %lu, "
+        SETH_DEBUG("pool: %d, header pool: %d, propose, txs size: %lu, view: %lu, "
             "hash: %s, qc_view: %lu, hash64: %lu, propose_debug: %s, "
             "msg view: %lu, cur view: %lu, propose msg: %s, sendout_bft_message_count_: %u, "
             "latest_leader_propose_message_->latest_qc_view: %lu, latest_qc_item_ptr_->view(): %lu",

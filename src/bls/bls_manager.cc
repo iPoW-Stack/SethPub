@@ -111,7 +111,7 @@ void BlsManager::OnNewElectBlock(
             in[i].pubkey(),
             i,
             in[i].pool_idx_mod_num()));
-        SETH_INFO("new elect set elect item index: %u, net: %u, pk: %s", i, elect_block->shard_network_id(),
+        SETH_DEBUG("new elect set elect item index: %u, net: %u, pk: %s", i, elect_block->shard_network_id(),
             common::Encode::HexEncode(in[i].pubkey()).c_str());
     }
 
@@ -589,11 +589,11 @@ void BlsManager::HandleFinish(const transport::MessagePtr& msg_ptr) {
     }
 
     if (finish_item->success_verified) {
-        SETH_INFO("success check all members agg signature, elect_height: %lu",
+        SETH_DEBUG("success check all members agg signature, elect_height: %lu",
             bls_msg.elect_height());
     }
 
-    SETH_INFO("handle finish success. sharding: %u, member index: %u, cpk_hash: %s, common pk: %s",
+    SETH_DEBUG("handle finish success. sharding: %u, member index: %u, cpk_hash: %s, common pk: %s",
         bls_msg.finish_req().network_id(),
         bls_msg.index(),
         common::Encode::HexEncode(cpk_hash).c_str(),
@@ -868,7 +868,7 @@ void BlsManager::BatchVerifyFinishItems() {
             continue;
         }
 
-        SETH_INFO("[BatchVerify] net %u: start verify with %zu candidates (t=%u, verified_count=%u)",
+        SETH_DEBUG("[BatchVerify] net %u: start verify with %zu candidates (t=%u, verified_count=%u)",
                   network_id, candidates.size(), t, verified_count);
 
         for (uint32_t idx : candidates) {
@@ -876,7 +876,7 @@ void BlsManager::BatchVerifyFinishItems() {
             CheckAggSignValid(t, n, common_pk, finish_item, idx);
         }
 
-        SETH_INFO("[BatchVerify] net %u: batch verify done, success=%d",
+        SETH_DEBUG("[BatchVerify] net %u: batch verify done, success=%d",
                   network_id, finish_item->success_verified);
     }
 }
@@ -1312,7 +1312,7 @@ int BlsManager::CheckBlsConsensusInfo(const elect::protobuf::ElectBlock& ec_bloc
         return kBlsError;
     }
     
-    SETH_INFO("[CheckBLS] net %u: leader_members=%u, all_verified, required=80%% of %u (%u), status=%s",
+    SETH_DEBUG("[CheckBLS] net %u: leader_members=%u, all_verified, required=80%% of %u (%u), status=%s",
               network_id, leader_member_count, n, required_count,
               (leader_member_count >= required_count) ? "SUCCESS" : "FAILED");
     if (leader_member_count >= required_count) {

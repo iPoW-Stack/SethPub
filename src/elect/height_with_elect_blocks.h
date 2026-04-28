@@ -275,7 +275,7 @@ private:
                 network_id,
                 height,
                 &view_block)) {
-            SETH_INFO("failed get block with height net: %u, pool: %u, height: %lu",
+            SETH_DEBUG("failed get block with height net: %u, pool: %u, height: %lu",
                 network::kRootCongressNetworkId, network_id, height);
             //             assert(false);
             return nullptr;

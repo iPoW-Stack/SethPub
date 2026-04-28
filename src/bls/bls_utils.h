@@ -18,7 +18,7 @@
 #include "protos/elect.pb.h"
 
 #define BLS_DEBUG(fmt, ...) SETH_DEBUG("[bls]" fmt, ## __VA_ARGS__)
-#define BLS_INFO(fmt, ...) SETH_INFO("[bls]" fmt, ## __VA_ARGS__)
+#define BLS_INFO(fmt, ...) SETH_DEBUG("[bls]" fmt, ## __VA_ARGS__)
 #define BLS_WARN(fmt, ...) SETH_WARN("[bls]" fmt, ## __VA_ARGS__)
 #define BLS_ERROR(fmt, ...) SETH_ERROR("[bls]" fmt, ## __VA_ARGS__)
 

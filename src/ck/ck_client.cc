@@ -344,9 +344,9 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
     }
 
     ++batch_count_;
-    // SETH_INFO("%u, add new ck block %u_%u_%lu", idx++, view_block_item->qc().network_id(), view_block_item->qc().pool_index(), block_item->height());
+    // SETH_DEBUG("%u, add new ck block %u_%u_%lu", idx++, view_block_item->qc().network_id(), view_block_item->qc().pool_index(), block_item->height());
     // ck_client.Execute(std::string("optimize TABLE ") + kClickhouseTransTableName + " FINAL");
-    // SETH_INFO("%u, add new ck block %u_%u_%lu", idx++, view_block_item->qc().network_id(), view_block_item->qc().pool_index(), block_item->height());
+    // SETH_DEBUG("%u, add new ck block %u_%u_%lu", idx++, view_block_item->qc().network_id(), view_block_item->qc().pool_index(), block_item->height());
     // ck_client.Execute(std::string("optimize TABLE ") + kClickhouseBlockTableName + " FINAL");
     // ck_client.Execute(std::string("optimize TABLE ") + kClickhouseAccountTableName + " FINAL");
     // ck_client.Execute(std::string("optimize TABLE ") + kClickhouseAccountKvTableName + " FINAL");
@@ -535,7 +535,7 @@ bool ClickHouseClient::QueryContract(const std::string& from, const std::string&
         &result);
     if (exec_res != sethvm::kSethvmSuccess || result.status_code != EVMC_SUCCESS) {
         std::string res = "query contract failed: " + std::to_string(result.status_code);
-        SETH_INFO("query contract error: %s.", res.c_str());
+        SETH_DEBUG("query contract error: %s.", res.c_str());
         return false;
     }
 

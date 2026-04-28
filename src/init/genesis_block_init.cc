@@ -587,7 +587,7 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
             sharding_id,
             genesis_nodes[idx]->id,
             std::string(all_data, sizeof(all_data)));
-        SETH_INFO("save bls success: %lu, %u, %s, index: %d, prikey: %s, local bls item: %s, src: %s, enc: %s",
+        SETH_DEBUG("save bls success: %lu, %u, %s, index: %d, prikey: %s, local bls item: %s, src: %s, enc: %s",
             elect_height,
             sharding_id,
             common::Encode::HexEncode(genesis_nodes[idx]->id).c_str(),
@@ -678,7 +678,7 @@ int GenesisBlockInit::CreateElectBlock(
         auto in = ec_block.add_in();
         in->set_pubkey((*iter)->pubkey);
         in->set_pool_idx_mod_num(node_idx < expect_leader_count ? node_idx : -1);
-        SETH_INFO("sharding: %d success add member: %s, %s", 
+        SETH_DEBUG("sharding: %d success add member: %s, %s", 
             shard_netid,
             common::Encode::HexEncode((*iter)->prikey).c_str(), 
             common::Encode::HexEncode((*iter)->id).c_str());
@@ -1388,7 +1388,7 @@ bool GenesisBlockInit::BlsAggSignViewBlock(
 #endif
 
     agg_sign->to_affine_coordinates();
-    SETH_INFO("agg sign success shard: %u_%u, hash: %s, pk: %s, sign x: %s",
+    SETH_DEBUG("agg sign success shard: %u_%u, hash: %s, pk: %s, sign x: %s",
         commit_qc.network_id(), commit_qc.pool_index(),  common::Encode::HexEncode(qc_hash).c_str(),
         libBLS::ThresholdUtils::fieldElementToString(common_pk_[commit_qc.network_id()].X.c0).c_str(),
         libBLS::ThresholdUtils::fieldElementToString(agg_sign->X).c_str());
@@ -1420,7 +1420,7 @@ void GenesisBlockInit::AddBlockItemToCache(
         *addr_info = *iter->second;
         assert(addr_info->sharding_id() != network::kRootCongressNetworkId);
         prefix_db_->AddAddressInfo(addr_info->addr(), *addr_info, db_batch);
-        SETH_INFO("success add address info: %s, %s",
+        SETH_DEBUG("success add address info: %s, %s",
             common::Encode::HexEncode(addr_info->addr()).c_str(), 
             ProtobufToJson(*addr_info).c_str());
     }
@@ -1577,7 +1577,7 @@ int GenesisBlockInit::CreateShardNodesBlocks(
             //     return kInitError;
             // }
             all_balance += genesis_account_balance;
-            // SETH_INFO("new address %s, genesis balance: %lu, nonce: %lu",
+            // SETH_DEBUG("new address %s, genesis balance: %lu, nonce: %lu",
             //     common::Encode::HexEncode(account_ptr->addr()).c_str(), 
             //     account_ptr->balance(),
             //     account_ptr->nonce());
@@ -1795,14 +1795,14 @@ void GenesisBlockInit::InitShardGenesisAccount() {
                 break;
             }
 
-            SETH_INFO("now handle line: %s", lines[i]);
+            SETH_DEBUG("now handle line: %s", lines[i]);
             assert(strlen(items[0]) == 64);
             std::shared_ptr<security::Security> secptr = std::make_shared<security::Ecdsa>();
             secptr->SetPrivateKey(common::Encode::HexDecode(items[0]));
             auto pool_idx = common::GetAddressPoolIndex(secptr->GetAddress());
             pool_index_map[pool_idx][secptr->GetAddress()] = 0;
             ++net_pool_index_map_addr_count_;
-            SETH_INFO("success add address net: %d, pool: %d, addr: %s", 
+            SETH_DEBUG("success add address net: %d, pool: %d, addr: %s", 
                 net_id, pool_idx, common::Encode::HexEncode(secptr->GetAddress()).c_str());
             valid_ids.insert(secptr->GetAddress());
         }
@@ -1838,7 +1838,7 @@ void GenesisBlockInit::InitShardGenesisAccount() {
             }
 
             genesis_acount_balance_map_.insert(std::pair<std::string, uint64_t>(*it, balance));
-            SETH_INFO("genesis add addr: %s, balance: %lu", common::Encode::HexEncode(*it).c_str(), balance);
+            SETH_DEBUG("genesis add addr: %s, balance: %lu", common::Encode::HexEncode(*it).c_str(), balance);
         }
     }
 

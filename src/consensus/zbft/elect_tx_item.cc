@@ -305,7 +305,7 @@ int ElectTxItem::processElect(
                 ofs << "\n  ]\n";
                 ofs << "}\n";
                 ofs.close();
-                SETH_INFO("wrote elect log: %s", filepath.string().c_str());
+                SETH_DEBUG("wrote elect log: %s", filepath.string().c_str());
             } else {
                 SETH_ERROR("open elect log file failed: %s", filepath.string().c_str());
             }

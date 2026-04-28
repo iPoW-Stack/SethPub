@@ -73,7 +73,7 @@ int TxWsServer::Init(const std::string& ip, uint16_t port) {
 
     running_.store(true);
     loop_thread_ = std::thread(&TxWsServer::RunLoop, this);
-    SETH_INFO("[TxWsServer] listening on %s:%u (private loop, isolated from TcpTransport)",
+    SETH_DEBUG("[TxWsServer] listening on %s:%u (private loop, isolated from TcpTransport)",
               ip.c_str(), port);
     return 0;
 }
@@ -295,7 +295,7 @@ void TxWsServer::CompleteAndPush(const std::string& hash_hex, const std::string&
         EnqueueFrame(c, frame);
     }
     if (!conns.empty()) {
-        SETH_INFO("[TxWsServer] pushed result for tx %s to %zu client(s)",
+        SETH_DEBUG("[TxWsServer] pushed result for tx %s to %zu client(s)",
                   hash_hex.c_str(), conns.size());
     }
 }
@@ -320,7 +320,7 @@ void TxWsServer::HandleWsFrame(Conn* c, const std::string& payload) {
         // Check cache first: if this tx already completed, push immediately.
         auto cached = completed_txs_.find(hash);
         if (cached != completed_txs_.end()) {
-            SETH_INFO("[TxWsServer] late-subscribe hit cache for tx %s", hash.c_str());
+            SETH_DEBUG("[TxWsServer] late-subscribe hit cache for tx %s", hash.c_str());
             EnqueueFrame(c, cached->second.frame);
             return;
         }
@@ -331,7 +331,7 @@ void TxWsServer::HandleWsFrame(Conn* c, const std::string& payload) {
             conn_to_hashes_[c].insert(hash);
             c->subscriptions.insert(hash);
         }
-        SETH_INFO("[TxWsServer] subscribed txhash: %s", hash.c_str());
+        SETH_DEBUG("[TxWsServer] subscribed txhash: %s", hash.c_str());
         EnqueueFrame(c, R"({"status":"subscribed","txhash":")" + hash + R"("})");
 
     } else if (payload.rfind(kUnsub, 0) == 0) {
@@ -346,7 +346,7 @@ void TxWsServer::HandleWsFrame(Conn* c, const std::string& payload) {
             conn_to_hashes_[c].erase(hash);
             c->subscriptions.erase(hash);
         }
-        SETH_INFO("[TxWsServer] unsubscribed txhash: %s", hash.c_str());
+        SETH_DEBUG("[TxWsServer] unsubscribed txhash: %s", hash.c_str());
         EnqueueFrame(c, R"({"status":"unsubscribed","txhash":")" + hash + R"("})");
 
     } else {
@@ -371,7 +371,7 @@ void TxWsServer::CloseConn(Conn* c) {
     c->tcp.data = nullptr;
     uv_close(reinterpret_cast<uv_handle_t*>(&c->tcp),
              [](uv_handle_t* h) { delete static_cast<Conn*>(h->data); });
-    SETH_INFO("[TxWsServer] connection closed");
+    SETH_DEBUG("[TxWsServer] connection closed");
 }
 
 // ── Send helpers ──────────────────────────────────────────────────────────────
