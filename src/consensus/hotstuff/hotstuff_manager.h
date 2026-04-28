@@ -170,42 +170,6 @@ public:
         return pool_hotstuff_[pool_index]->GetLeader();
     }
 
-    // [SCHED_OPT] Update the latest HandlePropose tx count for a pool.
-    // Called from Hotstuff::HandleProposeMessageByStep after processing a propose.
-    void UpdatePoolProposeTxCount(uint32_t pool_idx, uint32_t tx_count) {
-        if (pool_idx < common::kImmutablePoolSize) {
-            pool_propose_tx_count_[pool_idx].store(tx_count, std::memory_order_relaxed);
-        }
-    }
-
-    // [SCHED_OPT] Number of top-ranked pools that can propose immediately.
-    // Pools outside this rank must wait up to kPoolProposeTimeoutMs.
-    static constexpr uint32_t kTopNPoolsForImmediatePropose = 8u;
-    // [SCHED_OPT] Max wait time for low-ranked pools before they must propose (15s).
-    static constexpr uint64_t kPoolProposeTimeoutMs = 15000lu;
-
-    // [SCHED_OPT] Check if a pool's tx count ranks in the top N among all pools
-    // (excluding pool_32/global pool). Used by leader to decide whether to propose
-    // immediately or wait for the starvation timeout.
-    bool IsPoolInTopN(uint32_t pool_idx, uint32_t top_n) const {
-        if (pool_idx >= common::kImmutablePoolSize) {
-            return true;  // global pool always allowed
-        }
-        uint32_t my_count = pool_propose_tx_count_[pool_idx].load(std::memory_order_relaxed);
-        if (my_count == 0) {
-            return false;  // no txs → not in top N
-        }
-        // Count how many pools have strictly more txs than this pool
-        uint32_t pools_above = 0;
-        for (uint32_t i = 0; i < common::kImmutablePoolSize; ++i) {
-            if (i == pool_idx) continue;
-            if (pool_propose_tx_count_[i].load(std::memory_order_relaxed) > my_count) {
-                ++pools_above;
-            }
-        }
-        return pools_above < top_n;  // if fewer than N pools are above us, we're in top N
-    }
-
 private:
     void HandleMessage(const transport::MessagePtr& msg_ptr);
     void HandleTimerMessage(const transport::MessagePtr& msg_ptr);
@@ -354,10 +318,6 @@ public:
     std::shared_ptr<timeblock::TimeBlockManager> tm_block_mgr_ = nullptr;
     uint64_t prev_handler_timer_tm_ms_ = 0;
     uint64_t prev_check_timer_single_tm_ms_[common::kImmutablePoolSize] = {0};
-    // [SCHED_OPT] Latest HandlePropose tx count per pool (excluding pool_32/global).
-    // Written by consensus threads via UpdatePoolProposeTxCount(), read by leader
-    // via IsPoolInTopN() to decide whether to propose immediately or wait.
-    std::atomic<uint32_t> pool_propose_tx_count_[common::kImmutablePoolSize] = {};
     uint64_t first_timeblock_timestamp_ = 0;
     std::shared_ptr<sync::KeyValueSync> kv_sync_ = nullptr;
     std::queue<transport::MessagePtr> consensus_add_tx_msgs_[common::kMaxThreadCount];
