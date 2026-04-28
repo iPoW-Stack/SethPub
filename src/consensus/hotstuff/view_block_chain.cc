@@ -189,6 +189,10 @@ std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHeight(
         uint32_t network_id, 
         uint64_t height) {
     GetViewBlockWithHash("", true);
+    if (height == 0) {
+        return nullptr;
+    }
+
     std::shared_ptr<ViewBlockInfo> view_block_ptr;
     if (latest_commited_height_lru_map_.Get(
             BlockHeightKey(network_id, pool_index_, height), 
@@ -230,6 +234,10 @@ std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithView(
         uint64_t view) {
     // // CheckThreadIdValid();
     GetViewBlockWithHash("", true);
+    if (view == 0) {
+        return nullptr;
+    }
+    
     std::shared_ptr<ViewBlockInfo> view_block_ptr;
     if (latest_commited_view_lru_map_.Get(
             BlockViewKey(network_id, pool_index_, view), 
