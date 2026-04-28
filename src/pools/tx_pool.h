@@ -260,6 +260,10 @@ private:
     uint32_t consensus_tx_map_count_ = 0;
     std::atomic<bool> has_missing_height_ = true;
     std::atomic<uint64_t> latest_elect_height_ = 0;
+    // Dirty flag: set to true when new txs arrive or txs are committed (nonces advance).
+    // When false AND both queues are empty, TempGetTxIdempotently can skip the
+    // expensive full scan of tx_map_ / consensus_tx_map_.
+    bool tx_pool_dirty_ = true;
 
 // TODO: just test
     db::DbWriteBatch added_gids_batch_;

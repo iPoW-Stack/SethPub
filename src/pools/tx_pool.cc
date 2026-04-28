@@ -197,6 +197,7 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
 
     tx_ptr->elect_height = latest_elect_height_;
     added_txs_.push(tx_ptr);
+    tx_pool_dirty_ = true;
     SETH_DEBUG("trace tx pool: %d, success add tx %s, key: %s, nonce: %lu, step: %d", 
         pool_index_,
         common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
@@ -319,6 +320,7 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
     }
 
     over_addr_map_queue_.push(over_addr_nonce_ptr);
+    tx_pool_dirty_ = true;  // nonces advanced, previously stuck txs may now be valid
     SETH_DEBUG("pool: %d, all now tx size: %u", pool_index_, all_tx_size());
     // [MEM_MONITOR] Log tx pool memory stats after TxOver cleanup
     {
@@ -718,6 +720,15 @@ void TxPool::TempGetTxIdempotently(
             tx_ptr->tx_info->nonce());
     }
 
+    // Optimization: if no new txs arrived (both queues were empty) and the pool
+    // is not dirty (no state change since last empty scan), skip the expensive
+    // full scan of tx_map_ / consensus_tx_map_.
+    if (!tx_pool_dirty_) {
+        SETH_DEBUG("pool: %d, skip scan: pool not dirty, tx_map: %u, cons_map: %u",
+            pool_index_, tx_map_.size(), consensus_tx_map_.size());
+        return;
+    }
+
     std::set<uint32_t> system_added_step;
     auto get_tx_func = [&](std::map<std::string, std::map<uint64_t, TxItemPtr>>& tx_map) {
         for (auto iter = tx_map.begin(); iter != tx_map.end(); ++iter) {
@@ -917,6 +928,11 @@ void TxPool::TempGetTxIdempotently(
         "get: %u, count: %u", 
         pool_index_, all_tx_size(), added_txs_.size(),
         res_map.size(), count);
+    // If the full scan yielded 0 valid txs, mark pool as clean so the next
+    // call can skip the scan unless new txs arrive or nonces advance.
+    if (res_map.empty()) {
+        tx_pool_dirty_ = false;
+    }
 }
 
 void TxPool::InitLatestInfo() {
@@ -1080,6 +1096,7 @@ void TxPool::ConsensusAddTxs(const pools::TxItemPtr& tx_ptr) {
         common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 
         tx_ptr->tx_info->nonce());
     consensus_added_txs_.push(tx_ptr);
+    tx_pool_dirty_ = true;
 }
 
 }  // namespace pools
