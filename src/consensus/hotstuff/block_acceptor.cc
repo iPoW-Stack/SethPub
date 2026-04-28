@@ -233,7 +233,7 @@ Status BlockAcceptor::Accept(
     if (s != Status::kSuccess) {
         SETH_WARN("GetAndAddTxsLocally error! status=%d, pool_idx=%u, view_height=%lu, "
             "parent_hash=%s, get_txs_time=%lums, txs_count=%zu",
-            (int)s, pool_idx(), view_block.height(), 
+            (int)s, pool_idx(), view_block.block_info().height(), 
             common::Encode::HexEncode(view_block.parent_hash()).substr(0, 16).c_str(),
             (get_txs_end_ms - get_txs_begin_ms),
             (txs_ptr ? txs_ptr->txs.size() : 0));
@@ -1217,7 +1217,7 @@ Status BlockAcceptor::GetAndAddTxsLocally(
             "local_first_tx_hash=%s, leader_first_tx_hash=%s",
             txs_ptr->txs.size(), tx_propose.txs_size(), pool_idx_,
             (txs_ptr->txs.empty() ? "empty" : common::Encode::HexEncode(
-                pools::GetTxMessageHash(txs_ptr->txs[0])).substr(0, 16).c_str()),
+                pools::GetTxMessageHash(*txs_ptr->txs[0])).substr(0, 16).c_str()),
             (tx_propose.txs_size() == 0 ? "empty" : common::Encode::HexEncode(
                 pools::GetTxMessageHash(tx_propose.txs(0))).substr(0, 16).c_str()));
         // assert(false);

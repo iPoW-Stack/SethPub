@@ -740,9 +740,9 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
             "pool_idx=%u, txs_count=%d, propose_debug=%s",
             (int)st,
             msg_ptr->header.hash64(),
-            msg_ptr->header.hotstuff().pro_msg().view(),
-            msg_ptr->header.hotstuff().pro_msg().height(),
-            msg_ptr->header.hotstuff().pro_msg().pool_index(),
+            msg_ptr->header.hotstuff().pro_msg().view_item().qc().view(),
+            msg_ptr->header.hotstuff().pro_msg().view_item().block_info().height(),
+            msg_ptr->header.hotstuff().pool_index(),
             msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size(),
             ProtobufToJson(msg_ptr->header).c_str());
     }
