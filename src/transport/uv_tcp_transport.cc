@@ -598,12 +598,12 @@ void uv_async_cb(uv_async_t* handle) {
                 }
                 
                 // 应用层网络延迟注入
-                if (network_delay_simulator_.ShouldDropPacket()) {
+                if (GetNetworkDelaySimulator().ShouldDropPacket()) {
                     SETH_DEBUG("Network simulation: dropping packet to %s:%d", des_ip.c_str(), des_port);
                     free(req);
                     continue;
                 }
-                network_delay_simulator_.ApplyDelay();
+                GetNetworkDelaySimulator().ApplyDelay();
                 
                 uv_write(req, (uv_stream_t*)&ex_uv_tcp->uv_tcp, &buf, 1, on_write);
             }
