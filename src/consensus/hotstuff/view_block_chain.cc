@@ -1375,7 +1375,7 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
         view_block_ptr_info->view_block = std::make_shared<ViewBlock>();
         auto& view_block = *view_block_ptr_info->view_block;
         if (!prefix_db_->GetBlock(qc_item.view_block_hash(), &view_block)) {
-            SETH_WARN("failed get view block %u_%u_%lu, hash: %s",
+            SETH_DEBUG("failed get view block %u_%u_%lu, hash: %s",
                 qc_item.network_id(), 
                 qc_item.pool_index(), 
                 qc_item.view(), 
