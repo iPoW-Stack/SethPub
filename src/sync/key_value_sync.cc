@@ -49,8 +49,10 @@ void KeyValueSync::Init(
         common::kSyncMessage,
         std::bind(&KeyValueSync::HandleMessage, this, std::placeholders::_1));
     SETH_DEBUG("init key value sync 3");
+    // [SYNC_OPT] Reduced initial interval from 10s to 1s to match the new
+    // base interval in ConsensusTimerMessage.
     kv_tick_.CutOff(
-        10000lu,
+        1000lu,
         std::bind(&KeyValueSync::ConsensusTimerMessage, this));
     SETH_DEBUG("init key value sync 4");
     transport::Processor::Instance()->RegisterProcessor(
@@ -263,8 +265,11 @@ void KeyValueSync::ConsensusTimerMessage() {
         }
     }
 
-    // If ready queue still has pending items, re-schedule faster to keep up
-    uint64_t next_interval = (kv_ready_queue_.size() > 64) ? 1000lu : 10000lu;
+    // [SYNC_OPT] Reduced base interval from 10s to 1s. The old 10s interval
+    // meant sync requests were only sent every 10 seconds — catastrophically
+    // slow when dozens of pools need hundreds of blocks each.
+    // Adaptive: drops to 100ms when ready queue has pending items.
+    uint64_t next_interval = (kv_ready_queue_.size() > 64) ? 100lu : 1000lu;
     kv_tick_.CutOff(
         next_interval,
         std::bind(&KeyValueSync::ConsensusTimerMessage, this));
@@ -385,6 +390,11 @@ void KeyValueSync::PopItems() {
                 sended_neigbors.insert(choose_node);
             }
         }
+    }
+
+    if (synced_count > 0) {
+        SETH_WARN("[SYNC_PERF] PopItems: sent %u items to %lu peers, synced_map=%lu",
+            synced_count, sended_neigbors.size(), synced_map_.size());
     }
 }
 

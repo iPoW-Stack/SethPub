@@ -159,14 +159,22 @@ private:
     void HandlerVerifiedBlock(const std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>>& res_map);
 
     static const uint64_t kSyncPeriodUs = 300000lu;
-    static const uint64_t kSyncTimeoutPeriodUs = 3000000lu;
+    // [SYNC_OPT] Reduced from 3,000,000µs (3s) to 800,000µs (800ms).
+    // This is the deduplication window: if a sync request hasn't been answered
+    // within this time, it can be re-sent. 3s was far too long — a block sync
+    // round-trip should complete in <200ms on a healthy network. 800ms gives
+    // enough margin for network jitter while allowing faster retries.
+    static const uint64_t kSyncTimeoutPeriodUs = 800000lu;
     static const uint32_t kEachTimerHandleCount = 64u;
-    static const uint32_t kMaxBatchDrainCount = 4096u;
+    // [SYNC_OPT] Increased from 4096 to 8192: drain more ready-queue messages
+    // per timer tick. With faster sync, more responses arrive per interval.
+    static const uint32_t kMaxBatchDrainCount = 8192u;
     static const uint32_t kCacheSyncKeyValueCount = 1024000u;
     static const uint32_t kSyncCount = 5u;
     static const uint32_t kMaxSyncLatestNotRootCount = 1024u;
-    // Max messages the dedicated consumer thread processes per wakeup
-    static const uint32_t kConsumerBatchSize = 1024u;
+    // [SYNC_OPT] Increased from 1024 to 4096: consumer thread relays more
+    // messages per wakeup to keep up with higher sync throughput.
+    static const uint32_t kConsumerBatchSize = 4096u;
 
     std::shared_ptr<pools::TxPoolManager> tx_pool_mgr_ = nullptr;
     common::ThreadSafeQueue<SyncItemPtr> item_queues_[common::kMaxThreadCount];
