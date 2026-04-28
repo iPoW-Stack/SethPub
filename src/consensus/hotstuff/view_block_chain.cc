@@ -1300,6 +1300,10 @@ int ViewBlockChain::CheckTxNonceValid(
 }
 
 void ViewBlockChain::RecoverHighViewBlock() {
+    if (!db_ || !prefix_db_) {
+        return;
+    }
+
     auto net_id = common::GlobalInfo::Instance()->network_id();
     if (net_id == common::kInvalidUint32) {
         return;
