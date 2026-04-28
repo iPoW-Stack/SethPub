@@ -846,7 +846,7 @@ void KeyValueSync::HandlerVerifiedBlock(const std::map<uint32_t, std::map<uint32
 
 
 void KeyValueSync::SyncAllLatestBlocks() {
-    return;
+    // return;
     auto local_net_id = common::GlobalInfo::Instance()->network_id();
     auto end_shard = common::GlobalInfo::Instance()->now_valid_end_shard();
     SETH_INFO("SyncAllLatestBlocks enter: local_net=%u, end_shard=%u, "
