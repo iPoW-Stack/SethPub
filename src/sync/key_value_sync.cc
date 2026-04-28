@@ -678,6 +678,15 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
                     res->set_value(SerializeDeterministic(*view_block_ptr));
                     res->set_tag(kBlockHeight);
                     add_size += 16 + res->value().size();
+                    if (add_size >= kSyncPacketMaxSize) {
+                        SETH_DEBUG("handle sync value add_size failed request hash: %lu, "
+                            "net: %u, pool: %u, height: %lu",
+                            network_id,
+                            req_height.pool_idx(),
+                            req_height.height(),
+                            msg_ptr->header.hash64());
+                        break;
+                    }
                 }
             }
 
@@ -727,10 +736,10 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
     msg.set_type(common::kSyncMessage);
     transport::TcpTransport::Instance()->SetMessageHash(msg);
     // transport::TcpTransport::Instance()->Send(msg_ptr->conn, msg);
-    transport::TcpTransport::Instance()->Send(msg_ptr->conn->PeerIp(), msg_ptr->conn->PeerPort(), msg);
     SETH_DEBUG("sync response ok des: %u, src hash64: %lu, des hash64: %lu, size: %u, msg size: %u",
         msg_ptr->header.src_sharding_id(), msg_ptr->header.hash64(), 
         msg.hash64(), add_size, msg.ByteSizeLong());
+    transport::TcpTransport::Instance()->Send(msg_ptr->conn->PeerIp(), msg_ptr->conn->PeerPort(), msg);
 }
 
 void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr) {
@@ -856,6 +865,7 @@ void KeyValueSync::HandlerVerifiedBlock(const std::map<uint32_t, std::map<uint32
 
 
 void KeyValueSync::SyncAllLatestBlocks() {
+    return;
     auto local_net_id = common::GlobalInfo::Instance()->network_id();
     auto end_shard = common::GlobalInfo::Instance()->now_valid_end_shard();
     SETH_INFO("SyncAllLatestBlocks enter: local_net=%u, end_shard=%u, "
