@@ -313,7 +313,6 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashSt
     while (remove && cached_block_queue_.pop(&view_block_info_ptr)) {
         cached_block_map_[view_block_info_ptr->view_block->qc().view_block_hash()] = view_block_info_ptr;
         cached_pri_queue_.push(view_block_info_ptr);
-        CHECK_MEMORY_SIZE(cached_block_map_);
         cached_view_with_blocks_[view_block_info_ptr->view_block->qc().view()].push_back(view_block_info_ptr);
         if (view_block_info_ptr->valid) {
             latest_commited_hash_lru_map_.Put(
@@ -1285,7 +1284,7 @@ int ViewBlockChain::CheckTxNonceValid(
                         return 3;
                     }
 
-                    SETH_DEBUG("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
+                    SETH_INFO("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
                         common::Encode::HexEncode(addr).c_str(), 
                         nonce,
                         iter->second->nonce(),
@@ -1324,7 +1323,7 @@ int ViewBlockChain::CheckTxNonceValid(
             return 3;
         }
 
-        SETH_DEBUG("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
+        SETH_INFO("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
             common::Encode::HexEncode(addr).c_str(), 
             nonce,
             addr_info->nonce(),

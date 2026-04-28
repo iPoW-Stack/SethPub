@@ -107,7 +107,6 @@ public:
         }
         if (data_map_.find(key) == data_map_.end()) {
             data_map_[key] = value;
-            CHECK_MEMORY_SIZE(data_map_);
         }
 #endif
 
@@ -126,7 +125,6 @@ public:
         auto iter = data_map_.find(key);
         if (iter != data_map_.end()) {
             data_map_.erase(iter);
-            CHECK_MEMORY_SIZE(data_map_);
         }
 #endif
         db_batch_.Delete(key);

@@ -51,7 +51,6 @@ int ShardStatistic::Init() {
 
         std::map<uint32_t, StatisticInfoItem> tmp_pool_map;
         statistic_pool_info_[statistic_info.height()] = tmp_pool_map;
-        CHECK_MEMORY_SIZE(statistic_pool_info_);
         auto& pool_map = statistic_pool_info_[statistic_info.height()];
         for (int32_t i = 0; i < statistic_info.pool_statisitcs_size(); ++i) {
             StatisticInfoItem statistic_item;
@@ -386,7 +385,6 @@ bool ShardStatistic::HandleStatistic(
             auto acc_iter = accout_poce_info_map_.find(addr);
             if (acc_iter == accout_poce_info_map_.end()) {
                 accout_poce_info_map_[addr] = std::make_shared<AccoutPoceInfoItem>();
-                CHECK_MEMORY_SIZE(accout_poce_info_map_);
                 acc_iter = accout_poce_info_map_.find(addr);
             }
 
@@ -411,7 +409,6 @@ bool ShardStatistic::HandleStatistic(
                 
             SETH_DEBUG("erase statistic height: %lu", st_iter->first);
             st_iter = statistic_pool_info_.erase(st_iter);
-            CHECK_MEMORY_SIZE(statistic_pool_info_);
         }
 
         latest_statisticed_height_ = elect_statistic.statistic_height();
@@ -551,7 +548,6 @@ void ShardStatistic::CallTimeBlock(
     // }
 
     // statistic_pool_info_[latest_time_block_height] = pool_map;
-    CHECK_MEMORY_SIZE(statistic_pool_info_);
     prev_timeblock_height_ = latest_timeblock_height_;
     latest_timeblock_height_ = latest_time_block_height;
 }
@@ -863,7 +859,6 @@ int ShardStatistic::StatisticWithHeights(
         "");
     assert(piter->first > iter->first);
     statistic_height_map_[iter->first] = elect_statistic;
-    CHECK_MEMORY_SIZE(statistic_height_map_);
     // auto handled_height = iter->first;
     // auto eiter = statistic_pool_info_.find(handled_height);
     // statistic_pool_info_.erase(eiter);
@@ -1041,7 +1036,6 @@ void ShardStatistic::setElectStatistics(
             auto node_info = node_info_map.emplace(id, StatisticMemberInfoItem()).first->second;
             auto node_poce_info = accout_poce_info_map_.try_emplace(
                 id, std::make_shared<AccoutPoceInfoItem>()).first->second;
-            CHECK_MEMORY_SIZE(accout_poce_info_map_);
             statistic_item.add_credit(node_poce_info->credit);
             statistic_item.add_consensus_gap(node_poce_info->consensus_gap);
             statistic_item.add_tx_count(node_info.tx_count);

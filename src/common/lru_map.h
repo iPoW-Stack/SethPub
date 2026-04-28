@@ -97,21 +97,18 @@ public:
             item_list_.erase(list_it);
             item_list_.push_front(KVPair(key, value));
             item_map_[key] = item_list_.begin();
-            // CHECK_MEMORY_SIZE(item_list_);
             return false;
         }
 
         // New key-value pair
         item_list_.push_front(KVPair(key, value));
         item_map_[key] = item_list_.begin();
-        CHECK_MEMORY_SIZE(item_list_);
 
         // If max capacity is exceeded, remove the least recently used item (the last one)
         if (item_list_.size() > max_size_) {
             const Key& last_key = item_list_.back().first;
             item_map_.erase(last_key);
             item_list_.pop_back();
-            // CHECK_MEMORY_SIZE(item_list_);
         }
 
         return true;
@@ -130,7 +127,6 @@ public:
         ListIterator list_it = it->second;
         item_list_.erase(list_it);
         item_map_.erase(it);
-        // CHECK_MEMORY_SIZE(item_list_);
         return true;
     }
 
@@ -165,7 +161,6 @@ public:
             item_map_.erase(last_key);
             item_list_.pop_back();
         }
-        // CHECK_MEMORY_SIZE(item_list_);
     }
 
     /**

@@ -43,7 +43,6 @@ public:
             item_list_.pop_back();
         }
 
-        CHECK_MEMORY_SIZE(item_list_);
     }
 
     AccountPtr get(const std::string& key) {

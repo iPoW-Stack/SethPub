@@ -156,7 +156,6 @@ void ToTxsPools::ThreadToStatistic(
         added_heights_iter = added_heights_[pool_idx].erase(added_heights_iter);
     }
 
-    CHECK_MEMORY_SIZE_WITH_MESSAGE(added_heights_[pool_idx], std::to_string(pool_idx).c_str());    
     if (pool_consensus_heihgts_[pool_idx] + 1 == block.height()) {
         ++pool_consensus_heihgts_[pool_idx];
         for (; pool_consensus_heihgts_[pool_idx] <= pool_max_heihgts_[pool_idx];

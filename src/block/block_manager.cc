@@ -841,7 +841,6 @@ pools::TxItemPtr BlockManager::GetToTx(
     auto tx_ptr = HandleToTxsMessage(heights);
     if (tx_ptr != nullptr) {
         // heights_str_map_[height_hash] = tx_ptr;
-        // CHECK_MEMORY_SIZE(heights_str_map_);
         SETH_INFO("success get to tx tx info: %s, nonce: %lu, val: %s, heights: %s",
             ProtobufToJson(*tx_ptr->tx_info).c_str(),
             tx_ptr->tx_info->nonce(), 

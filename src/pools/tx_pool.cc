@@ -985,7 +985,6 @@ uint64_t TxPool::UpdateLatestInfo(
 
     if (height > synced_height_) {
         checked_height_with_prehash_[height] = prehash;
-        // CHECK_MEMORY_SIZE(checked_height_with_prehash_);
     }
 
     if (synced_height_ + 1 == height) {

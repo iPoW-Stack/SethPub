@@ -92,7 +92,6 @@ bool MsgDecoder::Decode(const char* buf, size_t len) {
         }
     }
 
-    CHECK_MEMORY_SIZE(packet_list_);
     return true;
 }
 

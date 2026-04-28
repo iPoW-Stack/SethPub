@@ -211,7 +211,6 @@ public:
         // //     common::Encode::HexEncode(key).c_str(),
         // //     common::Encode::HexEncode(val).c_str());
         // prev_storages_map_[key] = val;
-        // CHECK_MEMORY_SIZE(prev_storages_map_);
     // }
 
     evmc_tx_context tx_context_ = {};

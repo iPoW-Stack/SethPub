@@ -200,7 +200,6 @@ bool TcpAcceptor::OnRead() {
         event_loop.Wakeup();
         SETH_DEBUG("accept success %s:%d", from_ip.c_str(), from_port);
         conn_map_[from_ip + std::to_string(from_port)] = conn;
-        CHECK_MEMORY_SIZE(conn_map_);
         in_check_queue_->push(conn);
         int cleanup_limit = 32;
         while (!destroy_ && cleanup_limit-- > 0) {
@@ -213,7 +212,6 @@ bool TcpAcceptor::OnRead() {
             auto iter = conn_map_.find(key);
             if (iter != conn_map_.end()) {
                 conn_map_.erase(iter);
-                CHECK_MEMORY_SIZE(conn_map_);
                 SETH_DEBUG("remove accept connection: %s", key.c_str());
             }
         }

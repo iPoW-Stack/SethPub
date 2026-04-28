@@ -106,13 +106,11 @@ int BaseDht::Join(NodePtr& node) {
         auto hash_iter = node_map_.find((*rm_iter)->dht_key_hash);
         if (hash_iter != node_map_.end()) {
             node_map_.erase(hash_iter);
-            CHECK_MEMORY_SIZE(node_map_);
         }
         member_dht.erase(rm_iter);
     }
 
     auto iter = node_map_.insert(std::make_pair(node->dht_key_hash, node));
-    CHECK_MEMORY_SIZE(node_map_);
     SETH_DEBUG("MMMMMMMM node_map_ size: %u", node_map_.size());
     if (!iter.second) {
         DHT_ERROR("kDhtNodeJoined join node failed! %s",
@@ -168,7 +166,6 @@ int BaseDht::Drop(const std::string& id) {
     auto miter = node_map_.find(dht_key_hash);
     if (miter != node_map_.end()) {
         node_map_.erase(miter);
-        CHECK_MEMORY_SIZE(node_map_);
     }
 
     valid_count_ = member_dht.size() + 1;
@@ -234,7 +231,6 @@ int BaseDht::Drop(NodePtr& node) {
     if (miter != node_map_.end()) {
         assert(miter->second->id == node->id);
         node_map_.erase(miter);
-        CHECK_MEMORY_SIZE(node_map_);
     }
 
     SETH_DEBUG("success drop node: %s:%d", node->public_ip.c_str(), node->public_port);
@@ -265,7 +261,6 @@ int BaseDht::Drop(const std::string& ip, uint16_t port) {
     auto miter = node_map_.find(dht_key_hash);
     if (miter != node_map_.end()) {
         node_map_.erase(miter);
-        CHECK_MEMORY_SIZE(node_map_);
     }
 
     std::sort(
@@ -687,7 +682,6 @@ void BaseDht::ProcessRefreshNeighborsResponse(const transport::MessagePtr& msg_p
         } else {
             std::vector<NodePtr> nodes = {node};
             waiting_refresh_nodes_map_.insert(std::make_pair(res_nodes[i].id(), nodes));
-            CHECK_MEMORY_SIZE(waiting_refresh_nodes_map_);
         }
     }
 
@@ -736,7 +730,6 @@ void BaseDht::Connect(
     }
 
     connect_timeout_map_[peer_int] = now_tm_ms + kConnectTimeoutMs;
-    CHECK_MEMORY_SIZE(connect_timeout_map_);
     auto msg_ptr = std::make_shared<transport::TransportMessage>();
     auto& msg = msg_ptr->header;
     auto id = security_->GetAddressWithPublicKey(des_pubkey);

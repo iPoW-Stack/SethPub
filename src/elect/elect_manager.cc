@@ -74,7 +74,6 @@ int ElectManager::Join(uint32_t network_id) {
     }
 
     elect_network_map_[network_id] = elect_node_ptr_;
-    CHECK_MEMORY_SIZE(elect_network_map_);
     return kElectSuccess;
 }
 

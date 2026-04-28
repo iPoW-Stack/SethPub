@@ -114,37 +114,6 @@ struct Construct {
 #endif
 
 #ifndef NDEBUG
-#define CHECK_MEMORY_SIZE(data_map) { \
-    if (data_map.size() >= 30240) { \
-        SETH_INFO("data size: %u", data_map.size()); \
-    } \
-}
-
-#define CHECK_MEMORY_SIZE_WITH_MESSAGE(data_map, msg) { \
-    if (data_map.size() >= 30240) { \
-        SETH_INFO("%s data size: %u, msg: %s", #data_map, data_map.size(), msg); \
-    } \
-}
-
-#else
-// #define CHECK_MEMORY_SIZE(data_map)
-// #define CHECK_MEMORY_SIZE_WITH_MESSAGE(data_map, msg)
-#define CHECK_MEMORY_SIZE(data_map) { \
-    if (data_map.size() >= 30240) { \
-        SETH_INFO("data size: %u", data_map.size()); \
-        assert(false); \
-    } \
-}
-
-#define CHECK_MEMORY_SIZE_WITH_MESSAGE(data_map, msg) { \
-    if (data_map.size() >= 30240) { \
-        SETH_INFO("%s data size: %u, msg: %s", #data_map, data_map.size(), msg); \
-        assert(false); \
-    } \
-}
-#endif
-
-#ifndef NDEBUG
 #define ADD_TX_DEBUG_INFO(tx_proto)
 // #define ADD_TX_DEBUG_INFO(tx_proto) { \
 //     auto* tx_debug = tx_proto->add_tx_debug(); \

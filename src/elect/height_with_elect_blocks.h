@@ -236,7 +236,6 @@ public:
         }
 
         height_with_members_[network_id][height] = new_item;
-        CHECK_MEMORY_SIZE(height_with_members_[network_id]);
         std::string bls_prikey;
         if (prefix_db_->GetBlsPrikey(security_ptr_, height, network_id, &bls_prikey)) {
             bls::protobuf::LocalBlsItem bls_item;
@@ -260,7 +259,6 @@ public:
 
         if (height_with_members_[network_id].size() >= kMaxCacheElectBlockCount) {
             height_with_members_[network_id].erase(height_with_members_[network_id].begin());
-            CHECK_MEMORY_SIZE(height_with_members_[network_id]);
         }
 
         return shard_members;

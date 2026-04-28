@@ -1286,7 +1286,6 @@ Status Hotstuff::HandleProposeMsgStep_Vote(std::shared_ptr<ProposeMsgWrapper>& p
             voted_msgs_[leader_idx].erase(iter);
         }
         
-        CHECK_MEMORY_SIZE(voted_msgs_[leader_idx]);
         SETH_DEBUG("pool: %d, Send vote message is success., hash64: %lu, "
             "last_vote_view_: %lu, send to leader tx size: %u, last_vote_view_: %lu",
             pool_idx_, pro_msg_wrap->msg_ptr->header.hash64(),
