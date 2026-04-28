@@ -15,58 +15,15 @@ mkdir -p /root/seths/
 local_ip=`hostname -I | awk '{print $1}'`
 
 # ========== 网络模拟配置 ==========
-# 模拟公网: 1G带宽, 点对点50ms延迟(单向25ms), 10ms抖动, 1/10000丢包率
-# 例外: 192.168.26.141 不限速、不丢包
-EXEMPT_IP="192.168.26.141"
-
-setup_network_simulation() {
-    # 设定网卡名称，通常为 eth0 或 ens33，请根据 ifconfig 结果修改
-    INTERFACE="eth0"
-
-    # 1. 清除旧的配置
-    sudo tc qdisc del dev $INTERFACE root 2>/dev/null
-
-    # 2. 使用 prio qdisc 作为根，3 个频段（默认）
-    #    band 1 (prio 0): 白名单流量 — 无限制
-    #    band 2 (prio 1): 其余流量 — 限速 + 延迟 + 丢包
-    #    band 3 (prio 2): 未使用
-    sudo tc qdisc add dev $INTERFACE root handle 1: prio bands 3 \
-        priomap 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
-
-    # 3. band 1: 白名单流量直通，不做任何限制
-    sudo tc qdisc add dev $INTERFACE parent 1:1 handle 10: pfifo
-
-    # 4. band 2: 限速 1Gbps + 延迟 25ms + 抖动 5ms + 丢包 0.005%
-    sudo tc qdisc add dev $INTERFACE parent 1:2 handle 20: tbf \
-        rate 1gbit burst 128kb latency 25ms
-    sudo tc qdisc add dev $INTERFACE parent 20:1 handle 30: netem \
-        delay 25ms 5ms 25% \
-        loss 0%
-
-    # 5. band 3: 默认 pfifo（未使用）
-    sudo tc qdisc add dev $INTERFACE parent 1:3 handle 40: pfifo
-
-    # 6. 将 EXEMPT_IP 的流量分到 band 1（白名单）
-    sudo tc filter add dev $INTERFACE parent 1:0 protocol ip prio 1 \
-        u32 match ip dst $EXEMPT_IP/32 flowid 1:1
-    sudo tc filter add dev $INTERFACE parent 1:0 protocol ip prio 1 \
-        u32 match ip src $EXEMPT_IP/32 flowid 1:1
-
-    echo "公网模拟环境已就绪:"
-    echo "带宽: 1Gbps | 延迟: 25ms | 抖动: 5ms (相关性25%) | 丢包率: 0.005%"
-    echo "例外: $EXEMPT_IP 不限速、不丢包"
-}
-
-# 获取主网络接口 (排除 lo)
-get_main_interface() {
-    ip route | grep default | awk '{print $5}' | head -1
-}
-
-# 如果指定了网络接口参数，则进行网络模拟配置
-# 使用方式: ./temp_cmd.sh <public_ip> <start_pos> <node_count> <bootstrap> <start_shard> <end_shard> <leader_init_tm> [network_interface]
-if [ ! -z "$8" ]; then
-    setup_network_simulation
-fi
+# 注意: 不使用 TC 层网络模拟，因为会导致 TCP 报文破坏
+# 应用层延迟注入通过环境变量配置，在 Transport 层实现
+# 
+# 使用方式:
+#   export SETH_NETWORK_ENABLED=1
+#   export SETH_NETWORK_DELAY_MS=25
+#   export SETH_NETWORK_JITTER_MS=10
+#   export SETH_NETWORK_LOSS_RATE=0.0001
+#   ./temp_cmd.sh <params>
 # ========== 网络模拟配置结束 ==========
 deploy_nodes() {
     end_pos=$(($start_pos + $node_count - 1))

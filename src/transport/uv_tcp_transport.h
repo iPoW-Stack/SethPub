@@ -15,6 +15,7 @@
 #include "transport/msg_decoder.h"
 #include "transport/multi_thread.h"
 #include "transport/transport_utils.h"
+#include "transport/network_delay_simulator.h"
 
 namespace seth {
 
@@ -62,6 +63,11 @@ public:
     void RealFreeInvalidConnections();
     void AddLocalMessage(transport::MessagePtr msg_ptr);
     uint8_t GetThreadIndexWithPool(uint32_t pool_index);
+    
+    // 获取网络延迟模拟器 (用于应用层延迟注入)
+    NetworkDelaySimulator& GetNetworkDelaySimulator() {
+        return network_delay_simulator_;
+    }
 
 private:
     TcpTransport();
@@ -88,6 +94,7 @@ private:
     std::unordered_map<std::string, int32_t> ip_socket_map_;
     std::atomic<bool> destroy_ = false;
     std::queue<ex_uv_tcp_t*> invalid_conns_;
+    NetworkDelaySimulator network_delay_simulator_;
 
     DISALLOW_COPY_AND_ASSIGN(TcpTransport);
 };

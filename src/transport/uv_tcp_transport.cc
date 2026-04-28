@@ -31,7 +31,7 @@ struct connect_ex_t {
 };
 
 void on_close(uv_handle_t* handle) {
-    SETH_DEBUG("close called: %p!", static_cast<void*>(handle));
+    SETH_INFO("close called: %p!", static_cast<void*>(handle));
     ex_uv_tcp_t* ex_uv_tcp = (ex_uv_tcp_t*)handle;
     assert(ex_uv_tcp->msg_decoder != nullptr);
     if (ex_uv_tcp->msg_decoder) {
@@ -156,6 +156,14 @@ const char *inet_ntop(int af, const void *src, char *dst, socklen_t size) {
 bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
     auto& from_ip = ex_uv_tcp->ip;
     auto from_port = ex_uv_tcp->port;
+    
+    // 应用层网络延迟注入 (接收端)
+    if (tcp_transport->GetNetworkDelaySimulator().ShouldDropPacket()) {
+        SETH_DEBUG("Network simulation: dropping received packet from %s:%d", from_ip, from_port);
+        return false;
+    }
+    tcp_transport->GetNetworkDelaySimulator().ApplyDelay();
+    
     tnet::MsgPacket* msg_packet = dynamic_cast<tnet::MsgPacket*>(&packet);
     char* data = nullptr;
     uint32_t len = 0;
@@ -258,6 +266,18 @@ void on_connect(uv_connect_t* connection, int status) {
     uv_write_t *req = (uv_write_t*)malloc(sizeof(uv_write_t));
     connect_ex_t* ex_conn = (connect_ex_t*)connection;
     uv_buf_t uv_buf = uv_buf_init((char*)ex_conn->msg->c_str(), ex_conn->msg->size());
+    
+    // 应用层网络延迟注入
+    if (tcp_transport->GetNetworkDelaySimulator().ShouldDropPacket()) {
+        SETH_DEBUG("Network simulation: dropping packet on connect");
+        free(req);
+        delete ex_conn->msg;
+        free(ex_conn);
+        uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
+        return;
+    }
+    tcp_transport->GetNetworkDelaySimulator().ApplyDelay();
+    
     uv_write(req, (uv_stream_t*)&ex_uv_tcp->uv_tcp, &uv_buf, 1, on_write);
     delete ex_conn->msg;
     free(ex_conn);
@@ -576,6 +596,15 @@ void uv_async_cb(uv_async_t* handle) {
                 if (item_ptr->type == common::kHotstuffMessage) {
                     SETH_DEBUG("now send to server: %s:%d, hash64: %lu", des_ip.c_str(), des_port, item_ptr->hash64);
                 }
+                
+                // 应用层网络延迟注入
+                if (network_delay_simulator_.ShouldDropPacket()) {
+                    SETH_DEBUG("Network simulation: dropping packet to %s:%d", des_ip.c_str(), des_port);
+                    free(req);
+                    continue;
+                }
+                network_delay_simulator_.ApplyDelay();
+                
                 uv_write(req, (uv_stream_t*)&ex_uv_tcp->uv_tcp, &buf, 1, on_write);
             }
         }
