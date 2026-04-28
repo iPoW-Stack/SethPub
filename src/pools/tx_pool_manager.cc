@@ -396,18 +396,18 @@ void TxPoolManager::ConsensusTimerMessage() {
             "TransportMsg=%d, TxItemBase=%d, Socket=%d",
             vm_rss_kb / 1024, vm_size_kb / 1024,
             total_all_tx_size, total_pools_msg_queue,
-            gi.shared_obj_count_[0].load(),   // BlockTxsItem
-            gi.shared_obj_count_[1].load(),   // BlockToDbItem
-            gi.shared_obj_count_[2].load(),   // ProposeMsgWrapper
-            gi.shared_obj_count_[3].load(),   // ViewBlockInfo
-            gi.shared_obj_count_[4].load(),   // FromTxItem
-            gi.shared_obj_count_[5].load(),   // DbWriteBatch
-            gi.shared_obj_count_[6].load(),   // SethhainHost
-            gi.shared_obj_count_[9].load(),   // SyncItem
-            gi.shared_obj_count_[10].load(),  // TcpConnection
-            gi.shared_obj_count_[11].load(),  // TransportMessage
-            gi.shared_obj_count_[13].load(),  // TxItemBase
-            gi.shared_obj_count_[14].load()); // Socket
+            gi.GetSharedObj(0),   // BlockTxsItem
+            gi.GetSharedObj(1),   // BlockToDbItem
+            gi.GetSharedObj(2),   // ProposeMsgWrapper
+            gi.GetSharedObj(3),   // ViewBlockInfo
+            gi.GetSharedObj(4),   // FromTxItem
+            gi.GetSharedObj(5),   // DbWriteBatch
+            gi.GetSharedObj(6),   // SethhainHost
+            gi.GetSharedObj(9),   // SyncItem
+            gi.GetSharedObj(10),  // TcpConnection
+            gi.GetSharedObj(11),  // TransportMessage
+            gi.GetSharedObj(13),  // TxItemBase
+            gi.GetSharedObj(14)); // Socket
     }
 
     tools_tick_.CutOff(

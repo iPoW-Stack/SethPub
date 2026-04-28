@@ -193,6 +193,14 @@ public:
 #endif
     }
 
+    int32_t GetSharedObj(int32_t index) const {
+#ifndef NDEBUG
+        return shared_obj_count_[index].load();
+#else
+        return -1;
+#endif
+    }
+
     uint32_t tx_user_qps_limit_window_sconds() const {
         return tx_user_qps_limit_window_sconds_;
     }
