@@ -45,15 +45,13 @@ void on_close(uv_handle_t* handle) {
 void on_write(uv_write_t* req, int status) {
     ex_uv_tcp_t* ex_uv_tcp = (ex_uv_tcp_t*)req->handle;
     if (status < 0) {
-        // Write failed (broken pipe, connection reset, etc.) — close the connection
-        // and remove it from conn_map_ so the next Send() creates a fresh one.
-        SETH_WARN("[TCP_RECONN] on_write failed: %s:%d, status=%d (%s) — closing connection",
+        // Write failed (broken pipe, connection reset, etc.) — remove the dead
+        // connection from conn_map_ so the next Send() creates a fresh one.
+        SETH_WARN("[TCP_RECONN] on_write failed: %s:%d, status=%d (%s) — freeing connection",
             ex_uv_tcp->ip, ex_uv_tcp->port, status, uv_strerror(status));
         tcp_transport->FreeConnection(ex_uv_tcp);
-        // Properly close the libuv handle to prevent further callbacks
-        if (!uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp)) {
-            uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
-        }
+        // Note: Do NOT call uv_close here. FreeConnection puts the handle in invalid_conns_
+        // queue, and RealFreeInvalidConnections will close it later with proper timing.
     } else {
         SETH_DEBUG("on_write called back.");
     }
@@ -231,25 +229,21 @@ void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
             bool ok = OnClientPacket(ex_uv_tcp, *packet);
             packet->Free();
             if (!ok) {
-                // Bad packet (parse error, oversized, invalid port) — close the connection.
+                // Bad packet (parse error, oversized, invalid port) — drop the connection.
                 delete[] buf->base;
                 tcp_transport->FreeConnection(ex_uv_tcp);
-                // Properly close the libuv handle to prevent further callbacks
-                if (!uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp)) {
-                    uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
-                }
+                // Note: Do NOT call uv_close here. FreeConnection puts the handle in invalid_conns_
+                // queue, and RealFreeInvalidConnections will close it later with proper timing.
                 return;
             }
             packet = ex_uv_tcp->msg_decoder->GetPacket();
         }
     } else {
-        SETH_WARN("[TCP_RECONN] on_read error: %s:%d, nread=%zd (%s) — closing connection",
+        SETH_WARN("[TCP_RECONN] on_read error: %s:%d, nread=%zd (%s) — freeing connection",
             ex_uv_tcp->ip, ex_uv_tcp->port, nread, uv_strerror(nread));
         tcp_transport->FreeConnection(ex_uv_tcp);
-        // Properly close the libuv handle to prevent further callbacks
-        if (!uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp)) {
-            uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
-        }
+        // Note: Do NOT call uv_close here. FreeConnection puts the handle in invalid_conns_
+        // queue, and RealFreeInvalidConnections will close it later with proper timing.
     }
 
     delete[] buf->base;
