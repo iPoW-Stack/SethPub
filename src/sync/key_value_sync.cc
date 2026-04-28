@@ -728,8 +728,9 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
     transport::TcpTransport::Instance()->SetMessageHash(msg);
     // transport::TcpTransport::Instance()->Send(msg_ptr->conn, msg);
     transport::TcpTransport::Instance()->Send(msg_ptr->conn->PeerIp(), msg_ptr->conn->PeerPort(), msg);
-    SETH_DEBUG("sync response ok des: %u, src hash64: %lu, des hash64: %lu",
-        msg_ptr->header.src_sharding_id(), msg_ptr->header.hash64(), msg.hash64());
+    SETH_DEBUG("sync response ok des: %u, src hash64: %lu, des hash64: %lu, size: %u, msg size: %u",
+        msg_ptr->header.src_sharding_id(), msg_ptr->header.hash64(), 
+        msg.hash64(), add_size, msg.ByteSizeLong());
 }
 
 void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr) {

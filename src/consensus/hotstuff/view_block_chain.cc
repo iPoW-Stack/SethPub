@@ -1300,8 +1300,16 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
     if (chain_type_ == kLocalChain && !IsQcTcValid(view_block_ptr->qc())) {
         view_block_ptr->mutable_qc()->set_sign_x(qc_item.sign_x());
         view_block_ptr->mutable_qc()->set_sign_y(qc_item.sign_y());
+    }
+
+    if (chain_type_ == kLocalChain) {
         cached_block_queue_.push(view_block_ptr_info);
-        SETH_DEBUG("success add view block info cached_block_queue_: %u", cached_block_queue_.size());
+        SETH_DEBUG("success add view block info cached_block_queue_: %u, %u_%u_%lu_%lu",
+            cached_block_queue_.size(), 
+            view_block_ptr->qc().network_id(), 
+            view_block_ptr->qc().pool_index(), 
+            view_block_ptr->qc().view(), 
+            view_block_ptr->block_info().height());
     }
 
     if (high_view_block_ == nullptr ||
