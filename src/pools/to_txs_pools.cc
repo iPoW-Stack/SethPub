@@ -97,9 +97,10 @@ void ToTxsPools::ThreadToStatistic(
         prev_to_heights_ = std::make_shared<pools::protobuf::ShardToTxItem>(
             block.normal_to().to_heights());
         for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
+            auto committed_height = block.normal_to().to_heights().heights(i);
             auto iter = added_heights_[i].begin();
             while (iter != added_heights_[i].end()) {
-                if (iter->first >= block.normal_to().to_heights().heights(i)) {
+                if (iter->first >= committed_height) {
                     break;
                 }
 
@@ -109,6 +110,36 @@ void ToTxsPools::ThreadToStatistic(
                 }
 
                 iter = added_heights_[i].erase(iter);
+            }
+
+            // Clean up network_txs_pools_ entries that have been committed
+            {
+                common::AutoSpinLock auto_lock(network_txs_pools_mutex_);
+                auto& height_map = network_txs_pools_[i];
+                auto hiter = height_map.begin();
+                while (hiter != height_map.end()) {
+                    if (hiter->first >= committed_height) {
+                        break;  // map is ordered, no need to continue
+                    }
+                    hiter = height_map.erase(hiter);
+                }
+            }
+
+            // Clean up valided_heights_ entries below committed height
+            {
+                auto viter = valided_heights_[i].begin();
+                while (viter != valided_heights_[i].end()) {
+                    if (*viter < committed_height) {
+                        viter = valided_heights_[i].erase(viter);
+                    } else {
+                        ++viter;
+                    }
+                }
+            }
+
+            // Update erased_max_heights_ so future added_heights_ cleanup works
+            if (committed_height > 0 && committed_height - 1 > erased_max_heights_[i]) {
+                erased_max_heights_[i] = committed_height - 1;
             }
         }
     }
