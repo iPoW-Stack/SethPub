@@ -2454,18 +2454,18 @@ void Hotstuff::TryRecoverFromStuck(
             // consensus threads prioritize high-traffic pools.
             // Pool 32 (global pool) is always allowed to propose immediately.
             bool is_top_pool = (pool_idx_ >= common::kImmutablePoolSize) ||
-                hotstuff_mgr_.IsPoolInTopN(pool_idx_, HotstuffManager::kTopNPoolsForImmediatePropose);
+                hotstuff_mgr_.IsPoolInTopN(pool_idx_, consensus::HotstuffManager::kTopNPoolsForImmediatePropose);
             if (!is_top_pool) {
                 // Track when we first became eligible but deferred
                 if (propose_defer_start_ms_ == 0) {
                     propose_defer_start_ms_ = now_tm_ms;
                 }
                 uint64_t deferred_ms = now_tm_ms - propose_defer_start_ms_;
-                if (deferred_ms < HotstuffManager::kPoolProposeTimeoutMs) {
+                if (deferred_ms < consensus::HotstuffManager::kPoolProposeTimeoutMs) {
                     // Not yet timed out — skip this propose cycle
                     SETH_DEBUG("[SCHED_OPT] pool: %u deferred propose, not top-8, "
                         "waited %lu ms / %lu ms",
-                        pool_idx_, deferred_ms, HotstuffManager::kPoolProposeTimeoutMs);
+                        pool_idx_, deferred_ms, consensus::HotstuffManager::kPoolProposeTimeoutMs);
                     return;
                 }
                 // 15s timeout reached — must propose now regardless of rank
