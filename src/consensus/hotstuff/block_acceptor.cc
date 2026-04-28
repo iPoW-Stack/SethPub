@@ -231,7 +231,12 @@ Status BlockAcceptor::Accept(
     auto get_txs_end_ms = common::TimeUtils::TimestampMs();
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (s != Status::kSuccess) {
-        SETH_WARN("GetAndAddTxsLocally error!");
+        SETH_WARN("GetAndAddTxsLocally error! status=%d, pool_idx=%u, view_height=%lu, "
+            "parent_hash=%s, get_txs_time=%lums, txs_count=%zu",
+            (int)s, pool_idx(), view_block.height(), 
+            common::Encode::HexEncode(view_block.parent_hash()).substr(0, 16).c_str(),
+            (get_txs_end_ms - get_txs_begin_ms),
+            (txs_ptr ? txs_ptr->txs.size() : 0));
         return s;
     }
 
@@ -1208,8 +1213,13 @@ Status BlockAcceptor::GetAndAddTxsLocally(
 //             SETH_WARN("leader tx step: %u, gid: %s", tx->step(), common::Encode::HexEncode(tx->gid()).c_str());
 //         }
 // #endif
-        SETH_ERROR("invalid consensus, txs not equal to leader %u, %u",
-            txs_ptr->txs.size(), tx_propose.txs_size());
+        SETH_ERROR("invalid consensus, txs not equal to leader: local_txs=%zu, leader_txs=%d, pool_idx=%u, "
+            "local_first_tx_hash=%s, leader_first_tx_hash=%s",
+            txs_ptr->txs.size(), tx_propose.txs_size(), pool_idx_,
+            (txs_ptr->txs.empty() ? "empty" : common::Encode::HexEncode(
+                pools::GetTxMessageHash(txs_ptr->txs[0])).substr(0, 16).c_str()),
+            (tx_propose.txs_size() == 0 ? "empty" : common::Encode::HexEncode(
+                pools::GetTxMessageHash(tx_propose.txs(0))).substr(0, 16).c_str()));
         // assert(false);
         return Status::kAcceptorTxsEmpty;
     }
