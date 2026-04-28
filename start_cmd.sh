@@ -72,6 +72,30 @@ stop_services() {
     echo ">>> All seth-related daemons and processes cleared."
 }
 
+ulimit -n 1000000
+
+ # 优化TCP缓冲区
+sysctl -w net.core.rmem_max=134217728 > /dev/null 2>&1
+sysctl -w net.core.wmem_max=134217728 > /dev/null 2>&1
+echo "✓ TCP缓冲区已优化 (128MB)"
+
+# 优化TCP参数
+sysctl -w net.ipv4.tcp_rmem="4096 87380 134217728" > /dev/null 2>&1
+sysctl -w net.ipv4.tcp_wmem="4096 65536 134217728" > /dev/null 2>&1
+echo "✓ TCP读写缓冲已优化"
+
+# 优化TCP连接
+sysctl -w net.ipv4.tcp_tw_reuse=1 > /dev/null 2>&1
+sysctl -w net.ipv4.tcp_fin_timeout=30 > /dev/null 2>&1
+echo "✓ TCP连接复用已启用"
+
+# 写入配置
+echo "net.core.default_qdisc=fq" | sudo tee -a /etc/apt/sysctl.conf
+echo "net.ipv4.tcp_congestion_control=bbr" | sudo tee -a /etc/apt/sysctl.conf
+
+# 刷新配置使其生效
+sudo sysctl -p
+
 # ==========================================
 # 4. 启动新服务逻辑 (兼容模式)
 # ==========================================
