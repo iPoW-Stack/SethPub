@@ -239,6 +239,30 @@ void KeyValueSync::ConsensusTimerMessage() {
         prev_sync_tm_ms_ = now_tm_ms3;
     }
 
+    // [MEM_MONITOR] Periodic sync module memory stats
+    {
+        uint64_t synced_res_total = 0;
+        for (auto& net_kv : synced_res_map_) {
+            for (auto& pool_kv : net_kv.second) {
+                synced_res_total += pool_kv.second.size();
+            }
+        }
+        if (synced_res_total > 100 || synced_map_.size() > 100 || 
+                kv_msg_queue_.size() > 100 || kv_ready_queue_.size() > 100) {
+            SETH_WARN("[MEM_MONITOR] KeyValueSync: "
+                "synced_map=%lu, synced_res_map_total=%lu, "
+                "not_root_synced_res_count=%u, "
+                "kv_msg_queue=%u, kv_ready_queue=%u, "
+                "responsed_keys=%lu",
+                synced_map_.size(),
+                synced_res_total,
+                not_root_synced_res_map_count_,
+                kv_msg_queue_.size(),
+                kv_ready_queue_.size(),
+                responsed_keys_.size());
+        }
+    }
+
     // If ready queue still has pending items, re-schedule faster to keep up
     uint64_t next_interval = (kv_ready_queue_.size() > 64) ? 1000lu : 10000lu;
     kv_tick_.CutOff(

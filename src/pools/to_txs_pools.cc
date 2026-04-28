@@ -142,6 +142,35 @@ void ToTxsPools::ThreadToStatistic(
     if (block.height() > pool_max_heihgts_[pool_idx]) {
         pool_max_heihgts_[pool_idx] = block.height();
     }
+
+    // [MEM_MONITOR] Log memory stats for ToTxsPools data structures per pool
+    {
+        uint64_t total_network_txs_entries = 0;
+        uint64_t total_added_heights_entries = 0;
+        uint64_t total_valided_heights_entries = 0;
+        for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
+            total_network_txs_entries += network_txs_pools_[i].size();
+            total_added_heights_entries += added_heights_[i].size();
+            total_valided_heights_entries += valided_heights_[i].size();
+        }
+
+        if (total_network_txs_entries > 1000 || 
+                total_added_heights_entries > 1000 || 
+                total_valided_heights_entries > 1000) {
+            SETH_WARN("[MEM_MONITOR] ToTxsPools pool_%u: "
+                "network_txs_pools_total=%lu, added_heights_total=%lu, "
+                "valided_heights_total=%lu, "
+                "this_pool_network_txs=%lu, this_pool_added_heights=%lu, "
+                "this_pool_valided_heights=%lu",
+                pool_idx,
+                total_network_txs_entries,
+                total_added_heights_entries,
+                total_valided_heights_entries,
+                network_txs_pools_[pool_idx].size(),
+                added_heights_[pool_idx].size(),
+                valided_heights_[pool_idx].size());
+        }
+    }
 }
 
 void ToTxsPools::LoadLatestHeights() {

@@ -120,6 +120,12 @@ public:
                 pool_idx_, latest_elect_height_, last_stable_leader_member_index_.load());
         }
 
+        if (latest_qc_item_ptr_ == nullptr) {
+            SETH_WARN("pool: %u, OnNewElectBlock skipping GetLeader: latest_qc_item_ptr_ is null, "
+                "elect_height: %lu", pool_idx_, elect_height);
+            return;
+        }
+
         View out_view = 0;
         auto leader_block_tm = GetLeaderBlockTimestamp();
         GetLeader(
