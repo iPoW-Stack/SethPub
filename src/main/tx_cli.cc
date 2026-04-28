@@ -334,10 +334,10 @@ int tx_main(int argc, char** argv) {
         std::shared_ptr<security::Security> thread_security = std::make_shared<security::Ecdsa>();
         thread_security->SetPrivateKey(from_prikey);
         uint32_t count = 0;
-        uint32_t batch_count = 1500;
+        uint32_t batch_count = 256;
         auto addr = thread_security->GetAddress();
         while (!global_stop) {
-            if (count % batch_count == 0) {
+            if (count % batch_count == 0 && count > 0) {
                 if (global_pool_idx == -1) {
                     ++prikey_pos;
                     if (prikey_pos >= prikeys.size()) {
@@ -348,7 +348,8 @@ int tx_main(int argc, char** argv) {
                     thread_security->SetPrivateKey(from_prikey);
                     addr = thread_security->GetAddress();
                 }
-                usleep(1000000lu);
+                // Brief pause when rotating accounts to let nonces settle
+                usleep(10000lu);
             }
 
             if (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
