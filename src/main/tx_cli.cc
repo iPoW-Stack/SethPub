@@ -396,9 +396,27 @@ int tx_main(int argc, char** argv) {
                 }
             }
             
-            if (transport::TcpTransport::Instance()->Send(dest_ip, dest_port, tx_msg_ptr->header) != 0) {
-                std::cout << "send tcp client failed!" << std::endl;
-                // Do not return — just skip this tx and keep running
+            // Retry send up to 3 times on failure. On failure, roll back the nonce
+            // so we don't create permanent nonce gaps that block all future txs.
+            bool sent_ok = false;
+            for (int retry = 0; retry < 3 && !global_stop; ++retry) {
+                if (transport::TcpTransport::Instance()->Send(dest_ip, dest_port, tx_msg_ptr->header) == 0) {
+                    sent_ok = true;
+                    break;
+                }
+                std::cout << "send tcp client failed, retry " << (retry + 1) << "/3, addr: "
+                          << common::Encode::HexEncode(addr) << ", nonce: " << prikey_with_nonce[addr] << std::endl;
+                usleep(100000);  // 100ms between retries
+            }
+
+            if (!sent_ok) {
+                // All retries failed — roll back nonce to avoid permanent gap
+                --prikey_with_nonce[addr];
+                std::cout << "send failed after 3 retries, rolled back nonce to "
+                          << prikey_with_nonce[addr] << " for addr: "
+                          << common::Encode::HexEncode(addr) << std::endl;
+                usleep(1000000);  // 1s cooldown before next attempt
+                continue;
             }
 
             count++;
@@ -993,6 +1011,7 @@ int main(int argc, char** argv) {
                     "", "", amount, 210000, 1, shardnum);
 
                 if (!tx_msg_ptr) {
+                    --prikey_with_nonce[from_addr];
                     ++tx_failed;
                     continue;
                 }
@@ -1010,11 +1029,23 @@ int main(int argc, char** argv) {
                     }
                 }
 
-                if (transport::TcpTransport::Instance()->Send(
-                        dest_ip, dest_port, tx_msg_ptr->header) == 0) {
+                // Retry send up to 3 times, roll back nonce on total failure
+                bool sent_ok = false;
+                for (int retry = 0; retry < 3 && !global_stop; ++retry) {
+                    if (transport::TcpTransport::Instance()->Send(
+                            dest_ip, dest_port, tx_msg_ptr->header) == 0) {
+                        sent_ok = true;
+                        break;
+                    }
+                    usleep(100000);  // 100ms between retries
+                }
+
+                if (sent_ok) {
                     ++tx_count;
                     ++(pool_stats[pool].tx_sent);
                 } else {
+                    // Roll back nonce to avoid permanent gap
+                    --prikey_with_nonce[from_addr];
                     ++tx_failed;
                     ++(pool_stats[pool].tx_failed);
                 }

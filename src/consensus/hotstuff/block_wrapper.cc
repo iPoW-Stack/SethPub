@@ -143,6 +143,18 @@ Status BlockWrapper::Wrap(
             tx_propose->txs_size(),
             (int)view_block->ByteSizeLong());
     }
+    // Log each successfully packed transaction for nonce tracking and debugging.
+    for (int32_t ti = 0; ti < tx_propose->txs_size(); ++ti) {
+        auto& packed_tx = tx_propose->txs(ti);
+        SETH_WARN("[TX_PACKED] pool: %d, tx[%d/%d]: to=%s, nonce=%lu, "
+            "step=%d, amount=%lu, view=%lu",
+            pool_idx_, ti, tx_propose->txs_size(),
+            common::Encode::HexEncode(packed_tx.to()).c_str(),
+            packed_tx.nonce(),
+            packed_tx.step(),
+            packed_tx.amount(),
+            view_block->qc().view());
+    }
     SETH_DEBUG("====3 success propose block net: %u, pool: %u, set height: %lu, pre height: %lu, "
         "elect height: %lu, timeblock height: %lu, hash: %s, parent hash: %s, %u_%u_%lu",
         view_block->qc().network_id(), view_block->qc().pool_index(),
