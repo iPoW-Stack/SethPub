@@ -151,7 +151,7 @@ Status BlockWrapper::Wrap(
             pool_idx_, ti, tx_propose->txs_size(),
             common::Encode::HexEncode(packed_tx.to()).c_str(),
             packed_tx.nonce(),
-            packed_tx.step(),
+            (int)packed_tx.step(),
             packed_tx.amount(),
             view_block->qc().view());
     }
