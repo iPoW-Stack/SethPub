@@ -410,6 +410,7 @@ int TcpTransport::Send(
     output_item->type = message.type();
     output_item->hash64 = message.hash64();
     message.SerializeToString(&output_item->msg);
+    assert(output_item->msg.size() < (uint32_t)(1024 * 1024 * 1.5));
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     output_queues_[thread_idx].push(output_item);
     output_con_.notify_one();
@@ -423,6 +424,7 @@ int TcpTransport::Send(
     output_item->conn = conn;
     output_item->hash64 = 0;
     output_item->msg = message;
+    assert(output_item->msg.size() < (uint32_t)(1024 * 1024 * 1.5));
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     output_queues_[thread_idx].push(output_item);
     output_con_.notify_one();
@@ -447,6 +449,7 @@ int TcpTransport::Send(
     output_item->type = message.type();
     output_item->hash64 = message.hash64();
     message.SerializeToString(&output_item->msg);
+    assert(output_item->msg.size() < (uint32_t)(1024 * 1024 * 1.5));
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     output_queues_[thread_idx].push(output_item);
     output_con_.notify_one();
