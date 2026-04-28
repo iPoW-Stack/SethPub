@@ -427,7 +427,6 @@ int tx_main(int argc, char** argv) {
             prikey_with_nonce[addr] = next_nonce;
             SETH_DEBUG("[NONCE_SEND] Tx sent successfully with nonce=%lu for %s",
                 next_nonce, common::Encode::HexEncode(addr).substr(0, 16).c_str());
-            }
 
             count++;
             ++all_count;
