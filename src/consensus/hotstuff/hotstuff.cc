@@ -2332,7 +2332,7 @@ Status Hotstuff::SendMsgToLeader(
 
 void Hotstuff::TryRecoverFromStuck(
         const transport::MessagePtr& msg_ptr, 
-        bool has_user_tx, 
+        uint32_t pool_tx_count, 
         bool has_system_tx) {
     auto now_tm_ms = common::TimeUtils::TimestampMs();
     if (latest_qc_item_ptr_ && update_latest_view_tm_) {
@@ -2347,6 +2347,7 @@ void Hotstuff::TryRecoverFromStuck(
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
+    bool has_user_tx = (pool_tx_count > 0);
     if (has_user_tx) {
         has_user_tx_tag_ = true;
         // New txs arrived, reset empty propose backoff so we try immediately
@@ -2443,6 +2444,27 @@ void Hotstuff::TryRecoverFromStuck(
                 return;
             }
 
+            // [BATCH_OPT] If pool has txs but fewer than the batch threshold (256),
+            // defer propose to accumulate more txs per block. This reduces consensus
+            // overhead (BLS verify, broadcast) by packing more txs into each round.
+            // Force propose after 15s timeout to prevent starvation.
+            if (pool_tx_count > 0 && pool_tx_count < kMinTxCountForImmediatePropose) {
+                if (propose_defer_start_ms_ == 0) {
+                    propose_defer_start_ms_ = now_tm_ms;
+                }
+                uint64_t deferred_ms = now_tm_ms - propose_defer_start_ms_;
+                if (deferred_ms < kProposeDeferTimeoutMs) {
+                    SETH_DEBUG("[BATCH_OPT] pool: %u, deferring propose: tx_count=%u < %u, "
+                        "waited %lu ms / %lu ms",
+                        pool_idx_, pool_tx_count, kMinTxCountForImmediatePropose,
+                        deferred_ms, kProposeDeferTimeoutMs);
+                    return;
+                }
+                SETH_WARN("[BATCH_OPT] pool: %u, propose defer timeout (%lu ms), "
+                    "forcing propose with %u txs",
+                    pool_idx_, deferred_ms, pool_tx_count);
+            }
+
             auto propose_status = Propose(out_view, leader, nullptr, nullptr, msg_ptr, leader_block_tm);
             if (propose_status != Status::kSuccess) {
                 // Propose failed (likely 0 txs), increase backoff
@@ -2454,9 +2476,10 @@ void Hotstuff::TryRecoverFromStuck(
                 SETH_DEBUG("pool: %u, propose failed, empty_propose_count: %u, backoff: %u ms",
                     pool_idx_, empty_propose_count_, backoff_ms);
             } else {
-                // Propose succeeded, reset backoff
+                // Propose succeeded, reset backoff and defer timer
                 empty_propose_count_ = 0;
                 empty_propose_backoff_until_ms_ = 0;
+                propose_defer_start_ms_ = 0;
             }
         }
         ADD_DEBUG_PROCESS_TIMESTAMP();
