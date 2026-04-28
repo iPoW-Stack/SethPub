@@ -180,9 +180,9 @@ public:
 
     // [SCHED_OPT] Number of top-ranked pools that can propose immediately.
     // Pools outside this rank must wait up to kPoolProposeTimeoutMs.
-    static const uint32_t kTopNPoolsForImmediatePropose = 8u;
+    static constexpr uint32_t kTopNPoolsForImmediatePropose = 8u;
     // [SCHED_OPT] Max wait time for low-ranked pools before they must propose (15s).
-    static const uint64_t kPoolProposeTimeoutMs = 15000lu;
+    static constexpr uint64_t kPoolProposeTimeoutMs = 15000lu;
 
     // [SCHED_OPT] Check if a pool's tx count ranks in the top N among all pools
     // (excluding pool_32/global pool). Used by leader to decide whether to propose
