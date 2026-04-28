@@ -45,11 +45,15 @@ void on_close(uv_handle_t* handle) {
 void on_write(uv_write_t* req, int status) {
     ex_uv_tcp_t* ex_uv_tcp = (ex_uv_tcp_t*)req->handle;
     if (status < 0) {
-        // Write failed (broken pipe, connection reset, etc.) — remove the dead
-        // connection from conn_map_ so the next Send() creates a fresh one.
-        SETH_WARN("[TCP_RECONN] on_write failed: %s:%d, status=%d (%s) — freeing connection",
+        // Write failed (broken pipe, connection reset, etc.) — close the connection
+        // and remove it from conn_map_ so the next Send() creates a fresh one.
+        SETH_WARN("[TCP_RECONN] on_write failed: %s:%d, status=%d (%s) — closing connection",
             ex_uv_tcp->ip, ex_uv_tcp->port, status, uv_strerror(status));
         tcp_transport->FreeConnection(ex_uv_tcp);
+        // Properly close the libuv handle to prevent further callbacks
+        if (!uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp)) {
+            uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
+        }
     } else {
         SETH_DEBUG("on_write called back.");
     }
@@ -174,11 +178,13 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
     }
 
     // Reject oversized packets — normal consensus messages are well under 1 MB.
+    // This can happen when TC layer corrupts packet headers, causing len to be garbage.
     static const uint32_t kMaxPacketBytes = 1u * 1024u * 1024u + 1024  * 512;  // 1.5 MB hard limit
     if (len == 0 || len > kMaxPacketBytes) {
         SETH_WARN("oversized or empty packet from %s:%d, len=%u — closing connection",
                   from_ip, from_port, len);
-        // return false;  // caller (on_read) will close on false
+        // Return false to signal caller (on_read) to close this connection
+        return false;
     }
 
     MessagePtr msg_ptr = std::make_shared<TransportMessage>();
@@ -225,17 +231,25 @@ void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
             bool ok = OnClientPacket(ex_uv_tcp, *packet);
             packet->Free();
             if (!ok) {
-                // Bad packet (parse error, oversized, invalid port) — drop the connection.
+                // Bad packet (parse error, oversized, invalid port) — close the connection.
                 delete[] buf->base;
                 tcp_transport->FreeConnection(ex_uv_tcp);
+                // Properly close the libuv handle to prevent further callbacks
+                if (!uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp)) {
+                    uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
+                }
                 return;
             }
             packet = ex_uv_tcp->msg_decoder->GetPacket();
         }
     } else {
-        SETH_WARN("[TCP_RECONN] on_read error: %s:%d, nread=%zd (%s) — freeing connection",
+        SETH_WARN("[TCP_RECONN] on_read error: %s:%d, nread=%zd (%s) — closing connection",
             ex_uv_tcp->ip, ex_uv_tcp->port, nread, uv_strerror(nread));
         tcp_transport->FreeConnection(ex_uv_tcp);
+        // Properly close the libuv handle to prevent further callbacks
+        if (!uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp)) {
+            uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
+        }
     }
 
     delete[] buf->base;
@@ -544,11 +558,20 @@ void uv_async_cb(uv_async_t* handle) {
             
             if (ex_uv_tcp == nullptr) {
                 ex_uv_tcp = transport::TcpTransport::Instance()->GetConnection(des_ip, des_port);
-                if (ex_uv_tcp != nullptr && !uv_is_active((uv_handle_t*)&ex_uv_tcp->uv_tcp)) {
-                    SETH_WARN("[TCP_RECONN] stale connection detected: %s:%d — reconnecting",
-                        des_ip.c_str(), des_port);
-                    transport::TcpTransport::Instance()->FreeConnection(ex_uv_tcp);
-                    ex_uv_tcp = nullptr;
+                if (ex_uv_tcp != nullptr) {
+                    // Check if connection is still valid:
+                    // 1. Not closing (uv_is_closing returns true if close was called)
+                    // 2. Still active (has pending I/O operations or is readable)
+                    // 3. Handle type is still UV_TCP (not corrupted)
+                    if (uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp) ||
+                        ex_uv_tcp->uv_tcp.type != UV_TCP) {
+                        SETH_WARN("[TCP_RECONN] stale connection detected: %s:%d (closing=%d, type=%d) — reconnecting",
+                            des_ip.c_str(), des_port, 
+                            uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp),
+                            ex_uv_tcp->uv_tcp.type);
+                        transport::TcpTransport::Instance()->FreeConnection(ex_uv_tcp);
+                        ex_uv_tcp = nullptr;
+                    }
                 }
             }
 
