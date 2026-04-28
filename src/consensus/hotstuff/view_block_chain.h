@@ -83,6 +83,7 @@ public:
     bool IsValid();
     std::string String() const;
     void UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_item);
+    void RecoverHighViewBlock();
     // void SaveBlockCheckedParentHash(const std::string& hash, uint64_t view);
     protos::AddressInfoPtr ChainGetAccountInfo(const std::string& acc_id);
     void Commit(const std::shared_ptr<ViewBlockInfo>& queue_item_ptr);

@@ -82,6 +82,7 @@ static const std::string kViewBlockHashKeyPrefix = "au\x01";
 static const std::string kViewBlockParentHashKeyPrefix = "av\x01";
 static const std::string kAggBlsPrivateKeyPrefix = "ax\x01";
 static const std::string kCommitedGidPrefix = "ay\x01";
+static const std::string kHighViewBlockPrefix = "aw\x01";
 static const std::string kViewBlockVaildParentHash = "ba\x01";
 static const std::string kBlockVaildHeight = "bb\x01";
 static const std::string kUserTxPrefix = "bc\x01";
@@ -635,6 +636,43 @@ public:
             pool_info->synced_height(), 
             common::Encode::HexEncode(pool_info->hash()).c_str());        
         return true;
+    }
+
+    void SaveHighViewBlock(
+            uint32_t sharding_id,
+            uint32_t pool_index,
+            const std::string& block_hash,
+            db::DbWriteBatch& batch) {
+        std::string key;
+        key.reserve(48);
+        key.append(kHighViewBlockPrefix);
+        key.append((char*)&sharding_id, sizeof(sharding_id));
+        key.append((char*)&pool_index, sizeof(pool_index));
+        batch.Put(key, block_hash);
+        SETH_DEBUG("save high view block: %u_%u, hash: %s",
+            sharding_id, pool_index,
+            common::Encode::HexEncode(block_hash).c_str());
+    }
+
+    bool GetHighViewBlock(
+            uint32_t sharding_id,
+            uint32_t pool_index,
+            view_block::protobuf::ViewBlockItem* block) {
+        std::string key;
+        key.reserve(48);
+        key.append(kHighViewBlockPrefix);
+        key.append((char*)&sharding_id, sizeof(sharding_id));
+        key.append((char*)&pool_index, sizeof(pool_index));
+        std::string block_hash;
+        auto st = db_->Get(key, &block_hash);
+        if (!st.ok() || block_hash.empty()) {
+            return false;
+        }
+
+        SETH_DEBUG("get high view block: %u_%u, hash: %s",
+            sharding_id, pool_index,
+            common::Encode::HexEncode(block_hash).c_str());
+        return GetBlock(block_hash, block);
     }
 
     void SaveHeightTree(

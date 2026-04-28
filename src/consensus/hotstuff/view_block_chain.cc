@@ -37,6 +37,8 @@ void ViewBlockChain::Init(
     pools_mgr_ = pools_mgr;
     new_block_cache_callback_ = new_block_cache_callback;
     prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
+    // Recover high_view_block_ from DB if it was persisted before restart
+    RecoverHighViewBlock();
 }
 
 ViewBlockChain::~ViewBlockChain(){}
@@ -1281,6 +1283,31 @@ int ViewBlockChain::CheckTxNonceValid(
     return 0;
 }
 
+void ViewBlockChain::RecoverHighViewBlock() {
+    auto net_id = common::GlobalInfo::Instance()->network_id();
+    if (net_id == common::kInvalidUint32) {
+        return;
+    }
+
+    auto view_block_ptr = std::make_shared<ViewBlock>();
+    if (!prefix_db_->GetHighViewBlock(net_id, pool_index_, view_block_ptr.get())) {
+        SETH_DEBUG("no persisted high view block for %u_%u", net_id, pool_index_);
+        return;
+    }
+
+    if (high_view_block_ == nullptr ||
+            high_view_block_->qc().view() < view_block_ptr->qc().view()) {
+        high_view_block_ = view_block_ptr;
+        high_view_block_view_.store(high_view_block_->qc().view());
+        SETH_INFO("recovered high view block from db: %u_%u_%lu, height: %lu, hash: %s",
+            high_view_block_->qc().network_id(),
+            pool_index_,
+            high_view_block_->qc().view(),
+            high_view_block_->block_info().height(),
+            common::Encode::HexEncode(high_view_block_->qc().view_block_hash()).c_str());
+    }
+}
+
 void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_item) {
     auto view_block_ptr_info = Get(qc_item.view_block_hash());
     if (!view_block_ptr_info) {
@@ -1351,6 +1378,21 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
             common::Encode::HexEncode(high_view_block_->parent_hash()).c_str(),
             high_view_block_->block_info().tx_list_size());
         high_view_block_view_.store(high_view_block_->qc().view());
+        // Persist high_view_block_ to DB so it can be recovered after restart
+        db::DbWriteBatch db_batch;
+        prefix_db_->SaveHighViewBlock(
+            high_view_block_->qc().network_id(),
+            pool_index_,
+            high_view_block_->qc().view_block_hash(),
+            db_batch);
+        auto st = db_->Put(db_batch);
+        if (!st.ok()) {
+            SETH_ERROR("failed to persist high view block %u_%u_%lu, hash: %s",
+                high_view_block_->qc().network_id(),
+                pool_index_,
+                high_view_block_->qc().view(),
+                common::Encode::HexEncode(high_view_block_->qc().view_block_hash()).c_str());
+        }
     }
 }
 
