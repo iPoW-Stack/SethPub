@@ -682,8 +682,8 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
                         SETH_DEBUG("handle sync value add_size failed request hash: %lu, "
                             "net: %u, pool: %u, height: %lu",
                             network_id,
-                            req_height.pool_idx(),
-                            req_height.height(),
+                            common::kGlobalPoolIndex,
+                            latest_sync_item.globl_pool_height(),
                             msg_ptr->header.hash64());
                         break;
                     }
