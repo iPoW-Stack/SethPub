@@ -176,6 +176,7 @@ Status Hotstuff::Propose(
         std::shared_ptr<AggregateQC> agg_qc,
         const transport::MessagePtr& msg_ptr,
         uint64_t leader_tm_ms) {
+    auto propose_begin_ms = common::TimeUtils::TimestampMs();
     ADD_DEBUG_PROCESS_TIMESTAMP();
     SETH_DEBUG("pool: %d, called propose!", pool_idx_);
 #ifndef NDEBUG
@@ -278,7 +279,11 @@ Status Hotstuff::Propose(
         pre_v_block->qc().view(),
         tm_block_mgr_->LatestTimestampHeight());
     pb_pro_msg->mutable_view_item()->mutable_block_info()->set_timestamp(leader_tm_ms);
+    auto construct_begin_ms = common::TimeUtils::TimestampMs();
     Status s = ConstructProposeMsg(leader_view, leader, msg_ptr, pb_pro_msg);
+    auto construct_end_ms = common::TimeUtils::TimestampMs();
+    SETH_WARN("[PERF_PROPOSE] pool: %d, ConstructProposeMsg cost %lu ms",
+        pool_idx_, (construct_end_ms - construct_begin_ms));
     if (s != Status::kSuccess) {
         if (!tc) {
             SETH_DEBUG("pool: %d construct propose msg failed, %d",
@@ -346,7 +351,12 @@ Status Hotstuff::Propose(
     SETH_DEBUG("leader begin propose_debug: %s", ProtobufToJson(consensus_debug).c_str());
     auto t5 = common::TimeUtils::TimestampMs();
 #endif
+    auto sign_begin_ms = common::TimeUtils::TimestampMs();
     s = crypto()->SignMessage(tmp_msg_ptr);
+    auto sign_end_ms = common::TimeUtils::TimestampMs();
+    SETH_WARN("[PERF_PROPOSE] pool: %d, SignMessage cost %lu ms, msg_bytes: %d",
+        pool_idx_, (sign_end_ms - sign_begin_ms),
+        (int)tmp_msg_ptr->header.ByteSizeLong());
     if (s != Status::kSuccess) {
         SETH_WARN("sign message failed pool: %d, view: %lu, construct hotstuff msg failed",
             pool_idx_, hotstuff_msg->pro_msg().view_item().qc().view());
@@ -395,7 +405,14 @@ Status Hotstuff::Propose(
                 hotstuff_msg->pro_msg().view_item().qc().view());
         }
     }
+    auto send_begin_ms = common::TimeUtils::TimestampMs();
     network::Route::Instance()->Send(tmp_msg_ptr);
+    auto send_end_ms = common::TimeUtils::TimestampMs();
+    SETH_WARN("[PERF_PROPOSE] pool: %d, Broadcast Send cost %lu ms, txs: %u, view: %lu, total_propose: %lu ms",
+        pool_idx_, (send_end_ms - send_begin_ms),
+        hotstuff_msg->pro_msg().tx_propose().txs_size(),
+        hotstuff_msg->pro_msg().view_item().qc().view(),
+        (send_end_ms - propose_begin_ms));
     if (hotstuff_msg->pro_msg().tx_propose().txs_size() > 0) {
         latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
     }
@@ -752,6 +769,7 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
 
 Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> pro_msg_wrap) {
     auto msg_ptr = pro_msg_wrap->msg_ptr;
+    auto step_begin_ms = common::TimeUtils::TimestampMs();
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto st = HandleProposeMsgStep_VerifyLeader(pro_msg_wrap);
     if (st != Status::kSuccess) {
@@ -761,6 +779,7 @@ Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> p
         return Status::kLeaderInvalid;
     }
 
+    auto verify_leader_ms = common::TimeUtils::TimestampMs();
     ADD_DEBUG_PROCESS_TIMESTAMP();
     st = HandleProposeMsgStep_VerifyViewBlock(pro_msg_wrap);
     if (st != Status::kSuccess) {
@@ -770,6 +789,7 @@ Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> p
         return Status::kLeaderInvalid;
     }
 
+    auto verify_vb_ms = common::TimeUtils::TimestampMs();
     ADD_DEBUG_PROCESS_TIMESTAMP();
     st = HandleProposeMsgStep_TxAccept(pro_msg_wrap);
     if (st != Status::kSuccess) {
@@ -779,6 +799,7 @@ Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> p
         return Status::kLeaderInvalid;
     }
 
+    auto tx_accept_ms = common::TimeUtils::TimestampMs();
     ADD_DEBUG_PROCESS_TIMESTAMP();
     st = HandleProposeMsgStep_ChainStore(pro_msg_wrap);
     if (st != Status::kSuccess) {
@@ -788,6 +809,7 @@ Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> p
         return Status::kLeaderInvalid;
     }
 
+    auto chain_store_ms = common::TimeUtils::TimestampMs();
     ADD_DEBUG_PROCESS_TIMESTAMP();
     st = HandleProposeMsgStep_Vote(pro_msg_wrap);
     if (st != Status::kSuccess) {
@@ -797,6 +819,18 @@ Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> p
         return Status::kLeaderInvalid;
     }
 
+    auto vote_ms = common::TimeUtils::TimestampMs();
+    SETH_WARN("[PERF_HANDLE_PROPOSE] pool: %d, TOTAL: %lu ms | "
+        "VerifyLeader: %lu, VerifyVB: %lu, TxAccept: %lu, ChainStore: %lu, Vote: %lu | "
+        "txs: %d, hash64: %lu",
+        pool_idx_, (vote_ms - step_begin_ms),
+        (verify_leader_ms - step_begin_ms),
+        (verify_vb_ms - verify_leader_ms),
+        (tx_accept_ms - verify_vb_ms),
+        (chain_store_ms - tx_accept_ms),
+        (vote_ms - chain_store_ms),
+        msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size(),
+        msg_ptr->header.hash64());
     ADD_DEBUG_PROCESS_TIMESTAMP();
     SETH_DEBUG("HandleProposeMessageByStep success hash: %lu, propose_debug: %s",
         msg_ptr->header.hash64(),
@@ -924,6 +958,9 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
             // assert(false);
             return Status::kError;
         }
+        auto verify_qc_end_ms = common::TimeUtils::TimestampMs();
+        SETH_WARN("[PERF_HANDLE_TC] pool: %d, VerifyQC cost %lu ms, view: %lu",
+            pool_idx_, (verify_qc_end_ms - btime), pro_msg.tc().view());
 
 
         auto tc_ptr = std::make_shared<view_block::protobuf::QcItem>(pro_msg.tc());
@@ -1429,6 +1466,7 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
         return Status::kError;
     }
 
+    auto bls_begin_ms = common::TimeUtils::TimestampMs();
     Status ret = crypto()->ReconstructAndVerifyThresSign(
         msg_ptr,
         elect_height,
@@ -1449,6 +1487,14 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
         qc_item.pool_index(),
         qc_item.view(),
         (int32_t)ret);
+    auto bls_end_ms = common::TimeUtils::TimestampMs();
+    if (ret == Status::kSuccess) {
+        SETH_WARN("[PERF_VOTE] pool: %d, BLS ReconstructAndVerify cost %lu ms, view: %lu, "
+            "total_vote_handle: %lu ms",
+            pool_idx_, (bls_end_ms - bls_begin_ms),
+            vote_msg.view(),
+            (bls_end_ms - b));
+    }
     // assert(ret != Status::kInvalidOpposedCount); It may occur temporarily due to inconsistent status
     if (ret != Status::kSuccess) {
         if (ret == Status::kBlsVerifyWaiting) {
@@ -1604,7 +1650,15 @@ Status Hotstuff::TryCommit(
 //             ProtobufToJson(cons_debug).c_str());
 // #endif
         ADD_DEBUG_PROCESS_TIMESTAMP();
+        auto commit_begin_ms = common::TimeUtils::TimestampMs();
         Status s = Commit(view_block_chain, msg_ptr, v_block_to_commit_info, commit_qc);
+        auto commit_end_ms = common::TimeUtils::TimestampMs();
+        SETH_WARN("[PERF_COMMIT] pool: %d, Commit cost %lu ms, txs: %u, %u_%u_%lu",
+            pool_idx_, (commit_end_ms - commit_begin_ms),
+            v_block_to_commit->block_info().tx_list_size(),
+            v_block_to_commit->qc().network_id(),
+            v_block_to_commit->qc().pool_index(),
+            v_block_to_commit->qc().view());
         if (s != Status::kSuccess) {
             SETH_ERROR("commit view_block failed, view: %lu hash: %s",
                 v_block_to_commit->qc().view(),

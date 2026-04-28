@@ -159,6 +159,7 @@ Status BlockAcceptor::Accept(
         BalanceAndNonceMap& balance_and_nonce_map,
         sethvm::SethhainHost& seth_host,
         std::unordered_map<std::string, uint64_t>* out_leader_nonce_map) {
+    auto accept_begin_ms = common::TimeUtils::TimestampMs();
     auto& msg_ptr = pro_msg_wrap->msg_ptr;
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto& propose_msg = pro_msg_wrap->msg_ptr->header.hotstuff().pro_msg().tx_propose();
@@ -217,6 +218,7 @@ Status BlockAcceptor::Accept(
     auto txs_ptr = std::make_shared<consensus::WaitingTxsItem>();
     Status s = Status::kSuccess;
     ADD_DEBUG_PROCESS_TIMESTAMP();
+    auto get_txs_begin_ms = common::TimeUtils::TimestampMs();
     s = GetAndAddTxsLocally(
         msg_ptr,
         view_block.parent_hash(), 
@@ -226,6 +228,10 @@ Status BlockAcceptor::Accept(
         balance_and_nonce_map,
         seth_host,
         out_leader_nonce_map);
+    auto get_txs_end_ms = common::TimeUtils::TimestampMs();
+    SETH_WARN("[PERF_ACCEPT] pool: %d, GetAndAddTxsLocally cost %lu ms, txs: %d, is_leader: %d",
+        pool_idx_, (get_txs_end_ms - get_txs_begin_ms),
+        propose_msg.txs_size(), (int)msg_ptr->is_leader);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (s != Status::kSuccess) {
         SETH_WARN("GetAndAddTxsLocally error!");
@@ -234,7 +240,12 @@ Status BlockAcceptor::Accept(
 
     // 3. Do txs and create block_tx.
     ADD_DEBUG_PROCESS_TIMESTAMP();
+    auto do_tx_begin_ms = common::TimeUtils::TimestampMs();
     s = DoTransactions(txs_ptr, &view_block, balance_and_nonce_map, seth_host);
+    auto do_tx_end_ms = common::TimeUtils::TimestampMs();
+    SETH_WARN("[PERF_ACCEPT] pool: %d, DoTransactions cost %lu ms, txs: %u",
+        pool_idx_, (do_tx_end_ms - do_tx_begin_ms),
+        (uint32_t)txs_ptr->txs.size());
     if (s != Status::kSuccess) {
         SETH_WARN("DoTransactions error!");
         return s;
@@ -377,6 +388,16 @@ Status BlockAcceptor::Accept(
         return Status::kAcceptorBlockInvalid;
     }
 
+    auto accept_end_ms = common::TimeUtils::TimestampMs();
+    SETH_WARN("[PERF_ACCEPT] pool: %d, Accept TOTAL cost %lu ms, txs: %d, "
+        "get_txs: %lu ms, do_tx: %lu ms, %u_%u_%lu",
+        pool_idx_, (accept_end_ms - accept_begin_ms),
+        propose_msg.txs_size(),
+        (get_txs_end_ms - get_txs_begin_ms),
+        (do_tx_end_ms - do_tx_begin_ms),
+        view_block.qc().network_id(),
+        view_block.qc().pool_index(),
+        view_block.qc().view());
     return Status::kSuccess;
 }
 
@@ -676,7 +697,14 @@ Status BlockAcceptor::addTxsToPool(
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
     BalanceAndNonceMap prevs_balance_map;
+    auto merge_begin_ms = common::TimeUtils::TimestampMs();
     view_block_chain_->MergeAllPrevBalanceMap(parent_hash, prevs_balance_map);
+    auto merge_end_ms = common::TimeUtils::TimestampMs();
+    if (merge_end_ms - merge_begin_ms >= 1) {
+        SETH_WARN("[PERF_ACCEPT] pool: %d, MergeAllPrevBalanceMap cost %lu ms, map_size: %u",
+            pool_idx_, (merge_end_ms - merge_begin_ms),
+            (uint32_t)prevs_balance_map.size());
+    }
     ADD_DEBUG_PROCESS_TIMESTAMP();
 
     // ========================================================================
@@ -1139,7 +1167,12 @@ Status BlockAcceptor::addTxsToPool(
     if (need_verify && !verify_tasks.empty()) {
         // Dispatch all verify tasks to the persistent thread pool and block until done.
         // No thread creation/destruction overhead — threads were started in Init().
+        auto verify_begin_ms = common::TimeUtils::TimestampMs();
         RunVerifyBatch(verify_tasks);
+        auto verify_end_ms = common::TimeUtils::TimestampMs();
+        SETH_WARN("[PERF_VERIFY] pool: %d, RunVerifyBatch cost %lu ms, tasks: %u",
+            pool_idx_, (verify_end_ms - verify_begin_ms),
+            (uint32_t)verify_tasks.size());
     }
 
     if (!create_success) {

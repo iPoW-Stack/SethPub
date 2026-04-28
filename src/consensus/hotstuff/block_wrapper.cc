@@ -31,6 +31,7 @@ Status BlockWrapper::Wrap(
         hotstuff::protobuf::TxPropose* tx_propose,
         bool no_tx_allowed,
         std::shared_ptr<ViewBlockChain>& view_block_chain) {
+    auto wrap_begin_ms = common::TimeUtils::TimestampMs();
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto* prev_block = &prev_view_block->block_info();
     if (!prev_block) {
@@ -135,6 +136,13 @@ Status BlockWrapper::Wrap(
     
     view_block->mutable_qc()->set_elect_height(elect_item->ElectHeight());
     block->set_timeblock_height(tm_block_mgr_->LatestTimestampHeight());
+    {
+        auto wrap_end_ms = common::TimeUtils::TimestampMs();
+        SETH_WARN("[PERF_WRAP] pool: %d, Wrap cost %lu ms, txs: %d, msg_bytes: %d",
+            pool_idx_, (wrap_end_ms - wrap_begin_ms),
+            tx_propose->txs_size(),
+            (int)view_block->ByteSizeLong());
+    }
     SETH_DEBUG("====3 success propose block net: %u, pool: %u, set height: %lu, pre height: %lu, "
         "elect height: %lu, timeblock height: %lu, hash: %s, parent hash: %s, %u_%u_%lu",
         view_block->qc().network_id(), view_block->qc().pool_index(),
