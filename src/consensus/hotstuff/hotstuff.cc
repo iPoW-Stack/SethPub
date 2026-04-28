@@ -831,6 +831,11 @@ Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> p
         (vote_ms - chain_store_ms),
         msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size(),
         msg_ptr->header.hash64());
+    // [SCHED_OPT] Record this pool's latest propose tx count for priority scheduling.
+    // HotstuffManager uses this to rank pools and decide which leaders propose immediately.
+    hotstuff_mgr_.UpdatePoolProposeTxCount(
+        pool_idx_,
+        msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size());
     ADD_DEBUG_PROCESS_TIMESTAMP();
     SETH_DEBUG("HandleProposeMessageByStep success hash: %lu, propose_debug: %s",
         msg_ptr->header.hash64(),
@@ -2443,6 +2448,32 @@ void Hotstuff::TryRecoverFromStuck(
                 return;
             }
 
+            // [SCHED_OPT] Priority gating: only propose immediately if this pool's
+            // tx throughput ranks in the top 8 (by latest HandlePropose tx count).
+            // Low-ranked pools must wait up to 15s before proposing, ensuring that
+            // consensus threads prioritize high-traffic pools.
+            // Pool 32 (global pool) is always allowed to propose immediately.
+            bool is_top_pool = (pool_idx_ >= common::kImmutablePoolSize) ||
+                hotstuff_mgr_.IsPoolInTopN(pool_idx_, HotstuffManager::kTopNPoolsForImmediatePropose);
+            if (!is_top_pool) {
+                // Track when we first became eligible but deferred
+                if (propose_defer_start_ms_ == 0) {
+                    propose_defer_start_ms_ = now_tm_ms;
+                }
+                uint64_t deferred_ms = now_tm_ms - propose_defer_start_ms_;
+                if (deferred_ms < HotstuffManager::kPoolProposeTimeoutMs) {
+                    // Not yet timed out — skip this propose cycle
+                    SETH_DEBUG("[SCHED_OPT] pool: %u deferred propose, not top-8, "
+                        "waited %lu ms / %lu ms",
+                        pool_idx_, deferred_ms, HotstuffManager::kPoolProposeTimeoutMs);
+                    return;
+                }
+                // 15s timeout reached — must propose now regardless of rank
+                SETH_WARN("[SCHED_OPT] pool: %u, propose timeout reached (%lu ms), "
+                    "forcing propose despite low rank",
+                    pool_idx_, deferred_ms);
+            }
+
             auto propose_status = Propose(out_view, leader, nullptr, nullptr, msg_ptr, leader_block_tm);
             if (propose_status != Status::kSuccess) {
                 // Propose failed (likely 0 txs), increase backoff
@@ -2454,9 +2485,10 @@ void Hotstuff::TryRecoverFromStuck(
                 SETH_DEBUG("pool: %u, propose failed, empty_propose_count: %u, backoff: %u ms",
                     pool_idx_, empty_propose_count_, backoff_ms);
             } else {
-                // Propose succeeded, reset backoff
+                // Propose succeeded, reset backoff and defer timer
                 empty_propose_count_ = 0;
                 empty_propose_backoff_until_ms_ = 0;
+                propose_defer_start_ms_ = 0;
             }
         }
         ADD_DEBUG_PROCESS_TIMESTAMP();
