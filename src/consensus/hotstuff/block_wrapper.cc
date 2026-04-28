@@ -138,7 +138,6 @@ Status BlockWrapper::Wrap(
     block->set_timeblock_height(tm_block_mgr_->LatestTimestampHeight());
     {
         auto wrap_end_ms = common::TimeUtils::TimestampMs();
-        SETH_WARN("[PERF_WRAP] pool: %d, Wrap cost %lu ms, txs: %d, msg_bytes: %d",
             pool_idx_, (wrap_end_ms - wrap_begin_ms),
             tx_propose->txs_size(),
             (int)view_block->ByteSizeLong());

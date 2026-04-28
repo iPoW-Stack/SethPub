@@ -272,7 +272,6 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
     tx_msg.set_tx_hash(msg_ptr->msg_hash);
     auto firewall_end_ms = common::TimeUtils::TimestampMs();
     if (firewall_end_ms - firewall_begin_ms >= 2) {
-        SETH_WARN("[PERF_FIREWALL] tx firewall check cost %lu ms, step: %u, hash64: %lu",
             (firewall_end_ms - firewall_begin_ms),
             (uint32_t)tx_msg.step(),
             header.hash64());
