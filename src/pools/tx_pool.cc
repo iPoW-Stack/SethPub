@@ -475,11 +475,10 @@ void TxPool::GetTxSyncToLeader(
         }
 
         for (; nonce_iter != iter->second.end(); ++nonce_iter) {
+            auto tx_ptr = nonce_iter->second;
             if (!IsUserTransaction(tx_ptr->tx_info->step())) {
                 break;
             }
-
-            auto tx_ptr = nonce_iter->second;
 
             // Skip nonces the leader already has
             if (leader_known_nonce > 0 && tx_ptr->tx_info->nonce() < leader_known_nonce) {
