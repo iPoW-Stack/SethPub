@@ -1217,7 +1217,7 @@ Status BlockAcceptor::GetAndAddTxsLocally(
             "local_first_tx_hash=%s, leader_first_tx_hash=%s",
             txs_ptr->txs.size(), tx_propose.txs_size(), pool_idx_,
             (txs_ptr->txs.empty() ? "empty" : common::Encode::HexEncode(
-                pools::GetTxMessageHash(*txs_ptr->txs[0])).substr(0, 16).c_str()),
+                pools::GetTxMessageHash(*txs_ptr->txs[0]->tx_info)).substr(0, 16).c_str()),
             (tx_propose.txs_size() == 0 ? "empty" : common::Encode::HexEncode(
                 pools::GetTxMessageHash(tx_propose.txs(0))).substr(0, 16).c_str()));
         // assert(false);
