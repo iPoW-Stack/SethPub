@@ -1291,12 +1291,17 @@ int ViewBlockChain::CheckTxNonceValid(
             if (iter != tmp_map.end()) {
                 *now_nonce = iter->second->nonce();
                 if (iter->second->nonce() + 1 != nonce) {
-                    SETH_DEBUG("success check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
+                    SETH_DEBUG("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
                         common::Encode::HexEncode(addr).c_str(), 
                         nonce,
                         iter->second->nonce(),
                         common::Encode::HexEncode(parent_hash).c_str());
                     if (iter->second->nonce() >= nonce) {
+                        SETH_DEBUG("discard failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
+                            common::Encode::HexEncode(addr).c_str(), 
+                            nonce,
+                            iter->second->nonce(),
+                            common::Encode::HexEncode(parent_hash).c_str());
                         return 3;
                     }
 
@@ -1331,6 +1336,11 @@ int ViewBlockChain::CheckTxNonceValid(
             common::Encode::HexEncode(parent_hash).c_str());
         *now_nonce = addr_info->nonce();
         if (addr_info->nonce() >= nonce) {
+            SETH_DEBUG("discard failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
+                common::Encode::HexEncode(addr).c_str(), 
+                nonce,
+                addr_info->nonce(),
+                common::Encode::HexEncode(parent_hash).c_str());
             return 3;
         }
 
