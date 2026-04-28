@@ -1284,7 +1284,7 @@ int ViewBlockChain::CheckTxNonceValid(
                         return 3;
                     }
 
-                    SETH_DEBUG("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
+                    SETH_INFO("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
                         common::Encode::HexEncode(addr).c_str(), 
                         nonce,
                         iter->second->nonce(),
@@ -1323,7 +1323,7 @@ int ViewBlockChain::CheckTxNonceValid(
             return 3;
         }
 
-        SETH_DEBUG("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
+        SETH_INFO("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
             common::Encode::HexEncode(addr).c_str(), 
             nonce,
             addr_info->nonce(),
