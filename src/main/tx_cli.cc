@@ -34,6 +34,12 @@ static const int delayus = 0;
 static const bool multi_pool = true;
 static const std::string db_path = "./txclidb";
 
+// Nonce throttle limits (max unconfirmed transactions)
+// Type 0: Standard mode - 512 unconfirmed txs
+// Type 4: Stress test mode - 2048 unconfirmed txs (10k accounts)
+static const uint32_t kMaxTxCountType0 = common::kMaxTxCount;
+static const uint32_t kMaxTxCountType4 = 512u;
+
 // http::HttpClient cli;
 std::mutex cli_mutex;
 std::condition_variable cli_con;
@@ -49,6 +55,9 @@ std::map<std::string, std::shared_ptr<nlohmann::json>> account_info_jsons;
 std::mutex upadte_nonce_mutex;
 std::condition_variable update_nonce_con;
 
+// Protect concurrent access to nonce maps
+std::mutex nonce_map_mutex;
+
 // Global leader routing for nonce updates
 std::unordered_map<uint32_t, SethSDK::LeaderInfo> g_leader_map;
 std::mutex g_leader_mutex;
@@ -60,7 +69,8 @@ void UpdateAddressNonceThread() {
     while (!global_stop) {
         UpdateAddressNonce();
         std::unique_lock<std::mutex> lock(upadte_nonce_mutex);
-        update_nonce_con.wait_for(lock, std::chrono::milliseconds(15000));
+        // Reduce wait time from 15s to 5s for more frequent nonce updates
+        update_nonce_con.wait_for(lock, std::chrono::milliseconds(5000));
     }
 }
 static void SignalCallback(int sig_int) { global_stop = true; }
@@ -352,15 +362,39 @@ int tx_main(int argc, char** argv) {
                 usleep(10000lu);
             }
 
-            if (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
-                usleep(2000000);
-                update_nonce_con.notify_one();
-                usleep(1000000);
-                if (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
+            // Check nonce gap with proper synchronization
+            {
+                std::lock_guard<std::mutex> lock(nonce_map_mutex);
+                
+                // Ensure both maps have this address initialized
+                if (prikey_with_nonce.find(addr) == prikey_with_nonce.end()) {
                     prikey_with_nonce[addr] = src_prikey_with_nonce[addr];
-                    std::cout << "reset add nonce " << common::Encode::HexEncode(addr) << ":" << prikey_with_nonce[addr] << std::endl;
-                    usleep(10000000);
-                    continue;
+                }
+                if (src_prikey_with_nonce.find(addr) == src_prikey_with_nonce.end()) {
+                    src_prikey_with_nonce[addr] = 0;
+                }
+                
+                // Check if we've sent too many unconfirmed transactions
+                if (src_prikey_with_nonce[addr] + 2 * kMaxTxCountType0 <= prikey_with_nonce[addr]) {
+                    std::cout << "nonce gap detected for " << common::Encode::HexEncode(addr) 
+                              << ": db_nonce=" << src_prikey_with_nonce[addr] 
+                              << ", pending_nonce=" << prikey_with_nonce[addr] << std::endl;
+                    
+                    // Trigger immediate nonce update
+                    update_nonce_con.notify_one();
+                    
+                    // Wait for nonce update with timeout
+                    usleep(2000000);  // 2s wait
+                    
+                    // Check again after update
+                    if (src_prikey_with_nonce[addr] + 2 * kMaxTxCountType0 <= prikey_with_nonce[addr]) {
+                        // Still too many pending — reset to db nonce and wait longer
+                        prikey_with_nonce[addr] = src_prikey_with_nonce[addr];
+                        std::cout << "reset nonce for " << common::Encode::HexEncode(addr) 
+                                  << " to " << prikey_with_nonce[addr] << std::endl;
+                        usleep(10000000);  // 10s cooldown
+                        continue;
+                    }
                 }
             }
 
@@ -371,9 +405,15 @@ int tx_main(int argc, char** argv) {
                 to = g_addrs[random_idx];
             } while (to == addr && g_addrs.size() > 1);  // Avoid sending to self if there are other options
 
+            uint64_t current_nonce;
+            {
+                std::lock_guard<std::mutex> lock(nonce_map_mutex);
+                current_nonce = ++prikey_with_nonce[addr];
+            }
+
             auto tx_msg_ptr = CreateTransactionWithAttr(
                 thread_security,
-                ++prikey_with_nonce[addr],
+                current_nonce,
                 from_prikey,
                 to,
                 key,
@@ -405,13 +445,16 @@ int tx_main(int argc, char** argv) {
                     break;
                 }
                 std::cout << "send tcp client failed, retry " << (retry + 1) << "/3, addr: "
-                          << common::Encode::HexEncode(addr) << ", nonce: " << prikey_with_nonce[addr] << std::endl;
+                          << common::Encode::HexEncode(addr) << ", nonce: " << current_nonce << std::endl;
                 usleep(100000);  // 100ms between retries
             }
 
             if (!sent_ok) {
                 // All retries failed — roll back nonce to avoid permanent gap
-                --prikey_with_nonce[addr];
+                {
+                    std::lock_guard<std::mutex> lock(nonce_map_mutex);
+                    --prikey_with_nonce[addr];
+                }
                 std::cout << "send failed after 3 retries, rolled back nonce to "
                           << prikey_with_nonce[addr] << " for addr: "
                           << common::Encode::HexEncode(addr) << std::endl;
@@ -534,6 +577,8 @@ void UpdateAddressNonce() {
 }
 
 void UpdateAddressNonce(const std::string& contract_address) {
+    std::lock_guard<std::mutex> lock(nonce_map_mutex);
+    
     for (auto iter = g_prikeys.begin(); iter != g_prikeys.end(); ++iter) {
         std::shared_ptr<security::Security> security = std::make_shared<security::Ecdsa>();
         security->SetPrivateKey(*iter);
@@ -554,7 +599,7 @@ void UpdateAddressNonce(const std::string& contract_address) {
         
         if (g_has_leader_routing) {
             uint32_t pool_idx = common::GetAddressPoolIndex(addr);
-            std::lock_guard<std::mutex> lock(g_leader_mutex);
+            std::lock_guard<std::mutex> g_lock(g_leader_mutex);
             auto it = g_leader_map.find(pool_idx);
             if (it != g_leader_map.end()) {
                 query_ip = it->second.ip;
@@ -576,10 +621,20 @@ void UpdateAddressNonce(const std::string& contract_address) {
         if (nonce < 0) {
             std::cout << "fetch nonce failed for addr: "
                       << common::Encode::HexEncode(addr) << std::endl;
+            // Initialize to 0 if fetch fails to avoid undefined behavior
+            if (src_prikey_with_nonce.find(addr) == src_prikey_with_nonce.end()) {
+                src_prikey_with_nonce[addr] = 0;
+                prikey_with_nonce[addr] = 0;
+            }
             continue;
         }
 
+        // Update both maps atomically
         src_prikey_with_nonce[addr] = nonce;
+        // If this is the first time we're seeing this address, initialize prikey_with_nonce
+        if (prikey_with_nonce.find(addr) == prikey_with_nonce.end()) {
+            prikey_with_nonce[addr] = nonce;
+        }
         std::cout << common::Encode::HexEncode(addr) << ", nonce: " << nonce << std::endl;
     }
 }
@@ -994,7 +1049,7 @@ int main(int argc, char** argv) {
                 std::string from_addr = test_addrs[from_idx];
                 std::string to_addr = test_addrs[to_idx];
 
-                if (src_prikey_with_nonce[from_addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[from_addr]) {
+                if (src_prikey_with_nonce[from_addr] + 2 * kMaxTxCountType4 <= prikey_with_nonce[from_addr]) {
                     usleep(100000);
                     continue;
                 }
@@ -1175,7 +1230,7 @@ int main(int argc, char** argv) {
                 
                 for (uint32_t i = 0; i < kAccountCount && !global_stop; ++i) {
                     auto& addr = test_addrs[i];
-                    bool is_throttled_flag = (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[addr]);
+                    bool is_throttled_flag = (src_prikey_with_nonce[addr] + 2 * kMaxTxCountType4 <= prikey_with_nonce[addr]);
                     
                     if (is_throttled_flag) {
                         ++throttled;
@@ -1502,11 +1557,11 @@ int main(int argc, char** argv) {
 
             while (!global_stop) {
                 // Nonce throttle: same logic as tx_main
-                if (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
+                if (src_prikey_with_nonce[addr] + 2 * kMaxTxCountType4 <= prikey_with_nonce[addr]) {
                     usleep(2000000);
                     update_nonce_con.notify_one();
                     usleep(1000000);
-                    if (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
+                    if (src_prikey_with_nonce[addr] + 2 * kMaxTxCountType4 <= prikey_with_nonce[addr]) {
                         prikey_with_nonce[addr] = src_prikey_with_nonce[addr];
                         usleep(10000000);
                         continue;
