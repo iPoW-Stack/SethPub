@@ -234,7 +234,14 @@ void KeyValueSync::ConsensusTimerMessage() {
         // assert(false);
     }
 
-    if (prev_sync_tm_ms_ + 15000lu < now_tm_ms3) {
+    // [SYNC_OPT] Reduced from 15s to 3s. synced_res_map_ accumulates blocks that
+    // failed initial verification (e.g. missing parent during catch-up). These
+    // blocks can only be consumed by SyncAllLatestBlocks, which re-verifies them
+    // once their parents have been committed. With 33 pools catching up, 15s was
+    // far too slow — blocks would pile up in synced_res_map_ (50-70 per pool)
+    // while the consumption rate was bottlenecked by this interval.
+    // 3s balances between frequent retries and avoiding excessive CPU on re-verification.
+    if (prev_sync_tm_ms_ + 3000lu < now_tm_ms3) {
         SETH_INFO("SyncAllLatestBlocks triggered, prev_sync_tm_ms: %lu, now: %lu",
             prev_sync_tm_ms_, now_tm_ms3);
         SyncAllLatestBlocks();
@@ -825,6 +832,74 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
     }
 
     HandlerVerifiedBlock(res_map);
+
+    // [SYNC_OPT] Inline drain: after processing a response batch, try to consume
+    // consecutive blocks from synced_res_map_ that may now be verifiable (because
+    // their parents were just committed above). This avoids waiting for the next
+    // SyncAllLatestBlocks cycle (3s) when blocks arrived out-of-order.
+    // Limit to 128 blocks per drain to avoid blocking the timer thread too long.
+    {
+        uint32_t drained = 0;
+        static const uint32_t kMaxInlineDrain = 128;
+        for (auto net_iter = synced_res_map_.begin(); 
+                net_iter != synced_res_map_.end() && drained < kMaxInlineDrain; ++net_iter) {
+            auto network_id = net_iter->first;
+            for (auto pool_iter = net_iter->second.begin(); 
+                    pool_iter != net_iter->second.end() && drained < kMaxInlineDrain; ++pool_iter) {
+                auto pool_idx = pool_iter->first;
+                uint64_t latest_height;
+                if (network_id == network::kRootCongressNetworkId || 
+                        network::IsSameToLocalShard(network_id)) {
+                    latest_height = tx_pool_mgr_->latest_height(pool_idx);
+                } else {
+                    latest_height = tx_pool_mgr_->cross_latest_height(network_id);
+                }
+
+                auto height_iter = pool_iter->second.find(latest_height + 1);
+                while (height_iter != pool_iter->second.end() && drained < kMaxInlineDrain) {
+                    if (height_iter->second.first) {
+                        // Already verified, push to consensus
+                        auto& pb_vblock = height_iter->second.second;
+                        auto thread_idx = transport::TcpTransport::Instance()->GetThreadIndexWithPool(
+                            pb_vblock->qc().pool_index());
+                        if (!network::IsSameShardOrSameWaitingPool(
+                                network::kRootCongressNetworkId, network_id) && 
+                                !network::IsSameToLocalShard(network_id)) {
+                            thread_idx = transport::TcpTransport::Instance()->GetThreadIndexWithPool(network_id);
+                        }
+                        vblock_queues_[thread_idx].push(pb_vblock);
+                        ++drained;
+                        ++latest_height;
+                        height_iter = pool_iter->second.find(latest_height + 1);
+                        continue;
+                    }
+                    // Not yet verified, try now
+                    auto& pb_vblock = height_iter->second.second;
+                    int verify_res = view_block_synced_callback_(*pb_vblock);
+                    if (verify_res == 0) {
+                        height_iter->second.first = true;
+                        auto thread_idx = transport::TcpTransport::Instance()->GetThreadIndexWithPool(
+                            pb_vblock->qc().pool_index());
+                        if (!network::IsSameShardOrSameWaitingPool(
+                                network::kRootCongressNetworkId, network_id) && 
+                                !network::IsSameToLocalShard(network_id)) {
+                            thread_idx = transport::TcpTransport::Instance()->GetThreadIndexWithPool(network_id);
+                        }
+                        vblock_queues_[thread_idx].push(pb_vblock);
+                        ++drained;
+                        ++latest_height;
+                        height_iter = pool_iter->second.find(latest_height + 1);
+                    } else {
+                        break; // Can't verify this height yet, stop for this pool
+                    }
+                }
+            }
+        }
+
+        if (drained > 0) {
+            SETH_WARN("[SYNC_PERF] inline drain: pushed %u blocks from synced_res_map", drained);
+        }
+    }
 }
 
 void KeyValueSync::HandlerVerifiedBlock(const std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>>& res_map) {
