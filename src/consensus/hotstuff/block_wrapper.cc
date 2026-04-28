@@ -142,7 +142,7 @@ Status BlockWrapper::Wrap(
     // Log each successfully packed transaction for nonce tracking and debugging.
     for (int32_t ti = 0; ti < tx_propose->txs_size(); ++ti) {
         auto& packed_tx = tx_propose->txs(ti);
-        SETH_WARN("[TX_PACKED] pool: %d, tx[%d/%d]: to=%s, nonce=%lu, "
+        SETH_DEBUG("[TX_PACKED] pool: %d, tx[%d/%d]: to=%s, nonce=%lu, "
             "step=%d, amount=%lu, view=%lu",
             pool_idx_, ti, tx_propose->txs_size(),
             common::Encode::HexEncode(packed_tx.to()).c_str(),
