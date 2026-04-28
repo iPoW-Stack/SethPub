@@ -159,12 +159,15 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
     auto& from_ip = ex_uv_tcp->ip;
     auto from_port = ex_uv_tcp->port;
     
-    // 应用层网络延迟注入 (接收端)
-    if (tcp_transport->GetNetworkDelaySimulator().ShouldDropPacket()) {
-        SETH_DEBUG("Network simulation: dropping received packet from %s:%d", from_ip, from_port);
-        return false;
+    // 应用层网络延迟注入 (接收端) - 仅在启用时应用
+    bool network_enabled = tcp_transport->GetNetworkDelaySimulator().IsEnabled();
+    if (network_enabled) {
+        if (tcp_transport->GetNetworkDelaySimulator().ShouldDropPacket()) {
+            SETH_DEBUG("[NETWORK_SIM] dropping received packet from %s:%d", from_ip, from_port);
+            return false;
+        }
+        tcp_transport->GetNetworkDelaySimulator().ApplyDelay();
     }
-    tcp_transport->GetNetworkDelaySimulator().ApplyDelay();
     
     tnet::MsgPacket* msg_packet = dynamic_cast<tnet::MsgPacket*>(&packet);
     char* data = nullptr;
@@ -176,11 +179,12 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
     }
 
     // Reject oversized packets — normal consensus messages are well under 1 MB.
-    // This can happen when TC layer corrupts packet headers, causing len to be garbage.
-    static const uint32_t kMaxPacketBytes = 1u * 1024u * 1024u + 1024  * 512;  // 1.5 MB hard limit
+    // This can happen when network delay corrupts packet headers, causing len to be garbage.
+    // Increased limit to 2MB to handle large blocks during high-load testing.
+    static const uint32_t kMaxPacketBytes = 2u * 1024u * 1024u;  // 2 MB hard limit
     if (len == 0 || len > kMaxPacketBytes) {
-        SETH_WARN("oversized or empty packet from %s:%d, len=%u — closing connection",
-                  from_ip, from_port, len);
+        SETH_WARN("[PACKET_VALIDATION] oversized or empty packet from %s:%d, len=%u (max=%u) — closing connection",
+                  from_ip, from_port, len, kMaxPacketBytes);
         // Return false to signal caller (on_read) to close this connection
         return false;
     }
@@ -264,13 +268,15 @@ void on_connect(uv_connect_t* connection, int status) {
 
     SETH_DEBUG("[TCP_RECONN] successfully connected to %s:%d", ex_uv_tcp->ip, ex_uv_tcp->port);
 
-    int new_recv_size = kTcpBufferSize;
+    // Increase buffer sizes for high-throughput scenarios
+    int new_recv_size = 20 * 1024 * 1024;  // 20MB (from 10MB)
     uv_recv_buffer_size((uv_handle_t*)stream, &new_recv_size);
-    int new_send_size = kTcpBufferSize;
+    int new_send_size = 20 * 1024 * 1024;  // 20MB (from 10MB)
     uv_send_buffer_size((uv_handle_t*)stream, &new_send_size);
-    // Enable TCP keepalive: detect dead peers within ~60s (OS sends probes after 60s idle)
-    // Increased from 30s to reduce false disconnections under network delay
-    uv_tcp_keepalive(&ex_uv_tcp->uv_tcp, 1, 60);
+    
+    // Enable TCP keepalive: detect dead peers within ~120s (increased from 60s)
+    // Longer interval reduces false disconnections during network stress
+    uv_tcp_keepalive(&ex_uv_tcp->uv_tcp, 1, 120);
     // Disable Nagle's algorithm for lower latency
     uv_tcp_nodelay(&ex_uv_tcp->uv_tcp, 1);
 
@@ -278,19 +284,22 @@ void on_connect(uv_connect_t* connection, int status) {
     connect_ex_t* ex_conn = (connect_ex_t*)connection;
     uv_buf_t uv_buf = uv_buf_init((char*)ex_conn->msg->c_str(), ex_conn->msg->size());
     
-    // 应用层网络延迟注入 - 在连接建立后立即应用
-    // 这样可以避免包头被破坏
-    if (tcp_transport->GetNetworkDelaySimulator().ShouldDropPacket()) {
-        SETH_DEBUG("[TCP_RECONN] Network simulation: dropping packet on connect to %s:%d",
-            ex_uv_tcp->ip, ex_uv_tcp->port);
-        free(req);
-        delete ex_conn->msg;
-        free(ex_conn);
-        uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
-        return;
+    // 应用层网络延迟注入 - 仅在启用时应用
+    // 在高并发压测下，延迟注入可能导致包头破坏，建议禁用
+    bool network_enabled = tcp_transport->GetNetworkDelaySimulator().IsEnabled();
+    if (network_enabled) {
+        if (tcp_transport->GetNetworkDelaySimulator().ShouldDropPacket()) {
+            SETH_DEBUG("[NETWORK_SIM] dropping packet on connect to %s:%d",
+                ex_uv_tcp->ip, ex_uv_tcp->port);
+            free(req);
+            delete ex_conn->msg;
+            free(ex_conn);
+            uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
+            return;
+        }
+        // Apply delay after connection is established but before sending
+        tcp_transport->GetNetworkDelaySimulator().ApplyDelay();
     }
-    // Apply delay after connection is established but before sending
-    tcp_transport->GetNetworkDelaySimulator().ApplyDelay();
     
     uv_write(req, (uv_stream_t*)&ex_uv_tcp->uv_tcp, &uv_buf, 1, on_write);
     delete ex_conn->msg;
@@ -625,14 +634,17 @@ void uv_async_cb(uv_async_t* handle) {
                         des_ip.c_str(), des_port, item_ptr->hash64);
                 }
                 
-                // 应用层网络延迟注入
-                if (transport::TcpTransport::Instance()->GetNetworkDelaySimulator().ShouldDropPacket()) {
-                    SETH_DEBUG("[TCP_RECONN] Network simulation: dropping packet to %s:%d", 
-                        des_ip.c_str(), des_port);
-                    free(req);
-                    continue;
+                // 应用层网络延迟注入 - 仅在启用时应用
+                bool network_enabled = transport::TcpTransport::Instance()->GetNetworkDelaySimulator().IsEnabled();
+                if (network_enabled) {
+                    if (transport::TcpTransport::Instance()->GetNetworkDelaySimulator().ShouldDropPacket()) {
+                        SETH_DEBUG("[NETWORK_SIM] dropping packet to %s:%d", 
+                            des_ip.c_str(), des_port);
+                        free(req);
+                        continue;
+                    }
+                    transport::TcpTransport::Instance()->GetNetworkDelaySimulator().ApplyDelay();
                 }
-                transport::TcpTransport::Instance()->GetNetworkDelaySimulator().ApplyDelay();
                 
                 uv_write(req, (uv_stream_t*)&ex_uv_tcp->uv_tcp, &buf, 1, on_write);
             }
