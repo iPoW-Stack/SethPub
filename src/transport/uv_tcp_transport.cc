@@ -53,7 +53,7 @@ void on_write(uv_write_t* req, int status) {
         // Note: Do NOT call uv_close here. FreeConnection puts the handle in invalid_conns_
         // queue, and RealFreeInvalidConnections will close it later with proper timing.
     } else {
-        SETH_DEBUG("on_write called back.");
+        SETH_DEBUG("[TCP_RECONN] on_write success: %s:%d", ex_uv_tcp->ip, ex_uv_tcp->port);
     }
     free(req);
 }
@@ -229,21 +229,21 @@ void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
             bool ok = OnClientPacket(ex_uv_tcp, *packet);
             packet->Free();
             if (!ok) {
-                // Bad packet (parse error, oversized, invalid port) — drop the connection.
+                // Bad packet (parse error, oversized, invalid port, or dropped by network sim)
+                // Close the connection and let next send create a fresh one
                 delete[] buf->base;
+                SETH_WARN("[TCP_RECONN] on_read: bad packet from %s:%d — freeing connection",
+                    ex_uv_tcp->ip, ex_uv_tcp->port);
                 tcp_transport->FreeConnection(ex_uv_tcp);
-                // Note: Do NOT call uv_close here. FreeConnection puts the handle in invalid_conns_
-                // queue, and RealFreeInvalidConnections will close it later with proper timing.
                 return;
             }
             packet = ex_uv_tcp->msg_decoder->GetPacket();
         }
     } else {
+        // Connection error (EOF, reset, timeout, etc.)
         SETH_WARN("[TCP_RECONN] on_read error: %s:%d, nread=%zd (%s) — freeing connection",
             ex_uv_tcp->ip, ex_uv_tcp->port, nread, uv_strerror(nread));
         tcp_transport->FreeConnection(ex_uv_tcp);
-        // Note: Do NOT call uv_close here. FreeConnection puts the handle in invalid_conns_
-        // queue, and RealFreeInvalidConnections will close it later with proper timing.
     }
 
     delete[] buf->base;
@@ -262,28 +262,34 @@ void on_connect(uv_connect_t* connection, int status) {
         return;
     }
 
-    SETH_DEBUG("success connect to server: %s:%d", ex_uv_tcp->ip, ex_uv_tcp->port);
+    SETH_DEBUG("[TCP_RECONN] successfully connected to %s:%d", ex_uv_tcp->ip, ex_uv_tcp->port);
 
     int new_recv_size = kTcpBufferSize;
     uv_recv_buffer_size((uv_handle_t*)stream, &new_recv_size);
     int new_send_size = kTcpBufferSize;
     uv_send_buffer_size((uv_handle_t*)stream, &new_send_size);
-    // Enable TCP keepalive: detect dead peers within ~30s (OS sends probes after 30s idle)
-    uv_tcp_keepalive(&ex_uv_tcp->uv_tcp, 1, 30);
+    // Enable TCP keepalive: detect dead peers within ~60s (OS sends probes after 60s idle)
+    // Increased from 30s to reduce false disconnections under network delay
+    uv_tcp_keepalive(&ex_uv_tcp->uv_tcp, 1, 60);
+    // Disable Nagle's algorithm for lower latency
+    uv_tcp_nodelay(&ex_uv_tcp->uv_tcp, 1);
 
     uv_write_t *req = (uv_write_t*)malloc(sizeof(uv_write_t));
     connect_ex_t* ex_conn = (connect_ex_t*)connection;
     uv_buf_t uv_buf = uv_buf_init((char*)ex_conn->msg->c_str(), ex_conn->msg->size());
     
-    // 应用层网络延迟注入
+    // 应用层网络延迟注入 - 在连接建立后立即应用
+    // 这样可以避免包头被破坏
     if (tcp_transport->GetNetworkDelaySimulator().ShouldDropPacket()) {
-        SETH_DEBUG("Network simulation: dropping packet on connect");
+        SETH_DEBUG("[TCP_RECONN] Network simulation: dropping packet on connect to %s:%d",
+            ex_uv_tcp->ip, ex_uv_tcp->port);
         free(req);
         delete ex_conn->msg;
         free(ex_conn);
         uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
         return;
     }
+    // Apply delay after connection is established but before sending
     tcp_transport->GetNetworkDelaySimulator().ApplyDelay();
     
     uv_write(req, (uv_stream_t*)&ex_uv_tcp->uv_tcp, &uv_buf, 1, on_write);
@@ -557,6 +563,7 @@ void uv_async_cb(uv_async_t* handle) {
                     // 1. Not closing (uv_is_closing returns true if close was called)
                     // 2. Still active (has pending I/O operations or is readable)
                     // 3. Handle type is still UV_TCP (not corrupted)
+                    // 4. Not in invalid_conns_ queue (being cleaned up)
                     if (uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp) ||
                         ex_uv_tcp->uv_tcp.type != UV_TCP) {
                         SETH_WARN("[TCP_RECONN] stale connection detected: %s:%d (closing=%d, type=%d) — reconnecting",
@@ -565,6 +572,10 @@ void uv_async_cb(uv_async_t* handle) {
                             (int)ex_uv_tcp->uv_tcp.type);
                         transport::TcpTransport::Instance()->FreeConnection(ex_uv_tcp);
                         ex_uv_tcp = nullptr;
+                    } else {
+                        // Connection looks good, reuse it
+                        SETH_DEBUG("[TCP_RECONN] reusing existing connection: %s:%d %p",
+                            des_ip.c_str(), des_port, static_cast<void*>(&ex_uv_tcp->uv_tcp));
                     }
                 }
             }
@@ -592,15 +603,14 @@ void uv_async_cb(uv_async_t* handle) {
                     (const struct sockaddr*)&server_addr, 
                     on_connect);
                 if (res < 0) {
-                    SETH_ERROR("failed send to server: %s:%d, hash64: %lu", 
-                        des_ip.c_str(), des_port, item_ptr->hash64);
+                    SETH_ERROR("[TCP_RECONN] failed to initiate connect to %s:%d, res=%d (%s), hash64=%lu", 
+                        des_ip.c_str(), des_port, res, uv_strerror(res), item_ptr->hash64);
                     delete msg;
                     delete ex_uv_tcp->msg_decoder;
                     free(ex_uv_tcp);
                     free(ex_conn);
-                }
-                if (item_ptr->type == common::kHotstuffMessage) {
-                    SETH_DEBUG("success connect to server: %s:%d, hash64: %lu", 
+                } else {
+                    SETH_DEBUG("[TCP_RECONN] initiated connect to %s:%d, hash64=%lu", 
                         des_ip.c_str(), des_port, item_ptr->hash64);
                 }
             } else {
@@ -611,12 +621,14 @@ void uv_async_cb(uv_async_t* handle) {
                 uv_buf_t buf = uv_buf_init((char*)tmp_msg.c_str(), tmp_msg.size());
                 uv_write_t *req = (uv_write_t*)malloc(sizeof(uv_write_t));
                 if (item_ptr->type == common::kHotstuffMessage) {
-                    SETH_DEBUG("now send to server: %s:%d, hash64: %lu", des_ip.c_str(), des_port, item_ptr->hash64);
+                    SETH_DEBUG("[TCP_RECONN] sending to existing connection: %s:%d, hash64=%lu", 
+                        des_ip.c_str(), des_port, item_ptr->hash64);
                 }
                 
                 // 应用层网络延迟注入
                 if (transport::TcpTransport::Instance()->GetNetworkDelaySimulator().ShouldDropPacket()) {
-                    SETH_DEBUG("Network simulation: dropping packet to %s:%d", des_ip.c_str(), des_port);
+                    SETH_DEBUG("[TCP_RECONN] Network simulation: dropping packet to %s:%d", 
+                        des_ip.c_str(), des_port);
                     free(req);
                     continue;
                 }
@@ -723,11 +735,13 @@ ex_uv_tcp_t* TcpTransport::GetConnection(const std::string& ip, uint16_t port) {
     std::string peer_spec = ip + ":" + std::to_string(port);
     auto iter = conn_map_.find(peer_spec);
     if (iter != conn_map_.end()) {
-        SETH_DEBUG("GetConnection called: %s:%d %p!",
+        SETH_DEBUG("[TCP_RECONN] GetConnection: found existing connection %s:%d %p",
             ip.c_str(), port, static_cast<void*>(&iter->second->uv_tcp));
         return iter->second;
     }
 
+    SETH_DEBUG("[TCP_RECONN] GetConnection: no existing connection for %s:%d, will create new",
+        ip.c_str(), port);
     return nullptr;
 }
 
@@ -754,8 +768,10 @@ void TcpTransport::FreeConnection(ex_uv_tcp_t* ex_uv_tcp) {
     auto iter = conn_map_.find(peer_spec);
     if (iter != conn_map_.end()) {
         SETH_WARN("[TCP_RECONN] FreeConnection: %s:%d %p — removed from conn_map, "
-            "next send will create new connection",
-            ex_uv_tcp->ip, ex_uv_tcp->port, static_cast<void*>(&ex_uv_tcp->uv_tcp));
+            "next send will create new connection (closing=%d, type=%d)",
+            ex_uv_tcp->ip, ex_uv_tcp->port, static_cast<void*>(&ex_uv_tcp->uv_tcp),
+            uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp),
+            (int)ex_uv_tcp->uv_tcp.type);
         ex_uv_tcp->timeout = common::TimeUtils::TimestampSeconds();
         invalid_conns_.push(ex_uv_tcp);
         conn_map_.erase(iter);
@@ -766,10 +782,12 @@ void TcpTransport::AddConnection(ex_uv_tcp_t* uv_tcp) {
     std::string peer_spec = std::string(uv_tcp->ip) + ":" + std::to_string(uv_tcp->port);
     auto iter = conn_map_.find(peer_spec);
     if (iter != conn_map_.end()) {
+        SETH_WARN("[TCP_RECONN] AddConnection: replacing existing connection for %s:%d",
+            uv_tcp->ip, uv_tcp->port);
         FreeConnection(iter->second);
     }
 
-    SETH_DEBUG("AddConnection called: %s:%d %p!",
+    SETH_DEBUG("[TCP_RECONN] AddConnection: %s:%d %p (new connection established)",
         uv_tcp->ip, uv_tcp->port, static_cast<void*>(&uv_tcp->uv_tcp));
     conn_map_[peer_spec] = uv_tcp;
 }
