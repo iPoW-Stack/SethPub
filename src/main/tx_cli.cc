@@ -38,7 +38,7 @@ static const std::string db_path = "./txclidb";
 // Type 0: Standard mode - 512 unconfirmed txs
 // Type 4: Stress test mode - 2048 unconfirmed txs (10k accounts)
 static const uint32_t kMaxTxCountType0 = common::kMaxTxCount;
-static const uint32_t kMaxTxCountType4 = 512u;
+static const uint32_t kMaxTxCountType4 = 10240u;
 
 // http::HttpClient cli;
 std::mutex cli_mutex;
@@ -300,6 +300,55 @@ int tx_main(int argc, char** argv) {
     UpdateAddressNonce();
     std::atomic<uint32_t> all_count = 0;
     prikey_with_nonce  = src_prikey_with_nonce;
+    
+    // Initialize accounts with nonce 0 (not yet on-chain)
+    // Send a small transaction to each uninitialized account to create it
+    std::cout << ">>> Initializing accounts on blockchain..." << std::endl;
+    uint32_t init_count = 0;
+    for (auto& [addr, nonce] : src_prikey_with_nonce) {
+        if (nonce == 0) {
+            // Find the private key for this address
+            std::string prikey;
+            for (auto& pk : g_prikeys) {
+                std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
+                sec->SetPrivateKey(pk);
+                if (sec->GetAddress() == addr) {
+                    prikey = pk;
+                    break;
+                }
+            }
+            
+            if (!prikey.empty()) {
+                std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
+                sec->SetPrivateKey(prikey);
+                
+                // Send initialization transaction (1 coin to self)
+                auto init_tx = CreateTransactionWithAttr(
+                    sec, 1, prikey, addr, "", "", 1, 21000, 1, shardnum);
+                
+                if (init_tx && transport::TcpTransport::Instance()->Send(
+                        global_chain_node_ip, 
+                        global_chain_node_http_port - 10000, 
+                        init_tx->header) == 0) {
+                    ++init_count;
+                    prikey_with_nonce[addr] = 1;  // Mark as initialized
+                    std::cout << "  Initialized: " << common::Encode::HexEncode(addr) << std::endl;
+                }
+            }
+        }
+    }
+    
+    if (init_count > 0) {
+        std::cout << ">>> Sent " << init_count << " initialization transactions" << std::endl;
+        std::cout << ">>> Waiting 5 seconds for initialization to complete..." << std::endl;
+        usleep(5000000);  // Wait 5 seconds for initialization
+        
+        // Re-fetch nonces after initialization
+        std::cout << ">>> Re-fetching nonces after initialization..." << std::endl;
+        UpdateAddressNonce();
+        prikey_with_nonce = src_prikey_with_nonce;
+    }
+    
     auto update_nonce_thread = [&]() {
         UpdateAddressNonceThread();
     };
