@@ -138,9 +138,6 @@ Status BlockWrapper::Wrap(
     block->set_timeblock_height(tm_block_mgr_->LatestTimestampHeight());
     {
         auto wrap_end_ms = common::TimeUtils::TimestampMs();
-            pool_idx_, (wrap_end_ms - wrap_begin_ms),
-            tx_propose->txs_size(),
-            (int)view_block->ByteSizeLong());
     }
     // Log each successfully packed transaction for nonce tracking and debugging.
     for (int32_t ti = 0; ti < tx_propose->txs_size(); ++ti) {

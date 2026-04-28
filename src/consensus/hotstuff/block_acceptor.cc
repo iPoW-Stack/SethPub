@@ -229,8 +229,6 @@ Status BlockAcceptor::Accept(
         seth_host,
         out_leader_nonce_map);
     auto get_txs_end_ms = common::TimeUtils::TimestampMs();
-        pool_idx_, (get_txs_end_ms - get_txs_begin_ms),
-        propose_msg.txs_size(), (int)msg_ptr->is_leader);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (s != Status::kSuccess) {
         SETH_WARN("GetAndAddTxsLocally error!");
@@ -242,8 +240,6 @@ Status BlockAcceptor::Accept(
     auto do_tx_begin_ms = common::TimeUtils::TimestampMs();
     s = DoTransactions(txs_ptr, &view_block, balance_and_nonce_map, seth_host);
     auto do_tx_end_ms = common::TimeUtils::TimestampMs();
-        pool_idx_, (do_tx_end_ms - do_tx_begin_ms),
-        (uint32_t)txs_ptr->txs.size());
     if (s != Status::kSuccess) {
         SETH_WARN("DoTransactions error!");
         return s;
@@ -387,14 +383,6 @@ Status BlockAcceptor::Accept(
     }
 
     auto accept_end_ms = common::TimeUtils::TimestampMs();
-        "get_txs: %lu ms, do_tx: %lu ms, %u_%u_%lu",
-        pool_idx_, (accept_end_ms - accept_begin_ms),
-        propose_msg.txs_size(),
-        (get_txs_end_ms - get_txs_begin_ms),
-        (do_tx_end_ms - do_tx_begin_ms),
-        view_block.qc().network_id(),
-        view_block.qc().pool_index(),
-        view_block.qc().view());
     return Status::kSuccess;
 }
 
@@ -698,8 +686,6 @@ Status BlockAcceptor::addTxsToPool(
     view_block_chain_->MergeAllPrevBalanceMap(parent_hash, prevs_balance_map);
     auto merge_end_ms = common::TimeUtils::TimestampMs();
     if (merge_end_ms - merge_begin_ms >= 1) {
-            pool_idx_, (merge_end_ms - merge_begin_ms),
-            (uint32_t)prevs_balance_map.size());
     }
     ADD_DEBUG_PROCESS_TIMESTAMP();
 
@@ -1166,8 +1152,6 @@ Status BlockAcceptor::addTxsToPool(
         auto verify_begin_ms = common::TimeUtils::TimestampMs();
         RunVerifyBatch(verify_tasks);
         auto verify_end_ms = common::TimeUtils::TimestampMs();
-            pool_idx_, (verify_end_ms - verify_begin_ms),
-            (uint32_t)verify_tasks.size());
     }
 
     if (!create_success) {

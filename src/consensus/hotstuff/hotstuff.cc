@@ -282,7 +282,6 @@ Status Hotstuff::Propose(
     auto construct_begin_ms = common::TimeUtils::TimestampMs();
     Status s = ConstructProposeMsg(leader_view, leader, msg_ptr, pb_pro_msg);
     auto construct_end_ms = common::TimeUtils::TimestampMs();
-        pool_idx_, (construct_end_ms - construct_begin_ms));
     if (s != Status::kSuccess) {
         if (!tc) {
             SETH_DEBUG("pool: %d construct propose msg failed, %d",
@@ -353,8 +352,6 @@ Status Hotstuff::Propose(
     auto sign_begin_ms = common::TimeUtils::TimestampMs();
     s = crypto()->SignMessage(tmp_msg_ptr);
     auto sign_end_ms = common::TimeUtils::TimestampMs();
-        pool_idx_, (sign_end_ms - sign_begin_ms),
-        (int)tmp_msg_ptr->header.ByteSizeLong());
     if (s != Status::kSuccess) {
         SETH_WARN("sign message failed pool: %d, view: %lu, construct hotstuff msg failed",
             pool_idx_, hotstuff_msg->pro_msg().view_item().qc().view());
@@ -406,10 +403,6 @@ Status Hotstuff::Propose(
     auto send_begin_ms = common::TimeUtils::TimestampMs();
     network::Route::Instance()->Send(tmp_msg_ptr);
     auto send_end_ms = common::TimeUtils::TimestampMs();
-        pool_idx_, (send_end_ms - send_begin_ms),
-        hotstuff_msg->pro_msg().tx_propose().txs_size(),
-        hotstuff_msg->pro_msg().view_item().qc().view(),
-        (send_end_ms - propose_begin_ms));
     if (hotstuff_msg->pro_msg().tx_propose().txs_size() > 0) {
         latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
     }
@@ -817,16 +810,6 @@ Status Hotstuff::HandleProposeMessageByStep(std::shared_ptr<ProposeMsgWrapper> p
     }
 
     auto vote_ms = common::TimeUtils::TimestampMs();
-        "VerifyLeader: %lu, VerifyVB: %lu, TxAccept: %lu, ChainStore: %lu, Vote: %lu | "
-        "txs: %d, hash64: %lu",
-        pool_idx_, (vote_ms - step_begin_ms),
-        (verify_leader_ms - step_begin_ms),
-        (verify_vb_ms - verify_leader_ms),
-        (tx_accept_ms - verify_vb_ms),
-        (chain_store_ms - tx_accept_ms),
-        (vote_ms - chain_store_ms),
-        msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size(),
-        msg_ptr->header.hash64());
     ADD_DEBUG_PROCESS_TIMESTAMP();
     SETH_DEBUG("HandleProposeMessageByStep success hash: %lu, propose_debug: %s",
         msg_ptr->header.hash64(),
@@ -955,8 +938,6 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
             return Status::kError;
         }
         auto verify_qc_end_ms = common::TimeUtils::TimestampMs();
-            pool_idx_, (verify_qc_end_ms - btime), pro_msg.tc().view());
-
 
         auto tc_ptr = std::make_shared<view_block::protobuf::QcItem>(pro_msg.tc());
         pacemaker()->NewTc(tc_ptr);
@@ -1483,10 +1464,6 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
         (int32_t)ret);
     auto bls_end_ms = common::TimeUtils::TimestampMs();
     if (ret == Status::kSuccess) {
-            "total_vote_handle: %lu ms",
-            pool_idx_, (bls_end_ms - bls_begin_ms),
-            vote_msg.view(),
-            (bls_end_ms - b));
     }
     // assert(ret != Status::kInvalidOpposedCount); It may occur temporarily due to inconsistent status
     if (ret != Status::kSuccess) {
@@ -1646,11 +1623,6 @@ Status Hotstuff::TryCommit(
         auto commit_begin_ms = common::TimeUtils::TimestampMs();
         Status s = Commit(view_block_chain, msg_ptr, v_block_to_commit_info, commit_qc);
         auto commit_end_ms = common::TimeUtils::TimestampMs();
-            pool_idx_, (commit_end_ms - commit_begin_ms),
-            v_block_to_commit->block_info().tx_list_size(),
-            v_block_to_commit->qc().network_id(),
-            v_block_to_commit->qc().pool_index(),
-            v_block_to_commit->qc().view());
         if (s != Status::kSuccess) {
             SETH_ERROR("commit view_block failed, view: %lu hash: %s",
                 v_block_to_commit->qc().view(),
