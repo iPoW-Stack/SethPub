@@ -15,45 +15,27 @@ mkdir -p /root/seths/
 local_ip=`hostname -I | awk '{print $1}'`
 
 # ========== 网络模拟配置 ==========
+# 应用层网络延迟注入方案
 # 模拟公网: 1G带宽, 点对点50ms延迟(单向25ms), 10ms抖动, 1/10000丢包率
-# 例外: 192.168.26.141 不限速、不丢包
-EXEMPT_IP="192.168.26.141"
+# 
+# 说明: 为避免TCP层报文被破坏，采用应用层延迟注入方式:
+# 1. 在应用启动时设置环境变量 SETH_NETWORK_DELAY_MS 和 SETH_NETWORK_JITTER_MS
+# 2. 在transport层代码中读取这些环境变量
+# 3. 在发送/接收消息时添加相应的延迟
+#
+# 环境变量说明:
+#   SETH_NETWORK_DELAY_MS=25      # 单向延迟 25ms (往返 50ms)
+#   SETH_NETWORK_JITTER_MS=10     # 抖动 10ms
+#   SETH_NETWORK_LOSS_RATE=0.0001 # 丢包率 0.01% (1/10000)
+#   SETH_NETWORK_ENABLED=1        # 启用网络模拟 (0=禁用)
 
 setup_network_simulation() {
-    # 设定网卡名称，通常为 eth0 或 ens33，请根据 ifconfig 结果修改
-    INTERFACE="eth0"
-
-    # 1. 清除旧的配置
-    sudo tc qdisc del dev $INTERFACE root 2>/dev/null
-
-    # 2. 使用 prio qdisc 作为根，3 个频段（默认）
-    #    band 1 (prio 0): 白名单流量 — 无限制
-    #    band 2 (prio 1): 其余流量 — 限速 + 延迟 + 丢包
-    #    band 3 (prio 2): 未使用
-    sudo tc qdisc add dev $INTERFACE root handle 1: prio bands 3 \
-        priomap 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
-
-    # 3. band 1: 白名单流量直通，不做任何限制
-    sudo tc qdisc add dev $INTERFACE parent 1:1 handle 10: pfifo
-
-    # 4. band 2: 限速 1Gbps + 延迟 25ms + 抖动 5ms + 丢包 0.005%
-    sudo tc qdisc add dev $INTERFACE parent 1:2 handle 20: tbf \
-        rate 1gbit burst 128kb latency 25ms
-    sudo tc qdisc add dev $INTERFACE parent 20:1 handle 30: netem \
-        delay 25ms 5ms 25%
-
-    # 5. band 3: 默认 pfifo（未使用）
-    sudo tc qdisc add dev $INTERFACE parent 1:3 handle 40: pfifo
-
-    # 6. 将 EXEMPT_IP 的流量分到 band 1（白名单）
-    sudo tc filter add dev $INTERFACE parent 1:0 protocol ip prio 1 \
-        u32 match ip dst $EXEMPT_IP/32 flowid 1:1
-    sudo tc filter add dev $INTERFACE parent 1:0 protocol ip prio 1 \
-        u32 match ip src $EXEMPT_IP/32 flowid 1:1
-
-    echo "公网模拟环境已就绪:"
-    echo "带宽: 1Gbps | 延迟: 25ms | 抖动: 5ms (相关性25%) | 丢包率: 0.005%"
-    echo "例外: $EXEMPT_IP 不限速、不丢包"
+    # 应用层延迟注入已在环境变量中配置
+    # 无需在此处进行TC层配置，避免TCP报文破坏
+    echo "网络模拟配置:"
+    echo "  延迟: 25ms (单向) | 抖动: 10ms | 丢包率: 0.01%"
+    echo "  方式: 应用层延迟注入 (避免TCP层报文破坏)"
+    echo "  启用: 通过环境变量 SETH_NETWORK_ENABLED=1"
 }
 
 # 获取主网络接口 (排除 lo)
@@ -62,9 +44,14 @@ get_main_interface() {
 }
 
 # 如果指定了网络接口参数，则进行网络模拟配置
-# 使用方式: ./temp_cmd.sh <public_ip> <start_pos> <node_count> <bootstrap> <start_shard> <end_shard> <leader_init_tm> [network_interface]
-if [ ! -z "$8" ]; then
+# 使用方式: ./temp_cmd.sh <public_ip> <start_pos> <node_count> <bootstrap> <start_shard> <end_shard> <leader_init_tm> [enable_network_sim]
+if [ ! -z "$8" ] && [ "$8" = "1" ]; then
     setup_network_simulation
+    # 设置环境变量供应用使用
+    export SETH_NETWORK_ENABLED=1
+    export SETH_NETWORK_DELAY_MS=25
+    export SETH_NETWORK_JITTER_MS=10
+    export SETH_NETWORK_LOSS_RATE=0.0001
 fi
 # ========== 网络模拟配置结束 ==========
 deploy_nodes() {
@@ -173,17 +160,3 @@ deploy_nodes() {
 killall -9 seth
 
 deploy_nodes
-
-# ========== 清除网络模拟配置 ==========
-# 如果需要清除网络模拟，可以运行:
-# tc qdisc del dev <interface> root
-# 或者在脚本中添加参数 "cleanup" 来自动清除
-if [ "$9" = "cleanup" ]; then
-    main_interface=$(get_main_interface)
-    if [ ! -z "$main_interface" ]; then
-        echo "清除网络模拟配置: $main_interface"
-        tc qdisc del dev "$main_interface" root 2>/dev/null || true
-        echo "✓ 网络模拟配置已清除"
-    fi
-fi
-# ========== 清除网络模拟配置结束 ==========
