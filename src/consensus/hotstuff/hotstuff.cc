@@ -2401,11 +2401,12 @@ void Hotstuff::TryRecoverFromStuck(
     }
 
     if (now_tm_ms < latest_propose_msg_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs) {
-        // SETH_WARN("pool: %u now_tm_ms < latest_propose_msg_tm_ms_ + "
-        //     "kLatestPoposeSendTxToLeaderPeriodMs: %lu, %lu",
-        //     pool_idx_, now_tm_ms, 
-        //     (latest_propose_msg_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs));
-        return;
+        // [BATCH_OPT] Bypass rate limiter when pool is actively deferring propose
+        // (waiting for txs to accumulate). This ensures the pool re-checks tx count
+        // frequently and proposes as soon as the threshold is reached.
+        if (propose_defer_start_ms_ == 0) {
+            return;
+        }
     }
 
     SETH_DEBUG("pool index: %d, GetLeader return leader: %d, out_view: %lu, local_idx: %d",
