@@ -568,7 +568,7 @@ void uv_async_cb(uv_async_t* handle) {
                         SETH_WARN("[TCP_RECONN] stale connection detected: %s:%d (closing=%d, type=%d) — reconnecting",
                             des_ip.c_str(), des_port, 
                             uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp),
-                            ex_uv_tcp->uv_tcp.type);
+                            (int)ex_uv_tcp->uv_tcp.type);
                         transport::TcpTransport::Instance()->FreeConnection(ex_uv_tcp);
                         ex_uv_tcp = nullptr;
                     }
