@@ -60,7 +60,8 @@ void UpdateAddressNonceThread() {
     while (!global_stop) {
         UpdateAddressNonce();
         std::unique_lock<std::mutex> lock(upadte_nonce_mutex);
-        update_nonce_con.wait_for(lock, std::chrono::milliseconds(15000));
+        // Update nonce every 30 seconds to ensure continuity
+        update_nonce_con.wait_for(lock, std::chrono::milliseconds(30000));
     }
 }
 static void SignalCallback(int sig_int) { global_stop = true; }
@@ -371,9 +372,13 @@ int tx_main(int argc, char** argv) {
                 to = g_addrs[random_idx];
             } while (to == addr && g_addrs.size() > 1);  // Avoid sending to self if there are other options
 
+            // Get current nonce and prepare next nonce
+            uint64_t current_nonce = prikey_with_nonce[addr];
+            uint64_t next_nonce = current_nonce + 1;
+            
             auto tx_msg_ptr = CreateTransactionWithAttr(
                 thread_security,
-                ++prikey_with_nonce[addr],
+                next_nonce,
                 from_prikey,
                 to,
                 key,
@@ -405,18 +410,23 @@ int tx_main(int argc, char** argv) {
                     break;
                 }
                 std::cout << "send tcp client failed, retry " << (retry + 1) << "/3, addr: "
-                          << common::Encode::HexEncode(addr) << ", nonce: " << prikey_with_nonce[addr] << std::endl;
+                          << common::Encode::HexEncode(addr) << ", nonce: " << next_nonce << std::endl;
                 usleep(100000);  // 100ms between retries
             }
 
             if (!sent_ok) {
-                // All retries failed — roll back nonce to avoid permanent gap
-                --prikey_with_nonce[addr];
-                std::cout << "send failed after 3 retries, rolled back nonce to "
-                          << prikey_with_nonce[addr] << " for addr: "
+                // All retries failed — don't update nonce to avoid permanent gap
+                std::cout << "send failed after 3 retries, nonce rolled back to "
+                          << current_nonce << " for addr: "
                           << common::Encode::HexEncode(addr) << std::endl;
                 usleep(1000000);  // 1s cooldown before next attempt
                 continue;
+            }
+            
+            // Only update nonce after successful send
+            prikey_with_nonce[addr] = next_nonce;
+            SETH_DEBUG("[NONCE_SEND] Tx sent successfully with nonce=%lu for %s",
+                next_nonce, common::Encode::HexEncode(addr).substr(0, 16).c_str());
             }
 
             count++;
@@ -579,7 +589,18 @@ void UpdateAddressNonce(const std::string& contract_address) {
             continue;
         }
 
+        // Store the fetched nonce from chain
+        uint64_t old_nonce = src_prikey_with_nonce[addr];
         src_prikey_with_nonce[addr] = nonce;
+        
+        // Synchronize to sending nonce if new nonce is higher
+        // This ensures we start from new_nonce + 1 for next transaction
+        if (nonce > prikey_with_nonce[addr]) {
+            prikey_with_nonce[addr] = nonce;
+            SETH_INFO("[NONCE_UPDATE] Nonce synchronized for %s: old=%lu, new=%lu, next_send=%lu",
+                common::Encode::HexEncode(addr).substr(0, 16).c_str(), old_nonce, nonce, nonce + 1);
+        }
+        
         std::cout << common::Encode::HexEncode(addr) << ", nonce: " << nonce << std::endl;
     }
 }
@@ -1002,16 +1023,20 @@ int main(int argc, char** argv) {
                 std::shared_ptr<security::Security> from_sec = std::make_shared<security::Ecdsa>();
                 from_sec->SetPrivateKey(from_prikey);
 
+                // Get current nonce and prepare next nonce
+                uint64_t current_nonce = prikey_with_nonce[from_addr];
+                uint64_t next_nonce = current_nonce + 1;
+                
                 uint64_t amount = 1 + (common::Random::RandomUint32() % 10);
                 auto tx_msg_ptr = CreateTransactionWithAttr(
                     from_sec,
-                    ++prikey_with_nonce[from_addr],
+                    next_nonce,
                     from_prikey,
                     to_addr,
                     "", "", amount, 210000, 1, shardnum);
 
                 if (!tx_msg_ptr) {
-                    --prikey_with_nonce[from_addr];
+                    // Don't update nonce on failure
                     ++tx_failed;
                     continue;
                 }
@@ -1041,11 +1066,12 @@ int main(int argc, char** argv) {
                 }
 
                 if (sent_ok) {
+                    // Only update nonce after successful send
+                    prikey_with_nonce[from_addr] = next_nonce;
                     ++tx_count;
                     ++(pool_stats[pool].tx_sent);
                 } else {
-                    // Roll back nonce to avoid permanent gap
-                    --prikey_with_nonce[from_addr];
+                    // Don't update nonce on failure to avoid permanent gap
                     ++tx_failed;
                     ++(pool_stats[pool].tx_failed);
                 }
@@ -1527,9 +1553,13 @@ int main(int argc, char** argv) {
                 if (h_padded.size() < 64) h_padded = std::string(64 - h_padded.size(), '0') + h_padded;
                 std::string input_hex = purchase_selector + h_padded + ts_hex;
 
+                // Get current nonce and prepare next nonce
+                uint64_t current_nonce = prikey_with_nonce[addr];
+                uint64_t next_nonce = current_nonce + 1;
+                
                 auto tx_msg_ptr = CreateTransactionWithAttr(
                     thread_sec,
-                    ++prikey_with_nonce[addr],
+                    next_nonce,
                     common::Encode::HexEncode(g_prikeys[tid % g_prikeys.size()]),
                     contract_addr,
                     "call",
@@ -1542,8 +1572,11 @@ int main(int argc, char** argv) {
                 if (tx_msg_ptr &&
                     transport::TcpTransport::Instance()->Send(tcp_ip, tcp_port, tx_msg_ptr->header) == 0) {
                     ++call_count;
+                    // Only update nonce after successful send
+                    prikey_with_nonce[addr] = next_nonce;
                 } else {
                     ++fail_count;
+                    // Don't update nonce on failure to avoid gaps
                 }
                 ++idx;
                 // Rate limiting: sleep to maintain target TPS
