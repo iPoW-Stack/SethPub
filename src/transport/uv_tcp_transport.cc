@@ -44,7 +44,15 @@ void on_close(uv_handle_t* handle) {
 
 void on_write(uv_write_t* req, int status) {
     ex_uv_tcp_t* ex_uv_tcp = (ex_uv_tcp_t*)req->handle;
-    SETH_DEBUG("on_write called back.");
+    if (status < 0) {
+        // Write failed (broken pipe, connection reset, etc.) — remove the dead
+        // connection from conn_map_ so the next Send() creates a fresh one.
+        SETH_WARN("[TCP_RECONN] on_write failed: %s:%d, status=%d (%s) — freeing connection",
+            ex_uv_tcp->ip, ex_uv_tcp->port, status, uv_strerror(status));
+        tcp_transport->FreeConnection(ex_uv_tcp);
+    } else {
+        SETH_DEBUG("on_write called back.");
+    }
     free(req);
 }
 
@@ -217,6 +225,8 @@ void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
             packet = ex_uv_tcp->msg_decoder->GetPacket();
         }
     } else {
+        SETH_WARN("[TCP_RECONN] on_read error: %s:%d, nread=%zd (%s) — freeing connection",
+            ex_uv_tcp->ip, ex_uv_tcp->port, nread, uv_strerror(nread));
         tcp_transport->FreeConnection(ex_uv_tcp);
     }
 
@@ -226,20 +236,24 @@ void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
 void on_connect(uv_connect_t* connection, int status) {
     uv_stream_t* stream = connection->handle;
     ex_uv_tcp_t* ex_uv_tcp = (ex_uv_tcp_t*)stream;
-    SETH_DEBUG("success connect to server: %s:%d", ex_uv_tcp->ip, ex_uv_tcp->port);
     if (status < 0) {
-        SETH_DEBUG("failed to connect %s, %d", ex_uv_tcp->ip, ex_uv_tcp->port);
-        uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
+        SETH_WARN("[TCP_RECONN] failed to connect %s:%d, status=%d (%s) — will retry on next send",
+            ex_uv_tcp->ip, ex_uv_tcp->port, status, uv_strerror(status));
         connect_ex_t* ex_conn = (connect_ex_t*)connection;
         delete ex_conn->msg;
         free(ex_conn);
+        uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
         return;
     }
+
+    SETH_DEBUG("success connect to server: %s:%d", ex_uv_tcp->ip, ex_uv_tcp->port);
 
     int new_recv_size = kTcpBufferSize;
     uv_recv_buffer_size((uv_handle_t*)stream, &new_recv_size);
     int new_send_size = kTcpBufferSize;
     uv_send_buffer_size((uv_handle_t*)stream, &new_send_size);
+    // Enable TCP keepalive: detect dead peers within ~30s (OS sends probes after 30s idle)
+    uv_tcp_keepalive(&ex_uv_tcp->uv_tcp, 1, 30);
 
     uv_write_t *req = (uv_write_t*)malloc(sizeof(uv_write_t));
     connect_ex_t* ex_conn = (connect_ex_t*)connection;
@@ -272,6 +286,8 @@ void on_new_connection(uv_stream_t* server, int status) {
         uv_recv_buffer_size((uv_handle_t *)&ex_uv_tcp->uv_tcp, &new_recv_size);
         int new_send_size = kTcpBufferSize;
         uv_send_buffer_size((uv_handle_t *)&ex_uv_tcp->uv_tcp, &new_send_size);
+        // Enable TCP keepalive: detect dead peers within ~30s
+        uv_tcp_keepalive(&ex_uv_tcp->uv_tcp, 1, 30);
         
         struct sockaddr_storage peername;
         int namelen = sizeof(peername);
@@ -509,6 +525,8 @@ void uv_async_cb(uv_async_t* handle) {
             if (ex_uv_tcp == nullptr) {
                 ex_uv_tcp = transport::TcpTransport::Instance()->GetConnection(des_ip, des_port);
                 if (ex_uv_tcp != nullptr && !uv_is_active((uv_handle_t*)&ex_uv_tcp->uv_tcp)) {
+                    SETH_WARN("[TCP_RECONN] stale connection detected: %s:%d — reconnecting",
+                        des_ip.c_str(), des_port);
                     transport::TcpTransport::Instance()->FreeConnection(ex_uv_tcp);
                     ex_uv_tcp = nullptr;
                 }
@@ -671,15 +689,17 @@ void TcpTransport::RealFreeInvalidConnections() {
     auto now_sec = common::TimeUtils::TimestampSeconds();
     while (!invalid_conns_.empty()) {
         auto* ex_uv_tcp = invalid_conns_.front();
-        if (now_sec <= ex_uv_tcp->timeout + kInvalidConnectionTimeoutSec) {
-            if (!uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp)) {
-                uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
-            }
-            invalid_conns_.pop();
-            continue;
+        // Keep recently-freed connections in the queue for a grace period
+        // to allow in-flight callbacks to complete before closing the handle.
+        if (now_sec < ex_uv_tcp->timeout + kInvalidConnectionTimeoutSec) {
+            break;  // Queue is ordered by timeout — all remaining are newer
         }
 
-        break;
+        // Grace period expired — safe to close the handle now
+        invalid_conns_.pop();
+        if (!uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp)) {
+            uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
+        }
     }
 }
 
@@ -687,7 +707,8 @@ void TcpTransport::FreeConnection(ex_uv_tcp_t* ex_uv_tcp) {
     std::string peer_spec = std::string(ex_uv_tcp->ip) + ":" + std::to_string(ex_uv_tcp->port);
     auto iter = conn_map_.find(peer_spec);
     if (iter != conn_map_.end()) {
-        SETH_DEBUG("FreeConnection called: %s:%d %p!",
+        SETH_WARN("[TCP_RECONN] FreeConnection: %s:%d %p — removed from conn_map, "
+            "next send will create new connection",
             ex_uv_tcp->ip, ex_uv_tcp->port, static_cast<void*>(&ex_uv_tcp->uv_tcp));
         ex_uv_tcp->timeout = common::TimeUtils::TimestampSeconds();
         invalid_conns_.push(ex_uv_tcp);

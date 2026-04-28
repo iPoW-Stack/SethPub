@@ -69,7 +69,10 @@ private:
     void Run();
     void Output();
 
-    static const uint64_t kInvalidConnectionTimeoutSec = 180;
+    // [TCP_RECONN] Reduced from 180s to 10s. Dead connections should be cleaned up
+    // quickly so their handles don't accumulate. 10s is enough grace period for
+    // in-flight uv_write callbacks to complete.
+    static const uint64_t kInvalidConnectionTimeoutSec = 10;
 
     std::shared_ptr<std::thread> run_thread_{ nullptr };
     uv_udp_t* handle_{ nullptr };
