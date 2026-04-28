@@ -49,8 +49,6 @@ void KeyValueSync::Init(
         common::kSyncMessage,
         std::bind(&KeyValueSync::HandleMessage, this, std::placeholders::_1));
     SETH_DEBUG("init key value sync 3");
-    // [SYNC_OPT] Reduced initial interval from 10s to 1s to match the new
-    // base interval in ConsensusTimerMessage.
     kv_tick_.CutOff(
         1000lu,
         std::bind(&KeyValueSync::ConsensusTimerMessage, this));
@@ -234,13 +232,6 @@ void KeyValueSync::ConsensusTimerMessage() {
         // assert(false);
     }
 
-    // [SYNC_OPT] Reduced from 15s to 3s. synced_res_map_ accumulates blocks that
-    // failed initial verification (e.g. missing parent during catch-up). These
-    // blocks can only be consumed by SyncAllLatestBlocks, which re-verifies them
-    // once their parents have been committed. With 33 pools catching up, 15s was
-    // far too slow — blocks would pile up in synced_res_map_ (50-70 per pool)
-    // while the consumption rate was bottlenecked by this interval.
-    // 3s balances between frequent retries and avoiding excessive CPU on re-verification.
     if (prev_sync_tm_ms_ + 3000lu < now_tm_ms3) {
         SETH_INFO("SyncAllLatestBlocks triggered, prev_sync_tm_ms: %lu, now: %lu",
             prev_sync_tm_ms_, now_tm_ms3);
@@ -248,10 +239,6 @@ void KeyValueSync::ConsensusTimerMessage() {
         prev_sync_tm_ms_ = now_tm_ms3;
     }
 
-    // [SYNC_OPT] Reduced base interval from 10s to 1s. The old 10s interval
-    // meant sync requests were only sent every 10 seconds — catastrophically
-    // slow when dozens of pools need hundreds of blocks each.
-    // Adaptive: drops to 100ms when ready queue has pending items.
     uint64_t next_interval = (kv_ready_queue_.size() > 64) ? 100lu : 1000lu;
     kv_tick_.CutOff(
         next_interval,
@@ -375,8 +362,6 @@ void KeyValueSync::PopItems() {
     }
 
     if (synced_count > 0) {
-        SETH_WARN("[SYNC_PERF] PopItems: sent %u items to %lu peers, synced_map=%lu",
-            synced_count, sended_neigbors.size(), synced_map_.size());
     }
 }
 
@@ -808,11 +793,6 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
 
     HandlerVerifiedBlock(res_map);
 
-    // [SYNC_OPT] Inline drain: after processing a response batch, try to consume
-    // consecutive blocks from synced_res_map_ that may now be verifiable (because
-    // their parents were just committed above). This avoids waiting for the next
-    // SyncAllLatestBlocks cycle (3s) when blocks arrived out-of-order.
-    // Limit to 128 blocks per drain to avoid blocking the timer thread too long.
     {
         uint32_t drained = 0;
         static const uint32_t kMaxInlineDrain = 128;
@@ -872,7 +852,6 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
         }
 
         if (drained > 0) {
-            SETH_WARN("[SYNC_PERF] inline drain: pushed %u blocks from synced_res_map", drained);
         }
     }
 }

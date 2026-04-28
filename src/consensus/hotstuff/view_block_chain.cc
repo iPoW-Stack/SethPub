@@ -1395,12 +1395,6 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
             if (high_view_block_ == nullptr || 
                     high_view_block_view_.load() < qc_item.view()) {
                 high_view_block_view_.store(qc_item.view());
-                SETH_WARN("[SYNC_GAP] pool_%u: advancing high_view from %lu to %lu "
-                    "despite missing block (will sync), hash: %s",
-                    pool_index_,
-                    high_view_block_ ? high_view_block_->qc().view() : 0,
-                    qc_item.view(),
-                    common::Encode::HexEncode(qc_item.view_block_hash()).c_str());
             }
             return;
         }

@@ -1465,7 +1465,6 @@ void BlsManager::SyncFinishMessageToNeighbors(uint32_t network_id) {
     // Check if we have finish item for this network
     auto finish_iter = finish_networks_map_.find(network_id);
     if (finish_iter == finish_networks_map_.end()) {
-        BLS_DEBUG("[SyncFinish] network %u: finish_networks_map_ not found", network_id);
         return;
     }
 
@@ -1474,13 +1473,11 @@ void BlsManager::SyncFinishMessageToNeighbors(uint32_t network_id) {
     // Check if we have elect members for this network
     auto elect_iter = elect_members_.find(network_id);
     if (elect_iter == elect_members_.end()) {
-        BLS_DEBUG("[SyncFinish] network %u: elect_members_ not found", network_id);
         return;
     }
 
     auto members = elect_iter->second->members;
     if (!members) {
-        BLS_DEBUG("[SyncFinish] network %u: members is null", network_id);
         return;
     }
 
@@ -1490,12 +1487,10 @@ void BlsManager::SyncFinishMessageToNeighbors(uint32_t network_id) {
     // Check if we are in the finish period
     auto waiting_bls = waiting_bls_.load();
     if (!waiting_bls) {
-        BLS_DEBUG("[SyncFinish] network %u: waiting_bls_ is null", network_id);
         return;
     }
 
     if (!waiting_bls->IsFinishPeriod()) {
-        BLS_DEBUG("[SyncFinish] network %u: not in finish period", network_id);
         return;
     }
 
@@ -1509,13 +1504,8 @@ void BlsManager::SyncFinishMessageToNeighbors(uint32_t network_id) {
 
     // Prerequisite: Must have received at least 1/2 finish messages
     if (verified_count < t) {
-        BLS_DEBUG("[SyncFinish] network %u: only %u/%u verified, need at least %u (1/2), skip sync",
-                  network_id, verified_count, n, t);
         return;
     }
-
-    BLS_INFO("[SyncFinish] network %u: have %u/%u verified (>= 1/2), checking for missing nodes",
-             network_id, verified_count, n);
 
     // Get local member index
     uint32_t local_member_index = common::kInvalidUint32;
@@ -1528,21 +1518,17 @@ void BlsManager::SyncFinishMessageToNeighbors(uint32_t network_id) {
     }
 
     if (local_member_index == common::kInvalidUint32) {
-        BLS_DEBUG("[SyncFinish] network %u: local member not found", network_id);
         return;
     }
 
     // Get max finish hash
     if (finish_item->max_finish_hash.empty()) {
-        BLS_DEBUG("[SyncFinish] network %u: max_finish_hash is empty", network_id);
         return;
     }
 
     // Find the bitmap for max finish hash
     auto max_bls_iter = finish_item->max_bls_members.find(finish_item->max_finish_hash);
     if (max_bls_iter == finish_item->max_bls_members.end()) {
-        BLS_DEBUG("[SyncFinish] network %u: max_bls_members not found for hash %s", 
-                  network_id, common::Encode::HexEncode(finish_item->max_finish_hash).c_str());
         return;
     }
 
@@ -1555,13 +1541,8 @@ void BlsManager::SyncFinishMessageToNeighbors(uint32_t network_id) {
     }
 
     if (missing_nodes.empty()) {
-        BLS_DEBUG("[SyncFinish] network %u: no missing nodes, all %u nodes verified",
-                  network_id, n);
         return;
     }
-
-    BLS_INFO("[SyncFinish] network %u: found %zu missing nodes, requesting from neighbors",
-             network_id, missing_nodes.size());
 
     // Request missing finish messages from neighbors
     // Strategy: Ask neighbors who have verified for the missing nodes' finish messages
@@ -1598,16 +1579,10 @@ void BlsManager::SyncFinishMessageToNeighbors(uint32_t network_id) {
         for (uint32_t missing_idx : missing_nodes) {
             sync_req->add_missing_indices(missing_idx);
         }
-
-        BLS_INFO("[SyncFinish] network %u: requesting %zu missing nodes from neighbor %u",
-                 network_id, missing_nodes.size(), neighbor_idx);
         
         network::Route::Instance()->Send(msg_ptr);
         ++sync_count;
     }
-
-    BLS_INFO("[SyncFinish] network %u: sent sync requests to %u neighbors for %zu missing nodes",
-             network_id, sync_count, missing_nodes.size());
 }
 
 void BlsManager::ResetLeaders(
