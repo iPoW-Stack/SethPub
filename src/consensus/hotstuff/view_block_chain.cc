@@ -446,25 +446,40 @@ bool ViewBlockChain::ReplaceWithSyncedBlock(std::shared_ptr<ViewBlock>& view_blo
         return false;
     }
 
+    // FIX: Store first, then erase old entries only on success.
+    // Previously we erased before storing, so if Store() failed (e.g. missing parent),
+    // the block was lost from both memory maps with no way to recover.
+    auto old_it = view_blocks_info_.end();
     if (it != view_blocks_info_.end()) {
-        view_blocks_info_.erase(it);
+        old_it = it;
     }
+    auto old_view_iter = view_with_blocks_.find(view_block->qc().view());
 
-    auto view_iter = view_with_blocks_.find(view_block->qc().view());
-    if (view_iter != view_with_blocks_.end()) {
-        view_with_blocks_.erase(view_iter);
-    }
-    
     auto st = Store(view_block, true, nullptr, nullptr, false);
     if (st != Status::kSuccess) {
-        SETH_ERROR("add new block hash: %s, %u_%u_%lu, height: %lu",
+        SETH_ERROR("ReplaceWithSyncedBlock Store failed, hash: %s, %u_%u_%lu, height: %lu, status: %d",
             common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(),
             view_block->qc().network_id(), 
             view_block->qc().pool_index(), 
             view_block->qc().view(), 
-            view_block->block_info().height());
-        assert(false);
+            view_block->block_info().height(),
+            (int32_t)st);
+        // Do NOT erase old entries — keep whatever we had before.
         return false;
+    }
+
+    // Store succeeded. Now safe to clean up old entries if they still point to stale data.
+    // Note: Store() via SetViewBlockToMap() already inserted the new entry, so the old
+    // iterator may be invalidated. Only erase view_with_blocks_ for the old view if needed.
+    if (old_view_iter != view_with_blocks_.end()) {
+        // Only erase if the view_with_blocks_ entry still points to the old block
+        // (Store may have already replaced it)
+        auto current_view_iter = view_with_blocks_.find(view_block->qc().view());
+        if (current_view_iter != view_with_blocks_.end() && 
+                current_view_iter->second->view_block &&
+                current_view_iter->second->view_block->qc().view_block_hash() != view_block->qc().view_block_hash()) {
+            view_with_blocks_.erase(current_view_iter);
+        }
     }
 
     SETH_DEBUG("add new block hash: %s, %u_%u_%lu, height: %lu",
@@ -705,13 +720,23 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
         }
 
         // Clean up view_with_blocks_ for the parent view before erasing from view_blocks_info_
+        // FIX: Only erase parent block from view_blocks_info_ if the parent's height is also
+        // committed. Previously we unconditionally erased the parent, which could remove blocks
+        // still needed by pending sync operations or MergeAllPrevBalanceMap() chain walks.
         {
             auto parent_info = Get(tmp_block->parent_hash());
             if (parent_info && parent_info->view_block) {
-                view_with_blocks_.erase(parent_info->view_block->qc().view());
+                auto parent_height = parent_info->view_block->block_info().height();
+                if (BlockHeightCommited(
+                        prefix_db_,
+                        parent_info->view_block->qc().network_id(),
+                        parent_info->view_block->qc().pool_index(),
+                        parent_height)) {
+                    view_with_blocks_.erase(parent_info->view_block->qc().view());
+                    view_blocks_info_.erase(tmp_block->parent_hash());
+                }
             }
         }
-        view_blocks_info_.erase(tmp_block->parent_hash());
         if (BlockHeightCommited(
                 prefix_db_,
                 tmp_block->qc().network_id(), 
@@ -1366,6 +1391,23 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
                 qc_item.pool_index(), 
                 qc_item.view_block_hash(), 
                 0);
+            // FIX: Even though we can't find the block, we must still advance
+            // high_view_block_view_ to prevent the consensus from getting stuck.
+            // Without this, the node's high view stays at the old value while the
+            // network moves forward, causing ever-larger view jumps when the block
+            // finally arrives via sync. We update the atomic view counter so that
+            // new proposals/votes reference the correct view, and the actual
+            // high_view_block_ pointer will be updated when the synced block arrives.
+            if (high_view_block_ == nullptr || 
+                    high_view_block_view_.load() < qc_item.view()) {
+                high_view_block_view_.store(qc_item.view());
+                SETH_WARN("[SYNC_GAP] pool_%u: advancing high_view from %lu to %lu "
+                    "despite missing block (will sync), hash: %s",
+                    pool_index_,
+                    high_view_block_ ? high_view_block_->qc().view() : 0,
+                    qc_item.view(),
+                    common::Encode::HexEncode(qc_item.view_block_hash()).c_str());
+            }
             return;
         }
 
