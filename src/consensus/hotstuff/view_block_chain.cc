@@ -814,21 +814,6 @@ void ViewBlockChain::HandleTimerMessage() {
 
     prev_check_timeout_blocks_ms_ = now_tm_ms;
 
-    // [MEM_MONITOR] Periodic memory stats for ViewBlockChain (every 3s per pool)
-    SETH_WARN("[MEM_MONITOR] ViewBlockChain pool_%u: "
-        "view_blocks_info=%lu, view_with_blocks=%lu, "
-        "cached_block_map=%lu, cached_view_with_blocks=%lu, "
-        "cached_pri_queue=%lu, cached_block_queue=%u, "
-        "commited_view=%lu",
-        pool_index_,
-        view_blocks_info_.size(),
-        view_with_blocks_.size(),
-        cached_block_map_.size(),
-        cached_view_with_blocks_.size(),
-        cached_pri_queue_.size(),
-        cached_block_queue_.size(),
-        commited_view_.size());
-
     if (view_with_blocks_.size() <= 1) {
         return;
     }

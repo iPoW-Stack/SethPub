@@ -322,32 +322,6 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
     over_addr_map_queue_.push(over_addr_nonce_ptr);
     tx_pool_dirty_ = true;  // nonces advanced, previously stuck txs may now be valid
     SETH_DEBUG("pool: %d, all now tx size: %u", pool_index_, all_tx_size());
-    // [MEM_MONITOR] Log tx pool memory stats after TxOver cleanup
-    {
-        uint32_t tx_map_addrs = tx_map_.size();
-        uint32_t tx_map_total_txs = 0;
-        for (auto& kv : tx_map_) {
-            tx_map_total_txs += kv.second.size();
-        }
-        uint32_t cons_map_addrs = consensus_tx_map_.size();
-        uint32_t cons_map_total_txs = 0;
-        for (auto& kv : consensus_tx_map_) {
-            cons_map_total_txs += kv.second.size();
-        }
-        if (tx_map_total_txs > 500 || cons_map_total_txs > 500 || 
-                added_txs_.size() > 500 || consensus_added_txs_.size() > 500) {
-            SETH_WARN("[MEM_MONITOR] TxPool_%u TxOver: "
-                "tx_map_addrs=%u, tx_map_txs=%u, "
-                "cons_map_addrs=%u, cons_map_txs=%u, "
-                "added_txs_queue=%u, cons_added_txs_queue=%u, "
-                "over_addr_queue=%u",
-                pool_index_,
-                tx_map_addrs, tx_map_total_txs,
-                cons_map_addrs, cons_map_total_txs,
-                added_txs_.size(), consensus_added_txs_.size(),
-                over_addr_map_queue_.size());
-        }
-    }
 }
 
 void TxPool::GetTxSyncToLeader(

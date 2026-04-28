@@ -359,65 +359,6 @@ void TxPoolManager::ConsensusTimerMessage() {
         SETH_DEBUG("TxPoolManager handle message use time: %lu", (etime - now_tm_ms));
     }
 
-    // [MEM_MONITOR] Periodic TxPoolManager memory stats (every ~100ms timer tick)
-    if (prev_msgs_show_tm_ms_ + 3000lu < now_tm_ms) {
-        prev_msgs_show_tm_ms_ = now_tm_ms;
-        uint32_t total_added_txs = 0;
-        uint32_t total_all_tx_size = 0;
-        uint32_t total_pools_msg_queue = 0;
-        for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
-            total_all_tx_size += tx_pool_[i].all_tx_size();
-        }
-        for (uint32_t i = 0; i < common::kMaxThreadCount; ++i) {
-            total_pools_msg_queue += pools_msg_queue_[i].size();
-        }
-
-        // Read process RSS from /proc/self/status
-        uint64_t vm_rss_kb = 0;
-        uint64_t vm_size_kb = 0;
-        {
-            FILE* f = fopen("/proc/self/status", "r");
-            if (f) {
-                char line[256];
-                while (fgets(line, sizeof(line), f)) {
-                    if (strncmp(line, "VmRSS:", 6) == 0) {
-                        sscanf(line + 6, "%lu", &vm_rss_kb);
-                    } else if (strncmp(line, "VmSize:", 7) == 0) {
-                        sscanf(line + 7, "%lu", &vm_size_kb);
-                    }
-                }
-                fclose(f);
-            }
-        }
-
-        // Dump shared object counts (index -> type mapping):
-        // 0=BlockTxsItem, 1=BlockToDbItem, 2=ProposeMsgWrapper, 3=ViewBlockInfo,
-        // 4=FromTxItem, 5=DbWriteBatch, 6=SethhainHost, 9=SyncItem,
-        // 10=TcpConnection, 11=TransportMessage, 12=ClientItem, 13=TxItemBase,
-        // 14=Socket, 16=TnetConn, 17=AcceptorConn
-        auto& gi = *common::GlobalInfo::Instance();
-        SETH_WARN("[MEM_MONITOR] PROCESS: VmRSS=%luMB, VmSize=%luMB | "
-            "TxPool: total_tx=%u, msg_queue=%u | "
-            "SharedObj: BlockTxsItem=%d, BlockToDb=%d, ProposeMsgWrap=%d, "
-            "ViewBlockInfo=%d, FromTxItem=%d, DbWriteBatch=%d, "
-            "SethHost=%d, SyncItem=%d, TcpConn=%d, "
-            "TransportMsg=%d, TxItemBase=%d, Socket=%d",
-            vm_rss_kb / 1024, vm_size_kb / 1024,
-            total_all_tx_size, total_pools_msg_queue,
-            gi.GetSharedObj(0),   // BlockTxsItem
-            gi.GetSharedObj(1),   // BlockToDbItem
-            gi.GetSharedObj(2),   // ProposeMsgWrapper
-            gi.GetSharedObj(3),   // ViewBlockInfo
-            gi.GetSharedObj(4),   // FromTxItem
-            gi.GetSharedObj(5),   // DbWriteBatch
-            gi.GetSharedObj(6),   // SethhainHost
-            gi.GetSharedObj(9),   // SyncItem
-            gi.GetSharedObj(10),  // TcpConnection
-            gi.GetSharedObj(11),  // TransportMessage
-            gi.GetSharedObj(13),  // TxItemBase
-            gi.GetSharedObj(14)); // Socket
-    }
-
     tools_tick_.CutOff(
         100000lu,
         std::bind(&TxPoolManager::ConsensusTimerMessage, this));
