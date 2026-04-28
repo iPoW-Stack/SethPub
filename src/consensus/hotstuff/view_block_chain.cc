@@ -704,12 +704,20 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
             prefix_db_->SaveOverUniqueHash(tmp_block->block_info().unique_hashs(i), db_batch);
         }
 
+        // Clean up view_with_blocks_ for the parent view before erasing from view_blocks_info_
+        {
+            auto parent_info = Get(tmp_block->parent_hash());
+            if (parent_info && parent_info->view_block) {
+                view_with_blocks_.erase(parent_info->view_block->qc().view());
+            }
+        }
         view_blocks_info_.erase(tmp_block->parent_hash());
         if (BlockHeightCommited(
                 prefix_db_,
                 tmp_block->qc().network_id(), 
                 tmp_block->qc().pool_index(),
                 tmp_block->block_info().height() + 1)) {
+            view_with_blocks_.erase(tmp_block->qc().view());
             view_blocks_info_.erase(tmp_block->qc().view_block_hash());
         }
 
@@ -861,6 +869,19 @@ void ViewBlockChain::HandleTimerMessage() {
         }
 
         ++iter;
+    }
+
+    // Fallback cleanup: remove view_with_blocks_ entries whose view <= commited_max_view_
+    // These are definitely committed and should not linger in memory.
+    if (view_with_blocks_.size() > 16) {
+        auto committed_view = commited_max_view_.load();
+        for (auto it = view_with_blocks_.begin(); it != view_with_blocks_.end(); ) {
+            if (it->first <= committed_view) {
+                it = view_with_blocks_.erase(it);
+            } else {
+                break;  // map is ordered by view, no need to continue
+            }
+        }
     }
 }
 
