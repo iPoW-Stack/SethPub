@@ -220,7 +220,7 @@ public:
 
     void TryRecoverFromStuck(
         const transport::MessagePtr& msg_ptr,
-        uint32_t pool_tx_count,
+        bool has_new_tx,
         bool has_system_tx);
 
     common::BftMemberPtr is_other_leader() {
@@ -669,14 +669,6 @@ private:
     uint64_t empty_propose_backoff_until_ms_ = 0;
     static constexpr uint32_t kEmptyProposeBackoffBaseMs = 50;    // 50ms base
     static constexpr uint32_t kEmptyProposeBackoffMaxMs = 5000;   // 5s cap
-    // [BATCH_OPT] When pool tx count < this threshold, defer propose to accumulate
-    // more txs. This reduces consensus overhead by packing more txs per block.
-    static constexpr uint32_t kMinTxCountForImmediatePropose = 256u;
-    // [BATCH_OPT] Max time to wait for txs to accumulate before forcing propose (15s).
-    static constexpr uint64_t kProposeDeferTimeoutMs = 15000lu;
-    // [BATCH_OPT] Timestamp when this pool first started deferring propose due to
-    // low tx count. Reset after each successful propose.
-    uint64_t propose_defer_start_ms_ = 0;
 
 // #ifndef NDEBUG
     static std::atomic<uint32_t> sendout_bft_message_count_;
