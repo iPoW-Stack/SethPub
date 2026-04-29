@@ -1709,7 +1709,7 @@ contract AMMPool {
             std::string h=utils::bytesToHex(std::vector<uint8_t>(pfx,pfx+strlen(pfx)));
             auto is=std::to_string(i); h+=utils::bytesToHex(std::vector<uint8_t>(is.begin(),is.end())); return h;
         };
-        const uint64_t kPf=9000000000lu;
+        const uint64_t kPf=490000000lu;
 
         std::cout<<"  Step 1/3: Deploy TokenA..."<<std::endl;
         deploy_one_type("TokenA",[&](uint32_t i,SethSDK& t){
