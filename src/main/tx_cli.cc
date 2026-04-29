@@ -1269,7 +1269,7 @@ int main(int argc, char** argv) {
     }
 
     // ── Mode 5: AMM Contract Deployment + Swap Stress Test ──────────────
-    // Usage: txcli 5 <shard> <pool> <ip> <port> [user_count] [threads]
+    // Usage: txcli 5 <shard> <pool> <ip> <port> [user_count] [threads] [rounds] [tps]
     //
     // 1. Create user + deployer accounts on chain + verify
     // 2. Deploy 256 AMM contract sets (TokenA + TokenB + AMMPool each)
@@ -1281,6 +1281,8 @@ int main(int argc, char** argv) {
         const uint32_t kUserCount = (argc >= 7) ? std::stoi(argv[6]) : 10000;
         const uint32_t kContractSets = 256;  // 256 AMM contract sets (TokenA+TokenB+AMMPool)
         const uint32_t kDeployThreads = (argc >= 8) ? std::stoi(argv[7]) : 16;
+        const uint32_t kStressRoundsArg = (argc >= 9) ? std::stoi(argv[8]) : 1000;
+        const uint32_t kTargetTps = (argc >= 10) ? std::stoi(argv[9]) : 0;  // 0 = unlimited
 
         if (argc >= 4) {
             shardnum = std::stoi(argv[2]);
@@ -1302,6 +1304,8 @@ int main(int argc, char** argv) {
         std::cout << "  AMM Contract Deployment + Swap Stress Test" << std::endl;
         std::cout << "  " << kUserCount << " users + " << kContractSets << " deployers" << std::endl;
         std::cout << "  " << kContractSets << " x 3 contracts = " << kContractSets * 3 << " deployments" << std::endl;
+        std::cout << "  Stress rounds: " << kStressRoundsArg
+                  << ", target TPS: " << (kTargetTps > 0 ? std::to_string(kTargetTps) : "unlimited") << std::endl;
         std::cout << std::string(70, '=') << std::endl;
         std::cout << "Shard: " << shardnum << std::endl;
         std::cout << "Node: " << global_chain_node_ip << std::endl;
@@ -1866,20 +1870,41 @@ contract AMMPool {
         std::atomic<uint64_t> tcp_sent_count{0};
 
         std::thread tcp_sender_thread([&]() {
+            std::vector<TcpSendItem> batch;
+            batch.reserve(4096);
+            auto rate_start = std::chrono::steady_clock::now();
+            uint64_t rate_sent = 0;
             while (!tcp_sender_stop.load()) {
-                std::unique_lock<std::mutex> lk(tcp_send_mtx);
-                tcp_send_cv.wait_for(lk, std::chrono::milliseconds(5),
-                    [&]{ return !tcp_send_queue.empty() || tcp_sender_stop.load(); });
-                // Drain batch
-                while (!tcp_send_queue.empty()) {
-                    auto item = std::move(tcp_send_queue.front());
-                    tcp_send_queue.pop();
-                    lk.unlock();
+                {
+                    std::unique_lock<std::mutex> lk(tcp_send_mtx);
+                    tcp_send_cv.wait_for(lk, std::chrono::milliseconds(1),
+                        [&]{ return !tcp_send_queue.empty() || tcp_sender_stop.load(); });
+                    while (!tcp_send_queue.empty()) {
+                        batch.push_back(std::move(tcp_send_queue.front()));
+                        tcp_send_queue.pop();
+                    }
+                }
+                for (auto& item : batch) {
+                    // TPS rate limiting
+                    if (kTargetTps > 0) {
+                        ++rate_sent;
+                        auto now = std::chrono::steady_clock::now();
+                        auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(now - rate_start).count();
+                        int64_t expected_us = (int64_t)rate_sent * 1000000 / kTargetTps;
+                        if (expected_us > elapsed_us + 100) {
+                            usleep((uint32_t)(expected_us - elapsed_us));
+                        }
+                        // Reset counter every second to avoid drift
+                        if (elapsed_us >= 1000000) {
+                            rate_start = now;
+                            rate_sent = 0;
+                        }
+                    }
                     transport::TcpTransport::Instance()->Send(global_chain_node_ip,
                         global_chain_node_http_port - 10000, item.msg->header);
                     ++tcp_sent_count;
-                    lk.lock();
                 }
+                batch.clear();
             }
             // Final drain
             std::lock_guard<std::mutex> lk(tcp_send_mtx);
@@ -2396,7 +2421,6 @@ contract AMMPool {
                                 "call", input, 0, 5000000, 1, shardnum);
                             if (tcp_enqueue(tx)) ++ok_cnt;
                             else ++fail_cnt;
-                            usleep(200);
                         }
                     }
                 });
@@ -2427,28 +2451,38 @@ contract AMMPool {
 
         // ── Phase 9: Users approve Pool to spend tokens (TCP fast path) ───
         // Nonce = fetchNonce(token_addr + user_addr)
+        // Repeat kStressRounds times for performance stress testing
+        const uint32_t kStressRounds = kStressRoundsArg;
         std::cout << "\n" << std::string(70, '-') << std::endl;
-        std::cout << "  Phase 9: User Approve Pool (TCP)" << std::endl;
+        std::cout << "  Phase 9: User Approve Pool x" << kStressRounds << " (TCP stress)" << std::endl;
         std::cout << std::string(70, '-') << std::endl;
 
+        // Build approve ops — each user approves once, but we'll repeat kStressRounds times
         std::vector<ContractCallOp> appr_ops;
         for (const auto& tp : trade_pairs) {
             for (uint32_t pi : tp.pool_indices) {
                 const auto& pool = pools[pi];
-                // UserA approves TokenA for Pool (call token_a.approve(pool, amount))
                 appr_ops.push_back({users[tp.user_a_idx].prikey_hex, pool.token_a,
                     users[tp.user_a_idx].addr_hex,
                     encode_call_addr_uint("095ea7b3", pool.pool, kTokenTransfer)});
-                // UserB approves TokenB for Pool (call token_b.approve(pool, amount))
                 appr_ops.push_back({users[tp.user_b_idx].prikey_hex, pool.token_b,
                     users[tp.user_b_idx].addr_hex,
                     encode_call_addr_uint("095ea7b3", pool.pool, kTokenTransfer)});
             }
         }
-        uint64_t total_appr_ops = appr_ops.size();
+        // Repeat each op kStressRounds times within its group
         auto appr_groups = group_by_prepay(appr_ops);
+        // Expand: each group's inputs repeated kStressRounds times
+        uint64_t total_appr_ops = 0;
+        for (auto& grp : appr_groups) {
+            std::vector<std::string> expanded;
+            for (uint32_t r = 0; r < kStressRounds; ++r)
+                for (const auto& inp : grp.inputs) expanded.push_back(inp);
+            grp.inputs = std::move(expanded);
+            total_appr_ops += grp.inputs.size();
+        }
         std::cout << "  Total approve ops: " << total_appr_ops
-                  << ", unique (contract,caller) groups: " << appr_groups.size() << std::endl;
+                  << " (" << appr_groups.size() << " groups x " << kStressRounds << " rounds)" << std::endl;
 
         std::atomic<uint64_t> appr_ok{0}, appr_fail{0};
         auto appr_start = std::chrono::steady_clock::now();
@@ -2463,19 +2497,14 @@ contract AMMPool {
         for(int w=0;w<150&&!global_stop;++w) usleep(100000);
 
         // ── Phase 10: Execute AMM Swaps (stress test, TCP fast path) ──────
-        // For each trade pair, on each assigned pool:
-        //   Step 1: UserA swaps A→B (swapAForB) — nonce from pool_addr + userA_addr
-        //   Step 2: UserB swaps B→A (swapBForA) — nonce from pool_addr + userB_addr
-        // Sequential within a pair to guarantee order; parallel across pairs.
+        // Each pair repeats kStressRounds swap rounds on each pool.
+        // Each round: UserA swaps A→B, UserB swaps B→A.
+        // All rounds for a (pool, user) use incrementing nonce from one fetchNonce call.
         std::cout << "\n" << std::string(70, '-') << std::endl;
-        std::cout << "  Phase 10: AMM Swap Stress Test (TCP)" << std::endl;
+        std::cout << "  Phase 10: AMM Swap Stress Test x" << kStressRounds << " (TCP)" << std::endl;
         std::cout << std::string(70, '-') << std::endl;
-        std::cout << "  Trade pairs: " << trade_pairs.size()
-                  << ", swaps per pair: " << kPoolsPerPair << " pools x 2 directions = "
-                  << kPoolsPerPair * 2 << std::endl;
 
-        // Helper: encode swap call input — swapAForB(uint256,uint256) / swapBForA(uint256,uint256)
-        // Keccak-256 selectors: swapAForB → 0x553a1db7, swapBForA → 0x5938c86b
+        // Helper: encode swap call input
         auto encode_swap_input = [](const std::string& selector_hex,
                                     uint64_t amountIn, uint64_t minOut) -> std::string {
             std::stringstream ss1; ss1 << std::hex << amountIn;
@@ -2487,8 +2516,14 @@ contract AMMPool {
 
         std::atomic<uint64_t> swap_ok{0}, swap_fail{0};
         uint64_t total_swaps = 0;
-        for (const auto& tp : trade_pairs) total_swaps += tp.pool_indices.size() * 2;
-        std::cout << "  Total swap ops: " << total_swaps << std::endl;
+        for (const auto& tp : trade_pairs) total_swaps += tp.pool_indices.size() * 2 * kStressRounds;
+        std::cout << "  Trade pairs: " << trade_pairs.size()
+                  << ", rounds: " << kStressRounds
+                  << ", total swap ops: " << total_swaps << std::endl;
+
+        // Pre-encode swap inputs (same for every round)
+        std::string input_swap_a = encode_swap_input("553a1db7", kSwapAmount, 0);
+        std::string input_swap_b = encode_swap_input("5938c86b", kSwapAmount, 0);
 
         auto swap_start = std::chrono::steady_clock::now();
         {
@@ -2502,7 +2537,6 @@ contract AMMPool {
                     SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
                     for (uint32_t pi_idx = s; pi_idx < e && !global_stop; ++pi_idx) {
                         const auto& tp = trade_pairs[pi_idx];
-                        // Prepare security objects for both users
                         std::string pka_raw = common::Encode::HexDecode(users[tp.user_a_idx].prikey_hex);
                         std::shared_ptr<security::Security> sec_a = std::make_shared<security::Ecdsa>(); sec_a->SetPrivateKey(pka_raw);
                         std::string addr_a = users[tp.user_a_idx].addr_hex;
@@ -2516,42 +2550,28 @@ contract AMMPool {
                             const auto& pool = pools[pool_idx];
                             std::string pool_raw = common::Encode::HexDecode(pool.pool);
 
-                            // Nonce for UserA on this pool: pool_addr + userA_addr
+                            // Fetch nonce once, then increment for all kStressRounds
                             std::string prepay_a = pool.pool + addr_a;
                             int64_t nonce_a = tsdk.fetchNonce(prepay_a);
-                            if (pi_idx < s + 2) {
-                                std::cout << "  [swap pair " << pi_idx << " pool " << pool_idx
-                                          << "] prepay_a=" << prepay_a << " (len=" << prepay_a.size()
-                                          << ") nonce_a=" << nonce_a << std::endl;
-                            }
-                            if (nonce_a < 0) { swap_fail += 2; continue; }
+                            if (nonce_a < 0) { swap_fail += kStressRounds * 2; continue; }
 
-                            // Step 1: UserA swaps A→B
-                            std::string input_a = encode_swap_input(
-                                "553a1db7", kSwapAmount, 0);
-                            auto tx1 = CreateTransactionWithAttr(sec_a, ++nonce_a,
-                                common::Encode::HexEncode(pka_raw), pool_raw,
-                                "call", input_a, 0, 5000000, 1, shardnum);
-                            if (tcp_enqueue(tx1)) ++swap_ok;
-                            else ++swap_fail;
-
-                            usleep(200);
-
-                            // Nonce for UserB on this pool: pool_addr + userB_addr
                             std::string prepay_b = pool.pool + addr_b;
                             int64_t nonce_b = tsdk.fetchNonce(prepay_b);
-                            if (nonce_b < 0) { ++swap_fail; continue; }
+                            if (nonce_b < 0) { swap_fail += kStressRounds; continue; }
 
-                            // Step 2: UserB swaps B→A
-                            std::string input_b = encode_swap_input(
-                                "5938c86b", kSwapAmount, 0);
-                            auto tx2 = CreateTransactionWithAttr(sec_b, ++nonce_b,
-                                common::Encode::HexEncode(pkb_raw), pool_raw,
-                                "call", input_b, 0, 5000000, 1, shardnum);
-                            if (tcp_enqueue(tx2)) ++swap_ok;
-                            else ++swap_fail;
+                            for (uint32_t round = 0; round < kStressRounds && !global_stop; ++round) {
+                                // UserA swaps A→B
+                                auto tx1 = CreateTransactionWithAttr(sec_a, ++nonce_a,
+                                    common::Encode::HexEncode(pka_raw), pool_raw,
+                                    "call", input_swap_a, 0, 5000000, 1, shardnum);
+                                if (tcp_enqueue(tx1)) ++swap_ok; else ++swap_fail;
 
-                            usleep(200);
+                                // UserB swaps B→A
+                                auto tx2 = CreateTransactionWithAttr(sec_b, ++nonce_b,
+                                    common::Encode::HexEncode(pkb_raw), pool_raw,
+                                    "call", input_swap_b, 0, 5000000, 1, shardnum);
+                                if (tcp_enqueue(tx2)) ++swap_ok; else ++swap_fail;
+                            }
                         }
                     }
                 });
