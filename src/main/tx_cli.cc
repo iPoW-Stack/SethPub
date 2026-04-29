@@ -2054,7 +2054,7 @@ contract AMMPool {
                     for (uint32_t gi = s; gi < e && !global_stop; ++gi) {
                         auto& grp = pf_groups[gi];
                         std::string prikey_raw = common::Encode::HexDecode(grp.prikey_hex);
-                        auto sec = std::make_shared<security::Ecdsa>();
+                        std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
                         sec->SetPrivateKey(prikey_raw);
                         std::string addr_hex = common::Encode::HexEncode(sec->GetAddress());
                         int64_t nonce = tsdk.fetchNonce(addr_hex);
@@ -2189,7 +2189,7 @@ contract AMMPool {
                     for (uint32_t gi = s; gi < e && !global_stop; ++gi) {
                         auto& grp = groups[gi];
                         std::string prikey_raw = common::Encode::HexDecode(grp.prikey_hex);
-                        auto sec = std::make_shared<security::Ecdsa>();
+                        std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
                         sec->SetPrivateKey(prikey_raw);
                         // Nonce from prepayment account: contract_addr + caller_addr
                         std::string prepay_addr = grp.contract_addr + grp.caller_addr;
@@ -2312,11 +2312,11 @@ contract AMMPool {
                         const auto& tp = trade_pairs[pi_idx];
                         // Prepare security objects for both users
                         std::string pka_raw = common::Encode::HexDecode(users[tp.user_a_idx].prikey_hex);
-                        auto sec_a = std::make_shared<security::Ecdsa>(); sec_a->SetPrivateKey(pka_raw);
+                        std::shared_ptr<security::Security> sec_a = std::make_shared<security::Ecdsa>(); sec_a->SetPrivateKey(pka_raw);
                         std::string addr_a = users[tp.user_a_idx].addr_hex;
 
                         std::string pkb_raw = common::Encode::HexDecode(users[tp.user_b_idx].prikey_hex);
-                        auto sec_b = std::make_shared<security::Ecdsa>(); sec_b->SetPrivateKey(pkb_raw);
+                        std::shared_ptr<security::Security> sec_b = std::make_shared<security::Ecdsa>(); sec_b->SetPrivateKey(pkb_raw);
                         std::string addr_b = users[tp.user_b_idx].addr_hex;
 
                         for (uint32_t pool_idx : tp.pool_indices) {
