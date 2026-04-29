@@ -1523,11 +1523,26 @@ contract AMMPool {
 
         // Use existing funded accounts to send native transfers via TCP
         // Each funder thread gets a unique funded account to avoid nonce collisions.
-        uint32_t fund_threads = std::min(kDeployThreads, (uint32_t)g_prikeys.size());
+        // Only use unique funded accounts (g_prikeys may have duplicates from padding).
+        std::vector<std::string> unique_funders;
+        {
+            std::set<std::string> seen;
+            for (auto& pk : g_prikeys) {
+                if (seen.insert(pk).second) {
+                    unique_funders.push_back(pk);
+                }
+            }
+        }
+        std::cout << "  Unique funded accounts: " << unique_funders.size() << std::endl;
+
+        // Cap thread count: at most kDeployerCount threads (1 deployer per thread minimum),
+        // and at most unique_funders.size() threads (1 funder per thread to avoid nonce collisions).
+        uint32_t fund_threads = std::min({kDeployThreads, kDeployerCount, (uint32_t)unique_funders.size()});
+        if (fund_threads == 0) fund_threads = 1;
         uint32_t deployers_per_thread = kDeployerCount / fund_threads;
 
         auto create_deployer_thread = [&](uint32_t thread_id, uint32_t start_idx, uint32_t end_idx) {
-            std::string funder_prikey = g_prikeys[thread_id % g_prikeys.size()];
+            std::string funder_prikey = unique_funders[thread_id % unique_funders.size()];
             std::shared_ptr<security::Security> funder_sec = std::make_shared<security::Ecdsa>();
             funder_sec->SetPrivateKey(funder_prikey);
             std::string funder_addr = funder_sec->GetAddress();
@@ -1575,6 +1590,8 @@ contract AMMPool {
         };
 
         std::vector<std::thread> fund_threads_vec;
+        std::cout << "  Fund threads: " << fund_threads
+                  << ", deployers per thread: " << deployers_per_thread << std::endl;
         for (uint32_t t = 0; t < fund_threads; ++t) {
             uint32_t s = t * deployers_per_thread;
             uint32_t e = (t == fund_threads - 1) ? kDeployerCount : (s + deployers_per_thread);
@@ -1811,10 +1828,12 @@ contract AMMPool {
         };
 
         std::vector<std::thread> deploy_threads;
-        uint32_t deployers_per_deploy_thread = kDeployerCount / kDeployThreads;
-        for (uint32_t t = 0; t < kDeployThreads; ++t) {
+        uint32_t actual_deploy_threads = std::min(kDeployThreads, kDeployerCount);
+        if (actual_deploy_threads == 0) actual_deploy_threads = 1;
+        uint32_t deployers_per_deploy_thread = kDeployerCount / actual_deploy_threads;
+        for (uint32_t t = 0; t < actual_deploy_threads; ++t) {
             uint32_t s = t * deployers_per_deploy_thread;
-            uint32_t e = (t == kDeployThreads - 1) ? kDeployerCount : (s + deployers_per_deploy_thread);
+            uint32_t e = (t == actual_deploy_threads - 1) ? kDeployerCount : (s + deployers_per_deploy_thread);
             deploy_threads.emplace_back(deploy_thread_fn, t, s, e);
         }
         for (auto& th : deploy_threads) th.join();
