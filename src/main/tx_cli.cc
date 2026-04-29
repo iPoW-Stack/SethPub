@@ -1736,6 +1736,86 @@ contract AMMPool {
             return 1;
         }
 
+        // ── Verify contract addresses exist on chain ─────────────────────
+        std::cout << "\n  Waiting 15s for contract deployment consensus..." << std::endl;
+        for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
+
+        std::cout << "  Verifying " << all_contracts.size() << " contract addresses (up to 300s)..." << std::endl;
+        auto cv_start = std::chrono::steady_clock::now();
+        uint32_t contracts_verified = 0;
+        std::vector<uint32_t> cv_pending;
+        cv_pending.reserve(all_contracts.size());
+        for (uint32_t i = 0; i < all_contracts.size(); ++i) cv_pending.push_back(i);
+        std::vector<bool> cv_confirmed(all_contracts.size(), false);
+
+        uint32_t cv_round = 0;
+        while (!cv_pending.empty() && !global_stop) {
+            if (std::chrono::steady_clock::now() - cv_start >= std::chrono::seconds(300)) {
+                std::cout << "  Contract verify timeout. Verified " << contracts_verified
+                          << "/" << all_contracts.size() << std::endl;
+                break;
+            }
+            ++cv_round;
+            uint32_t cv_rok = 0;
+            std::vector<uint32_t> cv_next;
+            cv_next.reserve(cv_pending.size());
+            // Contract addresses are 40-char hex (20 bytes) — normal batch size is fine
+            std::vector<std::string> ba;
+            std::vector<uint32_t> bi;
+            for (uint32_t p = 0; p < cv_pending.size() && !global_stop; ++p) {
+                ba.push_back(all_contracts[cv_pending[p]]);
+                bi.push_back(cv_pending[p]);
+                if (ba.size() >= 200 || p == cv_pending.size() - 1) {
+                    auto r = sdk.batchQueryAccounts(ba);
+                    if (r.contains("status") && r["status"] == 0 && r.contains("accounts")) {
+                        for (uint32_t k = 0; k < bi.size(); ++k) {
+                            if (r["accounts"].contains(ba[k])) {
+                                cv_confirmed[bi[k]] = true;
+                                ++contracts_verified;
+                                ++cv_rok;
+                            } else {
+                                cv_next.push_back(bi[k]);
+                            }
+                        }
+                    } else {
+                        for (auto idx : bi) cv_next.push_back(idx);
+                    }
+                    ba.clear();
+                    bi.clear();
+                }
+            }
+            cv_pending = std::move(cv_next);
+            auto es = std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::steady_clock::now() - cv_start).count();
+            std::cout << "  [Contract Round " << cv_round << ", " << es << "s] +" << cv_rok
+                      << ", " << contracts_verified << "/" << all_contracts.size()
+                      << " verified, " << cv_pending.size() << " pending" << std::endl;
+            if (cv_pending.empty()) break;
+            uint32_t wt = (cv_rok > 0) ? 3000 : 8000;
+            if (cv_round <= 2 && cv_rok == 0) wt = 15000;
+            for (uint32_t w = 0; w < wt / 100 && !global_stop; ++w) usleep(100000);
+        }
+
+        // Remove unverified contracts from all_contracts
+        if (contracts_verified < all_contracts.size()) {
+            std::cout << "  WARNING: " << (all_contracts.size() - contracts_verified)
+                      << " contracts not verified on chain." << std::endl;
+            std::vector<std::string> verified_contracts;
+            for (uint32_t i = 0; i < all_contracts.size(); ++i) {
+                if (cv_confirmed[i]) verified_contracts.push_back(all_contracts[i]);
+            }
+            all_contracts = std::move(verified_contracts);
+            std::cout << "  Using " << all_contracts.size() << " verified contracts for prefund." << std::endl;
+        } else {
+            std::cout << "  All " << contracts_verified << " contracts verified on chain." << std::endl;
+        }
+
+        if (all_contracts.empty()) {
+            std::cerr << "  ERROR: No contracts verified. Aborting." << std::endl;
+            transport::TcpTransport::Instance()->Stop();
+            return 1;
+        }
+
         // ── Phase 5: Random prefund — 2 contracts per user (~20000 ops) ──
         std::cout << "\n" << std::string(70, '-') << std::endl;
         std::cout << "  Phase 5: Random Prefund (2 contracts per user)" << std::endl;
