@@ -2158,6 +2158,37 @@ contract AMMPool {
         std::cout << "  Phase 7: Set User Prefund (TCP fast path)" << std::endl;
         std::cout << std::string(70, '-') << std::endl;
 
+        // Initialize nonces for all confirmed users before prefund
+        std::cout << "  Initializing nonces for " << confirmed_users.size() << " users..." << std::endl;
+        {
+            SethSDK nonce_sdk(global_chain_node_ip, global_chain_node_http_port);
+            uint32_t nonce_init_threads = std::min((uint32_t)common::kMaxThreadCount, (uint32_t)confirmed_users.size());
+            if (nonce_init_threads == 0) nonce_init_threads = 1;
+            uint32_t users_per_thread = confirmed_users.size() / nonce_init_threads;
+            std::vector<std::thread> nonce_threads;
+            std::atomic<uint32_t> nonce_init_ok{0};
+            
+            for (uint32_t t = 0; t < nonce_init_threads; ++t) {
+                uint32_t s = t * users_per_thread;
+                uint32_t e = (t == nonce_init_threads - 1) ? (uint32_t)confirmed_users.size() : (s + users_per_thread);
+                nonce_threads.emplace_back([&, s, e]() {
+                    SethSDK local_sdk(global_chain_node_ip, global_chain_node_http_port);
+                    for (uint32_t i = s; i < e && !global_stop; ++i) {
+                        uint32_t user_idx = confirmed_users[i];
+                        std::string addr_hex = users[user_idx].addr_hex;
+                        int64_t nonce = local_sdk.fetchNonce(addr_hex);
+                        if (nonce >= 0) {
+                            std::string addr_raw = common::Encode::HexDecode(addr_hex);
+                            prikey_with_nonce[addr_raw] = nonce;
+                            ++nonce_init_ok;
+                        }
+                    }
+                });
+            }
+            for (auto& th : nonce_threads) th.join();
+            std::cout << "  Nonce initialization: " << nonce_init_ok.load() << "/" << confirmed_users.size() << " users" << std::endl;
+        }
+
         // Group prefund ops by sender (user prikey) for nonce management
         struct UserPrefundGroup {
             std::string prikey_hex;
@@ -2239,8 +2270,8 @@ contract AMMPool {
                   << pf_ok.load() << " ok, " << pf_fail.load() << " fail" << std::endl;
 
         // Wait for prefund consensus — need enough time for all prefund txs to be confirmed
-        std::cout << "  Waiting 30s for prefund consensus..." << std::endl;
-        for(int w=0;w<300&&!global_stop;++w) usleep(100000);
+        std::cout << "  Waiting 10s for prefund consensus..." << std::endl;
+        for(int w=0;w<100&&!global_stop;++w) usleep(100000);
 
         // Verify prefund accounts exist via batch query, retry missing ones
         std::cout << "  Verifying prefund accounts (batch)..." << std::endl;
