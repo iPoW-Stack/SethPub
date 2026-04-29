@@ -1286,7 +1286,14 @@ int main(int argc, char** argv) {
         }
         if (argc >= 6) {
             global_chain_node_ip = argv[4];
-            global_chain_node_http_port = std::stoi(argv[5]);  // HTTP port directly (e.g. 23001)
+            uint16_t input_port = std::stoi(argv[5]);
+            // Auto-detect: if port < 20000, assume TCP port (add 10000 for HTTP).
+            // Otherwise assume HTTP port directly.
+            if (input_port < 20000) {
+                global_chain_node_http_port = input_port + 10000;
+            } else {
+                global_chain_node_http_port = input_port;
+            }
         }
 
         std::cout << "\n" << std::string(70, '=') << std::endl;
@@ -1296,7 +1303,9 @@ int main(int argc, char** argv) {
         std::cout << "  ~" << kUserCount * 2 << " prefund operations (2 random contracts per user)" << std::endl;
         std::cout << std::string(70, '=') << std::endl;
         std::cout << "Shard: " << shardnum << std::endl;
-        std::cout << "Node: " << global_chain_node_ip << ":" << global_chain_node_http_port << std::endl;
+        std::cout << "Node: " << global_chain_node_ip << std::endl;
+        std::cout << "  HTTP port: " << global_chain_node_http_port << std::endl;
+        std::cout << "  TCP port:  " << (global_chain_node_http_port - 10000) << std::endl;
         std::cout << "Threads: " << kDeployThreads << std::endl;
 
         LoadAllAccounts(shardnum);
@@ -1325,6 +1334,24 @@ int main(int argc, char** argv) {
         }
 
         SethSDK sdk(global_chain_node_ip, global_chain_node_http_port);
+
+        // Quick connectivity test — verify HTTP port is reachable
+        {
+            std::shared_ptr<security::Security> test_sec = std::make_shared<security::Ecdsa>();
+            test_sec->SetPrivateKey(g_prikeys[0]);
+            std::string test_addr = common::Encode::HexEncode(test_sec->GetAddress());
+            std::cout << "  Testing HTTP connectivity to " << global_chain_node_ip
+                      << ":" << global_chain_node_http_port << "..." << std::endl;
+            int64_t test_nonce = sdk.fetchNonce(test_addr);
+            if (test_nonce < 0) {
+                std::cerr << "  ERROR: Cannot reach node at " << global_chain_node_ip
+                          << ":" << global_chain_node_http_port << std::endl;
+                std::cerr << "  Check: is this the HTTPS port (e.g. 23001)?" << std::endl;
+                transport::TcpTransport::Instance()->Stop();
+                return 1;
+            }
+            std::cout << "  HTTP OK (test nonce=" << test_nonce << " for " << test_addr << ")" << std::endl;
+        }
 
         // ── Solidity sources (same as clipy/amm.py) ──────────────────────
         const std::string SIMPLE_TOKEN_SOL = R"(
