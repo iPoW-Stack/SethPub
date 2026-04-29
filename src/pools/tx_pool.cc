@@ -215,7 +215,7 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
 void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
     // CheckThreadIdValid();
     auto now_tm_us = common::TimeUtils::TimestampUs();
-    SETH_INFO("0 now tx size: %u", all_tx_size());
+    SETH_INFO("0 now tx size: %u, now tx size: %u", all_tx_size(), view_block.block_info().tx_list_size());
     auto over_addr_nonce_ptr = std::make_shared<std::unordered_map<std::string, uint64_t>>();
     for (uint32_t i = 0; i < (uint32_t)view_block.block_info().tx_list_size(); ++i) {
         auto& tx_info = view_block.block_info().tx_list(i);
@@ -321,7 +321,8 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
 
     over_addr_map_queue_.push(over_addr_nonce_ptr);
     tx_pool_dirty_ = true;  // nonces advanced, previously stuck txs may now be valid
-    SETH_WARN("pool: %d, all now tx size: %u", pool_index_, all_tx_size());
+    SETH_WARN("pool: %d, all now tx size: %u, now tx size: %u, all_delay_tx_count_: %u", 
+        pool_index_, all_tx_size(), view_block.block_info().tx_list_size(), all_delay_tx_count_);
 }
 
 void TxPool::GetTxSyncToLeader(
