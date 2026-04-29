@@ -1990,58 +1990,97 @@ contract AMMPool {
                   << ", pools per pair: " << kPoolsPerPair << std::endl;
 
         // ── Phase 7: Set prefund for all users on their assigned contracts ─
+        // Uses raw TCP for maximum throughput (same as Phase 3 account creation)
         std::cout << "\n" << std::string(70, '-') << std::endl;
-        std::cout << "  Phase 7: Set User Prefund" << std::endl;
+        std::cout << "  Phase 7: Set User Prefund (TCP fast path)" << std::endl;
         std::cout << std::string(70, '-') << std::endl;
 
-        // Collect all (user_prikey, contract_addr) pairs for prefund
-        struct PrefundOp {
-            std::string prikey;
-            std::string contract_addr;
+        // Group prefund ops by sender (user prikey) for nonce management
+        // Each user may have multiple contracts to prefund on
+        struct UserPrefundGroup {
+            std::string prikey_hex;
+            std::vector<std::string> contract_addrs;
         };
-        std::vector<PrefundOp> prefund_ops;
+        std::unordered_map<std::string, uint32_t> prikey_to_group;
+        std::vector<UserPrefundGroup> pf_groups;
+        uint64_t total_pf_ops = 0;
+
         for (const auto& tp : trade_pairs) {
+            // Collect contracts for UserA
             for (uint32_t pi : tp.pool_indices) {
                 const auto& pool = pools[pi];
-                // UserA needs prefund on TokenA, TokenB, Pool
-                prefund_ops.push_back({users[tp.user_a_idx].prikey_hex, pool.token_a});
-                prefund_ops.push_back({users[tp.user_a_idx].prikey_hex, pool.token_b});
-                prefund_ops.push_back({users[tp.user_a_idx].prikey_hex, pool.pool});
-                // UserB needs prefund on TokenA, TokenB, Pool
-                prefund_ops.push_back({users[tp.user_b_idx].prikey_hex, pool.token_a});
-                prefund_ops.push_back({users[tp.user_b_idx].prikey_hex, pool.token_b});
-                prefund_ops.push_back({users[tp.user_b_idx].prikey_hex, pool.pool});
+                auto& ua_key = users[tp.user_a_idx].prikey_hex;
+                auto& ub_key = users[tp.user_b_idx].prikey_hex;
+                // UserA
+                auto it_a = prikey_to_group.find(ua_key);
+                if (it_a == prikey_to_group.end()) {
+                    prikey_to_group[ua_key] = pf_groups.size();
+                    pf_groups.push_back({ua_key, {}});
+                    it_a = prikey_to_group.find(ua_key);
+                }
+                pf_groups[it_a->second].contract_addrs.push_back(pool.token_a);
+                pf_groups[it_a->second].contract_addrs.push_back(pool.token_b);
+                pf_groups[it_a->second].contract_addrs.push_back(pool.pool);
+                total_pf_ops += 3;
+                // UserB
+                auto it_b = prikey_to_group.find(ub_key);
+                if (it_b == prikey_to_group.end()) {
+                    prikey_to_group[ub_key] = pf_groups.size();
+                    pf_groups.push_back({ub_key, {}});
+                    it_b = prikey_to_group.find(ub_key);
+                }
+                pf_groups[it_b->second].contract_addrs.push_back(pool.token_a);
+                pf_groups[it_b->second].contract_addrs.push_back(pool.token_b);
+                pf_groups[it_b->second].contract_addrs.push_back(pool.pool);
+                total_pf_ops += 3;
             }
         }
-        std::cout << "  Total prefund ops: " << prefund_ops.size() << std::endl;
+        std::cout << "  Total prefund ops: " << total_pf_ops
+                  << ", unique senders: " << pf_groups.size() << std::endl;
 
         std::atomic<uint64_t> pf_ok{0}, pf_fail{0};
         auto pfstart = std::chrono::steady_clock::now();
         {
-            uint32_t pf_threads = std::min(kDeployThreads, (uint32_t)prefund_ops.size());
+            // Use more threads — each thread handles a range of sender groups
+            uint32_t pf_threads = std::min((uint32_t)64, (uint32_t)pf_groups.size());
             if (pf_threads == 0) pf_threads = 1;
-            uint32_t ops_per_thread = prefund_ops.size() / pf_threads;
+            uint32_t groups_per_thread = pf_groups.size() / pf_threads;
             std::vector<std::thread> pt;
             for (uint32_t t = 0; t < pf_threads; ++t) {
-                uint32_t s = t * ops_per_thread;
-                uint32_t e = (t == pf_threads-1) ? (uint32_t)prefund_ops.size() : (s + ops_per_thread);
+                uint32_t s = t * groups_per_thread;
+                uint32_t e = (t == pf_threads-1) ? (uint32_t)pf_groups.size() : (s + groups_per_thread);
                 pt.emplace_back([&,s,e](){
                     SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
-                    for (uint32_t i = s; i < e && !global_stop; ++i) {
-                        auto r = tsdk.setGasPrefund(prefund_ops[i].prikey, prefund_ops[i].contract_addr, kUserPrefund);
-                        if (r["status"] == 0) ++pf_ok; else ++pf_fail;
-                        usleep(500);
+                    for (uint32_t gi = s; gi < e && !global_stop; ++gi) {
+                        auto& grp = pf_groups[gi];
+                        std::string prikey_raw = common::Encode::HexDecode(grp.prikey_hex);
+                        auto sec = std::make_shared<security::Ecdsa>();
+                        sec->SetPrivateKey(prikey_raw);
+                        std::string addr_hex = common::Encode::HexEncode(sec->GetAddress());
+                        int64_t nonce = tsdk.fetchNonce(addr_hex);
+                        if (nonce < 0) { pf_fail += grp.contract_addrs.size(); continue; }
+                        for (const auto& ca : grp.contract_addrs) {
+                            if (global_stop) break;
+                            auto tx = CreateTransactionWithAttr(sec, ++nonce,
+                                common::Encode::HexEncode(prikey_raw),
+                                common::Encode::HexDecode(ca),
+                                "prefund", "", 0, 210000, 1, shardnum);
+                            if (tx && transport::TcpTransport::Instance()->Send(global_chain_node_ip,
+                                    global_chain_node_http_port - 10000, tx->header) == 0) ++pf_ok;
+                            else ++pf_fail;
+                            usleep(200);
+                        }
                     }
                 });
             }
             std::thread pfprog([&]() {
-                while (pf_ok.load()+pf_fail.load() < prefund_ops.size() && !global_stop) {
-                    for (int i = 0; i < 30 && !global_stop; ++i) usleep(100000);
+                while (pf_ok.load()+pf_fail.load() < total_pf_ops && !global_stop) {
+                    for (int i = 0; i < 20 && !global_stop; ++i) usleep(100000);
                     if (global_stop) break;
                     auto el = std::chrono::duration_cast<std::chrono::seconds>(
                         std::chrono::steady_clock::now()-pfstart).count();
                     std::cout << "  [" << el << "s] prefund: " << pf_ok.load() << " ok, "
-                              << pf_fail.load() << " fail / " << prefund_ops.size() << std::endl;
+                              << pf_fail.load() << " fail / " << total_pf_ops << std::endl;
                 }
             });
             for (auto& th : pt) th.join();
@@ -2056,60 +2095,100 @@ contract AMMPool {
         std::cout << "  Waiting 20s for prefund consensus..." << std::endl;
         for(int w=0;w<200&&!global_stop;++w) usleep(100000);
 
-        // ── Phase 8: Deployer transfers tokens to users ───────────────────
+        // ── Phase 8: Deployer transfers tokens to users (TCP fast path) ────
         std::cout << "\n" << std::string(70, '-') << std::endl;
-        std::cout << "  Phase 8: Transfer Tokens to Users" << std::endl;
+        std::cout << "  Phase 8: Transfer Tokens to Users (TCP)" << std::endl;
         std::cout << std::string(70, '-') << std::endl;
 
-        std::atomic<uint64_t> xfer_ok{0}, xfer_fail{0};
-        auto xfer_start = std::chrono::steady_clock::now();
-
-        // Collect all transfer ops: deployer transfers TokenA and TokenB to both users in each pair
-        struct TransferOp {
-            std::string deployer_prikey;
-            std::string token_addr;
-            std::string user_addr;
-            uint64_t amount;
+        // Helper: encode a contract call input (selector + ABI-encoded args)
+        // For transfer(address,uint256) and approve(address,uint256)
+        auto encode_call_input = [](const std::string& func_sig,
+                                    const std::string& addr_hex,
+                                    uint64_t amount) -> std::string {
+            // selector = keccak256(func_sig)[0:8]
+            std::string selector = utils::keccak256Str(func_sig).substr(0, 8);
+            // address: left-pad to 64 hex chars
+            std::string addr = addr_hex;
+            if (addr.size() >= 2 && addr.substr(0,2) == "0x") addr = addr.substr(2);
+            std::string addr_padded = std::string(64 - addr.size(), '0') + addr;
+            // uint256: left-pad to 64 hex chars
+            std::stringstream ss; ss << std::hex << amount;
+            std::string amt_hex = ss.str();
+            std::string amt_padded = std::string(64 - amt_hex.size(), '0') + amt_hex;
+            return selector + addr_padded + amt_padded;
         };
-        std::vector<TransferOp> xfer_ops;
+
+        // Group transfer ops by deployer (sender) for nonce management
+        struct XferGroup {
+            std::string prikey_hex;
+            struct Op { std::string token_addr; std::string user_addr; uint64_t amount; };
+            std::vector<Op> ops;
+        };
+        std::unordered_map<std::string, uint32_t> xfer_prikey_to_group;
+        std::vector<XferGroup> xfer_groups;
+        uint64_t total_xfer_ops = 0;
+
         for (const auto& tp : trade_pairs) {
             for (uint32_t pi : tp.pool_indices) {
                 const auto& pool = pools[pi];
                 const auto& dpk = deployers[pool.deployer_idx].prikey_hex;
-                auto amt_str = std::to_string(kTokenTransfer);
-                // UserA gets TokenA (will swap A→B)
-                xfer_ops.push_back({dpk, pool.token_a, users[tp.user_a_idx].addr_hex, kTokenTransfer});
-                // UserB gets TokenB (will swap B→A)
-                xfer_ops.push_back({dpk, pool.token_b, users[tp.user_b_idx].addr_hex, kTokenTransfer});
+                auto it = xfer_prikey_to_group.find(dpk);
+                if (it == xfer_prikey_to_group.end()) {
+                    xfer_prikey_to_group[dpk] = xfer_groups.size();
+                    xfer_groups.push_back({dpk, {}});
+                    it = xfer_prikey_to_group.find(dpk);
+                }
+                xfer_groups[it->second].ops.push_back({pool.token_a, users[tp.user_a_idx].addr_hex, kTokenTransfer});
+                xfer_groups[it->second].ops.push_back({pool.token_b, users[tp.user_b_idx].addr_hex, kTokenTransfer});
+                total_xfer_ops += 2;
             }
         }
-        std::cout << "  Total transfer ops: " << xfer_ops.size() << std::endl;
+        std::cout << "  Total transfer ops: " << total_xfer_ops
+                  << ", unique senders: " << xfer_groups.size() << std::endl;
 
+        std::atomic<uint64_t> xfer_ok{0}, xfer_fail{0};
+        auto xfer_start = std::chrono::steady_clock::now();
         {
-            uint32_t xt = std::min(kDeployThreads, (uint32_t)xfer_ops.size());
+            uint32_t xt = std::min((uint32_t)64, (uint32_t)xfer_groups.size());
             if (xt == 0) xt = 1;
-            uint32_t xpp = xfer_ops.size() / xt;
+            uint32_t xpp = xfer_groups.size() / xt;
             std::vector<std::thread> xthreads;
             for (uint32_t t = 0; t < xt; ++t) {
-                uint32_t s = t * xpp, e = (t == xt-1) ? (uint32_t)xfer_ops.size() : (s + xpp);
+                uint32_t s = t * xpp, e = (t == xt-1) ? (uint32_t)xfer_groups.size() : (s + xpp);
                 xthreads.emplace_back([&,s,e](){
                     SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
-                    for (uint32_t i = s; i < e && !global_stop; ++i) {
-                        auto r = tsdk.callFunctionSolidity(xfer_ops[i].deployer_prikey, xfer_ops[i].token_addr, 0,
-                            "transfer", {"address","uint256"}, {xfer_ops[i].user_addr, std::to_string(xfer_ops[i].amount)});
-                        if (r["status"] == 0) ++xfer_ok; else ++xfer_fail;
-                        usleep(500);
+                    for (uint32_t gi = s; gi < e && !global_stop; ++gi) {
+                        auto& grp = xfer_groups[gi];
+                        std::string prikey_raw = common::Encode::HexDecode(grp.prikey_hex);
+                        auto sec = std::make_shared<security::Ecdsa>();
+                        sec->SetPrivateKey(prikey_raw);
+                        std::string addr_hex = common::Encode::HexEncode(sec->GetAddress());
+                        int64_t nonce = tsdk.fetchNonce(addr_hex);
+                        if (nonce < 0) { xfer_fail += grp.ops.size(); continue; }
+                        for (const auto& op : grp.ops) {
+                            if (global_stop) break;
+                            std::string input = encode_call_input(
+                                "transfer(address,uint256)", op.user_addr, op.amount);
+                            auto tx = CreateTransactionWithAttr(sec, ++nonce,
+                                common::Encode::HexEncode(prikey_raw),
+                                common::Encode::HexDecode(op.token_addr),
+                                "call", input, 0, 5000000, 1, shardnum);
+                            if (tx && transport::TcpTransport::Instance()->Send(global_chain_node_ip,
+                                    global_chain_node_http_port - 10000, tx->header) == 0) ++xfer_ok;
+                            else ++xfer_fail;
+                            usleep(200);
+                        }
                     }
                 });
             }
             std::thread xprog([&]() {
-                while (xfer_ok.load()+xfer_fail.load() < xfer_ops.size() && !global_stop) {
-                    for (int i = 0; i < 30 && !global_stop; ++i) usleep(100000);
+                while (xfer_ok.load()+xfer_fail.load() < total_xfer_ops && !global_stop) {
+                    for (int i = 0; i < 20 && !global_stop; ++i) usleep(100000);
                     if (global_stop) break;
                     auto el = std::chrono::duration_cast<std::chrono::seconds>(
                         std::chrono::steady_clock::now()-xfer_start).count();
                     std::cout << "  [" << el << "s] transfer: " << xfer_ok.load() << " ok, "
-                              << xfer_fail.load() << " fail / " << xfer_ops.size() << std::endl;
+                              << xfer_fail.load() << " fail / " << total_xfer_ops << std::endl;
                 }
             });
             for (auto& th : xthreads) th.join();
@@ -2124,56 +2203,92 @@ contract AMMPool {
         std::cout << "  Waiting 15s for transfer consensus..." << std::endl;
         for(int w=0;w<150&&!global_stop;++w) usleep(100000);
 
-        // ── Phase 9: Users approve Pool to spend tokens ───────────────────
+        // ── Phase 9: Users approve Pool to spend tokens (TCP fast path) ───
         std::cout << "\n" << std::string(70, '-') << std::endl;
-        std::cout << "  Phase 9: User Approve Pool" << std::endl;
+        std::cout << "  Phase 9: User Approve Pool (TCP)" << std::endl;
         std::cout << std::string(70, '-') << std::endl;
 
-        struct ApproveOp {
-            std::string user_prikey;
-            std::string token_addr;
-            std::string pool_addr;
-            uint64_t amount;
+        // Group approve ops by sender (user prikey)
+        struct ApproveGroup {
+            std::string prikey_hex;
+            struct Op { std::string token_addr; std::string pool_addr; uint64_t amount; };
+            std::vector<Op> ops;
         };
-        std::vector<ApproveOp> approve_ops;
+        std::unordered_map<std::string, uint32_t> appr_prikey_to_group;
+        std::vector<ApproveGroup> appr_groups;
+        uint64_t total_appr_ops = 0;
+
         for (const auto& tp : trade_pairs) {
             for (uint32_t pi : tp.pool_indices) {
                 const auto& pool = pools[pi];
-                // UserA approves TokenA for Pool (will swap A→B)
-                approve_ops.push_back({users[tp.user_a_idx].prikey_hex, pool.token_a, pool.pool, kTokenTransfer});
-                // UserB approves TokenB for Pool (will swap B→A)
-                approve_ops.push_back({users[tp.user_b_idx].prikey_hex, pool.token_b, pool.pool, kTokenTransfer});
+                // UserA approves TokenA for Pool
+                auto& ua_key = users[tp.user_a_idx].prikey_hex;
+                auto it_a = appr_prikey_to_group.find(ua_key);
+                if (it_a == appr_prikey_to_group.end()) {
+                    appr_prikey_to_group[ua_key] = appr_groups.size();
+                    appr_groups.push_back({ua_key, {}});
+                    it_a = appr_prikey_to_group.find(ua_key);
+                }
+                appr_groups[it_a->second].ops.push_back({pool.token_a, pool.pool, kTokenTransfer});
+                ++total_appr_ops;
+                // UserB approves TokenB for Pool
+                auto& ub_key = users[tp.user_b_idx].prikey_hex;
+                auto it_b = appr_prikey_to_group.find(ub_key);
+                if (it_b == appr_prikey_to_group.end()) {
+                    appr_prikey_to_group[ub_key] = appr_groups.size();
+                    appr_groups.push_back({ub_key, {}});
+                    it_b = appr_prikey_to_group.find(ub_key);
+                }
+                appr_groups[it_b->second].ops.push_back({pool.token_b, pool.pool, kTokenTransfer});
+                ++total_appr_ops;
             }
         }
-        std::cout << "  Total approve ops: " << approve_ops.size() << std::endl;
+        std::cout << "  Total approve ops: " << total_appr_ops
+                  << ", unique senders: " << appr_groups.size() << std::endl;
 
         std::atomic<uint64_t> appr_ok{0}, appr_fail{0};
         auto appr_start = std::chrono::steady_clock::now();
         {
-            uint32_t at = std::min(kDeployThreads, (uint32_t)approve_ops.size());
+            uint32_t at = std::min((uint32_t)64, (uint32_t)appr_groups.size());
             if (at == 0) at = 1;
-            uint32_t app = approve_ops.size() / at;
+            uint32_t app = appr_groups.size() / at;
             std::vector<std::thread> athreads;
             for (uint32_t t = 0; t < at; ++t) {
-                uint32_t s = t * app, e = (t == at-1) ? (uint32_t)approve_ops.size() : (s + app);
+                uint32_t s = t * app, e = (t == at-1) ? (uint32_t)appr_groups.size() : (s + app);
                 athreads.emplace_back([&,s,e](){
                     SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
-                    for (uint32_t i = s; i < e && !global_stop; ++i) {
-                        auto r = tsdk.callFunctionSolidity(approve_ops[i].user_prikey, approve_ops[i].token_addr, 0,
-                            "approve", {"address","uint256"}, {approve_ops[i].pool_addr, std::to_string(approve_ops[i].amount)});
-                        if (r["status"] == 0) ++appr_ok; else ++appr_fail;
-                        usleep(500);
+                    for (uint32_t gi = s; gi < e && !global_stop; ++gi) {
+                        auto& grp = appr_groups[gi];
+                        std::string prikey_raw = common::Encode::HexDecode(grp.prikey_hex);
+                        auto sec = std::make_shared<security::Ecdsa>();
+                        sec->SetPrivateKey(prikey_raw);
+                        std::string addr_hex = common::Encode::HexEncode(sec->GetAddress());
+                        int64_t nonce = tsdk.fetchNonce(addr_hex);
+                        if (nonce < 0) { appr_fail += grp.ops.size(); continue; }
+                        for (const auto& op : grp.ops) {
+                            if (global_stop) break;
+                            std::string input = encode_call_input(
+                                "approve(address,uint256)", op.pool_addr, op.amount);
+                            auto tx = CreateTransactionWithAttr(sec, ++nonce,
+                                common::Encode::HexEncode(prikey_raw),
+                                common::Encode::HexDecode(op.token_addr),
+                                "call", input, 0, 5000000, 1, shardnum);
+                            if (tx && transport::TcpTransport::Instance()->Send(global_chain_node_ip,
+                                    global_chain_node_http_port - 10000, tx->header) == 0) ++appr_ok;
+                            else ++appr_fail;
+                            usleep(200);
+                        }
                     }
                 });
             }
             std::thread aprog([&]() {
-                while (appr_ok.load()+appr_fail.load() < approve_ops.size() && !global_stop) {
-                    for (int i = 0; i < 30 && !global_stop; ++i) usleep(100000);
+                while (appr_ok.load()+appr_fail.load() < total_appr_ops && !global_stop) {
+                    for (int i = 0; i < 20 && !global_stop; ++i) usleep(100000);
                     if (global_stop) break;
                     auto el = std::chrono::duration_cast<std::chrono::seconds>(
                         std::chrono::steady_clock::now()-appr_start).count();
                     std::cout << "  [" << el << "s] approve: " << appr_ok.load() << " ok, "
-                              << appr_fail.load() << " fail / " << approve_ops.size() << std::endl;
+                              << appr_fail.load() << " fail / " << total_appr_ops << std::endl;
                 }
             });
             for (auto& th : athreads) th.join();
@@ -2188,17 +2303,28 @@ contract AMMPool {
         std::cout << "  Waiting 15s for approve consensus..." << std::endl;
         for(int w=0;w<150&&!global_stop;++w) usleep(100000);
 
-        // ── Phase 10: Execute AMM Swaps (stress test) ─────────────────────
+        // ── Phase 10: Execute AMM Swaps (stress test, TCP fast path) ──────
         // For each trade pair, on each assigned pool:
         //   Step 1: UserA swaps A→B (swapAForB)
         //   Step 2: UserB swaps B→A (swapBForA)
         // Sequential within a pair to guarantee order; parallel across pairs.
         std::cout << "\n" << std::string(70, '-') << std::endl;
-        std::cout << "  Phase 10: AMM Swap Stress Test" << std::endl;
+        std::cout << "  Phase 10: AMM Swap Stress Test (TCP)" << std::endl;
         std::cout << std::string(70, '-') << std::endl;
         std::cout << "  Trade pairs: " << trade_pairs.size()
                   << ", swaps per pair: " << kPoolsPerPair << " pools x 2 directions = "
                   << kPoolsPerPair * 2 << std::endl;
+
+        // Helper: encode swap call input — swapAForB(uint256,uint256) / swapBForA(uint256,uint256)
+        auto encode_swap_input = [](const std::string& func_sig,
+                                    uint64_t amountIn, uint64_t minOut) -> std::string {
+            std::string selector = utils::keccak256Str(func_sig).substr(0, 8);
+            std::stringstream ss1; ss1 << std::hex << amountIn;
+            std::string a1 = ss1.str(); a1 = std::string(64 - a1.size(), '0') + a1;
+            std::stringstream ss2; ss2 << std::hex << minOut;
+            std::string a2 = ss2.str(); a2 = std::string(64 - a2.size(), '0') + a2;
+            return selector + a1 + a2;
+        };
 
         std::atomic<uint64_t> swap_ok{0}, swap_fail{0};
         uint64_t total_swaps = 0;
@@ -2207,7 +2333,7 @@ contract AMMPool {
 
         auto swap_start = std::chrono::steady_clock::now();
         {
-            uint32_t st = std::min(kDeployThreads, (uint32_t)trade_pairs.size());
+            uint32_t st = std::min((uint32_t)64, (uint32_t)trade_pairs.size());
             if (st == 0) st = 1;
             uint32_t spp = trade_pairs.size() / st;
             std::vector<std::thread> sthreads;
@@ -2217,28 +2343,57 @@ contract AMMPool {
                     SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
                     for (uint32_t pi_idx = s; pi_idx < e && !global_stop; ++pi_idx) {
                         const auto& tp = trade_pairs[pi_idx];
+                        // Prepare security objects and nonces for both users
+                        std::string pka_raw = common::Encode::HexDecode(users[tp.user_a_idx].prikey_hex);
+                        auto sec_a = std::make_shared<security::Ecdsa>(); sec_a->SetPrivateKey(pka_raw);
+                        std::string addr_a = common::Encode::HexEncode(sec_a->GetAddress());
+                        int64_t nonce_a = tsdk.fetchNonce(addr_a);
+
+                        std::string pkb_raw = common::Encode::HexDecode(users[tp.user_b_idx].prikey_hex);
+                        auto sec_b = std::make_shared<security::Ecdsa>(); sec_b->SetPrivateKey(pkb_raw);
+                        std::string addr_b = common::Encode::HexEncode(sec_b->GetAddress());
+                        int64_t nonce_b = tsdk.fetchNonce(addr_b);
+
+                        if (nonce_a < 0 || nonce_b < 0) {
+                            swap_fail += tp.pool_indices.size() * 2;
+                            continue;
+                        }
+
                         for (uint32_t pool_idx : tp.pool_indices) {
+                            if (global_stop) break;
                             const auto& pool = pools[pool_idx];
-                            auto swap_str = std::to_string(kSwapAmount);
+                            std::string pool_raw = common::Encode::HexDecode(pool.pool);
+
                             // Step 1: UserA swaps A→B
-                            auto r1 = tsdk.callFunctionSolidity(
-                                users[tp.user_a_idx].prikey_hex, pool.pool, 0,
-                                "swapAForB", {"uint256","uint256"}, {swap_str, "0"});
-                            if (r1["status"] == 0) ++swap_ok; else ++swap_fail;
-                            usleep(50000);
+                            std::string input_a = encode_swap_input(
+                                "swapAForB(uint256,uint256)", kSwapAmount, 0);
+                            auto tx1 = CreateTransactionWithAttr(sec_a, ++nonce_a,
+                                common::Encode::HexEncode(pka_raw), pool_raw,
+                                "call", input_a, 0, 5000000, 1, shardnum);
+                            if (tx1 && transport::TcpTransport::Instance()->Send(global_chain_node_ip,
+                                    global_chain_node_http_port - 10000, tx1->header) == 0) ++swap_ok;
+                            else ++swap_fail;
+
+                            usleep(200);
+
                             // Step 2: UserB swaps B→A
-                            auto r2 = tsdk.callFunctionSolidity(
-                                users[tp.user_b_idx].prikey_hex, pool.pool, 0,
-                                "swapBForA", {"uint256","uint256"}, {swap_str, "0"});
-                            if (r2["status"] == 0) ++swap_ok; else ++swap_fail;
-                            usleep(50000);
+                            std::string input_b = encode_swap_input(
+                                "swapBForA(uint256,uint256)", kSwapAmount, 0);
+                            auto tx2 = CreateTransactionWithAttr(sec_b, ++nonce_b,
+                                common::Encode::HexEncode(pkb_raw), pool_raw,
+                                "call", input_b, 0, 5000000, 1, shardnum);
+                            if (tx2 && transport::TcpTransport::Instance()->Send(global_chain_node_ip,
+                                    global_chain_node_http_port - 10000, tx2->header) == 0) ++swap_ok;
+                            else ++swap_fail;
+
+                            usleep(200);
                         }
                     }
                 });
             }
             std::thread sprog([&]() {
                 while (swap_ok.load()+swap_fail.load() < total_swaps && !global_stop) {
-                    for (int i = 0; i < 30 && !global_stop; ++i) usleep(100000);
+                    for (int i = 0; i < 20 && !global_stop; ++i) usleep(100000);
                     if (global_stop) break;
                     auto el = std::chrono::duration_cast<std::chrono::seconds>(
                         std::chrono::steady_clock::now()-swap_start).count();
