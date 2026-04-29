@@ -1286,15 +1286,14 @@ int main(int argc, char** argv) {
         }
         if (argc >= 6) {
             global_chain_node_ip = argv[4];
-            global_chain_node_http_port = std::stoi(argv[5]) + 10000;
+            global_chain_node_http_port = std::stoi(argv[5]);  // HTTP port directly (e.g. 23001)
         }
 
         std::cout << "\n" << std::string(70, '=') << std::endl;
         std::cout << "  AMM Contract Deployment + User Prefund Setup" << std::endl;
         std::cout << "  " << kUserCount << " users + " << kContractSets << " deployers" << std::endl;
-        std::cout << "  " << kContractSets << " × 3 contracts = " << kContractSets * 3 << " deployments" << std::endl;
-        std::cout << "  " << kUserCount << " users × " << kContractSets * 3 << " contracts = "
-                  << (uint64_t)kUserCount * kContractSets * 3 << " prefund operations" << std::endl;
+        std::cout << "  " << kContractSets << " x 3 contracts = " << kContractSets * 3 << " deployments" << std::endl;
+        std::cout << "  ~" << kUserCount * 2 << " prefund operations (2 random contracts per user)" << std::endl;
         std::cout << std::string(70, '=') << std::endl;
         std::cout << "Shard: " << shardnum << std::endl;
         std::cout << "Node: " << global_chain_node_ip << ":" << global_chain_node_http_port << std::endl;
@@ -1710,27 +1709,58 @@ contract AMMPool {
             return 1;
         }
 
-        // ── Phase 5: Set prefund for all users on all contracts ───────────
+        // ── Phase 5: Random prefund — 2 contracts per user (~20000 ops) ──
         std::cout << "\n" << std::string(70, '-') << std::endl;
-        std::cout << "  Phase 5: Prefund " << users_ok << " Users on "
-                  << all_contracts.size() << " Contracts" << std::endl;
+        std::cout << "  Phase 5: Random Prefund (2 contracts per user)" << std::endl;
         std::cout << std::string(70, '-') << std::endl;
         const uint64_t kUserPrefund = 9000000000lu;
-        std::atomic<uint64_t> pf_ok{0}, pf_fail{0};
-        uint64_t total_pf = (uint64_t)users_ok * all_contracts.size();
-        std::cout << "  Total prefund ops: " << total_pf << std::endl;
-        auto pfstart = std::chrono::steady_clock::now();
+        const uint32_t kPrefundPerUser = 2;  // each user gets prefund on 2 random contracts
+
+        // Build confirmed user list
         std::vector<uint32_t> confirmed_users;
         for (uint32_t i = 0; i < kUserCount; ++i)
             if (users[i].confirmed) confirmed_users.push_back(i);
-        uint32_t pf_threads = std::min(kDeployThreads, (uint32_t)confirmed_users.size());
+
+        // For each confirmed user, randomly pick 2 contracts from all_contracts
+        // Store the assignment: user_prefund_map[user_idx] = {contract_addr_1, contract_addr_2}
+        struct UserPrefundAssignment {
+            uint32_t user_idx;
+            std::vector<std::string> contract_addrs;  // the contracts this user has prefund on
+        };
+        std::vector<UserPrefundAssignment> prefund_assignments;
+        prefund_assignments.reserve(confirmed_users.size());
+        uint64_t total_pf = 0;
+        for (uint32_t ui = 0; ui < confirmed_users.size(); ++ui) {
+            UserPrefundAssignment a;
+            a.user_idx = confirmed_users[ui];
+            // Pick kPrefundPerUser random contracts (without replacement if possible)
+            std::set<uint32_t> picked;
+            for (uint32_t p = 0; p < kPrefundPerUser && p < all_contracts.size(); ++p) {
+                uint32_t ci;
+                do { ci = common::Random::RandomUint32() % all_contracts.size(); }
+                while (picked.count(ci) && picked.size() < all_contracts.size());
+                picked.insert(ci);
+                a.contract_addrs.push_back(all_contracts[ci]);
+            }
+            total_pf += a.contract_addrs.size();
+            prefund_assignments.push_back(std::move(a));
+        }
+        std::cout << "  Users: " << confirmed_users.size()
+                  << ", contracts per user: " << kPrefundPerUser
+                  << ", total prefund ops: " << total_pf << std::endl;
+
+        std::atomic<uint64_t> pf_ok{0}, pf_fail{0};
+        auto pfstart = std::chrono::steady_clock::now();
+        uint32_t pf_threads = std::min(kDeployThreads, (uint32_t)prefund_assignments.size());
         if (pf_threads == 0) pf_threads = 1;
-        uint32_t users_per_pft = confirmed_users.size() / pf_threads;
+        uint32_t assigns_per_thread = prefund_assignments.size() / pf_threads;
+
         auto prefund_fn = [&](uint32_t tid, uint32_t s, uint32_t e) {
             SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
-            for (uint32_t ui = s; ui < e && !global_stop; ++ui) {
-                const auto& upk = users[confirmed_users[ui]].prikey_hex;
-                for (const auto& ca : all_contracts) {
+            for (uint32_t ai = s; ai < e && !global_stop; ++ai) {
+                const auto& a = prefund_assignments[ai];
+                const auto& upk = users[a.user_idx].prikey_hex;
+                for (const auto& ca : a.contract_addrs) {
                     auto r = tsdk.setGasPrefund(upk, ca, kUserPrefund);
                     if (r["status"] == 0) ++pf_ok; else ++pf_fail;
                     usleep(500);
@@ -1740,8 +1770,8 @@ contract AMMPool {
         {
             std::vector<std::thread> pt;
             for (uint32_t t = 0; t < pf_threads; ++t) {
-                uint32_t s = t * users_per_pft;
-                uint32_t e = (t == pf_threads-1) ? (uint32_t)confirmed_users.size() : (s + users_per_pft);
+                uint32_t s = t * assigns_per_thread;
+                uint32_t e = (t == pf_threads-1) ? (uint32_t)prefund_assignments.size() : (s + assigns_per_thread);
                 pt.emplace_back(prefund_fn, t, s, e);
             }
             std::thread pfprog([&]() {
@@ -1762,34 +1792,43 @@ contract AMMPool {
         std::cout << "  Prefund done in " << pfelapsed << "s: "
                   << pf_ok.load() << " ok, " << pf_fail.load() << " fail" << std::endl;
 
-        // ── Phase 6: Summary ──────────────────────────────────────────────
+        // ── Phase 6: Summary + save ───────────────────────────────────────
         std::cout << "\n" << std::string(70, '=') << std::endl;
-        std::cout << "  SETUP COMPLETE �?Ready for contract call stress testing" << std::endl;
+        std::cout << "  SETUP COMPLETE" << std::endl;
         std::cout << std::string(70, '=') << std::endl;
         std::cout << "  Users:     " << users_ok << "/" << kUserCount << std::endl;
         std::cout << "  Deployers: " << deployers_ok << "/" << kContractSets << std::endl;
         std::cout << "  Contracts: A=" << ta_ok.load() << " B=" << tb_ok.load()
                   << " Pool=" << pool_ok.load() << " (full: " << full_sets << ")" << std::endl;
-        std::cout << "  Prefund:   " << pf_ok.load() << " ok / " << total_pf << std::endl;
+        std::cout << "  Prefund:   " << pf_ok.load() << " ok / " << total_pf
+                  << " (" << kPrefundPerUser << " contracts per user)" << std::endl;
         std::cout << "  Time:      deploy=" << delapsed << "s prefund=" << pfelapsed << "s" << std::endl;
 
-        // Save results to JSON
+        // Save results to JSON — includes user->contract prefund assignments for testing
         {
             json res;
             res["user_count"] = kUserCount;
             res["users_confirmed"] = users_ok;
             res["contract_sets"] = kContractSets;
             res["full_amm_sets"] = full_sets;
+            res["prefund_per_user"] = kPrefundPerUser;
             res["prefund_ok"] = pf_ok.load();
             res["prefund_fail"] = pf_fail.load();
+
+            // Users with their prefund contract assignments
             json ul = json::array();
-            for (uint32_t i = 0; i < kUserCount; ++i) {
-                if (users[i].confirmed) {
-                    json u; u["prikey"] = users[i].prikey_hex; u["addr"] = users[i].addr_hex;
-                    ul.push_back(u);
-                }
+            for (const auto& a : prefund_assignments) {
+                json u;
+                u["prikey"] = users[a.user_idx].prikey_hex;
+                u["addr"] = users[a.user_idx].addr_hex;
+                json contracts = json::array();
+                for (const auto& ca : a.contract_addrs) contracts.push_back(ca);
+                u["prefund_contracts"] = contracts;
+                ul.push_back(u);
             }
             res["users"] = ul;
+
+            // Contract deployment info
             json cl = json::array();
             for (auto& d : deployers) {
                 if (d.token_a_deployed || d.token_b_deployed || d.pool_deployed) {
@@ -1807,6 +1846,7 @@ contract AMMPool {
             out << res.dump(2) << std::endl;
         }
         std::cout << "  Results saved to amm_test_setup.json" << std::endl;
+        std::cout << "  (each user entry includes prefund_contracts for stress testing)" << std::endl;
 
         transport::TcpTransport::Instance()->Stop();
         return 0;
