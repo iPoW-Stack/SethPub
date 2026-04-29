@@ -1563,7 +1563,7 @@ contract AMMPool {
         for (uint32_t i = 0; i < kUserCount; ++i) all_addr_hex[i] = users[i].addr_hex;
         for (uint32_t i = 0; i < kContractSets; ++i) all_addr_hex[kUserCount + i] = deployers[i].addr_hex;
 
-        const uint64_t kFundAmount = 500000000lu;
+        const uint64_t kFundAmount = 1500000000lu;
         std::atomic<uint32_t> fund_success{0}, fund_fail{0};
         uint32_t fund_threads = std::min({kDeployThreads, kTotalAccounts, (uint32_t)unique_funders.size()});
         if (fund_threads == 0) fund_threads = 1;
