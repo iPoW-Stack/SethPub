@@ -278,7 +278,7 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
                         common::Encode::HexEncode(addr).c_str(), 
                         nonce_iter->first);
                     auto tx_ptr = nonce_iter->second;
-                    SETH_DEBUG("pool: %d, over pop success add system tx nonce addr: %s, "
+                    SETH_INFO("pool: %d, over pop success add system tx nonce addr: %s, "
                         "addr nonce: %lu, tx nonce: %lu, unique hash: %s, step: %d",
                         pool_index_,
                         common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
@@ -293,7 +293,7 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
                     tx_map.erase(tx_iter);
                 }
             } else {
-                SETH_INFO("pool: %d, find tx addr failed: %s",
+                SETH_DEBUG("pool: %d, find tx addr failed: %s",
                     pool_index_, common::Encode::HexEncode(addr).c_str());
             }
         };
