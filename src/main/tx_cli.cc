@@ -1862,12 +1862,19 @@ contract AMMPool {
         // thread-safe queue; one sender thread drains it via Send().
         struct TcpSendItem {
             transport::MessagePtr msg;
+            std::string dest_ip;
+            uint16_t dest_port;
         };
         std::queue<TcpSendItem> tcp_send_queue;
         std::mutex tcp_send_mtx;
         std::condition_variable tcp_send_cv;
         std::atomic<bool> tcp_sender_stop{false};
         std::atomic<uint64_t> tcp_sent_count{0};
+
+        // Leader routing for contract calls
+        std::unordered_map<uint32_t, SethSDK::LeaderInfo> amm_leader_map;
+        std::mutex amm_leader_mutex;
+        bool amm_has_leaders = false;
 
         std::thread tcp_sender_thread([&]() {
             std::vector<TcpSendItem> batch;
@@ -1885,7 +1892,6 @@ contract AMMPool {
                     }
                 }
                 for (auto& item : batch) {
-                    // TPS rate limiting
                     if (kTargetTps > 0) {
                         ++rate_sent;
                         auto now = std::chrono::steady_clock::now();
@@ -1894,38 +1900,57 @@ contract AMMPool {
                         if (expected_us > elapsed_us + 100) {
                             usleep((uint32_t)(expected_us - elapsed_us));
                         }
-                        // Reset counter every second to avoid drift
                         if (elapsed_us >= 1000000) {
-                            rate_start = now;
+                            rate_start = std::chrono::steady_clock::now();
                             rate_sent = 0;
                         }
                     }
-                    transport::TcpTransport::Instance()->Send(global_chain_node_ip,
-                        global_chain_node_http_port - 10000, item.msg->header);
+                    transport::TcpTransport::Instance()->Send(item.dest_ip, item.dest_port, item.msg->header);
                     ++tcp_sent_count;
                 }
                 batch.clear();
             }
-            // Final drain
             std::lock_guard<std::mutex> lk(tcp_send_mtx);
             while (!tcp_send_queue.empty()) {
                 auto item = std::move(tcp_send_queue.front());
                 tcp_send_queue.pop();
-                transport::TcpTransport::Instance()->Send(global_chain_node_ip,
-                    global_chain_node_http_port - 10000, item.msg->header);
+                transport::TcpTransport::Instance()->Send(item.dest_ip, item.dest_port, item.msg->header);
                 ++tcp_sent_count;
             }
         });
 
-        // Helper: enqueue a message for the sender thread
-        auto tcp_enqueue = [&](transport::MessagePtr msg) -> bool {
+        // Default destination
+        std::string default_dest_ip = global_chain_node_ip;
+        uint16_t default_dest_port = global_chain_node_http_port - 10000;
+
+        // Helper: get destination for a contract address (leader routing)
+        auto get_dest = [&](const std::string& contract_addr_hex) -> std::pair<std::string, uint16_t> {
+            if (amm_has_leaders) {
+                std::string addr_raw = common::Encode::HexDecode(contract_addr_hex);
+                uint32_t pool_idx = common::GetAddressPoolIndex(addr_raw);
+                std::lock_guard<std::mutex> lk(amm_leader_mutex);
+                auto it = amm_leader_map.find(pool_idx);
+                if (it != amm_leader_map.end()) {
+                    return {it->second.ip, it->second.port};
+                }
+            }
+            return {default_dest_ip, default_dest_port};
+        };
+
+        // Helper: enqueue a message for the sender thread (with routing)
+        auto tcp_enqueue = [&](transport::MessagePtr msg, const std::string& dest_ip, uint16_t dest_port) -> bool {
             if (!msg) return false;
             {
                 std::lock_guard<std::mutex> lk(tcp_send_mtx);
-                tcp_send_queue.push({std::move(msg)});
+                tcp_send_queue.push({std::move(msg), dest_ip, dest_port});
             }
             tcp_send_cv.notify_one();
             return true;
+        };
+
+        // Shorthand: enqueue with default destination
+        auto tcp_enqueue_default = [&](transport::MessagePtr msg) -> bool {
+            return tcp_enqueue(std::move(msg), default_dest_ip, default_dest_port);
         };
 
         // ── Phase 5: Deployer adds liquidity to pools ──────────────────────
@@ -2188,7 +2213,7 @@ contract AMMPool {
                                 common::Encode::HexEncode(prikey_raw),
                                 common::Encode::HexDecode(ca),
                                 "prefund", "", 0, 210000, 1, shardnum);
-                            if (tcp_enqueue(tx)) ++pf_ok;
+                            if (tcp_enqueue_default(tx)) ++pf_ok;
                             else ++pf_fail;
                             usleep(200);
                         }
@@ -2419,7 +2444,8 @@ contract AMMPool {
                                 common::Encode::HexEncode(prikey_raw),
                                 common::Encode::HexDecode(grp.contract_addr),
                                 "call", input, 0, 5000000, 1, shardnum);
-                            if (tcp_enqueue(tx)) ++ok_cnt;
+                            if (tcp_enqueue(tx, std::get<0>(get_dest(grp.contract_addr)),
+                                    std::get<1>(get_dest(grp.contract_addr)))) ++ok_cnt;
                             else ++fail_cnt;
                         }
                     }
@@ -2448,6 +2474,22 @@ contract AMMPool {
         // Wait for transfer consensus
         std::cout << "  Waiting 15s for transfer consensus..." << std::endl;
         for(int w=0;w<150&&!global_stop;++w) usleep(100000);
+
+        // ── Fetch leader routing table for contract calls ───────────────────
+        {
+            uint32_t lc = 0;
+            if (sdk.fetchLeaders(amm_leader_map, lc) && !amm_leader_map.empty()) {
+                amm_has_leaders = true;
+                std::cout << "  Leader routing enabled: " << lc << " leaders" << std::endl;
+                uint32_t printed = 0;
+                for (auto& [pidx, info] : amm_leader_map) {
+                    if (printed++ < 3) std::cout << "    pool " << pidx << " → " << info.ip << ":" << info.port << std::endl;
+                }
+                if (lc > 3) std::cout << "    ... (" << lc << " total)" << std::endl;
+            } else {
+                std::cout << "  Leader routing unavailable, using default node" << std::endl;
+            }
+        }
 
         // ── Phase 9: Users approve Pool to spend tokens (TCP fast path) ───
         // Nonce = fetchNonce(token_addr + user_addr)
@@ -2564,13 +2606,14 @@ contract AMMPool {
                                 auto tx1 = CreateTransactionWithAttr(sec_a, ++nonce_a,
                                     common::Encode::HexEncode(pka_raw), pool_raw,
                                     "call", input_swap_a, 0, 5000000, 1, shardnum);
-                                if (tcp_enqueue(tx1)) ++swap_ok; else ++swap_fail;
+                                auto [dest_ip_s, dest_port_s] = get_dest(pool.pool);
+                                if (tcp_enqueue(tx1, dest_ip_s, dest_port_s)) ++swap_ok; else ++swap_fail;
 
                                 // UserB swaps B→A
                                 auto tx2 = CreateTransactionWithAttr(sec_b, ++nonce_b,
                                     common::Encode::HexEncode(pkb_raw), pool_raw,
                                     "call", input_swap_b, 0, 5000000, 1, shardnum);
-                                if (tcp_enqueue(tx2)) ++swap_ok; else ++swap_fail;
+                                if (tcp_enqueue(tx2, dest_ip_s, dest_port_s)) ++swap_ok; else ++swap_fail;
                             }
                         }
                     }
