@@ -2151,11 +2151,21 @@ contract AMMPool {
                     SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
                     for (uint32_t gi = s; gi < e && !global_stop; ++gi) {
                         auto& grp = pf_groups[gi];
-                        // Use HTTP SDK setGasPrefund — it handles nonce correctly
+                        std::string prikey_raw = common::Encode::HexDecode(grp.prikey_hex);
+                        std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
+                        sec->SetPrivateKey(prikey_raw);
+                        std::string addr_hex = common::Encode::HexEncode(sec->GetAddress());
+                        int64_t nonce = tsdk.fetchNonce(addr_hex);
+                        if (nonce < 0) { pf_fail += grp.contract_addrs.size(); continue; }
                         for (const auto& ca : grp.contract_addrs) {
                             if (global_stop) break;
-                            auto r = tsdk.setGasPrefund(grp.prikey_hex, ca, kUserPrefund);
-                            if (r["status"] == 0) ++pf_ok; else ++pf_fail;
+                            auto tx = CreateTransactionWithAttr(sec, ++nonce,
+                                common::Encode::HexEncode(prikey_raw),
+                                common::Encode::HexDecode(ca),
+                                "prefund", "", 0, 210000, 1, shardnum);
+                            if (tcp_enqueue(tx)) ++pf_ok;
+                            else ++pf_fail;
+                            usleep(200);
                         }
                     }
                 });
@@ -2178,9 +2188,54 @@ contract AMMPool {
         std::cout << "  Prefund done in " << pfelapsed << "s: "
                   << pf_ok.load() << " ok, " << pf_fail.load() << " fail" << std::endl;
 
-        // Wait for prefund consensus
-        std::cout << "  Waiting 20s for prefund consensus..." << std::endl;
-        for(int w=0;w<200&&!global_stop;++w) usleep(100000);
+        // Wait for prefund consensus — need enough time for all prefund txs to be confirmed
+        std::cout << "  Waiting 30s for prefund consensus..." << std::endl;
+        for(int w=0;w<300&&!global_stop;++w) usleep(100000);
+
+        // Verify prefund accounts exist, retry missing ones via HTTP SDK
+        std::cout << "  Verifying prefund accounts..." << std::endl;
+        uint32_t pf_verified = 0, pf_missing = 0;
+        std::vector<std::pair<std::string,std::string>> pf_retry_list;  // (prikey, contract_addr)
+        for (const auto& grp : pf_groups) {
+            std::string prikey_raw = common::Encode::HexDecode(grp.prikey_hex);
+            auto sec_tmp = std::make_shared<security::Ecdsa>();
+            sec_tmp->SetPrivateKey(prikey_raw);
+            std::string user_addr = common::Encode::HexEncode(sec_tmp->GetAddress());
+            for (const auto& ca : grp.contract_addrs) {
+                std::string prepay = ca + user_addr;
+                int64_t bal = sdk.fetchBalance(prepay);
+                if (bal > 0) ++pf_verified;
+                else { ++pf_missing; pf_retry_list.push_back({grp.prikey_hex, ca}); }
+            }
+        }
+        std::cout << "  Prefund verified: " << pf_verified << ", missing: " << pf_missing << std::endl;
+
+        // Retry missing prefunds via HTTP SDK (slower but reliable)
+        if (!pf_retry_list.empty()) {
+            std::cout << "  Retrying " << pf_retry_list.size() << " missing prefunds via HTTP..." << std::endl;
+            std::atomic<uint32_t> retry_ok{0}, retry_fail{0};
+            {
+                uint32_t rt = std::min((uint32_t)common::kMaxThreadCount, (uint32_t)pf_retry_list.size());
+                if (rt == 0) rt = 1;
+                uint32_t rpp = pf_retry_list.size() / rt;
+                std::vector<std::thread> rthreads;
+                for (uint32_t t = 0; t < rt; ++t) {
+                    uint32_t s = t*rpp, e = (t==rt-1)?(uint32_t)pf_retry_list.size():(s+rpp);
+                    rthreads.emplace_back([&,s,e](){
+                        SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
+                        for (uint32_t i=s;i<e&&!global_stop;++i) {
+                            auto r = tsdk.setGasPrefund(pf_retry_list[i].first, pf_retry_list[i].second, kUserPrefund);
+                            if (r["status"]==0) ++retry_ok; else ++retry_fail;
+                        }
+                    });
+                }
+                for (auto& th:rthreads) th.join();
+            }
+            std::cout << "  Retry: " << retry_ok.load() << " ok, " << retry_fail.load() << " fail" << std::endl;
+            // Wait for retry consensus
+            std::cout << "  Waiting 20s for retry consensus..." << std::endl;
+            for(int w=0;w<200&&!global_stop;++w) usleep(100000);
+        }
 
         // ── Phase 8: Deployer transfers tokens to users (TCP fast path) ────
         // Nonce for contract calls = fetchNonce(contract_addr + caller_addr)
