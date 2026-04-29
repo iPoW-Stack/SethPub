@@ -463,8 +463,12 @@ public:
             return {{"status", 1}, {"msg", "empty addresses"}};
         }
 
-        // Build comma-separated address list, split into batches of 500
-        const size_t kBatchSize = 500;
+        // Adaptive batch size: 80-char prepayment addresses need smaller batches
+        // to stay under uWebSockets ~16KB body limit.
+        // Normal (40-char): 500 × 41 = ~20KB → use 300
+        // Prepayment (80-char): 50 × 81 = ~4KB → safe
+        size_t avg_addr_len = addresses.empty() ? 40 : addresses[0].size();
+        const size_t kBatchSize = (avg_addr_len > 50) ? 100 : 300;
         json merged;
         merged["status"] = 0;
         merged["msg"] = "ok";

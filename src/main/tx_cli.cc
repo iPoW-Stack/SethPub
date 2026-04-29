@@ -1887,8 +1887,9 @@ contract AMMPool {
             std::vector<uint32_t> next_pf_pending;
             next_pf_pending.reserve(pf_pending.size());
 
-            // Use smaller batch size for 80-char prepayment addresses
-            const uint32_t kPfBatchSize = 200;
+            // Small batch size for 80-char prepayment addresses to stay under
+            // uWebSockets default body size limit (~16KB)
+            const uint32_t kPfBatchSize = 50;
             std::vector<std::string> ba;
             std::vector<uint32_t> bi;
             for (uint32_t p = 0; p < pf_pending.size() && !global_stop; ++p) {
