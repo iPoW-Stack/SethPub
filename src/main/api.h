@@ -587,7 +587,14 @@ public:
             signature += ")";
             std::string selector = utils::keccak256Str(signature).substr(0, 8);
             std::string input_data = selector + encodeArgs(fn_types, fn_args);
-            if (client.transfer(private_key, address, amount, -1, 8, "", input_data)) return {{"status", 0}, {"msg", "ok"}};
+            // For contract calls (step 8), nonce comes from prepayment account: contract_addr + caller_addr
+            security::Ecdsa ecdsa;
+            ecdsa.SetPrivateKey(common::Encode::HexDecode(private_key));
+            std::string caller_addr = common::Encode::HexEncode(ecdsa.GetAddress());
+            std::string prepay_addr = address + caller_addr;
+            int64_t nonce = client.fetchNonce(prepay_addr);
+            if (nonce < 0) nonce = 0;  // first call on this prepayment account
+            if (client.transfer(private_key, address, amount, nonce, 8, "", input_data)) return {{"status", 0}, {"msg", "ok"}};
             return {{"status", 1}, {"msg", "call function failed"}};
         } catch (const std::exception& e) { return {{"status", 1}, {"msg", e.what()}}; }
     }
