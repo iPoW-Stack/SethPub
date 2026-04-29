@@ -137,7 +137,7 @@ static transport::MessagePtr CreateTransactionWithAttr(
             new_tx->set_contract_prefund(490000000lu);
         } else if (key == "call") {
             new_tx->set_step(pools::protobuf::kContractExcute);
-            new_tx->set_contract_input(val);
+            new_tx->set_contract_input(common::Encode::HexDecode(val));
         } else {
             new_tx->set_key(key);
             if (!val.empty()) {
