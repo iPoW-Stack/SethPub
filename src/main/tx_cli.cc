@@ -1663,55 +1663,75 @@ contract AMMPool {
 
         std::atomic<uint32_t> ta_ok{0}, tb_ok{0}, pool_ok{0}, dfail{0};
         auto dstart = std::chrono::steady_clock::now();
-        auto deploy_fn = [&](uint32_t tid, uint32_t s, uint32_t e) {
-            SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
-            for (uint32_t i = s; i < e && !global_stop; ++i) {
-                if (!deployers[i].confirmed) { dfail += 3; continue; }
-                const auto& pk = deployers[i].prikey_hex;
-                const uint64_t kPf = 490000000lu;
-                auto mkname = [&](const char* prefix) {
-                    std::string h = utils::bytesToHex(std::vector<uint8_t>(prefix, prefix + strlen(prefix)));
-                    auto is = std::to_string(i);
-                    h += utils::bytesToHex(std::vector<uint8_t>(is.begin(), is.end()));
-                    return h;
-                };
-                auto ra = tsdk.deploySolidity(pk, token_bytecode, 0, kPf, 0,
-                    {"string","uint256"}, {mkname("TkA_"), "10000000"});
-                if (ra["status"]==0) { deployers[i].token_a_addr=ra["id"]; deployers[i].token_a_deployed=true; ++ta_ok; }
-                else ++dfail;
-                usleep(100000);
-                auto rb = tsdk.deploySolidity(pk, token_bytecode, 0, kPf, 0,
-                    {"string","uint256"}, {mkname("TkB_"), "10000000"});
-                if (rb["status"]==0) { deployers[i].token_b_addr=rb["id"]; deployers[i].token_b_deployed=true; ++tb_ok; }
-                else ++dfail;
-                usleep(100000);
-                if (deployers[i].token_a_deployed && deployers[i].token_b_deployed) {
-                    auto rp = tsdk.deploySolidity(pk, pool_bytecode, 0, kPf, 0,
-                        {"address","address"}, {deployers[i].token_a_addr, deployers[i].token_b_addr});
-                    if (rp["status"]==0) { deployers[i].pool_addr=rp["id"]; deployers[i].pool_deployed=true; ++pool_ok; }
-                    else ++dfail;
-                } else ++dfail;
-                usleep(50000);
-                uint32_t done = ta_ok.load()+tb_ok.load()+pool_ok.load()+dfail.load();
-                if (done % 30 == 0) {
-                    auto el = std::chrono::duration_cast<std::chrono::seconds>(
-                        std::chrono::steady_clock::now()-dstart).count();
-                    std::cout << "  [" << el << "s] A=" << ta_ok.load() << " B=" << tb_ok.load()
-                              << " Pool=" << pool_ok.load() << " fail=" << dfail.load() << std::endl;
-                }
-            }
-        };
-        {
+
+        // Deploy in 3 phases: TokenA → verify → TokenB → verify → AMMPool
+        auto deploy_one_type = [&](const std::string& label, std::function<void(uint32_t, SethSDK&)> fn) {
             std::vector<std::thread> dt;
-            uint32_t nt = std::min(kDeployThreads, kContractSets);
-            if (!nt) nt = 1;
+            uint32_t nt = std::min(kDeployThreads, kContractSets); if (!nt) nt = 1;
             uint32_t pp = kContractSets / nt;
             for (uint32_t t = 0; t < nt; ++t) {
-                uint32_t s = t * pp, e = (t == nt-1) ? kContractSets : (s + pp);
-                dt.emplace_back(deploy_fn, t, s, e);
+                uint32_t s2 = t*pp, e2 = (t==nt-1)?kContractSets:(s2+pp);
+                dt.emplace_back([&,s2,e2](){
+                    SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
+                    for (uint32_t i=s2;i<e2&&!global_stop;++i) { if(!deployers[i].confirmed) continue; fn(i,tsdk); usleep(100000); }
+                });
             }
-            for (auto& th : dt) th.join();
-        }
+            for (auto& th:dt) th.join();
+            auto el=std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now()-dstart).count();
+            std::cout<<"  ["<<el<<"s] "<<label<<": A="<<ta_ok.load()<<" B="<<tb_ok.load()<<" Pool="<<pool_ok.load()<<" fail="<<dfail.load()<<std::endl;
+        };
+        auto wait_addrs = [&](const std::vector<std::string>& addrs, const std::string& label) {
+            if (addrs.empty()) return;
+            std::cout<<"  Waiting for "<<addrs.size()<<" "<<label<<"..."<<std::endl;
+            for(int w=0;w<100&&!global_stop;++w) usleep(100000);
+            std::vector<uint32_t> pd; for(uint32_t i=0;i<addrs.size();++i) pd.push_back(i);
+            uint32_t ok=0;
+            for(uint32_t rd=0;rd<20&&!pd.empty()&&!global_stop;++rd){
+                uint32_t rok=0; std::vector<uint32_t> np;
+                std::vector<std::string> ba; std::vector<uint32_t> bi;
+                for(uint32_t p=0;p<pd.size();++p){
+                    ba.push_back(addrs[pd[p]]); bi.push_back(pd[p]);
+                    if(ba.size()>=200||p==pd.size()-1){
+                        auto r=sdk.batchQueryAccounts(ba);
+                        if(r.contains("status")&&r["status"]==0&&r.contains("accounts")){
+                            for(uint32_t k=0;k<bi.size();++k){ if(r["accounts"].contains(ba[k])){++ok;++rok;} else np.push_back(bi[k]); }
+                        } else { for(auto idx:bi) np.push_back(idx); }
+                        ba.clear(); bi.clear();
+                    }
+                }
+                pd=std::move(np);
+                std::cout<<"    "<<label<<" round "<<(rd+1)<<": "<<ok<<"/"<<addrs.size()<<std::endl;
+                if(pd.empty()) break;
+                for(uint32_t w=0;w<((rok>0)?30:80)&&!global_stop;++w) usleep(100000);
+            }
+        };
+        auto mkname=[](uint32_t i,const char* pfx){
+            std::string h=utils::bytesToHex(std::vector<uint8_t>(pfx,pfx+strlen(pfx)));
+            auto is=std::to_string(i); h+=utils::bytesToHex(std::vector<uint8_t>(is.begin(),is.end())); return h;
+        };
+        const uint64_t kPf=9000000000lu;
+
+        std::cout<<"  Step 1/3: Deploy TokenA..."<<std::endl;
+        deploy_one_type("TokenA",[&](uint32_t i,SethSDK& t){
+            auto r=t.deploySolidity(deployers[i].prikey_hex,token_bytecode,0,kPf,0,{"string","uint256"},{mkname(i,"TkA_"),"10000000"});
+            if(r["status"]==0){deployers[i].token_a_addr=r["id"];deployers[i].token_a_deployed=true;++ta_ok;} else ++dfail;
+        });
+        {std::vector<std::string> v; for(auto& d:deployers) if(d.token_a_deployed) v.push_back(d.token_a_addr); wait_addrs(v,"TokenA");}
+
+        std::cout<<"  Step 2/3: Deploy TokenB..."<<std::endl;
+        deploy_one_type("TokenB",[&](uint32_t i,SethSDK& t){
+            if(!deployers[i].token_a_deployed){++dfail;return;}
+            auto r=t.deploySolidity(deployers[i].prikey_hex,token_bytecode,0,kPf,0,{"string","uint256"},{mkname(i,"TkB_"),"10000000"});
+            if(r["status"]==0){deployers[i].token_b_addr=r["id"];deployers[i].token_b_deployed=true;++tb_ok;} else ++dfail;
+        });
+        {std::vector<std::string> v; for(auto& d:deployers) if(d.token_b_deployed) v.push_back(d.token_b_addr); wait_addrs(v,"TokenB");}
+
+        std::cout<<"  Step 3/3: Deploy AMMPool..."<<std::endl;
+        deploy_one_type("AMMPool",[&](uint32_t i,SethSDK& t){
+            if(!deployers[i].token_a_deployed||!deployers[i].token_b_deployed){++dfail;return;}
+            auto r=t.deploySolidity(deployers[i].prikey_hex,pool_bytecode,0,kPf,0,{"address","address"},{deployers[i].token_a_addr,deployers[i].token_b_addr});
+            if(r["status"]==0){deployers[i].pool_addr=r["id"];deployers[i].pool_deployed=true;++pool_ok;} else ++dfail;
+        });
         auto delapsed = std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::steady_clock::now()-dstart).count();
 
