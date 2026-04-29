@@ -2192,39 +2192,84 @@ contract AMMPool {
         std::cout << "  Waiting 30s for prefund consensus..." << std::endl;
         for(int w=0;w<300&&!global_stop;++w) usleep(100000);
 
-        // Verify prefund accounts exist, retry missing ones via HTTP SDK
-        std::cout << "  Verifying prefund accounts..." << std::endl;
-        uint32_t pf_verified = 0, pf_missing = 0;
-        std::vector<std::pair<std::string,std::string>> pf_retry_list;  // (prikey, contract_addr)
-        for (const auto& grp : pf_groups) {
+        // Verify prefund accounts exist via batch query, retry missing ones
+        std::cout << "  Verifying prefund accounts (batch)..." << std::endl;
+        // Build list of all prepayment addresses to verify
+        struct PfVerifyItem {
+            uint32_t group_idx;
+            uint32_t contract_idx;
+            std::string prepay_addr;  // contract_addr + user_addr (80 hex chars)
+        };
+        std::vector<PfVerifyItem> pf_verify;
+        for (uint32_t gi = 0; gi < pf_groups.size(); ++gi) {
+            auto& grp = pf_groups[gi];
             std::string prikey_raw = common::Encode::HexDecode(grp.prikey_hex);
             auto sec_tmp = std::make_shared<security::Ecdsa>();
             sec_tmp->SetPrivateKey(prikey_raw);
             std::string user_addr = common::Encode::HexEncode(sec_tmp->GetAddress());
-            for (const auto& ca : grp.contract_addrs) {
-                std::string prepay = ca + user_addr;
-                int64_t bal = sdk.fetchBalance(prepay);
-                if (bal > 0) ++pf_verified;
-                else { ++pf_missing; pf_retry_list.push_back({grp.prikey_hex, ca}); }
+            for (uint32_t ci = 0; ci < grp.contract_addrs.size(); ++ci) {
+                pf_verify.push_back({gi, ci, grp.contract_addrs[ci] + user_addr});
             }
         }
-        std::cout << "  Prefund verified: " << pf_verified << ", missing: " << pf_missing << std::endl;
 
-        // Retry missing prefunds via HTTP SDK (slower but reliable)
-        if (!pf_retry_list.empty()) {
-            std::cout << "  Retrying " << pf_retry_list.size() << " missing prefunds via HTTP..." << std::endl;
+        std::vector<bool> pf_confirmed(pf_verify.size(), false);
+        uint32_t pf_verified = 0;
+        std::vector<uint32_t> pf_pending;
+        for (uint32_t i = 0; i < pf_verify.size(); ++i) pf_pending.push_back(i);
+
+        const uint32_t kPfBatchSize = 50;  // 80-char prepayment addresses need small batches
+        for (uint32_t round = 0; round < 10 && !pf_pending.empty() && !global_stop; ++round) {
+            uint32_t round_ok = 0;
+            std::vector<uint32_t> next_pending;
+            std::vector<std::string> ba;
+            std::vector<uint32_t> bi;
+            for (uint32_t p = 0; p < pf_pending.size() && !global_stop; ++p) {
+                ba.push_back(pf_verify[pf_pending[p]].prepay_addr);
+                bi.push_back(pf_pending[p]);
+                if (ba.size() >= kPfBatchSize || p == pf_pending.size() - 1) {
+                    auto r = sdk.batchQueryAccounts(ba);
+                    if (r.contains("status") && r["status"] == 0 && r.contains("accounts")) {
+                        for (uint32_t k = 0; k < bi.size(); ++k) {
+                            if (r["accounts"].contains(ba[k])) {
+                                pf_confirmed[bi[k]] = true;
+                                ++pf_verified; ++round_ok;
+                            } else {
+                                next_pending.push_back(bi[k]);
+                            }
+                        }
+                    } else {
+                        for (auto idx : bi) next_pending.push_back(idx);
+                    }
+                    ba.clear(); bi.clear();
+                }
+            }
+            pf_pending = std::move(next_pending);
+            std::cout << "  [PF verify round " << (round+1) << "] +" << round_ok
+                      << ", " << pf_verified << "/" << pf_verify.size()
+                      << ", pending: " << pf_pending.size() << std::endl;
+            if (pf_pending.empty()) break;
+            // Wait before retry
+            for (int w = 0; w < ((round_ok > 0) ? 30 : 80) && !global_stop; ++w) usleep(100000);
+        }
+        std::cout << "  Prefund verified: " << pf_verified << "/" << pf_verify.size() << std::endl;
+
+        // Retry missing prefunds via HTTP SDK
+        if (!pf_pending.empty()) {
+            std::cout << "  Retrying " << pf_pending.size() << " missing prefunds via HTTP..." << std::endl;
             std::atomic<uint32_t> retry_ok{0}, retry_fail{0};
             {
-                uint32_t rt = std::min((uint32_t)common::kMaxThreadCount, (uint32_t)pf_retry_list.size());
+                uint32_t rt = std::min((uint32_t)common::kMaxThreadCount, (uint32_t)pf_pending.size());
                 if (rt == 0) rt = 1;
-                uint32_t rpp = pf_retry_list.size() / rt;
+                uint32_t rpp = pf_pending.size() / rt;
                 std::vector<std::thread> rthreads;
                 for (uint32_t t = 0; t < rt; ++t) {
-                    uint32_t s = t*rpp, e = (t==rt-1)?(uint32_t)pf_retry_list.size():(s+rpp);
+                    uint32_t s = t*rpp, e = (t==rt-1)?(uint32_t)pf_pending.size():(s+rpp);
                     rthreads.emplace_back([&,s,e](){
                         SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
                         for (uint32_t i=s;i<e&&!global_stop;++i) {
-                            auto r = tsdk.setGasPrefund(pf_retry_list[i].first, pf_retry_list[i].second, kUserPrefund);
+                            auto& item = pf_verify[pf_pending[i]];
+                            auto r = tsdk.setGasPrefund(pf_groups[item.group_idx].prikey_hex,
+                                pf_groups[item.group_idx].contract_addrs[item.contract_idx], kUserPrefund);
                             if (r["status"]==0) ++retry_ok; else ++retry_fail;
                         }
                     });
@@ -2232,7 +2277,6 @@ contract AMMPool {
                 for (auto& th:rthreads) th.join();
             }
             std::cout << "  Retry: " << retry_ok.load() << " ok, " << retry_fail.load() << " fail" << std::endl;
-            // Wait for retry consensus
             std::cout << "  Waiting 20s for retry consensus..." << std::endl;
             for(int w=0;w<200&&!global_stop;++w) usleep(100000);
         }
