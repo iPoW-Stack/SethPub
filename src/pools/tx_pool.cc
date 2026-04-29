@@ -311,6 +311,8 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
         (*over_addr_nonce_ptr)[addr] = tx_info.nonce();
     }
         
+    SETH_WARN("pool: %d, all now tx size: %u, now tx size: %u, all_delay_tx_count_: %u", 
+        pool_index_, all_tx_size(), view_block.block_info().tx_list_size(), all_delay_tx_count_);
     if (prev_delay_tm_timeout_ + 3000lu <= (now_tm_us / 1000lu) && all_delay_tx_count_ > 0) {
         SETH_WARN("pool: %d, average delay us: %lu",
             pool_index_, (all_delay_tm_us_ / all_delay_tx_count_));
@@ -321,8 +323,6 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
 
     over_addr_map_queue_.push(over_addr_nonce_ptr);
     tx_pool_dirty_ = true;  // nonces advanced, previously stuck txs may now be valid
-    SETH_WARN("pool: %d, all now tx size: %u, now tx size: %u, all_delay_tx_count_: %u", 
-        pool_index_, all_tx_size(), view_block.block_info().tx_list_size(), all_delay_tx_count_);
 }
 
 void TxPool::GetTxSyncToLeader(
@@ -500,7 +500,7 @@ void TxPool::GetTxSyncToLeader(
                             common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
                             tx_ptr->tx_info->nonce(),
                             (int32_t)tx_ptr->tx_info->step());
-                        iter->second.erase(nonce_iter);
+                        // iter->second.erase(nonce_iter);
                         break;
                     }
 
@@ -750,7 +750,7 @@ void TxPool::TempGetTxIdempotently(
                         res);
                     if (res != 0) {
                         if (res == 3) {
-                            SetTxStatus(pools_mgr_, tx_ptr->msg_ptr, transport::kTxUserNonceInvalid);
+                            // SetTxStatus(pools_mgr_, tx_ptr->msg_ptr, transport::kTxUserNonceInvalid);
                             // nonce_iter was already incremented; erase the previous element (tx_ptr's entry)
                             SETH_DEBUG("trace tx invalid tx, pool: %d, tx_key invalid: %s, res: %d, from: %s, to: %s, nonce: %lu, step: %u",
                                 pool_index_,
@@ -760,10 +760,10 @@ void TxPool::TempGetTxIdempotently(
                                 common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
                                 tx_ptr->tx_info->nonce(),
                                 (int32_t)tx_ptr->tx_info->step());
-                            auto erase_iter = iter->second.find(tx_ptr->tx_info->nonce());
-                            if (erase_iter != iter->second.end()) {
-                                iter->second.erase(erase_iter);
-                            }
+                            // auto erase_iter = iter->second.find(tx_ptr->tx_info->nonce());
+                            // if (erase_iter != iter->second.end()) {
+                            //     iter->second.erase(erase_iter);
+                            // }
                             break;
                         }
                         
