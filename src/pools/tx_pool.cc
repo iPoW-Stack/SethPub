@@ -215,7 +215,7 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
 void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
     // CheckThreadIdValid();
     auto now_tm_us = common::TimeUtils::TimestampUs();
-    SETH_INFO("0 now tx size: %u, now tx size: %u", all_tx_size(), view_block.block_info().tx_list_size());
+    SETH_DEBUG("0 now tx size: %u, now tx size: %u", all_tx_size(), view_block.block_info().tx_list_size());
     auto over_addr_nonce_ptr = std::make_shared<std::unordered_map<std::string, uint64_t>>();
     for (uint32_t i = 0; i < (uint32_t)view_block.block_info().tx_list_size(); ++i) {
         auto& tx_info = view_block.block_info().tx_list(i);
@@ -278,7 +278,7 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
                         common::Encode::HexEncode(addr).c_str(), 
                         nonce_iter->first);
                     auto tx_ptr = nonce_iter->second;
-                    SETH_INFO("pool: %d, over pop success add system tx nonce addr: %s, "
+                    SETH_DEBUG("pool: %d, over pop success add system tx nonce addr: %s, "
                         "addr nonce: %lu, tx nonce: %lu, unique hash: %s, step: %d",
                         pool_index_,
                         common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
@@ -311,7 +311,7 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
         (*over_addr_nonce_ptr)[addr] = tx_info.nonce();
     }
         
-    SETH_WARN("pool: %d, all now tx size: %u, now tx size: %u, all_delay_tx_count_: %u", 
+    SETH_DEBUG("pool: %d, all now tx size: %u, now tx size: %u, all_delay_tx_count_: %u", 
         pool_index_, all_tx_size(), view_block.block_info().tx_list_size(), all_delay_tx_count_);
     if (prev_delay_tm_timeout_ + 3000lu <= (now_tm_us / 1000lu) && all_delay_tx_count_ > 0) {
         SETH_WARN("pool: %d, average delay us: %lu",
