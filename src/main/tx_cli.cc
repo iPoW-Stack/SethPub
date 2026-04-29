@@ -1941,7 +1941,7 @@ contract AMMPool {
                 a.contract_addrs = std::move(valid);
             }
         }
-        std::cout << "  Prefund verified: " << pf_verified.load() << "/" << pf_verify_list.size() << std::endl;
+        std::cout << "  Prefund verified: " << pf_verified << "/" << pf_verify_list.size() << std::endl;
 
         // ── Phase 6: Summary + save ───────────────────────────────────────
         std::cout << "\n" << std::string(70, '=') << std::endl;
