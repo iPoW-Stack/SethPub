@@ -1542,13 +1542,15 @@ contract AMMPool {
         uint32_t deployers_per_thread = kDeployerCount / fund_threads;
 
         auto create_deployer_thread = [&](uint32_t thread_id, uint32_t start_idx, uint32_t end_idx) {
+            // Each thread creates its own SethSDK — secp256k1_context is not thread-safe.
+            SethSDK thread_sdk(global_chain_node_ip, global_chain_node_http_port);
             std::string funder_prikey = unique_funders[thread_id % unique_funders.size()];
             std::shared_ptr<security::Security> funder_sec = std::make_shared<security::Ecdsa>();
             funder_sec->SetPrivateKey(funder_prikey);
             std::string funder_addr = funder_sec->GetAddress();
 
             // Get initial nonce from chain
-            int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(funder_addr));
+            int64_t nonce = thread_sdk.fetchNonce(common::Encode::HexEncode(funder_addr));
             if (nonce < 0) {
                 std::cerr << "  Thread " << thread_id << ": Failed to fetch nonce for funder "
                           << common::Encode::HexEncode(funder_addr) << std::endl;
