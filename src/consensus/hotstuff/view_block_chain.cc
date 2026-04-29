@@ -1276,11 +1276,11 @@ int ViewBlockChain::CheckTxNonceValid(
                 *now_nonce = iter->second->nonce();
                 if (iter->second->nonce() + 1 != nonce) {
                     if (iter->second->nonce() >= nonce) {
-                        // SETH_DEBUG("discard failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
-                        //     common::Encode::HexEncode(addr).c_str(), 
-                        //     nonce,
-                        //     iter->second->nonce(),
-                        //     common::Encode::HexEncode(parent_hash).c_str());
+                        SETH_DEBUG("discard failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
+                            common::Encode::HexEncode(addr).c_str(), 
+                            nonce,
+                            iter->second->nonce(),
+                            common::Encode::HexEncode(parent_hash).c_str());
                         return 3;
                     }
 

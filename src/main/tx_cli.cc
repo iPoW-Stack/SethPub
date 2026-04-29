@@ -2198,18 +2198,18 @@ contract AMMPool {
                 uint32_t s = t * groups_per_thread;
                 uint32_t e = (t == pf_threads-1) ? (uint32_t)pf_groups.size() : (s + groups_per_thread);
                 pt.emplace_back([&,s,e](){
-                    SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
                     for (uint32_t gi = s; gi < e && !global_stop; ++gi) {
                         auto& grp = pf_groups[gi];
                         std::string prikey_raw = common::Encode::HexDecode(grp.prikey_hex);
                         std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
                         sec->SetPrivateKey(prikey_raw);
-                        std::string addr_hex = common::Encode::HexEncode(sec->GetAddress());
-                        int64_t nonce = tsdk.fetchNonce(addr_hex);
-                        if (nonce < 0) { pf_fail += grp.contract_addrs.size(); continue; }
+                        std::string addr = sec->GetAddress();
+                        
+                        // Use local nonce map to ensure continuity across multiple prefund ops
                         for (const auto& ca : grp.contract_addrs) {
                             if (global_stop) break;
-                            auto tx = CreateTransactionWithAttr(sec, ++nonce,
+                            uint64_t next_nonce = ++prikey_with_nonce[addr];
+                            auto tx = CreateTransactionWithAttr(sec, next_nonce,
                                 common::Encode::HexEncode(prikey_raw),
                                 common::Encode::HexDecode(ca),
                                 "prefund", "", 0, 210000, 1, shardnum);
