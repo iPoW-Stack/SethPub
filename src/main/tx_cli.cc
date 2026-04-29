@@ -1268,12 +1268,15 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    // ── Mode 5: AMM Contract Deployment + User Account Setup ────────────
+    // ── Mode 5: AMM Contract Deployment + Swap Stress Test ──────────────
     // Usage: txcli 5 <shard> <pool> <ip> <port> [user_count] [threads]
     //
-    // 1. Create 10000 user accounts on chain + verify
+    // 1. Create user + deployer accounts on chain + verify
     // 2. Deploy 256 AMM contract sets (TokenA + TokenB + AMMPool each)
-    // 3. Save results — ready for contract call stress testing
+    // 3. Deployer adds liquidity to all pools
+    // 4. Pair users, set prefund, transfer tokens, approve
+    // 5. Execute matched AMM swaps (UserA: A→B, UserB: B→A) as stress test
+    // 6. Save results
     if (argv[1][0] == '5') {
         const uint32_t kUserCount = (argc >= 7) ? std::stoi(argv[6]) : 10000;
         const uint32_t kContractSets = 256;  // 256 AMM contract sets (TokenA+TokenB+AMMPool)
@@ -1296,7 +1299,7 @@ int main(int argc, char** argv) {
         }
 
         std::cout << "\n" << std::string(70, '=') << std::endl;
-        std::cout << "  AMM Contract Deployment + User Account Setup" << std::endl;
+        std::cout << "  AMM Contract Deployment + Swap Stress Test" << std::endl;
         std::cout << "  " << kUserCount << " users + " << kContractSets << " deployers" << std::endl;
         std::cout << "  " << kContractSets << " x 3 contracts = " << kContractSets * 3 << " deployments" << std::endl;
         std::cout << std::string(70, '=') << std::endl;
@@ -1839,7 +1842,7 @@ contract AMMPool {
                 if (cv_confirmed[i]) verified_contracts.push_back(all_contracts[i]);
             }
             all_contracts = std::move(verified_contracts);
-            std::cout << "  Using " << all_contracts.size() << " verified contracts for prefund." << std::endl;
+            std::cout << "  Using " << all_contracts.size() << " verified contracts." << std::endl;
         } else {
             std::cout << "  All " << contracts_verified << " contracts verified on chain." << std::endl;
         }
@@ -1850,15 +1853,429 @@ contract AMMPool {
             return 1;
         }
 
-        // ── Phase 5: Summary + save ───────────────────────────────────────
+        // ── Phase 5: Deployer adds liquidity to pools ──────────────────────
+        // Each deployer: prefund on TokenA, TokenB, Pool → approve → addLiquidity
+        std::cout << "\n" << std::string(70, '-') << std::endl;
+        std::cout << "  Phase 5: Deployer Add Liquidity (" << full_sets << " pools)" << std::endl;
+        std::cout << std::string(70, '-') << std::endl;
+
+        const uint64_t kDeployerPrefund = 800000000lu;
+        const uint64_t kInitialLiquidity = 5000000lu;  // 5M tokens each side
+        std::atomic<uint32_t> liq_ok{0}, liq_fail{0};
+        auto liq_start = std::chrono::steady_clock::now();
+
+        // Step 5a: Set deployer prefund on all 3 contracts per set
+        std::cout << "  Step 5a: Set deployer prefund on contracts..." << std::endl;
+        {
+            std::vector<std::thread> pt;
+            uint32_t nt = std::min(kDeployThreads, kContractSets); if (!nt) nt = 1;
+            uint32_t pp = kContractSets / nt;
+            std::atomic<uint32_t> dpf_ok{0}, dpf_fail{0};
+            for (uint32_t t = 0; t < nt; ++t) {
+                uint32_t s = t*pp, e = (t==nt-1)?kContractSets:(s+pp);
+                pt.emplace_back([&,s,e](){
+                    SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
+                    for (uint32_t i=s;i<e&&!global_stop;++i) {
+                        if (!deployers[i].token_a_deployed||!deployers[i].token_b_deployed||!deployers[i].pool_deployed) continue;
+                        auto r1=tsdk.setGasPrefund(deployers[i].prikey_hex, deployers[i].token_a_addr, kDeployerPrefund);
+                        auto r2=tsdk.setGasPrefund(deployers[i].prikey_hex, deployers[i].token_b_addr, kDeployerPrefund);
+                        auto r3=tsdk.setGasPrefund(deployers[i].prikey_hex, deployers[i].pool_addr, kDeployerPrefund);
+                        if(r1["status"]==0&&r2["status"]==0&&r3["status"]==0) dpf_ok+=3; else dpf_fail++;
+                        usleep(50000);
+                    }
+                });
+            }
+            for(auto& th:pt) th.join();
+            std::cout << "    Deployer prefund: " << dpf_ok.load() << " ok, " << dpf_fail.load() << " fail" << std::endl;
+        }
+
+        // Wait for deployer prefund consensus
+        std::cout << "  Waiting 20s for deployer prefund consensus..." << std::endl;
+        for(int w=0;w<200&&!global_stop;++w) usleep(100000);
+
+        // Step 5b: Deployer approve + addLiquidity
+        std::cout << "  Step 5b: Deployer approve + addLiquidity (" << kInitialLiquidity << " each)..." << std::endl;
+        {
+            std::vector<std::thread> pt;
+            uint32_t nt = std::min(kDeployThreads, kContractSets); if (!nt) nt = 1;
+            uint32_t pp = kContractSets / nt;
+            for (uint32_t t = 0; t < nt; ++t) {
+                uint32_t s = t*pp, e = (t==nt-1)?kContractSets:(s+pp);
+                pt.emplace_back([&,s,e](){
+                    SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
+                    for (uint32_t i=s;i<e&&!global_stop;++i) {
+                        if (!deployers[i].token_a_deployed||!deployers[i].token_b_deployed||!deployers[i].pool_deployed) continue;
+                        auto liq_str = std::to_string(kInitialLiquidity);
+                        auto approve_str = std::to_string(kInitialLiquidity * 2);
+                        // approve TokenA for Pool
+                        tsdk.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].token_a_addr, 0,
+                            "approve", {"address","uint256"}, {deployers[i].pool_addr, approve_str});
+                        usleep(50000);
+                        // approve TokenB for Pool
+                        tsdk.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].token_b_addr, 0,
+                            "approve", {"address","uint256"}, {deployers[i].pool_addr, approve_str});
+                        usleep(50000);
+                        // addLiquidity
+                        auto r = tsdk.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].pool_addr, 0,
+                            "addLiquidity", {"uint256","uint256"}, {liq_str, liq_str});
+                        if(r["status"]==0) ++liq_ok; else ++liq_fail;
+                        usleep(50000);
+                    }
+                });
+            }
+            for(auto& th:pt) th.join();
+        }
+        auto liq_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::steady_clock::now()-liq_start).count();
+        std::cout << "  Liquidity done in " << liq_elapsed << "s: " << liq_ok.load()
+                  << " ok, " << liq_fail.load() << " fail" << std::endl;
+
+        // Wait for liquidity consensus
+        std::cout << "  Waiting 15s for liquidity consensus..." << std::endl;
+        for(int w=0;w<150&&!global_stop;++w) usleep(100000);
+
+        // ── Phase 6: Pair users and assign pools ──────────────────────────
+        // Each pair: (UserA swaps A→B, UserB swaps B→A) on up to 3 pools
+        // This guarantees matched trades — both sides of the AMM get exercised
+        std::cout << "\n" << std::string(70, '-') << std::endl;
+        std::cout << "  Phase 6: Pair Users + Assign Pools" << std::endl;
+        std::cout << std::string(70, '-') << std::endl;
+
+        // Build confirmed user list
+        std::vector<uint32_t> confirmed_users;
+        for (uint32_t i = 0; i < kUserCount; ++i)
+            if (users[i].confirmed) confirmed_users.push_back(i);
+
+        // Build complete pool list (only fully deployed sets)
+        struct PoolInfo {
+            uint32_t deployer_idx;
+            std::string token_a;
+            std::string token_b;
+            std::string pool;
+        };
+        std::vector<PoolInfo> pools;
+        for (uint32_t i = 0; i < kContractSets; ++i) {
+            if (deployers[i].token_a_deployed && deployers[i].token_b_deployed && deployers[i].pool_deployed) {
+                pools.push_back({i, deployers[i].token_a_addr, deployers[i].token_b_addr, deployers[i].pool_addr});
+            }
+        }
+
+        const uint32_t kPoolsPerPair = 3;  // each user pair trades on up to 3 pools
+        const uint64_t kSwapAmount = 1000lu;  // tokens per swap
+        const uint64_t kTokenTransfer = 50000lu;  // tokens transferred to each user
+        const uint64_t kUserPrefund = 500000000lu;
+
+        // Pair users: (confirmed_users[0], confirmed_users[1]), (confirmed_users[2], confirmed_users[3]), ...
+        struct TradePair {
+            uint32_t user_a_idx;  // swaps A→B
+            uint32_t user_b_idx;  // swaps B→A
+            std::vector<uint32_t> pool_indices;  // indices into pools[]
+        };
+        std::vector<TradePair> trade_pairs;
+        uint32_t pair_count = confirmed_users.size() / 2;
+        trade_pairs.reserve(pair_count);
+        for (uint32_t p = 0; p < pair_count; ++p) {
+            TradePair tp;
+            tp.user_a_idx = confirmed_users[p * 2];
+            tp.user_b_idx = confirmed_users[p * 2 + 1];
+            // Assign up to kPoolsPerPair pools round-robin
+            for (uint32_t k = 0; k < kPoolsPerPair && !pools.empty(); ++k) {
+                tp.pool_indices.push_back((p * kPoolsPerPair + k) % pools.size());
+            }
+            trade_pairs.push_back(std::move(tp));
+        }
+        std::cout << "  Confirmed users: " << confirmed_users.size()
+                  << ", trade pairs: " << trade_pairs.size()
+                  << ", pools: " << pools.size()
+                  << ", pools per pair: " << kPoolsPerPair << std::endl;
+
+        // ── Phase 7: Set prefund for all users on their assigned contracts ─
+        std::cout << "\n" << std::string(70, '-') << std::endl;
+        std::cout << "  Phase 7: Set User Prefund" << std::endl;
+        std::cout << std::string(70, '-') << std::endl;
+
+        // Collect all (user_prikey, contract_addr) pairs for prefund
+        struct PrefundOp {
+            std::string prikey;
+            std::string contract_addr;
+        };
+        std::vector<PrefundOp> prefund_ops;
+        for (const auto& tp : trade_pairs) {
+            for (uint32_t pi : tp.pool_indices) {
+                const auto& pool = pools[pi];
+                // UserA needs prefund on TokenA, TokenB, Pool
+                prefund_ops.push_back({users[tp.user_a_idx].prikey_hex, pool.token_a});
+                prefund_ops.push_back({users[tp.user_a_idx].prikey_hex, pool.token_b});
+                prefund_ops.push_back({users[tp.user_a_idx].prikey_hex, pool.pool});
+                // UserB needs prefund on TokenA, TokenB, Pool
+                prefund_ops.push_back({users[tp.user_b_idx].prikey_hex, pool.token_a});
+                prefund_ops.push_back({users[tp.user_b_idx].prikey_hex, pool.token_b});
+                prefund_ops.push_back({users[tp.user_b_idx].prikey_hex, pool.pool});
+            }
+        }
+        std::cout << "  Total prefund ops: " << prefund_ops.size() << std::endl;
+
+        std::atomic<uint64_t> pf_ok{0}, pf_fail{0};
+        auto pfstart = std::chrono::steady_clock::now();
+        {
+            uint32_t pf_threads = std::min(kDeployThreads, (uint32_t)prefund_ops.size());
+            if (pf_threads == 0) pf_threads = 1;
+            uint32_t ops_per_thread = prefund_ops.size() / pf_threads;
+            std::vector<std::thread> pt;
+            for (uint32_t t = 0; t < pf_threads; ++t) {
+                uint32_t s = t * ops_per_thread;
+                uint32_t e = (t == pf_threads-1) ? (uint32_t)prefund_ops.size() : (s + ops_per_thread);
+                pt.emplace_back([&,s,e](){
+                    SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
+                    for (uint32_t i = s; i < e && !global_stop; ++i) {
+                        auto r = tsdk.setGasPrefund(prefund_ops[i].prikey, prefund_ops[i].contract_addr, kUserPrefund);
+                        if (r["status"] == 0) ++pf_ok; else ++pf_fail;
+                        usleep(500);
+                    }
+                });
+            }
+            std::thread pfprog([&]() {
+                while (pf_ok.load()+pf_fail.load() < prefund_ops.size() && !global_stop) {
+                    for (int i = 0; i < 30 && !global_stop; ++i) usleep(100000);
+                    if (global_stop) break;
+                    auto el = std::chrono::duration_cast<std::chrono::seconds>(
+                        std::chrono::steady_clock::now()-pfstart).count();
+                    std::cout << "  [" << el << "s] prefund: " << pf_ok.load() << " ok, "
+                              << pf_fail.load() << " fail / " << prefund_ops.size() << std::endl;
+                }
+            });
+            for (auto& th : pt) th.join();
+            pfprog.join();
+        }
+        auto pfelapsed = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::steady_clock::now()-pfstart).count();
+        std::cout << "  Prefund done in " << pfelapsed << "s: "
+                  << pf_ok.load() << " ok, " << pf_fail.load() << " fail" << std::endl;
+
+        // Wait for prefund consensus
+        std::cout << "  Waiting 20s for prefund consensus..." << std::endl;
+        for(int w=0;w<200&&!global_stop;++w) usleep(100000);
+
+        // ── Phase 8: Deployer transfers tokens to users ───────────────────
+        std::cout << "\n" << std::string(70, '-') << std::endl;
+        std::cout << "  Phase 8: Transfer Tokens to Users" << std::endl;
+        std::cout << std::string(70, '-') << std::endl;
+
+        std::atomic<uint64_t> xfer_ok{0}, xfer_fail{0};
+        auto xfer_start = std::chrono::steady_clock::now();
+
+        // Collect all transfer ops: deployer transfers TokenA and TokenB to both users in each pair
+        struct TransferOp {
+            std::string deployer_prikey;
+            std::string token_addr;
+            std::string user_addr;
+            uint64_t amount;
+        };
+        std::vector<TransferOp> xfer_ops;
+        for (const auto& tp : trade_pairs) {
+            for (uint32_t pi : tp.pool_indices) {
+                const auto& pool = pools[pi];
+                const auto& dpk = deployers[pool.deployer_idx].prikey_hex;
+                auto amt_str = std::to_string(kTokenTransfer);
+                // UserA gets TokenA (will swap A→B)
+                xfer_ops.push_back({dpk, pool.token_a, users[tp.user_a_idx].addr_hex, kTokenTransfer});
+                // UserB gets TokenB (will swap B→A)
+                xfer_ops.push_back({dpk, pool.token_b, users[tp.user_b_idx].addr_hex, kTokenTransfer});
+            }
+        }
+        std::cout << "  Total transfer ops: " << xfer_ops.size() << std::endl;
+
+        {
+            uint32_t xt = std::min(kDeployThreads, (uint32_t)xfer_ops.size());
+            if (xt == 0) xt = 1;
+            uint32_t xpp = xfer_ops.size() / xt;
+            std::vector<std::thread> xthreads;
+            for (uint32_t t = 0; t < xt; ++t) {
+                uint32_t s = t * xpp, e = (t == xt-1) ? (uint32_t)xfer_ops.size() : (s + xpp);
+                xthreads.emplace_back([&,s,e](){
+                    SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
+                    for (uint32_t i = s; i < e && !global_stop; ++i) {
+                        auto r = tsdk.callFunctionSolidity(xfer_ops[i].deployer_prikey, xfer_ops[i].token_addr, 0,
+                            "transfer", {"address","uint256"}, {xfer_ops[i].user_addr, std::to_string(xfer_ops[i].amount)});
+                        if (r["status"] == 0) ++xfer_ok; else ++xfer_fail;
+                        usleep(500);
+                    }
+                });
+            }
+            std::thread xprog([&]() {
+                while (xfer_ok.load()+xfer_fail.load() < xfer_ops.size() && !global_stop) {
+                    for (int i = 0; i < 30 && !global_stop; ++i) usleep(100000);
+                    if (global_stop) break;
+                    auto el = std::chrono::duration_cast<std::chrono::seconds>(
+                        std::chrono::steady_clock::now()-xfer_start).count();
+                    std::cout << "  [" << el << "s] transfer: " << xfer_ok.load() << " ok, "
+                              << xfer_fail.load() << " fail / " << xfer_ops.size() << std::endl;
+                }
+            });
+            for (auto& th : xthreads) th.join();
+            xprog.join();
+        }
+        auto xfer_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::steady_clock::now()-xfer_start).count();
+        std::cout << "  Transfer done in " << xfer_elapsed << "s: "
+                  << xfer_ok.load() << " ok, " << xfer_fail.load() << " fail" << std::endl;
+
+        // Wait for transfer consensus
+        std::cout << "  Waiting 15s for transfer consensus..." << std::endl;
+        for(int w=0;w<150&&!global_stop;++w) usleep(100000);
+
+        // ── Phase 9: Users approve Pool to spend tokens ───────────────────
+        std::cout << "\n" << std::string(70, '-') << std::endl;
+        std::cout << "  Phase 9: User Approve Pool" << std::endl;
+        std::cout << std::string(70, '-') << std::endl;
+
+        struct ApproveOp {
+            std::string user_prikey;
+            std::string token_addr;
+            std::string pool_addr;
+            uint64_t amount;
+        };
+        std::vector<ApproveOp> approve_ops;
+        for (const auto& tp : trade_pairs) {
+            for (uint32_t pi : tp.pool_indices) {
+                const auto& pool = pools[pi];
+                // UserA approves TokenA for Pool (will swap A→B)
+                approve_ops.push_back({users[tp.user_a_idx].prikey_hex, pool.token_a, pool.pool, kTokenTransfer});
+                // UserB approves TokenB for Pool (will swap B→A)
+                approve_ops.push_back({users[tp.user_b_idx].prikey_hex, pool.token_b, pool.pool, kTokenTransfer});
+            }
+        }
+        std::cout << "  Total approve ops: " << approve_ops.size() << std::endl;
+
+        std::atomic<uint64_t> appr_ok{0}, appr_fail{0};
+        auto appr_start = std::chrono::steady_clock::now();
+        {
+            uint32_t at = std::min(kDeployThreads, (uint32_t)approve_ops.size());
+            if (at == 0) at = 1;
+            uint32_t app = approve_ops.size() / at;
+            std::vector<std::thread> athreads;
+            for (uint32_t t = 0; t < at; ++t) {
+                uint32_t s = t * app, e = (t == at-1) ? (uint32_t)approve_ops.size() : (s + app);
+                athreads.emplace_back([&,s,e](){
+                    SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
+                    for (uint32_t i = s; i < e && !global_stop; ++i) {
+                        auto r = tsdk.callFunctionSolidity(approve_ops[i].user_prikey, approve_ops[i].token_addr, 0,
+                            "approve", {"address","uint256"}, {approve_ops[i].pool_addr, std::to_string(approve_ops[i].amount)});
+                        if (r["status"] == 0) ++appr_ok; else ++appr_fail;
+                        usleep(500);
+                    }
+                });
+            }
+            std::thread aprog([&]() {
+                while (appr_ok.load()+appr_fail.load() < approve_ops.size() && !global_stop) {
+                    for (int i = 0; i < 30 && !global_stop; ++i) usleep(100000);
+                    if (global_stop) break;
+                    auto el = std::chrono::duration_cast<std::chrono::seconds>(
+                        std::chrono::steady_clock::now()-appr_start).count();
+                    std::cout << "  [" << el << "s] approve: " << appr_ok.load() << " ok, "
+                              << appr_fail.load() << " fail / " << approve_ops.size() << std::endl;
+                }
+            });
+            for (auto& th : athreads) th.join();
+            aprog.join();
+        }
+        auto appr_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::steady_clock::now()-appr_start).count();
+        std::cout << "  Approve done in " << appr_elapsed << "s: "
+                  << appr_ok.load() << " ok, " << appr_fail.load() << " fail" << std::endl;
+
+        // Wait for approve consensus
+        std::cout << "  Waiting 15s for approve consensus..." << std::endl;
+        for(int w=0;w<150&&!global_stop;++w) usleep(100000);
+
+        // ── Phase 10: Execute AMM Swaps (stress test) ─────────────────────
+        // For each trade pair, on each assigned pool:
+        //   Step 1: UserA swaps A→B (swapAForB)
+        //   Step 2: UserB swaps B→A (swapBForA)
+        // Sequential within a pair to guarantee order; parallel across pairs.
+        std::cout << "\n" << std::string(70, '-') << std::endl;
+        std::cout << "  Phase 10: AMM Swap Stress Test" << std::endl;
+        std::cout << std::string(70, '-') << std::endl;
+        std::cout << "  Trade pairs: " << trade_pairs.size()
+                  << ", swaps per pair: " << kPoolsPerPair << " pools x 2 directions = "
+                  << kPoolsPerPair * 2 << std::endl;
+
+        std::atomic<uint64_t> swap_ok{0}, swap_fail{0};
+        uint64_t total_swaps = 0;
+        for (const auto& tp : trade_pairs) total_swaps += tp.pool_indices.size() * 2;
+        std::cout << "  Total swap ops: " << total_swaps << std::endl;
+
+        auto swap_start = std::chrono::steady_clock::now();
+        {
+            uint32_t st = std::min(kDeployThreads, (uint32_t)trade_pairs.size());
+            if (st == 0) st = 1;
+            uint32_t spp = trade_pairs.size() / st;
+            std::vector<std::thread> sthreads;
+            for (uint32_t t = 0; t < st; ++t) {
+                uint32_t s = t * spp, e = (t == st-1) ? (uint32_t)trade_pairs.size() : (s + spp);
+                sthreads.emplace_back([&,s,e](){
+                    SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
+                    for (uint32_t pi_idx = s; pi_idx < e && !global_stop; ++pi_idx) {
+                        const auto& tp = trade_pairs[pi_idx];
+                        for (uint32_t pool_idx : tp.pool_indices) {
+                            const auto& pool = pools[pool_idx];
+                            auto swap_str = std::to_string(kSwapAmount);
+                            // Step 1: UserA swaps A→B
+                            auto r1 = tsdk.callFunctionSolidity(
+                                users[tp.user_a_idx].prikey_hex, pool.pool, 0,
+                                "swapAForB", {"uint256","uint256"}, {swap_str, "0"});
+                            if (r1["status"] == 0) ++swap_ok; else ++swap_fail;
+                            usleep(50000);
+                            // Step 2: UserB swaps B→A
+                            auto r2 = tsdk.callFunctionSolidity(
+                                users[tp.user_b_idx].prikey_hex, pool.pool, 0,
+                                "swapBForA", {"uint256","uint256"}, {swap_str, "0"});
+                            if (r2["status"] == 0) ++swap_ok; else ++swap_fail;
+                            usleep(50000);
+                        }
+                    }
+                });
+            }
+            std::thread sprog([&]() {
+                while (swap_ok.load()+swap_fail.load() < total_swaps && !global_stop) {
+                    for (int i = 0; i < 30 && !global_stop; ++i) usleep(100000);
+                    if (global_stop) break;
+                    auto el = std::chrono::duration_cast<std::chrono::seconds>(
+                        std::chrono::steady_clock::now()-swap_start).count();
+                    auto done = swap_ok.load()+swap_fail.load();
+                    double tps = (el > 0) ? (double)done / el : 0;
+                    std::cout << "  [" << el << "s] swap: " << swap_ok.load() << " ok, "
+                              << swap_fail.load() << " fail / " << total_swaps
+                              << " (" << std::fixed << std::setprecision(1) << tps << " tx/s)" << std::endl;
+                }
+            });
+            for (auto& th : sthreads) th.join();
+            sprog.join();
+        }
+        auto swap_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::steady_clock::now()-swap_start).count();
+        double swap_tps = (swap_elapsed > 0) ? (double)(swap_ok.load()+swap_fail.load()) / swap_elapsed : 0;
+        std::cout << "  Swap done in " << swap_elapsed << "s: "
+                  << swap_ok.load() << " ok, " << swap_fail.load() << " fail"
+                  << " (" << std::fixed << std::setprecision(1) << swap_tps << " tx/s)" << std::endl;
+
+        // ── Phase 11: Summary + save ──────────────────────────────────────
         std::cout << "\n" << std::string(70, '=') << std::endl;
-        std::cout << "  SETUP COMPLETE" << std::endl;
+        std::cout << "  AMM STRESS TEST COMPLETE" << std::endl;
         std::cout << std::string(70, '=') << std::endl;
-        std::cout << "  Users:     " << users_ok << "/" << kUserCount << std::endl;
-        std::cout << "  Deployers: " << deployers_ok << "/" << kContractSets << std::endl;
-        std::cout << "  Contracts: A=" << ta_ok.load() << " B=" << tb_ok.load()
+        std::cout << "  Users:      " << users_ok << "/" << kUserCount << std::endl;
+        std::cout << "  Deployers:  " << deployers_ok << "/" << kContractSets << std::endl;
+        std::cout << "  Contracts:  A=" << ta_ok.load() << " B=" << tb_ok.load()
                   << " Pool=" << pool_ok.load() << " (full: " << full_sets << ")" << std::endl;
-        std::cout << "  Time:      deploy=" << delapsed << "s" << std::endl;
+        std::cout << "  Liquidity:  " << liq_ok.load() << " ok, " << liq_fail.load() << " fail" << std::endl;
+        std::cout << "  Prefund:    " << pf_ok.load() << " ok, " << pf_fail.load() << " fail" << std::endl;
+        std::cout << "  Transfers:  " << xfer_ok.load() << " ok, " << xfer_fail.load() << " fail" << std::endl;
+        std::cout << "  Approves:   " << appr_ok.load() << " ok, " << appr_fail.load() << " fail" << std::endl;
+        std::cout << "  Swaps:      " << swap_ok.load() << " ok, " << swap_fail.load() << " fail"
+                  << " (" << std::fixed << std::setprecision(1) << swap_tps << " tx/s)" << std::endl;
+        std::cout << "  Time:       deploy=" << delapsed << "s liq=" << liq_elapsed
+                  << "s prefund=" << pfelapsed << "s xfer=" << xfer_elapsed
+                  << "s approve=" << appr_elapsed << "s swap=" << swap_elapsed << "s" << std::endl;
 
         // Save results to JSON
         {
@@ -1867,6 +2284,21 @@ contract AMMPool {
             res["users_confirmed"] = users_ok;
             res["contract_sets"] = kContractSets;
             res["full_amm_sets"] = full_sets;
+            res["trade_pairs"] = trade_pairs.size();
+            res["pools_per_pair"] = kPoolsPerPair;
+            res["swap_amount"] = kSwapAmount;
+            res["swap_ok"] = swap_ok.load();
+            res["swap_fail"] = swap_fail.load();
+            res["swap_tps"] = swap_tps;
+            res["swap_elapsed_s"] = swap_elapsed;
+            res["prefund_ok"] = pf_ok.load();
+            res["prefund_fail"] = pf_fail.load();
+            res["transfer_ok"] = xfer_ok.load();
+            res["transfer_fail"] = xfer_fail.load();
+            res["approve_ok"] = appr_ok.load();
+            res["approve_fail"] = appr_fail.load();
+            res["liquidity_ok"] = liq_ok.load();
+            res["liquidity_fail"] = liq_fail.load();
 
             // Confirmed users
             json ul = json::array();
@@ -1894,6 +2326,20 @@ contract AMMPool {
                 }
             }
             res["contracts"] = cl;
+
+            // Trade pair results
+            json tpl = json::array();
+            for (const auto& tp : trade_pairs) {
+                json t;
+                t["user_a"] = users[tp.user_a_idx].addr_hex;
+                t["user_b"] = users[tp.user_b_idx].addr_hex;
+                json pi = json::array();
+                for (auto idx : tp.pool_indices) pi.push_back(pools[idx].pool);
+                t["pools"] = pi;
+                tpl.push_back(t);
+            }
+            res["trade_pairs_detail"] = tpl;
+
             std::ofstream out("amm_test_setup.json");
             out << res.dump(2) << std::endl;
         }
