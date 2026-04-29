@@ -1943,7 +1943,7 @@ contract AMMPool {
         std::cout << "  Waiting 20s for deployer prefund consensus..." << std::endl;
         for(int w=0;w<200&&!global_stop;++w) usleep(100000);
 
-        // Step 5b: Deployer approve + addLiquidity
+        // Step 5b: Deployer approve + addLiquidity (sequential per deployer, with verification)
         std::cout << "  Step 5b: Deployer approve + addLiquidity (" << kInitialLiquidity << " each)..." << std::endl;
         {
             std::vector<std::thread> pt;
@@ -1958,12 +1958,14 @@ contract AMMPool {
                         auto liq_str = std::to_string(kInitialLiquidity);
                         auto approve_str = std::to_string(kInitialLiquidity * 2);
                         // approve TokenA for Pool
-                        tsdk.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].token_a_addr, 0,
+                        auto ra = tsdk.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].token_a_addr, 0,
                             "approve", {"address","uint256"}, {deployers[i].pool_addr, approve_str});
+                        if (ra["status"] != 0) { ++liq_fail; continue; }
                         usleep(50000);
                         // approve TokenB for Pool
-                        tsdk.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].token_b_addr, 0,
+                        auto rb = tsdk.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].token_b_addr, 0,
                             "approve", {"address","uint256"}, {deployers[i].pool_addr, approve_str});
+                        if (rb["status"] != 0) { ++liq_fail; continue; }
                         usleep(50000);
                         // addLiquidity
                         auto r = tsdk.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].pool_addr, 0,
@@ -1981,8 +1983,50 @@ contract AMMPool {
                   << " ok, " << liq_fail.load() << " fail" << std::endl;
 
         // Wait for liquidity consensus
-        std::cout << "  Waiting 15s for liquidity consensus..." << std::endl;
-        for(int w=0;w<150&&!global_stop;++w) usleep(100000);
+        std::cout << "  Waiting 20s for liquidity consensus..." << std::endl;
+        for(int w=0;w<200&&!global_stop;++w) usleep(100000);
+
+        // Step 5c: Verify reserves on all pools via getReserves() query
+        // getReserves() selector = 0x0902f1ac, returns (uint256, uint256)
+        std::cout << "  Step 5c: Verifying pool reserves..." << std::endl;
+        uint32_t pools_with_liquidity = 0, pools_no_liquidity = 0;
+        for (uint32_t i = 0; i < kContractSets && !global_stop; ++i) {
+            if (!deployers[i].token_a_deployed||!deployers[i].token_b_deployed||!deployers[i].pool_deployed) continue;
+            auto qr = sdk.queryFunctionSolidity(deployers[i].prikey_hex, deployers[i].pool_addr,
+                "getReserves", {}, {}, {"uint256","uint256"});
+            bool has_liq = false;
+            if (qr["status"] == 0 && qr.contains("decoded") && qr["decoded"].is_array() && qr["decoded"].size() >= 2) {
+                // decoded[0] = reserveA, decoded[1] = reserveB
+                try {
+                    uint64_t rA = 0, rB = 0;
+                    if (qr["decoded"][0].is_number()) rA = qr["decoded"][0].get<uint64_t>();
+                    else if (qr["decoded"][0].is_string()) {
+                        auto s = qr["decoded"][0].get<std::string>();
+                        std::from_chars(s.data(), s.data()+s.size(), rA);
+                    }
+                    if (qr["decoded"][1].is_number()) rB = qr["decoded"][1].get<uint64_t>();
+                    else if (qr["decoded"][1].is_string()) {
+                        auto s = qr["decoded"][1].get<std::string>();
+                        std::from_chars(s.data(), s.data()+s.size(), rB);
+                    }
+                    if (rA > 0 && rB > 0) has_liq = true;
+                    if (i < 3) std::cout << "    Pool[" << i << "] reserves: A=" << rA << " B=" << rB
+                                         << (has_liq ? " ✓" : " ✗") << std::endl;
+                } catch (...) {}
+            }
+            if (has_liq) ++pools_with_liquidity; else ++pools_no_liquidity;
+        }
+        std::cout << "  Pools with liquidity: " << pools_with_liquidity
+                  << ", without: " << pools_no_liquidity << std::endl;
+        if (pools_with_liquidity == 0) {
+            std::cerr << "  ERROR: No pools have liquidity. Aborting." << std::endl;
+            std::cerr << "  Check that approve + addLiquidity succeeded (keccak256 selector must match solc)." << std::endl;
+            tcp_sender_stop.store(true);
+            tcp_send_cv.notify_one();
+            tcp_sender_thread.join();
+            transport::TcpTransport::Instance()->Stop();
+            return 1;
+        }
 
         // ── Phase 6: Pair users and assign pools ──────────────────────────
         // Each pair: (UserA swaps A→B, UserB swaps B→A) on up to 3 pools
