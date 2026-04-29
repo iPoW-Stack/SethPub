@@ -293,7 +293,7 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
                     tx_map.erase(tx_iter);
                 }
             } else {
-                SETH_DEBUG("pool: %d, find tx addr failed: %s",
+                SETH_INFO("pool: %d, find tx addr failed: %s",
                     pool_index_, common::Encode::HexEncode(addr).c_str());
             }
         };
