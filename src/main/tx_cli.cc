@@ -1819,6 +1819,123 @@ contract AMMPool {
         std::cout << "  Prefund done in " << pfelapsed << "s: "
                   << pf_ok.load() << " ok, " << pf_fail.load() << " fail" << std::endl;
 
+        // ── Verify prefund balances ──────────────────────────────────────
+        // Query contract_addr+user_addr (prepayment account) and check balance >= kUserPrefund
+        std::cout << "\n  Waiting 10s for prefund consensus..." << std::endl;
+        for (int w = 0; w < 100 && !global_stop; ++w) usleep(100000);
+
+        std::cout << "  Verifying prefund balances (up to 300s)..." << std::endl;
+        auto pfv_start = std::chrono::steady_clock::now();
+        uint32_t pf_verified = 0, pf_not_found = 0;
+
+        // Build list of all prefund addresses to verify: contract_hex + user_hex
+        struct PrefundVerifyItem {
+            uint32_t assign_idx;   // index into prefund_assignments
+            uint32_t contract_idx; // index into that assignment's contract_addrs
+            std::string prefund_addr_hex;  // contract_addr + user_addr (hex concat)
+        };
+        std::vector<PrefundVerifyItem> pf_verify_list;
+        pf_verify_list.reserve(total_pf);
+        for (uint32_t ai = 0; ai < prefund_assignments.size(); ++ai) {
+            const auto& a = prefund_assignments[ai];
+            const auto& user_hex = users[a.user_idx].addr_hex;
+            for (uint32_t ci = 0; ci < a.contract_addrs.size(); ++ci) {
+                PrefundVerifyItem item;
+                item.assign_idx = ai;
+                item.contract_idx = ci;
+                item.prefund_addr_hex = a.contract_addrs[ci] + user_hex;
+                pf_verify_list.push_back(item);
+            }
+        }
+
+        std::vector<bool> pf_item_verified(pf_verify_list.size(), false);
+        std::vector<uint32_t> pf_pending;
+        pf_pending.reserve(pf_verify_list.size());
+        for (uint32_t i = 0; i < pf_verify_list.size(); ++i) pf_pending.push_back(i);
+
+        uint32_t pf_vround = 0;
+        while (!pf_pending.empty() && !global_stop) {
+            if (std::chrono::steady_clock::now() - pfv_start >= std::chrono::seconds(300)) {
+                std::cout << "  Prefund verify timeout. Verified " << pf_verified
+                          << "/" << pf_verify_list.size() << std::endl;
+                break;
+            }
+            ++pf_vround;
+            uint32_t round_ok = 0;
+            std::vector<uint32_t> next_pf_pending;
+            next_pf_pending.reserve(pf_pending.size());
+
+            std::vector<std::string> ba;
+            std::vector<uint32_t> bi;
+            for (uint32_t p = 0; p < pf_pending.size() && !global_stop; ++p) {
+                ba.push_back(pf_verify_list[pf_pending[p]].prefund_addr_hex);
+                bi.push_back(pf_pending[p]);
+                if (ba.size() >= kBatchSize || p == pf_pending.size() - 1) {
+                    auto r = sdk.batchQueryAccounts(ba);
+                    if (r.contains("status") && r["status"] == 0 && r.contains("accounts")) {
+                        for (uint32_t k = 0; k < bi.size(); ++k) {
+                            if (r["accounts"].contains(ba[k])) {
+                                auto& acc = r["accounts"][ba[k]];
+                                uint64_t balance = 0;
+                                if (acc.contains("balance")) {
+                                    auto bs = acc["balance"].get<std::string>();
+                                    std::from_chars(bs.data(), bs.data() + bs.size(), balance);
+                                }
+                                if (balance >= kUserPrefund) {
+                                    pf_item_verified[bi[k]] = true;
+                                    ++pf_verified;
+                                    ++round_ok;
+                                } else {
+                                    next_pf_pending.push_back(bi[k]);
+                                }
+                            } else {
+                                next_pf_pending.push_back(bi[k]);
+                            }
+                        }
+                    } else {
+                        for (auto idx : bi) next_pf_pending.push_back(idx);
+                    }
+                    ba.clear();
+                    bi.clear();
+                }
+            }
+            pf_pending = std::move(next_pf_pending);
+            auto es = std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::steady_clock::now() - pfv_start).count();
+            std::cout << "  [PF Round " << pf_vround << ", " << es << "s] +" << round_ok
+                      << ", " << pf_verified << "/" << pf_verify_list.size()
+                      << " verified, " << pf_pending.size() << " pending" << std::endl;
+            if (pf_pending.empty()) break;
+            uint32_t wt = (round_ok > 0) ? 2000 : 5000;
+            if (pf_vround == 1 && round_ok == 0) wt = 8000;
+            for (uint32_t w = 0; w < wt / 100 && !global_stop; ++w) usleep(100000);
+        }
+
+        // Remove unverified prefund entries from assignments
+        pf_not_found = pf_verify_list.size() - pf_verified;
+        if (pf_not_found > 0) {
+            std::cout << "  WARNING: " << pf_not_found << " prefund entries not verified." << std::endl;
+            // Mark unverified contracts in assignments
+            for (uint32_t i = 0; i < pf_verify_list.size(); ++i) {
+                if (!pf_item_verified[i]) {
+                    auto& a = prefund_assignments[pf_verify_list[i].assign_idx];
+                    auto ci = pf_verify_list[i].contract_idx;
+                    if (ci < a.contract_addrs.size()) {
+                        a.contract_addrs[ci] = "";  // mark as invalid
+                    }
+                }
+            }
+            // Clean up empty entries
+            for (auto& a : prefund_assignments) {
+                std::vector<std::string> valid;
+                for (auto& ca : a.contract_addrs) {
+                    if (!ca.empty()) valid.push_back(ca);
+                }
+                a.contract_addrs = std::move(valid);
+            }
+        }
+        std::cout << "  Prefund verified: " << pf_verified << "/" << pf_verify_list.size() << std::endl;
+
         // ── Phase 6: Summary + save ───────────────────────────────────────
         std::cout << "\n" << std::string(70, '=') << std::endl;
         std::cout << "  SETUP COMPLETE" << std::endl;
@@ -1828,7 +1945,8 @@ contract AMMPool {
         std::cout << "  Contracts: A=" << ta_ok.load() << " B=" << tb_ok.load()
                   << " Pool=" << pool_ok.load() << " (full: " << full_sets << ")" << std::endl;
         std::cout << "  Prefund:   " << pf_ok.load() << " ok / " << total_pf
-                  << " (" << kPrefundPerUser << " contracts per user)" << std::endl;
+                  << " (" << kPrefundPerUser << " contracts per user)"
+                  << ", verified: " << pf_verified << std::endl;
         std::cout << "  Time:      deploy=" << delapsed << "s prefund=" << pfelapsed << "s" << std::endl;
 
         // Save results to JSON — includes user->contract prefund assignments for testing
@@ -1841,6 +1959,8 @@ contract AMMPool {
             res["prefund_per_user"] = kPrefundPerUser;
             res["prefund_ok"] = pf_ok.load();
             res["prefund_fail"] = pf_fail.load();
+            res["prefund_verified"] = pf_verified;
+            res["prefund_not_verified"] = pf_not_found;
 
             // Users with their prefund contract assignments
             json ul = json::array();
