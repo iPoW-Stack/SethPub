@@ -30,6 +30,7 @@
 #include <secp256k1_recovery.h>
 #include <openssl/evp.h>
 #include "common/encode.h"
+#include "common/hash.h"
 #include "security/ecdsa/ecdsa.h"
 
 namespace seth {
@@ -67,15 +68,9 @@ namespace utils {
     }
 
     std::string keccak256(const std::vector<uint8_t>& input) {
-        unsigned int md_len;
-        unsigned char md_value[EVP_MAX_MD_SIZE];
-        EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
-        const EVP_MD* md = EVP_sha3_256(); // Ensure OpenSSL version matches chain requirement
-        EVP_DigestInit_ex(mdctx, md, nullptr);
-        EVP_DigestUpdate(mdctx, input.data(), input.size());
-        EVP_DigestFinal_ex(mdctx, md_value, &md_len);
-        EVP_MD_CTX_free(mdctx);
-        return bytesToHex(std::vector<uint8_t>(md_value, md_value + md_len));
+        std::string str((const char*)input.data(), input.size());
+        std::string hash = common::Hash::keccak256(str);
+        return bytesToHex(std::vector<uint8_t>(hash.begin(), hash.end()));
     }
     
     std::string keccak256Str(const std::string& input) {

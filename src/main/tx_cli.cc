@@ -2152,17 +2152,19 @@ contract AMMPool {
 
         // Helper: encode a contract call input (selector + ABI-encoded args)
         // For transfer(address,uint256) and approve(address,uint256)
-        auto encode_call_input = [](const std::string& func_sig,
+        // NOTE: Use standard Keccak-256 selectors (solc-compatible), NOT SHA3-256.
+        //   transfer(address,uint256) → 0xa9059cbb
+        //   approve(address,uint256)  → 0x095ea7b3
+        auto encode_call_addr_uint = [](const std::string& selector_hex,
                                     const std::string& addr_hex,
                                     uint64_t amount) -> std::string {
-            std::string selector = utils::keccak256Str(func_sig).substr(0, 8);
             std::string addr = addr_hex;
             if (addr.size() >= 2 && addr.substr(0,2) == "0x") addr = addr.substr(2);
             std::string addr_padded = std::string(64 - addr.size(), '0') + addr;
             std::stringstream ss; ss << std::hex << amount;
             std::string amt_hex = ss.str();
             std::string amt_padded = std::string(64 - amt_hex.size(), '0') + amt_hex;
-            return selector + addr_padded + amt_padded;
+            return selector_hex + addr_padded + amt_padded;
         };
 
         // Each transfer op: deployer calls token_addr.transfer(user, amount)
@@ -2182,10 +2184,10 @@ contract AMMPool {
                 const auto& daddr = deployers[pool.deployer_idx].addr_hex;
                 // UserA gets TokenA (will swap A→B)
                 xfer_ops.push_back({dpk, pool.token_a, daddr,
-                    encode_call_input("transfer(address,uint256)", users[tp.user_a_idx].addr_hex, kTokenTransfer)});
+                    encode_call_addr_uint("a9059cbb", users[tp.user_a_idx].addr_hex, kTokenTransfer)});
                 // UserB gets TokenB (will swap B→A)
                 xfer_ops.push_back({dpk, pool.token_b, daddr,
-                    encode_call_input("transfer(address,uint256)", users[tp.user_b_idx].addr_hex, kTokenTransfer)});
+                    encode_call_addr_uint("a9059cbb", users[tp.user_b_idx].addr_hex, kTokenTransfer)});
             }
         }
         uint64_t total_xfer_ops = xfer_ops.size();
@@ -2299,11 +2301,11 @@ contract AMMPool {
                 // UserA approves TokenA for Pool (call token_a.approve(pool, amount))
                 appr_ops.push_back({users[tp.user_a_idx].prikey_hex, pool.token_a,
                     users[tp.user_a_idx].addr_hex,
-                    encode_call_input("approve(address,uint256)", pool.pool, kTokenTransfer)});
+                    encode_call_addr_uint("095ea7b3", pool.pool, kTokenTransfer)});
                 // UserB approves TokenB for Pool (call token_b.approve(pool, amount))
                 appr_ops.push_back({users[tp.user_b_idx].prikey_hex, pool.token_b,
                     users[tp.user_b_idx].addr_hex,
-                    encode_call_input("approve(address,uint256)", pool.pool, kTokenTransfer)});
+                    encode_call_addr_uint("095ea7b3", pool.pool, kTokenTransfer)});
             }
         }
         uint64_t total_appr_ops = appr_ops.size();
@@ -2336,14 +2338,14 @@ contract AMMPool {
                   << kPoolsPerPair * 2 << std::endl;
 
         // Helper: encode swap call input — swapAForB(uint256,uint256) / swapBForA(uint256,uint256)
-        auto encode_swap_input = [](const std::string& func_sig,
+        // Keccak-256 selectors: swapAForB → 0x553a1db7, swapBForA → 0x5938c86b
+        auto encode_swap_input = [](const std::string& selector_hex,
                                     uint64_t amountIn, uint64_t minOut) -> std::string {
-            std::string selector = utils::keccak256Str(func_sig).substr(0, 8);
             std::stringstream ss1; ss1 << std::hex << amountIn;
             std::string a1 = ss1.str(); a1 = std::string(64 - a1.size(), '0') + a1;
             std::stringstream ss2; ss2 << std::hex << minOut;
             std::string a2 = ss2.str(); a2 = std::string(64 - a2.size(), '0') + a2;
-            return selector + a1 + a2;
+            return selector_hex + a1 + a2;
         };
 
         std::atomic<uint64_t> swap_ok{0}, swap_fail{0};
@@ -2389,7 +2391,7 @@ contract AMMPool {
 
                             // Step 1: UserA swaps A→B
                             std::string input_a = encode_swap_input(
-                                "swapAForB(uint256,uint256)", kSwapAmount, 0);
+                                "553a1db7", kSwapAmount, 0);
                             auto tx1 = CreateTransactionWithAttr(sec_a, ++nonce_a,
                                 common::Encode::HexEncode(pka_raw), pool_raw,
                                 "call", input_a, 0, 5000000, 1, shardnum);
@@ -2405,7 +2407,7 @@ contract AMMPool {
 
                             // Step 2: UserB swaps B→A
                             std::string input_b = encode_swap_input(
-                                "swapBForA(uint256,uint256)", kSwapAmount, 0);
+                                "5938c86b", kSwapAmount, 0);
                             auto tx2 = CreateTransactionWithAttr(sec_b, ++nonce_b,
                                 common::Encode::HexEncode(pkb_raw), pool_raw,
                                 "call", input_b, 0, 5000000, 1, shardnum);
