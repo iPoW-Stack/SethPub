@@ -2046,7 +2046,7 @@ contract AMMPool {
         auto pfstart = std::chrono::steady_clock::now();
         {
             // Use more threads — each thread handles a range of sender groups
-            uint32_t pf_threads = std::min((uint32_t)64, (uint32_t)pf_groups.size());
+            uint32_t pf_threads = std::min((uint32_t)common::kMaxThreadCount, (uint32_t)pf_groups.size());
             if (pf_threads == 0) pf_threads = 1;
             uint32_t groups_per_thread = pf_groups.size() / pf_threads;
             std::vector<std::thread> pt;
@@ -2185,7 +2185,7 @@ contract AMMPool {
                                       uint64_t total_ops,
                                       const std::string& label,
                                       std::chrono::steady_clock::time_point start_time) {
-            uint32_t nt = std::min((uint32_t)64, (uint32_t)groups.size());
+            uint32_t nt = std::min((uint32_t)common::kMaxThreadCount, (uint32_t)groups.size());
             if (nt == 0) nt = 1;
             uint32_t gpp = groups.size() / nt;
             std::vector<std::thread> threads;
@@ -2310,7 +2310,7 @@ contract AMMPool {
 
         auto swap_start = std::chrono::steady_clock::now();
         {
-            uint32_t st = std::min((uint32_t)64, (uint32_t)trade_pairs.size());
+            uint32_t st = std::min((uint32_t)common::kMaxThreadCount, (uint32_t)trade_pairs.size());
             if (st == 0) st = 1;
             uint32_t spp = trade_pairs.size() / st;
             std::vector<std::thread> sthreads;
