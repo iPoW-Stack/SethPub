@@ -410,7 +410,7 @@ int tx_main(int argc, char** argv) {
             }
 
             if (!sent_ok) {
-                // All retries failed �?roll back nonce to avoid permanent gap
+                // All retries failed �?roll back nonce to avoid permanent gap
                 --prikey_with_nonce[addr];
                 std::cout << "send failed after 3 retries, rolled back nonce to "
                           << prikey_with_nonce[addr] << " for addr: "
@@ -522,7 +522,7 @@ int tx_main(int argc, char** argv) {
         thread_vec[i].join();
     }
 
-    // All worker threads have exited �?safe to stop the transport now.
+    // All worker threads have exited �?safe to stop the transport now.
     transport::TcpTransport::Instance()->Stop();
     usleep(200000);
     return 0;
@@ -691,7 +691,7 @@ int main(int argc, char** argv) {
                 std::cout << "  Generated " << (i + 1) << " accounts..." << std::endl;
             }
         }
-        std::cout << "�?Generated " << kAccountCount << " accounts" << std::endl;
+        std::cout << "�?Generated " << kAccountCount << " accounts" << std::endl;
 
         // Phase 2: Create accounts on blockchain (send initial transactions)
         std::cout << "\n[Phase 2] Creating accounts on blockchain..." << std::endl;
@@ -785,7 +785,7 @@ int main(int argc, char** argv) {
         }
         progress_thread.join();
 
-        std::cout << "�?Account creation complete: " << created_count.load() 
+        std::cout << "�?Account creation complete: " << created_count.load() 
                   << " created, " << failed_count.load() << " failed" << std::endl;
 
         // Phase 3: Wait for accounts to be confirmed using batch query (up to 240s)
@@ -830,7 +830,7 @@ int main(int argc, char** argv) {
             auto round_start = std::chrono::steady_clock::now();
             uint32_t round_confirmed = 0;
 
-            // Next round's pending list �?accounts not found this round go here
+            // Next round's pending list �?accounts not found this round go here
             std::vector<uint32_t> next_pending;
             next_pending.reserve(pending_list.size());
 
@@ -868,12 +868,12 @@ int main(int argc, char** argv) {
                                 ++confirmed_count;
                                 ++round_confirmed;
                             } else {
-                                // Not found �?keep in pending for next round
+                                // Not found �?keep in pending for next round
                                 next_pending.push_back(idx);
                             }
                         }
                     } else {
-                        // Entire batch request failed �?keep all in pending
+                        // Entire batch request failed �?keep all in pending
                         for (uint32_t k = 0; k < batch_indices.size(); ++k) {
                             next_pending.push_back(batch_indices[k]);
                         }
@@ -900,14 +900,14 @@ int main(int argc, char** argv) {
             // Adaptive wait: if we made progress this round, poll again quickly (2s).
             // If no progress, back off to 5s to avoid wasting HTTP calls.
             uint32_t wait_ms = (round_confirmed > 0) ? 2000 : 5000;
-            // On first round with zero progress, wait longer (8s) �?consensus may still be running
+            // On first round with zero progress, wait longer (8s) �?consensus may still be running
             if (round == 1 && round_confirmed == 0) wait_ms = 8000;
             for (uint32_t w = 0; w < wait_ms / 100 && !global_stop; ++w) usleep(100000);
         }
 
         auto total_secs = std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::steady_clock::now() - phase3_start).count();
-        std::cout << "�?Account confirmation complete: " << confirmed_count
+        std::cout << "�?Account confirmation complete: " << confirmed_count
                   << "/" << kAccountCount << " confirmed in " << total_secs << "s" << std::endl;
 
         if (confirmed_count < kAccountCount) {
@@ -1274,7 +1274,7 @@ int main(int argc, char** argv) {
     // 1. Create 10000 user accounts on chain + verify
     // 2. Deploy 256 AMM contract sets (TokenA + TokenB + AMMPool each)
     // 3. Set prefund for all 10000 users on all 256 contract sets + verify
-    // 4. Save results �?ready for contract call stress testing
+    // 4. Save results �?ready for contract call stress testing
     if (argv[1][0] == '5') {
         const uint32_t kUserCount = (argc >= 7) ? std::stoi(argv[6]) : 10000;
         const uint32_t kContractSets = 256;  // 256 AMM contract sets (TokenA+TokenB+AMMPool)
@@ -1546,7 +1546,8 @@ contract AMMPool {
         auto create_account_fn = [&](uint32_t tid, uint32_t start_idx, uint32_t end_idx) {
             SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
             std::string fpk = unique_funders[tid % unique_funders.size()];
-            auto fsec = std::make_shared<security::Ecdsa>(); fsec->SetPrivateKey(fpk);
+            std::shared_ptr<security::Security> fsec = std::make_shared<security::Ecdsa>();
+            fsec->SetPrivateKey(fpk);
             std::string faddr = fsec->GetAddress();
             int64_t nonce = tsdk.fetchNonce(common::Encode::HexEncode(faddr));
             if (nonce < 0) { fund_fail += (end_idx - start_idx); return; }
@@ -1763,7 +1764,7 @@ contract AMMPool {
 
         // ── Phase 6: Summary ──────────────────────────────────────────────
         std::cout << "\n" << std::string(70, '=') << std::endl;
-        std::cout << "  SETUP COMPLETE �?Ready for contract call stress testing" << std::endl;
+        std::cout << "  SETUP COMPLETE �?Ready for contract call stress testing" << std::endl;
         std::cout << std::string(70, '=') << std::endl;
         std::cout << "  Users:     " << users_ok << "/" << kUserCount << std::endl;
         std::cout << "  Deployers: " << deployers_ok << "/" << kContractSets << std::endl;
