@@ -1874,12 +1874,14 @@ contract AMMPool {
             std::vector<uint32_t> next_pf_pending;
             next_pf_pending.reserve(pf_pending.size());
 
+            // Use smaller batch size for 80-char prepayment addresses
+            const uint32_t kPfBatchSize = 200;
             std::vector<std::string> ba;
             std::vector<uint32_t> bi;
             for (uint32_t p = 0; p < pf_pending.size() && !global_stop; ++p) {
                 ba.push_back(pf_verify_list[pf_pending[p]].prefund_addr_hex);
                 bi.push_back(pf_pending[p]);
-                if (ba.size() >= kBatchSize || p == pf_pending.size() - 1) {
+                if (ba.size() >= kPfBatchSize || p == pf_pending.size() - 1) {
                     auto r = sdk.batchQueryAccounts(ba);
                     if (r.contains("status") && r["status"] == 0 && r.contains("accounts")) {
                         for (uint32_t k = 0; k < bi.size(); ++k) {
@@ -1903,6 +1905,11 @@ contract AMMPool {
                             }
                         }
                     } else {
+                        // Batch query failed — print error on first failure
+                        if (pf_vround <= 2) {
+                            std::string msg = r.contains("msg") ? r["msg"].get<std::string>() : "unknown";
+                            std::cout << "  batch_query failed: " << msg << std::endl;
+                        }
                         for (auto idx : bi) next_pf_pending.push_back(idx);
                     }
                     ba.clear();

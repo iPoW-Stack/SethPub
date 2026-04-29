@@ -481,11 +481,16 @@ public:
 
             httplib::SSLClient cli(client.node_host_, client.node_port_);
             cli.enable_server_certificate_verification(false);
+            cli.set_connection_timeout(10);
+            cli.set_read_timeout(30);
             httplib::Params params;
             params.emplace("addresses", addr_list);
             auto res = cli.Post("/batch_query_accounts", params);
-            if (!res || res->status != 200) {
-                return {{"status", 1}, {"msg", "batch query request failed"}};
+            if (!res) {
+                return {{"status", 1}, {"msg", "batch query connection failed (no response)"}};
+            }
+            if (res->status != 200) {
+                return {{"status", 1}, {"msg", "batch query HTTP " + std::to_string(res->status)}};
             }
 
             try {
