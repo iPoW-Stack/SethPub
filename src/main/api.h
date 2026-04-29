@@ -428,6 +428,32 @@ public:
         return client.fetchNonce(address); 
     }
 
+    // Query account balance via /query_account. Works for both normal (20-byte)
+    // and prepayment (40-byte: contract+user) addresses.
+    // Returns balance >= 0 on success, -1 on failure.
+    int64_t fetchBalance(const std::string& hex_address) {
+        httplib::SSLClient cli(client.node_host_, client.node_port_);
+        cli.enable_server_certificate_verification(false);
+        cli.set_connection_timeout(5);
+        cli.set_read_timeout(5);
+        httplib::Params params;
+        params.emplace("address", hex_address);
+        auto res = cli.Post("/query_account", params);
+        if (res && res->status == 200) {
+            try {
+                // /query_account returns protobuf-to-JSON which has "balance" as a string
+                json info = json::parse(res->body);
+                if (info.contains("balance")) {
+                    int64_t balance = 0;
+                    auto bs = info["balance"].get<std::string>();
+                    std::from_chars(bs.data(), bs.data() + bs.size(), balance);
+                    return balance;
+                }
+            } catch (...) {}
+        }
+        return -1;
+    }
+
     // Batch query multiple accounts at once.
     // Input:  vector of hex-encoded addresses.
     // Output: JSON with "accounts" (found) and "not_found" (missing).

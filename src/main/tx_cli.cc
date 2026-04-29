@@ -1819,19 +1819,20 @@ contract AMMPool {
         std::cout << "  Prefund done in " << pfelapsed << "s: "
                   << pf_ok.load() << " ok, " << pf_fail.load() << " fail" << std::endl;
 
-        // ── Verify prefund balances ──────────────────────────────────────
-        // Query contract_addr+user_addr (prepayment account) and check balance >= kUserPrefund
-        std::cout << "\n  Waiting 10s for prefund consensus..." << std::endl;
-        for (int w = 0; w < 100 && !global_stop; ++w) usleep(100000);
+        // ── Verify prefund balances (batch query) ─────────────────────────
+        // Query contract_addr+user_addr (prepayment account) via batch_query_accounts
+        // Prefund tx is kContractGasPrefund → needs from-side consensus + cross-shard
+        // kNormalTo to create the prepayment account. Allow up to 300s.
+        std::cout << "\n  Waiting 15s for prefund consensus (cross-shard)..." << std::endl;
+        for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
 
-        std::cout << "  Verifying prefund balances (up to 300s)..." << std::endl;
+        std::cout << "  Verifying prefund balances via batch query (up to 300s)..." << std::endl;
         auto pfv_start = std::chrono::steady_clock::now();
-        uint32_t pf_verified = 0, pf_not_found = 0;
 
-        // Build list of all prefund addresses to verify: contract_hex + user_hex
+        // Build list of all prefund addresses to verify
         struct PrefundVerifyItem {
-            uint32_t assign_idx;   // index into prefund_assignments
-            uint32_t contract_idx; // index into that assignment's contract_addrs
+            uint32_t assign_idx;
+            uint32_t contract_idx;
             std::string prefund_addr_hex;  // contract_addr + user_addr (hex concat)
         };
         std::vector<PrefundVerifyItem> pf_verify_list;
@@ -1849,9 +1850,17 @@ contract AMMPool {
         }
 
         std::vector<bool> pf_item_verified(pf_verify_list.size(), false);
+        uint32_t pf_verified = 0;
         std::vector<uint32_t> pf_pending;
         pf_pending.reserve(pf_verify_list.size());
         for (uint32_t i = 0; i < pf_verify_list.size(); ++i) pf_pending.push_back(i);
+
+        // Print first few prefund addresses for debugging
+        std::cout << "  Sample prefund addresses:" << std::endl;
+        for (uint32_t i = 0; i < std::min((uint32_t)3, (uint32_t)pf_verify_list.size()); ++i) {
+            std::cout << "    [" << i << "] " << pf_verify_list[i].prefund_addr_hex
+                      << " (len=" << pf_verify_list[i].prefund_addr_hex.size() << ")" << std::endl;
+        }
 
         uint32_t pf_vround = 0;
         while (!pf_pending.empty() && !global_stop) {
@@ -1886,6 +1895,7 @@ contract AMMPool {
                                     ++pf_verified;
                                     ++round_ok;
                                 } else {
+                                    // Found but balance too low — still pending
                                     next_pf_pending.push_back(bi[k]);
                                 }
                             } else {
@@ -1906,35 +1916,32 @@ contract AMMPool {
                       << ", " << pf_verified << "/" << pf_verify_list.size()
                       << " verified, " << pf_pending.size() << " pending" << std::endl;
             if (pf_pending.empty()) break;
-            uint32_t wt = (round_ok > 0) ? 2000 : 5000;
-            if (pf_vround == 1 && round_ok == 0) wt = 8000;
+            // Longer waits: prefund needs cross-shard consensus
+            uint32_t wt = (round_ok > 0) ? 3000 : 8000;
+            if (pf_vround <= 2 && round_ok == 0) wt = 15000;
             for (uint32_t w = 0; w < wt / 100 && !global_stop; ++w) usleep(100000);
         }
 
         // Remove unverified prefund entries from assignments
-        pf_not_found = pf_verify_list.size() - pf_verified;
+        uint32_t pf_not_found = pf_verify_list.size() - pf_verified;
         if (pf_not_found > 0) {
             std::cout << "  WARNING: " << pf_not_found << " prefund entries not verified." << std::endl;
-            // Mark unverified contracts in assignments
             for (uint32_t i = 0; i < pf_verify_list.size(); ++i) {
                 if (!pf_item_verified[i]) {
                     auto& a = prefund_assignments[pf_verify_list[i].assign_idx];
                     auto ci = pf_verify_list[i].contract_idx;
                     if (ci < a.contract_addrs.size()) {
-                        a.contract_addrs[ci] = "";  // mark as invalid
+                        a.contract_addrs[ci] = "";
                     }
                 }
             }
-            // Clean up empty entries
             for (auto& a : prefund_assignments) {
                 std::vector<std::string> valid;
-                for (auto& ca : a.contract_addrs) {
-                    if (!ca.empty()) valid.push_back(ca);
-                }
+                for (auto& ca : a.contract_addrs) if (!ca.empty()) valid.push_back(ca);
                 a.contract_addrs = std::move(valid);
             }
         }
-        std::cout << "  Prefund verified: " << pf_verified << "/" << pf_verify_list.size() << std::endl;
+        std::cout << "  Prefund verified: " << pf_verified.load() << "/" << pf_verify_list.size() << std::endl;
 
         // ── Phase 6: Summary + save ───────────────────────────────────────
         std::cout << "\n" << std::string(70, '=') << std::endl;

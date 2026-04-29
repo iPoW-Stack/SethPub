@@ -1119,6 +1119,14 @@ static void BatchQueryAccounts(const UWSRequest& req, UWSResponse& http_res) {
             addr_info = http_handler->acc_mgr()->GetAccountInfo(addr);
         }
 
+        // For prepayment addresses (40 bytes = contract + user), also try
+        // looking up by the first 20 bytes (contract address) pool.
+        if (addr_info == nullptr && addr.length() == common::kPreypamentAddressLength) {
+            // Try DB lookup again — prepayment accounts use the full 40-byte key
+            SETH_DEBUG("batch_query: prepayment addr not found: %s (len=%u)",
+                hex_addr.c_str(), (uint32_t)addr.length());
+        }
+
         if (addr_info == nullptr) {
             not_found_json.push_back(hex_addr);
             continue;
