@@ -596,8 +596,7 @@ public:
     }
 
     json deploySolidity(const std::string& private_key, const std::string& bytecode, uint64_t amount, uint64_t prefund, 
-                        int code_type, const std::vector<std::string>& fn_types, const std::vector<std::string>& fn_args,
-                        int64_t nonce = -1) {
+                        int code_type, const std::vector<std::string>& fn_types, const std::vector<std::string>& fn_args) {
         try {
             if (fn_types.size() != fn_args.size()) return {{"status", 1}, {"msg", "len mismatch"}};
             std::string full_payload = bytecode + encodeArgs(fn_types, fn_args);
@@ -607,7 +606,7 @@ public:
             std::string salt = private_key + std::to_string(cnt) + 
                 std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
             std::string to_address = utils::keccak256Str(full_payload + salt).substr(24);
-            if (client.transfer(private_key, to_address, amount, nonce, (code_type != 0) ? 14 : 6, full_payload, "", "", "", prefund, true)) {
+            if (client.transfer(private_key, to_address, amount, -1, (code_type != 0) ? 14 : 6, full_payload, "", "", "", prefund, true)) {
                 return {{"status", 0}, {"msg", "ok"}, {"id", to_address}};
             }
             return {{"status", 1}, {"msg", "create contract failed"}};

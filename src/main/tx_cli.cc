@@ -1520,7 +1520,6 @@ contract AMMPool {
             std::string token_a_addr;
             std::string token_b_addr;
             std::string pool_addr;
-            int64_t nonce = -1;  // managed nonce for sequential deploys
             bool confirmed = false;
             bool token_a_deployed = false;
             bool token_b_deployed = false;
@@ -1712,48 +1711,25 @@ contract AMMPool {
         };
         const uint64_t kPf=400000000lu;
 
-        // Fetch initial nonces for all confirmed deployers before deploying
-        std::cout << "  Fetching deployer nonces..." << std::endl;
-        {
-            std::vector<std::thread> nt_vec;
-            uint32_t nt = std::min(kDeployThreads, kContractSets); if (!nt) nt = 1;
-            uint32_t pp = kContractSets / nt;
-            for (uint32_t t = 0; t < nt; ++t) {
-                uint32_t s2 = t*pp, e2 = (t==nt-1)?kContractSets:(s2+pp);
-                nt_vec.emplace_back([&,s2,e2](){
-                    SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
-                    for (uint32_t i=s2;i<e2&&!global_stop;++i) {
-                        if (!deployers[i].confirmed) continue;
-                        deployers[i].nonce = tsdk.fetchNonce(deployers[i].addr_hex);
-                    }
-                });
-            }
-            for (auto& th : nt_vec) th.join();
-        }
-
         std::cout<<"  Step 1/3: Deploy TokenA..."<<std::endl;
         deploy_one_type("TokenA",[&](uint32_t i,SethSDK& t){
-            if (deployers[i].nonce < 0) { ++dfail; return; }
-            auto r=t.deploySolidity(deployers[i].prikey_hex,token_bytecode,0,kPf,0,
-                {"bytes32","uint256"},{mkname(i,"TkA_"),"10000000"}, ++deployers[i].nonce);
+            auto r=t.deploySolidity(deployers[i].prikey_hex,token_bytecode,0,kPf,0,{"bytes32","uint256"},{mkname(i,"TkA_"),"10000000"});
             if(r["status"]==0){deployers[i].token_a_addr=r["id"];deployers[i].token_a_deployed=true;++ta_ok;} else ++dfail;
         });
         {std::vector<std::string> v; for(auto& d:deployers) if(d.token_a_deployed) v.push_back(d.token_a_addr); wait_addrs(v,"TokenA");}
 
         std::cout<<"  Step 2/3: Deploy TokenB..."<<std::endl;
         deploy_one_type("TokenB",[&](uint32_t i,SethSDK& t){
-            if(!deployers[i].token_a_deployed || deployers[i].nonce < 0){++dfail;return;}
-            auto r=t.deploySolidity(deployers[i].prikey_hex,token_bytecode,0,kPf,0,
-                {"bytes32","uint256"},{mkname(i,"TkB_"),"10000000"}, ++deployers[i].nonce);
+            if(!deployers[i].token_a_deployed){++dfail;return;}
+            auto r=t.deploySolidity(deployers[i].prikey_hex,token_bytecode,0,kPf,0,{"bytes32","uint256"},{mkname(i,"TkB_"),"10000000"});
             if(r["status"]==0){deployers[i].token_b_addr=r["id"];deployers[i].token_b_deployed=true;++tb_ok;} else ++dfail;
         });
         {std::vector<std::string> v; for(auto& d:deployers) if(d.token_b_deployed) v.push_back(d.token_b_addr); wait_addrs(v,"TokenB");}
 
         std::cout<<"  Step 3/3: Deploy AMMPool..."<<std::endl;
         deploy_one_type("AMMPool",[&](uint32_t i,SethSDK& t){
-            if(!deployers[i].token_a_deployed||!deployers[i].token_b_deployed||deployers[i].nonce<0){++dfail;return;}
-            auto r=t.deploySolidity(deployers[i].prikey_hex,pool_bytecode,0,kPf,0,
-                {"address","address"},{deployers[i].token_a_addr,deployers[i].token_b_addr}, ++deployers[i].nonce);
+            if(!deployers[i].token_a_deployed||!deployers[i].token_b_deployed){++dfail;return;}
+            auto r=t.deploySolidity(deployers[i].prikey_hex,pool_bytecode,0,kPf,0,{"address","address"},{deployers[i].token_a_addr,deployers[i].token_b_addr});
             if(r["status"]==0){deployers[i].pool_addr=r["id"];deployers[i].pool_deployed=true;++pool_ok;} else ++dfail;
         });
         auto delapsed = std::chrono::duration_cast<std::chrono::seconds>(
