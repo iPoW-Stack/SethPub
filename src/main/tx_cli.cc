@@ -1944,6 +1944,25 @@ contract AMMPool {
         for(int w=0;w<200&&!global_stop;++w) usleep(100000);
 
         // Step 5b: Deployer approve + addLiquidity (sequential per deployer, with verification)
+        // Debug: print selectors to verify keccak256 is correct
+        {
+            std::string sel_approve = utils::keccak256Str("approve(address,uint256)").substr(0, 8);
+            std::string sel_addliq = utils::keccak256Str("addLiquidity(uint256,uint256)").substr(0, 8);
+            std::string sel_transfer = utils::keccak256Str("transfer(address,uint256)").substr(0, 8);
+            std::cout << "  Selector check: approve=" << sel_approve
+                      << " addLiquidity=" << sel_addliq
+                      << " transfer=" << sel_transfer << std::endl;
+            std::cout << "  Expected:       approve=095ea7b3 addLiquidity=9cd441da transfer=a9059cbb" << std::endl;
+            if (sel_approve != "095ea7b3" || sel_addliq != "9cd441da" || sel_transfer != "a9059cbb") {
+                std::cerr << "  ERROR: keccak256 selectors do not match! Hash function is wrong." << std::endl;
+                tcp_sender_stop.store(true);
+                tcp_send_cv.notify_one();
+                tcp_sender_thread.join();
+                transport::TcpTransport::Instance()->Stop();
+                return 1;
+            }
+            std::cout << "  Selectors OK ✓" << std::endl;
+        }
         std::cout << "  Step 5b: Deployer approve + addLiquidity (" << kInitialLiquidity << " each)..." << std::endl;
         {
             std::vector<std::thread> pt;
@@ -1960,16 +1979,22 @@ contract AMMPool {
                         // approve TokenA for Pool
                         auto ra = tsdk.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].token_a_addr, 0,
                             "approve", {"address","uint256"}, {deployers[i].pool_addr, approve_str});
+                        if (i < 2) std::cout << "    [" << i << "] approve TokenA: status=" << ra["status"]
+                                             << " msg=" << ra.value("msg","") << std::endl;
                         if (ra["status"] != 0) { ++liq_fail; continue; }
                         usleep(50000);
                         // approve TokenB for Pool
                         auto rb = tsdk.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].token_b_addr, 0,
                             "approve", {"address","uint256"}, {deployers[i].pool_addr, approve_str});
+                        if (i < 2) std::cout << "    [" << i << "] approve TokenB: status=" << rb["status"]
+                                             << " msg=" << rb.value("msg","") << std::endl;
                         if (rb["status"] != 0) { ++liq_fail; continue; }
                         usleep(50000);
                         // addLiquidity
                         auto r = tsdk.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].pool_addr, 0,
                             "addLiquidity", {"uint256","uint256"}, {liq_str, liq_str});
+                        if (i < 2) std::cout << "    [" << i << "] addLiquidity: status=" << r["status"]
+                                             << " msg=" << r.value("msg","") << std::endl;
                         if(r["status"]==0) ++liq_ok; else ++liq_fail;
                         usleep(50000);
                     }
