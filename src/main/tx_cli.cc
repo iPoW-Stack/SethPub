@@ -1277,8 +1277,8 @@ int main(int argc, char** argv) {
     // Account creation uses TCP transport (same as Mode 4) for high throughput.
     // Contract deployment uses HTTP API (SethSDK::deploySolidity).
     if (argv[1][0] == '5') {
-        const uint32_t kDeployerCount = (argc >= 7) ? std::stoi(argv[6]) : 256;
-        const uint32_t kDeployThreads = (argc >= 8) ? std::stoi(argv[7]) : 8;
+        const uint32_t kDeployerCount = (argc >= 7) ? std::stoi(argv[6]) : 10000;
+        const uint32_t kDeployThreads = (argc >= 8) ? std::stoi(argv[7]) : 16;
 
         if (argc >= 4) {
             shardnum = std::stoi(argv[2]);
@@ -1506,7 +1506,7 @@ contract AMMPool {
             sec->SetPrivateKey(prikey);
             deployers[i].addr_hex = common::Encode::HexEncode(sec->GetAddress());
 
-            if ((i + 1) % 64 == 0) {
+            if ((i + 1) % 1000 == 0) {
                 std::cout << "  Generated " << (i + 1) << "/" << kDeployerCount << " deployers" << std::endl;
             }
         }
@@ -1618,25 +1618,69 @@ contract AMMPool {
         std::cout << "  Account creation complete: " << fund_success.load()
                   << " created, " << fund_fail.load() << " failed" << std::endl;
 
-        // ── Batch verify deployer accounts on chain (same as Mode 4 Phase 3) ─
+        // ── Retry failed sends ───────────────────────────────────────────
+        // Accounts that failed to send get a second chance with fresh nonces.
+        if (fund_fail.load() > 0) {
+            std::cout << "\n  Retrying " << fund_fail.load() << " failed account creations..." << std::endl;
+            std::vector<uint32_t> retry_indices;
+            for (uint32_t i = 0; i < kDeployerCount; ++i) {
+                if (!deployers[i].funded) retry_indices.push_back(i);
+            }
+
+            // Use a single funder for retries (simpler, avoids nonce races)
+            SethSDK retry_sdk(global_chain_node_ip, global_chain_node_http_port);
+            std::string retry_funder_prikey = unique_funders[0];
+            std::shared_ptr<security::Security> retry_sec = std::make_shared<security::Ecdsa>();
+            retry_sec->SetPrivateKey(retry_funder_prikey);
+            std::string retry_funder_addr = retry_sec->GetAddress();
+            int64_t retry_nonce = retry_sdk.fetchNonce(common::Encode::HexEncode(retry_funder_addr));
+
+            if (retry_nonce >= 0) {
+                uint32_t retry_ok = 0;
+                for (uint32_t idx : retry_indices) {
+                    if (global_stop) break;
+                    auto tx_msg_ptr = CreateTransactionWithAttr(
+                        retry_sec, ++retry_nonce,
+                        common::Encode::HexEncode(retry_funder_prikey),
+                        common::Encode::HexDecode(deployers[idx].addr_hex),
+                        "", "", kFundAmount, 210000, 1, shardnum);
+
+                    if (tx_msg_ptr && transport::TcpTransport::Instance()->Send(
+                            global_chain_node_ip,
+                            global_chain_node_http_port - 10000,
+                            tx_msg_ptr->header) == 0) {
+                        deployers[idx].funded = true;
+                        ++retry_ok;
+                    }
+                    usleep(1000);
+                }
+                std::cout << "  Retry complete: " << retry_ok << "/" << retry_indices.size()
+                          << " recovered" << std::endl;
+            }
+        }
+
+        // ── Batch verify deployer accounts on chain ──────────────────────
         std::cout << "\n  Waiting 10s for consensus before batch verification..." << std::endl;
         for (int w = 0; w < 100 && !global_stop; ++w) usleep(100000);
 
-        std::cout << "  Starting batch account verification (up to 240s)..." << std::endl;
+        std::cout << "  Starting batch account verification (up to 600s)..." << std::endl;
         auto phase3_start = std::chrono::steady_clock::now();
-        const auto kPhase3Timeout = std::chrono::seconds(240);
+        const auto kPhase3Timeout = std::chrono::seconds(600);
         uint32_t confirmed = 0;
         const uint32_t kBatchSize = 500;
 
         std::vector<bool> is_confirmed(kDeployerCount, false);
         std::vector<uint32_t> pending_list;
         pending_list.reserve(kDeployerCount);
+        // Verify ALL deployers — retry may have recovered failed ones
         for (uint32_t i = 0; i < kDeployerCount; ++i) {
-            if (deployers[i].funded) pending_list.push_back(i);
+            pending_list.push_back(i);
         }
+        uint32_t total_funded = pending_list.size();
+        std::cout << "  Accounts to verify: " << total_funded << std::endl;
 
         uint32_t round = 0;
-        while (confirmed < pending_list.size() && !pending_list.empty() && !global_stop) {
+        while (confirmed < total_funded && !pending_list.empty() && !global_stop) {
             auto elapsed = std::chrono::steady_clock::now() - phase3_start;
             if (elapsed >= kPhase3Timeout) {
                 auto secs = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
@@ -1698,7 +1742,7 @@ contract AMMPool {
                       << confirmed << "/" << kDeployerCount << " total, "
                       << pending_list.size() << " pending (" << round_ms << "ms)" << std::endl;
 
-            if (confirmed >= kDeployerCount || pending_list.empty()) break;
+            if (confirmed >= total_funded || pending_list.empty()) break;
 
             uint32_t wait_ms = (round_confirmed > 0) ? 2000 : 5000;
             if (round == 1 && round_confirmed == 0) wait_ms = 8000;
@@ -1710,15 +1754,39 @@ contract AMMPool {
         std::cout << "  Account verification complete: " << confirmed
                   << "/" << kDeployerCount << " confirmed in " << total_secs << "s" << std::endl;
 
-        if (confirmed == 0) {
-            std::cerr << "  ERROR: No deployer accounts confirmed. Aborting." << std::endl;
-            transport::TcpTransport::Instance()->Stop();
-            return 1;
+        if (confirmed < kDeployerCount) {
+            uint32_t failed_total = kDeployerCount - confirmed;
+            std::cerr << "\n  WARNING: " << failed_total << " deployer accounts failed to confirm." << std::endl;
+            uint32_t print_limit = std::min(failed_total, 20u);
+            uint32_t printed = 0;
+            for (uint32_t i = 0; i < kDeployerCount && printed < print_limit; ++i) {
+                if (!is_confirmed[i]) {
+                    std::cerr << "    [" << i << "] " << deployers[i].addr_hex << std::endl;
+                    ++printed;
+                }
+            }
+            if (failed_total > print_limit) {
+                std::cerr << "    ... and " << (failed_total - print_limit) << " more" << std::endl;
+            }
+
+            if (confirmed == 0) {
+                std::cerr << "  ERROR: No deployer accounts confirmed. Aborting." << std::endl;
+                transport::TcpTransport::Instance()->Stop();
+                return 1;
+            }
+
+            // Mark unconfirmed deployers as not funded so Phase 4 skips them
+            for (uint32_t i = 0; i < kDeployerCount; ++i) {
+                if (!is_confirmed[i]) {
+                    deployers[i].funded = false;
+                }
+            }
+            std::cout << "  Proceeding with " << confirmed << " confirmed deployers." << std::endl;
         }
 
         // ── Phase 4: Deploy contracts ─────────────────────────────────────
         std::cout << "\n" << std::string(70, '-') << std::endl;
-        std::cout << "  Phase 4: Deploy AMM Contracts (" << kDeployerCount << " × 3)" << std::endl;
+        std::cout << "  Phase 4: Deploy AMM Contracts (" << confirmed << " confirmed deployers × 3)" << std::endl;
         std::cout << std::string(70, '-') << std::endl;
         std::cout << "  Each deployer deploys: SimpleToken(A) + SimpleToken(B) + AMMPool" << std::endl;
         std::cout << "  Same deployer → same shard → atomic swap guarantee" << std::endl;
