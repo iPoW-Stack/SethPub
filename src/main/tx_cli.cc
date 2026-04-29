@@ -1583,5 +1583,518 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    // ── Mode 5: Deploy 256 AMM Contracts (256 random deployers) ───────────
+    // Usage: txcli 5 <shard> <pool> <ip> <port> [count] [threads]
+    // Mirrors clipy/amm.py test_multi_shard_amm: each deployer deploys
+    // TokenA + TokenB + AMMPool (3 contracts per deployer).
+    // 256 deployers × 3 contracts = 768 contract deployments across shards.
+    if (argv[1][0] == '5') {
+        const uint32_t kDeployerCount = (argc >= 7) ? std::stoi(argv[6]) : 256;
+        const uint32_t kDeployThreads = (argc >= 8) ? std::stoi(argv[7]) : 8;
+
+        std::cout << "\n" << std::string(70, '=') << std::endl;
+        std::cout << "  AMM Contract Mass Deployment Test" << std::endl;
+        std::cout << "  " << kDeployerCount << " deployers × 3 contracts (TokenA + TokenB + AMMPool)" << std::endl;
+        std::cout << "  = " << kDeployerCount * 3 << " total contract deployments" << std::endl;
+        std::cout << std::string(70, '=') << std::endl;
+        std::cout << "Shard: " << shardnum << std::endl;
+        std::cout << "Node: " << global_chain_node_ip << ":" << global_chain_node_http_port << std::endl;
+        std::cout << "Deploy threads: " << kDeployThreads << std::endl;
+
+        // ── Solidity sources (same as clipy/amm.py) ──────────────────────
+        const std::string SIMPLE_TOKEN_SOL = R"(
+pragma solidity ^0.8.0;
+
+contract SimpleToken {
+    string  public name;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    constructor(string memory _name, uint256 _initialSupply) {
+        name = _name;
+        totalSupply = _initialSupply;
+        balanceOf[msg.sender] = _initialSupply;
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        require(balanceOf[msg.sender] >= amount, "insufficient");
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(msg.sender, to, amount);
+        return true;
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        emit Approval(msg.sender, spender, amount);
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        require(allowance[from][msg.sender] >= amount, "not approved");
+        require(balanceOf[from] >= amount, "insufficient");
+        allowance[from][msg.sender] -= amount;
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(from, to, amount);
+        return true;
+    }
+}
+)";
+
+        const std::string AMM_POOL_SOL = R"(
+pragma solidity ^0.8.0;
+
+interface IERC20 {
+    function transferFrom(address from, address to, uint256 amount) external returns (bool);
+    function transfer(address to, uint256 amount) external returns (bool);
+    function balanceOf(address account) external view returns (uint256);
+}
+
+contract AMMPool {
+    IERC20 public tokenA;
+    IERC20 public tokenB;
+    uint256 public reserveA;
+    uint256 public reserveB;
+    uint256 public totalLiquidity;
+    mapping(address => uint256) public liquidity;
+
+    event LiquidityAdded(address indexed provider, uint256 amountA, uint256 amountB, uint256 lp);
+    event LiquidityRemoved(address indexed provider, uint256 amountA, uint256 amountB);
+    event Swap(address indexed user, address tokenIn, uint256 amountIn, uint256 amountOut);
+
+    constructor(address _tokenA, address _tokenB) {
+        tokenA = IERC20(_tokenA);
+        tokenB = IERC20(_tokenB);
+    }
+
+    function addLiquidity(uint256 amountA, uint256 amountB) external returns (uint256 lp) {
+        tokenA.transferFrom(msg.sender, address(this), amountA);
+        tokenB.transferFrom(msg.sender, address(this), amountB);
+        if (totalLiquidity == 0) {
+            lp = amountA;
+        } else {
+            lp = (amountA * totalLiquidity) / reserveA;
+        }
+        reserveA += amountA;
+        reserveB += amountB;
+        totalLiquidity += lp;
+        liquidity[msg.sender] += lp;
+        emit LiquidityAdded(msg.sender, amountA, amountB, lp);
+    }
+
+    function removeLiquidity(uint256 lpAmount) external {
+        require(liquidity[msg.sender] >= lpAmount, "insufficient lp");
+        uint256 amountA = (lpAmount * reserveA) / totalLiquidity;
+        uint256 amountB = (lpAmount * reserveB) / totalLiquidity;
+        liquidity[msg.sender] -= lpAmount;
+        totalLiquidity -= lpAmount;
+        reserveA -= amountA;
+        reserveB -= amountB;
+        tokenA.transfer(msg.sender, amountA);
+        tokenB.transfer(msg.sender, amountB);
+        emit LiquidityRemoved(msg.sender, amountA, amountB);
+    }
+
+    function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 amountOut) {
+        require(amountIn > 0 && reserveA > 0 && reserveB > 0, "invalid");
+        amountOut = (amountIn * reserveB) / (reserveA + amountIn);
+        require(amountOut >= minOut, "slippage");
+        tokenA.transferFrom(msg.sender, address(this), amountIn);
+        tokenB.transfer(msg.sender, amountOut);
+        reserveA += amountIn;
+        reserveB -= amountOut;
+        emit Swap(msg.sender, address(tokenA), amountIn, amountOut);
+    }
+
+    function swapBForA(uint256 amountIn, uint256 minOut) external returns (uint256 amountOut) {
+        require(amountIn > 0 && reserveA > 0 && reserveB > 0, "invalid");
+        amountOut = (amountIn * reserveA) / (reserveB + amountIn);
+        require(amountOut >= minOut, "slippage");
+        tokenB.transferFrom(msg.sender, address(this), amountIn);
+        tokenA.transfer(msg.sender, amountOut);
+        reserveB += amountIn;
+        reserveA -= amountOut;
+        emit Swap(msg.sender, address(tokenB), amountIn, amountOut);
+    }
+
+    function getReserves() external view returns (uint256, uint256) {
+        return (reserveA, reserveB);
+    }
+}
+)";
+
+        // ── Phase 1: Compile contracts ────────────────────────────────────
+        std::cout << "\n" << std::string(70, '-') << std::endl;
+        std::cout << "  Phase 1: Compile Solidity Contracts" << std::endl;
+        std::cout << std::string(70, '-') << std::endl;
+
+        auto token_compiled = sdk.compileSolidity(SIMPLE_TOKEN_SOL);
+        if (token_compiled["status"] != 0) {
+            std::cerr << "SimpleToken compile failed: " << token_compiled["msg"] << std::endl;
+            return 1;
+        }
+        std::string token_bytecode = token_compiled["bytecode"];
+        std::cout << "  SimpleToken bytecode: " << token_bytecode.size() << " chars" << std::endl;
+
+        auto pool_compiled = sdk.compileSolidity(AMM_POOL_SOL);
+        if (pool_compiled["status"] != 0) {
+            std::cerr << "AMMPool compile failed: " << pool_compiled["msg"] << std::endl;
+            return 1;
+        }
+        std::string pool_bytecode = pool_compiled["bytecode"];
+        std::cout << "  AMMPool bytecode: " << pool_bytecode.size() << " chars" << std::endl;
+        std::cout << "  Compilation complete" << std::endl;
+
+        // ── Phase 2: Generate deployer accounts ───────────────────────────
+        std::cout << "\n" << std::string(70, '-') << std::endl;
+        std::cout << "  Phase 2: Generate " << kDeployerCount << " Deployer Accounts" << std::endl;
+        std::cout << std::string(70, '-') << std::endl;
+
+        struct DeployerInfo {
+            std::string prikey_hex;   // hex private key
+            std::string addr_hex;     // hex address (no 0x prefix)
+            // Contract addresses (filled during deployment)
+            std::string token_a_addr;
+            std::string token_b_addr;
+            std::string pool_addr;
+            bool funded = false;
+            bool token_a_deployed = false;
+            bool token_b_deployed = false;
+            bool pool_deployed = false;
+        };
+
+        std::vector<DeployerInfo> deployers(kDeployerCount);
+        for (uint32_t i = 0; i < kDeployerCount; ++i) {
+            // Generate random 32-byte private key
+            std::string prikey;
+            prikey.resize(32);
+            for (uint32_t j = 0; j < 32; ++j) {
+                prikey[j] = static_cast<char>(common::Random::RandomUint32() % 256);
+            }
+            deployers[i].prikey_hex = common::Encode::HexEncode(prikey);
+
+            std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
+            sec->SetPrivateKey(prikey);
+            deployers[i].addr_hex = common::Encode::HexEncode(sec->GetAddress());
+
+            if ((i + 1) % 64 == 0) {
+                std::cout << "  Generated " << (i + 1) << "/" << kDeployerCount << " deployers" << std::endl;
+            }
+        }
+        std::cout << "  Generated " << kDeployerCount << " deployer accounts" << std::endl;
+
+        // ── Phase 3: Fund deployer accounts ───────────────────────────────
+        std::cout << "\n" << std::string(70, '-') << std::endl;
+        std::cout << "  Phase 3: Fund Deployer Accounts (native transfer)" << std::endl;
+        std::cout << std::string(70, '-') << std::endl;
+
+        const uint64_t kFundAmount = 500000000lu;  // 500M for contract deployments + prefund
+        std::atomic<uint32_t> fund_success{0};
+        std::atomic<uint32_t> fund_fail{0};
+
+        // Use existing funded accounts to send native transfers
+        uint32_t fund_threads = std::min(kDeployThreads, (uint32_t)g_prikeys.size());
+        uint32_t deployers_per_thread = kDeployerCount / fund_threads;
+
+        auto fund_thread_fn = [&](uint32_t thread_id, uint32_t start_idx, uint32_t end_idx) {
+            std::string funder_prikey_hex = common::Encode::HexEncode(g_prikeys[thread_id % g_prikeys.size()]);
+            SethClient thread_client(global_chain_node_ip, global_chain_node_http_port);
+
+            for (uint32_t i = start_idx; i < end_idx && !global_stop; ++i) {
+                bool ok = thread_client.transfer(
+                    funder_prikey_hex,
+                    deployers[i].addr_hex,
+                    kFundAmount,
+                    -1,   // auto nonce
+                    0,    // kNormalFrom
+                    "",   // no contract bytes
+                    "",   // no input
+                    "",   // no key
+                    "",   // no val
+                    0,    // no prefund
+                    true);
+
+                if (ok) {
+                    deployers[i].funded = true;
+                    ++fund_success;
+                } else {
+                    ++fund_fail;
+                }
+
+                if ((fund_success.load() + fund_fail.load()) % 32 == 0) {
+                    std::cout << "  Funding progress: " << fund_success.load()
+                              << " ok, " << fund_fail.load() << " fail" << std::endl;
+                }
+
+                // Small delay to avoid overwhelming the node
+                usleep(50000);  // 50ms
+            }
+        };
+
+        std::vector<std::thread> fund_threads_vec;
+        for (uint32_t t = 0; t < fund_threads; ++t) {
+            uint32_t s = t * deployers_per_thread;
+            uint32_t e = (t == fund_threads - 1) ? kDeployerCount : (s + deployers_per_thread);
+            fund_threads_vec.emplace_back(fund_thread_fn, t, s, e);
+        }
+        for (auto& th : fund_threads_vec) th.join();
+
+        std::cout << "  Funding complete: " << fund_success.load() << " ok, "
+                  << fund_fail.load() << " fail" << std::endl;
+
+        // Wait for accounts to be created on chain
+        std::cout << "  Waiting 15s for account creation consensus..." << std::endl;
+        for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
+
+        // Batch verify accounts exist
+        std::cout << "  Verifying deployer accounts on chain..." << std::endl;
+        std::vector<std::string> deployer_addrs;
+        for (auto& d : deployers) {
+            if (d.funded) deployer_addrs.push_back(d.addr_hex);
+        }
+
+        uint32_t confirmed = 0;
+        for (int attempt = 0; attempt < 10 && !global_stop; ++attempt) {
+            auto batch_res = sdk.batchQueryAccounts(deployer_addrs);
+            if (batch_res.contains("status") && batch_res["status"] == 0 &&
+                batch_res.contains("accounts")) {
+                confirmed = batch_res["accounts"].size();
+            }
+            std::cout << "  Attempt " << (attempt + 1) << ": " << confirmed
+                      << "/" << deployer_addrs.size() << " confirmed" << std::endl;
+            if (confirmed >= deployer_addrs.size() * 0.9) break;  // 90% threshold
+            for (int w = 0; w < 50 && !global_stop; ++w) usleep(100000);  // 5s
+        }
+
+        std::cout << "  " << confirmed << " deployer accounts confirmed on chain" << std::endl;
+
+        // ── Phase 4: Deploy contracts ─────────────────────────────────────
+        std::cout << "\n" << std::string(70, '-') << std::endl;
+        std::cout << "  Phase 4: Deploy AMM Contracts (" << kDeployerCount << " × 3)" << std::endl;
+        std::cout << std::string(70, '-') << std::endl;
+        std::cout << "  Each deployer deploys: SimpleToken(A) + SimpleToken(B) + AMMPool" << std::endl;
+        std::cout << "  Same deployer → same shard → atomic swap guarantee" << std::endl;
+
+        std::atomic<uint32_t> token_a_ok{0}, token_b_ok{0}, pool_ok{0};
+        std::atomic<uint32_t> deploy_fail{0};
+        auto deploy_start = std::chrono::steady_clock::now();
+
+        auto deploy_thread_fn = [&](uint32_t thread_id, uint32_t start_idx, uint32_t end_idx) {
+            SethSDK thread_sdk(global_chain_node_ip, global_chain_node_http_port);
+
+            for (uint32_t i = start_idx; i < end_idx && !global_stop; ++i) {
+                if (!deployers[i].funded) {
+                    deploy_fail += 3;
+                    continue;
+                }
+
+                const auto& prikey = deployers[i].prikey_hex;
+                const uint64_t kPrefund = 9000000000lu;
+                const uint64_t kTokenSupply = 10000000;
+
+                // Deploy TokenA with constructor args: ("TokenA_<i>", 10000000)
+                std::string token_a_name_hex = utils::bytesToHex(
+                    std::vector<uint8_t>({'T','k','A','_'}));
+                // Append index as part of the name for uniqueness
+                {
+                    std::string idx_str = std::to_string(i);
+                    std::vector<uint8_t> idx_bytes(idx_str.begin(), idx_str.end());
+                    token_a_name_hex += utils::bytesToHex(idx_bytes);
+                }
+
+                auto res_a = thread_sdk.deploySolidity(
+                    prikey, token_bytecode, 0, kPrefund, 0,
+                    {"string", "uint256"},
+                    {token_a_name_hex, std::to_string(kTokenSupply)});
+
+                if (res_a["status"] == 0) {
+                    deployers[i].token_a_addr = res_a["id"];
+                    deployers[i].token_a_deployed = true;
+                    ++token_a_ok;
+                } else {
+                    ++deploy_fail;
+                    std::cout << "  [" << i << "] TokenA deploy failed: "
+                              << res_a["msg"] << std::endl;
+                }
+
+                usleep(100000);  // 100ms between deploys
+
+                // Deploy TokenB
+                std::string token_b_name_hex = utils::bytesToHex(
+                    std::vector<uint8_t>({'T','k','B','_'}));
+                {
+                    std::string idx_str = std::to_string(i);
+                    std::vector<uint8_t> idx_bytes(idx_str.begin(), idx_str.end());
+                    token_b_name_hex += utils::bytesToHex(idx_bytes);
+                }
+
+                auto res_b = thread_sdk.deploySolidity(
+                    prikey, token_bytecode, 0, kPrefund, 0,
+                    {"string", "uint256"},
+                    {token_b_name_hex, std::to_string(kTokenSupply)});
+
+                if (res_b["status"] == 0) {
+                    deployers[i].token_b_addr = res_b["id"];
+                    deployers[i].token_b_deployed = true;
+                    ++token_b_ok;
+                } else {
+                    ++deploy_fail;
+                    std::cout << "  [" << i << "] TokenB deploy failed: "
+                              << res_b["msg"] << std::endl;
+                }
+
+                usleep(100000);
+
+                // Deploy AMMPool with constructor args: (tokenA_address, tokenB_address)
+                if (deployers[i].token_a_deployed && deployers[i].token_b_deployed) {
+                    auto res_p = thread_sdk.deploySolidity(
+                        prikey, pool_bytecode, 0, kPrefund, 0,
+                        {"address", "address"},
+                        {deployers[i].token_a_addr, deployers[i].token_b_addr});
+
+                    if (res_p["status"] == 0) {
+                        deployers[i].pool_addr = res_p["id"];
+                        deployers[i].pool_deployed = true;
+                        ++pool_ok;
+                    } else {
+                        ++deploy_fail;
+                        std::cout << "  [" << i << "] AMMPool deploy failed: "
+                                  << res_p["msg"] << std::endl;
+                    }
+                } else {
+                    ++deploy_fail;
+                    std::cout << "  [" << i << "] Skipping AMMPool (tokens not deployed)" << std::endl;
+                }
+
+                usleep(50000);
+
+                // Progress report
+                uint32_t total_done = token_a_ok.load() + token_b_ok.load() + pool_ok.load() + deploy_fail.load();
+                if (total_done % 30 == 0) {
+                    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                        std::chrono::steady_clock::now() - deploy_start).count();
+                    std::cout << "  [" << elapsed << "s] TokenA=" << token_a_ok.load()
+                              << " TokenB=" << token_b_ok.load()
+                              << " AMMPool=" << pool_ok.load()
+                              << " fail=" << deploy_fail.load() << std::endl;
+                }
+            }
+        };
+
+        std::vector<std::thread> deploy_threads;
+        uint32_t deployers_per_deploy_thread = kDeployerCount / kDeployThreads;
+        for (uint32_t t = 0; t < kDeployThreads; ++t) {
+            uint32_t s = t * deployers_per_deploy_thread;
+            uint32_t e = (t == kDeployThreads - 1) ? kDeployerCount : (s + deployers_per_deploy_thread);
+            deploy_threads.emplace_back(deploy_thread_fn, t, s, e);
+        }
+        for (auto& th : deploy_threads) th.join();
+
+        auto deploy_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::steady_clock::now() - deploy_start).count();
+
+        // ── Phase 5: Summary ──────────────────────────────────────────────
+        std::cout << "\n" << std::string(70, '-') << std::endl;
+        std::cout << "  Phase 5: Deployment Summary" << std::endl;
+        std::cout << std::string(70, '-') << std::endl;
+
+        uint32_t full_amm_count = 0;
+        // Count deployers with all 3 contracts deployed
+        std::map<uint32_t, uint32_t> pool_distribution;  // pool_index -> count
+        for (auto& d : deployers) {
+            if (d.token_a_deployed && d.token_b_deployed && d.pool_deployed) {
+                ++full_amm_count;
+                uint32_t pool_idx = common::GetAddressPoolIndex(
+                    common::Encode::HexDecode(d.addr_hex));
+                pool_distribution[pool_idx]++;
+            }
+        }
+
+        std::cout << "\n  Results:" << std::endl;
+        std::cout << "    Deployers funded:     " << fund_success.load() << "/" << kDeployerCount << std::endl;
+        std::cout << "    TokenA deployed:      " << token_a_ok.load() << "/" << kDeployerCount << std::endl;
+        std::cout << "    TokenB deployed:      " << token_b_ok.load() << "/" << kDeployerCount << std::endl;
+        std::cout << "    AMMPool deployed:     " << pool_ok.load() << "/" << kDeployerCount << std::endl;
+        std::cout << "    Full AMM sets:        " << full_amm_count << "/" << kDeployerCount << std::endl;
+        std::cout << "    Total contracts:      " << (token_a_ok.load() + token_b_ok.load() + pool_ok.load()) << std::endl;
+        std::cout << "    Deploy failures:      " << deploy_fail.load() << std::endl;
+        std::cout << "    Time elapsed:         " << deploy_elapsed << "s" << std::endl;
+        if (deploy_elapsed > 0) {
+            double deploy_tps = (double)(token_a_ok.load() + token_b_ok.load() + pool_ok.load()) / deploy_elapsed;
+            std::cout << "    Deploy throughput:    " << std::fixed << std::setprecision(1)
+                      << deploy_tps << " contracts/s" << std::endl;
+        }
+
+        std::cout << "\n  Pool distribution (AMM sets per pool):" << std::endl;
+        for (auto& [pool_idx, count] : pool_distribution) {
+            std::cout << "    pool " << pool_idx << ": " << count << " AMM sets" << std::endl;
+        }
+
+        // Save deployment results to file
+        std::string result_file = "amm_deploy_results.json";
+        {
+            json results;
+            results["deployer_count"] = kDeployerCount;
+            results["token_a_deployed"] = token_a_ok.load();
+            results["token_b_deployed"] = token_b_ok.load();
+            results["pool_deployed"] = pool_ok.load();
+            results["full_amm_sets"] = full_amm_count;
+            results["deploy_failures"] = deploy_fail.load();
+            results["elapsed_seconds"] = deploy_elapsed;
+
+            json deployer_list = json::array();
+            for (auto& d : deployers) {
+                if (d.token_a_deployed || d.token_b_deployed || d.pool_deployed) {
+                    json entry;
+                    entry["deployer"] = d.addr_hex;
+                    entry["token_a"] = d.token_a_addr;
+                    entry["token_b"] = d.token_b_addr;
+                    entry["pool"] = d.pool_addr;
+                    entry["complete"] = (d.token_a_deployed && d.token_b_deployed && d.pool_deployed);
+                    deployer_list.push_back(entry);
+                }
+            }
+            results["deployments"] = deployer_list;
+
+            std::ofstream out(result_file);
+            out << results.dump(2) << std::endl;
+        }
+        std::cout << "\n  Results saved to " << result_file << std::endl;
+
+        std::cout << "\n" << std::string(70, '=') << std::endl;
+        if (full_amm_count == kDeployerCount) {
+            std::cout << "  ALL " << kDeployerCount << " AMM SETS DEPLOYED SUCCESSFULLY" << std::endl;
+        } else {
+            std::cout << "  " << full_amm_count << "/" << kDeployerCount << " AMM sets deployed" << std::endl;
+        }
+        std::cout << std::string(70, '=') << std::endl;
+        std::cout << R"(
+  KEY DESIGN POINTS (from clipy/amm.py test_multi_shard_amm):
+  ────────────────────────────────────────────────────────────
+  1. EACH DEPLOYER = INDEPENDENT SHARD PLACEMENT
+     256 random deployers → contracts spread across all shards.
+     Different deployers → different CREATE2 addresses → different shards.
+
+  2. SAME DEPLOYER → SAME SHARD → ATOMIC SWAPS
+     TokenA, TokenB, AMMPool from ONE deployer land in the same pool.
+     swapAForB() calls transferFrom + transfer atomically.
+
+  3. PARALLEL THROUGHPUT
+     Pool_AB (deployer_1) and Pool_CD (deployer_2) are in different shards.
+     Their consensus rounds run independently → linear scaling.
+
+  4. 256 DEPLOYERS × 3 CONTRACTS = 768 DEPLOYMENTS
+     Tests the chain's ability to handle mass contract creation
+     across multiple shards concurrently.
+)" << std::endl;
+
+        return 0;
+    }
+
     return 0;
 }
