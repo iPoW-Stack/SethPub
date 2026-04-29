@@ -1122,8 +1122,7 @@ static void BatchQueryAccounts(const UWSRequest& req, UWSResponse& http_res) {
         // For prepayment addresses (40 bytes = contract + user), also try
         // looking up by the first 20 bytes (contract address) pool.
         if (addr_info == nullptr && addr.length() == common::kPreypamentAddressLength) {
-            // Try DB lookup again — prepayment accounts use the full 40-byte key
-            SETH_DEBUG("batch_query: prepayment addr not found: %s (len=%u)",
+            SETH_WARN("batch_query: prepayment addr not found: %s (len=%u)",
                 hex_addr.c_str(), (uint32_t)addr.length());
         }
 
@@ -1143,18 +1142,19 @@ static void BatchQueryAccounts(const UWSRequest& req, UWSResponse& http_res) {
     res_json["not_found"] = not_found_json;
     auto json_str = res_json.dump();
     http_res.set_content(json_str, "application/json");
-    SETH_DEBUG("batch_query_accounts: %u found, %u not_found",
-        (uint32_t)accounts_json.size(), (uint32_t)not_found_json.size());
+    SETH_WARN("batch_query_accounts: %u found, %u not_found, first_addr_len=%u",
+        (uint32_t)accounts_json.size(), (uint32_t)not_found_json.size(),
+        addrs_splits.Count() > 0 ? (uint32_t)std::string(addrs_splits[0]).size() : 0u);
     if (!not_found_json.empty()) {
         std::string nf_list;
-        for (uint32_t i = 0; i < not_found_json.size() && i < 20; ++i) {
+        for (uint32_t i = 0; i < not_found_json.size() && i < 5; ++i) {
             if (!nf_list.empty()) nf_list += ",";
             nf_list += not_found_json[i].get<std::string>();
         }
-        if (not_found_json.size() > 20) {
-            nf_list += ",... +" + std::to_string(not_found_json.size() - 20) + " more";
+        if (not_found_json.size() > 5) {
+            nf_list += ",... +" + std::to_string(not_found_json.size() - 5) + " more";
         }
-        SETH_DEBUG("batch_query not_found addrs: [%s]", nf_list.c_str());
+        SETH_WARN("batch_query not_found addrs: [%s]", nf_list.c_str());
     }
 }
 
