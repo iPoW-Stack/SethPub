@@ -1732,6 +1732,7 @@ contract AMMPool {
             auto r=t.deploySolidity(deployers[i].prikey_hex,pool_bytecode,0,kPf,0,{"address","address"},{deployers[i].token_a_addr,deployers[i].token_b_addr});
             if(r["status"]==0){deployers[i].pool_addr=r["id"];deployers[i].pool_deployed=true;++pool_ok;} else ++dfail;
         });
+        {std::vector<std::string> v; for(auto& d:deployers) if(d.pool_deployed) v.push_back(d.pool_addr); wait_addrs(v,"AMMPool");}
         auto delapsed = std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::steady_clock::now()-dstart).count();
 
