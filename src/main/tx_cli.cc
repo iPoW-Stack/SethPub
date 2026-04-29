@@ -1268,13 +1268,12 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    // ── Mode 5: AMM Contract Deployment + 10000 User Prefund ────────────
+    // ── Mode 5: AMM Contract Deployment + User Account Setup ────────────
     // Usage: txcli 5 <shard> <pool> <ip> <port> [user_count] [threads]
     //
     // 1. Create 10000 user accounts on chain + verify
     // 2. Deploy 256 AMM contract sets (TokenA + TokenB + AMMPool each)
-    // 3. Set prefund for all 10000 users on all 256 contract sets + verify
-    // 4. Save results �?ready for contract call stress testing
+    // 3. Save results — ready for contract call stress testing
     if (argv[1][0] == '5') {
         const uint32_t kUserCount = (argc >= 7) ? std::stoi(argv[6]) : 10000;
         const uint32_t kContractSets = 256;  // 256 AMM contract sets (TokenA+TokenB+AMMPool)
@@ -1297,10 +1296,9 @@ int main(int argc, char** argv) {
         }
 
         std::cout << "\n" << std::string(70, '=') << std::endl;
-        std::cout << "  AMM Contract Deployment + User Prefund Setup" << std::endl;
+        std::cout << "  AMM Contract Deployment + User Account Setup" << std::endl;
         std::cout << "  " << kUserCount << " users + " << kContractSets << " deployers" << std::endl;
         std::cout << "  " << kContractSets << " x 3 contracts = " << kContractSets * 3 << " deployments" << std::endl;
-        std::cout << "  ~" << kUserCount * 2 << " prefund operations (2 random contracts per user)" << std::endl;
         std::cout << std::string(70, '=') << std::endl;
         std::cout << "Shard: " << shardnum << std::endl;
         std::cout << "Node: " << global_chain_node_ip << std::endl;
@@ -1852,235 +1850,7 @@ contract AMMPool {
             return 1;
         }
 
-        // ── Phase 5: Random prefund — 2 contracts per user (~20000 ops) ──
-        std::cout << "\n" << std::string(70, '-') << std::endl;
-        std::cout << "  Phase 5: Random Prefund (2 contracts per user)" << std::endl;
-        std::cout << std::string(70, '-') << std::endl;
-        const uint64_t kUserPrefund = 490000000lu;
-        const uint32_t kPrefundPerUser = 2;  // each user gets prefund on 2 random contracts
-
-        // Build confirmed user list
-        std::vector<uint32_t> confirmed_users;
-        for (uint32_t i = 0; i < kUserCount; ++i)
-            if (users[i].confirmed) confirmed_users.push_back(i);
-
-        // For each confirmed user, randomly pick 2 contracts from all_contracts
-        // Store the assignment: user_prefund_map[user_idx] = {contract_addr_1, contract_addr_2}
-        struct UserPrefundAssignment {
-            uint32_t user_idx;
-            std::vector<std::string> contract_addrs;  // the contracts this user has prefund on
-        };
-        std::vector<UserPrefundAssignment> prefund_assignments;
-        prefund_assignments.reserve(confirmed_users.size());
-        uint64_t total_pf = 0;
-        for (uint32_t ui = 0; ui < confirmed_users.size(); ++ui) {
-            UserPrefundAssignment a;
-            a.user_idx = confirmed_users[ui];
-            // Pick kPrefundPerUser random contracts (without replacement if possible)
-            std::set<uint32_t> picked;
-            for (uint32_t p = 0; p < kPrefundPerUser && p < all_contracts.size(); ++p) {
-                uint32_t ci;
-                do { ci = common::Random::RandomUint32() % all_contracts.size(); }
-                while (picked.count(ci) && picked.size() < all_contracts.size());
-                picked.insert(ci);
-                a.contract_addrs.push_back(all_contracts[ci]);
-            }
-            total_pf += a.contract_addrs.size();
-            prefund_assignments.push_back(std::move(a));
-        }
-        std::cout << "  Users: " << confirmed_users.size()
-                  << ", contracts per user: " << kPrefundPerUser
-                  << ", total prefund ops: " << total_pf << std::endl;
-
-        std::atomic<uint64_t> pf_ok{0}, pf_fail{0};
-        auto pfstart = std::chrono::steady_clock::now();
-        uint32_t pf_threads = std::min(kDeployThreads, (uint32_t)prefund_assignments.size());
-        if (pf_threads == 0) pf_threads = 1;
-        uint32_t assigns_per_thread = prefund_assignments.size() / pf_threads;
-
-        auto prefund_fn = [&](uint32_t tid, uint32_t s, uint32_t e) {
-            SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
-            for (uint32_t ai = s; ai < e && !global_stop; ++ai) {
-                const auto& a = prefund_assignments[ai];
-                const auto& upk = users[a.user_idx].prikey_hex;
-                for (const auto& ca : a.contract_addrs) {
-                    auto r = tsdk.setGasPrefund(upk, ca, kUserPrefund);
-                    if (r["status"] == 0) ++pf_ok; else ++pf_fail;
-                    usleep(500);
-                }
-            }
-        };
-        {
-            std::vector<std::thread> pt;
-            for (uint32_t t = 0; t < pf_threads; ++t) {
-                uint32_t s = t * assigns_per_thread;
-                uint32_t e = (t == pf_threads-1) ? (uint32_t)prefund_assignments.size() : (s + assigns_per_thread);
-                pt.emplace_back(prefund_fn, t, s, e);
-            }
-            std::thread pfprog([&]() {
-                while (pf_ok.load()+pf_fail.load() < total_pf && !global_stop) {
-                    for (int i = 0; i < 30 && !global_stop; ++i) usleep(100000);
-                    if (global_stop) break;
-                    auto el = std::chrono::duration_cast<std::chrono::seconds>(
-                        std::chrono::steady_clock::now()-pfstart).count();
-                    std::cout << "  [" << el << "s] prefund: " << pf_ok.load() << " ok, "
-                              << pf_fail.load() << " fail / " << total_pf << std::endl;
-                }
-            });
-            for (auto& th : pt) th.join();
-            pfprog.join();
-        }
-        auto pfelapsed = std::chrono::duration_cast<std::chrono::seconds>(
-            std::chrono::steady_clock::now()-pfstart).count();
-        std::cout << "  Prefund done in " << pfelapsed << "s: "
-                  << pf_ok.load() << " ok, " << pf_fail.load() << " fail" << std::endl;
-
-        // ── Verify prefund balances (batch query) ─────────────────────────
-        // Query contract_addr+user_addr (prepayment account) via batch_query_accounts
-        // Prefund tx is kContractGasPrefund → needs from-side consensus + cross-shard
-        // kNormalTo to create the prepayment account. Allow up to 300s.
-        std::cout << "\n  Waiting 15s for prefund consensus (cross-shard)..." << std::endl;
-        for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
-
-        std::cout << "  Verifying prefund balances via batch query (up to 300s)..." << std::endl;
-        auto pfv_start = std::chrono::steady_clock::now();
-
-        // Build list of all prefund addresses to verify
-        struct PrefundVerifyItem {
-            uint32_t assign_idx;
-            uint32_t contract_idx;
-            std::string prefund_addr_hex;  // contract_addr + user_addr (hex concat)
-        };
-        std::vector<PrefundVerifyItem> pf_verify_list;
-        pf_verify_list.reserve(total_pf);
-        for (uint32_t ai = 0; ai < prefund_assignments.size(); ++ai) {
-            const auto& a = prefund_assignments[ai];
-            const auto& user_hex = users[a.user_idx].addr_hex;
-            for (uint32_t ci = 0; ci < a.contract_addrs.size(); ++ci) {
-                PrefundVerifyItem item;
-                item.assign_idx = ai;
-                item.contract_idx = ci;
-                item.prefund_addr_hex = a.contract_addrs[ci] + user_hex;
-                pf_verify_list.push_back(item);
-            }
-        }
-
-        std::vector<bool> pf_item_verified(pf_verify_list.size(), false);
-        uint32_t pf_verified = 0;
-        std::vector<uint32_t> pf_pending;
-        pf_pending.reserve(pf_verify_list.size());
-        for (uint32_t i = 0; i < pf_verify_list.size(); ++i) pf_pending.push_back(i);
-
-        // Print first few prefund addresses for debugging
-        std::cout << "  Sample prefund addresses:" << std::endl;
-        for (uint32_t i = 0; i < std::min((uint32_t)3, (uint32_t)pf_verify_list.size()); ++i) {
-            std::cout << "    [" << i << "] " << pf_verify_list[i].prefund_addr_hex
-                      << " (len=" << pf_verify_list[i].prefund_addr_hex.size() << ")" << std::endl;
-        }
-        std::cout << "  Query target: " << global_chain_node_ip << ":" << global_chain_node_http_port
-                  << " (batch_query_accounts)" << std::endl;
-
-        // Quick test: try querying the first prefund address individually to confirm connectivity
-        if (!pf_verify_list.empty()) {
-            std::cout << "  Quick test: single query for first prefund addr..." << std::endl;
-            auto test_res = sdk.batchQueryAccounts({pf_verify_list[0].prefund_addr_hex});
-            std::cout << "    result: status=" << test_res.value("status", -1)
-                      << ", accounts=" << (test_res.contains("accounts") ? test_res["accounts"].size() : 0)
-                      << ", not_found=" << (test_res.contains("not_found") ? test_res["not_found"].size() : 0);
-            if (test_res.contains("msg")) std::cout << ", msg=" << test_res["msg"];
-            std::cout << std::endl;
-        }
-
-        uint32_t pf_vround = 0;
-        while (!pf_pending.empty() && !global_stop) {
-            if (std::chrono::steady_clock::now() - pfv_start >= std::chrono::seconds(300)) {
-                std::cout << "  Prefund verify timeout. Verified " << pf_verified
-                          << "/" << pf_verify_list.size() << std::endl;
-                break;
-            }
-            ++pf_vround;
-            uint32_t round_ok = 0;
-            std::vector<uint32_t> next_pf_pending;
-            next_pf_pending.reserve(pf_pending.size());
-
-            // Small batch size for 80-char prepayment addresses to stay under
-            // uWebSockets default body size limit (~16KB)
-            const uint32_t kPfBatchSize = 50;
-            std::vector<std::string> ba;
-            std::vector<uint32_t> bi;
-            for (uint32_t p = 0; p < pf_pending.size() && !global_stop; ++p) {
-                ba.push_back(pf_verify_list[pf_pending[p]].prefund_addr_hex);
-                bi.push_back(pf_pending[p]);
-                if (ba.size() >= kPfBatchSize || p == pf_pending.size() - 1) {
-                    auto r = sdk.batchQueryAccounts(ba);
-                    if (r.contains("status") && r["status"] == 0 && r.contains("accounts")) {
-                        for (uint32_t k = 0; k < bi.size(); ++k) {
-                            if (r["accounts"].contains(ba[k])) {
-                                auto& acc = r["accounts"][ba[k]];
-                                uint64_t balance = 0;
-                                if (acc.contains("balance")) {
-                                    auto bs = acc["balance"].get<std::string>();
-                                    std::from_chars(bs.data(), bs.data() + bs.size(), balance);
-                                }
-                                if (balance >= kUserPrefund) {
-                                    pf_item_verified[bi[k]] = true;
-                                    ++pf_verified;
-                                    ++round_ok;
-                                } else {
-                                    // Found but balance too low — still pending
-                                    next_pf_pending.push_back(bi[k]);
-                                }
-                            } else {
-                                next_pf_pending.push_back(bi[k]);
-                            }
-                        }
-                    } else {
-                        // Batch query failed — print error on first failure
-                        if (pf_vround <= 2) {
-                            std::string msg = r.contains("msg") ? r["msg"].get<std::string>() : "unknown";
-                            std::cout << "  batch_query failed: " << msg << std::endl;
-                        }
-                        for (auto idx : bi) next_pf_pending.push_back(idx);
-                    }
-                    ba.clear();
-                    bi.clear();
-                }
-            }
-            pf_pending = std::move(next_pf_pending);
-            auto es = std::chrono::duration_cast<std::chrono::seconds>(
-                std::chrono::steady_clock::now() - pfv_start).count();
-            std::cout << "  [PF Round " << pf_vround << ", " << es << "s] +" << round_ok
-                      << ", " << pf_verified << "/" << pf_verify_list.size()
-                      << " verified, " << pf_pending.size() << " pending" << std::endl;
-            if (pf_pending.empty()) break;
-            // Longer waits: prefund needs cross-shard consensus
-            uint32_t wt = (round_ok > 0) ? 3000 : 8000;
-            if (pf_vround <= 2 && round_ok == 0) wt = 15000;
-            for (uint32_t w = 0; w < wt / 100 && !global_stop; ++w) usleep(100000);
-        }
-
-        // Remove unverified prefund entries from assignments
-        uint32_t pf_not_found = pf_verify_list.size() - pf_verified;
-        if (pf_not_found > 0) {
-            std::cout << "  WARNING: " << pf_not_found << " prefund entries not verified." << std::endl;
-            for (uint32_t i = 0; i < pf_verify_list.size(); ++i) {
-                if (!pf_item_verified[i]) {
-                    auto& a = prefund_assignments[pf_verify_list[i].assign_idx];
-                    auto ci = pf_verify_list[i].contract_idx;
-                    if (ci < a.contract_addrs.size()) {
-                        a.contract_addrs[ci] = "";
-                    }
-                }
-            }
-            for (auto& a : prefund_assignments) {
-                std::vector<std::string> valid;
-                for (auto& ca : a.contract_addrs) if (!ca.empty()) valid.push_back(ca);
-                a.contract_addrs = std::move(valid);
-            }
-        }
-        std::cout << "  Prefund verified: " << pf_verified << "/" << pf_verify_list.size() << std::endl;
-
-        // ── Phase 6: Summary + save ───────────────────────────────────────
+        // ── Phase 5: Summary + save ───────────────────────────────────────
         std::cout << "\n" << std::string(70, '=') << std::endl;
         std::cout << "  SETUP COMPLETE" << std::endl;
         std::cout << std::string(70, '=') << std::endl;
@@ -2088,34 +1858,25 @@ contract AMMPool {
         std::cout << "  Deployers: " << deployers_ok << "/" << kContractSets << std::endl;
         std::cout << "  Contracts: A=" << ta_ok.load() << " B=" << tb_ok.load()
                   << " Pool=" << pool_ok.load() << " (full: " << full_sets << ")" << std::endl;
-        std::cout << "  Prefund:   " << pf_ok.load() << " ok / " << total_pf
-                  << " (" << kPrefundPerUser << " contracts per user)"
-                  << ", verified: " << pf_verified << std::endl;
-        std::cout << "  Time:      deploy=" << delapsed << "s prefund=" << pfelapsed << "s" << std::endl;
+        std::cout << "  Time:      deploy=" << delapsed << "s" << std::endl;
 
-        // Save results to JSON — includes user->contract prefund assignments for testing
+        // Save results to JSON
         {
             json res;
             res["user_count"] = kUserCount;
             res["users_confirmed"] = users_ok;
             res["contract_sets"] = kContractSets;
             res["full_amm_sets"] = full_sets;
-            res["prefund_per_user"] = kPrefundPerUser;
-            res["prefund_ok"] = pf_ok.load();
-            res["prefund_fail"] = pf_fail.load();
-            res["prefund_verified"] = pf_verified;
-            res["prefund_not_verified"] = pf_not_found;
 
-            // Users with their prefund contract assignments
+            // Confirmed users
             json ul = json::array();
-            for (const auto& a : prefund_assignments) {
-                json u;
-                u["prikey"] = users[a.user_idx].prikey_hex;
-                u["addr"] = users[a.user_idx].addr_hex;
-                json contracts = json::array();
-                for (const auto& ca : a.contract_addrs) contracts.push_back(ca);
-                u["prefund_contracts"] = contracts;
-                ul.push_back(u);
+            for (uint32_t i = 0; i < kUserCount; ++i) {
+                if (users[i].confirmed) {
+                    json u;
+                    u["prikey"] = users[i].prikey_hex;
+                    u["addr"] = users[i].addr_hex;
+                    ul.push_back(u);
+                }
             }
             res["users"] = ul;
 
@@ -2137,7 +1898,6 @@ contract AMMPool {
             out << res.dump(2) << std::endl;
         }
         std::cout << "  Results saved to amm_test_setup.json" << std::endl;
-        std::cout << "  (each user entry includes prefund_contracts for stress testing)" << std::endl;
 
         transport::TcpTransport::Instance()->Stop();
         return 0;
