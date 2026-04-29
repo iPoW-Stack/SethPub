@@ -1358,7 +1358,7 @@ int main(int argc, char** argv) {
 pragma solidity ^0.8.0;
 
 contract SimpleToken {
-    string  public name;
+    bytes32 public name;
     uint256 public totalSupply;
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
@@ -1366,7 +1366,7 @@ contract SimpleToken {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
 
-    constructor(string memory _name, uint256 _initialSupply) {
+    constructor(bytes32 _name, uint256 _initialSupply) {
         name = _name;
         totalSupply = _initialSupply;
         balanceOf[msg.sender] = _initialSupply;
@@ -1713,7 +1713,7 @@ contract AMMPool {
 
         std::cout<<"  Step 1/3: Deploy TokenA..."<<std::endl;
         deploy_one_type("TokenA",[&](uint32_t i,SethSDK& t){
-            auto r=t.deploySolidity(deployers[i].prikey_hex,token_bytecode,0,kPf,0,{"string","uint256"},{mkname(i,"TkA_"),"10000000"});
+            auto r=t.deploySolidity(deployers[i].prikey_hex,token_bytecode,0,kPf,0,{"bytes32","uint256"},{mkname(i,"TkA_"),"10000000"});
             if(r["status"]==0){deployers[i].token_a_addr=r["id"];deployers[i].token_a_deployed=true;++ta_ok;} else ++dfail;
         });
         {std::vector<std::string> v; for(auto& d:deployers) if(d.token_a_deployed) v.push_back(d.token_a_addr); wait_addrs(v,"TokenA");}
@@ -1721,7 +1721,7 @@ contract AMMPool {
         std::cout<<"  Step 2/3: Deploy TokenB..."<<std::endl;
         deploy_one_type("TokenB",[&](uint32_t i,SethSDK& t){
             if(!deployers[i].token_a_deployed){++dfail;return;}
-            auto r=t.deploySolidity(deployers[i].prikey_hex,token_bytecode,0,kPf,0,{"string","uint256"},{mkname(i,"TkB_"),"10000000"});
+            auto r=t.deploySolidity(deployers[i].prikey_hex,token_bytecode,0,kPf,0,{"bytes32","uint256"},{mkname(i,"TkB_"),"10000000"});
             if(r["status"]==0){deployers[i].token_b_addr=r["id"];deployers[i].token_b_deployed=true;++tb_ok;} else ++dfail;
         });
         {std::vector<std::string> v; for(auto& d:deployers) if(d.token_b_deployed) v.push_back(d.token_b_addr); wait_addrs(v,"TokenB");}
