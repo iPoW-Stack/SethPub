@@ -1853,6 +1853,10 @@ contract AMMPool {
             return 1;
         }
 
+        // Mutex for TcpTransport::Send — the underlying ReaderWriterQueue is
+        // single-producer, so concurrent Send() from many threads will crash.
+        std::mutex tcp_send_mtx;
+
         // ── Phase 5: Deployer adds liquidity to pools ──────────────────────
         // Each deployer: prefund on TokenA, TokenB, Pool → approve → addLiquidity
         std::cout << "\n" << std::string(70, '-') << std::endl;
@@ -2065,8 +2069,11 @@ contract AMMPool {
                                 common::Encode::HexEncode(prikey_raw),
                                 common::Encode::HexDecode(ca),
                                 "prefund", "", 0, 210000, 1, shardnum);
-                            if (tx && transport::TcpTransport::Instance()->Send(global_chain_node_ip,
-                                    global_chain_node_http_port - 10000, tx->header) == 0) ++pf_ok;
+                            bool sent = false;
+                            if (tx) { std::lock_guard<std::mutex> lk(tcp_send_mtx);
+                                sent = transport::TcpTransport::Instance()->Send(global_chain_node_ip,
+                                    global_chain_node_http_port - 10000, tx->header) == 0; }
+                            if (sent) ++pf_ok;
                             else ++pf_fail;
                             usleep(200);
                         }
@@ -2201,8 +2208,11 @@ contract AMMPool {
                                 common::Encode::HexEncode(prikey_raw),
                                 common::Encode::HexDecode(grp.contract_addr),
                                 "call", input, 0, 5000000, 1, shardnum);
-                            if (tx && transport::TcpTransport::Instance()->Send(global_chain_node_ip,
-                                    global_chain_node_http_port - 10000, tx->header) == 0) ++ok_cnt;
+                            bool sent = false;
+                            if (tx) { std::lock_guard<std::mutex> lk(tcp_send_mtx);
+                                sent = transport::TcpTransport::Instance()->Send(global_chain_node_ip,
+                                    global_chain_node_http_port - 10000, tx->header) == 0; }
+                            if (sent) ++ok_cnt;
                             else ++fail_cnt;
                             usleep(200);
                         }
@@ -2335,9 +2345,12 @@ contract AMMPool {
                             auto tx1 = CreateTransactionWithAttr(sec_a, ++nonce_a,
                                 common::Encode::HexEncode(pka_raw), pool_raw,
                                 "call", input_a, 0, 5000000, 1, shardnum);
-                            if (tx1 && transport::TcpTransport::Instance()->Send(global_chain_node_ip,
-                                    global_chain_node_http_port - 10000, tx1->header) == 0) ++swap_ok;
-                            else ++swap_fail;
+                            { bool sent = false;
+                            if (tx1) { std::lock_guard<std::mutex> lk(tcp_send_mtx);
+                                sent = transport::TcpTransport::Instance()->Send(global_chain_node_ip,
+                                    global_chain_node_http_port - 10000, tx1->header) == 0; }
+                            if (sent) ++swap_ok;
+                            else ++swap_fail; }
 
                             usleep(200);
 
@@ -2352,9 +2365,12 @@ contract AMMPool {
                             auto tx2 = CreateTransactionWithAttr(sec_b, ++nonce_b,
                                 common::Encode::HexEncode(pkb_raw), pool_raw,
                                 "call", input_b, 0, 5000000, 1, shardnum);
-                            if (tx2 && transport::TcpTransport::Instance()->Send(global_chain_node_ip,
-                                    global_chain_node_http_port - 10000, tx2->header) == 0) ++swap_ok;
-                            else ++swap_fail;
+                            { bool sent = false;
+                            if (tx2) { std::lock_guard<std::mutex> lk(tcp_send_mtx);
+                                sent = transport::TcpTransport::Instance()->Send(global_chain_node_ip,
+                                    global_chain_node_http_port - 10000, tx2->header) == 0; }
+                            if (sent) ++swap_ok;
+                            else ++swap_fail; }
 
                             usleep(200);
                         }
