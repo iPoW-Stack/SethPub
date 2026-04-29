@@ -407,13 +407,15 @@ private:
                 std::stringstream ss(arg);
                 std::string item, base = type.substr(0, type.length() - 2);
                 while (std::getline(ss, item, '-')) {
-                    if (base.find("bytes") == 0 || base == "address") encoded += encodeBytes(item);
+                    if (base == "address") encoded += padTo32Bytes(item, true);
+                    else if (base.find("bytes") == 0) encoded += encodeBytes(item);
                     else if (base.find("string") == 0) encoded += encodeBytes(utils::bytesToHex(std::vector<uint8_t>(item.begin(), item.end())));
                     else if (base.find("bool") == 0) encoded += encodeBool(item);
                     else encoded += encodeInt(item);
                 }
             } else {
-                if (type.find("bytes") == 0 || type == "address") encoded += encodeBytes(arg);
+                if (type == "address") encoded += padTo32Bytes(arg, true);
+                else if (type.find("bytes") == 0) encoded += encodeBytes(arg);
                 else if (type == "string") encoded += encodeBytes(utils::bytesToHex(std::vector<uint8_t>(arg.begin(), arg.end())));
                 else if (type == "bool") encoded += encodeBool(arg);
                 else encoded += encodeInt(arg);
