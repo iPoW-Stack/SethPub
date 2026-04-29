@@ -2011,8 +2011,8 @@ contract AMMPool {
         }
 
         const uint32_t kPoolsPerPair = 3;  // each user pair trades on up to 3 pools
-        const uint64_t kSwapAmount = 1000lu;  // tokens per swap
-        const uint64_t kTokenTransfer = 50000lu;  // tokens transferred to each user
+        const uint64_t kSwapAmount = 100lu;  // tokens per swap
+        const uint64_t kTokenTransfer = 5000lu;  // tokens transferred to each user
         const uint64_t kUserPrefund = 500000000lu;
 
         // Pair users: (confirmed_users[0], confirmed_users[1]), (confirmed_users[2], confirmed_users[3]), ...
