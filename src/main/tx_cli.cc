@@ -2110,78 +2110,43 @@ contract AMMPool {
 
         // Group prefund ops by sender (user prikey) for nonce management
         // Each user may have multiple contracts to prefund on
-        struct UserPrefundGroup {
+        struct PrefundOp {
             std::string prikey_hex;
-            std::vector<std::string> contract_addrs;
+            std::string contract_addr;
         };
-        std::unordered_map<std::string, uint32_t> prikey_to_group;
-        std::vector<UserPrefundGroup> pf_groups;
-        uint64_t total_pf_ops = 0;
+        std::vector<PrefundOp> pf_ops;
 
         for (const auto& tp : trade_pairs) {
-            // Collect contracts for UserA
             for (uint32_t pi : tp.pool_indices) {
                 const auto& pool = pools[pi];
-                auto& ua_key = users[tp.user_a_idx].prikey_hex;
-                auto& ub_key = users[tp.user_b_idx].prikey_hex;
-                // UserA
-                auto it_a = prikey_to_group.find(ua_key);
-                if (it_a == prikey_to_group.end()) {
-                    prikey_to_group[ua_key] = pf_groups.size();
-                    pf_groups.push_back({ua_key, {}});
-                    it_a = prikey_to_group.find(ua_key);
-                }
-                pf_groups[it_a->second].contract_addrs.push_back(pool.token_a);
-                pf_groups[it_a->second].contract_addrs.push_back(pool.token_b);
-                pf_groups[it_a->second].contract_addrs.push_back(pool.pool);
-                total_pf_ops += 3;
-                // UserB
-                auto it_b = prikey_to_group.find(ub_key);
-                if (it_b == prikey_to_group.end()) {
-                    prikey_to_group[ub_key] = pf_groups.size();
-                    pf_groups.push_back({ub_key, {}});
-                    it_b = prikey_to_group.find(ub_key);
-                }
-                pf_groups[it_b->second].contract_addrs.push_back(pool.token_a);
-                pf_groups[it_b->second].contract_addrs.push_back(pool.token_b);
-                pf_groups[it_b->second].contract_addrs.push_back(pool.pool);
-                total_pf_ops += 3;
+                // UserA needs prefund on TokenA, TokenB, Pool
+                pf_ops.push_back({users[tp.user_a_idx].prikey_hex, pool.token_a});
+                pf_ops.push_back({users[tp.user_a_idx].prikey_hex, pool.token_b});
+                pf_ops.push_back({users[tp.user_a_idx].prikey_hex, pool.pool});
+                // UserB needs prefund on TokenA, TokenB, Pool
+                pf_ops.push_back({users[tp.user_b_idx].prikey_hex, pool.token_a});
+                pf_ops.push_back({users[tp.user_b_idx].prikey_hex, pool.token_b});
+                pf_ops.push_back({users[tp.user_b_idx].prikey_hex, pool.pool});
             }
         }
-        std::cout << "  Total prefund ops: " << total_pf_ops
-                  << ", unique senders: " << pf_groups.size() << std::endl;
+        uint64_t total_pf_ops = pf_ops.size();
+        std::cout << "  Total prefund ops: " << total_pf_ops << std::endl;
 
         std::atomic<uint64_t> pf_ok{0}, pf_fail{0};
         auto pfstart = std::chrono::steady_clock::now();
         {
-            // Use more threads — each thread handles a range of sender groups
-            uint32_t pf_threads = std::min((uint32_t)common::kMaxThreadCount, (uint32_t)pf_groups.size());
+            uint32_t pf_threads = std::min((uint32_t)common::kMaxThreadCount, (uint32_t)pf_ops.size());
             if (pf_threads == 0) pf_threads = 1;
-            uint32_t groups_per_thread = pf_groups.size() / pf_threads;
+            uint32_t ops_per_thread = pf_ops.size() / pf_threads;
             std::vector<std::thread> pt;
             for (uint32_t t = 0; t < pf_threads; ++t) {
-                uint32_t s = t * groups_per_thread;
-                uint32_t e = (t == pf_threads-1) ? (uint32_t)pf_groups.size() : (s + groups_per_thread);
+                uint32_t s = t * ops_per_thread;
+                uint32_t e = (t == pf_threads-1) ? (uint32_t)pf_ops.size() : (s + ops_per_thread);
                 pt.emplace_back([&,s,e](){
                     SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
-                    for (uint32_t gi = s; gi < e && !global_stop; ++gi) {
-                        auto& grp = pf_groups[gi];
-                        std::string prikey_raw = common::Encode::HexDecode(grp.prikey_hex);
-                        std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
-                        sec->SetPrivateKey(prikey_raw);
-                        std::string addr_hex = common::Encode::HexEncode(sec->GetAddress());
-                        int64_t nonce = tsdk.fetchNonce(addr_hex);
-                        if (nonce < 0) { pf_fail += grp.contract_addrs.size(); continue; }
-                        for (const auto& ca : grp.contract_addrs) {
-                            if (global_stop) break;
-                            auto tx = CreateTransactionWithAttr(sec, ++nonce,
-                                common::Encode::HexEncode(prikey_raw),
-                                common::Encode::HexDecode(ca),
-                                "prefund", "", 0, 210000, 1, shardnum);
-                            if (tcp_enqueue(tx)) ++pf_ok;
-                            else ++pf_fail;
-                            usleep(200);
-                        }
+                    for (uint32_t i = s; i < e && !global_stop; ++i) {
+                        auto r = tsdk.setGasPrefund(pf_ops[i].prikey_hex, pf_ops[i].contract_addr, kUserPrefund);
+                        if (r["status"] == 0) ++pf_ok; else ++pf_fail;
                     }
                 });
             }
