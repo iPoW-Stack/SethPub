@@ -2243,6 +2243,11 @@ contract AMMPool {
                         // Nonce from prepayment account: contract_addr + caller_addr
                         std::string prepay_addr = grp.contract_addr + grp.caller_addr;
                         int64_t nonce = tsdk.fetchNonce(prepay_addr);
+                        if (gi < s + 3) {
+                            std::cout << "  [" << label << " grp " << gi << "] prepay=" << prepay_addr
+                                      << " (len=" << prepay_addr.size() << ") nonce=" << nonce
+                                      << " ops=" << grp.inputs.size() << std::endl;
+                        }
                         if (nonce < 0) { fail_cnt += grp.inputs.size(); continue; }
                         for (const auto& input : grp.inputs) {
                             if (global_stop) break;
@@ -2375,6 +2380,11 @@ contract AMMPool {
                             // Nonce for UserA on this pool: pool_addr + userA_addr
                             std::string prepay_a = pool.pool + addr_a;
                             int64_t nonce_a = tsdk.fetchNonce(prepay_a);
+                            if (pi_idx < s + 2) {
+                                std::cout << "  [swap pair " << pi_idx << " pool " << pool_idx
+                                          << "] prepay_a=" << prepay_a << " (len=" << prepay_a.size()
+                                          << ") nonce_a=" << nonce_a << std::endl;
+                            }
                             if (nonce_a < 0) { swap_fail += 2; continue; }
 
                             // Step 1: UserA swaps A→B
