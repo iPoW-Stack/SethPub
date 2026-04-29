@@ -1861,6 +1861,19 @@ contract AMMPool {
             std::cout << "    [" << i << "] " << pf_verify_list[i].prefund_addr_hex
                       << " (len=" << pf_verify_list[i].prefund_addr_hex.size() << ")" << std::endl;
         }
+        std::cout << "  Query target: " << global_chain_node_ip << ":" << global_chain_node_http_port
+                  << " (batch_query_accounts)" << std::endl;
+
+        // Quick test: try querying the first prefund address individually to confirm connectivity
+        if (!pf_verify_list.empty()) {
+            std::cout << "  Quick test: single query for first prefund addr..." << std::endl;
+            auto test_res = sdk.batchQueryAccounts({pf_verify_list[0].prefund_addr_hex});
+            std::cout << "    result: status=" << test_res.value("status", -1)
+                      << ", accounts=" << (test_res.contains("accounts") ? test_res["accounts"].size() : 0)
+                      << ", not_found=" << (test_res.contains("not_found") ? test_res["not_found"].size() : 0);
+            if (test_res.contains("msg")) std::cout << ", msg=" << test_res["msg"];
+            std::cout << std::endl;
+        }
 
         uint32_t pf_vround = 0;
         while (!pf_pending.empty() && !global_stop) {
