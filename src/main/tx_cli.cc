@@ -1853,9 +1853,55 @@ contract AMMPool {
             return 1;
         }
 
-        // Mutex for TcpTransport::Send — the underlying ReaderWriterQueue is
-        // single-producer, so concurrent Send() from many threads will crash.
+        // Dedicated TCP sender thread — TcpTransport::Send uses per-thread
+        // ReaderWriterQueues (single-producer). Worker threads push to a
+        // thread-safe queue; one sender thread drains it via Send().
+        struct TcpSendItem {
+            transport::MessagePtr msg;
+        };
+        std::queue<TcpSendItem> tcp_send_queue;
         std::mutex tcp_send_mtx;
+        std::condition_variable tcp_send_cv;
+        std::atomic<bool> tcp_sender_stop{false};
+        std::atomic<uint64_t> tcp_sent_count{0};
+
+        std::thread tcp_sender_thread([&]() {
+            while (!tcp_sender_stop.load()) {
+                std::unique_lock<std::mutex> lk(tcp_send_mtx);
+                tcp_send_cv.wait_for(lk, std::chrono::milliseconds(5),
+                    [&]{ return !tcp_send_queue.empty() || tcp_sender_stop.load(); });
+                // Drain batch
+                while (!tcp_send_queue.empty()) {
+                    auto item = std::move(tcp_send_queue.front());
+                    tcp_send_queue.pop();
+                    lk.unlock();
+                    transport::TcpTransport::Instance()->Send(global_chain_node_ip,
+                        global_chain_node_http_port - 10000, item.msg->header);
+                    ++tcp_sent_count;
+                    lk.lock();
+                }
+            }
+            // Final drain
+            std::lock_guard<std::mutex> lk(tcp_send_mtx);
+            while (!tcp_send_queue.empty()) {
+                auto item = std::move(tcp_send_queue.front());
+                tcp_send_queue.pop();
+                transport::TcpTransport::Instance()->Send(global_chain_node_ip,
+                    global_chain_node_http_port - 10000, item.msg->header);
+                ++tcp_sent_count;
+            }
+        });
+
+        // Helper: enqueue a message for the sender thread
+        auto tcp_enqueue = [&](transport::MessagePtr msg) -> bool {
+            if (!msg) return false;
+            {
+                std::lock_guard<std::mutex> lk(tcp_send_mtx);
+                tcp_send_queue.push({std::move(msg)});
+            }
+            tcp_send_cv.notify_one();
+            return true;
+        };
 
         // ── Phase 5: Deployer adds liquidity to pools ──────────────────────
         // Each deployer: prefund on TokenA, TokenB, Pool → approve → addLiquidity
@@ -2069,11 +2115,7 @@ contract AMMPool {
                                 common::Encode::HexEncode(prikey_raw),
                                 common::Encode::HexDecode(ca),
                                 "prefund", "", 0, 210000, 1, shardnum);
-                            bool sent = false;
-                            if (tx) { std::lock_guard<std::mutex> lk(tcp_send_mtx);
-                                sent = transport::TcpTransport::Instance()->Send(global_chain_node_ip,
-                                    global_chain_node_http_port - 10000, tx->header) == 0; }
-                            if (sent) ++pf_ok;
+                            if (tcp_enqueue(tx)) ++pf_ok;
                             else ++pf_fail;
                             usleep(200);
                         }
@@ -2208,11 +2250,7 @@ contract AMMPool {
                                 common::Encode::HexEncode(prikey_raw),
                                 common::Encode::HexDecode(grp.contract_addr),
                                 "call", input, 0, 5000000, 1, shardnum);
-                            bool sent = false;
-                            if (tx) { std::lock_guard<std::mutex> lk(tcp_send_mtx);
-                                sent = transport::TcpTransport::Instance()->Send(global_chain_node_ip,
-                                    global_chain_node_http_port - 10000, tx->header) == 0; }
-                            if (sent) ++ok_cnt;
+                            if (tcp_enqueue(tx)) ++ok_cnt;
                             else ++fail_cnt;
                             usleep(200);
                         }
@@ -2345,12 +2383,8 @@ contract AMMPool {
                             auto tx1 = CreateTransactionWithAttr(sec_a, ++nonce_a,
                                 common::Encode::HexEncode(pka_raw), pool_raw,
                                 "call", input_a, 0, 5000000, 1, shardnum);
-                            { bool sent = false;
-                            if (tx1) { std::lock_guard<std::mutex> lk(tcp_send_mtx);
-                                sent = transport::TcpTransport::Instance()->Send(global_chain_node_ip,
-                                    global_chain_node_http_port - 10000, tx1->header) == 0; }
-                            if (sent) ++swap_ok;
-                            else ++swap_fail; }
+                            if (tcp_enqueue(tx1)) ++swap_ok;
+                            else ++swap_fail;
 
                             usleep(200);
 
@@ -2365,12 +2399,8 @@ contract AMMPool {
                             auto tx2 = CreateTransactionWithAttr(sec_b, ++nonce_b,
                                 common::Encode::HexEncode(pkb_raw), pool_raw,
                                 "call", input_b, 0, 5000000, 1, shardnum);
-                            { bool sent = false;
-                            if (tx2) { std::lock_guard<std::mutex> lk(tcp_send_mtx);
-                                sent = transport::TcpTransport::Instance()->Send(global_chain_node_ip,
-                                    global_chain_node_http_port - 10000, tx2->header) == 0; }
-                            if (sent) ++swap_ok;
-                            else ++swap_fail; }
+                            if (tcp_enqueue(tx2)) ++swap_ok;
+                            else ++swap_fail;
 
                             usleep(200);
                         }
@@ -2485,6 +2515,11 @@ contract AMMPool {
             out << res.dump(2) << std::endl;
         }
         std::cout << "  Results saved to amm_test_setup.json" << std::endl;
+
+        // Stop the dedicated TCP sender thread
+        tcp_sender_stop.store(true);
+        tcp_send_cv.notify_one();
+        tcp_sender_thread.join();
 
         transport::TcpTransport::Instance()->Stop();
         return 0;
