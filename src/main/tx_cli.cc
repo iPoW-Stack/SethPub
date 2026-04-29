@@ -131,10 +131,10 @@ static transport::MessagePtr CreateTransactionWithAttr(
         if (key == "create_contract") {
             new_tx->set_step(pools::protobuf::kCreateContract);
             new_tx->set_contract_code(val);
-            new_tx->set_contract_prefund(9000000000lu);
+            new_tx->set_contract_prefund(490000000lu);
         } else if (key == "prefund") {
             new_tx->set_step(pools::protobuf::kContractGasPrefund);
-            new_tx->set_contract_prefund(9000000000lu);
+            new_tx->set_contract_prefund(490000000lu);
         } else if (key == "call") {
             new_tx->set_step(pools::protobuf::kContractExcute);
             new_tx->set_contract_input(val);
@@ -588,7 +588,7 @@ int InitPrefund(const std::string& contract_address) {
     SethSDK client(kBroadcastIp);
     for (auto iter = g_prikeys.begin(); iter != g_prikeys.end(); ++iter) {
         auto prikey = common::Encode::HexEncode(*iter);
-        auto res_json = client.setGasPrefund(prikey, contract_address, 9000000000lu);
+        auto res_json = client.setGasPrefund(prikey, contract_address, 490000000lu);
         if (res_json["status"] != 0) {
             std::cout << "set prefund failed: " << contract_address << ", " << prikey << ", " << res_json.dump() << std::endl;
             return -1;
@@ -1668,7 +1668,7 @@ contract AMMPool {
             for (uint32_t i = s; i < e && !global_stop; ++i) {
                 if (!deployers[i].confirmed) { dfail += 3; continue; }
                 const auto& pk = deployers[i].prikey_hex;
-                const uint64_t kPf = 9000000000lu;
+                const uint64_t kPf = 490000000lu;
                 auto mkname = [&](const char* prefix) {
                     std::string h = utils::bytesToHex(std::vector<uint8_t>(prefix, prefix + strlen(prefix)));
                     auto is = std::to_string(i);
@@ -1820,7 +1820,7 @@ contract AMMPool {
         std::cout << "\n" << std::string(70, '-') << std::endl;
         std::cout << "  Phase 5: Random Prefund (2 contracts per user)" << std::endl;
         std::cout << std::string(70, '-') << std::endl;
-        const uint64_t kUserPrefund = 9000000000lu;
+        const uint64_t kUserPrefund = 490000000lu;
         const uint32_t kPrefundPerUser = 2;  // each user gets prefund on 2 random contracts
 
         // Build confirmed user list
