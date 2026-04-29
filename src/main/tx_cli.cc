@@ -1268,329 +1268,26 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    // Common setup for modes 1/2/3
-    if (argc >= 4) {
-        shardnum = std::stoi(argv[2]);
-        global_pool_idx = std::stoi(argv[3]);
-    }
-    if (argc >= 6) {
-        global_chain_node_ip = argv[4];
-        global_chain_node_http_port = std::stoi(argv[5]) + 10000;
-    }
-
-    LoadAllAccounts(shardnum);
-    WriteDefaultLogConf();
-
-    // Use the first account as the deployer/tester
-    std::string deployer_prikey = common::Encode::HexEncode(g_prikeys[0]);
-    SethSDK sdk(global_chain_node_ip, global_chain_node_http_port);
-
-    // ── Mode 1: Deploy ex.sol ─────────────────────────────────────────────
-    // Usage: txcli 1 <shard> <pool> <ip> <port>
-    if (argv[1][0] == '1') {
-        std::cout << "[Deploy] Compiling ex.sol..." << std::endl;
-        std::ifstream sol_file("../python/ex.sol");
-        if (!sol_file.is_open()) {
-            std::cerr << "Cannot open ex.sol" << std::endl;
-            return 1;
-        }
-        std::string source((std::istreambuf_iterator<char>(sol_file)),
-                            std::istreambuf_iterator<char>());
-        auto compile_res = sdk.compileSolidity(source);
-        if (compile_res["status"] != 0) {
-            std::cerr << "Compile failed: " << compile_res["msg"] << std::endl;
-            return 1;
-        }
-        std::string bytecode = compile_res["bytecode"];
-        std::cout << "[Deploy] Bytecode length: " << bytecode.size() << std::endl;
-
-        auto deploy_res = sdk.deploySolidity(deployer_prikey, bytecode, 0, 9000000000lu, 0, {}, {});
-        if (deploy_res["status"] != 0) {
-            std::cerr << "Deploy failed: " << deploy_res["msg"] << std::endl;
-            return 1;
-        }
-        std::string contract_addr = deploy_res["id"];
-        std::cout << "[Deploy] Contract address: " << contract_addr << std::endl;
-        // Persist address for subsequent modes
-        std::ofstream addr_file("ex_contract_addr.txt");
-        addr_file << contract_addr << std::endl;
-        std::cout << "[Deploy] Address saved to ex_contract_addr.txt" << std::endl;
-        return 0;
-    }
-
-    // Load contract address for modes 2/3
-    std::string contract_addr;
-    {
-        std::ifstream addr_file("ex_contract_addr.txt");
-        if (!addr_file.is_open()) {
-            std::cerr << "ex_contract_addr.txt not found. Run mode 1 first." << std::endl;
-            return 1;
-        }
-        std::getline(addr_file, contract_addr);
-    }
-    std::cout << "[Info] Using contract: " << contract_addr << std::endl;
-
-    // ── Mode 2: Functional test of ex.sol ─────────────────────────────────
-    // Usage: txcli 2 <shard> <pool> <ip> <port>
-    if (argv[1][0] == '2') {
-        std::cout << "\n=== ex.sol Functional Test ===" << std::endl;
-
-        // 1. CreateNewItem
-        std::string hash_hex = utils::keccak256Str(deployer_prikey + "item0");
-        std::string info_hex = utils::bytesToHex(std::vector<uint8_t>{'t','e','s','t',' ','i','t','e','m'});
-        uint64_t price = 1000;
-        uint64_t start_ms = 0;
-        uint64_t end_ms = 9999999999ULL;
-
-        std::cout << "[1] CreateNewItem hash=" << hash_hex << std::endl;
-        auto r = sdk.callFunctionSolidity(deployer_prikey, contract_addr, price,
-            "CreateNewItem",
-            {"bytes32","bytes","uint256","uint256","uint256"},
-            {hash_hex, info_hex,
-             std::to_string(price),
-             std::to_string(start_ms),
-             std::to_string(end_ms)});
-        std::cout << "    result: " << r.dump() << std::endl;
-        usleep(3000000);
-
-        // 2. Query TotalItems
-        auto q = sdk.queryFunctionSolidity(deployer_prikey, contract_addr,
-            "TotalItems", {}, {}, {"uint256"});
-        std::cout << "[2] TotalItems: " << q.dump() << std::endl;
-
-        // 3. ItemExists
-        q = sdk.queryFunctionSolidity(deployer_prikey, contract_addr,
-            "ItemExists", {"bytes32"}, {hash_hex}, {"bool"});
-        std::cout << "[3] ItemExists: " << q.dump() << std::endl;
-
-        // 4. PurchaseItem (use second account as buyer)
-        if (g_prikeys.size() >= 2) {
-            std::string buyer_prikey = common::Encode::HexEncode(g_prikeys[1]);
-            std::cout << "[4] PurchaseItem (buyer=" << buyer_prikey.substr(0,8) << "...)" << std::endl;
-            r = sdk.callFunctionSolidity(buyer_prikey, contract_addr, price + 100,
-                "PurchaseItem",
-                {"bytes32","uint256"},
-                {hash_hex, std::to_string(start_ms + 1)});
-            std::cout << "    result: " << r.dump() << std::endl;
-            usleep(3000000);
-
-            // 5. HasPurchased
-            std::shared_ptr<security::Security> buyer_sec = std::make_shared<security::Ecdsa>();
-            buyer_sec->SetPrivateKey(g_prikeys[1]);
-            std::string buyer_addr = "0x" + common::Encode::HexEncode(buyer_sec->GetAddress());
-            q = sdk.queryFunctionSolidity(deployer_prikey, contract_addr,
-                "HasPurchased", {"bytes32","address"}, {hash_hex, buyer_addr}, {"bool"});
-            std::cout << "[5] HasPurchased: " << q.dump() << std::endl;
-
-            // 6. BuyerCount
-            q = sdk.queryFunctionSolidity(deployer_prikey, contract_addr,
-                "BuyerCount", {"bytes32"}, {hash_hex}, {"uint256"});
-            std::cout << "[6] BuyerCount: " << q.dump() << std::endl;
-        }
-
-        // 7. ConfirmPurchase
-        std::cout << "[7] ConfirmPurchase" << std::endl;
-        r = sdk.callFunctionSolidity(deployer_prikey, contract_addr, 0,
-            "ConfirmPurchase", {"bytes32"}, {hash_hex});
-        std::cout << "    result: " << r.dump() << std::endl;
-        usleep(3000000);
-
-        // 8. SellStatus
-        q = sdk.queryFunctionSolidity(deployer_prikey, contract_addr,
-            "SellStatus", {"bytes32"}, {hash_hex}, {"uint256"});
-        std::cout << "[8] SellStatus: " << q.dump() << std::endl;
-
-        // 9. SellResult
-        q = sdk.queryFunctionSolidity(deployer_prikey, contract_addr,
-            "SellResult", {"bytes32"}, {hash_hex}, {"address","uint256"});
-        std::cout << "[9] SellResult: " << q.dump() << std::endl;
-
-        // 10. GetItem
-        q = sdk.queryFunctionSolidity(deployer_prikey, contract_addr,
-            "GetItem", {"bytes32"}, {hash_hex},
-            {"address","uint256","uint256","uint256","uint256","uint256","address"});
-        std::cout << "[10] GetItem: " << q.dump() << std::endl;
-
-        std::cout << "\n=== Functional Test Done ===" << std::endl;
-        return 0;
-    }
-
-    // ── Mode 3: Contract call stress test (PurchaseItem via TCP, fire-and-forget) ──
-    // Usage: txcli 3 <shard> <pool> <ip> <port> [threads] [items_per_thread]
-    if (argv[1][0] == '3') {
-        uint32_t num_threads = (argc >= 7) ? std::stoi(argv[6]) : 4;
-        uint32_t items_per_thread = (argc >= 8) ? std::stoi(argv[7]) : 100;
-        std::string tcp_ip = (argc >= 5) ? argv[4] : kBroadcastIp;
-        uint16_t tcp_port = (argc >= 6) ? std::stoi(argv[5]) : kBroadcastPort;
-
-        std::cout << "[Stress] threads=" << num_threads
-                  << " items_per_thread=" << items_per_thread
-                  << " tcp=" << tcp_ip << ":" << tcp_port << std::endl;
-
-        // TCP transport setup (same as tx_main)
-        SignalRegister();
-        transport::MultiThreadHandler net_handler;
-        std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
-        auto db_ptr = std::make_shared<db::Db>();
-        if (!db_ptr->Init(db_path + "_stress")) {
-            std::cerr << "init db failed" << std::endl; return 1;
-        }
-        if (net_handler.Init(db_ptr, sec) != 0) {
-            std::cerr << "init net handler failed" << std::endl; return 1;
-        }
-        if (transport::TcpTransport::Instance()->Init("127.0.0.1:13792", 128, false, &net_handler) != 0) {
-            std::cerr << "init tcp failed" << std::endl; return 1;
-        }
-        if (transport::TcpTransport::Instance()->Start(false) != 0) {
-            std::cerr << "start tcp failed" << std::endl; return 1;
-        }
-
-        // Pre-create items so threads can call PurchaseItem on them
-        std::cout << "[Stress] Creating " << num_threads * items_per_thread << " items via HTTP..." << std::endl;
-        std::vector<std::string> item_hashes;
-        for (uint32_t t = 0; t < num_threads; ++t) {
-            for (uint32_t i = 0; i < items_per_thread; ++i) {
-                std::string h = utils::keccak256Str(deployer_prikey + std::to_string(t) + "_" + std::to_string(i));
-                item_hashes.push_back(h);
-                sdk.callFunctionSolidity(deployer_prikey, contract_addr, 100,
-                    "CreateNewItem",
-                    {"bytes32","bytes","uint256","uint256","uint256"},
-                    {h, "74657374", "100", "0", "9999999999"});
-                usleep(50000);
-            }
-        }
-        std::cout << "[Stress] Items created. Waiting 5s for consensus..." << std::endl;
-        usleep(5000000);
-
-        // Initialize global leader routing for nonce updates
-        SethSDK sdk_init(global_chain_node_ip, global_chain_node_http_port);
-        std::unordered_map<uint32_t, SethSDK::LeaderInfo> init_leaders;
-        uint32_t init_count = 0;
-        if (sdk_init.fetchLeaders(init_leaders, init_count) && !init_leaders.empty()) {
-            std::lock_guard<std::mutex> lock(g_leader_mutex);
-            g_leader_map = init_leaders;
-            g_has_leader_routing = true;
-            std::cout << "[Stress] Leader routing enabled: " << init_count << " leaders" << std::endl;
-        }
-
-        // Fetch nonces for all accounts
-        UpdateAddressNonce();
-        prikey_with_nonce = src_prikey_with_nonce;
-
-        std::atomic<uint64_t> call_count{0};
-        std::atomic<uint64_t> fail_count{0};
-
-        // Rate limiter: target 100 TPS across all threads.
-        // Each thread sleeps interval_us between sends.
-        static const uint64_t kTargetTps = 100;
-        uint64_t interval_us = (num_threads > 0)
-            ? (1000000ull * num_threads / kTargetTps)
-            : 10000ull;
-        std::cout << "[Stress] rate limit: " << kTargetTps << " TPS total"
-                  << " (interval=" << interval_us << "us/thread)" << std::endl;
-
-        // Build ABI-encoded input for PurchaseItem(bytes32,uint256)
-        // selector = keccak256("PurchaseItem(bytes32,uint256)")[0:4]
-        std::string purchase_selector = utils::keccak256Str("PurchaseItem(bytes32,uint256)").substr(0, 8);
-
-        auto stress_thread = [&](uint32_t tid) {
-            std::shared_ptr<security::Security> thread_sec = std::make_shared<security::Ecdsa>();
-            thread_sec->SetPrivateKey(g_prikeys[tid % g_prikeys.size()]);
-            auto addr = thread_sec->GetAddress();
-            uint32_t idx = 0;
-            uint32_t base = tid * items_per_thread;
-
-            while (!global_stop) {
-                // Nonce throttle: same logic as tx_main
-                if (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
-                    usleep(2000000);
-                    update_nonce_con.notify_one();
-                    usleep(1000000);
-                    if (src_prikey_with_nonce[addr] + 2 * common::kMaxTxCount <= prikey_with_nonce[addr]) {
-                        prikey_with_nonce[addr] = src_prikey_with_nonce[addr];
-                        usleep(10000000);
-                        continue;
-                    }
-                }
-
-                const std::string& h = item_hashes[base + (idx % items_per_thread)];
-                // Encode: selector + bytes32(h) + uint256(timestamp)
-                uint64_t ts = common::TimeUtils::TimestampMs();
-                std::string ts_hex;
-                {
-                    std::ostringstream oss;
-                    oss << std::hex << std::setfill('0') << std::setw(64) << ts;
-                    ts_hex = oss.str();
-                }
-                // h is already 64-char hex (32 bytes), pad to 64 chars
-                std::string h_padded = h;
-                if (h_padded.size() < 64) h_padded = std::string(64 - h_padded.size(), '0') + h_padded;
-                std::string input_hex = purchase_selector + h_padded + ts_hex;
-
-                auto tx_msg_ptr = CreateTransactionWithAttr(
-                    thread_sec,
-                    ++prikey_with_nonce[addr],
-                    common::Encode::HexEncode(g_prikeys[tid % g_prikeys.size()]),
-                    contract_addr,
-                    "call",
-                    input_hex,
-                    100,   // value (bid amount)
-                    5000000,
-                    1,
-                    shardnum);
-
-                if (tx_msg_ptr &&
-                    transport::TcpTransport::Instance()->Send(tcp_ip, tcp_port, tx_msg_ptr->header) == 0) {
-                    ++call_count;
-                } else {
-                    ++fail_count;
-                }
-                ++idx;
-                // Rate limiting: sleep to maintain target TPS
-                usleep(interval_us);
-            }
-        };
-
-        std::vector<std::thread> threads;
-        auto update_nonce_thread = [&]() { UpdateAddressNonceThread(); };
-        threads.emplace_back(update_nonce_thread);
-
-        for (uint32_t t = 0; t < num_threads; ++t) {
-            threads.emplace_back(stress_thread, t);
-        }
-
-        // TPS reporter
-        threads.emplace_back([&]() {
-            uint64_t prev = 0;
-            while (!global_stop) {
-                // Sleep 3 seconds in 100ms chunks to allow quick exit
-                for (int i = 0; i < 30 && !global_stop; ++i) {
-                    usleep(100000);  // 100ms
-                }
-                if (global_stop) break;
-                
-                uint64_t cur = call_count.load();
-                std::cout << "[Stress] tps=" << (cur - prev) / 3
-                          << "  total=" << cur
-                          << "  fail=" << fail_count.load() << std::endl;
-                prev = cur;
-            }
-        });
-
-        for (auto& th : threads) th.join();
-        transport::TcpTransport::Instance()->Stop();
-        std::cout << "[Stress] Done. total=" << call_count << " fail=" << fail_count << std::endl;
-        return 0;
-    }
-
     // ── Mode 5: Deploy 256 AMM Contracts (256 random deployers) ───────────
     // Usage: txcli 5 <shard> <pool> <ip> <port> [count] [threads]
     // Mirrors clipy/amm.py test_multi_shard_amm: each deployer deploys
     // TokenA + TokenB + AMMPool (3 contracts per deployer).
     // 256 deployers × 3 contracts = 768 contract deployments across shards.
+    //
+    // Account creation uses TCP transport (same as Mode 4) for high throughput.
+    // Contract deployment uses HTTP API (SethSDK::deploySolidity).
     if (argv[1][0] == '5') {
         const uint32_t kDeployerCount = (argc >= 7) ? std::stoi(argv[6]) : 256;
         const uint32_t kDeployThreads = (argc >= 8) ? std::stoi(argv[7]) : 8;
+
+        if (argc >= 4) {
+            shardnum = std::stoi(argv[2]);
+            global_pool_idx = std::stoi(argv[3]);
+        }
+        if (argc >= 6) {
+            global_chain_node_ip = argv[4];
+            global_chain_node_http_port = std::stoi(argv[5]) + 10000;
+        }
 
         std::cout << "\n" << std::string(70, '=') << std::endl;
         std::cout << "  AMM Contract Mass Deployment Test" << std::endl;
@@ -1600,6 +1297,33 @@ int main(int argc, char** argv) {
         std::cout << "Shard: " << shardnum << std::endl;
         std::cout << "Node: " << global_chain_node_ip << ":" << global_chain_node_http_port << std::endl;
         std::cout << "Deploy threads: " << kDeployThreads << std::endl;
+
+        LoadAllAccounts(shardnum);
+        SignalRegister();
+        WriteDefaultLogConf();
+
+        // ── TCP transport setup (same as Mode 4) ─────────────────────────
+        transport::MultiThreadHandler net_handler;
+        std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
+        auto db_ptr = std::make_shared<db::Db>();
+        if (!db_ptr->Init(db_path + "_amm_deploy")) {
+            std::cerr << "init db failed" << std::endl;
+            return 1;
+        }
+        if (net_handler.Init(db_ptr, sec) != 0) {
+            std::cerr << "init net handler failed" << std::endl;
+            return 1;
+        }
+        if (transport::TcpTransport::Instance()->Init("127.0.0.1:13794", 128, false, &net_handler) != 0) {
+            std::cerr << "init tcp failed" << std::endl;
+            return 1;
+        }
+        if (transport::TcpTransport::Instance()->Start(false) != 0) {
+            std::cerr << "start tcp failed" << std::endl;
+            return 1;
+        }
+
+        SethSDK sdk(global_chain_node_ip, global_chain_node_http_port);
 
         // ── Solidity sources (same as clipy/amm.py) ──────────────────────
         const std::string SIMPLE_TOKEN_SOL = R"(
@@ -1788,51 +1512,65 @@ contract AMMPool {
         }
         std::cout << "  Generated " << kDeployerCount << " deployer accounts" << std::endl;
 
-        // ── Phase 3: Fund deployer accounts ───────────────────────────────
+        // ── Phase 3: Create deployer accounts on chain (TCP, same as Mode 4) ─
         std::cout << "\n" << std::string(70, '-') << std::endl;
-        std::cout << "  Phase 3: Fund Deployer Accounts (native transfer)" << std::endl;
+        std::cout << "  Phase 3: Create Deployer Accounts on Chain (TCP transport)" << std::endl;
         std::cout << std::string(70, '-') << std::endl;
 
         const uint64_t kFundAmount = 500000000lu;  // 500M for contract deployments + prefund
         std::atomic<uint32_t> fund_success{0};
         std::atomic<uint32_t> fund_fail{0};
 
-        // Use existing funded accounts to send native transfers
+        // Use existing funded accounts to send native transfers via TCP
+        // Each funder thread gets a unique funded account to avoid nonce collisions.
         uint32_t fund_threads = std::min(kDeployThreads, (uint32_t)g_prikeys.size());
         uint32_t deployers_per_thread = kDeployerCount / fund_threads;
 
-        auto fund_thread_fn = [&](uint32_t thread_id, uint32_t start_idx, uint32_t end_idx) {
-            std::string funder_prikey_hex = common::Encode::HexEncode(g_prikeys[thread_id % g_prikeys.size()]);
-            SethClient thread_client(global_chain_node_ip, global_chain_node_http_port);
+        auto create_deployer_thread = [&](uint32_t thread_id, uint32_t start_idx, uint32_t end_idx) {
+            std::string funder_prikey = g_prikeys[thread_id % g_prikeys.size()];
+            std::shared_ptr<security::Security> funder_sec = std::make_shared<security::Ecdsa>();
+            funder_sec->SetPrivateKey(funder_prikey);
+            std::string funder_addr = funder_sec->GetAddress();
+
+            // Get initial nonce from chain
+            int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(funder_addr));
+            if (nonce < 0) {
+                std::cerr << "  Thread " << thread_id << ": Failed to fetch nonce for funder "
+                          << common::Encode::HexEncode(funder_addr) << std::endl;
+                fund_fail += (end_idx - start_idx);
+                return;
+            }
+
+            std::cout << "  Thread " << thread_id << ": funder="
+                      << common::Encode::HexEncode(funder_addr).substr(0, 16) << "..."
+                      << " nonce=" << nonce
+                      << " deployers=[" << start_idx << "," << end_idx << ")" << std::endl;
 
             for (uint32_t i = start_idx; i < end_idx && !global_stop; ++i) {
-                bool ok = thread_client.transfer(
-                    funder_prikey_hex,
-                    deployers[i].addr_hex,
+                auto tx_msg_ptr = CreateTransactionWithAttr(
+                    funder_sec,
+                    ++nonce,
+                    common::Encode::HexEncode(funder_prikey),
+                    common::Encode::HexDecode(deployers[i].addr_hex),
+                    "",
+                    "",
                     kFundAmount,
-                    -1,   // auto nonce
-                    0,    // kNormalFrom
-                    "",   // no contract bytes
-                    "",   // no input
-                    "",   // no key
-                    "",   // no val
-                    0,    // no prefund
-                    true);
+                    210000,
+                    1,
+                    shardnum);
 
-                if (ok) {
+                if (tx_msg_ptr && transport::TcpTransport::Instance()->Send(
+                        global_chain_node_ip,
+                        global_chain_node_http_port - 10000,
+                        tx_msg_ptr->header) == 0) {
                     deployers[i].funded = true;
                     ++fund_success;
                 } else {
                     ++fund_fail;
                 }
 
-                if ((fund_success.load() + fund_fail.load()) % 32 == 0) {
-                    std::cout << "  Funding progress: " << fund_success.load()
-                              << " ok, " << fund_fail.load() << " fail" << std::endl;
-                }
-
-                // Small delay to avoid overwhelming the node
-                usleep(50000);  // 50ms
+                // Rate limiting
+                usleep(1000);  // 1ms delay
             }
         };
 
@@ -1840,38 +1578,124 @@ contract AMMPool {
         for (uint32_t t = 0; t < fund_threads; ++t) {
             uint32_t s = t * deployers_per_thread;
             uint32_t e = (t == fund_threads - 1) ? kDeployerCount : (s + deployers_per_thread);
-            fund_threads_vec.emplace_back(fund_thread_fn, t, s, e);
-        }
-        for (auto& th : fund_threads_vec) th.join();
-
-        std::cout << "  Funding complete: " << fund_success.load() << " ok, "
-                  << fund_fail.load() << " fail" << std::endl;
-
-        // Wait for accounts to be created on chain
-        std::cout << "  Waiting 15s for account creation consensus..." << std::endl;
-        for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
-
-        // Batch verify accounts exist
-        std::cout << "  Verifying deployer accounts on chain..." << std::endl;
-        std::vector<std::string> deployer_addrs;
-        for (auto& d : deployers) {
-            if (d.funded) deployer_addrs.push_back(d.addr_hex);
+            fund_threads_vec.emplace_back(create_deployer_thread, t, s, e);
+            std::cout << "  start create deployer thread " << t
+                      << ", [" << s << "," << e << ")" << std::endl;
         }
 
-        uint32_t confirmed = 0;
-        for (int attempt = 0; attempt < 10 && !global_stop; ++attempt) {
-            auto batch_res = sdk.batchQueryAccounts(deployer_addrs);
-            if (batch_res.contains("status") && batch_res["status"] == 0 &&
-                batch_res.contains("accounts")) {
-                confirmed = batch_res["accounts"].size();
+        // Progress monitor
+        std::thread fund_progress_thread([&]() {
+            while (fund_success.load() + fund_fail.load() < kDeployerCount && !global_stop) {
+                for (int i = 0; i < 20 && !global_stop; ++i) usleep(100000);
+                if (global_stop) break;
+                std::cout << "  Progress: " << fund_success.load() << " created, "
+                          << fund_fail.load() << " failed" << std::endl;
             }
-            std::cout << "  Attempt " << (attempt + 1) << ": " << confirmed
-                      << "/" << deployer_addrs.size() << " confirmed" << std::endl;
-            if (confirmed >= deployer_addrs.size() * 0.9) break;  // 90% threshold
-            for (int w = 0; w < 50 && !global_stop; ++w) usleep(100000);  // 5s
+        });
+
+        for (auto& th : fund_threads_vec) th.join();
+        fund_progress_thread.join();
+
+        std::cout << "  Account creation complete: " << fund_success.load()
+                  << " created, " << fund_fail.load() << " failed" << std::endl;
+
+        // ── Batch verify deployer accounts on chain (same as Mode 4 Phase 3) ─
+        std::cout << "\n  Waiting 10s for consensus before batch verification..." << std::endl;
+        for (int w = 0; w < 100 && !global_stop; ++w) usleep(100000);
+
+        std::cout << "  Starting batch account verification (up to 240s)..." << std::endl;
+        auto phase3_start = std::chrono::steady_clock::now();
+        const auto kPhase3Timeout = std::chrono::seconds(240);
+        uint32_t confirmed = 0;
+        const uint32_t kBatchSize = 500;
+
+        std::vector<bool> is_confirmed(kDeployerCount, false);
+        std::vector<uint32_t> pending_list;
+        pending_list.reserve(kDeployerCount);
+        for (uint32_t i = 0; i < kDeployerCount; ++i) {
+            if (deployers[i].funded) pending_list.push_back(i);
         }
 
-        std::cout << "  " << confirmed << " deployer accounts confirmed on chain" << std::endl;
+        uint32_t round = 0;
+        while (confirmed < pending_list.size() && !pending_list.empty() && !global_stop) {
+            auto elapsed = std::chrono::steady_clock::now() - phase3_start;
+            if (elapsed >= kPhase3Timeout) {
+                auto secs = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
+                std::cout << "  Timeout reached (" << secs << "s). Confirmed "
+                          << confirmed << "/" << kDeployerCount << std::endl;
+                break;
+            }
+
+            ++round;
+            auto round_start = std::chrono::steady_clock::now();
+            uint32_t round_confirmed = 0;
+            std::vector<uint32_t> next_pending;
+            next_pending.reserve(pending_list.size());
+
+            std::vector<std::string> batch_addrs;
+            std::vector<uint32_t> batch_indices;
+            batch_addrs.reserve(kBatchSize);
+            batch_indices.reserve(kBatchSize);
+
+            for (uint32_t p = 0; p < pending_list.size() && !global_stop; ++p) {
+                uint32_t i = pending_list[p];
+                batch_addrs.push_back(deployers[i].addr_hex);
+                batch_indices.push_back(i);
+
+                bool is_last = (p == pending_list.size() - 1);
+                if (batch_addrs.size() >= kBatchSize || is_last) {
+                    auto batch_res = sdk.batchQueryAccounts(batch_addrs);
+                    if (batch_res.contains("status") && batch_res["status"] == 0 &&
+                        batch_res.contains("accounts")) {
+                        for (uint32_t k = 0; k < batch_indices.size(); ++k) {
+                            uint32_t idx = batch_indices[k];
+                            const std::string& hex_addr = batch_addrs[k];
+                            if (batch_res["accounts"].contains(hex_addr)) {
+                                is_confirmed[idx] = true;
+                                ++confirmed;
+                                ++round_confirmed;
+                            } else {
+                                next_pending.push_back(idx);
+                            }
+                        }
+                    } else {
+                        for (uint32_t k = 0; k < batch_indices.size(); ++k) {
+                            next_pending.push_back(batch_indices[k]);
+                        }
+                    }
+                    batch_addrs.clear();
+                    batch_indices.clear();
+                }
+            }
+
+            pending_list = std::move(next_pending);
+
+            auto round_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - round_start).count();
+            auto total_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::steady_clock::now() - phase3_start).count();
+            std::cout << "  [Round " << round << ", " << total_elapsed << "s] +"
+                      << round_confirmed << " confirmed, "
+                      << confirmed << "/" << kDeployerCount << " total, "
+                      << pending_list.size() << " pending (" << round_ms << "ms)" << std::endl;
+
+            if (confirmed >= kDeployerCount || pending_list.empty()) break;
+
+            uint32_t wait_ms = (round_confirmed > 0) ? 2000 : 5000;
+            if (round == 1 && round_confirmed == 0) wait_ms = 8000;
+            for (uint32_t w = 0; w < wait_ms / 100 && !global_stop; ++w) usleep(100000);
+        }
+
+        auto total_secs = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::steady_clock::now() - phase3_start).count();
+        std::cout << "  Account verification complete: " << confirmed
+                  << "/" << kDeployerCount << " confirmed in " << total_secs << "s" << std::endl;
+
+        if (confirmed == 0) {
+            std::cerr << "  ERROR: No deployer accounts confirmed. Aborting." << std::endl;
+            transport::TcpTransport::Instance()->Stop();
+            return 1;
+        }
 
         // ── Phase 4: Deploy contracts ─────────────────────────────────────
         std::cout << "\n" << std::string(70, '-') << std::endl;
@@ -2093,6 +1917,7 @@ contract AMMPool {
      across multiple shards concurrently.
 )" << std::endl;
 
+        transport::TcpTransport::Instance()->Stop();
         return 0;
     }
 
