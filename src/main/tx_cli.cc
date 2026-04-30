@@ -2610,11 +2610,7 @@ contract AMMPool {
                                           << " nonce=" << nonce << std::endl;
                             }
                         }
-                        if (gi < s + 3) {
-                            std::cout << "  [" << label << " grp " << gi << "] prepay=" << prepay_addr
-                                      << " (len=" << prepay_addr.size() << ") nonce=" << nonce
-                                      << " ops=" << grp.inputs.size() << std::endl;
-                        }
+
                         if (nonce < 0) {
                             std::cerr << "  [" << label << " SKIP] grp=" << gi
                                       << " leader=" << ldr_ip << ":" << ldr_http
