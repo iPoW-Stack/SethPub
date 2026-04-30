@@ -275,14 +275,37 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
                 auto exist_iter = added_heights_[i].find(cons_height);
                 if (exist_iter != added_heights_[i].end()) {
                     if (exist_iter->second + 1000lu > timeout) {
+                        // Height is too recent (within 1s) — try older height.
+                        // But don't go below prev_to_heights to avoid getting stuck.
+                        std::shared_ptr<pools::protobuf::ShardToTxItem> prev_ptr;
+                        {
+                            common::AutoSpinLock lock(prev_to_heights_mutex_);
+                            prev_ptr = prev_to_heights_;
+                        }
+                        uint64_t min_h = (prev_ptr && i < (uint32_t)prev_ptr->heights_size()) 
+                                         ? prev_ptr->heights(i) : 0;
+                        if (cons_height <= min_h + 1) {
+                            // Can't go lower without regressing — use current height
+                            valid = true;
+                            break;
+                        }
                         --cons_height;
                         continue;
                     }
                 }
 
                 if (valided_heights_[i].find(cons_height) == valided_heights_[i].end()) {
-                    SETH_DEBUG("leader get to heights error, pool: %u, height: %lu", i, cons_height);
-                    return kPoolsError;
+                    // Height not validated yet — skip this pool (use cons_height=0)
+                    // instead of aborting the entire function
+                    SETH_DEBUG("leader get to heights warning, pool: %u, height: %lu not validated, skipping", i, cons_height);
+                    cons_height = 0;
+                    if (prev_to_heights_ != nullptr) {
+                        common::AutoSpinLock lock(prev_to_heights_mutex_);
+                        if (i < (uint32_t)prev_to_heights_->heights_size()) {
+                            cons_height = prev_to_heights_->heights(i);
+                        }
+                    }
+                    break;
                 }
 
                 valid = true;
