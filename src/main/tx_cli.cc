@@ -2500,10 +2500,14 @@ contract AMMPool {
             uint32_t nt = std::min((uint32_t)common::kMaxThreadCount, (uint32_t)groups.size());
             if (nt == 0) nt = 1;
             uint32_t gpp = groups.size() / nt;
+            // Per-thread TPS share (0 = unlimited)
+            uint32_t per_thread_tps = (kTargetTps > 0) ? (kTargetTps / nt + 1) : 0;
             std::vector<std::thread> threads;
             for (uint32_t t = 0; t < nt; ++t) {
                 uint32_t s = t * gpp, e = (t == nt-1) ? (uint32_t)groups.size() : (s + gpp);
-                threads.emplace_back([&,s,e](){
+                threads.emplace_back([&,s,e,per_thread_tps](){
+                    auto rate_start = std::chrono::steady_clock::now();
+                    uint64_t rate_sent = 0;
                     for (uint32_t gi = s; gi < e && !global_stop; ++gi) {
                         auto& grp = groups[gi];
                         std::string prikey_raw = common::Encode::HexDecode(grp.prikey_hex);
@@ -2517,6 +2521,21 @@ contract AMMPool {
                         if (nonce < 0) { fail_cnt += grp.inputs.size(); continue; }
                         for (const auto& input : grp.inputs) {
                             if (global_stop) break;
+                            // Rate limit per thread
+                            if (per_thread_tps > 0) {
+                                ++rate_sent;
+                                auto now = std::chrono::steady_clock::now();
+                                auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                                    now - rate_start).count();
+                                int64_t expected_us = (int64_t)rate_sent * 1000000 / per_thread_tps;
+                                if (expected_us > elapsed_us + 100) {
+                                    usleep((uint32_t)(expected_us - elapsed_us));
+                                }
+                                if (elapsed_us >= 1000000) {
+                                    rate_start = std::chrono::steady_clock::now();
+                                    rate_sent = 0;
+                                }
+                            }
                             auto tx = CreateTransactionWithAttr(sec, ++nonce,
                                 common::Encode::HexEncode(prikey_raw),
                                 common::Encode::HexDecode(grp.contract_addr),
@@ -2612,25 +2631,28 @@ contract AMMPool {
                   << appr_ok.load() << " ok, " << appr_fail.load() << " fail" << std::endl;
 
         // Wait for approve consensus
-        std::cout << "  Waiting for approve consensus..." << std::endl;
-        // Poll nonce to confirm approve transactions are committed.
-        // Each group sent N approve txs, so the prepayment nonce should advance by N.
+        // Timeout scales with transaction count: base 30s + 1s per 5000 txs
         {
-            const int kMaxWaitSec = 120;
+            const int kMaxWaitSec = 30 + (int)(total_appr_ops / 5000);
             const int kPollIntervalMs = 3000;
-            uint32_t sample_limit = std::min((uint32_t)appr_groups.size(), 30u);
+            std::cout << "  Waiting for approve consensus (timeout " << kMaxWaitSec << "s for "
+                      << total_appr_ops << " txs)..." << std::endl;
+            uint32_t total_groups = appr_groups.size();
+            std::vector<bool> grp_confirmed(total_groups, false);
             auto wait_start = std::chrono::steady_clock::now();
             uint32_t confirmed = 0;
             
             for (int elapsed = 0; elapsed < kMaxWaitSec && !global_stop; ) {
                 confirmed = 0;
-                for (uint32_t gi = 0; gi < sample_limit; ++gi) {
+                for (uint32_t gi = 0; gi < total_groups; ++gi) {
+                    if (grp_confirmed[gi]) { ++confirmed; continue; }
                     auto& grp = appr_groups[gi];
                     std::string prepay_addr = grp.contract_addr + grp.caller_addr;
                     auto [ldr_ip, ldr_http] = get_leader_http(grp.contract_addr);
                     SethSDK leader_sdk(ldr_ip, ldr_http);
                     int64_t n = leader_sdk.fetchNonce(prepay_addr);
                     if (n >= (int64_t)grp.inputs.size()) {
+                        grp_confirmed[gi] = true;
                         ++confirmed;
                     }
                 }
@@ -2638,19 +2660,41 @@ contract AMMPool {
                 elapsed = (int)std::chrono::duration_cast<std::chrono::seconds>(
                     std::chrono::steady_clock::now() - wait_start).count();
                 std::cout << "  [" << elapsed << "s] approve nonce confirmed: "
-                          << confirmed << "/" << sample_limit << std::endl;
+                          << confirmed << "/" << total_groups << std::endl;
                 
-                if (confirmed >= sample_limit) {
-                    std::cout << "  ✓ All sampled approve groups confirmed" << std::endl;
+                if (confirmed >= total_groups) {
+                    std::cout << "  ✓ All " << total_groups << " approve groups confirmed" << std::endl;
                     break;
                 }
                 
                 for (int w = 0; w < kPollIntervalMs / 100 && !global_stop; ++w) usleep(100000);
             }
             
-            if (confirmed < sample_limit) {
-                std::cout << "  ⚠ WARNING: Only " << confirmed << "/" << sample_limit
-                          << " approve groups confirmed after " << kMaxWaitSec << "s" << std::endl;
+            if (confirmed < total_groups) {
+                // Print details of unconfirmed groups (up to 10)
+                uint32_t printed = 0;
+                for (uint32_t gi = 0; gi < total_groups && printed < 10; ++gi) {
+                    if (grp_confirmed[gi]) continue;
+                    auto& grp = appr_groups[gi];
+                    std::string prepay_addr = grp.contract_addr + grp.caller_addr;
+                    auto [ldr_ip, ldr_http] = get_leader_http(grp.contract_addr);
+                    SethSDK leader_sdk(ldr_ip, ldr_http);
+                    int64_t n = leader_sdk.fetchNonce(prepay_addr);
+                    uint32_t pool_idx = contract_pool_index_map.count(grp.contract_addr)
+                        ? contract_pool_index_map[grp.contract_addr]
+                        : common::GetAddressPoolIndex(common::Encode::HexDecode(grp.contract_addr));
+                    std::cout << "    ✗ group " << gi
+                              << " contract=" << grp.contract_addr.substr(0,12) << "..."
+                              << " caller=" << grp.caller_addr.substr(0,12) << "..."
+                              << " pool_idx=" << pool_idx
+                              << " node=" << ldr_ip << ":" << ldr_http
+                              << " nonce=" << n
+                              << " expected>=" << grp.inputs.size()
+                              << std::endl;
+                    ++printed;
+                }
+                std::cout << "  ⚠ WARNING: " << (total_groups - confirmed) << "/" << total_groups
+                          << " approve groups NOT confirmed after " << kMaxWaitSec << "s" << std::endl;
             }
         }
 
