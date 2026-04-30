@@ -2141,27 +2141,30 @@ contract AMMPool {
         // Query actual pool_index for each contract from chain
         std::cout << "  Querying pool indices for " << pools.size() << " contracts..." << std::endl;
         for (auto& p : pools) {
-            // Query pool contract's pool_index (all 3 contracts from same deployer should be in same pool)
-            int64_t bal = sdk.fetchBalance(p.pool);
-            // fetchBalance queries /query_account which returns pool_index in the response
-            // But fetchBalance only returns balance. We need a dedicated query.
-            // Use batchQueryAccounts which returns pool_index field
+            // Query pool contract's on-chain pool_index via batchQueryAccounts
             auto r = sdk.batchQueryAccounts({p.pool});
+            bool got_pool_index = false;
             if (r.contains("status") && r["status"] == 0 && r.contains("accounts") && r["accounts"].contains(p.pool)) {
                 auto& acc = r["accounts"][p.pool];
-                if (acc.contains("poolIndex")) {
-                    p.pool_index = acc["poolIndex"].get<uint32_t>();
-                } else if (acc.contains("pool_index")) {
+                if (acc.contains("pool_index")) {
                     p.pool_index = acc["pool_index"].get<uint32_t>();
-                } else {
-                    // Fallback: compute locally
-                    p.pool_index = common::GetAddressPoolIndex(common::Encode::HexDecode(p.pool));
+                    got_pool_index = true;
+                } else if (acc.contains("poolIndex")) {
+                    p.pool_index = acc["poolIndex"].get<uint32_t>();
+                    got_pool_index = true;
                 }
-            } else {
-                p.pool_index = common::GetAddressPoolIndex(common::Encode::HexDecode(p.pool));
+            }
+            if (!got_pool_index) {
+                // Fallback: use deployer address to compute pool index.
+                // Contract is deployed by deployer, so it lives in the deployer's pool.
+                std::string deployer_addr = deployers[p.deployer_idx].addr_hex;
+                p.pool_index = common::GetAddressPoolIndex(
+                    common::Encode::HexDecode(deployer_addr));
+                SETH_WARN("pool %s: using deployer %s pool_index=%u (fallback)",
+                    p.pool.substr(0,12).c_str(), deployer_addr.substr(0,12).c_str(), p.pool_index);
             }
             contract_pool_index_map[p.pool] = p.pool_index;
-            contract_pool_index_map[p.token_a] = p.pool_index;  // same deployer = same pool
+            contract_pool_index_map[p.token_a] = p.pool_index;
             contract_pool_index_map[p.token_b] = p.pool_index;
         }
         // Print first few for debug

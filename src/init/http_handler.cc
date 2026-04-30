@@ -1134,7 +1134,13 @@ static void BatchQueryAccounts(const UWSRequest& req, UWSResponse& http_res) {
         nlohmann::json acc;
         acc["nonce"] = std::to_string(addr_info->nonce());
         acc["balance"] = std::to_string(addr_info->balance());
-        acc["pool_index"] = common::GetAddressPoolIndex(addr);
+        // Use the on-chain pool_index if available (correct for contracts),
+        // fall back to address-based computation for normal accounts.
+        if (addr_info->has_pool_index() && addr_info->pool_index() < common::kInvalidPoolIndex) {
+            acc["pool_index"] = addr_info->pool_index();
+        } else {
+            acc["pool_index"] = common::GetAddressPoolIndex(addr);
+        }
         accounts_json[hex_addr] = acc;
     }
 
