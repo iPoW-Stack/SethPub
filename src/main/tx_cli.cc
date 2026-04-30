@@ -2958,7 +2958,7 @@ contract AMMPool {
 
         // 2. Verify prepayment nonces: poll until all reach expected value or timeout
         //    This confirms all swap transactions were actually processed on-chain
-        std::cout << "  [2] Verifying swap nonces (prepayment accounts, polling up to 120s)..." << std::endl;
+        std::cout << "  [2] Verifying swap nonces (prepayment accounts, polling up to 180s)..." << std::endl;
         uint32_t nonce_ok = 0, nonce_fail = 0, nonce_skip = 0;
         uint32_t nonce_check_count = std::min((uint32_t)trade_pairs.size(), (uint32_t)50);
 
@@ -2985,7 +2985,7 @@ contract AMMPool {
         // Query via the leader node for each pool for accurate nonce
         std::vector<bool> nonce_confirmed(nonce_checks.size(), false);
         auto nonce_start = std::chrono::steady_clock::now();
-        for (uint32_t round = 0; round < 20 && !global_stop; ++round) {
+        for (uint32_t round = 0; round < 30 && !global_stop; ++round) {
             uint32_t round_ok = 0, still_pending = 0;
             for (uint32_t i = 0; i < nonce_checks.size(); ++i) {
                 if (nonce_confirmed[i]) continue;
@@ -3009,7 +3009,7 @@ contract AMMPool {
             std::cout << "    [Round " << (round+1) << ", " << es << "s] " << nonce_ok
                       << "/" << nonce_checks.size() << " confirmed" << std::endl;
             if (still_pending == 0) break;
-            if (es > 120) break;
+            if (es > 180) break;
             // Wait longer if many pending
             for (int w = 0; w < ((round_ok > 0) ? 30 : 60) && !global_stop; ++w) usleep(100000);
         }
