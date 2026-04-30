@@ -21,6 +21,9 @@ namespace pools {
 class TxPoolManager;
 class ToTxsPools {
 public:
+    // Max number of block heights to aggregate per pool in a single kNormalTo batch.
+    // Prevents the serialized tx from exceeding the propose message size limit.
+    static constexpr uint64_t kMaxHeightRangePerBatch = 64;
     ToTxsPools(
         std::shared_ptr<db::Db>& db,
         const std::string& local_id,

@@ -866,55 +866,100 @@ pools::TxItemPtr BlockManager::HandleToTxsMessage(
         return nullptr;
     }
 
-    pools::protobuf::AllToTxMessage all_to_txs;
-    pools::protobuf::ShardToTxItem prev_heights;
-    for (uint32_t sharding_id = network::kRootCongressNetworkId;
-            sharding_id <= max_consensus_sharding_id_; ++sharding_id) {
-        auto& to_tx = *all_to_txs.add_to_tx_arr();
-        if (to_txs_pool_->CreateToTxWithHeights(
-                sharding_id,
-                0,
-                &prev_heights,
-                heights,
-                to_tx) != pools::kPoolsSuccess) {
-            all_to_txs.mutable_to_tx_arr()->RemoveLast();
-            SETH_DEBUG("1 failed get to tx for shard: %u, heights: %s",
-                sharding_id, ProtobufToJson(heights).c_str());
+    // Size limit: 75% of propose limit to leave room for block headers/signatures
+    static const size_t kMaxToTxValueBytes = common::kMaxProposeMsgBytes * 3 / 4;
+    static const int kMaxReduceAttempts = 8;
+    
+    pools::protobuf::ShardToTxItem cur_heights = heights;
+    
+    for (int attempt = 0; attempt <= kMaxReduceAttempts; ++attempt) {
+        pools::protobuf::AllToTxMessage all_to_txs;
+        pools::protobuf::ShardToTxItem prev_heights;
+        for (uint32_t sharding_id = network::kRootCongressNetworkId;
+                sharding_id <= max_consensus_sharding_id_; ++sharding_id) {
+            auto& to_tx = *all_to_txs.add_to_tx_arr();
+            if (to_txs_pool_->CreateToTxWithHeights(
+                    sharding_id,
+                    0,
+                    &prev_heights,
+                    cur_heights,
+                    to_tx) != pools::kPoolsSuccess) {
+                all_to_txs.mutable_to_tx_arr()->RemoveLast();
+                SETH_DEBUG("1 failed get to tx for shard: %u, heights: %s",
+                    sharding_id, ProtobufToJson(cur_heights).c_str());
+            }
         }
-    }
 
-    if (all_to_txs.to_tx_arr_size() == 0) {
-        SETH_DEBUG("2 failed get to tx tx info, all shards failed, max_shard: %u, heights: %s",
-            max_consensus_sharding_id_.load(), ProtobufToJson(heights).c_str());
-        return nullptr;
+        if (all_to_txs.to_tx_arr_size() == 0) {
+            SETH_DEBUG("2 failed get to tx tx info, all shards failed, max_shard: %u, heights: %s",
+                max_consensus_sharding_id_.load(), ProtobufToJson(cur_heights).c_str());
+            return nullptr;
+        }
+        
+        *all_to_txs.mutable_to_heights() = cur_heights;
+        auto serialized_value = SerializeDeterministic(all_to_txs);
+        
+        if (serialized_value.size() > kMaxToTxValueBytes) {
+            // Too large — halve the height range for each pool and retry
+            bool any_reduced = false;
+            pools::protobuf::ShardToTxItem reduced;
+            for (int32_t i = 0; i < cur_heights.heights_size(); ++i) {
+                uint64_t prev_h = (i < prev_heights.heights_size()) ? prev_heights.heights(i) : 0;
+                uint64_t cur_h = cur_heights.heights(i);
+                if (cur_h > prev_h + 1) {
+                    reduced.add_heights(prev_h + (cur_h - prev_h) / 2);
+                    any_reduced = true;
+                } else {
+                    reduced.add_heights(cur_h);
+                }
+            }
+            
+            if (!any_reduced) {
+                SETH_WARN("HandleToTxsMessage: cannot reduce further, size %zu > limit %zu",
+                    serialized_value.size(), kMaxToTxValueBytes);
+                to_txs_pool_->ClearLeaderToHeights();
+                return nullptr;
+            }
+            
+            SETH_WARN("HandleToTxsMessage: size %zu > limit %zu, reducing heights (attempt %d)",
+                serialized_value.size(), kMaxToTxValueBytes, attempt + 1);
+            reduced.set_sharding_id(cur_heights.sharding_id());
+            cur_heights = reduced;
+            continue;
+        }
+        
+        // Size OK — create the transaction
+        auto new_msg_ptr = std::make_shared<transport::TransportMessage>();
+        new_msg_ptr->address_info = account_mgr_->pools_address_info(
+            pools::protobuf::kNormalTo, 
+            common::kImmutablePoolSize);
+        auto* tx = new_msg_ptr->header.mutable_tx_proto();
+        std::string unique_str;
+        for (int32_t i = 0; i < prev_heights.heights_size(); ++i) {
+            unique_str += std::to_string(prev_heights.heights(i)) + "_";
+        }
+
+        tx->set_key(common::Hash::keccak256(unique_str));
+        tx->set_value(serialized_value);
+        tx->set_pubkey("");
+        tx->set_to(new_msg_ptr->address_info->addr());
+        tx->set_step(pools::protobuf::kNormalTo);
+        tx->set_gas_limit(0);
+        tx->set_amount(0);
+        tx->set_gas_price(common::kBuildinTransactionGasPrice);
+        tx->set_nonce(new_msg_ptr->address_info->nonce() + 1);
+        auto tx_ptr = create_to_tx_cb_(new_msg_ptr);
+        tx_ptr->time_valid += kToValidTimeout;
+        SETH_DEBUG("success get to tx unique hash: %s, heights: %s, value_size: %zu",
+            common::Encode::HexEncode(tx->key()).c_str(), 
+            ProtobufToJson(prev_heights).c_str(),
+            serialized_value.size());
+        return tx_ptr;
     }
     
-    *all_to_txs.mutable_to_heights() = heights;
-    auto new_msg_ptr = std::make_shared<transport::TransportMessage>();
-    new_msg_ptr->address_info = account_mgr_->pools_address_info(
-        pools::protobuf::kNormalTo, 
-        common::kImmutablePoolSize);
-    auto* tx = new_msg_ptr->header.mutable_tx_proto();
-    std::string unique_str;
-    for (int32_t i = 0; i < prev_heights.heights_size(); ++i) {
-        unique_str += std::to_string(prev_heights.heights(i)) + "_";
-    }
-
-    tx->set_key(common::Hash::keccak256(unique_str));
-    tx->set_value(SerializeDeterministic(all_to_txs));
-    tx->set_pubkey("");
-    tx->set_to(new_msg_ptr->address_info->addr());
-    tx->set_step(pools::protobuf::kNormalTo);
-    tx->set_gas_limit(0);
-    tx->set_amount(0);
-    tx->set_gas_price(common::kBuildinTransactionGasPrice);
-    tx->set_nonce(new_msg_ptr->address_info->nonce() + 1);
-    auto tx_ptr = create_to_tx_cb_(new_msg_ptr);
-    tx_ptr->time_valid += kToValidTimeout;
-    SETH_DEBUG("success get to tx unique hash: %s, heights: %s",
-        common::Encode::HexEncode(tx->key()).c_str(), 
-        ProtobufToJson(prev_heights).c_str());
-    return tx_ptr;
+    SETH_WARN("HandleToTxsMessage: exhausted reduce attempts");
+    to_txs_pool_->ClearLeaderToHeights();
+    return nullptr;
 }
 
 bool BlockManager::HasSingleTx(

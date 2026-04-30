@@ -2362,6 +2362,7 @@ void Hotstuff::TryRecoverFromStuck(
         return;
     }
 
+    SETH_DEBUG("pool: %u, get leader index: %u, local index: %u", pool_idx_, leader->index, local_idx);
     if (leader->index != local_idx) {
         SyncLocalTxToLeader(msg_ptr, leader, has_system_tx);
         if (latest_leader_propose_message_) {

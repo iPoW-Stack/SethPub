@@ -354,6 +354,13 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
                 cons_height = floor_height;
             }
 
+            // Cap the height range per pool to prevent oversized propose messages.
+            // Each block's cross-shard data can be large; aggregating too many blocks
+            // produces a kNormalTo tx that exceeds kMaxProposeMsgBytes.
+            if (cons_height > floor_height + kMaxHeightRangePerBatch) {
+                cons_height = floor_height + kMaxHeightRangePerBatch;
+            }
+
             to_heights.add_heights(cons_height);
             SETH_DEBUG("pool: %u, success add cons height: %lu, floor: %lu",
                 i, cons_height, floor_height);
