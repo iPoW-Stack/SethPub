@@ -2612,6 +2612,98 @@ contract AMMPool {
         std::cout << "  Waiting 15s for approve consensus..." << std::endl;
         for(int w=0;w<150&&!global_stop;++w) usleep(100000);
 
+        // ── Phase 9.5: Verify approve on-chain via allowance query ────────
+        // Query allowance(owner, spender) for a sample of trade pairs to confirm
+        // that approve transactions were actually committed on chain.
+        // allowance(address,address) selector = dd62ed3e
+        {
+            std::cout << "\n  Verifying approve on-chain (allowance query)..." << std::endl;
+            uint32_t verify_count = 0, verify_ok = 0, verify_fail = 0;
+            // Check up to 20 samples (or all if fewer)
+            uint32_t sample_limit = std::min((uint32_t)trade_pairs.size(), 20u);
+            for (uint32_t tpi = 0; tpi < sample_limit && !global_stop; ++tpi) {
+                const auto& tp = trade_pairs[tpi];
+                for (uint32_t pi : tp.pool_indices) {
+                    const auto& pool = pools[pi];
+                    // Query: tokenA.allowance(userA, pool)
+                    std::string owner_a = users[tp.user_a_idx].addr_hex;
+                    std::string spender = pool.pool;
+                    // allowance(address owner, address spender) → dd62ed3e
+                    std::string owner_padded = std::string(64 - owner_a.size(), '0') + owner_a;
+                    std::string spender_padded = std::string(64 - spender.size(), '0') + spender;
+                    std::string input = "dd62ed3e" + owner_padded + spender_padded;
+
+                    auto [ldr_ip, ldr_http] = get_leader_http(pool.token_a);
+                    SethSDK query_sdk(ldr_ip, ldr_http);
+                    auto result = query_sdk.queryFunctionSolidity(
+                        users[tp.user_a_idx].prikey_hex, pool.token_a,
+                        "allowance", {"address", "address"},
+                        {owner_a, spender}, {"uint256"});
+
+                    ++verify_count;
+                    if (result["status"] == 0 && result.contains("decoded") && 
+                            !result["decoded"].empty()) {
+                        uint64_t allowance_val = 0;
+                        try {
+                            auto decoded = result["decoded"];
+                            if (decoded.is_array() && !decoded.empty()) {
+                                allowance_val = std::stoull(decoded[0].get<std::string>());
+                            } else if (decoded.is_string()) {
+                                allowance_val = std::stoull(decoded.get<std::string>());
+                            }
+                        } catch (...) {}
+
+                        if (allowance_val >= kTokenTransfer) {
+                            ++verify_ok;
+                        } else {
+                            ++verify_fail;
+                            std::cout << "    ✗ pair " << tpi << " pool " << pi
+                                      << ": allowance=" << allowance_val
+                                      << " < expected " << kTokenTransfer << std::endl;
+                        }
+                    } else {
+                        ++verify_fail;
+                        std::cout << "    ✗ pair " << tpi << " pool " << pi
+                                  << ": query failed: " << result.dump() << std::endl;
+                    }
+                }
+            }
+            std::cout << "  Allowance verification: " << verify_ok << "/" << verify_count
+                      << " ok, " << verify_fail << " fail" << std::endl;
+            if (verify_fail > 0) {
+                std::cout << "  ⚠ WARNING: " << verify_fail << " allowance checks failed!"
+                          << std::endl;
+                std::cout << "  Waiting additional 15s for consensus..." << std::endl;
+                for(int w=0;w<150&&!global_stop;++w) usleep(100000);
+                // Re-verify failed ones
+                uint32_t retry_ok = 0;
+                for (uint32_t tpi = 0; tpi < sample_limit && !global_stop; ++tpi) {
+                    const auto& tp = trade_pairs[tpi];
+                    for (uint32_t pi : tp.pool_indices) {
+                        const auto& pool = pools[pi];
+                        std::string owner_a = users[tp.user_a_idx].addr_hex;
+                        auto [ldr_ip, ldr_http] = get_leader_http(pool.token_a);
+                        SethSDK query_sdk(ldr_ip, ldr_http);
+                        auto result = query_sdk.queryFunctionSolidity(
+                            users[tp.user_a_idx].prikey_hex, pool.token_a,
+                            "allowance", {"address", "address"},
+                            {owner_a, pool.pool}, {"uint256"});
+                        if (result["status"] == 0 && result.contains("decoded")) {
+                            try {
+                                uint64_t v = 0;
+                                auto d = result["decoded"];
+                                if (d.is_array() && !d.empty())
+                                    v = std::stoull(d[0].get<std::string>());
+                                if (v >= kTokenTransfer) ++retry_ok;
+                            } catch (...) {}
+                        }
+                    }
+                }
+                std::cout << "  Retry verification: " << retry_ok << "/" << verify_count
+                          << " ok" << std::endl;
+            }
+        }
+
         // ── Phase 10: Execute AMM Swaps (stress test, TCP fast path) ──────
         // Each pair repeats kStressRounds swap rounds on each pool.
         // Each round: UserA swaps A→B, UserB swaps B→A.
