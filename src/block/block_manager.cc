@@ -957,15 +957,15 @@ bool BlockManager::HasToTx(uint32_t pool_index, pools::CheckAddrNonceValidFuncti
         return false;
     }
 
-    auto cur_time = common::TimeUtils::TimestampMs();
-    auto latest_to_block_ptr = latest_to_block_ptr_[latest_to_block_ptr_index_].load();
-    if (latest_to_block_ptr != nullptr &&
-            latest_to_block_ptr->block_info().timestamp() + 10000lu >= cur_time) {
-        SETH_DEBUG("HasToTx: blocked by 10s cooldown, block_tm: %lu, cur: %lu, diff: %ld",
-            latest_to_block_ptr->block_info().timestamp(), cur_time,
-            (int64_t)(cur_time - latest_to_block_ptr->block_info().timestamp()));
-        return false;
-    }
+    // auto cur_time = common::TimeUtils::TimestampMs();
+    // auto latest_to_block_ptr = latest_to_block_ptr_[latest_to_block_ptr_index_].load();
+    // if (latest_to_block_ptr != nullptr &&
+    //         latest_to_block_ptr->block_info().timestamp() + 10000lu >= cur_time) {
+    //     SETH_DEBUG("HasToTx: blocked by 10s cooldown, block_tm: %lu, cur: %lu, diff: %ld",
+    //         latest_to_block_ptr->block_info().timestamp(), cur_time,
+    //         (int64_t)(cur_time - latest_to_block_ptr->block_info().timestamp()));
+    //     return false;
+    // }
 
     return true;
 }

@@ -2303,15 +2303,6 @@ void Hotstuff::TryRecoverFromStuck(
         bool has_user_tx, 
         bool has_system_tx) {
     auto now_tm_ms = common::TimeUtils::TimestampMs();
-    if (pool_idx_ == common::kImmutablePoolSize && 
-            now_tm_ms >= prev_pool32_debug_tm_ + 3000lu) {
-        prev_pool32_debug_tm_ = now_tm_ms;
-        SETH_DEBUG("pool %u TryRecoverFromStuck entry: has_user=%d, has_system=%d, "
-            "qc_ptr=%d, local_idx=%u, empty_propose_count=%u",
-            pool_idx_, has_user_tx, has_system_tx,
-            (latest_qc_item_ptr_ != nullptr), GetLocalMemberIdx(),
-            empty_propose_count_);
-    }
     if (latest_qc_item_ptr_ && update_latest_view_tm_) {
         laste_vote_prev_view_tm_.Put(latest_qc_item_ptr_->view(), now_tm_ms);
         update_latest_view_tm_ = false;
@@ -2372,11 +2363,6 @@ void Hotstuff::TryRecoverFromStuck(
     }
 
     if (leader->index != local_idx) {
-        if (pool_idx_ == common::kImmutablePoolSize &&
-                now_tm_ms >= prev_pool32_debug_tm_ + 3000lu) {
-            SETH_DEBUG("pool %u: not leader (leader=%d, local=%d), syncing to leader",
-                pool_idx_, leader->index, local_idx);
-        }
         SyncLocalTxToLeader(msg_ptr, leader, has_system_tx);
         if (latest_leader_propose_message_) {
             if (latest_leader_propose_message_->prev_timestamp + 3000lu > now_tm_ms) {
@@ -2390,8 +2376,6 @@ void Hotstuff::TryRecoverFromStuck(
     }
 
     if (now_tm_ms < latest_propose_msg_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs) {
-        SETH_DEBUG("pool: %u, propose cooldown active, remaining: %lu ms",
-            pool_idx_, (latest_propose_msg_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs) - now_tm_ms);
         return;
     }
 
