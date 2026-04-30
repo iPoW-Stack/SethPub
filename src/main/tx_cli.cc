@@ -2627,12 +2627,20 @@ contract AMMPool {
                             int64_t nonce_b = tsdk.fetchNonce(prepay_b);
                             if (nonce_b < 0) { swap_fail += kStressRounds; continue; }
 
+                            auto [dest_ip_s, dest_port_s] = get_dest(pool.pool);
+                            if (pi_idx < s + 3) {
+                                uint32_t pidx = common::GetAddressPoolIndex(common::Encode::HexDecode(pool.pool));
+                                std::cout << "  [swap pair " << pi_idx << "] pool=" << pool.pool.substr(0,12)
+                                          << "... pool_idx=" << pidx
+                                          << " → " << dest_ip_s << ":" << dest_port_s
+                                          << " nonce_a=" << nonce_a << " nonce_b=" << nonce_b << std::endl;
+                            }
+
                             for (uint32_t round = 0; round < kStressRounds && !global_stop; ++round) {
                                 // UserA swaps A→B
                                 auto tx1 = CreateTransactionWithAttr(sec_a, ++nonce_a,
                                     common::Encode::HexEncode(pka_raw), pool_raw,
                                     "call", input_swap_a, 0, 5000000, 1, shardnum);
-                                auto [dest_ip_s, dest_port_s] = get_dest(pool.pool);
                                 if (tcp_enqueue(tx1, dest_ip_s, dest_port_s)) ++swap_ok; else ++swap_fail;
 
                                 // UserB swaps B→A
