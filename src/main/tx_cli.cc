@@ -2270,8 +2270,8 @@ contract AMMPool {
                   << pf_ok.load() << " ok, " << pf_fail.load() << " fail" << std::endl;
 
         // Wait for prefund consensus — need enough time for all prefund txs to be confirmed
-        std::cout << "  Waiting 10s for prefund consensus..." << std::endl;
-        for(int w=0;w<100&&!global_stop;++w) usleep(100000);
+        std::cout << "  Waiting 30s for prefund consensus..." << std::endl;
+        for(int w=0;w<100&&!global_stop;++w) usleep(300000);
 
         // Verify prefund accounts exist via batch query, retry missing ones
         std::cout << "  Verifying prefund accounts (batch)..." << std::endl;
@@ -2668,6 +2668,181 @@ contract AMMPool {
                   << swap_ok.load() << " ok, " << swap_fail.load() << " fail"
                   << " (" << std::fixed << std::setprecision(1) << swap_tps << " tx/s)" << std::endl;
 
+        // ── Phase 10b: Wait for swap consensus + Verify results ─────────────
+        std::cout << "\n  Waiting 30s for swap consensus before verification..." << std::endl;
+        for(int w=0;w<300&&!global_stop;++w) usleep(100000);
+
+        std::cout << "\n" << std::string(70, '-') << std::endl;
+        std::cout << "  Phase 10b: Verify Contract Execution Results" << std::endl;
+        std::cout << std::string(70, '-') << std::endl;
+
+        uint32_t verify_ok = 0, verify_fail = 0, verify_skip = 0;
+        // Sample verification: check a subset of pools and users
+        uint32_t verify_count = std::min((uint32_t)pools.size(), (uint32_t)20);
+
+        // 1. Verify pool reserves: reserveA > 0 && reserveB > 0 (liquidity still exists)
+        //    After matched swaps (A→B then B→A), reserves should be close to initial
+        std::cout << "  [1] Verifying pool reserves (getReserves)..." << std::endl;
+        uint32_t reserves_ok = 0, reserves_fail = 0;
+        for (uint32_t i = 0; i < verify_count && !global_stop; ++i) {
+            auto qr = sdk.queryFunctionSolidity(deployers[pools[i].deployer_idx].prikey_hex,
+                pools[i].pool, "getReserves", {}, {}, {"uint256","uint256"});
+            if (qr["status"] == 0 && qr.contains("decoded") && qr["decoded"].is_array() && qr["decoded"].size() >= 2) {
+                uint64_t rA = 0, rB = 0;
+                try {
+                    if (qr["decoded"][0].is_number()) rA = qr["decoded"][0].get<uint64_t>();
+                    else if (qr["decoded"][0].is_string()) {
+                        auto s = qr["decoded"][0].get<std::string>();
+                        std::from_chars(s.data(), s.data()+s.size(), rA);
+                    }
+                    if (qr["decoded"][1].is_number()) rB = qr["decoded"][1].get<uint64_t>();
+                    else if (qr["decoded"][1].is_string()) {
+                        auto s = qr["decoded"][1].get<std::string>();
+                        std::from_chars(s.data(), s.data()+s.size(), rB);
+                    }
+                } catch (...) {}
+                if (rA > 0 && rB > 0) {
+                    ++reserves_ok;
+                    if (i < 3) std::cout << "    Pool[" << i << "] reserves: A=" << rA << " B=" << rB << " ✓" << std::endl;
+                } else {
+                    ++reserves_fail;
+                    if (i < 5) std::cout << "    Pool[" << i << "] reserves: A=" << rA << " B=" << rB << " ✗ (empty!)" << std::endl;
+                }
+            } else {
+                ++reserves_fail;
+                if (i < 5) std::cout << "    Pool[" << i << "] query failed" << std::endl;
+            }
+        }
+        std::cout << "    Reserves: " << reserves_ok << "/" << verify_count << " ok" << std::endl;
+        verify_ok += reserves_ok; verify_fail += reserves_fail;
+
+        // 2. Verify prepayment nonces: should equal initial_nonce + kStressRounds
+        //    This confirms all swap transactions were actually processed on-chain
+        std::cout << "  [2] Verifying swap nonces (prepayment accounts)..." << std::endl;
+        uint32_t nonce_ok = 0, nonce_fail = 0, nonce_skip = 0;
+        uint32_t nonce_check_count = std::min((uint32_t)trade_pairs.size(), (uint32_t)50);
+        for (uint32_t pi = 0; pi < nonce_check_count && !global_stop; ++pi) {
+            const auto& tp = trade_pairs[pi];
+            for (uint32_t pool_idx : tp.pool_indices) {
+                const auto& pool = pools[pool_idx];
+                // Check UserA's nonce on pool contract
+                std::string prepay_a = pool.pool + users[tp.user_a_idx].addr_hex;
+                int64_t nonce_a = sdk.fetchNonce(prepay_a);
+                // After approve (1 or kStressRounds) + swap (kStressRounds), nonce should be > 0
+                // The approve phase sent kStressRounds approves, swap phase sent kStressRounds swaps
+                // But approve is on token contract, not pool. So pool nonce = kStressRounds (swaps only)
+                if (nonce_a >= (int64_t)kStressRounds) {
+                    ++nonce_ok;
+                } else if (nonce_a >= 0) {
+                    ++nonce_fail;
+                    if (nonce_fail <= 3) std::cout << "    Pair[" << pi << "] UserA pool nonce=" << nonce_a
+                                                   << " (expected >=" << kStressRounds << ") ✗" << std::endl;
+                } else {
+                    ++nonce_skip;
+                }
+                // Check UserB's nonce on pool contract
+                std::string prepay_b = pool.pool + users[tp.user_b_idx].addr_hex;
+                int64_t nonce_b = sdk.fetchNonce(prepay_b);
+                if (nonce_b >= (int64_t)kStressRounds) {
+                    ++nonce_ok;
+                } else if (nonce_b >= 0) {
+                    ++nonce_fail;
+                    if (nonce_fail <= 3) std::cout << "    Pair[" << pi << "] UserB pool nonce=" << nonce_b
+                                                   << " (expected >=" << kStressRounds << ") ✗" << std::endl;
+                } else {
+                    ++nonce_skip;
+                }
+            }
+        }
+        std::cout << "    Nonces: " << nonce_ok << " ok, " << nonce_fail << " fail, "
+                  << nonce_skip << " skip (of " << nonce_check_count << " pairs)" << std::endl;
+        verify_ok += nonce_ok; verify_fail += nonce_fail; verify_skip += nonce_skip;
+
+        // 3. Verify token balances: deployer should still have tokens (not drained)
+        //    Users should have non-zero balances after swaps
+        std::cout << "  [3] Verifying token balances (balanceOf)..." << std::endl;
+        uint32_t bal_ok = 0, bal_fail = 0;
+        uint32_t bal_check_count = std::min((uint32_t)pools.size(), (uint32_t)10);
+        for (uint32_t i = 0; i < bal_check_count && !global_stop; ++i) {
+            const auto& pool = pools[i];
+            const auto& dpk = deployers[pool.deployer_idx].prikey_hex;
+            const auto& daddr = deployers[pool.deployer_idx].addr_hex;
+            // Query deployer's TokenA balance
+            auto qr = sdk.queryFunctionSolidity(dpk, pool.token_a,
+                "balanceOf", {"address"}, {daddr}, {"uint256"});
+            if (qr["status"] == 0 && qr.contains("decoded")) {
+                uint64_t bal = 0;
+                try {
+                    if (qr["decoded"].is_array() && qr["decoded"].size() > 0) {
+                        if (qr["decoded"][0].is_number()) bal = qr["decoded"][0].get<uint64_t>();
+                        else if (qr["decoded"][0].is_string()) {
+                            auto s = qr["decoded"][0].get<std::string>();
+                            std::from_chars(s.data(), s.data()+s.size(), bal);
+                        }
+                    }
+                } catch (...) {}
+                if (bal > 0) {
+                    ++bal_ok;
+                    if (i < 3) std::cout << "    Pool[" << i << "] deployer TokenA bal=" << bal << " ✓" << std::endl;
+                } else {
+                    ++bal_fail;
+                    if (i < 5) std::cout << "    Pool[" << i << "] deployer TokenA bal=0 ✗" << std::endl;
+                }
+            } else {
+                ++bal_fail;
+            }
+        }
+        std::cout << "    Balances: " << bal_ok << "/" << bal_check_count << " ok" << std::endl;
+        verify_ok += bal_ok; verify_fail += bal_fail;
+
+        // 4. Verify AMM invariant: reserveA * reserveB should be >= initial k
+        //    k = initialLiquidity^2 = 5000000 * 5000000 = 25 * 10^12
+        //    After swaps, k should be maintained or slightly increased (due to rounding)
+        std::cout << "  [4] Verifying AMM invariant (k = reserveA * reserveB)..." << std::endl;
+        uint64_t initial_k = kInitialLiquidity * kInitialLiquidity;
+        uint32_t k_ok = 0, k_fail = 0;
+        for (uint32_t i = 0; i < verify_count && !global_stop; ++i) {
+            auto qr = sdk.queryFunctionSolidity(deployers[pools[i].deployer_idx].prikey_hex,
+                pools[i].pool, "getReserves", {}, {}, {"uint256","uint256"});
+            if (qr["status"] == 0 && qr.contains("decoded") && qr["decoded"].is_array() && qr["decoded"].size() >= 2) {
+                uint64_t rA = 0, rB = 0;
+                try {
+                    if (qr["decoded"][0].is_number()) rA = qr["decoded"][0].get<uint64_t>();
+                    else if (qr["decoded"][0].is_string()) {
+                        auto s = qr["decoded"][0].get<std::string>();
+                        std::from_chars(s.data(), s.data()+s.size(), rA);
+                    }
+                    if (qr["decoded"][1].is_number()) rB = qr["decoded"][1].get<uint64_t>();
+                    else if (qr["decoded"][1].is_string()) {
+                        auto s = qr["decoded"][1].get<std::string>();
+                        std::from_chars(s.data(), s.data()+s.size(), rB);
+                    }
+                } catch (...) {}
+                // Use __int128 to avoid overflow for large reserves
+                __int128 k = (__int128)rA * (__int128)rB;
+                __int128 k0 = (__int128)initial_k;
+                if (k >= k0) {
+                    ++k_ok;
+                    if (i < 3) std::cout << "    Pool[" << i << "] k=" << (uint64_t)(k/1000000) << "M >= k0="
+                                         << (uint64_t)(k0/1000000) << "M ✓" << std::endl;
+                } else {
+                    ++k_fail;
+                    if (i < 5) std::cout << "    Pool[" << i << "] k=" << (uint64_t)(k/1000000) << "M < k0="
+                                         << (uint64_t)(k0/1000000) << "M ✗ (invariant violated!)" << std::endl;
+                }
+            }
+        }
+        std::cout << "    AMM invariant: " << k_ok << "/" << verify_count << " ok" << std::endl;
+        verify_ok += k_ok; verify_fail += k_fail;
+
+        std::cout << "\n  Verification summary: " << verify_ok << " ok, " << verify_fail << " fail, "
+                  << verify_skip << " skip" << std::endl;
+        if (verify_fail == 0) {
+            std::cout << "  ✅ All verifications PASSED" << std::endl;
+        } else {
+            std::cout << "  ⚠️  Some verifications FAILED (" << verify_fail << ")" << std::endl;
+        }
+
         // ── Phase 11: Summary + save ──────────────────────────────────────
         std::cout << "\n" << std::string(70, '=') << std::endl;
         std::cout << "  AMM STRESS TEST COMPLETE" << std::endl;
@@ -2708,6 +2883,24 @@ contract AMMPool {
             res["approve_fail"] = appr_fail.load();
             res["liquidity_ok"] = liq_ok.load();
             res["liquidity_fail"] = liq_fail.load();
+            res["stress_rounds"] = kStressRounds;
+            res["target_tps"] = kTargetTps;
+
+            // Verification results
+            json vr;
+            vr["reserves_ok"] = reserves_ok;
+            vr["reserves_fail"] = reserves_fail;
+            vr["nonce_ok"] = nonce_ok;
+            vr["nonce_fail"] = nonce_fail;
+            vr["nonce_skip"] = nonce_skip;
+            vr["balance_ok"] = bal_ok;
+            vr["balance_fail"] = bal_fail;
+            vr["amm_invariant_ok"] = k_ok;
+            vr["amm_invariant_fail"] = k_fail;
+            vr["total_ok"] = verify_ok;
+            vr["total_fail"] = verify_fail;
+            vr["all_passed"] = (verify_fail == 0);
+            res["verification"] = vr;
 
             // Confirmed users
             json ul = json::array();
