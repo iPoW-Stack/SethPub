@@ -667,6 +667,7 @@ private:
     // delay retries with exponential backoff to avoid CPU-burning tight loops.
     uint32_t empty_propose_count_ = 0;
     uint64_t empty_propose_backoff_until_ms_ = 0;
+    uint64_t prev_pool32_debug_tm_ = 0;
     static constexpr uint32_t kEmptyProposeBackoffBaseMs = 50;    // 50ms base
     static constexpr uint32_t kEmptyProposeBackoffMaxMs = 5000;   // 5s cap
 

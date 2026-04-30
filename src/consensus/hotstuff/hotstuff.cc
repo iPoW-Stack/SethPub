@@ -2303,6 +2303,15 @@ void Hotstuff::TryRecoverFromStuck(
         bool has_user_tx, 
         bool has_system_tx) {
     auto now_tm_ms = common::TimeUtils::TimestampMs();
+    if (pool_idx_ == common::kImmutablePoolSize && 
+            now_tm_ms >= prev_pool32_debug_tm_ + 3000lu) {
+        prev_pool32_debug_tm_ = now_tm_ms;
+        SETH_DEBUG("pool %u TryRecoverFromStuck entry: has_user=%d, has_system=%d, "
+            "qc_ptr=%d, local_idx=%u, empty_propose_count=%u",
+            pool_idx_, has_user_tx, has_system_tx,
+            (latest_qc_item_ptr_ != nullptr), GetLocalMemberIdx(),
+            empty_propose_count_);
+    }
     if (latest_qc_item_ptr_ && update_latest_view_tm_) {
         laste_vote_prev_view_tm_.Put(latest_qc_item_ptr_->view(), now_tm_ms);
         update_latest_view_tm_ = false;
@@ -2350,6 +2359,12 @@ void Hotstuff::TryRecoverFromStuck(
     auto local_idx = GetLocalMemberIdx();
     View out_view = 0;
     auto leader_block_tm = GetLeaderBlockTimestamp();
+    if (!latest_qc_item_ptr_) {
+        if (pool_idx_ == common::kImmutablePoolSize) {
+            SETH_DEBUG("pool %u: latest_qc_item_ptr_ is null, cannot get leader", pool_idx_);
+        }
+        return;
+    }
     auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view, leader_block_tm, false);
     if (!leader) {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
@@ -2357,7 +2372,8 @@ void Hotstuff::TryRecoverFromStuck(
     }
 
     if (leader->index != local_idx) {
-        if (pool_idx_ == common::kImmutablePoolSize) {
+        if (pool_idx_ == common::kImmutablePoolSize &&
+                now_tm_ms >= prev_pool32_debug_tm_ + 3000lu) {
             SETH_DEBUG("pool %u: not leader (leader=%d, local=%d), syncing to leader",
                 pool_idx_, leader->index, local_idx);
         }
