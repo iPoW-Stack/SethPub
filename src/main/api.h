@@ -215,7 +215,9 @@ public:
             }
         }
 
-        std::cout << "fetch nonce failed: " << address << ":" << res->status << std::endl;
+        if (res) {
+            std::cout << "fetch nonce failed: " << address << ":" << res->status << std::endl;
+        }
         return -1; 
     }
 
