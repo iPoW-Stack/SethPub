@@ -2335,10 +2335,14 @@ contract AMMPool {
                         sec->SetPrivateKey(prikey_raw);
                         std::string addr = sec->GetAddress();
                         
-                        // Use local nonce map to ensure continuity across multiple prefund ops
+                        // Read initial nonce from the shared map (safe: nonce init is done, no concurrent writes)
+                        auto nonce_it = prikey_with_nonce.find(addr);
+                        uint64_t local_nonce = (nonce_it != prikey_with_nonce.end()) ? nonce_it->second : 0;
+
+                        // Use local nonce to ensure continuity across multiple prefund ops
                         for (const auto& ca : grp.contract_addrs) {
                             if (global_stop) break;
-                            uint64_t next_nonce = ++prikey_with_nonce[addr];
+                            uint64_t next_nonce = ++local_nonce;
                             auto tx = CreateTransactionWithAttr(sec, next_nonce,
                                 common::Encode::HexEncode(prikey_raw),
                                 common::Encode::HexDecode(ca),
@@ -2594,6 +2598,16 @@ contract AMMPool {
                                           << " caller=" << grp.caller_addr
                                           << " ops=" << grp.inputs.size() << std::endl;
                                 if (retry < 2) usleep(200000);
+                            }
+                        }
+                        // Fallback: if leader failed, try default node
+                        if (nonce < 0) {
+                            SethSDK fallback_sdk(global_chain_node_ip, global_chain_node_http_port);
+                            nonce = fallback_sdk.fetchNonce(prepay_addr);
+                            if (nonce >= 0) {
+                                std::cerr << "  [" << label << " FALLBACK OK] grp=" << gi
+                                          << " default=" << global_chain_node_ip << ":" << global_chain_node_http_port
+                                          << " nonce=" << nonce << std::endl;
                             }
                         }
                         if (gi < s + 3) {
@@ -3003,6 +3017,15 @@ contract AMMPool {
                                     if (retry < 2) usleep(200000);
                                 }
                             }
+                            // Fallback to default node
+                            if (nonce_a < 0) {
+                                SethSDK fb(global_chain_node_ip, global_chain_node_http_port);
+                                nonce_a = fb.fetchNonce(prepay_a);
+                                if (nonce_a >= 0) {
+                                    std::cerr << "  [swap FALLBACK_A OK] pair=" << pi_idx
+                                              << " nonce_a=" << nonce_a << std::endl;
+                                }
+                            }
                             if (nonce_a < 0) {
                                 std::cerr << "  [swap SKIP_A] pair=" << pi_idx
                                           << " leader=" << ldr_ip << ":" << ldr_http
@@ -3023,6 +3046,15 @@ contract AMMPool {
                                               << " addr_b=" << addr_b.substr(0,16)
                                               << " prepay=" << prepay_b << std::endl;
                                     if (retry < 2) usleep(200000);
+                                }
+                            }
+                            // Fallback to default node
+                            if (nonce_b < 0) {
+                                SethSDK fb(global_chain_node_ip, global_chain_node_http_port);
+                                nonce_b = fb.fetchNonce(prepay_b);
+                                if (nonce_b >= 0) {
+                                    std::cerr << "  [swap FALLBACK_B OK] pair=" << pi_idx
+                                              << " nonce_b=" << nonce_b << std::endl;
                                 }
                             }
                             if (nonce_b < 0) {

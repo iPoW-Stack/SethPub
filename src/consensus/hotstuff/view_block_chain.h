@@ -52,6 +52,8 @@ public:
     std::shared_ptr<ViewBlockInfo> GetViewBlockWithHash(const HashStr& hash, bool remove);
     std::shared_ptr<ViewBlock> GetViewBlockWithView(uint32_t network_id, uint64_t height);
     std::shared_ptr<ViewBlock> GetViewBlockWithHeight(uint32_t network_id, uint64_t height);
+    // Lightweight height lookup: cached_view_with_blocks_ + DB, no queue drain.
+    std::shared_ptr<ViewBlock> GetWithHeight(uint32_t network_id, uint64_t height);
     // std::shared_ptr<ViewBlock> Get(uint64_t view);
     // If has block
     bool Has(const HashStr& hash);

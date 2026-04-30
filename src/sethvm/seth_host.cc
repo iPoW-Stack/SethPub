@@ -619,7 +619,7 @@ evmc::bytes32 SethhainHost::get_block_hash(int64_t block_number) const noexcept 
     uint32_t network_id = latest_block->qc().network_id();
     uint64_t height = static_cast<uint64_t>(block_number);
     
-    auto view_block = view_block_chain_->GetViewBlockWithHeight(network_id, height);
+    auto view_block = view_block_chain_->GetWithHeight(network_id, height);
     if (!view_block || view_block->qc().view_block_hash().empty()) {
         SETH_DEBUG("get_block_hash: no block at height %lu for network %u pool %u", 
             height, network_id, pool_idx);

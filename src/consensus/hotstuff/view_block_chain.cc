@@ -231,6 +231,39 @@ std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHeight(
     return nullptr;
 }
 
+std::shared_ptr<ViewBlock> ViewBlockChain::GetWithHeight(
+        uint32_t network_id,
+        uint64_t height) {
+    if (height == 0) {
+        return nullptr;
+    }
+
+    // 1. Check cached_view_with_blocks_ (no queue drain)
+    for (auto& [view, blocks] : cached_view_with_blocks_) {
+        for (auto& info : blocks) {
+            if (info && info->view_block &&
+                    info->view_block->block_info().height() == height &&
+                    info->view_block->qc().network_id() == network_id) {
+                return info->view_block;
+            }
+        }
+    }
+
+    // 2. Check high_view_block_
+    auto latest_view_block = high_view_block_;
+    if (latest_view_block && latest_view_block->block_info().height() == height) {
+        return latest_view_block;
+    }
+
+    // 3. Fallback to DB
+    auto view_block = std::make_shared<ViewBlock>();
+    if (prefix_db_->GetBlockWithHeight(network_id, pool_index_, height, view_block.get())) {
+        return view_block;
+    }
+
+    return nullptr;
+}
+
 std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithView(
         uint32_t network_id, 
         uint64_t view) {
