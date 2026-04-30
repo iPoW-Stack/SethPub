@@ -95,17 +95,16 @@ Status BlockWrapper::Wrap(
         (txs_ptr != nullptr ? txs_ptr->txs.size() : 0));
     view_block->set_parent_hash(prev_view_block->qc().view_block_hash());
     if (txs_ptr) {
-        // Hard limit: stop adding txs once the propose message would exceed 1 MB.
+        // Hard limit: stop adding txs once the propose message would exceed the limit.
         // This prevents receivers from dropping the message due to the packet size limit.
-        static const int kMaxProposeMsgBytes = 900 * 1024;  // 900 KB — leave headroom for headers/sig
         int current_size = view_block->ByteSizeLong();
 
         for (auto it = txs_ptr->txs.begin(); it != txs_ptr->txs.end(); it++) {
             int tx_size = (*it)->tx_info->ByteSizeLong();
-            if (current_size + tx_size > kMaxProposeMsgBytes) {
+            if (current_size + tx_size > common::kMaxProposeMsgBytes) {
                 SETH_WARN("pool: %d, propose msg size limit reached: current=%d bytes, "
                     "tx_size=%d, limit=%d — stopping at %d/%zu txs",
-                    pool_idx_, current_size, tx_size, kMaxProposeMsgBytes,
+                    pool_idx_, current_size, tx_size, common::kMaxProposeMsgBytes,
                     tx_propose->txs_size(), txs_ptr->txs.size());
                 break;
             }

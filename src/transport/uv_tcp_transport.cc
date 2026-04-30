@@ -178,10 +178,9 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
         return false;
     }
 
-    // Reject oversized packets — normal consensus messages are well under 1 MB.
-    // This can happen when network delay corrupts packet headers, causing len to be garbage.
-    // Increased limit to 2MB to handle large blocks during high-load testing.
-    static const uint32_t kMaxPacketBytes = 2u * 1024u * 1024u;  // 2 MB hard limit
+    // Reject oversized packets — use 150% of kMaxProposeMsgBytes to allow some headroom
+    // for headers, signatures, and protobuf overhead on top of the propose payload.
+    static const uint32_t kMaxPacketBytes = (uint32_t)(common::kMaxProposeMsgBytes * 3 / 2);
     if (len == 0 || len > kMaxPacketBytes) {
         SETH_WARN("[PACKET_VALIDATION] oversized or empty packet from %s:%d, len=%u (max=%u) — closing connection",
                   from_ip, from_port, len, kMaxPacketBytes);
@@ -469,7 +468,7 @@ int TcpTransport::Send(
     output_item->type = message.type();
     output_item->hash64 = message.hash64();
     message.SerializeToString(&output_item->msg);
-    assert(output_item->msg.size() < (uint32_t)(1024 * 1024 * 2.5));
+    assert(output_item->msg.size() < (uint32_t)(common::kMaxProposeMsgBytes * 3 / 2));
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     output_queues_[thread_idx].push(output_item);
     output_con_.notify_one();
@@ -483,7 +482,7 @@ int TcpTransport::Send(
     output_item->conn = conn;
     output_item->hash64 = 0;
     output_item->msg = message;
-    assert(output_item->msg.size() < (uint32_t)(1024 * 1024 * 2.5));
+    assert(output_item->msg.size() < (uint32_t)(common::kMaxProposeMsgBytes * 3 / 2));
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     output_queues_[thread_idx].push(output_item);
     output_con_.notify_one();
@@ -508,7 +507,7 @@ int TcpTransport::Send(
     output_item->type = message.type();
     output_item->hash64 = message.hash64();
     message.SerializeToString(&output_item->msg);
-    assert(output_item->msg.size() < (uint32_t)(1024 * 1024 * 2.5));
+    assert(output_item->msg.size() < (uint32_t)(common::kMaxProposeMsgBytes * 3 / 2));
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     output_queues_[thread_idx].push(output_item);
     output_con_.notify_one();

@@ -263,25 +263,12 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
         return kPoolsError;
     }
 
-    // Maximum total cross-shard items per round to keep serialized size under 512KB.
-    // Each ToTxMessageItem ~150 bytes → 512KB / 150 ≈ 3400 items max.
-    static const size_t kMaxTotalItems = 3000u;
-
     bool valid = false;
     auto leader_to_heights_ptr = leader_to_heights_.load();
     if (leader_to_heights_ptr != nullptr) {
         valid = true;
     } else {
         auto timeout = common::TimeUtils::TimestampMs();
-        size_t total_items = 0;
-
-        // First pass: get prev_heights once
-        std::shared_ptr<pools::protobuf::ShardToTxItem> prev_ptr;
-        {
-            common::AutoSpinLock lock(prev_to_heights_mutex_);
-            prev_ptr = prev_to_heights_;
-        }
-
         for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
             uint64_t cons_height = pool_consensus_heihgts_[i];
             while (cons_height > 0) {
@@ -301,29 +288,6 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
                 valid = true;
                 break;
             }
-
-            // Cap height if total items would exceed limit
-            if (total_items < kMaxTotalItems) {
-                uint64_t prev_h = (prev_ptr && i < (uint32_t)prev_ptr->heights_size()) ? prev_ptr->heights(i) : 0;
-                common::AutoSpinLock auto_lock(network_txs_pools_mutex_);
-                auto& height_map = network_txs_pools_[i];
-                uint64_t capped = cons_height;
-                for (uint64_t h = prev_h + 1; h <= cons_height; ++h) {
-                    auto hiter = height_map.find(h);
-                    if (hiter != height_map.end()) {
-                        total_items += hiter->second.size();
-                        if (total_items > kMaxTotalItems) {
-                            capped = (h > prev_h + 1) ? (h - 1) : h;  // include at least this height
-                            SETH_DEBUG("pool: %u, item limit at height %lu (%zu items), capped from %lu to %lu",
-                                i, h, total_items, cons_height, capped);
-                            break;
-                        }
-                    }
-                }
-                cons_height = capped;
-            }
-            // If limit already reached, still use cons_height as-is (don't regress)
-            // This ensures we always make progress on every pool
 
             to_heights.add_heights(cons_height);
             SETH_DEBUG("pool: %u, success add cons height: %lu", i, cons_height);

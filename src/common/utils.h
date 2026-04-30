@@ -219,7 +219,7 @@ static const uint32_t kUnicastAddressLength = 20u;
 static const uint32_t kPreypamentAddressLength = 40u;
 static const uint32_t kImmutablePoolSize = 32u;
 static const uint32_t kGlobalPoolIndex = kImmutablePoolSize;
-static const uint32_t kMaxTxCount = 16384u;
+static const uint32_t kMaxTxCount = 4096u;
 static const uint32_t kInvalidPoolIndex = kImmutablePoolSize + 1;
 static const uint32_t kTestForNetworkId = 4u;
 static const uint16_t kDefaultVpnPort = 9033u;
@@ -311,6 +311,10 @@ static const uint32_t kInvalidFloat = (std::numeric_limits<float>::max)();
 static const uint8_t kMaxThreadCount = 32u;
 
 static const uint32_t kSingleBlockMaxMBytes = 2u;
+// Maximum propose message size in bytes. Used by block_wrapper (tx packing limit)
+// and hotstuff (oversized message detection). Leave headroom below the 2.5MB
+// transport assert for headers, signatures, and protobuf overhead.
+static const int kMaxProposeMsgBytes = 1 * 1024 * 1024;  // 1M
 static const uint32_t kVpnShareStakingPrice = 1u;
 
 static const uint64_t kSethMaxAmount = 10llu * 100000000llu * kSethMiniTransportUnit;
