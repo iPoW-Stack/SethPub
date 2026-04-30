@@ -585,7 +585,20 @@ void UpdateAddressNonce(const std::string& contract_address) {
 }
 
 int InitPrefund(const std::string& contract_address) {
-    SethSDK client(kBroadcastIp);
+    // Route prefund to the contract's pool leader
+    std::string dest_ip = kBroadcastIp;
+    int dest_port = kBroadcastPort + 10000;  // default HTTP port
+    if (g_has_leader_routing) {
+        std::string ca_raw = common::Encode::HexDecode(contract_address);
+        uint32_t pool_idx = common::GetAddressPoolIndex(ca_raw);
+        std::lock_guard<std::mutex> lock(g_leader_mutex);
+        auto it = g_leader_map.find(pool_idx);
+        if (it != g_leader_map.end()) {
+            dest_ip = it->second.ip;
+            dest_port = it->second.port + 10000;
+        }
+    }
+    SethSDK client(dest_ip, dest_port);
     for (auto iter = g_prikeys.begin(); iter != g_prikeys.end(); ++iter) {
         auto prikey = common::Encode::HexEncode(*iter);
         auto res_json = client.setGasPrefund(prikey, contract_address, 490000000lu);
@@ -1978,22 +1991,39 @@ contract AMMPool {
         std::atomic<uint32_t> liq_ok{0}, liq_fail{0};
         auto liq_start = std::chrono::steady_clock::now();
 
-        // Step 5a: Set deployer prefund on all 3 contracts per set
+        // Helper: create SethSDK routed to the pool leader of a contract address
+        auto make_routed_sdk = [&](const std::string& contract_addr_hex) -> SethSDK {
+            if (amm_has_leaders) {
+                std::string ca_raw = common::Encode::HexDecode(contract_addr_hex);
+                uint32_t pidx = common::GetAddressPoolIndex(ca_raw);
+                std::lock_guard<std::mutex> lk(amm_leader_mutex);
+                auto it = amm_leader_map.find(pidx);
+                if (it != amm_leader_map.end()) {
+                    return SethSDK(it->second.ip, it->second.port + 10000);
+                }
+            }
+            return SethSDK(global_chain_node_ip, global_chain_node_http_port);
+        };
+
+        // Step 5a: Set deployer prefund on contracts — route to contract's pool leader
         std::cout << "  Step 5a: Set deployer prefund on contracts..." << std::endl;
         {
             std::vector<std::thread> pt;
             uint32_t nt = std::min(kDeployThreads, kContractSets); if (!nt) nt = 1;
             uint32_t pp = kContractSets / nt;
             std::atomic<uint32_t> dpf_ok{0}, dpf_fail{0};
+
             for (uint32_t t = 0; t < nt; ++t) {
                 uint32_t s = t*pp, e = (t==nt-1)?kContractSets:(s+pp);
                 pt.emplace_back([&,s,e](){
-                    SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
                     for (uint32_t i=s;i<e&&!global_stop;++i) {
                         if (!deployers[i].token_a_deployed||!deployers[i].token_b_deployed||!deployers[i].pool_deployed) continue;
-                        auto r1=tsdk.setGasPrefund(deployers[i].prikey_hex, deployers[i].token_a_addr, kDeployerPrefund);
-                        auto r2=tsdk.setGasPrefund(deployers[i].prikey_hex, deployers[i].token_b_addr, kDeployerPrefund);
-                        auto r3=tsdk.setGasPrefund(deployers[i].prikey_hex, deployers[i].pool_addr, kDeployerPrefund);
+                        auto sdk_a = make_routed_sdk(deployers[i].token_a_addr);
+                        auto sdk_b = make_routed_sdk(deployers[i].token_b_addr);
+                        auto sdk_p = make_routed_sdk(deployers[i].pool_addr);
+                        auto r1=sdk_a.setGasPrefund(deployers[i].prikey_hex, deployers[i].token_a_addr, kDeployerPrefund);
+                        auto r2=sdk_b.setGasPrefund(deployers[i].prikey_hex, deployers[i].token_b_addr, kDeployerPrefund);
+                        auto r3=sdk_p.setGasPrefund(deployers[i].prikey_hex, deployers[i].pool_addr, kDeployerPrefund);
                         if(r1["status"]==0&&r2["status"]==0&&r3["status"]==0) dpf_ok+=3; else dpf_fail++;
                         usleep(50000);
                     }
@@ -2017,13 +2047,15 @@ contract AMMPool {
             for (uint32_t t = 0; t < nt; ++t) {
                 uint32_t s = t*pp, e = (t==nt-1)?kContractSets:(s+pp);
                 pt.emplace_back([&,s,e](){
-                    SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
                     for (uint32_t i=s;i<e&&!global_stop;++i) {
                         if (!deployers[i].token_a_deployed||!deployers[i].token_b_deployed||!deployers[i].pool_deployed) continue;
                         auto approve_str = std::to_string(kInitialLiquidity * 2);
-                        auto ra = tsdk.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].token_a_addr, 0,
+                        // Route approve to each token's pool leader
+                        auto sdk_a = make_routed_sdk(deployers[i].token_a_addr);
+                        auto sdk_b = make_routed_sdk(deployers[i].token_b_addr);
+                        auto ra = sdk_a.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].token_a_addr, 0,
                             "approve", {"address","uint256"}, {deployers[i].pool_addr, approve_str});
-                        auto rb = tsdk.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].token_b_addr, 0,
+                        auto rb = sdk_b.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].token_b_addr, 0,
                             "approve", {"address","uint256"}, {deployers[i].pool_addr, approve_str});
                         if (ra["status"]==0 && rb["status"]==0) appr5_ok+=2; else ++appr5_fail;
                         usleep(50000);
@@ -2047,11 +2079,12 @@ contract AMMPool {
             for (uint32_t t = 0; t < nt; ++t) {
                 uint32_t s = t*pp, e = (t==nt-1)?kContractSets:(s+pp);
                 pt.emplace_back([&,s,e](){
-                    SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
                     for (uint32_t i=s;i<e&&!global_stop;++i) {
                         if (!deployers[i].token_a_deployed||!deployers[i].token_b_deployed||!deployers[i].pool_deployed) continue;
                         auto liq_str = std::to_string(kInitialLiquidity);
-                        auto r = tsdk.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].pool_addr, 0,
+                        // Route addLiquidity to the pool contract's leader
+                        auto sdk_pool = make_routed_sdk(deployers[i].pool_addr);
+                        auto r = sdk_pool.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].pool_addr, 0,
                             "addLiquidity", {"uint256","uint256"}, {liq_str, liq_str});
                         if(r["status"]==0) ++liq_ok; else ++liq_fail;
                         usleep(50000);
@@ -2211,7 +2244,6 @@ contract AMMPool {
         // Initialize nonces for all confirmed users before prefund
         std::cout << "  Initializing nonces for " << confirmed_users.size() << " users..." << std::endl;
         {
-            SethSDK nonce_sdk(global_chain_node_ip, global_chain_node_http_port);
             uint32_t nonce_init_threads = std::min((uint32_t)common::kMaxThreadCount, (uint32_t)confirmed_users.size());
             if (nonce_init_threads == 0) nonce_init_threads = 1;
             uint32_t users_per_thread = confirmed_users.size() / nonce_init_threads;
@@ -2222,10 +2254,23 @@ contract AMMPool {
                 uint32_t s = t * users_per_thread;
                 uint32_t e = (t == nonce_init_threads - 1) ? (uint32_t)confirmed_users.size() : (s + users_per_thread);
                 nonce_threads.emplace_back([&, s, e]() {
-                    SethSDK local_sdk(global_chain_node_ip, global_chain_node_http_port);
                     for (uint32_t i = s; i < e && !global_stop; ++i) {
                         uint32_t user_idx = confirmed_users[i];
                         std::string addr_hex = users[user_idx].addr_hex;
+                        // Route nonce query to the leader of the sender's pool
+                        std::string query_ip = global_chain_node_ip;
+                        uint16_t query_port = global_chain_node_http_port;
+                        if (amm_has_leaders) {
+                            std::string addr_raw = common::Encode::HexDecode(addr_hex);
+                            uint32_t pool_idx = common::GetAddressPoolIndex(addr_raw);
+                            std::lock_guard<std::mutex> lk(amm_leader_mutex);
+                            auto it = amm_leader_map.find(pool_idx);
+                            if (it != amm_leader_map.end()) {
+                                query_ip = it->second.ip;
+                                query_port = it->second.port + 10000;
+                            }
+                        }
+                        SethSDK local_sdk(query_ip, query_port);
                         int64_t nonce = local_sdk.fetchNonce(addr_hex);
                         if (nonce >= 0) {
                             std::string addr_raw = common::Encode::HexDecode(addr_hex);
@@ -2294,7 +2339,9 @@ contract AMMPool {
                                 common::Encode::HexEncode(prikey_raw),
                                 common::Encode::HexDecode(ca),
                                 "prefund", "", 0, 210000, 1, shardnum);
-                            if (tcp_enqueue_default(tx)) ++pf_ok;
+                            // Route prefund to the contract's pool leader
+                            auto [dest_ip, dest_port] = get_dest(ca);
+                            if (tcp_enqueue(tx, dest_ip, dest_port)) ++pf_ok;
                             else ++pf_fail;
                             usleep(200);
                         }
@@ -2384,7 +2431,7 @@ contract AMMPool {
         }
         std::cout << "  Prefund verified: " << pf_verified << "/" << pf_verify.size() << std::endl;
 
-        // Retry missing prefunds via HTTP SDK
+        // Retry missing prefunds via HTTP SDK — route to contract's pool leader
         if (!pf_pending.empty()) {
             std::cout << "  Retrying " << pf_pending.size() << " missing prefunds via HTTP..." << std::endl;
             std::atomic<uint32_t> retry_ok{0}, retry_fail{0};
@@ -2396,11 +2443,24 @@ contract AMMPool {
                 for (uint32_t t = 0; t < rt; ++t) {
                     uint32_t s = t*rpp, e = (t==rt-1)?(uint32_t)pf_pending.size():(s+rpp);
                     rthreads.emplace_back([&,s,e](){
-                        SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
                         for (uint32_t i=s;i<e&&!global_stop;++i) {
                             auto& item = pf_verify[pf_pending[i]];
-                            auto r = tsdk.setGasPrefund(pf_groups[item.group_idx].prikey_hex,
-                                pf_groups[item.group_idx].contract_addrs[item.contract_idx], kUserPrefund);
+                            const auto& ca = pf_groups[item.group_idx].contract_addrs[item.contract_idx];
+                            // Route to the contract's pool leader
+                            std::string retry_ip = global_chain_node_ip;
+                            uint16_t retry_port = global_chain_node_http_port;
+                            if (amm_has_leaders) {
+                                std::string ca_raw = common::Encode::HexDecode(ca);
+                                uint32_t pidx = common::GetAddressPoolIndex(ca_raw);
+                                std::lock_guard<std::mutex> lk(amm_leader_mutex);
+                                auto it = amm_leader_map.find(pidx);
+                                if (it != amm_leader_map.end()) {
+                                    retry_ip = it->second.ip;
+                                    retry_port = it->second.port + 10000;
+                                }
+                            }
+                            SethSDK tsdk(retry_ip, retry_port);
+                            auto r = tsdk.setGasPrefund(pf_groups[item.group_idx].prikey_hex, ca, kUserPrefund);
                             if (r["status"]==0) ++retry_ok; else ++retry_fail;
                         }
                     });
@@ -2517,7 +2577,17 @@ contract AMMPool {
                         std::string prepay_addr = grp.contract_addr + grp.caller_addr;
                         auto [ldr_ip, ldr_http] = get_leader_http(grp.contract_addr);
                         SethSDK leader_sdk(ldr_ip, ldr_http);
-                        int64_t nonce = leader_sdk.fetchNonce(prepay_addr);
+                        // Retry nonce query up to 3 times on transient failures
+                        int64_t nonce = -1;
+                        for (int retry = 0; retry < 3 && nonce < 0; ++retry) {
+                            nonce = leader_sdk.fetchNonce(prepay_addr);
+                            if (nonce < 0 && retry < 2) usleep(200000);
+                        }
+                        if (gi < s + 3) {
+                            std::cout << "  [" << label << " grp " << gi << "] prepay=" << prepay_addr
+                                      << " (len=" << prepay_addr.size() << ") nonce=" << nonce
+                                      << " ops=" << grp.inputs.size() << std::endl;
+                        }
                         if (nonce < 0) { fail_cnt += grp.inputs.size(); continue; }
                         for (const auto& input : grp.inputs) {
                             if (global_stop) break;
@@ -2898,12 +2968,21 @@ contract AMMPool {
                             auto [ldr_ip, ldr_http] = get_leader_http(pool.pool);
                             SethSDK leader_sdk(ldr_ip, ldr_http);
 
+                            // Retry up to 3 times on transient failures
                             std::string prepay_a = pool.pool + addr_a;
-                            int64_t nonce_a = leader_sdk.fetchNonce(prepay_a);
+                            int64_t nonce_a = -1;
+                            for (int retry = 0; retry < 3 && nonce_a < 0; ++retry) {
+                                nonce_a = leader_sdk.fetchNonce(prepay_a);
+                                if (nonce_a < 0 && retry < 2) usleep(200000);
+                            }
                             if (nonce_a < 0) { swap_fail += kStressRounds * 2; continue; }
 
                             std::string prepay_b = pool.pool + addr_b;
-                            int64_t nonce_b = leader_sdk.fetchNonce(prepay_b);
+                            int64_t nonce_b = -1;
+                            for (int retry = 0; retry < 3 && nonce_b < 0; ++retry) {
+                                nonce_b = leader_sdk.fetchNonce(prepay_b);
+                                if (nonce_b < 0 && retry < 2) usleep(200000);
+                            }
                             if (nonce_b < 0) { swap_fail += kStressRounds; continue; }
 
                             auto [dest_ip_s, dest_port_s] = get_dest(pool.pool);
