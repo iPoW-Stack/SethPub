@@ -2581,14 +2581,30 @@ contract AMMPool {
                         int64_t nonce = -1;
                         for (int retry = 0; retry < 3 && nonce < 0; ++retry) {
                             nonce = leader_sdk.fetchNonce(prepay_addr);
-                            if (nonce < 0 && retry < 2) usleep(200000);
+                            if (nonce < 0) {
+                                std::cerr << "  [" << label << " NONCE FAIL] grp=" << gi
+                                          << " retry=" << retry << "/3"
+                                          << " leader=" << ldr_ip << ":" << ldr_http
+                                          << " prepay=" << prepay_addr
+                                          << " contract=" << grp.contract_addr
+                                          << " caller=" << grp.caller_addr
+                                          << " ops=" << grp.inputs.size() << std::endl;
+                                if (retry < 2) usleep(200000);
+                            }
                         }
                         if (gi < s + 3) {
                             std::cout << "  [" << label << " grp " << gi << "] prepay=" << prepay_addr
                                       << " (len=" << prepay_addr.size() << ") nonce=" << nonce
                                       << " ops=" << grp.inputs.size() << std::endl;
                         }
-                        if (nonce < 0) { fail_cnt += grp.inputs.size(); continue; }
+                        if (nonce < 0) {
+                            std::cerr << "  [" << label << " SKIP] grp=" << gi
+                                      << " leader=" << ldr_ip << ":" << ldr_http
+                                      << " prepay=" << prepay_addr
+                                      << " skipping " << grp.inputs.size() << " ops after 3 retries" << std::endl;
+                            fail_cnt += grp.inputs.size();
+                            continue;
+                        }
                         for (const auto& input : grp.inputs) {
                             if (global_stop) break;
                             // Rate limit per thread
@@ -2973,17 +2989,45 @@ contract AMMPool {
                             int64_t nonce_a = -1;
                             for (int retry = 0; retry < 3 && nonce_a < 0; ++retry) {
                                 nonce_a = leader_sdk.fetchNonce(prepay_a);
-                                if (nonce_a < 0 && retry < 2) usleep(200000);
+                                if (nonce_a < 0) {
+                                    std::cerr << "  [swap NONCE_A FAIL] pair=" << pi_idx
+                                              << " retry=" << retry << "/3"
+                                              << " leader=" << ldr_ip << ":" << ldr_http
+                                              << " pool=" << pool.pool.substr(0,16)
+                                              << " addr_a=" << addr_a.substr(0,16)
+                                              << " prepay=" << prepay_a << std::endl;
+                                    if (retry < 2) usleep(200000);
+                                }
                             }
-                            if (nonce_a < 0) { swap_fail += kStressRounds * 2; continue; }
+                            if (nonce_a < 0) {
+                                std::cerr << "  [swap SKIP_A] pair=" << pi_idx
+                                          << " leader=" << ldr_ip << ":" << ldr_http
+                                          << " skipping " << (kStressRounds * 2) << " ops" << std::endl;
+                                swap_fail += kStressRounds * 2;
+                                continue;
+                            }
 
                             std::string prepay_b = pool.pool + addr_b;
                             int64_t nonce_b = -1;
                             for (int retry = 0; retry < 3 && nonce_b < 0; ++retry) {
                                 nonce_b = leader_sdk.fetchNonce(prepay_b);
-                                if (nonce_b < 0 && retry < 2) usleep(200000);
+                                if (nonce_b < 0) {
+                                    std::cerr << "  [swap NONCE_B FAIL] pair=" << pi_idx
+                                              << " retry=" << retry << "/3"
+                                              << " leader=" << ldr_ip << ":" << ldr_http
+                                              << " pool=" << pool.pool.substr(0,16)
+                                              << " addr_b=" << addr_b.substr(0,16)
+                                              << " prepay=" << prepay_b << std::endl;
+                                    if (retry < 2) usleep(200000);
+                                }
                             }
-                            if (nonce_b < 0) { swap_fail += kStressRounds; continue; }
+                            if (nonce_b < 0) {
+                                std::cerr << "  [swap SKIP_B] pair=" << pi_idx
+                                          << " leader=" << ldr_ip << ":" << ldr_http
+                                          << " skipping " << kStressRounds << " ops" << std::endl;
+                                swap_fail += kStressRounds;
+                                continue;
+                            }
 
                             auto [dest_ip_s, dest_port_s] = get_dest(pool.pool);
                             if (pi_idx < s + 3) {

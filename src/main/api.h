@@ -192,6 +192,8 @@ public:
     int64_t fetchNonce(const std::string& address) {
         httplib::SSLClient cli(node_host_, node_port_);
         cli.enable_server_certificate_verification(false);
+        cli.set_connection_timeout(3, 0);   // 3s connect timeout
+        cli.set_read_timeout(5, 0);         // 5s read timeout
         httplib::Params params;
         params.emplace("address", address);
         auto res = cli.Post("/query_account", params);
@@ -203,20 +205,35 @@ public:
                     auto str = info["nonce"].get<std::string>();
                     auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), nonce);
                     if (ec != std::errc()) {
-                        std::cout << "nonce invalid:" << str << std::endl;
+                        std::cerr << "fetchNonce parse error: addr=" << address.substr(0,32)
+                                  << " nonce_str=\"" << str << "\"" 
+                                  << " host=" << node_host_ << ":" << node_port_ << std::endl;
                         return -1;
                     }
 
                     return nonce;
                 }
+                // Server returned 200 but no "nonce" field
+                std::cerr << "fetchNonce no nonce field: addr=" << address.substr(0,32)
+                          << " body=" << res->body.substr(0, 200)
+                          << " host=" << node_host_ << ":" << node_port_ << std::endl;
             } catch (std::exception& e) {
-                // std::cout << "catch error fetch nonce failed: " << address << ": " << e.what() << std::endl;
+                std::cerr << "fetchNonce json error: addr=" << address.substr(0,32)
+                          << " err=" << e.what()
+                          << " host=" << node_host_ << ":" << node_port_ << std::endl;
                 return -1; 
             }
         }
 
         if (res) {
-            std::cout << "fetch nonce failed: " << address << ":" << res->status << std::endl;
+            std::cerr << "fetchNonce http error: addr=" << address.substr(0,32)
+                      << " status=" << res->status
+                      << " host=" << node_host_ << ":" << node_port_ << std::endl;
+        } else {
+            auto err = cli.get_openssl_verify_result();
+            std::cerr << "fetchNonce connection failed: addr=" << address.substr(0,32)
+                      << " host=" << node_host_ << ":" << node_port_
+                      << " ssl_err=" << err << std::endl;
         }
         return -1; 
     }
