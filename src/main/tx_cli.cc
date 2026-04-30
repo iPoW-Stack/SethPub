@@ -2249,6 +2249,7 @@ contract AMMPool {
             uint32_t users_per_thread = confirmed_users.size() / nonce_init_threads;
             std::vector<std::thread> nonce_threads;
             std::atomic<uint32_t> nonce_init_ok{0};
+            std::mutex nonce_map_mtx;  // protect prikey_with_nonce writes
             
             for (uint32_t t = 0; t < nonce_init_threads; ++t) {
                 uint32_t s = t * users_per_thread;
@@ -2274,7 +2275,10 @@ contract AMMPool {
                         int64_t nonce = local_sdk.fetchNonce(addr_hex);
                         if (nonce >= 0) {
                             std::string addr_raw = common::Encode::HexDecode(addr_hex);
-                            prikey_with_nonce[addr_raw] = nonce;
+                            {
+                                std::lock_guard<std::mutex> lk(nonce_map_mtx);
+                                prikey_with_nonce[addr_raw] = nonce;
+                            }
                             ++nonce_init_ok;
                         }
                     }
