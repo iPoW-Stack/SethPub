@@ -2683,10 +2683,19 @@ contract AMMPool {
                         query_ok = true;
                         try {
                             auto decoded = result["decoded"];
-                            if (decoded.is_array() && !decoded.empty())
-                                allowance_val = std::stoull(decoded[0].get<std::string>());
-                            else if (decoded.is_string())
-                                allowance_val = std::stoull(decoded.get<std::string>());
+                            auto& first = decoded.is_array() && !decoded.empty() ? decoded[0] : decoded;
+                            if (first.is_number_unsigned())
+                                allowance_val = first.get<uint64_t>();
+                            else if (first.is_number())
+                                allowance_val = (uint64_t)first.get<int64_t>();
+                            else if (first.is_string()) {
+                                std::string s = first.get<std::string>();
+                                // Handle "0x..." hex or plain decimal
+                                if (s.size() > 2 && s[0] == '0' && s[1] == 'x')
+                                    allowance_val = std::stoull(s, nullptr, 16);
+                                else
+                                    allowance_val = std::stoull(s, nullptr, 10);
+                            }
                         } catch (...) {}
                     }
 
@@ -2769,8 +2778,12 @@ contract AMMPool {
                             try {
                                 uint64_t v = 0;
                                 auto d = result["decoded"];
-                                if (d.is_array() && !d.empty())
-                                    v = std::stoull(d[0].get<std::string>());
+                                auto& first = d.is_array() && !d.empty() ? d[0] : d;
+                                if (first.is_number()) v = first.get<uint64_t>();
+                                else if (first.is_string()) {
+                                    std::string s = first.get<std::string>();
+                                    v = std::stoull(s, nullptr, s.find("0x")==0 ? 16 : 10);
+                                }
                                 if (v >= kTokenTransfer) ++retry_ok;
                             } catch (...) {}
                         }
