@@ -293,12 +293,22 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
     bool valid = false;
     auto leader_to_heights_ptr = leader_to_heights_.load();
     if (leader_to_heights_ptr != nullptr) {
-        // Use cached heights from previous successful computation
-        to_heights = *leader_to_heights_ptr;
-        valid = true;
-        SETH_DEBUG("LeaderCreateToHeights using cached leader_to_heights_, heights_size: %d",
-            to_heights.heights_size());
-    } else {
+        // Heights already computed and tx creation in progress.
+        // Check if the in-flight tx has been stuck too long (proposal may have failed).
+        auto now_ms = common::TimeUtils::TimestampMs();
+        if (leader_to_heights_set_tm_ + 30000lu > now_ms) {
+            // Still within timeout, don't create duplicate
+            SETH_DEBUG("LeaderCreateToHeights: tx in-flight, age: %lu ms, waiting for commit",
+                now_ms - leader_to_heights_set_tm_);
+            return kPoolsError;
+        }
+        // Timeout expired, clear stale cache and recompute
+        SETH_DEBUG("LeaderCreateToHeights: in-flight tx timed out after %lu ms, recomputing",
+            now_ms - leader_to_heights_set_tm_);
+        leader_to_heights_.store(nullptr);
+    }
+    
+    {
         std::shared_ptr<pools::protobuf::ShardToTxItem> prev_heights_snap = nullptr;
         {
             common::AutoSpinLock lock(prev_to_heights_mutex_);
@@ -364,6 +374,7 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
 
     leader_to_heights_ptr = std::make_shared<pools::protobuf::ShardToTxItem>(to_heights);
     leader_to_heights_.store(leader_to_heights_ptr);
+    leader_to_heights_set_tm_ = common::TimeUtils::TimestampMs();
     for (uint32_t i = 0; i < (uint32_t)to_heights.heights_size(); ++i) {
         if (prev_to_heights->heights(i) > to_heights.heights(i)) {
             SETH_DEBUG("prev heights invalid, pool: %u, prev height: %lu, now: %lu",

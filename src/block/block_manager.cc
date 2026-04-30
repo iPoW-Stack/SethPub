@@ -845,13 +845,15 @@ pools::TxItemPtr BlockManager::GetToTx(
     heights.set_sharding_id(network::GetLocalConsensusNetworkId());
     auto tx_ptr = HandleToTxsMessage(heights);
     if (tx_ptr != nullptr) {
-        // heights_str_map_[height_hash] = tx_ptr;
         SETH_DEBUG("success get to tx tx info: %s, nonce: %lu, val: %s, heights: %s",
             ProtobufToJson(*tx_ptr->tx_info).c_str(),
             tx_ptr->tx_info->nonce(), 
             "common::Encode::HexEncode(tx_ptr->tx_info.value()).c_str()",
             ProtobufToJson(heights).c_str());
     } else {
+        // HandleToTxsMessage failed, clear the cached heights so next attempt
+        // can recompute fresh heights
+        to_txs_pool_->ClearLeaderToHeights();
         SETH_DEBUG("failed get to tx tx info: %s", ProtobufToJson(heights).c_str());
     }
 

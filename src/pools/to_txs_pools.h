@@ -37,6 +37,9 @@ public:
         const pools::protobuf::ShardToTxItem& leader_to_heights,
         pools::protobuf::ToTxMessage& to_tx);
     int LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights);
+    void ClearLeaderToHeights() {
+        leader_to_heights_.store(nullptr);
+    }
 
 private:
     void HandleNormalToTx(
@@ -98,6 +101,7 @@ private:
     std::shared_ptr<pools::TxPoolManager> pools_mgr_ = nullptr;
     std::shared_ptr<pools::protobuf::ShardToTxItem> prev_to_heights_ = nullptr;
     std::atomic<std::shared_ptr<pools::protobuf::ShardToTxItem>> leader_to_heights_ = nullptr;
+    uint64_t leader_to_heights_set_tm_ = 0;
     common::SpinMutex prev_to_heights_mutex_;
     uint64_t has_statistic_height_[common::kInvalidPoolIndex] = { 1 };
     std::shared_ptr<block::AccountManager> acc_mgr_ = nullptr;
