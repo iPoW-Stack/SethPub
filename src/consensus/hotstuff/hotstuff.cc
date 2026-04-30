@@ -2315,12 +2315,14 @@ void Hotstuff::TryRecoverFromStuck(
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    if (has_user_tx) {
+    if (has_user_tx || has_system_tx) {
         has_user_tx_tag_ = true;
         // New txs arrived, reset empty propose backoff so we try immediately
         if (empty_propose_count_ > 0) {
             empty_propose_count_ = 0;
             empty_propose_backoff_until_ms_ = 0;
+            SETH_DEBUG("pool: %u, backoff reset by %s tx",
+                pool_idx_, has_user_tx ? "user" : "system");
         }
     }
 
@@ -2355,6 +2357,10 @@ void Hotstuff::TryRecoverFromStuck(
     }
 
     if (leader->index != local_idx) {
+        if (pool_idx_ == common::kImmutablePoolSize) {
+            SETH_DEBUG("pool %u: not leader (leader=%d, local=%d), syncing to leader",
+                pool_idx_, leader->index, local_idx);
+        }
         SyncLocalTxToLeader(msg_ptr, leader, has_system_tx);
         if (latest_leader_propose_message_) {
             if (latest_leader_propose_message_->prev_timestamp + 3000lu > now_tm_ms) {
@@ -2368,10 +2374,8 @@ void Hotstuff::TryRecoverFromStuck(
     }
 
     if (now_tm_ms < latest_propose_msg_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs) {
-        // SETH_WARN("pool: %u now_tm_ms < latest_propose_msg_tm_ms_ + "
-        //     "kLatestPoposeSendTxToLeaderPeriodMs: %lu, %lu",
-        //     pool_idx_, now_tm_ms, 
-        //     (latest_propose_msg_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs));
+        SETH_DEBUG("pool: %u, propose cooldown active, remaining: %lu ms",
+            pool_idx_, (latest_propose_msg_tm_ms_ + kLatestPoposeSendTxToLeaderPeriodMs) - now_tm_ms);
         return;
     }
 
@@ -2452,8 +2456,8 @@ void Hotstuff::SyncLocalTxToLeader(
         const transport::MessagePtr& msg_ptr, 
         common::BftMemberPtr leader, 
         bool has_system_tx) {
-    if (!has_user_tx_tag_) {
-        // SETH_DEBUG("pool: %u not has_user_tx_tag_.", pool_idx_);
+    if (!has_user_tx_tag_ && !has_system_tx) {
+        // SETH_DEBUG("pool: %u not has_user_tx_tag_ and no system tx.", pool_idx_);
         return;
     }
 
