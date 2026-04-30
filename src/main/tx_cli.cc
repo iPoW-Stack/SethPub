@@ -2725,6 +2725,7 @@ contract AMMPool {
         // Build list of (prepay_addr, expected_min_nonce) to check
         struct NonceCheck {
             std::string prepay_addr;
+            std::string pool_addr;  // for leader routing
             int64_t expected_min;
             std::string label;
         };
@@ -2734,20 +2735,26 @@ contract AMMPool {
             for (uint32_t pool_idx : tp.pool_indices) {
                 const auto& pool = pools[pool_idx];
                 nonce_checks.push_back({pool.pool + users[tp.user_a_idx].addr_hex,
-                    (int64_t)kStressRounds, "Pair[" + std::to_string(pi) + "] UserA"});
+                    pool.pool, (int64_t)kStressRounds, "Pair[" + std::to_string(pi) + "] UserA"});
                 nonce_checks.push_back({pool.pool + users[tp.user_b_idx].addr_hex,
-                    (int64_t)kStressRounds, "Pair[" + std::to_string(pi) + "] UserB"});
+                    pool.pool, (int64_t)kStressRounds, "Pair[" + std::to_string(pi) + "] UserB"});
             }
         }
 
         // Poll in rounds until all confirmed or timeout
+        // Query via the leader node for each pool for accurate nonce
         std::vector<bool> nonce_confirmed(nonce_checks.size(), false);
         auto nonce_start = std::chrono::steady_clock::now();
         for (uint32_t round = 0; round < 20 && !global_stop; ++round) {
             uint32_t round_ok = 0, still_pending = 0;
             for (uint32_t i = 0; i < nonce_checks.size(); ++i) {
                 if (nonce_confirmed[i]) continue;
-                int64_t n = sdk.fetchNonce(nonce_checks[i].prepay_addr);
+                // Use leader routing for the query
+                auto [lip, lport] = get_dest(nonce_checks[i].pool_addr);
+                // fetchNonce via leader's HTTP port (TCP port + 10000)
+                uint16_t http_port = lport + 10000;
+                SethSDK leader_sdk(lip, http_port);
+                int64_t n = leader_sdk.fetchNonce(nonce_checks[i].prepay_addr);
                 if (n >= nonce_checks[i].expected_min) {
                     nonce_confirmed[i] = true;
                     ++round_ok;
@@ -2770,14 +2777,28 @@ contract AMMPool {
         for (uint32_t i = 0; i < nonce_checks.size(); ++i) {
             if (nonce_confirmed[i]) ++nonce_ok; else ++nonce_fail;
         }
-        if (nonce_fail > 0 && nonce_fail <= 5) {
-            for (uint32_t i = 0; i < nonce_checks.size(); ++i) {
+        if (nonce_fail > 0) {
+            uint32_t printed = 0;
+            for (uint32_t i = 0; i < nonce_checks.size() && printed < 10; ++i) {
                 if (!nonce_confirmed[i]) {
-                    int64_t n = sdk.fetchNonce(nonce_checks[i].prepay_addr);
-                    std::cout << "    " << nonce_checks[i].label << " nonce=" << n
-                              << " (expected >=" << nonce_checks[i].expected_min << ") ✗" << std::endl;
+                    auto [lip, lport] = get_dest(nonce_checks[i].pool_addr);
+                    SethSDK leader_sdk(lip, lport + 10000);
+                    int64_t n = leader_sdk.fetchNonce(nonce_checks[i].prepay_addr);
+                    std::string pool_hex = nonce_checks[i].pool_addr;
+                    std::string user_hex = nonce_checks[i].prepay_addr.substr(pool_hex.size());
+                    uint32_t pool_idx = common::GetAddressPoolIndex(common::Encode::HexDecode(pool_hex));
+                    std::cout << "    [" << (printed+1) << "] " << nonce_checks[i].label
+                              << " pool=" << pool_hex.substr(0,12) << "..."
+                              << " user=" << user_hex.substr(0,12) << "..."
+                              << " pool_idx=" << pool_idx
+                              << " leader=" << lip << ":" << (lport+10000)
+                              << " nonce=" << n
+                              << " expected>=" << nonce_checks[i].expected_min
+                              << " ✗" << std::endl;
+                    ++printed;
                 }
             }
+            if (nonce_fail > 10) std::cout << "    ... (" << nonce_fail << " total failures)" << std::endl;
         }
         std::cout << "    Nonces: " << nonce_ok << " ok, " << nonce_fail << " fail" << std::endl;
         verify_ok += nonce_ok; verify_fail += nonce_fail; verify_skip += nonce_skip;
