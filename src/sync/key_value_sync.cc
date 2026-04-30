@@ -216,9 +216,12 @@ void KeyValueSync::ConsensusTimerMessage() {
     auto now_tm_ms1 = common::TimeUtils::TimestampMs();
     PopItems();
     auto now_tm_ms2 = common::TimeUtils::TimestampMs();
-    for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
-        hotstuff_mgr_->chain(i)->GetViewBlockWithHash("", true);
-    }
+    // Note: Do NOT call GetViewBlockWithHash("", true) here.
+    // The drain (pop from cached_block_queue_ + update cached_block_map_/LRU maps)
+    // operates on non-thread-safe data structures that are owned by the consensus
+    // thread. Draining from the sync timer thread causes data races and crashes.
+    // The queue is drained naturally when consensus calls GetViewBlockWithHeight
+    // or GetViewBlockWithView.
 
     auto now_tm_ms3 = common::TimeUtils::TimestampMs();
     auto etime = common::TimeUtils::TimestampMs();
