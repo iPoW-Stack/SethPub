@@ -39,7 +39,7 @@ static const uint32_t kEachRequestMaxSyncKeyCount = 256u;
 // bottleneck — each peer can only serve so many blocks per second.
 static const uint32_t kSyncNeighborCount = 7u;
 static const uint32_t kSyncTickPeriod = 1u * 1000u * 1000u;
-static const uint32_t kSyncPacketMaxSize = 1u * 1024u * 1024u;  // sync data 1M
+static const uint32_t kSyncPacketMaxSize = 768u * 1024u;  // 768KB payload, leaves room for protobuf overhead within 1.5MB transport limit
 // [SYNC_OPT] Increased from 1024 to 4096: process more pending sync items
 // per PopItems() call. With 33 pools each needing hundreds of blocks,
 // 1024 was exhausted in a single round.

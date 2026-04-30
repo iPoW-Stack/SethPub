@@ -2609,8 +2609,47 @@ contract AMMPool {
                   << appr_ok.load() << " ok, " << appr_fail.load() << " fail" << std::endl;
 
         // Wait for approve consensus
-        std::cout << "  Waiting 15s for approve consensus..." << std::endl;
-        for(int w=0;w<150&&!global_stop;++w) usleep(100000);
+        std::cout << "  Waiting for approve consensus..." << std::endl;
+        // Poll nonce to confirm approve transactions are committed.
+        // Each group sent N approve txs, so the prepayment nonce should advance by N.
+        {
+            const int kMaxWaitSec = 120;
+            const int kPollIntervalMs = 3000;
+            uint32_t sample_limit = std::min((uint32_t)appr_groups.size(), 30u);
+            auto wait_start = std::chrono::steady_clock::now();
+            uint32_t confirmed = 0;
+            
+            for (int elapsed = 0; elapsed < kMaxWaitSec && !global_stop; ) {
+                confirmed = 0;
+                for (uint32_t gi = 0; gi < sample_limit; ++gi) {
+                    auto& grp = appr_groups[gi];
+                    std::string prepay_addr = grp.contract_addr + grp.caller_addr;
+                    auto [ldr_ip, ldr_http] = get_leader_http(grp.contract_addr);
+                    SethSDK leader_sdk(ldr_ip, ldr_http);
+                    int64_t n = leader_sdk.fetchNonce(prepay_addr);
+                    if (n >= (int64_t)grp.inputs.size()) {
+                        ++confirmed;
+                    }
+                }
+                
+                elapsed = (int)std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::steady_clock::now() - wait_start).count();
+                std::cout << "  [" << elapsed << "s] approve nonce confirmed: "
+                          << confirmed << "/" << sample_limit << std::endl;
+                
+                if (confirmed >= sample_limit) {
+                    std::cout << "  ✓ All sampled approve groups confirmed" << std::endl;
+                    break;
+                }
+                
+                for (int w = 0; w < kPollIntervalMs / 100 && !global_stop; ++w) usleep(100000);
+            }
+            
+            if (confirmed < sample_limit) {
+                std::cout << "  ⚠ WARNING: Only " << confirmed << "/" << sample_limit
+                          << " approve groups confirmed after " << kMaxWaitSec << "s" << std::endl;
+            }
+        }
 
         // ── Phase 9.5: Verify approve on-chain via allowance query ────────
         // Query allowance(owner, spender) for a sample of trade pairs to confirm

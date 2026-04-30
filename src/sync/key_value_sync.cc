@@ -693,8 +693,25 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
     msg.set_des_dht_key(dht_key.StrKey());
     msg.set_type(common::kSyncMessage);
     transport::TcpTransport::Instance()->SetMessageHash(msg);
-    // transport::TcpTransport::Instance()->Send(msg_ptr->conn, msg);
-    SETH_DEBUG("sync response ok des: %u, src hash64: %lu, des hash64: %lu, size: %u, msg size: %u",
+
+    // Final size guard: if the serialized message exceeds the transport limit,
+    // trim response entries until it fits.
+    static const uint32_t kMaxSendBytes = (uint32_t)(common::kMaxProposeMsgBytes * 3 / 2) - 4096;
+    while (sync_res->res_size() > 0) {
+        size_t msg_size = msg.ByteSizeLong();
+        if (msg_size <= kMaxSendBytes) {
+            break;
+        }
+        SETH_WARN("sync response too large: %zu bytes > %u limit, trimming last entry (remaining: %d)",
+            msg_size, kMaxSendBytes, sync_res->res_size() - 1);
+        sync_res->mutable_res()->RemoveLast();
+    }
+
+    if (sync_res->res_size() == 0) {
+        return;
+    }
+
+    SETH_DEBUG("sync response ok des: %u, src hash64: %lu, des hash64: %lu, size: %u, msg size: %lu",
         msg_ptr->header.src_sharding_id(), msg_ptr->header.hash64(), 
         msg.hash64(), add_size, msg.ByteSizeLong());
     transport::TcpTransport::Instance()->Send(msg_ptr->conn->PeerIp(), msg_ptr->conn->PeerPort(), msg);
