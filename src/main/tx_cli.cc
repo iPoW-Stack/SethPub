@@ -1926,15 +1926,26 @@ contract AMMPool {
         // Helper: get destination for a contract address (leader routing)
         auto get_dest = [&](const std::string& contract_addr_hex) -> std::pair<std::string, uint16_t> {
             if (amm_has_leaders) {
-                std::string addr_raw = common::Encode::HexDecode(contract_addr_hex);
-                uint32_t pool_idx = common::GetAddressPoolIndex(addr_raw);
+                auto it = contract_pool_index_map.find(contract_addr_hex);
+                uint32_t pool_idx;
+                if (it != contract_pool_index_map.end()) {
+                    pool_idx = it->second;
+                } else {
+                    pool_idx = common::GetAddressPoolIndex(common::Encode::HexDecode(contract_addr_hex));
+                }
                 std::lock_guard<std::mutex> lk(amm_leader_mutex);
-                auto it = amm_leader_map.find(pool_idx);
-                if (it != amm_leader_map.end()) {
-                    return {it->second.ip, it->second.port};
+                auto lit = amm_leader_map.find(pool_idx);
+                if (lit != amm_leader_map.end()) {
+                    return {lit->second.ip, lit->second.port};
                 }
             }
             return {default_dest_ip, default_dest_port};
+        };
+
+        // Helper: get leader HTTP port for a contract (for nonce/balance queries)
+        auto get_leader_http = [&](const std::string& contract_addr_hex) -> std::pair<std::string, uint16_t> {
+            auto [ip, tcp_port] = get_dest(contract_addr_hex);
+            return {ip, (uint16_t)(tcp_port + 10000)};
         };
 
         // Helper: enqueue a message for the sender thread (with routing)
@@ -2115,12 +2126,47 @@ contract AMMPool {
             std::string token_a;
             std::string token_b;
             std::string pool;
+            uint32_t pool_index;  // actual pool index from chain (for leader routing)
         };
         std::vector<PoolInfo> pools;
         for (uint32_t i = 0; i < kContractSets; ++i) {
             if (deployers[i].token_a_deployed && deployers[i].token_b_deployed && deployers[i].pool_deployed) {
-                pools.push_back({i, deployers[i].token_a_addr, deployers[i].token_b_addr, deployers[i].pool_addr});
+                pools.push_back({i, deployers[i].token_a_addr, deployers[i].token_b_addr, deployers[i].pool_addr, 0});
             }
+        }
+
+        // Query actual pool_index for each contract from chain
+        std::cout << "  Querying pool indices for " << pools.size() << " contracts..." << std::endl;
+        // Map contract_addr_hex → pool_index
+        std::unordered_map<std::string, uint32_t> contract_pool_index_map;
+        for (auto& p : pools) {
+            // Query pool contract's pool_index (all 3 contracts from same deployer should be in same pool)
+            int64_t bal = sdk.fetchBalance(p.pool);
+            // fetchBalance queries /query_account which returns pool_index in the response
+            // But fetchBalance only returns balance. We need a dedicated query.
+            // Use batchQueryAccounts which returns pool_index field
+            auto r = sdk.batchQueryAccounts({p.pool});
+            if (r.contains("status") && r["status"] == 0 && r.contains("accounts") && r["accounts"].contains(p.pool)) {
+                auto& acc = r["accounts"][p.pool];
+                if (acc.contains("poolIndex")) {
+                    p.pool_index = acc["poolIndex"].get<uint32_t>();
+                } else if (acc.contains("pool_index")) {
+                    p.pool_index = acc["pool_index"].get<uint32_t>();
+                } else {
+                    // Fallback: compute locally
+                    p.pool_index = common::GetAddressPoolIndex(common::Encode::HexDecode(p.pool));
+                }
+            } else {
+                p.pool_index = common::GetAddressPoolIndex(common::Encode::HexDecode(p.pool));
+            }
+            contract_pool_index_map[p.pool] = p.pool_index;
+            contract_pool_index_map[p.token_a] = p.pool_index;  // same deployer = same pool
+            contract_pool_index_map[p.token_b] = p.pool_index;
+        }
+        // Print first few for debug
+        for (uint32_t i = 0; i < std::min((uint32_t)3, (uint32_t)pools.size()); ++i) {
+            std::cout << "    Pool[" << i << "] addr=" << pools[i].pool.substr(0,12)
+                      << "... pool_index=" << pools[i].pool_index << std::endl;
         }
 
         const uint32_t kPoolsPerPair = 1;  // each user pair trades on 1 pool
@@ -2454,15 +2500,16 @@ contract AMMPool {
             for (uint32_t t = 0; t < nt; ++t) {
                 uint32_t s = t * gpp, e = (t == nt-1) ? (uint32_t)groups.size() : (s + gpp);
                 threads.emplace_back([&,s,e](){
-                    SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
                     for (uint32_t gi = s; gi < e && !global_stop; ++gi) {
                         auto& grp = groups[gi];
                         std::string prikey_raw = common::Encode::HexDecode(grp.prikey_hex);
                         std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
                         sec->SetPrivateKey(prikey_raw);
-                        // Nonce from prepayment account: contract_addr + caller_addr
+                        // Nonce from prepayment account via leader node
                         std::string prepay_addr = grp.contract_addr + grp.caller_addr;
-                        int64_t nonce = tsdk.fetchNonce(prepay_addr);
+                        auto [ldr_ip, ldr_http] = get_leader_http(grp.contract_addr);
+                        SethSDK leader_sdk(ldr_ip, ldr_http);
+                        int64_t nonce = leader_sdk.fetchNonce(prepay_addr);
                         if (nonce < 0) { fail_cnt += grp.inputs.size(); continue; }
                         for (const auto& input : grp.inputs) {
                             if (global_stop) break;
@@ -2602,7 +2649,6 @@ contract AMMPool {
             for (uint32_t t = 0; t < st; ++t) {
                 uint32_t s = t * spp, e = (t == st-1) ? (uint32_t)trade_pairs.size() : (s + spp);
                 sthreads.emplace_back([&,s,e](){
-                    SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
                     for (uint32_t pi_idx = s; pi_idx < e && !global_stop; ++pi_idx) {
                         const auto& tp = trade_pairs[pi_idx];
                         std::string pka_raw = common::Encode::HexDecode(users[tp.user_a_idx].prikey_hex);
@@ -2618,21 +2664,24 @@ contract AMMPool {
                             const auto& pool = pools[pool_idx];
                             std::string pool_raw = common::Encode::HexDecode(pool.pool);
 
-                            // Fetch nonce once, then increment for all kStressRounds
+                            // Fetch nonce via leader node for this pool
+                            auto [ldr_ip, ldr_http] = get_leader_http(pool.pool);
+                            SethSDK leader_sdk(ldr_ip, ldr_http);
+
                             std::string prepay_a = pool.pool + addr_a;
-                            int64_t nonce_a = tsdk.fetchNonce(prepay_a);
+                            int64_t nonce_a = leader_sdk.fetchNonce(prepay_a);
                             if (nonce_a < 0) { swap_fail += kStressRounds * 2; continue; }
 
                             std::string prepay_b = pool.pool + addr_b;
-                            int64_t nonce_b = tsdk.fetchNonce(prepay_b);
+                            int64_t nonce_b = leader_sdk.fetchNonce(prepay_b);
                             if (nonce_b < 0) { swap_fail += kStressRounds; continue; }
 
                             auto [dest_ip_s, dest_port_s] = get_dest(pool.pool);
                             if (pi_idx < s + 3) {
-                                uint32_t pidx = common::GetAddressPoolIndex(common::Encode::HexDecode(pool.pool));
                                 std::cout << "  [swap pair " << pi_idx << "] pool=" << pool.pool.substr(0,12)
-                                          << "... pool_idx=" << pidx
+                                          << "... pool_idx=" << pool.pool_index
                                           << " → " << dest_ip_s << ":" << dest_port_s
+                                          << " (query via " << ldr_ip << ":" << ldr_http << ")"
                                           << " nonce_a=" << nonce_a << " nonce_b=" << nonce_b << std::endl;
                             }
 
