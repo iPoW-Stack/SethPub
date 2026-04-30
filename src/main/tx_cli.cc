@@ -2270,7 +2270,7 @@ contract AMMPool {
                   << pf_ok.load() << " ok, " << pf_fail.load() << " fail" << std::endl;
 
         // Wait for prefund consensus — need enough time for all prefund txs to be confirmed
-        std::cout << "  Waiting 30s for prefund consensus..." << std::endl;
+        std::cout << "  Waiting 60s for prefund consensus..." << std::endl;
         for(int w=0;w<100&&!global_stop;++w) usleep(300000);
 
         // Verify prefund accounts exist via batch query, retry missing ones
@@ -2668,9 +2668,9 @@ contract AMMPool {
                   << swap_ok.load() << " ok, " << swap_fail.load() << " fail"
                   << " (" << std::fixed << std::setprecision(1) << swap_tps << " tx/s)" << std::endl;
 
-        // ── Phase 10b: Wait for swap consensus + Verify results ─────────────
-        std::cout << "\n  Waiting 30s for swap consensus before verification..." << std::endl;
-        for(int w=0;w<300&&!global_stop;++w) usleep(100000);
+        // ── Phase 10b: Verify results ──────────────────────────────────────
+        std::cout << "\n  Waiting 10s for initial swap consensus..." << std::endl;
+        for(int w=0;w<100&&!global_stop;++w) usleep(100000);
 
         std::cout << "\n" << std::string(70, '-') << std::endl;
         std::cout << "  Phase 10b: Verify Contract Execution Results" << std::endl;
@@ -2716,46 +2716,70 @@ contract AMMPool {
         std::cout << "    Reserves: " << reserves_ok << "/" << verify_count << " ok" << std::endl;
         verify_ok += reserves_ok; verify_fail += reserves_fail;
 
-        // 2. Verify prepayment nonces: should equal initial_nonce + kStressRounds
+        // 2. Verify prepayment nonces: poll until all reach expected value or timeout
         //    This confirms all swap transactions were actually processed on-chain
-        std::cout << "  [2] Verifying swap nonces (prepayment accounts)..." << std::endl;
+        std::cout << "  [2] Verifying swap nonces (prepayment accounts, polling up to 120s)..." << std::endl;
         uint32_t nonce_ok = 0, nonce_fail = 0, nonce_skip = 0;
         uint32_t nonce_check_count = std::min((uint32_t)trade_pairs.size(), (uint32_t)50);
-        for (uint32_t pi = 0; pi < nonce_check_count && !global_stop; ++pi) {
+
+        // Build list of (prepay_addr, expected_min_nonce) to check
+        struct NonceCheck {
+            std::string prepay_addr;
+            int64_t expected_min;
+            std::string label;
+        };
+        std::vector<NonceCheck> nonce_checks;
+        for (uint32_t pi = 0; pi < nonce_check_count; ++pi) {
             const auto& tp = trade_pairs[pi];
             for (uint32_t pool_idx : tp.pool_indices) {
                 const auto& pool = pools[pool_idx];
-                // Check UserA's nonce on pool contract
-                std::string prepay_a = pool.pool + users[tp.user_a_idx].addr_hex;
-                int64_t nonce_a = sdk.fetchNonce(prepay_a);
-                // After approve (1 or kStressRounds) + swap (kStressRounds), nonce should be > 0
-                // The approve phase sent kStressRounds approves, swap phase sent kStressRounds swaps
-                // But approve is on token contract, not pool. So pool nonce = kStressRounds (swaps only)
-                if (nonce_a >= (int64_t)kStressRounds) {
-                    ++nonce_ok;
-                } else if (nonce_a >= 0) {
-                    ++nonce_fail;
-                    if (nonce_fail <= 3) std::cout << "    Pair[" << pi << "] UserA pool nonce=" << nonce_a
-                                                   << " (expected >=" << kStressRounds << ") ✗" << std::endl;
+                nonce_checks.push_back({pool.pool + users[tp.user_a_idx].addr_hex,
+                    (int64_t)kStressRounds, "Pair[" + std::to_string(pi) + "] UserA"});
+                nonce_checks.push_back({pool.pool + users[tp.user_b_idx].addr_hex,
+                    (int64_t)kStressRounds, "Pair[" + std::to_string(pi) + "] UserB"});
+            }
+        }
+
+        // Poll in rounds until all confirmed or timeout
+        std::vector<bool> nonce_confirmed(nonce_checks.size(), false);
+        auto nonce_start = std::chrono::steady_clock::now();
+        for (uint32_t round = 0; round < 20 && !global_stop; ++round) {
+            uint32_t round_ok = 0, still_pending = 0;
+            for (uint32_t i = 0; i < nonce_checks.size(); ++i) {
+                if (nonce_confirmed[i]) continue;
+                int64_t n = sdk.fetchNonce(nonce_checks[i].prepay_addr);
+                if (n >= nonce_checks[i].expected_min) {
+                    nonce_confirmed[i] = true;
+                    ++round_ok;
                 } else {
-                    ++nonce_skip;
+                    ++still_pending;
                 }
-                // Check UserB's nonce on pool contract
-                std::string prepay_b = pool.pool + users[tp.user_b_idx].addr_hex;
-                int64_t nonce_b = sdk.fetchNonce(prepay_b);
-                if (nonce_b >= (int64_t)kStressRounds) {
-                    ++nonce_ok;
-                } else if (nonce_b >= 0) {
-                    ++nonce_fail;
-                    if (nonce_fail <= 3) std::cout << "    Pair[" << pi << "] UserB pool nonce=" << nonce_b
-                                                   << " (expected >=" << kStressRounds << ") ✗" << std::endl;
-                } else {
-                    ++nonce_skip;
+            }
+            nonce_ok = 0;
+            for (auto c : nonce_confirmed) if (c) ++nonce_ok;
+            auto es = std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::steady_clock::now() - nonce_start).count();
+            std::cout << "    [Round " << (round+1) << ", " << es << "s] " << nonce_ok
+                      << "/" << nonce_checks.size() << " confirmed" << std::endl;
+            if (still_pending == 0) break;
+            if (es > 120) break;
+            // Wait longer if many pending
+            for (int w = 0; w < ((round_ok > 0) ? 30 : 60) && !global_stop; ++w) usleep(100000);
+        }
+        nonce_ok = 0; nonce_fail = 0;
+        for (uint32_t i = 0; i < nonce_checks.size(); ++i) {
+            if (nonce_confirmed[i]) ++nonce_ok; else ++nonce_fail;
+        }
+        if (nonce_fail > 0 && nonce_fail <= 5) {
+            for (uint32_t i = 0; i < nonce_checks.size(); ++i) {
+                if (!nonce_confirmed[i]) {
+                    int64_t n = sdk.fetchNonce(nonce_checks[i].prepay_addr);
+                    std::cout << "    " << nonce_checks[i].label << " nonce=" << n
+                              << " (expected >=" << nonce_checks[i].expected_min << ") ✗" << std::endl;
                 }
             }
         }
-        std::cout << "    Nonces: " << nonce_ok << " ok, " << nonce_fail << " fail, "
-                  << nonce_skip << " skip (of " << nonce_check_count << " pairs)" << std::endl;
+        std::cout << "    Nonces: " << nonce_ok << " ok, " << nonce_fail << " fail" << std::endl;
         verify_ok += nonce_ok; verify_fail += nonce_fail; verify_skip += nonce_skip;
 
         // 3. Verify token balances: deployer should still have tokens (not drained)
