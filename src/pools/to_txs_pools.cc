@@ -112,6 +112,12 @@ void ToTxsPools::ThreadToStatistic(
                 iter = added_heights_[i].erase(iter);
             }
 
+            // Ensure pool_consensus_heihgts_ is at least committed_height
+            // so that LeaderCreateToHeights won't reference already-cleaned data
+            if (pool_consensus_heihgts_[i] < committed_height) {
+                pool_consensus_heihgts_[i] = committed_height;
+            }
+
             // Clean up network_txs_pools_ entries that have been committed
             {
                 common::AutoSpinLock auto_lock(network_txs_pools_mutex_);
@@ -125,7 +131,8 @@ void ToTxsPools::ThreadToStatistic(
                 }
             }
 
-            // Clean up valided_heights_ entries below committed height
+            // Clean up valided_heights_ entries strictly below committed height
+            // Keep committed_height itself so LeaderCreateToHeights can validate it
             {
                 auto viter = valided_heights_[i].begin();
                 while (viter != valided_heights_[i].end()) {
@@ -135,6 +142,8 @@ void ToTxsPools::ThreadToStatistic(
                         ++viter;
                     }
                 }
+                // Ensure committed_height is always present in valided_heights_
+                valided_heights_[i].insert(committed_height);
             }
 
             // Update erased_max_heights_ so future added_heights_ cleanup works
@@ -156,21 +165,25 @@ void ToTxsPools::ThreadToStatistic(
         added_heights_iter = added_heights_[pool_idx].erase(added_heights_iter);
     }
 
-    if (pool_consensus_heihgts_[pool_idx] + 1 == block.height()) {
-        ++pool_consensus_heihgts_[pool_idx];
-        for (; pool_consensus_heihgts_[pool_idx] <= pool_max_heihgts_[pool_idx];
-                ++pool_consensus_heihgts_[pool_idx]) {
+    // Update max height BEFORE the advancement loop so the loop upper bound is correct
+    valided_heights_[pool_idx].insert(block.height());
+    if (block.height() > pool_max_heihgts_[pool_idx]) {
+        pool_max_heihgts_[pool_idx] = block.height();
+    }
+
+    // Try to advance pool_consensus_heihgts_ as far as possible through consecutive heights
+    if (pool_consensus_heihgts_[pool_idx] + 1 == block.height() ||
+            (pool_consensus_heihgts_[pool_idx] < block.height() &&
+             added_heights_[pool_idx].find(pool_consensus_heihgts_[pool_idx] + 1) != added_heights_[pool_idx].end())) {
+        // Advance through all consecutive heights present in added_heights_
+        while (pool_consensus_heihgts_[pool_idx] < pool_max_heihgts_[pool_idx]) {
             auto iter = added_heights_[pool_idx].find(
                     pool_consensus_heihgts_[pool_idx] + 1);
             if (iter == added_heights_[pool_idx].end()) {
                 break;
             }
+            ++pool_consensus_heihgts_[pool_idx];
         }
-    }
-
-    valided_heights_[pool_idx].insert(block.height());
-    if (block.height() > pool_max_heihgts_[pool_idx]) {
-        pool_max_heihgts_[pool_idx] = block.height();
     }
 }
 
@@ -268,10 +281,22 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
     if (leader_to_heights_ptr != nullptr) {
         valid = true;
     } else {
+        std::shared_ptr<pools::protobuf::ShardToTxItem> prev_heights_snap = nullptr;
+        {
+            common::AutoSpinLock lock(prev_to_heights_mutex_);
+            prev_heights_snap = prev_to_heights_;
+        }
+
         auto timeout = common::TimeUtils::TimestampMs();
         for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
             uint64_t cons_height = pool_consensus_heihgts_[i];
-            while (cons_height > 0) {
+            // Floor: never go below the already-committed height
+            uint64_t floor_height = 0;
+            if (prev_heights_snap != nullptr && i < (uint32_t)prev_heights_snap->heights_size()) {
+                floor_height = prev_heights_snap->heights(i);
+            }
+
+            while (cons_height > 0 && cons_height >= floor_height) {
                 auto exist_iter = added_heights_[i].find(cons_height);
                 if (exist_iter != added_heights_[i].end()) {
                     if (exist_iter->second + 1000lu > timeout) {
@@ -281,12 +306,22 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
                 }
 
                 if (valided_heights_[i].find(cons_height) == valided_heights_[i].end()) {
+                    // If cons_height equals the committed floor, it's safe to use
+                    if (cons_height == floor_height) {
+                        valid = true;
+                        break;
+                    }
                     SETH_DEBUG("leader get to heights error, pool: %u, height: %lu", i, cons_height);
                     return kPoolsError;
                 }
 
                 valid = true;
                 break;
+            }
+
+            // If decremented below floor, use floor height
+            if (cons_height < floor_height) {
+                cons_height = floor_height;
             }
 
             to_heights.add_heights(cons_height);
@@ -407,9 +442,11 @@ int ToTxsPools::CreateToTxWithHeights(
         for (auto height = min_height; height <= max_height; ++height) {
             auto hiter = height_map.find(height);
             if (hiter == height_map.end()) {
-                SETH_DEBUG("find pool index: %u height: %lu failed!", pool_idx, height);
-                // assert(false);
-                return kPoolsError;
+                // Height may have no cross-shard transactions (empty cross_shard_to_array),
+                // or data was already cleaned up by a committed normal_to block.
+                // This is normal - skip missing heights instead of aborting.
+                SETH_DEBUG("find pool index: %u height: %lu not found, skipping", pool_idx, height);
+                continue;
             }
 
             for (auto to_iter = hiter->second.begin();
