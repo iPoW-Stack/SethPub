@@ -2652,69 +2652,107 @@ contract AMMPool {
         }
 
         // ── Phase 9.5: Verify approve on-chain via allowance query ────────
-        // Query allowance(owner, spender) for a sample of trade pairs to confirm
-        // that approve transactions were actually committed on chain.
-        // allowance(address,address) selector = dd62ed3e
         {
-            std::cout << "\n  Verifying approve on-chain (allowance query)..." << std::endl;
+            std::cout << "\n  Verifying approve on-chain (allowance + diagnostics)..." << std::endl;
             uint32_t verify_count = 0, verify_ok = 0, verify_fail = 0;
-            // Check up to 20 samples (or all if fewer)
+            uint32_t detail_printed = 0;
+            const uint32_t kMaxDetailPrint = 10;
             uint32_t sample_limit = std::min((uint32_t)trade_pairs.size(), 20u);
+            
             for (uint32_t tpi = 0; tpi < sample_limit && !global_stop; ++tpi) {
                 const auto& tp = trade_pairs[tpi];
                 for (uint32_t pi : tp.pool_indices) {
                     const auto& pool = pools[pi];
-                    // Query: tokenA.allowance(userA, pool)
                     std::string owner_a = users[tp.user_a_idx].addr_hex;
                     std::string spender = pool.pool;
-                    // allowance(address owner, address spender) → dd62ed3e
-                    std::string owner_padded = std::string(64 - owner_a.size(), '0') + owner_a;
-                    std::string spender_padded = std::string(64 - spender.size(), '0') + spender;
-                    std::string input = "dd62ed3e" + owner_padded + spender_padded;
 
                     auto [ldr_ip, ldr_http] = get_leader_http(pool.token_a);
                     SethSDK query_sdk(ldr_ip, ldr_http);
+
+                    // Query allowance(owner, spender)
                     auto result = query_sdk.queryFunctionSolidity(
                         users[tp.user_a_idx].prikey_hex, pool.token_a,
                         "allowance", {"address", "address"},
                         {owner_a, spender}, {"uint256"});
 
                     ++verify_count;
-                    if (result["status"] == 0 && result.contains("decoded") && 
+                    uint64_t allowance_val = 0;
+                    bool query_ok = false;
+                    if (result["status"] == 0 && result.contains("decoded") &&
                             !result["decoded"].empty()) {
-                        uint64_t allowance_val = 0;
+                        query_ok = true;
                         try {
                             auto decoded = result["decoded"];
-                            if (decoded.is_array() && !decoded.empty()) {
+                            if (decoded.is_array() && !decoded.empty())
                                 allowance_val = std::stoull(decoded[0].get<std::string>());
-                            } else if (decoded.is_string()) {
+                            else if (decoded.is_string())
                                 allowance_val = std::stoull(decoded.get<std::string>());
-                            }
                         } catch (...) {}
-
-                        if (allowance_val >= kTokenTransfer) {
-                            ++verify_ok;
-                        } else {
-                            ++verify_fail;
-                            std::cout << "    ✗ pair " << tpi << " pool " << pi
-                                      << ": allowance=" << allowance_val
-                                      << " < expected " << kTokenTransfer << std::endl;
-                        }
-                    } else {
-                        ++verify_fail;
-                        std::cout << "    ✗ pair " << tpi << " pool " << pi
-                                  << ": query failed: " << result.dump() << std::endl;
                     }
+
+                    if (query_ok && allowance_val >= kTokenTransfer) {
+                        ++verify_ok;
+                        continue;
+                    }
+
+                    ++verify_fail;
+                    if (detail_printed >= kMaxDetailPrint) continue;
+                    ++detail_printed;
+
+                    // ── Print full diagnostics for this failure ──
+                    std::cout << "\n    ══ FAIL #" << detail_printed << " ══"
+                              << " pair=" << tpi << " pool_idx=" << pi << std::endl;
+                    std::cout << "    token_a     = " << pool.token_a << std::endl;
+                    std::cout << "    token_b     = " << pool.token_b << std::endl;
+                    std::cout << "    pool(spender)= " << pool.pool << std::endl;
+                    std::cout << "    owner(userA) = " << owner_a << std::endl;
+                    std::cout << "    query_node   = " << ldr_ip << ":" << ldr_http << std::endl;
+                    std::cout << "    allowance_raw= " << result.value("return_value", "(none)") << std::endl;
+                    std::cout << "    allowance_val= " << allowance_val << std::endl;
+                    if (!query_ok)
+                        std::cout << "    query_error  = " << result.dump() << std::endl;
+
+                    // balanceOf(owner) on tokenA
+                    auto bal = query_sdk.queryFunctionSolidity(
+                        users[tp.user_a_idx].prikey_hex, pool.token_a,
+                        "balanceOf", {"address"}, {owner_a}, {"uint256"});
+                    std::cout << "    balanceOf(A) = " << (bal["status"]==0 ? bal.value("return_value","") : bal.dump()) << std::endl;
+
+                    // nonce of prepay account (token_a + owner)
+                    std::string prepay_a = pool.token_a + owner_a;
+                    int64_t nonce_a = query_sdk.fetchNonce(prepay_a);
+                    std::cout << "    nonce(tok+usr)= " << nonce_a << std::endl;
+
+                    // The approve input that was sent
+                    std::string approve_input = encode_call_addr_uint("095ea7b3", pool.pool, kTokenTransfer);
+                    std::cout << "    approve_input= " << approve_input.substr(0, 72) << "..." << std::endl;
+
+                    // Try querying from a different node (default node) to rule out routing
+                    SethSDK default_sdk(global_chain_node_ip, global_chain_node_http_port);
+                    auto result2 = default_sdk.queryFunctionSolidity(
+                        users[tp.user_a_idx].prikey_hex, pool.token_a,
+                        "allowance", {"address", "address"},
+                        {owner_a, spender}, {"uint256"});
+                    std::cout << "    allowance(default_node)= "
+                              << (result2["status"]==0 ? result2.value("return_value","") : result2.dump())
+                              << std::endl;
+
+                    // Check if the contract exists on chain (has bytecode)
+                    int64_t contract_bal = query_sdk.fetchBalance(pool.token_a);
+                    std::cout << "    contract_balance= " << contract_bal << std::endl;
+
+                    // Check user prefund on this token
+                    std::string prefund_addr = pool.token_a + owner_a;
+                    int64_t prefund_bal = query_sdk.fetchBalance(prefund_addr);
+                    std::cout << "    user_prefund = " << prefund_bal << std::endl;
                 }
             }
-            std::cout << "  Allowance verification: " << verify_ok << "/" << verify_count
+            
+            std::cout << "\n  Allowance verification: " << verify_ok << "/" << verify_count
                       << " ok, " << verify_fail << " fail" << std::endl;
-            if (verify_fail > 0) {
-                std::cout << "  ⚠ WARNING: " << verify_fail << " allowance checks failed!"
-                          << std::endl;
-                std::cout << "  Waiting additional 15s for consensus..." << std::endl;
+            if (verify_fail > 0 && verify_fail > verify_ok) {
+                std::cout << "  ⚠ Most approves failed. Waiting 15s and retrying..." << std::endl;
                 for(int w=0;w<150&&!global_stop;++w) usleep(100000);
-                // Re-verify failed ones
                 uint32_t retry_ok = 0;
                 for (uint32_t tpi = 0; tpi < sample_limit && !global_stop; ++tpi) {
                     const auto& tp = trade_pairs[tpi];
