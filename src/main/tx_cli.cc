@@ -2463,11 +2463,6 @@ contract AMMPool {
                         // Nonce from prepayment account: contract_addr + caller_addr
                         std::string prepay_addr = grp.contract_addr + grp.caller_addr;
                         int64_t nonce = tsdk.fetchNonce(prepay_addr);
-                        if (gi < s + 3) {
-                            std::cout << "  [" << label << " grp " << gi << "] prepay=" << prepay_addr
-                                      << " (len=" << prepay_addr.size() << ") nonce=" << nonce
-                                      << " ops=" << grp.inputs.size() << std::endl;
-                        }
                         if (nonce < 0) { fail_cnt += grp.inputs.size(); continue; }
                         for (const auto& input : grp.inputs) {
                             if (global_stop) break;
