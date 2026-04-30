@@ -1923,6 +1923,9 @@ contract AMMPool {
         std::string default_dest_ip = global_chain_node_ip;
         uint16_t default_dest_port = global_chain_node_http_port - 10000;
 
+        // Map contract_addr_hex → pool_index (populated after pool deployment)
+        std::unordered_map<std::string, uint32_t> contract_pool_index_map;
+
         // Helper: get destination for a contract address (leader routing)
         auto get_dest = [&](const std::string& contract_addr_hex) -> std::pair<std::string, uint16_t> {
             if (amm_has_leaders) {
@@ -2137,8 +2140,6 @@ contract AMMPool {
 
         // Query actual pool_index for each contract from chain
         std::cout << "  Querying pool indices for " << pools.size() << " contracts..." << std::endl;
-        // Map contract_addr_hex → pool_index
-        std::unordered_map<std::string, uint32_t> contract_pool_index_map;
         for (auto& p : pools) {
             // Query pool contract's pool_index (all 3 contracts from same deployer should be in same pool)
             int64_t bal = sdk.fetchBalance(p.pool);
