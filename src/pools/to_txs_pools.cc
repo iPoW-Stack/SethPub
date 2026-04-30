@@ -263,14 +263,40 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
         return kPoolsError;
     }
 
+    // Maximum serialized size for all cross-shard transactions in one round.
+    // Each ToTxMessageItem is ~80-200 bytes serialized (address + amount + metadata).
+    // We use a conservative estimate and track accumulated size.
+    static const size_t kMaxToTxBytes = 512u * 1024u;
+    // Average serialized size per ToTxMessageItem entry (conservative estimate)
+    static const size_t kAvgItemBytes = 150u;
+
     bool valid = false;
     auto leader_to_heights_ptr = leader_to_heights_.load();
     if (leader_to_heights_ptr != nullptr) {
         valid = true;
     } else {
         auto timeout = common::TimeUtils::TimestampMs();
+        size_t estimated_size = 0;
+        bool size_limit_reached = false;
+
         for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
             uint64_t cons_height = pool_consensus_heihgts_[i];
+
+            // If size limit already reached, use prev height (no new data from this pool)
+            if (size_limit_reached) {
+                common::AutoSpinLock auto_lock(network_txs_pools_mutex_);
+                // Use the previous height — don't add new cross-shard data
+                std::shared_ptr<pools::protobuf::ShardToTxItem> prev_ptr;
+                {
+                    common::AutoSpinLock lock(prev_to_heights_mutex_);
+                    prev_ptr = prev_to_heights_;
+                }
+                uint64_t prev_h = (prev_ptr && i < (uint32_t)prev_ptr->heights_size()) ? prev_ptr->heights(i) : 0;
+                to_heights.add_heights(prev_h);
+                SETH_DEBUG("pool: %u, size limit reached, using prev height: %lu", i, prev_h);
+                continue;
+            }
+
             while (cons_height > 0) {
                 auto exist_iter = added_heights_[i].find(cons_height);
                 if (exist_iter != added_heights_[i].end()) {
@@ -289,8 +315,40 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
                 break;
             }
 
+            // Estimate the cross-shard data size for this pool's height range
+            {
+                common::AutoSpinLock auto_lock(network_txs_pools_mutex_);
+                std::shared_ptr<pools::protobuf::ShardToTxItem> prev_ptr;
+                {
+                    common::AutoSpinLock lock(prev_to_heights_mutex_);
+                    prev_ptr = prev_to_heights_;
+                }
+                uint64_t prev_h = (prev_ptr && i < (uint32_t)prev_ptr->heights_size()) ? prev_ptr->heights(i) : 0;
+                uint64_t capped_height = cons_height;
+                auto& height_map = network_txs_pools_[i];
+
+                for (uint64_t h = prev_h + 1; h <= cons_height; ++h) {
+                    auto hiter = height_map.find(h);
+                    if (hiter != height_map.end()) {
+                        size_t height_items = hiter->second.size();
+                        size_t height_est = height_items * kAvgItemBytes;
+                        if (estimated_size + height_est > kMaxToTxBytes) {
+                            // Cap at the previous height to stay within limit
+                            capped_height = (h > prev_h + 1) ? (h - 1) : prev_h;
+                            size_limit_reached = true;
+                            SETH_DEBUG("pool: %u, size limit at height %lu (est %zu bytes), "
+                                "capped from %lu to %lu",
+                                i, h, estimated_size + height_est, cons_height, capped_height);
+                            break;
+                        }
+                        estimated_size += height_est;
+                    }
+                }
+                cons_height = capped_height;
+            }
+
             to_heights.add_heights(cons_height);
-            SETH_DEBUG("pool: %u, success add cons height: %lu", i, cons_height);
+            SETH_DEBUG("pool: %u, success add cons height: %lu, est_size: %zu", i, cons_height, estimated_size);
         }
     }
     
