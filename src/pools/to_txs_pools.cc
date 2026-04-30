@@ -114,9 +114,12 @@ void ToTxsPools::ThreadToStatistic(
 
             // Ensure pool_consensus_heihgts_ is at least committed_height
             // so that LeaderCreateToHeights won't reference already-cleaned data
+            uint64_t old_cons = pool_consensus_heihgts_[i];
             if (pool_consensus_heihgts_[i] < committed_height) {
                 pool_consensus_heihgts_[i] = committed_height;
             }
+            SETH_DEBUG("normal_to commit pool %u: committed=%lu, cons_height: %lu->%lu",
+                i, committed_height, old_cons, pool_consensus_heihgts_[i]);
 
             // Clean up network_txs_pools_ entries that have been committed
             {
@@ -175,6 +178,7 @@ void ToTxsPools::ThreadToStatistic(
     if (pool_consensus_heihgts_[pool_idx] + 1 == block.height() ||
             (pool_consensus_heihgts_[pool_idx] < block.height() &&
              added_heights_[pool_idx].find(pool_consensus_heihgts_[pool_idx] + 1) != added_heights_[pool_idx].end())) {
+        uint64_t old_cons_height = pool_consensus_heihgts_[pool_idx];
         // Advance through all consecutive heights present in added_heights_
         while (pool_consensus_heihgts_[pool_idx] < pool_max_heihgts_[pool_idx]) {
             auto iter = added_heights_[pool_idx].find(
@@ -184,6 +188,16 @@ void ToTxsPools::ThreadToStatistic(
             }
             ++pool_consensus_heihgts_[pool_idx];
         }
+        SETH_DEBUG("pool %u cons_height advanced: %lu -> %lu, max: %lu, block: %lu",
+            pool_idx, old_cons_height, pool_consensus_heihgts_[pool_idx],
+            pool_max_heihgts_[pool_idx], block.height());
+    } else {
+        SETH_DEBUG("pool %u cons_height NOT advanced: cons=%lu, block=%lu, max=%lu, "
+            "added_has_next=%d",
+            pool_idx, pool_consensus_heihgts_[pool_idx], block.height(),
+            pool_max_heihgts_[pool_idx],
+            (added_heights_[pool_idx].find(pool_consensus_heihgts_[pool_idx] + 1) 
+                != added_heights_[pool_idx].end()));
     }
 }
 
@@ -279,7 +293,11 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
     bool valid = false;
     auto leader_to_heights_ptr = leader_to_heights_.load();
     if (leader_to_heights_ptr != nullptr) {
+        // Use cached heights from previous successful computation
+        to_heights = *leader_to_heights_ptr;
         valid = true;
+        SETH_DEBUG("LeaderCreateToHeights using cached leader_to_heights_, heights_size: %d",
+            to_heights.heights_size());
     } else {
         std::shared_ptr<pools::protobuf::ShardToTxItem> prev_heights_snap = nullptr;
         {
@@ -311,7 +329,9 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
                         valid = true;
                         break;
                     }
-                    SETH_DEBUG("leader get to heights error, pool: %u, height: %lu", i, cons_height);
+                    SETH_DEBUG("leader get to heights error, pool: %u, height: %lu, "
+                        "floor: %lu, valided_size: %lu",
+                        i, cons_height, floor_height, valided_heights_[i].size());
                     return kPoolsError;
                 }
 
@@ -325,7 +345,8 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
             }
 
             to_heights.add_heights(cons_height);
-            SETH_DEBUG("pool: %u, success add cons height: %lu", i, cons_height);
+            SETH_DEBUG("pool: %u, success add cons height: %lu, floor: %lu",
+                i, cons_height, floor_height);
         }
     }
     
@@ -412,6 +433,8 @@ int ToTxsPools::CreateToTxWithHeights(
         ProtobufToJson(*prev_to_heights).c_str(), 
         ProtobufToJson(leader_to_heights).c_str());
     if (!heights_valid) {
+        SETH_DEBUG("CreateToTxWithHeights: heights not valid (prev == leader for all pools), shard: %u",
+            sharding_id);
         return kPoolsError;
     }
 

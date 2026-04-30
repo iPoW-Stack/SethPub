@@ -80,6 +80,12 @@ std::shared_ptr<WaitingTxsItem> WaitingTxsPools::GetSingleTx(
                     *(*iter)->address_info, 
                     *(*iter)->tx_info,
                     &now_nonce) != 0) {
+                SETH_DEBUG("GetToTxs nonce validation failed, pool: %u, "
+                    "tx_nonce: %lu, now_nonce: %lu, txs_empty: %d",
+                    pool_index,
+                    (iter != txs_item->txs.end() ? (*iter)->tx_info->nonce() : 0),
+                    now_nonce,
+                    (iter == txs_item->txs.end()));
                 txs_item = nullptr;
             } else {
                 SETH_DEBUG("GetToTxs: %s", common::Encode::HexEncode((*iter)->tx_info->key()).c_str());
@@ -158,7 +164,7 @@ std::shared_ptr<WaitingTxsItem> WaitingTxsPools::GetToTxs(
         return txs_item;
     } else {
         if (leader) {
-            SETH_DEBUG("leader get to tx coming failed 0");
+            SETH_DEBUG("leader get to tx coming failed 0, pool: %u", pool_index);
         }
     }
 

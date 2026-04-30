@@ -803,6 +803,7 @@ pools::TxItemPtr BlockManager::GetToTx(
         uint32_t pool_index, 
         const std::string& heights_str) {
     if (network::IsSameToLocalShard(network::kRootCongressNetworkId)) {
+        SETH_DEBUG("GetToTx rejected: is root congress shard");
         return nullptr;
     }
 
@@ -814,6 +815,8 @@ pools::TxItemPtr BlockManager::GetToTx(
     if (heights_str.empty()) {
         auto cur_time = common::TimeUtils::TimestampMs();
         if (leader_prev_get_to_tx_tm_ > cur_time) {
+            SETH_DEBUG("GetToTx rejected: cooldown active, remaining: %lu ms",
+                leader_prev_get_to_tx_tm_ - cur_time);
             return nullptr;
         }
 
@@ -822,7 +825,9 @@ pools::TxItemPtr BlockManager::GetToTx(
         auto latest_to_block_ptr = latest_to_block_ptr_[latest_to_block_ptr_index_].load();
         if (latest_to_block_ptr != nullptr &&
                 latest_to_block_ptr->block_info().timestamp() + 10000lu >= cur_time) {
-            SETH_DEBUG("now leader get to to tx timestamp error");
+            SETH_DEBUG("now leader get to to tx timestamp error, block_tm: %lu, cur: %lu, diff: %ld",
+                latest_to_block_ptr->block_info().timestamp(), cur_time,
+                (int64_t)(cur_time - latest_to_block_ptr->block_info().timestamp()));
             return nullptr;
         }
 
@@ -871,12 +876,14 @@ pools::TxItemPtr BlockManager::HandleToTxsMessage(
                 heights,
                 to_tx) != pools::kPoolsSuccess) {
             all_to_txs.mutable_to_tx_arr()->RemoveLast();
-            SETH_DEBUG("1 failed get to tx tx info: %s", ProtobufToJson(heights).c_str());
+            SETH_DEBUG("1 failed get to tx for shard: %u, heights: %s",
+                sharding_id, ProtobufToJson(heights).c_str());
         }
     }
 
     if (all_to_txs.to_tx_arr_size() == 0) {
-        SETH_DEBUG("2 failed get to tx tx info: %s", ProtobufToJson(heights).c_str());
+        SETH_DEBUG("2 failed get to tx tx info, all shards failed, max_shard: %u, heights: %s",
+            max_consensus_sharding_id_.load(), ProtobufToJson(heights).c_str());
         return nullptr;
     }
     
@@ -952,7 +959,9 @@ bool BlockManager::HasToTx(uint32_t pool_index, pools::CheckAddrNonceValidFuncti
     auto latest_to_block_ptr = latest_to_block_ptr_[latest_to_block_ptr_index_].load();
     if (latest_to_block_ptr != nullptr &&
             latest_to_block_ptr->block_info().timestamp() + 10000lu >= cur_time) {
-        SETH_DEBUG("invalid latest_to_block_ptr: %d", (latest_to_block_ptr != nullptr));
+        SETH_DEBUG("HasToTx: blocked by 10s cooldown, block_tm: %lu, cur: %lu, diff: %ld",
+            latest_to_block_ptr->block_info().timestamp(), cur_time,
+            (int64_t)(cur_time - latest_to_block_ptr->block_info().timestamp()));
         return false;
     }
 
