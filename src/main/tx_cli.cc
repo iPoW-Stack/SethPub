@@ -2271,7 +2271,7 @@ contract AMMPool {
 
         // Wait for prefund consensus — need enough time for all prefund txs to be confirmed
         std::cout << "  Waiting 60s for prefund consensus..." << std::endl;
-        for(int w=0;w<100&&!global_stop;++w) usleep(300000);
+        for(int w=0;w<100&&!global_stop;++w) usleep(600000);
 
         // Verify prefund accounts exist via batch query, retry missing ones
         std::cout << "  Verifying prefund accounts (batch)..." << std::endl;
@@ -2299,7 +2299,7 @@ contract AMMPool {
         for (uint32_t i = 0; i < pf_verify.size(); ++i) pf_pending.push_back(i);
 
         const uint32_t kPfBatchSize = 50;  // 80-char prepayment addresses need small batches
-        for (uint32_t round = 0; round < 10 && !pf_pending.empty() && !global_stop; ++round) {
+        for (uint32_t round = 0; round < 20 && !pf_pending.empty() && !global_stop; ++round) {
             uint32_t round_ok = 0;
             std::vector<uint32_t> next_pending;
             std::vector<std::string> ba;
