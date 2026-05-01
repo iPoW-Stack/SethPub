@@ -402,13 +402,26 @@ Status Hotstuff::Propose(
     // SETH_DEBUG("1 success add local message: %lu", tmp_msg_ptr->header.hash64());
     {
         // Check propose message size before broadcasting.
+        // If oversized, trim transactions and rebuild to stay within limit.
         int msg_size = tmp_msg_ptr->header.ByteSizeLong();
         if (msg_size > common::kMaxProposeMsgBytes) {
-            SETH_WARN("pool: %d, NEW propose msg OVERSIZED: %d bytes (limit %d), "
-                "txs=%d, view=%lu — receivers will reject this message",
-                pool_idx_, msg_size, common::kMaxProposeMsgBytes,
-                hotstuff_msg->pro_msg().tx_propose().txs_size(),
-                hotstuff_msg->pro_msg().view_item().qc().view());
+            int tx_count = hotstuff_msg->pro_msg().tx_propose().txs_size();
+            // Estimate safe tx count: (limit / current_size) * current_tx_count * 0.9 safety margin
+            int safe_count = (int)((double)common::kMaxProposeMsgBytes / msg_size * tx_count * 0.9);
+            if (safe_count < 1) safe_count = 1;
+            SETH_WARN("pool: %d, propose msg OVERSIZED: %d bytes (limit %d), "
+                "txs=%d, trimming to %d txs",
+                pool_idx_, msg_size, common::kMaxProposeMsgBytes, tx_count, safe_count);
+            // Remove excess transactions from the propose
+            auto* tx_propose = hotstuff_msg->mutable_pro_msg()->mutable_tx_propose();
+            while (tx_propose->txs_size() > safe_count) {
+                tx_propose->mutable_txs()->RemoveLast();
+            }
+            // Also trim the view block's tx_list to match
+            auto* block_info = hotstuff_msg->mutable_pro_msg()->mutable_view_item()->mutable_block_info();
+            while (block_info->tx_list_size() > safe_count) {
+                block_info->mutable_tx_list()->RemoveLast();
+            }
         }
     }
     auto send_begin_ms = common::TimeUtils::TimestampMs();

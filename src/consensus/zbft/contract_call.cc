@@ -109,7 +109,19 @@ int ContractCall::HandleTx(
             SETH_DEBUG("now call contract address: %s, bytes: %s", 
                 common::Encode::HexEncode(address_info->addr()).c_str(), 
                 common::Encode::HexEncode(address_info->bytes_code()).c_str());
+            auto evm_begin_us = common::TimeUtils::TimestampUs();
             int call_res = ContractExcute(address_info, new_contract_balance, seth_host, block_tx, gas_limit, &evmc_res);
+            auto evm_end_us = common::TimeUtils::TimestampUs();
+            auto evm_elapsed_us = evm_end_us - evm_begin_us;
+            if (evm_elapsed_us > 1000) {  // log if > 1ms
+                SETH_WARN("ContractExcute slow: %lu us, tx_idx: %d, contract: %s, "
+                    "input_size: %lu, status: %d, gas_used: %lu",
+                    evm_elapsed_us, tx_index,
+                    common::Encode::HexEncode(address_info->addr()).c_str(),
+                    block_tx.contract_input().size(),
+                    (int32_t)evmc_res.status_code,
+                    (evmc_res.gas_left > (int64_t)gas_limit) ? gas_limit : (gas_limit - evmc_res.gas_left));
+            }
             if (call_res != kConsensusSuccess || evmc_res.status_code != EVMC_SUCCESS) {
                 block_tx.set_status(EvmcStatusToZbftStatus(evmc_res.status_code));
                 SETH_DEBUG("call contract failed, call_res: %d, evmc res: %d, gas_limit: %lu, bytes: %s, input: %s!",
@@ -302,6 +314,15 @@ int ContractCall::HandleTx(
     block_tx.set_gas_used(gas_used);
     ADD_TX_DEBUG_INFO((&block_tx));
     auto etime = common::TimeUtils::TimestampMs();
+    auto handle_tx_elapsed = etime - btime;
+    if (handle_tx_elapsed > 5) {  // log if HandleTx > 5ms
+        SETH_WARN("ContractCall::HandleTx slow: %lu ms, tx_idx: %d, nonce: %lu, "
+            "contract: %s, caller: %s, status: %d, gas_used: %lu",
+            handle_tx_elapsed, tx_index, block_tx.nonce(),
+            common::Encode::HexEncode(block_tx.to()).c_str(),
+            common::Encode::HexEncode(block_tx.from()).c_str(),
+            block_tx.status(), gas_used);
+    }
     SETH_DEBUG("contract nonce %lu, to: %s, user: %s, test_from_balance: %lu, prepament: %lu, "
         "gas used: %lu, gas_price: %lu, status: %d, step: %d, "
         "amount: %ld, to_balance: %ld, contract_balance_add: %ld, "
