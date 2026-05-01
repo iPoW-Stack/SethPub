@@ -90,23 +90,6 @@ void Hotstuff::StartInit() {
             &header, 
             &tmp_msg_ptr->latest_qc_view)) {
         latest_leader_propose_message_ = tmp_msg_ptr;
-        // On restart, the persisted propose message may carry a QC view higher
-        // than what InitLoadLatestBlock recovered from committed blocks.
-        // Advance latest_qc_item_ptr_ to match, so that GetLeader() computes
-        // the correct out_view and the leader doesn't reject its own propose.
-        if (latest_qc_item_ptr_ == nullptr ||
-                tmp_msg_ptr->latest_qc_view > latest_qc_item_ptr_->view()) {
-            auto& pro_tc = header.hotstuff().pro_msg().tc();
-            if (pro_tc.has_view_block_hash() && IsQcTcValid(pro_tc)) {
-                SETH_DEBUG("pool: %u, advancing latest_qc_item from %lu to persisted "
-                    "leader propose tc view %lu on restart",
-                    pool_idx_,
-                    latest_qc_item_ptr_ ? latest_qc_item_ptr_->view() : 0,
-                    pro_tc.view());
-                UpdateLatestQcItemPtr(
-                    std::make_shared<view_block::protobuf::QcItem>(pro_tc));
-            }
-        }
     }
 
     SETH_DEBUG("success start init network: %d, pool index: %d, root_view_block_chain_: %d", 
@@ -132,26 +115,6 @@ bool Hotstuff::InitLoadLatestBlock(
 
         view_block_chain->SetLatestCommittedBlock(temp_ptr);
         InitAddNewViewBlock(view_block_chain, latest_view_block);
-        // After recovering from committed blocks, also check the persisted
-        // high_view_block_ which may have a higher view (e.g. leader proposed
-        // view N+1 but crashed before committing it).  RecoverHighViewBlock()
-        // was already called in ViewBlockChain::Init(), so high_view_block_ is
-        // available here.
-        if (network::IsSameToLocalShard(network_id)) {
-            auto high_vb = view_block_chain->HighViewBlock();
-            if (high_vb && IsQcTcValid(high_vb->qc()) &&
-                    (latest_qc_item_ptr_ == nullptr ||
-                     high_vb->qc().view() > latest_qc_item_ptr_->view())) {
-                SETH_DEBUG("pool: %u, advancing latest_qc_item from committed view %lu to "
-                    "high_view_block view %lu on restart",
-                    pool_index,
-                    latest_qc_item_ptr_ ? latest_qc_item_ptr_->view() : 0,
-                    high_vb->qc().view());
-                UpdateLatestQcItemPtr(
-                    std::make_shared<view_block::protobuf::QcItem>(high_vb->qc()));
-            }
-        }
-
         auto parent_hash = latest_view_block->parent_hash();
         while (!parent_hash.empty()) {
             ViewBlock view_block;
@@ -1565,6 +1528,13 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     view_block_chain()->UpdateHighViewBlock(qc_item);
     BroadcastGlobalPoolBlock(view_block_info_ptr->view_block);
     pacemaker()->NewQcView(qc_item.view());
+    SETH_DEBUG("NewView propose newview called %u_%u_%lu, tc_view: %lu, "
+        "propose_debug: %s, use time: %lu",
+        qc_item.network_id(),
+        pool_idx_, view_block_chain()->HighViewBlock()->qc().view(), 
+        pacemaker()->HighTC()->view(),
+        msg_ptr->header.debug().c_str(),
+        (common::TimeUtils::TimestampMs() - view_block_info_ptr->b_tm_ms));
     ADD_DEBUG_PROCESS_TIMESTAMP();
     latest_leader_propose_message_ = nullptr;
     last_leader_propose_view_ = 0llu;
@@ -1577,9 +1547,6 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     } else {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
     }
-
-    // Update high_view_block_ AFTER the propose has been sent out.
-    // (moved from before Propose to after)
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
     // prev_recover_check_tm_ms_ = 0;

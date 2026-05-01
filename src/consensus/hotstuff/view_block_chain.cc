@@ -1495,7 +1495,6 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
             pool_index_,
             high_view_block_->qc().view_block_hash(),
             db_batch);
-        prefix_db_->SaveBlock(*high_view_block_, db_batch);
         auto st = db_->Put(db_batch);
         if (!st.ok()) {
             SETH_ERROR("failed to persist high view block %u_%u_%lu, hash: %s",
