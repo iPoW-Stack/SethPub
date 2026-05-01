@@ -17,6 +17,13 @@ public:
         ParseQueryParams();
     }
 
+    // Construct from pre-copied query string (safe for async/onData callbacks
+    // where the original HttpRequest* is no longer valid)
+    UWSRequest(const std::string& query, const std::string& body_data)
+        : req_(nullptr), query_copy_(query), body_(body_data) {
+        ParseQueryParams();
+    }
+
     std::string get_param_value(const std::string& key) const {
         auto it = params_.find(key);
         return it != params_.end() ? it->second : "";
@@ -32,7 +39,12 @@ private:
     void ParseQueryParams() {
         body = body_;
         // Parse URL query parameters
-        auto query = std::string(req_->getQuery());
+        std::string query;
+        if (req_) {
+            query = std::string(req_->getQuery());
+        } else {
+            query = query_copy_;
+        }
         if (!query.empty()) {
             ParseParams(query);
         }
@@ -79,6 +91,7 @@ private:
     }
 
     uWS::HttpRequest* req_;
+    std::string query_copy_;
     std::string body_;
     std::map<std::string, std::string> params_;
 };
