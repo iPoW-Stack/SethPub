@@ -2208,7 +2208,7 @@ contract AMMPool {
 
         const uint32_t kPoolsPerPair = 1;  // each user pair trades on 1 pool
         const uint64_t kSwapAmount = 100lu;  // tokens per swap
-        const uint64_t kTokenTransfer = 5000lu;  // tokens transferred to each user
+        const uint64_t kTokenTransfer = kSwapAmount * kStressRoundsArg + 1000lu;  // enough tokens for all swap rounds + headroom
         const uint64_t kUserPrefund = 500000000lu;
 
         // Pair users: (confirmed_users[0], confirmed_users[1]), (confirmed_users[2], confirmed_users[3]), ...
@@ -2695,22 +2695,24 @@ contract AMMPool {
         std::cout << "  Phase 9: User Approve Pool x" << kStressRounds << " (TCP stress)" << std::endl;
         std::cout << std::string(70, '-') << std::endl;
 
-        // Build approve ops — each user approves once, but we'll repeat kStressRounds times
+        // Build approve ops — each user approves kStressRounds times (stress test).
+        // Each approve sets allowance to cover ALL swap rounds so that even the
+        // last approve (which overwrites previous ones) leaves enough allowance.
+        const uint64_t kApproveAmount = kSwapAmount * kStressRounds + kTokenTransfer;
         std::vector<ContractCallOp> appr_ops;
         for (const auto& tp : trade_pairs) {
             for (uint32_t pi : tp.pool_indices) {
                 const auto& pool = pools[pi];
                 appr_ops.push_back({users[tp.user_a_idx].prikey_hex, pool.token_a,
                     users[tp.user_a_idx].addr_hex,
-                    encode_call_addr_uint("095ea7b3", pool.pool, kTokenTransfer)});
+                    encode_call_addr_uint("095ea7b3", pool.pool, kApproveAmount)});
                 appr_ops.push_back({users[tp.user_b_idx].prikey_hex, pool.token_b,
                     users[tp.user_b_idx].addr_hex,
-                    encode_call_addr_uint("095ea7b3", pool.pool, kTokenTransfer)});
+                    encode_call_addr_uint("095ea7b3", pool.pool, kApproveAmount)});
             }
         }
-        // Repeat each op kStressRounds times within its group
+        // Repeat each op kStressRounds times within its group (contract call stress test)
         auto appr_groups = group_by_prepay(appr_ops);
-        // Expand: each group's inputs repeated kStressRounds times
         uint64_t total_appr_ops = 0;
         for (auto& grp : appr_groups) {
             std::vector<std::string> expanded;
@@ -2720,7 +2722,8 @@ contract AMMPool {
             total_appr_ops += grp.inputs.size();
         }
         std::cout << "  Total approve ops: " << total_appr_ops
-                  << " (" << appr_groups.size() << " groups x " << kStressRounds << " rounds)" << std::endl;
+                  << " (" << appr_groups.size() << " groups x " << kStressRounds
+                  << " rounds, allowance=" << kApproveAmount << ")" << std::endl;
 
         std::atomic<uint64_t> appr_ok{0}, appr_fail{0};
         auto appr_start = std::chrono::steady_clock::now();
@@ -2846,7 +2849,7 @@ contract AMMPool {
                         } catch (...) {}
                     }
 
-                    if (query_ok && allowance_val >= kTokenTransfer) {
+                    if (query_ok && allowance_val >= kApproveAmount) {
                         ++verify_ok;
                         continue;
                     }
@@ -2880,7 +2883,7 @@ contract AMMPool {
                     std::cout << "    nonce(tok+usr)= " << nonce_a << std::endl;
 
                     // The approve input that was sent
-                    std::string approve_input = encode_call_addr_uint("095ea7b3", pool.pool, kTokenTransfer);
+                    std::string approve_input = encode_call_addr_uint("095ea7b3", pool.pool, kApproveAmount);
                     std::cout << "    approve_input= " << approve_input.substr(0, 72) << "..." << std::endl;
 
                     // Try querying from a different node (default node) to rule out routing
@@ -2931,7 +2934,7 @@ contract AMMPool {
                                     std::string s = first.get<std::string>();
                                     v = std::stoull(s, nullptr, s.find("0x")==0 ? 16 : 10);
                                 }
-                                if (v >= kTokenTransfer) ++retry_ok;
+                                if (v >= kApproveAmount) ++retry_ok;
                             } catch (...) {}
                         }
                     }
