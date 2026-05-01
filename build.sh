@@ -48,7 +48,8 @@ rm -rf ../third_party/lib64/lib*.so*
 
 cmake ..  -DCMAKE_BUILD_TYPE=$TARGET -DOPENSSL_ROOT_DIR=./third_party/depends/include/ -DCMAKE_INSTALL_PREFIX=~/seth -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
   -DREPLACE_WHITEBOX_PK="$PK_ARRAY" \
-  -DREPLACE_WHITEBOX_SK="$SK_ARRAY"
+  -DREPLACE_WHITEBOX_SK="$SK_ARRAY" \
+  -DENABLE_ASAN=ON
 if [[ $1 == "" ]];
 then
     make -j3

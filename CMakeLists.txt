@@ -161,8 +161,17 @@ else()
     add_compile_options(-Wno-deprecated-declarations)
     add_compile_options(-Wno-unused-variable)
 
+    # AddressSanitizer: detect heap corruption, use-after-free, buffer overflow
+    # Build with: cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_ASAN=ON ..
+    option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
+    if(ENABLE_ASAN)
+        message(STATUS "AddressSanitizer ENABLED")
+        add_compile_options(-fsanitize=address -fno-omit-frame-pointer -O1 -g)
+        add_link_options(-fsanitize=address)
+    endif()
+
     # Extreme Performance Optimization for Release Build
-    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ENABLE_ASAN)
         # -O3: Highest optimization level
         # -march=native: Use all instruction sets available on the host CPU (AVX2/AVX512 etc).
         #                Huge performance boost for BLS/Crypto.
@@ -233,7 +242,6 @@ set(LINK_ARGS
     ${LINK_YAML}
     pthread
     gmp # Big number library, performance critical
-    tcmalloc # Memory allocator, critical for multi-threaded performance
     uSockets # uWebSockets dependency
     z # zlib for uWebSockets
     ssl # OpenSSL for HTTPS
@@ -241,6 +249,11 @@ set(LINK_ARGS
     #-static-libstdc++
     #-static
 )
+
+# tcmalloc conflicts with AddressSanitizer, only link when ASAN is off
+if(NOT ENABLE_ASAN)
+    list(APPEND LINK_ARGS tcmalloc)
+endif()
 
 # Unified Linking
 foreach(TARGET_NAME pkicli blsmain seth tnetc tnets txcli)

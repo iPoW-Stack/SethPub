@@ -115,21 +115,6 @@ bool Hotstuff::InitLoadLatestBlock(
 
         view_block_chain->SetLatestCommittedBlock(temp_ptr);
         InitAddNewViewBlock(view_block_chain, latest_view_block);
-        if (network::IsSameToLocalShard(network_id)) {
-            auto high_vb = view_block_chain->HighViewBlock();
-            if (high_vb && IsQcTcValid(high_vb->qc()) &&
-                    (latest_qc_item_ptr_ == nullptr ||
-                     high_vb->qc().view() > latest_qc_item_ptr_->view())) {
-                SETH_DEBUG("pool: %u, advancing latest_qc_item from committed view %lu "
-                    "to high_view_block view %lu on restart",
-                    pool_index,
-                    latest_qc_item_ptr_ ? latest_qc_item_ptr_->view() : 0,
-                    high_vb->qc().view());
-                UpdateLatestQcItemPtr(
-                    std::make_shared<view_block::protobuf::QcItem>(high_vb->qc()));
-            }
-        }
-
         auto parent_hash = latest_view_block->parent_hash();
         while (!parent_hash.empty()) {
             ViewBlock view_block;
