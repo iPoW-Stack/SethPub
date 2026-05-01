@@ -2049,8 +2049,8 @@ contract AMMPool {
         }
 
         // Wait for deployer prefund consensus
-        std::cout << "  Waiting 20s for deployer prefund consensus..." << std::endl;
-        for(int w=0;w<200&&!global_stop;++w) usleep(100000);
+        std::cout << "  Waiting 10s for deployer prefund consensus..." << std::endl;
+        for(int w=0;w<100&&!global_stop;++w) usleep(100000);
 
         // Step 5b: Deployer approve (all deployers first, then wait for consensus)
         std::cout << "  Step 5b-1: Deployer approve TokenA + TokenB for Pool..." << std::endl;
@@ -2114,8 +2114,8 @@ contract AMMPool {
                   << " ok, " << liq_fail.load() << " fail" << std::endl;
 
         // Wait for liquidity consensus
-        std::cout << "  Waiting 20s for liquidity consensus..." << std::endl;
-        for(int w=0;w<200&&!global_stop;++w) usleep(100000);
+        std::cout << "  Waiting 10s for liquidity consensus..." << std::endl;
+        for(int w=0;w<100&&!global_stop;++w) usleep(100000);
 
         // Step 5c: Verify reserves on all pools via getReserves() query
         // getReserves() selector = 0x0902f1ac, returns (uint256, uint256)
@@ -2256,77 +2256,67 @@ contract AMMPool {
         std::cout << "  Phase 7: Set User Prefund (TCP fast path)" << std::endl;
         std::cout << std::string(70, '-') << std::endl;
 
-        // Initialize nonces for all confirmed users before prefund
-        std::cout << "  Initializing nonces for " << confirmed_users.size() << " users..." << std::endl;
+        // Initialize nonces for all confirmed users before prefund (batch query)
+        std::cout << "  Initializing nonces for " << confirmed_users.size() << " users (batch)..." << std::endl;
         {
-            uint32_t nonce_init_threads = std::min((uint32_t)common::kMaxThreadCount, (uint32_t)confirmed_users.size());
-            if (nonce_init_threads == 0) nonce_init_threads = 1;
-            uint32_t users_per_thread = confirmed_users.size() / nonce_init_threads;
-            std::vector<std::thread> nonce_threads;
+            // Collect all user addresses
+            std::vector<std::string> all_addr_hex;
+            all_addr_hex.reserve(confirmed_users.size());
+            for (uint32_t idx : confirmed_users) {
+                all_addr_hex.push_back(users[idx].addr_hex);
+            }
+
+            // Batch query via default node (which confirmed all accounts)
+            const size_t kBatchSize = 300;
             std::atomic<uint32_t> nonce_init_ok{0};
-            std::mutex nonce_map_mtx;  // protect prikey_with_nonce writes
-            
-            // Limit concurrent nonce threads to avoid overwhelming the HTTPS server
-            // with too many simultaneous SSL handshakes
-            if (nonce_init_threads > 8) nonce_init_threads = 8;
-            users_per_thread = confirmed_users.size() / nonce_init_threads;
+            uint32_t batch_threads = std::min(8u, (uint32_t)((all_addr_hex.size() + kBatchSize - 1) / kBatchSize));
+            if (batch_threads == 0) batch_threads = 1;
+            uint32_t addrs_per_thread = all_addr_hex.size() / batch_threads;
+            std::vector<std::thread> nonce_threads;
+            std::mutex nonce_map_mtx;
 
-            for (uint32_t t = 0; t < nonce_init_threads; ++t) {
-                uint32_t s = t * users_per_thread;
-                uint32_t e = (t == nonce_init_threads - 1) ? (uint32_t)confirmed_users.size() : (s + users_per_thread);
+            for (uint32_t t = 0; t < batch_threads; ++t) {
+                uint32_t s = t * addrs_per_thread;
+                uint32_t e = (t == batch_threads - 1) ? (uint32_t)all_addr_hex.size() : (s + addrs_per_thread);
                 nonce_threads.emplace_back([&, s, e]() {
-                    // Cache SDK per destination to reuse SSL connections within this thread
-                    std::unordered_map<std::string, std::shared_ptr<SethSDK>> sdk_cache;
-                    auto get_sdk = [&](const std::string& ip, uint16_t port) -> SethSDK& {
-                        std::string key = ip + ":" + std::to_string(port);
-                        auto it = sdk_cache.find(key);
-                        if (it == sdk_cache.end()) {
-                            it = sdk_cache.emplace(key, std::make_shared<SethSDK>(ip, port)).first;
-                        }
-                        return *it->second;
-                    };
-
-                    for (uint32_t i = s; i < e && !global_stop; ++i) {
-                        uint32_t user_idx = confirmed_users[i];
-                        std::string addr_hex = users[user_idx].addr_hex;
-                        // Route nonce query to the leader of the sender's pool
-                        std::string query_ip = global_chain_node_ip;
-                        uint16_t query_port = global_chain_node_http_port;
-                        if (amm_has_leaders) {
-                            std::string addr_raw = common::Encode::HexDecode(addr_hex);
-                            uint32_t pool_idx = common::GetAddressPoolIndex(addr_raw);
-                            std::lock_guard<std::mutex> lk(amm_leader_mutex);
-                            auto it = amm_leader_map.find(pool_idx);
-                            if (it != amm_leader_map.end()) {
-                                query_ip = it->second.ip;
-                                query_port = it->second.port + 10000;
-                            }
-                        }
-                        SethSDK& sdk = get_sdk(query_ip, query_port);
-                        int64_t nonce = -1;
-                        // Retry up to 3 times on connection failure
-                        for (int attempt = 0; attempt < 3 && nonce < 0; ++attempt) {
-                            if (attempt > 0) usleep(100000 * attempt); // 100ms, 200ms backoff
-                            nonce = sdk.fetchNonce(addr_hex);
-                        }
-                        if (nonce >= 0) {
-                            std::string addr_raw = common::Encode::HexDecode(addr_hex);
-                            {
-                                std::lock_guard<std::mutex> lk(nonce_map_mtx);
-                                prikey_with_nonce[addr_raw] = nonce;
-                            }
-                            ++nonce_init_ok;
-                        } else {
-                            // Account may not exist yet on this node (not synced).
-                            // Default to nonce=0 for new accounts so prefund can proceed.
-                            std::string addr_raw = common::Encode::HexDecode(addr_hex);
-                            {
-                                std::lock_guard<std::mutex> lk(nonce_map_mtx);
-                                if (prikey_with_nonce.find(addr_raw) == prikey_with_nonce.end()) {
-                                    prikey_with_nonce[addr_raw] = 0;
+                    SethSDK batch_sdk(global_chain_node_ip, global_chain_node_http_port);
+                    for (uint32_t offset = s; offset < e && !global_stop; offset += kBatchSize) {
+                        uint32_t batch_end = std::min(offset + (uint32_t)kBatchSize, e);
+                        std::vector<std::string> batch(all_addr_hex.begin() + offset,
+                                                       all_addr_hex.begin() + batch_end);
+                        auto result = batch_sdk.batchQueryAccounts(batch);
+                        if (result.contains("status") && result["status"] == 0 && result.contains("accounts")) {
+                            for (uint32_t i = 0; i < batch.size(); ++i) {
+                                uint32_t user_ci = offset + i;  // index into confirmed_users
+                                std::string addr_raw = common::Encode::HexDecode(batch[i]);
+                                int64_t nonce = 0;
+                                if (result["accounts"].contains(batch[i])) {
+                                    auto& acc = result["accounts"][batch[i]];
+                                    if (acc.contains("nonce")) {
+                                        try {
+                                            auto ns = acc["nonce"].get<std::string>();
+                                            std::from_chars(ns.data(), ns.data() + ns.size(), nonce);
+                                        } catch (...) {}
+                                    }
                                 }
+                                {
+                                    std::lock_guard<std::mutex> lk(nonce_map_mtx);
+                                    prikey_with_nonce[addr_raw] = nonce;
+                                }
+                                ++nonce_init_ok;
                             }
-                            ++nonce_init_ok;  // count as initialized (with default)
+                        } else {
+                            // Batch failed — default all to nonce 0
+                            for (uint32_t i = 0; i < batch.size(); ++i) {
+                                std::string addr_raw = common::Encode::HexDecode(batch[i]);
+                                {
+                                    std::lock_guard<std::mutex> lk(nonce_map_mtx);
+                                    if (prikey_with_nonce.find(addr_raw) == prikey_with_nonce.end()) {
+                                        prikey_with_nonce[addr_raw] = 0;
+                                    }
+                                }
+                                ++nonce_init_ok;
+                            }
                         }
                     }
                 });
@@ -2446,8 +2436,8 @@ contract AMMPool {
                   << pf_ok.load() << " ok, " << pf_fail.load() << " fail" << std::endl;
 
         // Wait for prefund consensus — need enough time for all prefund txs to be confirmed
-        std::cout << "  Waiting 60s for prefund consensus..." << std::endl;
-        for(int w=0;w<100&&!global_stop;++w) usleep(600000);
+        std::cout << "  Waiting 10s for prefund consensus..." << std::endl;
+        for(int w=0;w<100&&!global_stop;++w) usleep(100000);
 
         // Verify prefund accounts exist via batch query, retry missing ones
         std::cout << "  Verifying prefund accounts (batch)..." << std::endl;
@@ -2549,8 +2539,8 @@ contract AMMPool {
                 for (auto& th:rthreads) th.join();
             }
             std::cout << "  Retry: " << retry_ok.load() << " ok, " << retry_fail.load() << " fail" << std::endl;
-            std::cout << "  Waiting 20s for retry consensus..." << std::endl;
-            for(int w=0;w<200&&!global_stop;++w) usleep(100000);
+            std::cout << "  Waiting 10s for retry consensus..." << std::endl;
+            for(int w=0;w<100&&!global_stop;++w) usleep(100000);
         }
 
         // ── Phase 8: Deployer transfers tokens to users (TCP fast path) ────
