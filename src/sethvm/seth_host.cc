@@ -587,6 +587,7 @@ evmc_tx_context SethhainHost::get_tx_context() const noexcept {
 
 evmc::bytes32 SethhainHost::get_block_hash(int64_t block_number) const noexcept {
     SETH_DEBUG("called 10, block_number: %ld", block_number);
+    return {};
     
     // EVM BLOCKHASH opcode: returns hash of one of the 256 most recent complete blocks.
     // block_number must be in range [current_block - 256, current_block).
