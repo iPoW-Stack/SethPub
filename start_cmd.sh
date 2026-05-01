@@ -107,6 +107,11 @@ start_nodes() {
     export SETH_NETWORK_DELAY_MS=${SETH_NETWORK_DELAY_MS:-25}
     export SETH_NETWORK_JITTER_MS=${SETH_NETWORK_JITTER_MS:-10}
     export SETH_NETWORK_LOSS_RATE=${SETH_NETWORK_LOSS_RATE:-0.0001}
+
+    # ========== AddressSanitizer 输出配置 ==========
+    # ASan 错误报告写入每个节点的 log/asan.log.<pid>
+    # 仅在 ASan 编译时生效，普通编译时这些变量无害
+    export ASAN_OPTIONS="log_path=log/asan.log:abort_on_error=1:detect_leaks=0"
     
     echo ">>> Network simulation parameters:"
     echo "    SETH_NETWORK_ENABLED=$SETH_NETWORK_ENABLED"
