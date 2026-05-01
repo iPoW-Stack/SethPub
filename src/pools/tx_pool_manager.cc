@@ -1078,6 +1078,16 @@ int32_t TxPoolManager::HandleSetContractPrefund(const transport::MessagePtr& msg
     }
 
     if (!UserTxValid(msg_ptr)) {
+        SETH_DEBUG("address %s balance invalid: %lu, transfer amount: %lu, "
+            "prefund: %lu, default call contract gas: %lu, from: %s, to: %s",
+            common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
+            msg_ptr->address_info->balance(),
+            tx_msg.amount(),
+            tx_msg.contract_prefund(),
+            consensus::kCallContractDefaultUseGas,
+            common::Encode::HexEncode(security_->GetAddressWithPublicKey(
+            msg_ptr->header.tx_proto().pubkey())).c_str(),
+            common::Encode::HexEncode(msg_ptr->header.tx_proto().to()).c_str());
         return transport::kTxInvalidAddress;
     }
 
@@ -1097,6 +1107,10 @@ int32_t TxPoolManager::HandleSetContractPrefund(const transport::MessagePtr& msg
         return consensus::kConsensusAccountBalanceError;
     }
 
+    SETH_DEBUG("success add tx contract prefund id: %s, prefund: %lu, nonce: %lu",
+        common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(), 
+        msg_ptr->address_info->balance(), 
+        msg_ptr->address_info->nonce());
     return transport::kMessageHandle;
 }
 

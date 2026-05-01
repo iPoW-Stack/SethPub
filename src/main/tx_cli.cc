@@ -2316,6 +2316,17 @@ contract AMMPool {
                                 prikey_with_nonce[addr_raw] = nonce;
                             }
                             ++nonce_init_ok;
+                        } else {
+                            // Account may not exist yet on this node (not synced).
+                            // Default to nonce=0 for new accounts so prefund can proceed.
+                            std::string addr_raw = common::Encode::HexDecode(addr_hex);
+                            {
+                                std::lock_guard<std::mutex> lk(nonce_map_mtx);
+                                if (prikey_with_nonce.find(addr_raw) == prikey_with_nonce.end()) {
+                                    prikey_with_nonce[addr_raw] = 0;
+                                }
+                            }
+                            ++nonce_init_ok;  // count as initialized (with default)
                         }
                     }
                 });
@@ -2389,10 +2400,11 @@ contract AMMPool {
                                 common::Encode::HexEncode(prikey_raw),
                                 common::Encode::HexDecode(ca),
                                 "prefund", "", 0, 210000, 1, shardnum);
-                            // Route prefund to the SENDER's pool leader (not the contract's),
-                            // because the server dispatches step 7 to the sender's pool_index.
-                            auto [dest_ip, dest_port] = get_dest_raw(addr);
-                            if (tcp_enqueue(tx, dest_ip, dest_port)) ++pf_ok;
+                            // Send prefund to the default node (which confirmed all user accounts).
+                            // Leader routing is unreliable here because leader nodes may not have
+                            // synced the user accounts yet. The default node will internally
+                            // dispatch to the correct pool.
+                            if (tcp_enqueue(tx, default_dest_ip, default_dest_port)) ++pf_ok;
                             else ++pf_fail;
                             usleep(200);
                         }
