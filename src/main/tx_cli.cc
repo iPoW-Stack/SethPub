@@ -2424,6 +2424,22 @@ contract AMMPool {
             for (auto& th : pt) th.join();
             pfprog.join();
         }
+        // Wait for TCP sender thread to drain the queue
+        {
+            uint64_t prev_sent = 0;
+            for (int wait = 0; wait < 100 && !global_stop; ++wait) {
+                uint64_t cur_sent = tcp_sent_count.load();
+                bool queue_empty = false;
+                {
+                    std::lock_guard<std::mutex> lk(tcp_send_mtx);
+                    queue_empty = tcp_send_queue.empty();
+                }
+                if (queue_empty && cur_sent == prev_sent && cur_sent > 0) break;
+                prev_sent = cur_sent;
+                usleep(100000);  // 100ms
+            }
+            std::cout << "  TCP sender: " << tcp_sent_count.load() << " messages actually sent to transport" << std::endl;
+        }
         auto pfelapsed = std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::steady_clock::now()-pfstart).count();
         std::cout << "  Prefund done in " << pfelapsed << "s: "
