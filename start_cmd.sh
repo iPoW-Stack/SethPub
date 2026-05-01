@@ -48,6 +48,7 @@ Restart=always
 RestartSec=5
 LimitNOFILE=1000000
 LimitCORE=infinity
+Environment=ASAN_OPTIONS=log_path=/tmp/asan.log:abort_on_error=1:detect_leaks=0:disable_coredump=0
 
 [Install]
 WantedBy=multi-user.target
@@ -111,7 +112,8 @@ start_nodes() {
     # ========== AddressSanitizer 输出配置 ==========
     # ASan 错误报告写入每个节点的 log/asan.log.<pid>
     # 仅在 ASan 编译时生效，普通编译时这些变量无害
-    export ASAN_OPTIONS="log_path=log/asan.log:abort_on_error=1:detect_leaks=0"
+    # 注意：log_path 使用绝对路径，因为 systemd 的 WorkingDirectory 可能不生效
+    export ASAN_OPTIONS="log_path=/tmp/asan.log:abort_on_error=1:detect_leaks=0:disable_coredump=0"
     
     echo ">>> Network simulation parameters:"
     echo "    SETH_NETWORK_ENABLED=$SETH_NETWORK_ENABLED"
