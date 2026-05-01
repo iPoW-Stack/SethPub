@@ -299,7 +299,29 @@ private:
     std::shared_ptr<block::AccountManager> account_mgr_ = nullptr;
     std::atomic<View> stored_to_db_view_ = 0llu;
     std::atomic<View> commited_max_view_ = 0llu;
-    common::ThreadSafeQueue<std::shared_ptr<ViewBlockInfo>> cached_block_queue_;
+    // Use a simple mutex-protected queue instead of SPSC ReaderWriterQueue.
+    // Under high load the SPSC queue's internal block-list management can
+    // race when the producer allocates a new block while the consumer is
+    // traversing the old one, corrupting shared_ptr slots and causing SIGSEGV.
+    // A SpinMutex is nearly zero-cost when uncontended (single CAS) and
+    // eliminates the race without the overhead of std::mutex.
+    struct {
+        void push(std::shared_ptr<ViewBlockInfo> e) {
+            common::AutoSpinLock lock(mu_);
+            q_.push(std::move(e));
+        }
+        bool pop(std::shared_ptr<ViewBlockInfo>* e) {
+            common::AutoSpinLock lock(mu_);
+            if (q_.empty()) return false;
+            *e = std::move(q_.front());
+            q_.pop();
+            return true;
+        }
+        size_t size() const { return q_.size(); }
+    private:
+        std::queue<std::shared_ptr<ViewBlockInfo>> q_;
+        common::SpinMutex mu_;
+    } cached_block_queue_;
     std::unordered_map<HashStr, std::shared_ptr<ViewBlockInfo>> cached_block_map_;
     std::map<uint64_t, std::vector<std::shared_ptr<ViewBlockInfo>>> cached_view_with_blocks_;
     std::priority_queue<

@@ -1484,13 +1484,18 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
             common::Encode::HexEncode(high_view_block_->parent_hash()).c_str(),
             high_view_block_->block_info().tx_list_size());
         high_view_block_view_.store(high_view_block_->qc().view());
-        // Persist high_view_block_ to DB so it can be recovered after restart
+        // Persist high_view_block_ to DB so it can be recovered after restart.
+        // Save both the hash pointer AND the block itself, because the block
+        // may not have been committed yet (SaveBlock only happens on commit).
+        // Without saving the block, RecoverHighViewBlock's GetBlock(hash)
+        // fails and the node restarts with a stale view.
         db::DbWriteBatch db_batch;
         prefix_db_->SaveHighViewBlock(
             high_view_block_->qc().network_id(),
             pool_index_,
             high_view_block_->qc().view_block_hash(),
             db_batch);
+        prefix_db_->SaveBlock(*high_view_block_, db_batch);
         auto st = db_->Put(db_batch);
         if (!st.ok()) {
             SETH_ERROR("failed to persist high view block %u_%u_%lu, hash: %s",

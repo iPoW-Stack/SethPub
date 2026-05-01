@@ -1565,13 +1565,6 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     view_block_chain()->UpdateHighViewBlock(qc_item);
     BroadcastGlobalPoolBlock(view_block_info_ptr->view_block);
     pacemaker()->NewQcView(qc_item.view());
-    SETH_DEBUG("NewView propose newview called %u_%u_%lu, tc_view: %lu, "
-        "propose_debug: %s, use time: %lu",
-        qc_item.network_id(),
-        pool_idx_, view_block_chain()->HighViewBlock()->qc().view(), 
-        pacemaker()->HighTC()->view(),
-        msg_ptr->header.debug().c_str(),
-        (common::TimeUtils::TimestampMs() - view_block_info_ptr->b_tm_ms));
     ADD_DEBUG_PROCESS_TIMESTAMP();
     latest_leader_propose_message_ = nullptr;
     last_leader_propose_view_ = 0llu;
@@ -1584,6 +1577,9 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     } else {
         SETH_DEBUG("pool index: %d, no leader", pool_idx_);
     }
+
+    // Update high_view_block_ AFTER the propose has been sent out.
+    // (moved from before Propose to after)
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
     // prev_recover_check_tm_ms_ = 0;
