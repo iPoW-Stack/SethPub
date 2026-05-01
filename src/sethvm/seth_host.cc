@@ -40,50 +40,12 @@ bool SethhainHost::account_exists(const evmc::address& addr) const noexcept {
 evmc::bytes32 SethhainHost::GetCachedStorage(
         const evmc::address& addr,
         const evmc::bytes32& key) const noexcept {
-    auto thread_idx = -1;//common::GlobalInfo::Instance()->get_thread_index();
-    std::string id((char*)addr.bytes, sizeof(addr.bytes));
-    std::string key_str((char*)key.bytes, sizeof(key.bytes));
-    SETH_DEBUG("view: %lu, 0 0 success get storage addr: %s, "
-        "key: %s, val: %s, valid: %d, thread_idx: %d", 
-        view_,
-        common::Encode::HexEncode(id).c_str(),
-        common::Encode::HexEncode(key_str).c_str(),
-        "",
-        false,
-        thread_idx);
     auto it = accounts_.find(addr);
     if (it != accounts_.end()) {
         auto storage_iter = it->second.storage.find(key);
         if (storage_iter != it->second.storage.end()) {
-            SETH_DEBUG("view: %lu, 0 success get storage addr: %s, "
-                ": %s, val: %s, valid: %d, thread_idx: %d",
-                view_,
-                common::Encode::HexEncode(id).c_str(),
-                common::Encode::HexEncode(key_str).c_str(),
-                common::Encode::HexEncode(
-                std::string((char*)storage_iter->second.value.bytes, 32)).c_str(),
-                true,
-                thread_idx);
             return storage_iter->second.value;
-        } else {
-            SETH_DEBUG("key invalid view: %lu, 0 0 success get storage addr: %s, "
-                "key: %s, val: %s, valid: %d, thread_idx: %d", 
-                view_,
-                common::Encode::HexEncode(id).c_str(),
-                common::Encode::HexEncode(key_str).c_str(),
-                "",
-                false,
-                thread_idx);
         }
-    } else {
-        SETH_DEBUG("addr invalid view: %lu, 0 0 success get storage addr: %s, "
-            "key: %s, val: %s, valid: %d, thread_idx: %d", 
-            view_,
-            common::Encode::HexEncode(id).c_str(),
-            common::Encode::HexEncode(key_str).c_str(),
-            "",
-            false,
-            thread_idx);
     }
 
     evmc::bytes32 tmp_val{};
@@ -93,104 +55,38 @@ evmc::bytes32 SethhainHost::GetCachedStorage(
 evmc::bytes32 SethhainHost::get_storage(
         const evmc::address& addr,
         const evmc::bytes32& key) const noexcept {
-    auto thread_idx = -1;//common::GlobalInfo::Instance()->get_thread_index();
-    std::string id((char*)addr.bytes, sizeof(addr.bytes));
-    std::string key_str((char*)key.bytes, sizeof(key.bytes));
-    SETH_DEBUG("view: %lu, 0 0 success get storage addr: %s, "
-        "key: %s, val: %s, valid: %d, thread_idx: %d", 
-        view_,
-        common::Encode::HexEncode(id).c_str(),
-        common::Encode::HexEncode(key_str).c_str(),
-        "",
-        false,
-        thread_idx);
+    // Fast path: check in-transaction cache first
     auto it = accounts_.find(addr);
     if (it != accounts_.end()) {
         auto storage_iter = it->second.storage.find(key);
         if (storage_iter != it->second.storage.end()) {
-            SETH_DEBUG("view: %lu, 0 success get storage addr: %s, "
-                ": %s, val: %s, valid: %d, thread_idx: %d",
-                view_,
-                common::Encode::HexEncode(id).c_str(),
-                common::Encode::HexEncode(key_str).c_str(),
-                common::Encode::HexEncode(
-                std::string((char*)storage_iter->second.value.bytes, 32)).c_str(),
-                true,
-                thread_idx);
             return storage_iter->second.value;
-        } else {
-            SETH_DEBUG("key invalid view: %lu, 0 0 success get storage addr: %s, "
-                "key: %s, val: %s, valid: %d, thread_idx: %d", 
-                view_,
-                common::Encode::HexEncode(id).c_str(),
-                common::Encode::HexEncode(key_str).c_str(),
-                "",
-                false,
-                thread_idx);
         }
-    } else {
-        SETH_DEBUG("addr invalid view: %lu, 0 0 success get storage addr: %s, "
-            "key: %s, val: %s, valid: %d, thread_idx: %d", 
-            view_,
-            common::Encode::HexEncode(id).c_str(),
-            common::Encode::HexEncode(key_str).c_str(),
-            "",
-            false,
-            thread_idx);
     }
 
+    // Check parent transaction's cache (same block, previous tx)
     if (pre_seth_host_ != nullptr) {
-        return pre_seth_host_->get_storage(addr, key);
+        auto parent_val = pre_seth_host_->get_storage(addr, key);
+        if (parent_val) {
+            // Cache for subsequent reads
+            const_cast<SethhainHost*>(this)->accounts_[addr].storage[key] = {parent_val};
+            return parent_val;
+        }
+        return parent_val;
     }
 
-    // auto str_key = std::string((char*)addr.bytes, sizeof(addr.bytes)) +
-    //     std::string((char*)key.bytes, sizeof(key.bytes));
-    // auto prev_iter = prev_storages_map_.find(str_key);
-    // if (prev_iter != prev_storages_map_.end()) {
-    //     evmc::bytes32 tmp_val{};
-    //     uint32_t offset = 0;
-    //     uint32_t length = sizeof(tmp_val.bytes);
-    //     if (prev_iter->second.size() < sizeof(tmp_val.bytes)) {
-    //         offset = sizeof(tmp_val.bytes) - prev_iter->second.size();
-    //         length = prev_iter->second.size();
-    //     }
-
-    //     memcpy(tmp_val.bytes + offset, prev_iter->second.c_str(), length);
-    //     SETH_DEBUG("success get prev storage key: %s, value: %s",
-    //         common::Encode::HexEncode(str_key).c_str(),
-    //         common::Encode::HexEncode(prev_iter->second).c_str());
-    //     return tmp_val;
-    // }
-    auto res_val = view_block_chain_->GetPrevStorageBytes32KeyValue(parent_hash_, addr, key);
-    if (res_val) {
-        SETH_DEBUG("view: %lu,  success get storage addr: %s, key: %s, "
-            "val: %s, valid: %d, parent_hash_: %s, thread_idx: %d", 
-            view_,
-            common::Encode::HexEncode(id).c_str(),
-            common::Encode::HexEncode(key_str).c_str(),
-            common::Encode::HexEncode(std::string((char*)res_val.bytes, 32)).c_str(),
-            true,
-            common::Encode::HexEncode(parent_hash_).c_str(),
-            thread_idx);
-        // Cache for subsequent reads within the same transaction
-        const_cast<SethhainHost*>(this)->accounts_[addr].storage[key] = {res_val};
-        return res_val;
+    // Check view block chain (uncommitted blocks)
+    if (view_block_chain_) {
+        auto res_val = view_block_chain_->GetPrevStorageBytes32KeyValue(parent_hash_, addr, key);
+        if (res_val) {
+            const_cast<SethhainHost*>(this)->accounts_[addr].storage[key] = {res_val};
+            return res_val;
+        }
     }
 
+    // Final fallback: read from DB
     evmc::bytes32 tmp_val{};
-    auto res_bytes = Execution::Instance()->GetStorage(addr, key, &tmp_val);
-    if (!res_bytes) {
-        // SETH_DEBUG("failed get prev storage key: %s", common::Encode::HexEncode(str_key).c_str());
-    }
-
-    SETH_DEBUG("view: %lu, 2 success get storage addr: %s, key: %s, val: %s, valid: %d, thread_idx: %d", 
-        view_,
-        common::Encode::HexEncode(id).c_str(),
-        common::Encode::HexEncode(key_str).c_str(),
-        common::Encode::HexEncode(std::string((char*)tmp_val.bytes, 32)).c_str(),
-        (tmp_val ? true : false),
-        thread_idx);
-    // Cache for subsequent reads within the same transaction
+    Execution::Instance()->GetStorage(addr, key, &tmp_val);
     if (tmp_val) {
         const_cast<SethhainHost*>(this)->accounts_[addr].storage[key] = {tmp_val};
     }
@@ -201,17 +97,6 @@ evmc_storage_status SethhainHost::set_storage(
         const evmc::address& addr,
         const evmc::bytes32& key,
         const evmc::bytes32& value) noexcept {
-    // just set temporary map storage, when commit set to db and block
-    std::string id((char*)addr.bytes, sizeof(addr.bytes));
-    std::string key_str((char*)key.bytes, sizeof(key.bytes));
-    std::string val_str((char*)value.bytes, sizeof(value.bytes));
-    auto thread_idx = -1; // common::GlobalInfo::Instance()->get_thread_index();
-    SETH_DEBUG("3_15_%lu, thread_idx: %d, sethvm set storage called, id: %s, key: %s, value: %s",
-        view_,
-        thread_idx,
-        common::Encode::HexEncode(id).c_str(),
-        common::Encode::HexEncode(key_str).c_str(),
-        common::Encode::HexEncode(val_str).c_str());
     auto it = accounts_.find(addr);
     if (it == accounts_.end()) {
         accounts_[addr] = MockedAccount();
@@ -220,10 +105,8 @@ evmc_storage_status SethhainHost::set_storage(
 
     auto& old = it->second.storage[key];
     if (!old.dirty) {
-        // New slot write (zero → non-zero): 20000 gas (EIP-2200)
         gas_more_ += consensus::kSstoreNewSlotGas;
     } else {
-        // Dirty slot update (non-zero → non-zero): 2900 gas (EIP-2200)
         gas_more_ += consensus::kSstoreDirtySlotGas;
     }
 
@@ -263,16 +146,8 @@ evmc_storage_status SethhainHost::set_storage(
 }
 
 evmc::uint256be SethhainHost::get_balance(const evmc::address& addr) const noexcept {
-    // don't use real balance
-    SETH_DEBUG("called 3");
     auto iter = account_balance_.find(addr);
     if (iter != account_balance_.end()) {
-        auto val = EvmcBytes32ToUint64(iter->second);
-        SETH_DEBUG("success now get balace: %s, my: %s, origin: %s, %lu",
-            common::Encode::HexEncode(std::string((char*)addr.bytes, 20)).c_str(),
-            common::Encode::HexEncode(my_address_).c_str(),
-            common::Encode::HexEncode(origin_address_).c_str(),
-            val);
         return iter->second;
     }
 
@@ -280,24 +155,15 @@ evmc::uint256be SethhainHost::get_balance(const evmc::address& addr) const noexc
         return pre_seth_host_->get_balance(addr);
     }
     
+    if (!view_block_chain_) return {};
     auto acc_info = view_block_chain_->ChainGetAccountInfo(
         std::string((char*)addr.bytes, sizeof(addr.bytes)));
     if (acc_info == nullptr) {
-        SETH_DEBUG("failed now get balace: %s, my: %s, origin: %s, %lu",
-            common::Encode::HexEncode(std::string((char*)addr.bytes, 20)).c_str(),
-            common::Encode::HexEncode(my_address_).c_str(),
-            common::Encode::HexEncode(origin_address_).c_str(),
-            -1);
         return {};
     }
 
     evmc::uint256be res_val;
     Uint64ToEvmcBytes32(res_val, acc_info->balance());
-    SETH_DEBUG("success now get balace: %s, my: %s, origin: %s, %lu",
-        common::Encode::HexEncode(std::string((char*)addr.bytes, 20)).c_str(),
-        common::Encode::HexEncode(my_address_).c_str(),
-        common::Encode::HexEncode(origin_address_).c_str(),
-        acc_info->balance());
     return res_val;
 }
 

@@ -76,10 +76,6 @@ bool Execution::GetStorage(
         std::string((char*)key.bytes, sizeof(key.bytes));
     std::string val;
     auto res = prefix_db_->GetTemporaryKv(str_key, &val);
-    SETH_DEBUG("get storage: %s, %s, valid: %d",
-        common::Encode::HexEncode(str_key).c_str(),
-        common::Encode::HexEncode(val).c_str(),
-        !val.empty());
     if (!res) {
         return false;
     }
@@ -113,17 +109,7 @@ bool Execution::GetStorage(
         const std::string& key,
         std::string* val) {
     auto str_key = str_id + key;
-    auto res = prefix_db_->GetTemporaryKv(str_key, val);
-    if (!res) {
-        SETH_DEBUG("failed get storage: %s",
-            common::Encode::HexEncode(str_key).c_str());
-        return false;
-    }
-
-    SETH_DEBUG("get storage: %s, %s",
-        common::Encode::HexEncode(str_key).c_str(),
-        "common::Encode::HexEncode(*val).c_str()");
-    return res;
+    return prefix_db_->GetTemporaryKv(str_key, val);
 }
 
 int Execution::execute(
