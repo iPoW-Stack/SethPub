@@ -2743,33 +2743,34 @@ void HttpHandler::Run() {
     auto safeHandler = [](auto handler, const char* endpoint) {
         return [handler, endpoint](auto *res, auto *req) {
             auto body = std::make_shared<std::string>();
-            auto responded = std::make_shared<bool>(false);
-            // Copy query string BEFORE registering onData, because req is only
-            // valid during this synchronous callback.  Once we return, the
-            // HttpRequest stack object is destroyed.
+            auto alive = std::make_shared<bool>(true);
             auto query_str = std::make_shared<std::string>(std::string(req->getQuery()));
-            res->onAborted([responded]() { *responded = true; });
-            res->onData([res, query_str, body, handler, endpoint, responded](std::string_view data, bool last) {
-                if (*responded) return;
+            res->onAborted([alive]() { *alive = false; });
+            std::weak_ptr<bool> weak_alive = alive;
+            res->onData([res, query_str, body, handler, endpoint, weak_alive](std::string_view data, bool last) {
+                auto alive_lock = weak_alive.lock();
+                if (!alive_lock || !*alive_lock) return;
                 try {
                     body->append(data.data(), data.size());
                     if (last) {
                         UWSRequest uws_req(*query_str, *body);
                         UWSResponse uws_res;
                         handler(uws_req, uws_res);
-                        if (!*responded) {
+                        if (*alive_lock) {
                             res->writeStatus("200 OK")
                                ->writeHeader("Content-Type", uws_res.content_type())
                                ->end(uws_res.content());
-                            *responded = true;
+                            *alive_lock = false;
                         }
                     }
                 } catch (const std::exception& e) {
                     SETH_ERROR("Exception in %s: %s", endpoint, e.what());
-                    if (!*responded) { res->writeStatus("500 Internal Server Error")->end("Internal server error"); *responded = true; }
+                    auto a = weak_alive.lock();
+                    if (a && *a) { res->writeStatus("500 Internal Server Error")->end("Internal server error"); *a = false; }
                 } catch (...) {
                     SETH_ERROR("Unknown exception in %s", endpoint);
-                    if (!*responded) { res->writeStatus("500 Internal Server Error")->end("Internal server error"); *responded = true; }
+                    auto a = weak_alive.lock();
+                    if (a && *a) { res->writeStatus("500 Internal Server Error")->end("Internal server error"); *a = false; }
                 }
             });
         };
