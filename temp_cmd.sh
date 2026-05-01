@@ -130,6 +130,11 @@ deploy_nodes() {
 
 killall -9 seth
 
+# 设置 core dump 文件名包含进程号
+# 格式: core.<可执行文件名>.<进程号>
+echo "core.%e.%p" > /proc/sys/kernel/core_pattern
+ulimit -c unlimited
+
 deploy_nodes
 
 # ========== 清除网络模拟配置 ==========
