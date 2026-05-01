@@ -1294,7 +1294,7 @@ int main(int argc, char** argv) {
     // 6. Save results
     if (argv[1][0] == '5') {
         const uint32_t kUserCount = (argc >= 7) ? std::stoi(argv[6]) : 10000;
-        const uint32_t kContractSets = 256;  // 256 AMM contract sets (TokenA+TokenB+AMMPool)
+        const uint32_t kContractSets = 1024;  // 256 AMM contract sets (TokenA+TokenB+AMMPool)
         const uint32_t kDeployThreads = (argc >= 8) ? std::stoi(argv[7]) : 16;
         const uint32_t kStressRoundsArg = (argc >= 9) ? std::stoi(argv[8]) : 1000;
         const uint32_t kTargetTps = (argc >= 10) ? std::stoi(argv[9]) : 0;  // 0 = unlimited
@@ -1583,7 +1583,7 @@ contract AMMPool {
         for (uint32_t i = 0; i < kUserCount; ++i) all_addr_hex[i] = users[i].addr_hex;
         for (uint32_t i = 0; i < kContractSets; ++i) all_addr_hex[kUserCount + i] = deployers[i].addr_hex;
 
-        const uint64_t kFundAmount = 1500000000lu;
+        const uint64_t kFundAmount = 3000000000lu;
         std::atomic<uint32_t> fund_success{0}, fund_fail{0};
         uint32_t fund_threads = std::min({kDeployThreads, kTotalAccounts, (uint32_t)unique_funders.size()});
         if (fund_threads == 0) fund_threads = 1;
