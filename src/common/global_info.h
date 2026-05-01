@@ -295,7 +295,7 @@ private:
     int32_t test_pool_index_ = -1;
     uint32_t test_tx_tps_ = 1000;
     std::atomic<uint64_t> global_latency_ = 0;
-    uint8_t hotstuff_thread_count_ = 8;
+    uint8_t hotstuff_thread_count_ = 16;
     uint64_t leader_change_init_tm_ = 0;
     std::atomic<uint32_t> now_valid_end_shard_ = 0;
 
