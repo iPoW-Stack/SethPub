@@ -234,7 +234,7 @@ void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
             if (!ok) {
                 // Bad packet (parse error, oversized, invalid port, or dropped by network sim)
                 // Close the connection and let next send create a fresh one
-                delete[] buf->base;
+                free(buf->base);
                 SETH_WARN("[TCP_RECONN] on_read: bad packet from %s:%d — freeing connection",
                     ex_uv_tcp->ip, ex_uv_tcp->port);
                 tcp_transport->FreeConnection(ex_uv_tcp);
@@ -249,7 +249,7 @@ void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
         tcp_transport->FreeConnection(ex_uv_tcp);
     }
 
-    delete[] buf->base;
+    free(buf->base);
 }
 
 void on_connect(uv_connect_t* connection, int status) {
