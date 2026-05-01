@@ -2710,6 +2710,8 @@ contract AMMPool {
                             fail_cnt += grp.inputs.size();
                             continue;
                         }
+                        // Cache destination for this group (avoid repeated lock + lookup per tx)
+                        auto [grp_dest_ip, grp_dest_port] = get_dest(grp.contract_addr);
                         for (const auto& input : grp.inputs) {
                             if (global_stop) break;
                             // Rate limit per thread
@@ -2731,8 +2733,7 @@ contract AMMPool {
                                 common::Encode::HexEncode(prikey_raw),
                                 common::Encode::HexDecode(grp.contract_addr),
                                 "call", input, 0, 5000000, 1, shardnum);
-                            if (tcp_enqueue(tx, std::get<0>(get_dest(grp.contract_addr)),
-                                    std::get<1>(get_dest(grp.contract_addr)))) ++ok_cnt;
+                            if (tcp_enqueue(tx, grp_dest_ip, grp_dest_port)) ++ok_cnt;
                             else ++fail_cnt;
                         }
                     }
@@ -3042,6 +3043,33 @@ contract AMMPool {
         std::cout << "\n" << std::string(70, '-') << std::endl;
         std::cout << "  Phase 10: AMM Swap Stress Test x" << kStressRounds << " (TCP)" << std::endl;
         std::cout << std::string(70, '-') << std::endl;
+
+        // Refresh leader routing before swap to ensure we have current leaders
+        {
+            std::unordered_map<uint32_t, SethSDK::LeaderInfo> fresh_leaders;
+            uint32_t lc = 0;
+            if (sdk.fetchLeaders(fresh_leaders, lc) && !fresh_leaders.empty()) {
+                std::lock_guard<std::mutex> lk(amm_leader_mutex);
+                amm_leader_map = fresh_leaders;
+                amm_has_leaders = true;
+                std::cout << "  Leader routing refreshed: " << lc << " leaders" << std::endl;
+            } else {
+                std::cout << "  WARNING: Leader refresh failed, using stale routing" << std::endl;
+            }
+        }
+
+        // Print routing diagnostics for first few pools
+        {
+            uint32_t printed = 0;
+            for (const auto& pool : pools) {
+                if (printed >= 5) break;
+                auto [ip, port] = get_dest(pool.pool);
+                std::cout << "  [route] pool=" << pool.pool.substr(0,12) << "..."
+                          << " pool_idx=" << pool.pool_index
+                          << " → " << ip << ":" << port << std::endl;
+                ++printed;
+            }
+        }
 
         // Helper: encode swap call input
         auto encode_swap_input = [](const std::string& selector_hex,
