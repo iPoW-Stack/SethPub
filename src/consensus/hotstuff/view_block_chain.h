@@ -52,6 +52,12 @@ public:
     std::shared_ptr<ViewBlockInfo> GetViewBlockWithHash(const HashStr& hash, bool remove);
     std::shared_ptr<ViewBlock> GetViewBlockWithView(uint32_t network_id, uint64_t height);
     std::shared_ptr<ViewBlock> GetViewBlockWithHeight(uint32_t network_id, uint64_t height);
+    // Drain cached_block_queue_ into cached_block_map_/LRU maps.
+    // Must be called from a single thread (the sync timer thread) before
+    // calling GetViewBlockWithHeight/GetViewBlockWithView, because the
+    // underlying ReaderWriterQueue is SPSC and the drain touches
+    // non-thread-safe maps.
+    void DrainCachedBlockQueue();
     // Lightweight height lookup: cached_view_with_blocks_ + DB, no queue drain.
     std::shared_ptr<ViewBlock> GetWithHeight(uint32_t network_id, uint64_t height);
     // std::shared_ptr<ViewBlock> Get(uint64_t view);

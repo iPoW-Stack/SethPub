@@ -190,7 +190,6 @@ Status ViewBlockChain::Store(
 std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHeight(
         uint32_t network_id, 
         uint64_t height) {
-    GetViewBlockWithHash("", true);
     if (height == 0) {
         return nullptr;
     }
@@ -268,7 +267,6 @@ std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithView(
         uint32_t network_id, 
         uint64_t view) {
     // // CheckThreadIdValid();
-    GetViewBlockWithHash("", true);
     if (view == 0) {
         return nullptr;
     }
@@ -338,6 +336,10 @@ std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithView(
     }
 
     return nullptr;   
+}
+
+void ViewBlockChain::DrainCachedBlockQueue() {
+    GetViewBlockWithHash("", true);
 }
 
 std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashStr& hash, bool remove) {

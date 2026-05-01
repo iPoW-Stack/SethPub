@@ -514,6 +514,15 @@ void KeyValueSync::HandleKvMessage(const transport::MessagePtr& msg_ptr) {
 void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr) {
     auto& sync_msg = msg_ptr->header.sync_proto();
     assert(sync_msg.has_sync_value_req());
+    // Drain cached_block_queue_ for all chains that may be queried below.
+    // This must happen here (on the sync timer thread, the sole consumer)
+    // rather than inside GetViewBlockWithHeight/GetViewBlockWithView,
+    // because the underlying ReaderWriterQueue is SPSC and those methods
+    // can be called from multiple threads.
+    for (uint32_t i = 0; i <= common::kImmutablePoolSize; ++i) {
+        hotstuff_mgr_->chain(i)->DrainCachedBlockQueue();
+    }
+
     transport::protobuf::Header msg;
     protobuf::SyncMessage& res_sync_msg = *msg.mutable_sync_proto();
     auto sync_res = res_sync_msg.mutable_sync_value_res();
