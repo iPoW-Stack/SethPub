@@ -1583,7 +1583,7 @@ contract AMMPool {
         for (uint32_t i = 0; i < kUserCount; ++i) all_addr_hex[i] = users[i].addr_hex;
         for (uint32_t i = 0; i < kContractSets; ++i) all_addr_hex[kUserCount + i] = deployers[i].addr_hex;
 
-        const uint64_t kFundAmount = 3000000000lu;
+        const uint64_t kFundAmount = 30000000lu;
         std::atomic<uint32_t> fund_success{0}, fund_fail{0};
         uint32_t fund_threads = std::min({kDeployThreads, kTotalAccounts, (uint32_t)unique_funders.size()});
         if (fund_threads == 0) fund_threads = 1;
@@ -1729,7 +1729,7 @@ contract AMMPool {
             std::string h=utils::bytesToHex(std::vector<uint8_t>(pfx,pfx+strlen(pfx)));
             auto is=std::to_string(i); h+=utils::bytesToHex(std::vector<uint8_t>(is.begin(),is.end())); return h;
         };
-        const uint64_t kPf=400000000lu;
+        const uint64_t kPf=4000000lu;
 
         std::cout<<"  Step 1/3: Deploy TokenA..."<<std::endl;
         deploy_one_type("TokenA",[&](uint32_t i,SethSDK& t){
@@ -2001,7 +2001,7 @@ contract AMMPool {
         std::cout << "  Phase 5: Deployer Add Liquidity (" << full_sets << " pools)" << std::endl;
         std::cout << std::string(70, '-') << std::endl;
 
-        const uint64_t kDeployerPrefund = 800000000lu;
+        const uint64_t kDeployerPrefund = 8000000lu;
         const uint64_t kInitialLiquidity = 5000000lu;  // 5M tokens each side
         std::atomic<uint32_t> liq_ok{0}, liq_fail{0};
         auto liq_start = std::chrono::steady_clock::now();
@@ -2224,7 +2224,7 @@ contract AMMPool {
         const uint32_t kPoolsPerPair = 1;  // each user pair trades on 1 pool
         const uint64_t kSwapAmount = 100lu;  // tokens per swap
         const uint64_t kTokenTransfer = kSwapAmount * kStressRoundsArg + 1000lu;  // enough tokens for all swap rounds + headroom
-        const uint64_t kUserPrefund = 500000000lu;
+        const uint64_t kUserPrefund = 5000000lu;
 
         // Pair users: (confirmed_users[0], confirmed_users[1]), (confirmed_users[2], confirmed_users[3]), ...
         struct TradePair {
