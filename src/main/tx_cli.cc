@@ -1294,7 +1294,7 @@ int main(int argc, char** argv) {
     // 6. Save results
     if (argv[1][0] == '5') {
         const uint32_t kUserCount = (argc >= 7) ? std::stoi(argv[6]) : 10000;
-        const uint32_t kContractSets = 4096;  // 256 AMM contract sets (TokenA+TokenB+AMMPool)
+        const uint32_t kContractSets = 256;  // 256 AMM contract sets (TokenA+TokenB+AMMPool)
         const uint32_t kDeployThreads = (argc >= 8) ? std::stoi(argv[7]) : 16;
         const uint32_t kStressRoundsArg = (argc >= 9) ? std::stoi(argv[8]) : 1000;
         const uint32_t kTargetTps = (argc >= 10) ? std::stoi(argv[9]) : 0;  // 0 = unlimited
