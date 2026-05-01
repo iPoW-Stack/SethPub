@@ -90,6 +90,23 @@ void Hotstuff::StartInit() {
             &header, 
             &tmp_msg_ptr->latest_qc_view)) {
         latest_leader_propose_message_ = tmp_msg_ptr;
+        // On restart, the persisted propose message may carry a QC view higher
+        // than what InitLoadLatestBlock recovered from committed blocks.
+        // Advance latest_qc_item_ptr_ to match, so that GetLeader() computes
+        // the correct out_view and the leader doesn't reject its own propose.
+        if (latest_qc_item_ptr_ == nullptr ||
+                tmp_msg_ptr->latest_qc_view > latest_qc_item_ptr_->view()) {
+            auto& pro_tc = header.hotstuff().pro_msg().tc();
+            if (pro_tc.has_view_block_hash() && IsQcTcValid(pro_tc)) {
+                SETH_DEBUG("pool: %u, advancing latest_qc_item from %lu to persisted "
+                    "leader propose tc view %lu on restart",
+                    pool_idx_,
+                    latest_qc_item_ptr_ ? latest_qc_item_ptr_->view() : 0,
+                    pro_tc.view());
+                UpdateLatestQcItemPtr(
+                    std::make_shared<view_block::protobuf::QcItem>(pro_tc));
+            }
+        }
     }
 
     SETH_DEBUG("success start init network: %d, pool index: %d, root_view_block_chain_: %d", 
