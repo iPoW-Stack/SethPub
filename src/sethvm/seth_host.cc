@@ -18,8 +18,23 @@ namespace sethvm {
 
 bool SethhainHost::account_exists(const evmc::address& addr) const noexcept {
     SETH_DEBUG("called 0");
-    return Execution::Instance()->IsAddressExists(
-        std::string((char*)addr.bytes, sizeof(addr.bytes)));
+    std::string addr_str((char*)addr.bytes, sizeof(addr.bytes));
+    if (!view_block_chain_) {
+        SETH_DEBUG("account_exists: view_block_chain_ is null, addr: %s",
+            common::Encode::HexEncode(addr_str).c_str());
+        return false;
+    }
+
+    auto address_info = view_block_chain_->ChainGetAccountInfo(addr_str);
+    if (address_info != nullptr) {
+        SETH_DEBUG("account_exists: found addr: %s",
+            common::Encode::HexEncode(addr_str).c_str());
+        return true;
+    }
+
+    SETH_DEBUG("account_exists: not found addr: %s",
+        common::Encode::HexEncode(addr_str).c_str());
+    return false;
 }
 
 evmc::bytes32 SethhainHost::GetCachedStorage(

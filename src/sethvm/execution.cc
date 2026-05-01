@@ -51,19 +51,10 @@ void Execution::Init(std::shared_ptr<db::Db>& db) {
     // storage_map_ = new common::LimitHashMap<std::string, std::string, 1024>[common::kMaxThreadCount];
 }
 
+// No longer called — account_exists now uses SethhainHost::view_block_chain_ directly.
 bool Execution::IsAddressExists(const std::string& addr) {
-    if (!view_block_chain_) {
-        SETH_DEBUG("get address failed view_block_chain_: %s", common::Encode::HexEncode(addr).c_str());
-        return false;
-    }
-
-    protos::AddressInfoPtr address_info = view_block_chain_->ChainGetAccountInfo(addr);
-    if (address_info != nullptr) {
-        SETH_DEBUG("get address success: %s", common::Encode::HexEncode(addr).c_str());
-        return true;
-    }
-
-    SETH_DEBUG("get address failed: %s", common::Encode::HexEncode(addr).c_str());
+    SETH_DEBUG("IsAddressExists called but deprecated, addr: %s",
+        common::Encode::HexEncode(addr).c_str());
     return false;
 }
 
@@ -147,7 +138,6 @@ int Execution::execute(
         uint32_t call_mode,
         SethhainHost& host,
         evmc::Result* out_res) {
-    view_block_chain_ = host.view_block_chain_;
     auto btime = common::TimeUtils::TimestampMs();
     const size_t code_size = bytes_code.size();
     if (code_size <= kContractHead.size() ||
