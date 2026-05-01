@@ -308,7 +308,7 @@ void on_connect(uv_connect_t* connection, int status) {
 }
 
 void alloc_buffer(uv_handle_t*, size_t suggested_size, uv_buf_t* buf) {
-    buf->base = new char[suggested_size];
+    buf->base = (char*)malloc(suggested_size);
     buf->len = suggested_size;
 }
 
