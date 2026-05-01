@@ -172,6 +172,8 @@ evmc::bytes32 SethhainHost::get_storage(
             true,
             common::Encode::HexEncode(parent_hash_).c_str(),
             thread_idx);
+        // Cache for subsequent reads within the same transaction
+        const_cast<SethhainHost*>(this)->accounts_[addr].storage[key] = {res_val};
         return res_val;
     }
 
@@ -188,6 +190,10 @@ evmc::bytes32 SethhainHost::get_storage(
         common::Encode::HexEncode(std::string((char*)tmp_val.bytes, 32)).c_str(),
         (tmp_val ? true : false),
         thread_idx);
+    // Cache for subsequent reads within the same transaction
+    if (tmp_val) {
+        const_cast<SethhainHost*>(this)->accounts_[addr].storage[key] = {tmp_val};
+    }
     return tmp_val;
 }
 
