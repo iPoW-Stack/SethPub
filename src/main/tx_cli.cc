@@ -3020,7 +3020,7 @@ contract AMMPool {
         // ── Phase 10: Execute AMM Swaps (stress test, TCP fast path) ──────
         // Each pair repeats kStressRounds swap rounds on each pool.
         // Each round: UserA swaps A→B, UserB swaps B→A.
-        // All rounds for a (pool, user) use incrementing nonce from one fetchNonce call.
+        // Uses the same grouped-call pattern as approve for reliable nonce management.
         std::cout << "\n" << std::string(70, '-') << std::endl;
         std::cout << "  Phase 10: AMM Swap Stress Test x" << kStressRounds << " (TCP)" << std::endl;
         std::cout << std::string(70, '-') << std::endl;
@@ -3035,150 +3035,35 @@ contract AMMPool {
             return selector_hex + a1 + a2;
         };
 
-        std::atomic<uint64_t> swap_ok{0}, swap_fail{0};
-        uint64_t total_swaps = 0;
-        for (const auto& tp : trade_pairs) total_swaps += tp.pool_indices.size() * 2 * kStressRounds;
-        std::cout << "  Trade pairs: " << trade_pairs.size()
-                  << ", rounds: " << kStressRounds
-                  << ", total swap ops: " << total_swaps << std::endl;
-
         // Pre-encode swap inputs (same for every round)
         std::string input_swap_a = encode_swap_input("553a1db7", kSwapAmount, 0);
         std::string input_swap_b = encode_swap_input("5938c86b", kSwapAmount, 0);
 
-        auto swap_start = std::chrono::steady_clock::now();
-        {
-            uint32_t st = std::min((uint32_t)common::kMaxThreadCount, (uint32_t)trade_pairs.size());
-            if (st == 0) st = 1;
-            uint32_t spp = trade_pairs.size() / st;
-            std::vector<std::thread> sthreads;
-            for (uint32_t t = 0; t < st; ++t) {
-                uint32_t s = t * spp, e = (t == st-1) ? (uint32_t)trade_pairs.size() : (s + spp);
-                sthreads.emplace_back([&,s,e](){
-                    for (uint32_t pi_idx = s; pi_idx < e && !global_stop; ++pi_idx) {
-                        const auto& tp = trade_pairs[pi_idx];
-                        std::string pka_raw = common::Encode::HexDecode(users[tp.user_a_idx].prikey_hex);
-                        std::shared_ptr<security::Security> sec_a = std::make_shared<security::Ecdsa>(); sec_a->SetPrivateKey(pka_raw);
-                        std::string addr_a = users[tp.user_a_idx].addr_hex;
-
-                        std::string pkb_raw = common::Encode::HexDecode(users[tp.user_b_idx].prikey_hex);
-                        std::shared_ptr<security::Security> sec_b = std::make_shared<security::Ecdsa>(); sec_b->SetPrivateKey(pkb_raw);
-                        std::string addr_b = users[tp.user_b_idx].addr_hex;
-
-                        for (uint32_t pool_idx : tp.pool_indices) {
-                            if (global_stop) break;
-                            const auto& pool = pools[pool_idx];
-                            std::string pool_raw = common::Encode::HexDecode(pool.pool);
-
-                            // Fetch nonce via leader node for this pool
-                            auto [ldr_ip, ldr_http] = get_leader_http(pool.pool);
-                            SethSDK leader_sdk(ldr_ip, ldr_http);
-
-                            // Retry up to 3 times on transient failures
-                            std::string prepay_a = pool.pool + addr_a;
-                            int64_t nonce_a = -1;
-                            for (int retry = 0; retry < 3 && nonce_a < 0; ++retry) {
-                                nonce_a = leader_sdk.fetchNonce(prepay_a);
-                                if (nonce_a < 0) {
-                                    std::cerr << "  [swap NONCE_A FAIL] pair=" << pi_idx
-                                              << " retry=" << retry << "/3"
-                                              << " leader=" << ldr_ip << ":" << ldr_http
-                                              << " pool=" << pool.pool.substr(0,16)
-                                              << " addr_a=" << addr_a.substr(0,16)
-                                              << " prepay=" << prepay_a << std::endl;
-                                    if (retry < 2) usleep(200000);
-                                }
-                            }
-                            // Fallback to default node
-                            if (nonce_a < 0) {
-                                SethSDK fb(global_chain_node_ip, global_chain_node_http_port);
-                                nonce_a = fb.fetchNonce(prepay_a);
-                                if (nonce_a >= 0) {
-                                    std::cerr << "  [swap FALLBACK_A OK] pair=" << pi_idx
-                                              << " nonce_a=" << nonce_a << std::endl;
-                                }
-                            }
-                            if (nonce_a < 0) {
-                                std::cerr << "  [swap SKIP_A] pair=" << pi_idx
-                                          << " leader=" << ldr_ip << ":" << ldr_http
-                                          << " skipping " << (kStressRounds * 2) << " ops" << std::endl;
-                                swap_fail += kStressRounds * 2;
-                                continue;
-                            }
-
-                            std::string prepay_b = pool.pool + addr_b;
-                            int64_t nonce_b = -1;
-                            for (int retry = 0; retry < 3 && nonce_b < 0; ++retry) {
-                                nonce_b = leader_sdk.fetchNonce(prepay_b);
-                                if (nonce_b < 0) {
-                                    std::cerr << "  [swap NONCE_B FAIL] pair=" << pi_idx
-                                              << " retry=" << retry << "/3"
-                                              << " leader=" << ldr_ip << ":" << ldr_http
-                                              << " pool=" << pool.pool.substr(0,16)
-                                              << " addr_b=" << addr_b.substr(0,16)
-                                              << " prepay=" << prepay_b << std::endl;
-                                    if (retry < 2) usleep(200000);
-                                }
-                            }
-                            // Fallback to default node
-                            if (nonce_b < 0) {
-                                SethSDK fb(global_chain_node_ip, global_chain_node_http_port);
-                                nonce_b = fb.fetchNonce(prepay_b);
-                                if (nonce_b >= 0) {
-                                    std::cerr << "  [swap FALLBACK_B OK] pair=" << pi_idx
-                                              << " nonce_b=" << nonce_b << std::endl;
-                                }
-                            }
-                            if (nonce_b < 0) {
-                                std::cerr << "  [swap SKIP_B] pair=" << pi_idx
-                                          << " leader=" << ldr_ip << ":" << ldr_http
-                                          << " skipping " << kStressRounds << " ops" << std::endl;
-                                swap_fail += kStressRounds;
-                                continue;
-                            }
-
-                            auto [dest_ip_s, dest_port_s] = get_dest(pool.pool);
-                            if (pi_idx < s + 3) {
-                                std::cout << "  [swap pair " << pi_idx << "] pool=" << pool.pool.substr(0,12)
-                                          << "... pool_idx=" << pool.pool_index
-                                          << " → " << dest_ip_s << ":" << dest_port_s
-                                          << " (query via " << ldr_ip << ":" << ldr_http << ")"
-                                          << " nonce_a=" << nonce_a << " nonce_b=" << nonce_b << std::endl;
-                            }
-
-                            for (uint32_t round = 0; round < kStressRounds && !global_stop; ++round) {
-                                // UserA swaps A→B
-                                auto tx1 = CreateTransactionWithAttr(sec_a, ++nonce_a,
-                                    common::Encode::HexEncode(pka_raw), pool_raw,
-                                    "call", input_swap_a, 0, 5000000, 1, shardnum);
-                                if (tcp_enqueue(tx1, dest_ip_s, dest_port_s)) ++swap_ok; else ++swap_fail;
-
-                                // UserB swaps B→A
-                                auto tx2 = CreateTransactionWithAttr(sec_b, ++nonce_b,
-                                    common::Encode::HexEncode(pkb_raw), pool_raw,
-                                    "call", input_swap_b, 0, 5000000, 1, shardnum);
-                                if (tcp_enqueue(tx2, dest_ip_s, dest_port_s)) ++swap_ok; else ++swap_fail;
-                            }
-                        }
-                    }
-                });
-            }
-            std::thread sprog([&]() {
-                while (swap_ok.load()+swap_fail.load() < total_swaps && !global_stop) {
-                    for (int i = 0; i < 20 && !global_stop; ++i) usleep(100000);
-                    if (global_stop) break;
-                    auto el = std::chrono::duration_cast<std::chrono::seconds>(
-                        std::chrono::steady_clock::now()-swap_start).count();
-                    auto done = swap_ok.load()+swap_fail.load();
-                    double tps = (el > 0) ? (double)done / el : 0;
-                    std::cout << "  [" << el << "s] swap: " << swap_ok.load() << " ok, "
-                              << swap_fail.load() << " fail / " << total_swaps
-                              << " (" << std::fixed << std::setprecision(1) << tps << " tx/s)" << std::endl;
+        // Build swap ops using the same ContractCallOp pattern as approve
+        std::vector<ContractCallOp> swap_ops;
+        for (const auto& tp : trade_pairs) {
+            for (uint32_t pi : tp.pool_indices) {
+                const auto& pool = pools[pi];
+                for (uint32_t round = 0; round < kStressRounds; ++round) {
+                    // UserA swaps A→B on pool
+                    swap_ops.push_back({users[tp.user_a_idx].prikey_hex, pool.pool,
+                        users[tp.user_a_idx].addr_hex, input_swap_a});
+                    // UserB swaps B→A on pool
+                    swap_ops.push_back({users[tp.user_b_idx].prikey_hex, pool.pool,
+                        users[tp.user_b_idx].addr_hex, input_swap_b});
                 }
-            });
-            for (auto& th : sthreads) th.join();
-            sprog.join();
+            }
         }
+        uint64_t total_swaps = swap_ops.size();
+        auto swap_groups = group_by_prepay(swap_ops);
+        std::cout << "  Trade pairs: " << trade_pairs.size()
+                  << ", rounds: " << kStressRounds
+                  << ", total swap ops: " << total_swaps
+                  << " (" << swap_groups.size() << " groups)" << std::endl;
+
+        std::atomic<uint64_t> swap_ok{0}, swap_fail{0};
+        auto swap_start = std::chrono::steady_clock::now();
+        send_grouped_calls(swap_groups, swap_ok, swap_fail, total_swaps, "swap", swap_start);
         auto swap_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::steady_clock::now()-swap_start).count();
         double swap_tps = (swap_elapsed > 0) ? (double)(swap_ok.load()+swap_fail.load()) / swap_elapsed : 0;
@@ -3186,9 +3071,72 @@ contract AMMPool {
                   << swap_ok.load() << " ok, " << swap_fail.load() << " fail"
                   << " (" << std::fixed << std::setprecision(1) << swap_tps << " tx/s)" << std::endl;
 
-        // ── Phase 10b: Verify results ──────────────────────────────────────
-        std::cout << "\n  Waiting 10s for initial swap consensus..." << std::endl;
-        for(int w=0;w<100&&!global_stop;++w) usleep(100000);
+        // ── Phase 10b: Verify swap results ─────────────────────────────────
+        // Wait for consensus, then verify all swap nonces are confirmed
+        {
+            const int kMaxWaitSec = 30 + (int)(total_swaps / 5000);
+            const int kPollIntervalMs = 3000;
+            std::cout << "\n  Waiting for swap consensus (timeout " << kMaxWaitSec << "s for "
+                      << total_swaps << " txs)..." << std::endl;
+            uint32_t total_groups = swap_groups.size();
+            std::vector<bool> grp_confirmed(total_groups, false);
+            auto wait_start = std::chrono::steady_clock::now();
+            uint32_t confirmed = 0;
+
+            for (int elapsed = 0; elapsed < kMaxWaitSec && !global_stop; ) {
+                confirmed = 0;
+                for (uint32_t gi = 0; gi < total_groups; ++gi) {
+                    if (grp_confirmed[gi]) { ++confirmed; continue; }
+                    auto& grp = swap_groups[gi];
+                    std::string prepay_addr = grp.contract_addr + grp.caller_addr;
+                    auto [ldr_ip, ldr_http] = get_leader_http(grp.contract_addr);
+                    SethSDK leader_sdk(ldr_ip, ldr_http);
+                    int64_t n = leader_sdk.fetchNonce(prepay_addr);
+                    if (n >= (int64_t)grp.inputs.size()) {
+                        grp_confirmed[gi] = true;
+                        ++confirmed;
+                    }
+                }
+
+                elapsed = (int)std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::steady_clock::now() - wait_start).count();
+                std::cout << "  [" << elapsed << "s] swap nonce confirmed: "
+                          << confirmed << "/" << total_groups << std::endl;
+
+                if (confirmed >= total_groups) {
+                    std::cout << "  ✓ All " << total_groups << " swap groups confirmed" << std::endl;
+                    break;
+                }
+
+                for (int w = 0; w < kPollIntervalMs / 100 && !global_stop; ++w) usleep(100000);
+            }
+
+            if (confirmed < total_groups) {
+                uint32_t printed = 0;
+                for (uint32_t gi = 0; gi < total_groups && printed < 10; ++gi) {
+                    if (grp_confirmed[gi]) continue;
+                    auto& grp = swap_groups[gi];
+                    std::string prepay_addr = grp.contract_addr + grp.caller_addr;
+                    auto [ldr_ip, ldr_http] = get_leader_http(grp.contract_addr);
+                    SethSDK leader_sdk(ldr_ip, ldr_http);
+                    int64_t n = leader_sdk.fetchNonce(prepay_addr);
+                    uint32_t pool_idx = contract_pool_index_map.count(grp.contract_addr)
+                        ? contract_pool_index_map[grp.contract_addr]
+                        : common::GetAddressPoolIndex(common::Encode::HexDecode(grp.contract_addr));
+                    std::cout << "    ✗ group " << gi
+                              << " pool=" << grp.contract_addr.substr(0,12) << "..."
+                              << " user=" << grp.caller_addr.substr(0,12) << "..."
+                              << " pool_idx=" << pool_idx
+                              << " node=" << ldr_ip << ":" << ldr_http
+                              << " nonce=" << n
+                              << " expected>=" << grp.inputs.size()
+                              << std::endl;
+                    ++printed;
+                }
+                std::cout << "  ⚠ WARNING: " << (total_groups - confirmed) << "/" << total_groups
+                          << " swap groups NOT confirmed after " << kMaxWaitSec << "s" << std::endl;
+            }
+        }
 
         std::cout << "\n" << std::string(70, '-') << std::endl;
         std::cout << "  Phase 10b: Verify Contract Execution Results" << std::endl;
