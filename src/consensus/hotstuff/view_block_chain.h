@@ -317,7 +317,6 @@ private:
     // Invalidated when stored_to_db_view_ advances (new block committed).
     struct Bytes32StorageCache {
         std::unordered_map<std::string, evmc::bytes32> cache;  // key = addr(20) + key(32)
-        View cached_at_view = 0;
 
         evmc::bytes32* get(const evmc::address& addr, const evmc::bytes32& key) {
             std::string k((char*)addr.bytes, 20);
@@ -330,16 +329,9 @@ private:
             std::string k((char*)addr.bytes, 20);
             k.append((char*)key.bytes, 32);
             cache[k] = val;
-            // Limit cache size
-            if (cache.size() > 65536) {
+            // Limit cache size to prevent unbounded memory growth
+            if (cache.size() > 131072) {
                 cache.clear();
-            }
-        }
-
-        void invalidate_if_stale(View current_stored_view) {
-            if (cached_at_view < current_stored_view) {
-                cache.clear();
-                cached_at_view = current_stored_view;
             }
         }
     };

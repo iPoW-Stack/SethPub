@@ -1195,10 +1195,9 @@ evmc::bytes32 ViewBlockChain::GetPrevStorageBytes32KeyValue(
         const std::string& parent_hash, 
         const evmc::address& addr,
         const evmc::bytes32& key) {
-    // Invalidate cache if DB view advanced
-    bytes32_storage_cache_.invalidate_if_stale(stored_to_db_view_.load());
-
-    // Check cache first
+    // Check cache first — cache values are safe because get_storage()
+    // checks accounts_ (current tx writes) and pre_seth_host_ (same-block writes)
+    // before reaching here, so cached values won't shadow uncommitted writes.
     auto* cached = bytes32_storage_cache_.get(addr, key);
     if (cached) {
         return *cached;
@@ -1237,6 +1236,8 @@ evmc::bytes32 ViewBlockChain::GetPrevStorageBytes32KeyValue(
     }
 
     evmc::bytes32 tmp_val;
+    // Cache the miss result too — an empty bytes32 means "not in view chain, go to DB"
+    bytes32_storage_cache_.put(addr, key, tmp_val);
     return tmp_val;
 }
 
