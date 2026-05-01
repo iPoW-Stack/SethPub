@@ -2649,15 +2649,33 @@ contract AMMPool {
                 threads.emplace_back([&,s,e,per_thread_tps](){
                     auto rate_start = std::chrono::steady_clock::now();
                     uint64_t rate_sent = 0;
+                    // Per-thread caches to avoid repeated SSL connections and key setup
+                    std::unordered_map<std::string, std::shared_ptr<SethSDK>> sdk_cache;
+                    std::unordered_map<std::string, std::shared_ptr<security::Security>> sec_cache;
+                    auto get_cached_sdk = [&](const std::string& ip, uint16_t port) -> SethSDK& {
+                        std::string key = ip + ":" + std::to_string(port);
+                        auto it = sdk_cache.find(key);
+                        if (it == sdk_cache.end())
+                            it = sdk_cache.emplace(key, std::make_shared<SethSDK>(ip, port)).first;
+                        return *it->second;
+                    };
+                    auto get_cached_sec = [&](const std::string& prikey_hex) -> std::shared_ptr<security::Security> {
+                        auto it = sec_cache.find(prikey_hex);
+                        if (it == sec_cache.end()) {
+                            auto sec = std::make_shared<security::Ecdsa>();
+                            sec->SetPrivateKey(common::Encode::HexDecode(prikey_hex));
+                            it = sec_cache.emplace(prikey_hex, sec).first;
+                        }
+                        return it->second;
+                    };
                     for (uint32_t gi = s; gi < e && !global_stop; ++gi) {
                         auto& grp = groups[gi];
                         std::string prikey_raw = common::Encode::HexDecode(grp.prikey_hex);
-                        std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
-                        sec->SetPrivateKey(prikey_raw);
+                        auto sec = get_cached_sec(grp.prikey_hex);
                         // Nonce from prepayment account via leader node
                         std::string prepay_addr = grp.contract_addr + grp.caller_addr;
                         auto [ldr_ip, ldr_http] = get_leader_http(grp.contract_addr);
-                        SethSDK leader_sdk(ldr_ip, ldr_http);
+                        SethSDK& leader_sdk = get_cached_sdk(ldr_ip, ldr_http);
                         // Retry nonce query up to 3 times on transient failures
                         int64_t nonce = -1;
                         for (int retry = 0; retry < 3 && nonce < 0; ++retry) {
