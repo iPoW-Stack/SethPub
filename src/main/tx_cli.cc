@@ -1581,7 +1581,7 @@ contract AMMPool {
         for (uint32_t i = 0; i < kUserCount; ++i) all_addr_hex[i] = users[i].addr_hex;
         for (uint32_t i = 0; i < kContractSets; ++i) all_addr_hex[kUserCount + i] = deployers[i].addr_hex;
 
-        const uint64_t kFundAmount = 3000000000lu;
+        const uint64_t kFundAmount = 1500000000lu;
         std::atomic<uint32_t> fund_success{0}, fund_fail{0};
         uint32_t fund_threads = std::min({kDeployThreads, kTotalAccounts, (uint32_t)unique_funders.size()});
         if (fund_threads == 0) fund_threads = 1;
@@ -2347,9 +2347,8 @@ contract AMMPool {
                                 common::Encode::HexEncode(prikey_raw),
                                 common::Encode::HexDecode(ca),
                                 "prefund", "", 0, 210000, 1, shardnum);
-                            // Route prefund to the SENDER's pool leader (not the contract's),
-                            // because prefund tx nonce is keyed by sender address.
-                            auto [dest_ip, dest_port] = get_dest(common::Encode::HexEncode(addr));
+                            // Route prefund to the contract's pool leader
+                            auto [dest_ip, dest_port] = get_dest(ca);
                             if (tcp_enqueue(tx, dest_ip, dest_port)) ++pf_ok;
                             else ++pf_fail;
                             usleep(200);
