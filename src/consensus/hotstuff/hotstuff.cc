@@ -81,6 +81,16 @@ void Hotstuff::StartInit() {
         SETH_DEBUG("now init cross consensus shard: %u end.", network_id);
     }
 
+    auto high_view_block = view_block_chain_->HighViewBlock();
+    if (high_view_block) {
+        auto qc_item_ptr = std::make_shared<view_block::protobuf::QcItem>(high_view_block->qc());
+        UpdateLatestQcItemPtr(qc_item_ptr);
+        SETH_DEBUG("pool: %d, high view block view: %lu, high view block hash: %s",
+            pool_idx_,
+            high_view_block->qc().view(),
+            common::Encode::HexEncode(high_view_block->qc().view_block_hash()).c_str());
+    }
+
     auto tmp_msg_ptr = std::make_shared<transport::TransportMessage>();
     tmp_msg_ptr->is_leader = true;
     auto& header = tmp_msg_ptr->header;
@@ -90,6 +100,8 @@ void Hotstuff::StartInit() {
             &header, 
             &tmp_msg_ptr->latest_qc_view)) {
         latest_leader_propose_message_ = tmp_msg_ptr;
+        SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = value, view: %lu", 
+            pool_idx_, tmp_msg_ptr->header.hotstuff().pro_msg().view_item().qc().view());
     }
 
     SETH_DEBUG("success start init network: %d, pool index: %d, root_view_block_chain_: %d", 
