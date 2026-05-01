@@ -99,7 +99,7 @@ protos::AddressInfoPtr AccountManager::GetAccountInfo(const std::string& addr) {
             "get account failed[%s]", 
             common::Encode::HexEncode(addr).c_str());
     } else {
-        account_lru_map_.insert(addr_info);
+        addr_info = account_lru_map_.get_or_insert(addr, addr_info);
     }
 
     return addr_info;

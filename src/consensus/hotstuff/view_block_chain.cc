@@ -1515,7 +1515,9 @@ protos::AddressInfoPtr ViewBlockChain::ChainGetAccountInfo(const std::string& ad
             "get account failed[%s] in thread_idx:%d", 
             common::Encode::HexEncode(addr).c_str(), thread_idx);
     } else {
-        account_lru_map_.insert(addr_info);
+        // Use atomic get_or_insert to avoid TOCTOU race: another thread
+        // may have inserted the same key between our get() above and now.
+        addr_info = account_lru_map_.get_or_insert(addr, addr_info);
         SETH_DEBUG("success update address: %s, balance: %lu, nonce: %lu",
             common::Encode::HexEncode(addr_info->addr()).c_str(),
             addr_info->balance(),
