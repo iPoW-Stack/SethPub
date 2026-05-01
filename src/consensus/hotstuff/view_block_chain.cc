@@ -1156,26 +1156,19 @@ bool ViewBlockChain::GetPrevStorageKeyValue(
         const std::string& id, 
         const std::string& key, 
         std::string* val) {
-    // CheckThreadIdValid();
     std::string phash = parent_hash;
+    uint32_t depth = 0;
+    const uint32_t kMaxTraversalDepth = 16;
     while (true) {
-        if (phash.empty()) {
+        if (phash.empty() || depth >= kMaxTraversalDepth) {
             break;
         }
 
-        // SETH_DEBUG("now merge prev storage map: %s", common::Encode::HexEncode(phash).c_str());
         auto it = view_blocks_info_.find(phash);
         if (it == view_blocks_info_.end()) {
             break;
         }
 
-        SETH_DEBUG("get cached key value UpdateStoredToDbView %u_%u_%lu, "
-            "stored_to_db_view_: %lu, %s%s", 
-            it->second->view_block->qc().network_id(), 
-            pool_index_, 
-            it->second->view_block->qc().view(), 
-            static_cast<uint64_t>(stored_to_db_view_), common::Encode::HexEncode(id).c_str(), 
-            common::Encode::HexEncode(key).c_str());
         if (it->second->view_block->qc().view() <= stored_to_db_view_) {
             break;
         }
@@ -1192,6 +1185,7 @@ bool ViewBlockChain::GetPrevStorageKeyValue(
         }
         
         phash = it->second->view_block->parent_hash();
+        ++depth;
     }
 
     return false;
@@ -1201,14 +1195,22 @@ evmc::bytes32 ViewBlockChain::GetPrevStorageBytes32KeyValue(
         const std::string& parent_hash, 
         const evmc::address& addr,
         const evmc::bytes32& key) {
-    // CheckThreadIdValid();
+    // Invalidate cache if DB view advanced
+    bytes32_storage_cache_.invalidate_if_stale(stored_to_db_view_.load());
+
+    // Check cache first
+    auto* cached = bytes32_storage_cache_.get(addr, key);
+    if (cached) {
+        return *cached;
+    }
+
+    // Traverse view chain
     std::string phash = parent_hash;
     while (true) {
         if (phash.empty()) {
             break;
         }
 
-        // SETH_DEBUG("now merge prev storage map: %s", common::Encode::HexEncode(phash).c_str());
         auto it = view_blocks_info_.find(phash);
         if (it == view_blocks_info_.end()) {
             break;
@@ -1221,6 +1223,8 @@ evmc::bytes32 ViewBlockChain::GetPrevStorageBytes32KeyValue(
         if (it->second->seth_host_ptr) {
             auto res = it->second->seth_host_ptr->GetCachedStorage(addr, key);
             if (res) {
+                // Cache the result for future lookups
+                bytes32_storage_cache_.put(addr, key, res);
                 return res;
             }
         }

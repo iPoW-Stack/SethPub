@@ -311,6 +311,39 @@ private:
     std::shared_ptr<IBlockAcceptor> block_acceptor_;
     consensus::BlockCacheCallback new_block_cache_callback_ = nullptr;
     StorageLruMap<10240> storage_lru_map_;
+
+    // Per-pool storage cache for GetPrevStorageBytes32KeyValue.
+    // Avoids repeated view chain traversal for the same (addr, key).
+    // Invalidated when stored_to_db_view_ advances (new block committed).
+    struct Bytes32StorageCache {
+        std::unordered_map<std::string, evmc::bytes32> cache;  // key = addr(20) + key(32)
+        View cached_at_view = 0;
+
+        evmc::bytes32* get(const evmc::address& addr, const evmc::bytes32& key) {
+            std::string k((char*)addr.bytes, 20);
+            k.append((char*)key.bytes, 32);
+            auto it = cache.find(k);
+            return (it != cache.end()) ? &it->second : nullptr;
+        }
+
+        void put(const evmc::address& addr, const evmc::bytes32& key, const evmc::bytes32& val) {
+            std::string k((char*)addr.bytes, 20);
+            k.append((char*)key.bytes, 32);
+            cache[k] = val;
+            // Limit cache size
+            if (cache.size() > 65536) {
+                cache.clear();
+            }
+        }
+
+        void invalidate_if_stale(View current_stored_view) {
+            if (cached_at_view < current_stored_view) {
+                cache.clear();
+                cached_at_view = current_stored_view;
+            }
+        }
+    };
+    Bytes32StorageCache bytes32_storage_cache_;
     std::shared_ptr<block::BlockManager> block_mgr_;
     std::atomic<uint64_t> latest_timeblock_height_ = 0;
     std::shared_ptr<pools::TxPoolManager> pools_mgr_ = nullptr;
