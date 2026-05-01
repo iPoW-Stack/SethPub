@@ -190,10 +190,7 @@ public:
 class SethClient {
 public:
     int64_t fetchNonce(const std::string& address) {
-        httplib::SSLClient cli(node_host_, node_port_);
-        cli.enable_server_certificate_verification(false);
-        cli.set_connection_timeout(3, 0);   // 3s connect timeout
-        cli.set_read_timeout(5, 0);         // 5s read timeout
+        auto& cli = getOrCreateClient();
         httplib::Params params;
         params.emplace("address", address);
         auto res = cli.Post("/query_account", params);
@@ -230,10 +227,12 @@ public:
                       << " status=" << res->status
                       << " host=" << node_host_ << ":" << node_port_ << std::endl;
         } else {
-            auto err = cli.get_openssl_verify_result();
+            auto err = getOrCreateClient().get_openssl_verify_result();
             std::cerr << "fetchNonce connection failed: addr=" << address.substr(0,32)
                       << " host=" << node_host_ << ":" << node_port_
                       << " ssl_err=" << err << std::endl;
+            // Reset persistent client on connection failure so next call reconnects
+            resetClient();
         }
         return -1; 
     }
@@ -245,6 +244,22 @@ public:
         ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
     }
     ~SethClient() { secp256k1_context_destroy(ctx); }
+
+    // Persistent SSL client for connection reuse (avoids repeated TLS handshakes)
+    httplib::SSLClient& getOrCreateClient() {
+        if (!persistent_cli_) {
+            persistent_cli_ = std::make_unique<httplib::SSLClient>(node_host_, node_port_);
+            persistent_cli_->enable_server_certificate_verification(false);
+            persistent_cli_->set_connection_timeout(3, 0);
+            persistent_cli_->set_read_timeout(5, 0);
+            persistent_cli_->set_keep_alive(true);
+        }
+        return *persistent_cli_;
+    }
+
+    void resetClient() {
+        persistent_cli_.reset();
+    }
 
     Keypair getKeypair(const std::string& privKeyHex) {
         Keypair kp;
@@ -355,6 +370,7 @@ public:
 
 private:
     secp256k1_context* ctx;
+    std::unique_ptr<httplib::SSLClient> persistent_cli_;
 public:
     std::string node_host_ = "127.0.0.1";
     int node_port_ = 23001;

@@ -585,21 +585,23 @@ void UpdateAddressNonce(const std::string& contract_address) {
 }
 
 int InitPrefund(const std::string& contract_address) {
-    // Route prefund to the contract's pool leader
-    std::string dest_ip = kBroadcastIp;
-    int dest_port = kBroadcastPort + 10000;  // default HTTP port
-    if (g_has_leader_routing) {
-        std::string ca_raw = common::Encode::HexDecode(contract_address);
-        uint32_t pool_idx = common::GetAddressPoolIndex(ca_raw);
-        std::lock_guard<std::mutex> lock(g_leader_mutex);
-        auto it = g_leader_map.find(pool_idx);
-        if (it != g_leader_map.end()) {
-            dest_ip = it->second.ip;
-            dest_port = it->second.port + 10000;
-        }
-    }
-    SethSDK client(dest_ip, dest_port);
+    // Route prefund to each sender's pool leader (not the contract's),
+    // because the server dispatches step 7 to the sender's pool_index.
     for (auto iter = g_prikeys.begin(); iter != g_prikeys.end(); ++iter) {
+        std::string dest_ip = kBroadcastIp;
+        int dest_port = kBroadcastPort + 10000;  // default HTTP port
+        if (g_has_leader_routing) {
+            std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
+            sec->SetPrivateKey(*iter);
+            uint32_t pool_idx = common::GetAddressPoolIndex(sec->GetAddress());
+            std::lock_guard<std::mutex> lock(g_leader_mutex);
+            auto it = g_leader_map.find(pool_idx);
+            if (it != g_leader_map.end()) {
+                dest_ip = it->second.ip;
+                dest_port = it->second.port + 10000;
+            }
+        }
+        SethSDK client(dest_ip, dest_port);
         auto prikey = common::Encode::HexEncode(*iter);
         auto res_json = client.setGasPrefund(prikey, contract_address, 490000000lu);
         if (res_json["status"] != 0) {
@@ -1958,6 +1960,19 @@ contract AMMPool {
             return {default_dest_ip, default_dest_port};
         };
 
+        // Helper: get destination for a raw (binary) address — used for sender-based routing
+        auto get_dest_raw = [&](const std::string& addr_raw) -> std::pair<std::string, uint16_t> {
+            if (amm_has_leaders) {
+                uint32_t pool_idx = common::GetAddressPoolIndex(addr_raw);
+                std::lock_guard<std::mutex> lk(amm_leader_mutex);
+                auto lit = amm_leader_map.find(pool_idx);
+                if (lit != amm_leader_map.end()) {
+                    return {lit->second.ip, lit->second.port};
+                }
+            }
+            return {default_dest_ip, default_dest_port};
+        };
+
         // Helper: get leader HTTP port for a contract (for nonce/balance queries)
         auto get_leader_http = [&](const std::string& contract_addr_hex) -> std::pair<std::string, uint16_t> {
             auto [ip, tcp_port] = get_dest(contract_addr_hex);
@@ -2251,10 +2266,26 @@ contract AMMPool {
             std::atomic<uint32_t> nonce_init_ok{0};
             std::mutex nonce_map_mtx;  // protect prikey_with_nonce writes
             
+            // Limit concurrent nonce threads to avoid overwhelming the HTTPS server
+            // with too many simultaneous SSL handshakes
+            if (nonce_init_threads > 8) nonce_init_threads = 8;
+            users_per_thread = confirmed_users.size() / nonce_init_threads;
+
             for (uint32_t t = 0; t < nonce_init_threads; ++t) {
                 uint32_t s = t * users_per_thread;
                 uint32_t e = (t == nonce_init_threads - 1) ? (uint32_t)confirmed_users.size() : (s + users_per_thread);
                 nonce_threads.emplace_back([&, s, e]() {
+                    // Cache SDK per destination to reuse SSL connections within this thread
+                    std::unordered_map<std::string, std::shared_ptr<SethSDK>> sdk_cache;
+                    auto get_sdk = [&](const std::string& ip, uint16_t port) -> SethSDK& {
+                        std::string key = ip + ":" + std::to_string(port);
+                        auto it = sdk_cache.find(key);
+                        if (it == sdk_cache.end()) {
+                            it = sdk_cache.emplace(key, std::make_shared<SethSDK>(ip, port)).first;
+                        }
+                        return *it->second;
+                    };
+
                     for (uint32_t i = s; i < e && !global_stop; ++i) {
                         uint32_t user_idx = confirmed_users[i];
                         std::string addr_hex = users[user_idx].addr_hex;
@@ -2271,8 +2302,13 @@ contract AMMPool {
                                 query_port = it->second.port + 10000;
                             }
                         }
-                        SethSDK local_sdk(query_ip, query_port);
-                        int64_t nonce = local_sdk.fetchNonce(addr_hex);
+                        SethSDK& sdk = get_sdk(query_ip, query_port);
+                        int64_t nonce = -1;
+                        // Retry up to 3 times on connection failure
+                        for (int attempt = 0; attempt < 3 && nonce < 0; ++attempt) {
+                            if (attempt > 0) usleep(100000 * attempt); // 100ms, 200ms backoff
+                            nonce = sdk.fetchNonce(addr_hex);
+                        }
                         if (nonce >= 0) {
                             std::string addr_raw = common::Encode::HexDecode(addr_hex);
                             {
@@ -2285,7 +2321,13 @@ contract AMMPool {
                 });
             }
             for (auto& th : nonce_threads) th.join();
-            std::cout << "  Nonce initialization: " << nonce_init_ok.load() << "/" << confirmed_users.size() << " users" << std::endl;
+            uint32_t nonce_ok = nonce_init_ok.load();
+            std::cout << "  Nonce initialization: " << nonce_ok << "/" << confirmed_users.size() << " users" << std::endl;
+            if (nonce_ok < confirmed_users.size()) {
+                uint32_t nonce_fail = confirmed_users.size() - nonce_ok;
+                std::cerr << "  WARNING: " << nonce_fail << " users failed nonce fetch — "
+                          << "their prefund txs will use nonce=0 (may fail if account already has txs)" << std::endl;
+            }
         }
 
         // Group prefund ops by sender (user prikey) for nonce management
@@ -2347,8 +2389,9 @@ contract AMMPool {
                                 common::Encode::HexEncode(prikey_raw),
                                 common::Encode::HexDecode(ca),
                                 "prefund", "", 0, 210000, 1, shardnum);
-                            // Route prefund to the contract's pool leader
-                            auto [dest_ip, dest_port] = get_dest(ca);
+                            // Route prefund to the SENDER's pool leader (not the contract's),
+                            // because the server dispatches step 7 to the sender's pool_index.
+                            auto [dest_ip, dest_port] = get_dest_raw(addr);
                             if (tcp_enqueue(tx, dest_ip, dest_port)) ++pf_ok;
                             else ++pf_fail;
                             usleep(200);
@@ -2454,12 +2497,14 @@ contract AMMPool {
                         for (uint32_t i=s;i<e&&!global_stop;++i) {
                             auto& item = pf_verify[pf_pending[i]];
                             const auto& ca = pf_groups[item.group_idx].contract_addrs[item.contract_idx];
-                            // Route to the contract's pool leader
+                            // Route to the SENDER's pool leader (prefund is dispatched to sender's pool)
                             std::string retry_ip = global_chain_node_ip;
                             uint16_t retry_port = global_chain_node_http_port;
                             if (amm_has_leaders) {
-                                std::string ca_raw = common::Encode::HexDecode(ca);
-                                uint32_t pidx = common::GetAddressPoolIndex(ca_raw);
+                                std::string prikey_raw = common::Encode::HexDecode(pf_groups[item.group_idx].prikey_hex);
+                                auto sec_tmp = std::make_shared<security::Ecdsa>();
+                                sec_tmp->SetPrivateKey(prikey_raw);
+                                uint32_t pidx = common::GetAddressPoolIndex(sec_tmp->GetAddress());
                                 std::lock_guard<std::mutex> lk(amm_leader_mutex);
                                 auto it = amm_leader_map.find(pidx);
                                 if (it != amm_leader_map.end()) {
