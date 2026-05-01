@@ -387,9 +387,6 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashSt
         cached_pri_queue_.pop();
     }
 
-    // SETH_DEBUG("success add view block cached_block_map_: %u, "
-    //     "cached_view_with_blocks_: %u, cached_pri_queue_: %u", 
-    //     cached_block_map_.size(), cached_view_with_blocks_.size(), cached_pri_queue_.size());
     if (hash.empty()) {
         return nullptr;
     }

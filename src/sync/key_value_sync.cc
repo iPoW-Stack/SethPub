@@ -538,9 +538,13 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
         }
 
         uint16_t* pool_index_arr = (uint16_t*)key.c_str();
+        // Use remove=false: sync requests only need to look up blocks, not drain
+        // the cached_block_queue_. Draining with remove=true from the timer thread
+        // causes data races on the SPSC queue and non-thread-safe maps that are
+        // owned by the consensus thread.
         auto view_block_ptr_info = hotstuff_mgr_->chain(pool_index_arr[0])->GetViewBlockWithHash(
             std::string(key.c_str() + 2, 32),
-            true);
+            false);
         if (!view_block_ptr_info) {
             continue;
         }
