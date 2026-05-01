@@ -2347,8 +2347,9 @@ contract AMMPool {
                                 common::Encode::HexEncode(prikey_raw),
                                 common::Encode::HexDecode(ca),
                                 "prefund", "", 0, 210000, 1, shardnum);
-                            // Route prefund to the contract's pool leader
-                            auto [dest_ip, dest_port] = get_dest(ca);
+                            // Route prefund to the SENDER's pool leader (not the contract's),
+                            // because prefund tx nonce is keyed by sender address.
+                            auto [dest_ip, dest_port] = get_dest(common::Encode::HexEncode(addr));
                             if (tcp_enqueue(tx, dest_ip, dest_port)) ++pf_ok;
                             else ++pf_fail;
                             usleep(200);
