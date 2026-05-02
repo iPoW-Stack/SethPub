@@ -2594,7 +2594,6 @@ contract AMMPool {
                                     retry_ip = it->second.ip;
                                     retry_port = it->second.port + 10000;
                                 }
-                                }
                             }
                             SethSDK tsdk(retry_ip, retry_port);
                             auto r = tsdk.setGasPrefund(pf_groups[item.group_idx].prikey_hex, ca, kUserPrefund);
