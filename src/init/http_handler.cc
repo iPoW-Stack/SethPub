@@ -724,7 +724,7 @@ static void HttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
     }
     
     msg_ptr->header.set_hash64(common::Random::RandomUint64());
-    SETH_WARN("http handler success get http server thread index: %d, address: %s, hash64: %lu", 
+    SETH_DEBUG("http handler success get http server thread index: %d, address: %s, hash64: %lu", 
         thread_index, 
         common::Encode::HexEncode(
             http_handler->security_ptr()->GetAddressWithPublicKey(common::Encode::HexDecode(frompk))).c_str(),
@@ -738,7 +738,7 @@ static void HttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
         http_handler->tx_msg_map().Put(msg_ptr->msg_hash, msg_ptr);
     }
 
-    SETH_WARN("http transaction success %s, %s, nonce: %lu, txhash: %s", 
+    SETH_DEBUG("http transaction success %s, %s, nonce: %lu, txhash: %s", 
         common::Encode::HexEncode(
         http_handler->security_ptr()->GetAddressWithPublicKey(common::Encode::HexDecode(frompk))).c_str(), 
         to, nonce,
