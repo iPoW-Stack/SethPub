@@ -2396,7 +2396,7 @@ contract AMMPool {
                             // dispatch to the correct pool.
                             if (tcp_enqueue(tx, default_dest_ip, default_dest_port)) ++pf_ok;
                             else ++pf_fail;
-                            usleep(200);
+                            usleep(5000);  // 5ms per tx — ~200 TPS per thread
                         }
                     }
                 });
@@ -2465,7 +2465,7 @@ contract AMMPool {
         for (uint32_t i = 0; i < pf_verify.size(); ++i) pf_pending.push_back(i);
 
         const uint32_t kPfBatchSize = 50;  // 80-char prepayment addresses need small batches
-        for (uint32_t round = 0; round < 60 && !pf_pending.empty() && !global_stop; ++round) {
+        for (uint32_t round = 0; round < 30 && !pf_pending.empty() && !global_stop; ++round) {
             uint32_t round_ok = 0;
             std::vector<uint32_t> next_pending;
             std::vector<std::string> ba;
