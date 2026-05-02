@@ -302,12 +302,9 @@ public:
     // Set handle_status and fire status_notify_cb for terminal statuses.
     // kMessageHandle and kTxAccept are pending/success states — no notification.
     void set_status(MessageHandleStatus s) {
-        if (s != kMessageHandle && s != kTxAccept) {
-            SETH_WARN("set_status: %s, hash: %s", MessageStatusToString(s).c_str(), common::Encode::HexEncode(msg_hash).c_str());
-        }
-        
         handle_status = s;
         if (s == kMessageHandle || s == kTxAccept) return;
+        SETH_WARN("set_status: %s, hash: %s", MessageStatusToString(s).c_str(), common::Encode::HexEncode(msg_hash).c_str());
         if (status_notify_cb && !msg_hash.empty()) {
             status_notify_cb(msg_hash, s);
         }
