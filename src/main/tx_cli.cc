@@ -2465,7 +2465,7 @@ contract AMMPool {
         for (uint32_t i = 0; i < pf_verify.size(); ++i) pf_pending.push_back(i);
 
         const uint32_t kPfBatchSize = 50;  // 80-char prepayment addresses need small batches
-        for (uint32_t round = 0; round < 30 && !pf_pending.empty() && !global_stop; ++round) {
+        for (uint32_t round = 0; round < 40 && !pf_pending.empty() && !global_stop; ++round) {
             uint32_t round_ok = 0;
             std::vector<uint32_t> next_pending;
             std::vector<std::string> ba;
@@ -2495,6 +2495,48 @@ contract AMMPool {
                       << ", " << pf_verified << "/" << pf_verify.size()
                       << ", pending: " << pf_pending.size() << std::endl;
             if (pf_pending.empty()) break;
+
+            // After round 20, re-send pending prefunds via TCP then keep verifying
+            if (round == 19 && !pf_pending.empty()) {
+                std::cout << "  [PF round 20] Re-sending " << pf_pending.size()
+                          << " unconfirmed prefunds via TCP..." << std::endl;
+                std::atomic<uint32_t> resend_ok{0}, resend_fail{0};
+                uint32_t resend_threads = std::min((uint32_t)common::kMaxThreadCount, (uint32_t)pf_pending.size());
+                if (resend_threads == 0) resend_threads = 1;
+                uint32_t resend_per = pf_pending.size() / resend_threads;
+                std::vector<std::thread> rtvec;
+                for (uint32_t t = 0; t < resend_threads; ++t) {
+                    uint32_t rs = t * resend_per;
+                    uint32_t re = (t == resend_threads - 1) ? (uint32_t)pf_pending.size() : (rs + resend_per);
+                    rtvec.emplace_back([&, rs, re]() {
+                        for (uint32_t i = rs; i < re && !global_stop; ++i) {
+                            auto& item = pf_verify[pf_pending[i]];
+                            auto& grp = pf_groups[item.group_idx];
+                            const auto& ca = grp.contract_addrs[item.contract_idx];
+                            std::string prikey_raw = common::Encode::HexDecode(grp.prikey_hex);
+                            auto sec = std::make_shared<security::Ecdsa>();
+                            sec->SetPrivateKey(prikey_raw);
+                            std::string addr = sec->GetAddress();
+                            // Fetch current nonce for this user
+                            auto nonce_it = prikey_with_nonce.find(addr);
+                            uint64_t cur_nonce = (nonce_it != prikey_with_nonce.end()) ? nonce_it->second : 0;
+                            // Use nonce = contract_idx offset from base (1-indexed)
+                            uint64_t use_nonce = cur_nonce + item.contract_idx + 1;
+                            auto tx = CreateTransactionWithAttr(sec, use_nonce,
+                                common::Encode::HexEncode(prikey_raw),
+                                common::Encode::HexDecode(ca),
+                                "prefund", "", 0, 210000, 1, shardnum);
+                            if (tcp_enqueue(tx, default_dest_ip, default_dest_port)) ++resend_ok;
+                            else ++resend_fail;
+                            usleep(5000);
+                        }
+                    });
+                }
+                for (auto& th : rtvec) th.join();
+                std::cout << "  [PF resend] " << resend_ok.load() << " ok, "
+                          << resend_fail.load() << " fail" << std::endl;
+            }
+
             // Wait before retry
             for (int w = 0; w < ((round_ok > 0) ? 30 : 80) && !global_stop; ++w) usleep(100000);
         }
