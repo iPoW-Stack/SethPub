@@ -2440,12 +2440,13 @@ contract AMMPool {
         for(int w=0;w<50&&!global_stop;++w) usleep(100000);
 
         // Verify prefund accounts exist via batch query, retry missing ones
-        std::cout << "  Verifying prefund accounts (batch)..." << std::endl;
+        std::cout << "  Verifying prefund accounts (batch, routed to sender leader)..." << std::endl;
         // Build list of all prepayment addresses to verify
         struct PfVerifyItem {
             uint32_t group_idx;
             uint32_t contract_idx;
             std::string prepay_addr;  // contract_addr + user_addr (80 hex chars)
+            uint32_t sender_pool_idx; // pool_index of the sender (from)
         };
         std::vector<PfVerifyItem> pf_verify;
         for (uint32_t gi = 0; gi < pf_groups.size(); ++gi) {
@@ -2453,9 +2454,11 @@ contract AMMPool {
             std::string prikey_raw = common::Encode::HexDecode(grp.prikey_hex);
             auto sec_tmp = std::make_shared<security::Ecdsa>();
             sec_tmp->SetPrivateKey(prikey_raw);
-            std::string user_addr = common::Encode::HexEncode(sec_tmp->GetAddress());
+            std::string user_addr_raw = sec_tmp->GetAddress();
+            std::string user_addr = common::Encode::HexEncode(user_addr_raw);
+            uint32_t sender_pidx = common::GetAddressPoolIndex(user_addr_raw);
             for (uint32_t ci = 0; ci < grp.contract_addrs.size(); ++ci) {
-                pf_verify.push_back({gi, ci, grp.contract_addrs[ci] + user_addr});
+                pf_verify.push_back({gi, ci, grp.contract_addrs[ci] + user_addr, sender_pidx});
             }
         }
 
@@ -2464,42 +2467,67 @@ contract AMMPool {
         std::vector<uint32_t> pf_pending;
         for (uint32_t i = 0; i < pf_verify.size(); ++i) pf_pending.push_back(i);
 
-        const uint32_t kPfBatchSize = 50;  // 80-char prepayment addresses need small batches
+        const uint32_t kPfBatchSize = 50;
         for (uint32_t round = 0; round < 40 && !pf_pending.empty() && !global_stop; ++round) {
             uint32_t round_ok = 0;
             std::vector<uint32_t> next_pending;
-            std::vector<std::string> ba;
-            std::vector<uint32_t> bi;
-            for (uint32_t p = 0; p < pf_pending.size() && !global_stop; ++p) {
-                ba.push_back(pf_verify[pf_pending[p]].prepay_addr);
-                bi.push_back(pf_pending[p]);
-                if (ba.size() >= kPfBatchSize || p == pf_pending.size() - 1) {
-                    auto r = sdk.batchQueryAccounts(ba);
-                    if (r.contains("status") && r["status"] == 0 && r.contains("accounts")) {
-                        for (uint32_t k = 0; k < bi.size(); ++k) {
-                            if (r["accounts"].contains(ba[k])) {
-                                pf_confirmed[bi[k]] = true;
-                                ++pf_verified; ++round_ok;
-                            } else {
-                                next_pending.push_back(bi[k]);
-                            }
-                        }
-                    } else {
-                        for (auto idx : bi) next_pending.push_back(idx);
+
+            // Group pending items by sender_pool_idx so we query the right leader
+            std::unordered_map<uint32_t, std::vector<uint32_t>> pool_groups;
+            for (auto idx : pf_pending) {
+                pool_groups[pf_verify[idx].sender_pool_idx].push_back(idx);
+            }
+
+            for (auto& [pidx, indices] : pool_groups) {
+                if (global_stop) break;
+                // Find leader for this pool_index
+                std::string ldr_ip = global_chain_node_ip;
+                uint16_t ldr_port = global_chain_node_http_port;
+                if (amm_has_leaders) {
+                    std::lock_guard<std::mutex> lk(amm_leader_mutex);
+                    auto it = amm_leader_map.find(pidx);
+                    if (it != amm_leader_map.end()) {
+                        ldr_ip = it->second.ip;
+                        ldr_port = it->second.port + 10000;
                     }
-                    ba.clear(); bi.clear();
+                }
+                SethSDK leader_sdk(ldr_ip, ldr_port);
+
+                // Batch query this pool's pending prepay addresses
+                std::vector<std::string> ba;
+                std::vector<uint32_t> bi;
+                for (uint32_t j = 0; j < indices.size() && !global_stop; ++j) {
+                    ba.push_back(pf_verify[indices[j]].prepay_addr);
+                    bi.push_back(indices[j]);
+                    if (ba.size() >= kPfBatchSize || j == indices.size() - 1) {
+                        auto r = leader_sdk.batchQueryAccounts(ba);
+                        if (r.contains("status") && r["status"] == 0 && r.contains("accounts")) {
+                            for (uint32_t k = 0; k < bi.size(); ++k) {
+                                if (r["accounts"].contains(ba[k])) {
+                                    pf_confirmed[bi[k]] = true;
+                                    ++pf_verified; ++round_ok;
+                                } else {
+                                    next_pending.push_back(bi[k]);
+                                }
+                            }
+                        } else {
+                            for (auto idx2 : bi) next_pending.push_back(idx2);
+                        }
+                        ba.clear(); bi.clear();
+                    }
                 }
             }
+
             pf_pending = std::move(next_pending);
             std::cout << "  [PF verify round " << (round+1) << "] +" << round_ok
                       << ", " << pf_verified << "/" << pf_verify.size()
                       << ", pending: " << pf_pending.size() << std::endl;
             if (pf_pending.empty()) break;
 
-            // After round 20, re-send pending prefunds via TCP then keep verifying
+            // After round 20, re-send pending prefunds via HTTP SDK (routed to sender's leader)
             if (round == 19 && !pf_pending.empty()) {
                 std::cout << "  [PF round 20] Re-sending " << pf_pending.size()
-                          << " unconfirmed prefunds via TCP..." << std::endl;
+                          << " unconfirmed prefunds via HTTP..." << std::endl;
                 std::atomic<uint32_t> resend_ok{0}, resend_fail{0};
                 uint32_t resend_threads = std::min((uint32_t)common::kMaxThreadCount, (uint32_t)pf_pending.size());
                 if (resend_threads == 0) resend_threads = 1;
@@ -2513,28 +2541,28 @@ contract AMMPool {
                             auto& item = pf_verify[pf_pending[i]];
                             auto& grp = pf_groups[item.group_idx];
                             const auto& ca = grp.contract_addrs[item.contract_idx];
-                            std::string prikey_raw = common::Encode::HexDecode(grp.prikey_hex);
-                            auto sec = std::make_shared<security::Ecdsa>();
-                            sec->SetPrivateKey(prikey_raw);
-                            std::string addr = sec->GetAddress();
-                            // Fetch current nonce for this user
-                            auto nonce_it = prikey_with_nonce.find(addr);
-                            uint64_t cur_nonce = (nonce_it != prikey_with_nonce.end()) ? nonce_it->second : 0;
-                            // Use nonce = contract_idx offset from base (1-indexed)
-                            uint64_t use_nonce = cur_nonce + item.contract_idx + 1;
-                            auto tx = CreateTransactionWithAttr(sec, use_nonce,
-                                common::Encode::HexEncode(prikey_raw),
-                                common::Encode::HexDecode(ca),
-                                "prefund", "", 0, 210000, 1, shardnum);
-                            if (tcp_enqueue(tx, default_dest_ip, default_dest_port)) ++resend_ok;
-                            else ++resend_fail;
-                            usleep(5000);
+                            // Route to sender's pool leader
+                            std::string retry_ip = global_chain_node_ip;
+                            uint16_t retry_port = global_chain_node_http_port;
+                            if (amm_has_leaders) {
+                                std::lock_guard<std::mutex> lk(amm_leader_mutex);
+                                auto it = amm_leader_map.find(item.sender_pool_idx);
+                                if (it != amm_leader_map.end()) {
+                                    retry_ip = it->second.ip;
+                                    retry_port = it->second.port + 10000;
+                                }
+                            }
+                            SethSDK tsdk(retry_ip, retry_port);
+                            auto r = tsdk.setGasPrefund(grp.prikey_hex, ca, kUserPrefund);
+                            if (r["status"] == 0) ++resend_ok; else ++resend_fail;
                         }
                     });
                 }
                 for (auto& th : rtvec) th.join();
                 std::cout << "  [PF resend] " << resend_ok.load() << " ok, "
                           << resend_fail.load() << " fail" << std::endl;
+                std::cout << "  Waiting 5s for resend consensus..." << std::endl;
+                for (int w = 0; w < 50 && !global_stop; ++w) usleep(100000);
             }
 
             // Wait before retry
@@ -2542,7 +2570,7 @@ contract AMMPool {
         }
         std::cout << "  Prefund verified: " << pf_verified << "/" << pf_verify.size() << std::endl;
 
-        // Retry missing prefunds via HTTP SDK — route to contract's pool leader
+        // Retry missing prefunds via HTTP SDK — route to sender's pool leader
         if (!pf_pending.empty()) {
             std::cout << "  Retrying " << pf_pending.size() << " missing prefunds via HTTP..." << std::endl;
             std::atomic<uint32_t> retry_ok{0}, retry_fail{0};
@@ -2557,19 +2585,15 @@ contract AMMPool {
                         for (uint32_t i=s;i<e&&!global_stop;++i) {
                             auto& item = pf_verify[pf_pending[i]];
                             const auto& ca = pf_groups[item.group_idx].contract_addrs[item.contract_idx];
-                            // Route to the SENDER's pool leader (prefund is dispatched to sender's pool)
                             std::string retry_ip = global_chain_node_ip;
                             uint16_t retry_port = global_chain_node_http_port;
                             if (amm_has_leaders) {
-                                std::string prikey_raw = common::Encode::HexDecode(pf_groups[item.group_idx].prikey_hex);
-                                auto sec_tmp = std::make_shared<security::Ecdsa>();
-                                sec_tmp->SetPrivateKey(prikey_raw);
-                                uint32_t pidx = common::GetAddressPoolIndex(sec_tmp->GetAddress());
                                 std::lock_guard<std::mutex> lk(amm_leader_mutex);
-                                auto it = amm_leader_map.find(pidx);
+                                auto it = amm_leader_map.find(item.sender_pool_idx);
                                 if (it != amm_leader_map.end()) {
                                     retry_ip = it->second.ip;
                                     retry_port = it->second.port + 10000;
+                                }
                                 }
                             }
                             SethSDK tsdk(retry_ip, retry_port);
