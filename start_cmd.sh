@@ -104,7 +104,8 @@ start_nodes() {
     # ========== 应用层网络延迟注入参数 ==========
     # 模拟公网: 1G带宽, 点对点50ms延迟(单向25ms), 10ms抖动, 0.01%丢包率
     # 可通过环境变量覆盖这些默认值
-    export SETH_NETWORK_ENABLED=${SETH_NETWORK_ENABLED:-1}
+    export SETH_NETWORK_ENABLED=0
+    # export SETH_NETWORK_ENABLED=${SETH_NETWORK_ENABLED:-1}
     export SETH_NETWORK_DELAY_MS=${SETH_NETWORK_DELAY_MS:-25}
     export SETH_NETWORK_JITTER_MS=${SETH_NETWORK_JITTER_MS:-10}
     export SETH_NETWORK_LOSS_RATE=${SETH_NETWORK_LOSS_RATE:-0.0001}

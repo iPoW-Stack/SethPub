@@ -1,3 +1,10 @@
+clipy/aws.sh
+clipy/setup_root_ssh.sh
+src/delay_approve
+src/delay_swap
+src/run_log
+src/tps_approve
+src/tps_swap
 src/pki/src/
 s21
 s22
