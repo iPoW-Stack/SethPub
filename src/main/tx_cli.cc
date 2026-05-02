@@ -2815,68 +2815,76 @@ contract AMMPool {
         std::cout << "  Approve done in " << appr_elapsed << "s: "
                   << appr_ok.load() << " ok, " << appr_fail.load() << " fail" << std::endl;
 
-        // Wait for approve consensus
+        // Wait for approve consensus — batch query nonces in parallel
         {
-            const int kMaxWaitSec = 10;
+            const int kMaxWaitSec = 120;
             const int kPollIntervalMs = 2000;
+            const uint32_t kBatchSize = 300;
             std::cout << "  Waiting for approve consensus (timeout " << kMaxWaitSec << "s for "
                       << total_appr_ops << " txs)..." << std::endl;
             uint32_t total_groups = appr_groups.size();
             std::vector<bool> grp_confirmed(total_groups, false);
+            // Build prepay addresses and expected nonces once
+            std::vector<std::string> prepay_addrs(total_groups);
+            std::vector<int64_t> expected_nonces(total_groups);
+            for (uint32_t gi = 0; gi < total_groups; ++gi) {
+                prepay_addrs[gi] = appr_groups[gi].contract_addr + appr_groups[gi].caller_addr;
+                expected_nonces[gi] = (int64_t)appr_groups[gi].inputs.size();
+            }
             auto wait_start = std::chrono::steady_clock::now();
             uint32_t confirmed = 0;
-            
+
             for (int elapsed = 0; elapsed < kMaxWaitSec && !global_stop; ) {
+                // Collect pending group indices
+                std::vector<uint32_t> pending;
                 confirmed = 0;
                 for (uint32_t gi = 0; gi < total_groups; ++gi) {
-                    if (grp_confirmed[gi]) { ++confirmed; continue; }
-                    auto& grp = appr_groups[gi];
-                    std::string prepay_addr = grp.contract_addr + grp.caller_addr;
-                    auto [ldr_ip, ldr_http] = get_leader_http(grp.contract_addr);
-                    SethSDK leader_sdk(ldr_ip, ldr_http);
-                    int64_t n = leader_sdk.fetchNonce(prepay_addr);
-                    if (n >= (int64_t)grp.inputs.size()) {
-                        grp_confirmed[gi] = true;
-                        ++confirmed;
+                    if (grp_confirmed[gi]) ++confirmed;
+                    else pending.push_back(gi);
+                }
+                if (pending.empty()) break;
+
+                // Batch query pending prepay addresses
+                for (uint32_t off = 0; off < pending.size() && !global_stop; off += kBatchSize) {
+                    uint32_t end = std::min(off + kBatchSize, (uint32_t)pending.size());
+                    std::vector<std::string> batch;
+                    for (uint32_t j = off; j < end; ++j) batch.push_back(prepay_addrs[pending[j]]);
+                    auto r = sdk.batchQueryAccounts(batch);
+                    if (r.contains("status") && r["status"] == 0 && r.contains("accounts")) {
+                        for (uint32_t j = off; j < end; ++j) {
+                            uint32_t gi = pending[j];
+                            if (r["accounts"].contains(batch[j - off])) {
+                                auto& acc = r["accounts"][batch[j - off]];
+                                int64_t n = 0;
+                                if (acc.contains("nonce")) {
+                                    try {
+                                        auto ns = acc["nonce"].get<std::string>();
+                                        std::from_chars(ns.data(), ns.data() + ns.size(), n);
+                                    } catch (...) {}
+                                }
+                                if (n >= expected_nonces[gi]) {
+                                    grp_confirmed[gi] = true;
+                                    ++confirmed;
+                                }
+                            }
+                        }
                     }
                 }
-                
+
                 elapsed = (int)std::chrono::duration_cast<std::chrono::seconds>(
                     std::chrono::steady_clock::now() - wait_start).count();
                 std::cout << "  [" << elapsed << "s] approve nonce confirmed: "
                           << confirmed << "/" << total_groups << std::endl;
-                
+
                 if (confirmed >= total_groups) {
                     std::cout << "  ✓ All " << total_groups << " approve groups confirmed" << std::endl;
                     break;
                 }
-                
+
                 for (int w = 0; w < kPollIntervalMs / 100 && !global_stop; ++w) usleep(100000);
             }
-            
+
             if (confirmed < total_groups) {
-                // Print details of unconfirmed groups (up to 10)
-                uint32_t printed = 0;
-                for (uint32_t gi = 0; gi < total_groups && printed < 10; ++gi) {
-                    if (grp_confirmed[gi]) continue;
-                    auto& grp = appr_groups[gi];
-                    std::string prepay_addr = grp.contract_addr + grp.caller_addr;
-                    auto [ldr_ip, ldr_http] = get_leader_http(grp.contract_addr);
-                    SethSDK leader_sdk(ldr_ip, ldr_http);
-                    int64_t n = leader_sdk.fetchNonce(prepay_addr);
-                    uint32_t pool_idx = contract_pool_index_map.count(grp.contract_addr)
-                        ? contract_pool_index_map[grp.contract_addr]
-                        : common::GetAddressPoolIndex(common::Encode::HexDecode(grp.contract_addr));
-                    std::cout << "    ✗ group " << gi
-                              << " contract=" << grp.contract_addr.substr(0,12) << "..."
-                              << " caller=" << grp.caller_addr.substr(0,12) << "..."
-                              << " pool_idx=" << pool_idx
-                              << " node=" << ldr_ip << ":" << ldr_http
-                              << " nonce=" << n
-                              << " expected>=" << grp.inputs.size()
-                              << std::endl;
-                    ++printed;
-                }
                 std::cout << "  ⚠ WARNING: " << (total_groups - confirmed) << "/" << total_groups
                           << " approve groups NOT confirmed after " << kMaxWaitSec << "s" << std::endl;
             }
@@ -3107,29 +3115,56 @@ contract AMMPool {
                   << " (" << std::fixed << std::setprecision(1) << swap_tps << " tx/s)" << std::endl;
 
         // ── Phase 10b: Verify swap results ─────────────────────────────────
-        // Wait for consensus, then verify all swap nonces are confirmed
+        // Wait for consensus — batch query nonces in parallel
         {
-            const int kMaxWaitSec = 10;
+            const int kMaxWaitSec = 120;
             const int kPollIntervalMs = 2000;
+            const uint32_t kBatchSize = 300;
             std::cout << "\n  Waiting for swap consensus (timeout " << kMaxWaitSec << "s for "
                       << total_swaps << " txs)..." << std::endl;
             uint32_t total_groups = swap_groups.size();
             std::vector<bool> grp_confirmed(total_groups, false);
+            std::vector<std::string> prepay_addrs(total_groups);
+            std::vector<int64_t> expected_nonces(total_groups);
+            for (uint32_t gi = 0; gi < total_groups; ++gi) {
+                prepay_addrs[gi] = swap_groups[gi].contract_addr + swap_groups[gi].caller_addr;
+                expected_nonces[gi] = (int64_t)swap_groups[gi].inputs.size();
+            }
             auto wait_start = std::chrono::steady_clock::now();
             uint32_t confirmed = 0;
 
             for (int elapsed = 0; elapsed < kMaxWaitSec && !global_stop; ) {
+                std::vector<uint32_t> pending;
                 confirmed = 0;
                 for (uint32_t gi = 0; gi < total_groups; ++gi) {
-                    if (grp_confirmed[gi]) { ++confirmed; continue; }
-                    auto& grp = swap_groups[gi];
-                    std::string prepay_addr = grp.contract_addr + grp.caller_addr;
-                    auto [ldr_ip, ldr_http] = get_leader_http(grp.contract_addr);
-                    SethSDK leader_sdk(ldr_ip, ldr_http);
-                    int64_t n = leader_sdk.fetchNonce(prepay_addr);
-                    if (n >= (int64_t)grp.inputs.size()) {
-                        grp_confirmed[gi] = true;
-                        ++confirmed;
+                    if (grp_confirmed[gi]) ++confirmed;
+                    else pending.push_back(gi);
+                }
+                if (pending.empty()) break;
+
+                for (uint32_t off = 0; off < pending.size() && !global_stop; off += kBatchSize) {
+                    uint32_t end = std::min(off + kBatchSize, (uint32_t)pending.size());
+                    std::vector<std::string> batch;
+                    for (uint32_t j = off; j < end; ++j) batch.push_back(prepay_addrs[pending[j]]);
+                    auto r = sdk.batchQueryAccounts(batch);
+                    if (r.contains("status") && r["status"] == 0 && r.contains("accounts")) {
+                        for (uint32_t j = off; j < end; ++j) {
+                            uint32_t gi = pending[j];
+                            if (r["accounts"].contains(batch[j - off])) {
+                                auto& acc = r["accounts"][batch[j - off]];
+                                int64_t n = 0;
+                                if (acc.contains("nonce")) {
+                                    try {
+                                        auto ns = acc["nonce"].get<std::string>();
+                                        std::from_chars(ns.data(), ns.data() + ns.size(), n);
+                                    } catch (...) {}
+                                }
+                                if (n >= expected_nonces[gi]) {
+                                    grp_confirmed[gi] = true;
+                                    ++confirmed;
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -3147,27 +3182,6 @@ contract AMMPool {
             }
 
             if (confirmed < total_groups) {
-                uint32_t printed = 0;
-                for (uint32_t gi = 0; gi < total_groups && printed < 10; ++gi) {
-                    if (grp_confirmed[gi]) continue;
-                    auto& grp = swap_groups[gi];
-                    std::string prepay_addr = grp.contract_addr + grp.caller_addr;
-                    auto [ldr_ip, ldr_http] = get_leader_http(grp.contract_addr);
-                    SethSDK leader_sdk(ldr_ip, ldr_http);
-                    int64_t n = leader_sdk.fetchNonce(prepay_addr);
-                    uint32_t pool_idx = contract_pool_index_map.count(grp.contract_addr)
-                        ? contract_pool_index_map[grp.contract_addr]
-                        : common::GetAddressPoolIndex(common::Encode::HexDecode(grp.contract_addr));
-                    std::cout << "    ✗ group " << gi
-                              << " pool=" << grp.contract_addr.substr(0,12) << "..."
-                              << " user=" << grp.caller_addr.substr(0,12) << "..."
-                              << " pool_idx=" << pool_idx
-                              << " node=" << ldr_ip << ":" << ldr_http
-                              << " nonce=" << n
-                              << " expected>=" << grp.inputs.size()
-                              << std::endl;
-                    ++printed;
-                }
                 std::cout << "  ⚠ WARNING: " << (total_groups - confirmed) << "/" << total_groups
                           << " swap groups NOT confirmed after " << kMaxWaitSec << "s" << std::endl;
             }
