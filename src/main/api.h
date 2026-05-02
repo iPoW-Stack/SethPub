@@ -210,15 +210,11 @@ public:
 
                     return nonce;
                 }
-                // Server returned 200 but no "nonce" field
-                std::cerr << "fetchNonce no nonce field: addr=" << address.substr(0,32)
-                          << " body=" << res->body.substr(0, 200)
-                          << " host=" << node_host_ << ":" << node_port_ << std::endl;
+                // Server returned 200 but no "nonce" field — account may not exist yet
+                return 0;
             } catch (std::exception& e) {
-                std::cerr << "fetchNonce json error: addr=" << address.substr(0,32)
-                          << " err=" << e.what()
-                          << " host=" << node_host_ << ":" << node_port_ << std::endl;
-                return -1; 
+                // Non-JSON response (e.g. "get address failed") — treat as nonce=0
+                return 0; 
             }
         }
 

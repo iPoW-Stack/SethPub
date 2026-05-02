@@ -2465,7 +2465,7 @@ contract AMMPool {
         for (uint32_t i = 0; i < pf_verify.size(); ++i) pf_pending.push_back(i);
 
         const uint32_t kPfBatchSize = 50;  // 80-char prepayment addresses need small batches
-        for (uint32_t round = 0; round < 20 && !pf_pending.empty() && !global_stop; ++round) {
+        for (uint32_t round = 0; round < 60 && !pf_pending.empty() && !global_stop; ++round) {
             uint32_t round_ok = 0;
             std::vector<uint32_t> next_pending;
             std::vector<std::string> ba;
@@ -2696,9 +2696,8 @@ contract AMMPool {
                             std::cerr << "  [" << label << " SKIP] grp=" << gi
                                       << " leader=" << ldr_ip << ":" << ldr_http
                                       << " prepay=" << prepay_addr
-                                      << " skipping " << grp.inputs.size() << " ops after 3 retries" << std::endl;
-                            fail_cnt += grp.inputs.size();
-                            continue;
+                                      << " using nonce=0 (account may not exist yet)" << std::endl;
+                            nonce = 0;
                         }
                         // Cache destination for this group (avoid repeated lock + lookup per tx)
                         auto [grp_dest_ip, grp_dest_port] = get_dest(grp.contract_addr);
