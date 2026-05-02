@@ -1778,8 +1778,8 @@ contract AMMPool {
         }
 
         // ── Verify contract addresses exist on chain ─────────────────────
-        std::cout << "\n  Waiting 15s for contract deployment consensus..." << std::endl;
-        for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
+        std::cout << "\n  Waiting 5s for contract deployment consensus..." << std::endl;
+        for (int w = 0; w < 50 && !global_stop; ++w) usleep(100000);
 
         std::cout << "  Verifying " << all_contracts.size() << " contract addresses (up to 300s)..." << std::endl;
         auto cv_start = std::chrono::steady_clock::now();
@@ -2049,8 +2049,8 @@ contract AMMPool {
         }
 
         // Wait for deployer prefund consensus
-        std::cout << "  Waiting 10s for deployer prefund consensus..." << std::endl;
-        for(int w=0;w<100&&!global_stop;++w) usleep(100000);
+        std::cout << "  Waiting 5s for deployer prefund consensus..." << std::endl;
+        for(int w=0;w<50&&!global_stop;++w) usleep(100000);
 
         // Step 5b: Deployer approve (all deployers first, then wait for consensus)
         std::cout << "  Step 5b-1: Deployer approve TokenA + TokenB for Pool..." << std::endl;
@@ -2082,8 +2082,8 @@ contract AMMPool {
         std::cout << "    Approve: " << appr5_ok.load() << " ok, " << appr5_fail.load() << " fail" << std::endl;
 
         // Wait for approve consensus before calling addLiquidity
-        std::cout << "  Waiting 15s for approve consensus..." << std::endl;
-        for(int w=0;w<150&&!global_stop;++w) usleep(100000);
+        std::cout << "  Waiting 5s for approve consensus..." << std::endl;
+        for(int w=0;w<50&&!global_stop;++w) usleep(100000);
 
         // Step 5b-2: addLiquidity (now approvals are on-chain)
         std::cout << "  Step 5b-2: Deployer addLiquidity (" << kInitialLiquidity << " each)..." << std::endl;
@@ -2114,8 +2114,8 @@ contract AMMPool {
                   << " ok, " << liq_fail.load() << " fail" << std::endl;
 
         // Wait for liquidity consensus
-        std::cout << "  Waiting 10s for liquidity consensus..." << std::endl;
-        for(int w=0;w<100&&!global_stop;++w) usleep(100000);
+        std::cout << "  Waiting 5s for liquidity consensus..." << std::endl;
+        for(int w=0;w<50&&!global_stop;++w) usleep(100000);
 
         // Step 5c: Verify reserves on all pools via getReserves() query
         // getReserves() selector = 0x0902f1ac, returns (uint256, uint256)
@@ -2436,8 +2436,8 @@ contract AMMPool {
                   << pf_ok.load() << " ok, " << pf_fail.load() << " fail" << std::endl;
 
         // Wait for prefund consensus — need enough time for all prefund txs to be confirmed
-        std::cout << "  Waiting 10s for prefund consensus..." << std::endl;
-        for(int w=0;w<100&&!global_stop;++w) usleep(100000);
+        std::cout << "  Waiting 5s for prefund consensus..." << std::endl;
+        for(int w=0;w<50&&!global_stop;++w) usleep(100000);
 
         // Verify prefund accounts exist via batch query, retry missing ones
         std::cout << "  Verifying prefund accounts (batch)..." << std::endl;
@@ -2539,8 +2539,8 @@ contract AMMPool {
                 for (auto& th:rthreads) th.join();
             }
             std::cout << "  Retry: " << retry_ok.load() << " ok, " << retry_fail.load() << " fail" << std::endl;
-            std::cout << "  Waiting 10s for retry consensus..." << std::endl;
-            for(int w=0;w<100&&!global_stop;++w) usleep(100000);
+            std::cout << "  Waiting 5s for retry consensus..." << std::endl;
+            for(int w=0;w<50&&!global_stop;++w) usleep(100000);
         }
 
         // ── Phase 8: Deployer transfers tokens to users (TCP fast path) ────
@@ -2750,8 +2750,8 @@ contract AMMPool {
                   << xfer_ok.load() << " ok, " << xfer_fail.load() << " fail" << std::endl;
 
         // Wait for transfer consensus
-        std::cout << "  Waiting 15s for transfer consensus..." << std::endl;
-        for(int w=0;w<150&&!global_stop;++w) usleep(100000);
+        std::cout << "  Waiting 5s for transfer consensus..." << std::endl;
+        for(int w=0;w<50&&!global_stop;++w) usleep(100000);
 
         // ── Fetch leader routing table for contract calls ───────────────────
         {
@@ -2816,10 +2816,9 @@ contract AMMPool {
                   << appr_ok.load() << " ok, " << appr_fail.load() << " fail" << std::endl;
 
         // Wait for approve consensus
-        // Timeout scales with transaction count: base 30s + 1s per 5000 txs
         {
-            const int kMaxWaitSec = 20;
-            const int kPollIntervalMs = 3000;
+            const int kMaxWaitSec = 10;
+            const int kPollIntervalMs = 2000;
             std::cout << "  Waiting for approve consensus (timeout " << kMaxWaitSec << "s for "
                       << total_appr_ops << " txs)..." << std::endl;
             uint32_t total_groups = appr_groups.size();
@@ -2992,8 +2991,8 @@ contract AMMPool {
             std::cout << "\n  Allowance verification: " << verify_ok << "/" << verify_count
                       << " ok, " << verify_fail << " fail" << std::endl;
             if (verify_fail > 0 && verify_fail > verify_ok) {
-                std::cout << "  ⚠ Most approves failed. Waiting 15s and retrying..." << std::endl;
-                for(int w=0;w<150&&!global_stop;++w) usleep(100000);
+                std::cout << "  ⚠ Most approves failed. Waiting 5s and retrying..." << std::endl;
+                for(int w=0;w<50&&!global_stop;++w) usleep(100000);
                 uint32_t retry_ok = 0;
                 for (uint32_t tpi = 0; tpi < sample_limit && !global_stop; ++tpi) {
                     const auto& tp = trade_pairs[tpi];
@@ -3110,8 +3109,8 @@ contract AMMPool {
         // ── Phase 10b: Verify swap results ─────────────────────────────────
         // Wait for consensus, then verify all swap nonces are confirmed
         {
-            const int kMaxWaitSec = 20;
-            const int kPollIntervalMs = 3000;
+            const int kMaxWaitSec = 10;
+            const int kPollIntervalMs = 2000;
             std::cout << "\n  Waiting for swap consensus (timeout " << kMaxWaitSec << "s for "
                       << total_swaps << " txs)..." << std::endl;
             uint32_t total_groups = swap_groups.size();
