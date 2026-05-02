@@ -2818,7 +2818,7 @@ contract AMMPool {
         // Wait for approve consensus
         // Timeout scales with transaction count: base 30s + 1s per 5000 txs
         {
-            const int kMaxWaitSec = 30 + (int)(total_appr_ops / 5000);
+            const int kMaxWaitSec = 60;
             const int kPollIntervalMs = 3000;
             std::cout << "  Waiting for approve consensus (timeout " << kMaxWaitSec << "s for "
                       << total_appr_ops << " txs)..." << std::endl;
@@ -3110,7 +3110,7 @@ contract AMMPool {
         // ── Phase 10b: Verify swap results ─────────────────────────────────
         // Wait for consensus, then verify all swap nonces are confirmed
         {
-            const int kMaxWaitSec = 30 + (int)(total_swaps / 5000);
+            const int kMaxWaitSec = 60;
             const int kPollIntervalMs = 3000;
             std::cout << "\n  Waiting for swap consensus (timeout " << kMaxWaitSec << "s for "
                       << total_swaps << " txs)..." << std::endl;
