@@ -1094,7 +1094,7 @@ int32_t TxPoolManager::HandleSetContractPrefund(const transport::MessagePtr& msg
     if (msg_ptr->address_info->balance() <
             tx_msg.amount() + tx_msg.contract_prefund() +
             consensus::kCallContractDefaultUseGas * tx_msg.gas_price()) {
-        SETH_DEBUG("address %s balance invalid: %lu, transfer amount: %lu, "
+        SETH_WARN("address %s balance invalid: %lu, transfer amount: %lu, "
             "prefund: %lu, default call contract gas: %lu, from: %s, to: %s",
             common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
             msg_ptr->address_info->balance(),
@@ -1222,7 +1222,7 @@ int32_t TxPoolManager::HandleNormalFromTx(const transport::MessagePtr& msg_ptr) 
     if (msg_ptr->address_info->balance() <
             tx_msg.amount() + tx_msg.contract_prefund() +
             consensus::kTransferGas * tx_msg.gas_price()) {
-        SETH_DEBUG("address: %s balance invalid: %lu, transfer amount: %lu, "
+        SETH_WARN("address: %s balance invalid: %lu, transfer amount: %lu, "
             "prefund: %lu, default call contract gas: %lu",
             common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
             msg_ptr->address_info->balance(),
@@ -1273,7 +1273,7 @@ int32_t TxPoolManager::HandleCreateContractTx(const transport::MessagePtr& msg_p
     if (msg_ptr->address_info->balance() <
             tx_msg.amount() + tx_msg.contract_prefund() +
             default_gas * tx_msg.gas_price()) {
-        SETH_DEBUG("address balance invalid: %lu, transfer amount: %lu, "
+        SETH_WARN("address balance invalid: %lu, transfer amount: %lu, "
             "prefund: %lu, default call contract gas: %lu, gas price: %lu",
             msg_ptr->address_info->balance(),
             tx_msg.amount(),
