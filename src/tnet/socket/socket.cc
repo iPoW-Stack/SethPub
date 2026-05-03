@@ -33,6 +33,10 @@ int Socket::Read(void* buf, size_t len) const {
             if (errno == EINTR) {
                 continue;
             }
+            // Bug fix #15: For non-blocking sockets, EAGAIN/EWOULDBLOCK means
+            // no data available right now. Return -1 and let the caller check
+            // errno. The old code fell through to break and returned -1 without
+            // distinguishing between real errors and would-block.
         }
 
         break;

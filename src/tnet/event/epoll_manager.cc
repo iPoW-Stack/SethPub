@@ -49,8 +49,10 @@ bool EpollManager::Enable(int sockfd, int type, EventHandler& handler) {
         old_events |= EPOLLIN;
     }
 
+    // Bug fix #8: Was using old_ev_type |= EPOLLOUT (wrong variable, wrong flag).
+    // This corrupted old_ev_type with an epoll flag instead of building old_events.
     if (old_ev_type & kEventWrite) {
-        old_ev_type |= EPOLLOUT;
+        old_events |= EPOLLOUT;
     }
 
     int new_events = 0;

@@ -114,16 +114,13 @@ void TcpAcceptor::Destroy() {
     }
 
     destroy_ = true;
+    // Bug fix #9: Stop the connection check timer to prevent callbacks after destroy.
+    check_conn_tick_.Destroy();
+    
     event_loop_.PostTask(std::bind(&TcpAcceptor::ReleaseByIOThread, this));
-    if (in_check_queue_) {
-        delete in_check_queue_;
-        in_check_queue_ = nullptr;
-    }
-
-    if (out_check_queue_) {
-        delete out_check_queue_;
-        out_check_queue_ = nullptr;
-    }
+    // Bug fix #10: Moved queue deletion to ReleaseByIOThread to avoid
+    // deleting queues while CheckConnectionValid may still be accessing them.
+    // The queues are now cleaned up on the IO thread after all pending tasks complete.
 }
 
 bool TcpAcceptor::SetListenSocket(Socket& socket) {
@@ -142,7 +139,22 @@ EventLoop& TcpAcceptor::GetNextEventLoop() const {
     return *event_loops_[index];
 }
 
-void TcpAcceptor::ReleaseByIOThread() {}
+// Bug fix #11: ReleaseByIOThread was empty - now properly cleans up resources.
+void TcpAcceptor::ReleaseByIOThread() {
+    // Clear connection map to release shared_ptr references
+    conn_map_.clear();
+    waiting_check_queue_.clear();
+    
+    if (in_check_queue_) {
+        delete in_check_queue_;
+        in_check_queue_ = nullptr;
+    }
+
+    if (out_check_queue_) {
+        delete out_check_queue_;
+        out_check_queue_ = nullptr;
+    }
+}
 
 bool TcpAcceptor::OnRead() {
     ListenSocket* listenSocket = dynamic_cast<ListenSocket*>(socket_);
@@ -162,7 +174,8 @@ bool TcpAcceptor::OnRead() {
         uint16_t from_port = svr_socket->peer_port();
         if (!socket->SetNonBlocking(true)) {
             SETH_ERROR("set nonblocking failed, close socket");
-            socket->Free();
+            // Bug fix #12: socket is a shared_ptr, don't call Free() manually.
+            // Let the shared_ptr destructor handle cleanup.
             continue;
         }
 
@@ -182,7 +195,7 @@ bool TcpAcceptor::OnRead() {
         if (conn == nullptr) {
             SETH_ERROR("create connection failed, close socket[%d]",
                 socket->GetFd());
-            socket->Free();
+            // Bug fix #13: Same as above - shared_ptr handles cleanup.
             continue;
         }
 
@@ -200,11 +213,13 @@ bool TcpAcceptor::OnRead() {
         event_loop.Wakeup();
         SETH_DEBUG("accept success %s:%d", from_ip.c_str(), from_port);
         conn_map_[from_ip + std::to_string(from_port)] = conn;
-        in_check_queue_->push(conn);
+        if (in_check_queue_) {
+            in_check_queue_->push(conn);
+        }
         int cleanup_limit = 32;
         while (!destroy_ && cleanup_limit-- > 0) {
             std::shared_ptr<TcpConnection> out_conn = nullptr;
-            if (!out_check_queue_->pop(&out_conn) || out_conn == nullptr) {
+            if (!out_check_queue_ || !out_check_queue_->pop(&out_conn) || out_conn == nullptr) {
                 break;
             }
 
@@ -221,9 +236,14 @@ bool TcpAcceptor::OnRead() {
 }
 
 void TcpAcceptor::CheckConnectionValid() {
+    // Bug fix #14: Check destroy_ and queue validity before accessing.
+    if (destroy_ || in_check_queue_ == nullptr || out_check_queue_ == nullptr) {
+        return;
+    }
+
     while (!destroy_) {
         std::shared_ptr<TcpConnection> out_conn = nullptr;
-        if (!in_check_queue_->pop(&out_conn) || out_conn == nullptr) {
+        if (!in_check_queue_ || !in_check_queue_->pop(&out_conn) || out_conn == nullptr) {
             break;
         }
 
@@ -237,18 +257,22 @@ void TcpAcceptor::CheckConnectionValid() {
         auto conn = waiting_check_queue_.front();
         waiting_check_queue_.pop_front();
         conn->ShouldReconnect();
-        SETH_DEBUG("ShouldReconnect called now checked stopted conn waiting_check_queue_ size: %u", waiting_check_queue_.size());
+        SETH_DEBUG("ShouldReconnect called now checked stopted conn waiting_check_queue_ size: %u", (unsigned)waiting_check_queue_.size());
         if (conn->CheckStoped()) {
             SETH_DEBUG("checked stopted conn.");
-            out_check_queue_->push(conn);
+            if (out_check_queue_) {
+                out_check_queue_->push(conn);
+            }
         } else {
             waiting_check_queue_.push_back(conn);
         }
     }
 
-    check_conn_tick_.CutOff(
-        10000000, 
-        std::bind(&TcpAcceptor::CheckConnectionValid, this));
+    if (!destroy_) {
+        check_conn_tick_.CutOff(
+            10000000, 
+            std::bind(&TcpAcceptor::CheckConnectionValid, this));
+    }
 }
 
 void TcpAcceptor::OnWrite()
