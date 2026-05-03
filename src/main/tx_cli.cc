@@ -723,6 +723,11 @@ int main(int argc, char** argv) {
 
         // Use existing funded accounts to send initial coins to test accounts
         auto create_account_thread = [&](uint32_t thread_id, uint32_t start_idx, uint32_t end_idx) {
+            // Fix: Each thread creates its own SethSDK instance.
+            // httplib::SSLClient is NOT thread-safe — sharing one across threads
+            // causes SIGSEGV in ensure_socket_connection.
+            SethSDK thread_sdk(global_chain_node_ip, global_chain_node_http_port);
+
             // Each thread gets a unique funder (thread_id < g_prikeys.size() guaranteed)
             std::string funder_prikey = g_prikeys[thread_id];
             std::shared_ptr<security::Security> funder_sec = std::make_shared<security::Ecdsa>();
@@ -730,7 +735,7 @@ int main(int argc, char** argv) {
             std::string funder_addr = funder_sec->GetAddress();
 
             // Get initial nonce
-            int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(funder_addr));
+            int64_t nonce = thread_sdk.fetchNonce(common::Encode::HexEncode(funder_addr));
             if (nonce < 0) {
                 std::cerr << "  Thread " << thread_id << ": Failed to fetch nonce for funder "
                           <<  common::Encode::HexEncode(funder_prikey) << " : " << common::Encode::HexEncode(funder_addr) << std::endl;
