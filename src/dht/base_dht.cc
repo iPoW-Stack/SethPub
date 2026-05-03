@@ -486,20 +486,37 @@ void BaseDht::ProcessBootstrapRequest(const transport::MessagePtr& msg_ptr) {
     }
 
     msg.set_sign(sign);
+    // Bug fix: Use the public_ip/port from the bootstrap request payload,
+    // not from conn->PeerIp()/PeerPort() which may still be 0 or an ephemeral port.
+    // The bootstrap request carries the sender's advertised public_ip and public_port.
+    auto& req_public_ip = dht_msg.bootstrap_req().public_ip();
+    auto req_public_port = dht_msg.bootstrap_req().public_port();
+    
+    // Also update conn's peer info BEFORE sending, so subsequent uses are correct.
+    if (!req_public_ip.empty() && req_public_port > 0) {
+        msg_ptr->conn->SetPeerIp(req_public_ip);
+        msg_ptr->conn->SetPeerPort(req_public_port);
+    }
+
+    // Use conn's PeerIp/PeerPort (now updated) with a fallback safety check.
+    auto send_ip = msg_ptr->conn->PeerIp();
+    auto send_port = msg_ptr->conn->PeerPort();
     SETH_DEBUG("bootstrap response to: %s:%d, node: %s:%d, hash: %lu",
-        msg_ptr->conn->PeerIp().c_str(), msg_ptr->conn->PeerPort(),
-        dht_msg.bootstrap_req().public_ip().c_str(),
-        dht_msg.bootstrap_req().public_port(),
+        send_ip.c_str(), send_port,
+        req_public_ip.c_str(),
+        req_public_port,
         msg.hash64());
-    transport::TcpTransport::Instance()->Send(msg_ptr->conn->PeerIp(), msg_ptr->conn->PeerPort(), msg);
+    if (send_port == 0) {
+        SETH_WARN("bootstrap response skipped: peer port is 0 for %s", send_ip.c_str());
+        return;
+    }
+    transport::TcpTransport::Instance()->Send(send_ip, send_port, msg);
     NodePtr node = std::make_shared<Node>(
         msg.src_sharding_id(),
-        dht_msg.bootstrap_req().public_ip(),
-        dht_msg.bootstrap_req().public_port(),
+        req_public_ip,
+        req_public_port,
         dht_msg.bootstrap_req().pubkey(),
         security_->GetAddressWithPublicKey(dht_msg.bootstrap_req().pubkey()));
-    msg_ptr->conn->SetPeerIp(dht_msg.bootstrap_req().public_ip());
-    msg_ptr->conn->SetPeerPort(dht_msg.bootstrap_req().public_port());
     node->join_way = kJoinFromBootstrapReq;
     Join(node);
 }

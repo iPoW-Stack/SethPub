@@ -271,7 +271,14 @@ int TcpTransport::Send(
         const std::string& des_ip,
         uint16_t des_port,
         const transport::protobuf::Header& message) {
-    assert(des_port > 0);
+    // Bug fix: Replace assert with graceful error return.
+    // assert(des_port > 0) was crashing the node when a peer's public_port
+    // was not yet known (e.g., during bootstrap before SetPeerPort is called).
+    if (des_port == 0 || des_ip.empty()) {
+        SETH_WARN("Send skipped: invalid destination %s:%d, type=%d",
+            des_ip.c_str(), des_port, message.type());
+        return kTransportError;
+    }
     auto tmpHeader = const_cast<transport::protobuf::Header*>(&message);
     tmpHeader->set_from_public_port(common::GlobalInfo::Instance()->config_public_port());
     // assert(message.broadcast().bloomfilter_size() < 64);
