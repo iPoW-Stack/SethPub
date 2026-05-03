@@ -235,14 +235,21 @@ void KeyValueSync::ConsensusTimerMessage() {
         // assert(false);
     }
 
-    if (prev_sync_tm_ms_ + 3000lu < now_tm_ms3) {
+    if (prev_sync_tm_ms_ + 1000lu < now_tm_ms3) {
         SETH_DEBUG("SyncAllLatestBlocks triggered, prev_sync_tm_ms: %lu, now: %lu",
             prev_sync_tm_ms_, now_tm_ms3);
         SyncAllLatestBlocks();
         prev_sync_tm_ms_ = now_tm_ms3;
     }
 
-    uint64_t next_interval = (kv_ready_queue_.size() > 64) ? 100lu : 1000lu;
+    // Adaptive timer: when there's a backlog of sync items or ready messages,
+    // poll much faster (50µs) to drain them quickly. Otherwise use 1ms.
+    uint64_t next_interval = 1000lu;
+    if (kv_ready_queue_.size() > 32) {
+        next_interval = 50lu;
+    } else if (kv_ready_queue_.size() > 0) {
+        next_interval = 200lu;
+    }
     kv_tick_.CutOff(
         next_interval,
         std::bind(&KeyValueSync::ConsensusTimerMessage, this));
@@ -679,8 +686,11 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
                         continue;
                     }
 
+                    // Increased from 64 to 256: serve more blocks per pool per request
+                    // to accelerate catch-up. 256 blocks × ~500B = ~128KB per pool,
+                    // well within the 768KB packet limit.
                     for (uint64_t height = latest_sync_item.pool_latest_heights(i); 
-                            height < latest_sync_item.pool_latest_heights(i) + 64  && add_size < kSyncPacketMaxSize; ++height) {
+                            height < latest_sync_item.pool_latest_heights(i) + 256  && add_size < kSyncPacketMaxSize; ++height) {
                         view_block_ptr = hotstuff_mgr_->chain(i)->GetViewBlockWithHeight(
                             network_id, height);
                         if (!view_block_ptr || view_block_ptr->qc().sign_x().empty()) {

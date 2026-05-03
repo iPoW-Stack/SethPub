@@ -162,9 +162,9 @@ private:
     // [SYNC_OPT] Reduced from 3,000,000µs (3s) to 800,000µs (800ms).
     // This is the deduplication window: if a sync request hasn't been answered
     // within this time, it can be re-sent. 3s was far too long — a block sync
-    // round-trip should complete in <200ms on a healthy network. 800ms gives
-    // enough margin for network jitter while allowing faster retries.
-    static const uint64_t kSyncTimeoutPeriodUs = 800000lu;
+    // round-trip should complete in <200ms on a healthy network. 300ms gives
+    // enough margin for network jitter while allowing ~3 retries per second.
+    static const uint64_t kSyncTimeoutPeriodUs = 300000lu;
     static const uint32_t kEachTimerHandleCount = 64u;
     // [SYNC_OPT] Increased from 4096 to 8192: drain more ready-queue messages
     // per timer tick. With faster sync, more responses arrive per interval.
