@@ -61,6 +61,13 @@ std::shared_ptr<TcpConnection> TnetTransport::CreateConnection(
         SETH_WARN("set SO_KEEPALIVE failed, errno: %d", errno);
     }
 
+    // 3b. Enable TCP_NODELAY for low-latency consensus messages.
+    // Without this, Nagle's algorithm can buffer small consensus messages
+    // (votes, proposals) for up to 200ms, causing consensus timeouts.
+    if (!socket->SetTcpNoDelay(true)) {
+        SETH_WARN("set TCP_NODELAY failed");
+    }
+
     // 4. [Critical Fix] Set Linger option for graceful shutdown
     // l_onoff=1, l_linger=1: When close() is called, if there is data in the buffer, 
     // wait 1 second to finish sending before closing, sending FIN.

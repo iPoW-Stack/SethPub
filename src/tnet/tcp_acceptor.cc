@@ -190,6 +190,12 @@ bool TcpAcceptor::OnRead() {
         if (send_buff_size_ != 0 && !socket->SetSoSndBuf(send_buff_size_)) {
             SETH_ERROR("set send buffer size failed");
         }
+
+        // Enable TCP_NODELAY on accepted connections for low-latency consensus.
+        if (!socket->SetTcpNoDelay(true)) {
+            SETH_ERROR("set tcp nodelay failed on accepted socket");
+        }
+
         EventLoop& event_loop = GetNextEventLoop();
         auto conn = CreateTcpServerConnection(event_loop, socket);
         if (conn == nullptr) {

@@ -52,7 +52,8 @@ int TcpTransport::Init(
         true,
         10 * 1024 * 1024,
         10 * 1024 * 1024,
-        1,
+        4,  // Fix: Use 4 IO threads instead of 1 to avoid single-thread bottleneck.
+            // With 1 thread, any slow packet_handler call blocks ALL connections.
         packet_handler,
         &encoder_factory_);
     if (!transport_->Init()) {
@@ -151,22 +152,16 @@ bool TcpTransport::OnClientPacket(std::shared_ptr<tnet::TcpConnection> conn, tne
         if (conn->is_client()) {
             conn->Destroy(true);
         }
-        
-//         if (!conn->PeerIp().empty() && conn->PeerPort() != 0) {
-//             CreateDropNodeMessage(conn->PeerIp(), conn->PeerPort());
-//         }
 
         packet.Free();
         SETH_DEBUG("message coming failed 2 type: %d", packet.PacketType());
         return false;
     }
 
-    for (uint32_t i = 0; i < common::kMaxThreadCount; ++i) {
-        MessagePtr msg_ptr;
-        while (local_messages_[i].pop(&msg_ptr)) {
-            msg_handler_->HandleMessage(msg_ptr);
-        }
-    }
+    // Fix: Moved local message processing out of the IO thread hot path.
+    // Processing all local messages here blocks the IO thread from handling
+    // network events, causing consensus message delays. Local messages are
+    // now drained in the Output thread instead.
 
     // network message must free memory
     tnet::MsgPacket* msg_packet = dynamic_cast<tnet::MsgPacket*>(&packet);
@@ -329,6 +324,15 @@ void TcpTransport::Output() {
     uint16_t last_port = 0;
     std::shared_ptr<tnet::TcpConnection> last_conn = nullptr;
     while (!destroy_) {
+        // Drain local messages first (moved from OnClientPacket to avoid
+        // blocking the IO thread).
+        for (uint32_t i = 0; i < common::kMaxThreadCount; ++i) {
+            MessagePtr msg_ptr;
+            while (local_messages_[i].pop(&msg_ptr)) {
+                msg_handler_->HandleMessage(msg_ptr);
+            }
+        }
+
         while (true) {
             std::shared_ptr<tnet::TcpConnection> conn = nullptr;
             from_client_conn_queues_.pop(&conn);
@@ -346,6 +350,16 @@ void TcpTransport::Output() {
                 output_queues_[i].pop(&item_ptr);
                 if (item_ptr == nullptr) {
                     break;
+                }
+
+                // Fix: Validate cached connection before reuse.
+                // The old code cached last_conn but never checked if it was
+                // still alive. A destroyed connection would be reused, causing
+                // Send failures and wasted retry cycles.
+                if (last_conn != nullptr && last_ip == item_ptr->des_ip && last_port == item_ptr->port) {
+                    if (last_conn->GetTcpState() == tnet::TcpConnection::kTcpClosed) {
+                        last_conn = nullptr;
+                    }
                 }
 
                 int32_t try_times = 0;
@@ -371,12 +385,16 @@ void TcpTransport::Output() {
                     if (res != 0) {
                         TRANSPORT_ERROR("send to tcp connection failed[%s][%d][hash64: %llu] res: %d",
                             item_ptr->des_ip.c_str(), item_ptr->port, 0, res);
-                        if (res <= 0) {
+                        if (res < 0) {
+                            // Fatal error (bad state, socket null, write error)
                             tcp_conn->Destroy(true);
-                            last_conn = nullptr; // Clear cache on destroy
+                            last_conn = nullptr;
+                        } else {
+                            // res == 1: buffer full, don't destroy, just skip
+                            // The connection may recover once OnWrite drains buffers
+                            last_conn = nullptr;
                         }
                         
-                        // Avoid busy loop on immediate retry
                         std::this_thread::yield();
                         continue;
                     }
@@ -389,11 +407,6 @@ void TcpTransport::Output() {
                     }
                     break;
                 }
-
-                // if (item_ptr->msg.size() > 100000) {
-                //     SETH_DEBUG("send message %s:%u, hash64: %lu, size: %u",
-                //         item_ptr->des_ip.c_str(), item_ptr->port, item_ptr->hash64, item_ptr->msg.size());
-                // }
             }
         }
 
@@ -415,31 +428,31 @@ std::shared_ptr<tnet::TcpConnection> TcpTransport::GetConnection(
 
     std::string peer_spec = ip + ":" + std::to_string(port);
 
+    // Fix: Check from_conn_map_ (server-side accepted connections) first.
+    // Only remove if truly dead (kTcpClosed), not just because timeout fired.
     {
         auto from_iter = from_conn_map_.find(peer_spec);
         if (from_iter != from_conn_map_.end()) {
-            if (!from_iter->second->ShouldReconnect()) {
-                SETH_DEBUG("use exists client connect (from_map) %s:%d", ip.c_str(), port);
+            auto state = from_iter->second->GetTcpState();
+            if (state == tnet::TcpConnection::kTcpConnected) {
                 return from_iter->second;
             }
-            
-            if (from_iter->second->CheckStoped()) {
-                from_conn_map_.erase(from_iter);
-            }
+            // Connection is closed or in bad state, remove it
+            from_conn_map_.erase(from_iter);
         }
     }
 
+    // Fix: Same for client-side connections.
     {
         auto iter = conn_map_.find(peer_spec);
         if (iter != conn_map_.end()) {
-            if (!iter->second->ShouldReconnect()) {
-                SETH_DEBUG("use exists client connect (conn_map) %s:%d", ip.c_str(), port);
+            auto state = iter->second->GetTcpState();
+            if (state == tnet::TcpConnection::kTcpConnected || 
+                state == tnet::TcpConnection::kTcpConnecting) {
                 return iter->second;
             }
-
-            if (iter->second->CheckStoped()) {
-                conn_map_.erase(iter);
-            }
+            // Dead connection, clean up
+            conn_map_.erase(iter);
         }
     }
 

@@ -148,11 +148,18 @@ public:
             return true;
         }
         
-        auto now_tm_ms = common::TimeUtils::TimestampMs();
-        if (now_tm_ms >= create_timestamp_ms_ + kConnectTimeoutMs) {
-            SETH_DEBUG("should remove connect timeout.");
-            ShouldStop();
-            return true;
+        // Fix: Only timeout connections that are still in kTcpConnecting state.
+        // Connected connections should NOT be timed out based on create_timestamp_ms_,
+        // because create_timestamp_ms_ is only updated on OnRead. If the remote side
+        // is slow to respond (normal in consensus), the connection gets killed.
+        // For connected sockets, rely on TCP keepalive and IO errors instead.
+        if (GetTcpState() == tnet::TcpConnection::kTcpConnecting) {
+            auto now_tm_ms = common::TimeUtils::TimestampMs();
+            if (now_tm_ms >= create_timestamp_ms_ + kConnectTimeoutMs) {
+                SETH_DEBUG("should remove connect timeout (still connecting).");
+                ShouldStop();
+                return true;
+            }
         }
 
         if (GetTcpState() == tnet::TcpConnection::kTcpClosed) {

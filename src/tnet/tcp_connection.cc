@@ -133,6 +133,10 @@ int TcpConnection::SendPacketWithoutLock(Packet& packet) {
             max_count_ = out_buffer_list_.size();
         }
 
+        // Fix: Wake up the event loop so OnWrite gets called when the socket
+        // becomes writable. Without this, buffered data sits in out_buffer_list_
+        // until the next epoll cycle happens to fire, causing message delays.
+        event_loop_.Wakeup();
         return 0;
     }
 
