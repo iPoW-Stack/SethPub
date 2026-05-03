@@ -8,6 +8,7 @@
 #include "consensus/hotstuff/view_block_chain.h"
 #include "consensus/hotstuff/types.h"
 #include "protos/block.pb.h"
+#include "protos/pools.pb.h"
 #include "security/ecdsa/ecdsa.h"
 #include "security/ecdsa/secp256k1.h"
 
@@ -787,6 +788,31 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
         commited_view_.insert(tmp_block->qc().view());
         if (commited_view_.size() >= 102400u) {
             commited_view_.erase(commited_view_.begin());
+        }
+
+        // Fix: Persist pool_latest_info on every block commit so that on restart,
+        // the pacemaker initializes with the correct view instead of a stale one.
+        // Previously, SaveLatestPoolInfo was only called during genesis/initial sync,
+        // so after restart pool_latest_info.view() was 0 or very old, causing
+        // "propose view not match leader view" errors on all pools.
+        {
+            pools::protobuf::PoolLatestInfo pool_info;
+            pool_info.set_height(tmp_block->block_info().height());
+            pool_info.set_hash(tmp_block->qc().view_block_hash());
+            pool_info.set_timestamp(tmp_block->block_info().timestamp());
+            pool_info.set_view(tmp_block->qc().view());
+            db::DbWriteBatch pool_info_batch;
+            prefix_db_->SaveLatestPoolInfo(
+                tmp_block->qc().network_id(),
+                tmp_block->qc().pool_index(),
+                pool_info,
+                pool_info_batch);
+            if (!db_->Put(pool_info_batch).ok()) {
+                SETH_ERROR("failed to persist pool_latest_info for %u_%u_%lu",
+                    tmp_block->qc().network_id(),
+                    tmp_block->qc().pool_index(),
+                    tmp_block->qc().view());
+            }
         }
 
 // #ifndef NDEBUG

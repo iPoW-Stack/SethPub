@@ -85,10 +85,17 @@ void Hotstuff::StartInit() {
     if (high_view_block) {
         auto qc_item_ptr = std::make_shared<view_block::protobuf::QcItem>(high_view_block->qc());
         UpdateLatestQcItemPtr(qc_item_ptr);
-        SETH_DEBUG("pool: %d, high view block view: %lu, high view block hash: %s",
+        // Fix: After recovering high_view_block from DB, update the pacemaker's
+        // cur_view_ to match. The pacemaker was initialized earlier from
+        // pool_latest_info.view() which may be stale. Without this, the node
+        // starts with cur_view_=0 while the network is at view 100+.
+        pacemaker_->NewQcView(high_view_block->qc().view());
+        SETH_DEBUG("pool: %d, high view block view: %lu, high view block hash: %s, "
+            "pacemaker updated to view: %lu",
             pool_idx_,
             high_view_block->qc().view(),
-            common::Encode::HexEncode(high_view_block->qc().view_block_hash()).c_str());
+            common::Encode::HexEncode(high_view_block->qc().view_block_hash()).c_str(),
+            high_view_block->qc().view());
     }
 
     auto tmp_msg_ptr = std::make_shared<transport::TransportMessage>();
