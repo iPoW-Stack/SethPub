@@ -1728,6 +1728,8 @@ public:
         memcpy(data + sizeof(latest_qc_view), val.data(), val.size());
         std::string value(data, sizeof(data));
         auto st = db_->Put(key, value);
+        SETH_DEBUG("success SaveLatestLeaderProposeMessage network: %u, pool: %u, view: %lu, latest_qc_view: %lu",
+            sharding_id, pool_index, view_item.qc().view(), latest_qc_view);
         return st.ok();
     }
 
@@ -1749,6 +1751,8 @@ public:
         
         uint64_t* udata = (uint64_t*)data.c_str();
         *latest_qc_view = udata[0];
+        SETH_DEBUG("success GetLatestLeaderProposeMessage network: %u, pool: %u, latest_qc_view: %lu",
+            sharding_id, pool_index, *latest_qc_view);
         return msg->ParseFromArray(data.data() + sizeof(*latest_qc_view), data.size() - sizeof(*latest_qc_view));
     }
 
