@@ -1085,7 +1085,7 @@ int main(int argc, char** argv) {
                         while (!global_stop) {
                             usleep(2000000);  // 2s
                             // Try a simple nonce fetch as connectivity probe
-                            thread_sdk.resetClient();
+                            thread_sdk = SethSDK(global_chain_node_ip, global_chain_node_http_port);
                             int64_t probe_nonce = thread_sdk.fetchNonce(
                                 common::Encode::HexEncode(from_addr));
                             if (probe_nonce >= 0) {
