@@ -2216,6 +2216,22 @@ Status Hotstuff::ConstructViewBlock(
     qc->set_network_id(common::GlobalInfo::Instance()->network_id());
     qc->set_pool_index(pool_idx_);
     view_block->set_parent_hash(pre_v_block->qc().view_block_hash());
+    // If HighViewBlock has no block_info (e.g., TC timeout placeholder after
+    // restart), fall back to LatestCommittedBlock as the parent for height
+    // calculation. Otherwise Wrap() would set height = 0+1 = 1, which is
+    // rejected by all voters that have already committed higher blocks.
+    if (!pre_v_block->has_block_info() || pre_v_block->block_info().height() == 0) {
+        auto committed = view_block_chain_->LatestCommittedBlock();
+        if (committed && committed->has_block_info() && 
+                committed->block_info().height() > 0) {
+            SETH_WARN("pool: %d, HighViewBlock has no valid block_info (view: %lu), "
+                "falling back to LatestCommittedBlock (height: %lu) for propose",
+                pool_idx_, pre_v_block->qc().view(), 
+                committed->block_info().height());
+            pre_v_block = committed;
+            view_block->set_parent_hash(pre_v_block->qc().view_block_hash());
+        }
+    }
     SETH_DEBUG("get prev block hash: %s, height: %lu, leader->index: %d", 
         common::Encode::HexEncode(view_block->parent_hash()).c_str(), 
         pre_v_block->block_info().height(), leader->index);
