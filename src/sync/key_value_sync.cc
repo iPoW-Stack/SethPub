@@ -1011,7 +1011,10 @@ void KeyValueSync::SyncAllLatestBlocks() {
             auto latest_height_iter = pool_iter->second.find(latest_height);
             if (latest_height_iter != pool_iter->second.end()) {
                 auto now_size = pool_iter->second.size();
-                pool_iter->second.erase(pool_iter->second.begin(), latest_height_iter);
+                // Fix: erase up to AND INCLUDING latest_height (it's already committed).
+                // Old code used erase(begin, iter) which excludes iter itself,
+                // leaving committed heights in the map → peer re-sends them.
+                pool_iter->second.erase(pool_iter->second.begin(), std::next(latest_height_iter));
                 if (network_id != network::kRootCongressNetworkId) {
                     not_root_synced_res_map_count_ -= now_size - pool_iter->second.size();
                 }
@@ -1076,7 +1079,8 @@ void KeyValueSync::SyncAllLatestBlocks() {
         auto latest_height_iter = pool_iter->second.find(latest_height);
         if (latest_height_iter != pool_iter->second.end()) {
             auto now_size = pool_iter->second.size();
-            pool_iter->second.erase(pool_iter->second.begin(), latest_height_iter);
+            // Same fix: include latest_height in erase range
+            pool_iter->second.erase(pool_iter->second.begin(), std::next(latest_height_iter));
             if (network_id != network::kRootCongressNetworkId) {
                 not_root_synced_res_map_count_ -= now_size - pool_iter->second.size();
             }
