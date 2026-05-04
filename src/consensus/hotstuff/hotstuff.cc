@@ -81,6 +81,7 @@ void Hotstuff::StartInit() {
         SETH_DEBUG("now init cross consensus shard: %u end.", network_id);
     }
 
+    view_block_chain_->RecoverHighViewBlock();
     auto high_view_block = view_block_chain_->HighViewBlock();
     if (high_view_block) {
         // Only update pacemaker's cur_view_ from HighViewBlock, do NOT update
