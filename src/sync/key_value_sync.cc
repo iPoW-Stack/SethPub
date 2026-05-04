@@ -993,33 +993,20 @@ void KeyValueSync::SyncAllLatestBlocks() {
                 }
             }
 
-            // Fix: For active committee members, avoid syncing blocks that
-            // consensus is about to produce. The look-ahead is based on
-            // committed_height (not high_view_block) because blocks between
-            // committed and high_view are still in the consensus pipeline
-            // and will be committed automatically — no sync needed for those.
-            // We add +2 to committed_height to also skip the block currently
-            // being proposed and the next one in the pipeline.
+            // Fix: For active committee members, use committed_height as the
+            // baseline instead of tx_pool latest_height. Blocks up to
+            // committed_height are already handled — no need to sync them.
+            // We do NOT add any look-ahead beyond committed_height because
+            // that can cause ChainIsFull() to fail (tx_pool needs continuous
+            // heights). If sync fetches a block that consensus also produces,
+            // the duplicate is harmlessly discarded.
             if (network::IsSameToLocalShard(network_id) && hotstuff_mgr_) {
                 auto chain = hotstuff_mgr_->chain(i);
-                auto hs = hotstuff_mgr_->hotstuff(i);
-                if (chain && hs) {
-                    // Always check LatestCommittedBlock — it may be ahead of
-                    // tx_pool latest_height regardless of membership.
+                if (chain) {
                     auto committed_vb = chain->LatestCommittedBlock();
                     if (committed_vb && committed_vb->has_block_info() &&
                             committed_vb->block_info().height() > latest_height) {
                         latest_height = committed_vb->block_info().height();
-                    }
-                    // For active members, also skip the next 2 blocks after
-                    // committed height — they are in the consensus pipeline
-                    // (proposed/voted but not yet committed).
-                    bool is_member = hs->IsLocalMember();
-                    if (is_member && committed_vb && committed_vb->has_block_info()) {
-                        auto committed_h = committed_vb->block_info().height();
-                        if (committed_h + 2 > latest_height) {
-                            latest_height = committed_h + 2;
-                        }
                     }
                 }
             }

@@ -193,6 +193,14 @@ public:
         }
 
         if (!high_view_block_->has_block_info()) {
+            // High view block may lack block_info if it was created from a TC
+            // (timeout). Fall back to LatestCommittedBlock for the check.
+            auto latest_committed_block = LatestCommittedBlock();
+            if (latest_committed_block && latest_committed_block->has_block_info()) {
+                return pools_mgr_->PoolChainIsFull(
+                    pool_index_, 
+                    latest_committed_block->block_info().height());
+            }
             SETH_DEBUG("pool: %d, check pool chain is full failed, high view block has no block info, view: %lu", 
                 pool_index_, high_view_block_->qc().view());
             return false;
