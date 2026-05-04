@@ -107,8 +107,16 @@ void Hotstuff::StartInit() {
             &header, 
             &tmp_msg_ptr->latest_qc_view)) {
         latest_leader_propose_message_ = tmp_msg_ptr;
-        SETH_DEBUG("init load pool: %d, set latest_leader_propose_message_ = value, view: %lu", 
-            pool_idx_, tmp_msg_ptr->header.hotstuff().pro_msg().view_item().qc().view());
+        // Restore leader_view_block_hash_ from the saved message so that
+        // ResendLeaderLatestProposeMessage sends the correct hash.
+        auto& saved_vb_hash = header.hotstuff().pro_msg().view_item().qc().view_block_hash();
+        if (!saved_vb_hash.empty()) {
+            leader_view_block_hash_ = saved_vb_hash;
+        }
+        SETH_DEBUG("init load pool: %d, set latest_leader_propose_message_ = value, view: %lu, "
+            "view_block_hash: %s", 
+            pool_idx_, tmp_msg_ptr->header.hotstuff().pro_msg().view_item().qc().view(),
+            common::Encode::HexEncode(saved_vb_hash).c_str());
     }
 
     SETH_DEBUG("success start init network: %d, pool index: %d, root_view_block_chain_: %d", 
@@ -822,6 +830,21 @@ view_matched:
     leader_view_block_hash_ = "";
     if (msg_ptr->is_leader) {
         leader_view_block_hash_ = pro_msg_wrap->view_block_ptr->qc().view_block_hash();
+        // Re-save the propose message with the actual view_block_hash.
+        // When the propose was first saved (in Propose()), view_block_hash
+        // was empty because tx execution hadn't happened yet. Now that we've
+        // executed txs and generated the hash, update the persisted message
+        // so that after a restart, ResendLeaderLatestProposeMessage sends
+        // the correct view_block_hash that matches other nodes' votes.
+        if (latest_leader_propose_message_ && !leader_view_block_hash_.empty()) {
+            auto* saved_qc = latest_leader_propose_message_->header
+                .mutable_hotstuff()->mutable_pro_msg()
+                ->mutable_view_item()->mutable_qc();
+            saved_qc->set_view_block_hash(leader_view_block_hash_);
+            prefix_db_->SaveLatestLeaderProposeMessage(
+                latest_leader_propose_message_->header,
+                latest_leader_propose_message_->latest_qc_view);
+        }
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
