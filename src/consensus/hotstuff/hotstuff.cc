@@ -1941,11 +1941,11 @@ Status Hotstuff::VerifyViewBlock(
                 prefix_db_,
                 v_block.qc().network_id(),
                 v_block.qc().pool_index(),
-                high_height + 1)) {
+                local_high_height + 1)) {
             kv_sync_->AddSyncHeight(
                 v_block.qc().network_id(),
                 v_block.qc().pool_index(),
-                high_height + 1,
+                local_high_height + 1,
                 0);
         }
         return Status::kError;
