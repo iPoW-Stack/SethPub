@@ -993,6 +993,20 @@ void KeyValueSync::SyncAllLatestBlocks() {
                 }
             }
 
+            // Fix: Also consider the high_view_block height from consensus.
+            // Blocks that are in consensus (proposed but not yet committed) have
+            // a higher height than latest_height. Without this check, sync
+            // requests blocks that consensus already has, wasting bandwidth.
+            if (network::IsSameToLocalShard(network_id) && hotstuff_mgr_) {
+                auto chain = hotstuff_mgr_->chain(i);
+                if (chain) {
+                    auto high_vb = chain->HighViewBlock();
+                    if (high_vb && high_vb->block_info().height() > latest_height) {
+                        latest_height = high_vb->block_info().height();
+                    }
+                }
+            }
+
             auto iter = synced_res_map_.find(network_id);
             if (iter == synced_res_map_.end()) {
                 add_sync_item(network_id, i, latest_height + 1, false);
