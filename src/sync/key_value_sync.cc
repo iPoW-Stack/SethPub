@@ -997,12 +997,25 @@ void KeyValueSync::SyncAllLatestBlocks() {
             // Blocks that are in consensus (proposed but not yet committed) have
             // a higher height than latest_height. Without this check, sync
             // requests blocks that consensus already has, wasting bandwidth.
+            // We check both HighViewBlock and LatestCommittedBlock to cover the
+            // window between propose and commit. If consensus is actively producing
+            // blocks (high_view > committed), all heights up to high_view are
+            // being handled by consensus and don't need syncing.
             if (network::IsSameToLocalShard(network_id) && hotstuff_mgr_) {
                 auto chain = hotstuff_mgr_->chain(i);
                 if (chain) {
                     auto high_vb = chain->HighViewBlock();
-                    if (high_vb && high_vb->block_info().height() > latest_height) {
+                    if (high_vb && high_vb->has_block_info() && 
+                            high_vb->block_info().height() > latest_height) {
                         latest_height = high_vb->block_info().height();
+                    }
+                    // Also check LatestCommittedBlock — it may be ahead of
+                    // tx_pool latest_height if the tx pool hasn't processed
+                    // the committed block yet.
+                    auto committed_vb = chain->LatestCommittedBlock();
+                    if (committed_vb && committed_vb->has_block_info() &&
+                            committed_vb->block_info().height() > latest_height) {
+                        latest_height = committed_vb->block_info().height();
                     }
                 }
             }

@@ -2409,11 +2409,28 @@ void Hotstuff::TryRecoverFromStuck(
         prev_sync_latest_view_tm_ms_ = now_tm_ms;
         auto hight_view_block = view_block_chain_->HighViewBlock();
         if (hight_view_block) {
-            kv_sync_->AddSyncView(
-                hight_view_block->qc().network_id(), 
-                hight_view_block->qc().pool_index(), 
-                hight_view_block->qc().view() + 1,
-                sync::kSyncHighest);
+            // Only sync the next view if consensus is not actively producing blocks.
+            // If the gap between high_view and latest_committed is small (<=3),
+            // consensus is healthy and will produce the next block itself — no need
+            // to waste bandwidth syncing it from peers.
+            auto committed_block = view_block_chain_->LatestCommittedBlock();
+            bool consensus_active = false;
+            if (committed_block && committed_block->has_block_info() &&
+                    hight_view_block->has_block_info()) {
+                auto gap = hight_view_block->block_info().height() - 
+                           committed_block->block_info().height();
+                // gap <= 3 means consensus is progressing normally (propose/prevote/commit pipeline)
+                if (gap <= 3) {
+                    consensus_active = true;
+                }
+            }
+            if (!consensus_active) {
+                kv_sync_->AddSyncView(
+                    hight_view_block->qc().network_id(), 
+                    hight_view_block->qc().pool_index(), 
+                    hight_view_block->qc().view() + 1,
+                    sync::kSyncHighest);
+            }
         }
     // } else {
         // if (!has_user_tx_tag_ && !has_system_tx) {
