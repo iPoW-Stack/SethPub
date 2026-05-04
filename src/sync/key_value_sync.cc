@@ -235,7 +235,7 @@ void KeyValueSync::ConsensusTimerMessage() {
         // assert(false);
     }
 
-    if (prev_sync_tm_ms_ + 1000lu < now_tm_ms3) {
+    if (prev_sync_tm_ms_ + 500lu < now_tm_ms3) {
         SETH_DEBUG("SyncAllLatestBlocks triggered, prev_sync_tm_ms: %lu, now: %lu",
             prev_sync_tm_ms_, now_tm_ms3);
         SyncAllLatestBlocks();
@@ -1036,6 +1036,20 @@ void KeyValueSync::SyncAllLatestBlocks() {
                 height_iter = pool_iter->second.find(++latest_height);
             }
 
+            // Fix: Skip past ALL heights already in synced_res_map_, not just
+            // consecutive ones from latest_height. The map may have gaps (e.g.,
+            // heights 68,69 present but 70 missing). We need to request from
+            // the first truly missing height, not from the first gap.
+            // Also skip heights that were already committed to avoid re-requesting
+            // blocks that are in transit (pushed to vblock_queues_ but not yet
+            // committed, so latest_height hasn't advanced yet).
+            if (!pool_iter->second.empty()) {
+                auto max_synced = pool_iter->second.rbegin()->first;
+                if (max_synced >= latest_height) {
+                    latest_height = max_synced + 1;
+                }
+            }
+
             add_sync_item(network_id, i, latest_height, false);
         }
     }
@@ -1088,6 +1102,14 @@ void KeyValueSync::SyncAllLatestBlocks() {
             height_iter = pool_iter->second.find(++latest_height);
         }
 
+        // Same fix as above: skip past all heights already in synced_res_map_
+        if (!pool_iter->second.empty()) {
+            auto max_synced = pool_iter->second.rbegin()->first;
+            if (max_synced >= latest_height) {
+                latest_height = max_synced + 1;
+            }
+        }
+
         add_sync_item(network_id, common::kGlobalPoolIndex, latest_height, true);
     }
 
@@ -1095,21 +1117,18 @@ void KeyValueSync::SyncAllLatestBlocks() {
     std::set<uint64_t> sended_neigbors;
     uint32_t sent_count = 0;
     for (auto iter = sync_dht_map.begin(); iter != sync_dht_map.end(); ++iter) {
-        // Send to multiple peers in parallel for faster catch-up.
-        // The old code sent each network's request to just 1 peer, bottlenecked
-        // by that single peer's response size (768KB). By sending to 3 peers,
-        // we get 3x the data per round (each peer returns different blocks
-        // since they all have the same chain but the response is capped by size).
-        uint32_t peers_per_net = 3;
-        for (uint32_t p = 0; p < peers_per_net; ++p) {
-            uint64_t choose_node = SendSyncRequest(
-                iter->first,
-                iter->second,
-                sended_neigbors);
-            if (choose_node != 0) {
-                sended_neigbors.insert(choose_node);
-                ++sent_count;
-            }
+        // Send to 1 peer per network. The latest_sync_item already covers all 33 pools
+        // in a single request, and the peer returns up to 256 blocks per pool (capped
+        // by 768KB packet size). Sending the same request to multiple peers wastes
+        // bandwidth since they all return the same block range.
+        // SyncAllLatestBlocks runs every 1s, so throughput = 768KB/s per network.
+        uint64_t choose_node = SendSyncRequest(
+            iter->first,
+            iter->second,
+            sended_neigbors);
+        if (choose_node != 0) {
+            sended_neigbors.insert(choose_node);
+            ++sent_count;
         }
     }
     SETH_DEBUG("SyncAllLatestBlocks done: sync_dht_map size=%lu, sent=%u, "
