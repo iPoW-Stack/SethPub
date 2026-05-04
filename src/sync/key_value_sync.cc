@@ -100,12 +100,12 @@ void KeyValueSync::HotstuffConsensusTimerMessage(const transport::MessagePtr& ms
     // SETH_DEBUG("now call ConsensusTimerMessage thread_idx: %d", thread_idx);
     while (vblock_queues_[thread_idx].pop(&pb_vblock)) {
         if (pb_vblock) {
-            SETH_DEBUG("hotstuff consensus timer message handle view block: %u_%u_%lu_%lu, timeblock_height: %lu",
-                pb_vblock->qc().network_id(), 
-                pb_vblock->qc().pool_index(), 
-                pb_vblock->block_info().height(),
-                pb_vblock->qc().view(), 
-                pb_vblock->block_info().timeblock_height());
+            // SETH_DEBUG("hotstuff consensus timer message handle view block: %u_%u_%lu_%lu, timeblock_height: %lu",
+            //     pb_vblock->qc().network_id(), 
+            //     pb_vblock->qc().pool_index(), 
+            //     pb_vblock->block_info().height(),
+            //     pb_vblock->qc().view(), 
+            //     pb_vblock->block_info().timeblock_height());
             if (!network::IsSameShardOrSameWaitingPool(
                     network::kRootCongressNetworkId, 
                     pb_vblock->qc().network_id()) && 
