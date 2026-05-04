@@ -250,27 +250,39 @@ Status BlockAcceptor::Accept(
         return s;
     }
 
-    for (auto iter = balance_and_nonce_map.begin(); iter != balance_and_nonce_map.end(); ++iter) {
-        if (!iter->second->has_balance() || !iter->second->has_nonce() || !iter->second->has_sharding_id() || 
-                !iter->second->has_pool_index() || !iter->second->has_addr() || !iter->second->has_type() ||
-                !iter->second->has_latest_height()) {
+    // Sort by address key to ensure deterministic order in address_array.
+    // unordered_map iteration order varies across runs (different hash table
+    // layouts after restart), which would produce different block hashes for
+    // the same set of transactions.
+    std::vector<std::pair<std::string, std::shared_ptr<address::protobuf::AddressInfo>>> sorted_balance;
+    sorted_balance.reserve(balance_and_nonce_map.size());
+    for (auto& kv : balance_and_nonce_map) {
+        sorted_balance.emplace_back(kv.first, kv.second);
+    }
+    std::sort(sorted_balance.begin(), sorted_balance.end(),
+        [](const auto& a, const auto& b) { return a.first < b.first; });
+
+    for (auto& [addr_key, addr_ptr] : sorted_balance) {
+        if (!addr_ptr->has_balance() || !addr_ptr->has_nonce() || !addr_ptr->has_sharding_id() || 
+                !addr_ptr->has_pool_index() || !addr_ptr->has_addr() || !addr_ptr->has_type() ||
+                !addr_ptr->has_latest_height()) {
             SETH_WARN("invalid addr, %u_%u_%lu_%lu, success addr info: %s", 
                 view_block.qc().network_id(),
                 view_block.qc().pool_index(),
                 view_block.block_info().height(),
                 view_block.qc().view(),
-                common::Encode::HexEncode(iter->second->addr()).c_str());
+                common::Encode::HexEncode(addr_ptr->addr()).c_str());
             continue;
         }
 
-        if (iter->first.size() != common::kUnicastAddressLength && 
-                iter->first.size() != common::kPreypamentAddressLength) {
+        if (addr_key.size() != common::kUnicastAddressLength && 
+                addr_key.size() != common::kPreypamentAddressLength) {
             assert(false);
             continue;
         }
 
         auto* addr_info = view_block.mutable_block_info()->add_address_array();
-        *addr_info = *iter->second;
+        *addr_info = *addr_ptr;
         SETH_DEBUG("%u_%u_%lu_%lu, success addr info: %s, balance: %lu, nonce: %lu, destrcuted: %d", 
             view_block.qc().network_id(),
             view_block.qc().pool_index(),
