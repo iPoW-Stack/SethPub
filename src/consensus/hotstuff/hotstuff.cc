@@ -2409,17 +2409,19 @@ void Hotstuff::TryRecoverFromStuck(
         prev_sync_latest_view_tm_ms_ = now_tm_ms;
         auto hight_view_block = view_block_chain_->HighViewBlock();
         if (hight_view_block) {
-            // Only sync the next view if consensus is not actively producing blocks.
-            // If the gap between high_view and latest_committed is small (<=3),
-            // consensus is healthy and will produce the next block itself — no need
-            // to waste bandwidth syncing it from peers.
+            // Only skip sync if this node is an active consensus member AND
+            // consensus is progressing normally. If the node is not a committee
+            // member (GetLocalMemberIdx() == kInvalidUint32), it cannot vote
+            // and must rely on sync to get new blocks.
             auto committed_block = view_block_chain_->LatestCommittedBlock();
             bool consensus_active = false;
-            if (committed_block && committed_block->has_block_info() &&
+            auto local_member_idx = GetLocalMemberIdx();
+            if (local_member_idx != common::kInvalidUint32 &&
+                    committed_block && committed_block->has_block_info() &&
                     hight_view_block->has_block_info()) {
                 auto gap = hight_view_block->block_info().height() - 
                            committed_block->block_info().height();
-                // gap <= 3 means consensus is progressing normally (propose/prevote/commit pipeline)
+                // gap <= 3 means consensus pipeline is healthy (propose/prevote/commit)
                 if (gap <= 3) {
                     consensus_active = true;
                 }
