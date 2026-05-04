@@ -81,7 +81,6 @@ void Hotstuff::StartInit() {
         SETH_DEBUG("now init cross consensus shard: %u end.", network_id);
     }
 
-    view_block_chain_->RecoverHighViewBlock();
     auto high_view_block = view_block_chain_->HighViewBlock();
     if (high_view_block) {
         // Only update pacemaker's cur_view_ from HighViewBlock, do NOT update
@@ -412,28 +411,36 @@ Status Hotstuff::Propose(
             pool_idx_, hotstuff_msg->pro_msg().view_item().qc().view());
         return s;
     }
-
-    // latest_leader_propose_message_ = nullptr;
-    // if (tmp_msg_ptr->header.hotstuff().pro_msg().has_view_item()) {
-        latest_leader_propose_message_ = tmp_msg_ptr;
-        latest_leader_propose_message_->latest_qc_view = latest_qc_item_ptr_->view();
-        uint64_t tm = 0;
-        if (view_with_block_tm_map_.Get(pb_pro_msg->view_item().qc().view(), tm)) {
-            pb_pro_msg->mutable_view_item()->mutable_block_info()->set_timestamp(tm);
-        } else {
-            view_with_block_tm_map_.Put(
-                pb_pro_msg->view_item().qc().view(), 
-                pb_pro_msg->view_item().block_info().timestamp());
-        }
-
-        SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = value", pool_idx_);
-        SETH_DEBUG("set latest_leader_propose_message_, view: %lu, block tm: %lu", 
+    
+    latest_leader_propose_message_ = tmp_msg_ptr;
+    latest_leader_propose_message_->latest_qc_view = latest_qc_item_ptr_->view();
+    uint64_t tm = 0;
+    if (view_with_block_tm_map_.Get(pb_pro_msg->view_item().qc().view(), tm)) {
+        pb_pro_msg->mutable_view_item()->mutable_block_info()->set_timestamp(tm);
+    } else {
+        view_with_block_tm_map_.Put(
             pb_pro_msg->view_item().qc().view(), 
             pb_pro_msg->view_item().block_info().timestamp());
+    }
+
+    SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = value", pool_idx_);
+    SETH_DEBUG("set latest_leader_propose_message_, view: %lu, block tm: %lu", 
+        pb_pro_msg->view_item().qc().view(), 
+        pb_pro_msg->view_item().block_info().timestamp());
+    
+
+    if (msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size() == 0) {
+        auto latest_view_block_ptr = view_block_chain()->HighViewBlock();
+        if (latest_view_block_ptr->block_info().tx_list_size() == 0) {
+            latest_leader_propose_message_ = nullptr;
+        }
+    }
+
+    if (latest_leader_propose_message_) {
         prefix_db_->SaveLatestLeaderProposeMessage(
             latest_leader_propose_message_->header, 
             latest_leader_propose_message_->latest_qc_view);
-    // }
+    }
 
 #ifndef NDEBUG
     auto t6 = common::TimeUtils::TimestampMs();

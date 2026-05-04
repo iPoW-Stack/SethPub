@@ -39,7 +39,7 @@ void ViewBlockChain::Init(
     new_block_cache_callback_ = new_block_cache_callback;
     prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
     // Recover high_view_block_ from DB if it was persisted before restart
-    // RecoverHighViewBlock();
+    RecoverHighViewBlock();
 }
 
 ViewBlockChain::~ViewBlockChain(){}
@@ -1407,11 +1407,14 @@ int ViewBlockChain::CheckTxNonceValid(
 
 void ViewBlockChain::RecoverHighViewBlock() {
     if (!db_ || !prefix_db_) {
+        SETH_DEBUG("db_ or prefix_db_ is null for %u", pool_index_);
+        
         return;
     }
 
     auto net_id = common::GlobalInfo::Instance()->network_id();
     if (net_id == common::kInvalidUint32) {
+        SETH_DEBUG("invalid network id for %u", pool_index_);
         return;
     }
 
@@ -1431,6 +1434,9 @@ void ViewBlockChain::RecoverHighViewBlock() {
             high_view_block_->qc().view(),
             high_view_block_->block_info().height(),
             common::Encode::HexEncode(high_view_block_->qc().view_block_hash()).c_str());
+    } else {
+        SETH_DEBUG("high_view_block_ already newer: %lu vs %lu",
+            high_view_block_->qc().view(), view_block_ptr->qc().view());
     }
 }
 
