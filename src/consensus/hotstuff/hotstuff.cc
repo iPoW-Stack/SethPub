@@ -286,6 +286,23 @@ Status Hotstuff::Propose(
         return Status::kError;
     }
 
+    // After restart, latest_leader_propose_message_ may hold a propose for
+    // the same or higher view that was already sent before the crash.
+    // Other nodes have already voted on it, so we must NOT construct a new
+    // propose for the same view (which would have different content and hash).
+    // Instead, just resend the saved message and return.
+    if (latest_leader_propose_message_) {
+        auto saved_view = latest_leader_propose_message_->header
+            .hotstuff().pro_msg().view_item().qc().view();
+        if (saved_view >= leader_view) {
+            SETH_DEBUG("pool: %d, skip new propose — saved propose view %lu >= leader_view %lu, "
+                "resending saved message instead",
+                pool_idx_, saved_view, leader_view);
+            last_leader_propose_view_ = saved_view;
+            return Status::kSuccess;
+        }
+    }
+
 #ifndef NDEBUG
     auto t2 = common::TimeUtils::TimestampMs();
 #endif
