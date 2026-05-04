@@ -1912,45 +1912,54 @@ Status Hotstuff::VerifyViewBlock(
     }
 
     if (v_block.block_info().height() != view_block_chain->HighViewBlock()->block_info().height() + 1) {
-        SETH_ERROR("%u_%u_%lu_%lu, new view block height error: %lu, last view block timestamp: %lu", 
+        auto high_height = view_block_chain->HighViewBlock()->block_info().height();
+        auto gap = v_block.block_info().height() - high_height;
+        SETH_WARN("%u_%u_%lu_%lu, new view block height gap: %lu (local: %lu, propose: %lu)", 
             common::GlobalInfo::Instance()->network_id(),
             pool_idx_,
             v_block.qc().view(),
             v_block.block_info().height(),
-            v_block.block_info().height(),
-            view_block_chain->HighViewBlock()->block_info().height());
+            gap,
+            high_height,
+            v_block.block_info().height());
+        // Trigger batch sync for the entire missing range instead of just one block.
+        // This dramatically speeds up catch-up: instead of syncing one parent at a time
+        // (each taking a full round-trip), we request all missing heights in one shot.
+        if (gap > 1 && gap < 10000) {
+            for (uint64_t h = high_height + 1; h < v_block.block_info().height(); ++h) {
+                if (!BlockHeightCommited(
+                        prefix_db_,
+                        v_block.qc().network_id(),
+                        v_block.qc().pool_index(),
+                        h)) {
+                    kv_sync_->AddSyncHeight(
+                        v_block.qc().network_id(),
+                        v_block.qc().pool_index(),
+                        h,
+                        0);
+                }
+            }
+        }
         return Status::kError;
     }
 
     // fast hotstuff condition
     auto qc_view_block_info = view_block_chain->Get(v_block.parent_hash());
     if (!qc_view_block_info) {
-        SETH_ERROR("get qc prev view block message is error: %s, sync parent view: %u_%u_%lu",
+        SETH_DEBUG("get qc prev view block message is error: %s, sync parent view: %u_%u_%lu",
             common::Encode::HexEncode(v_block.parent_hash()).c_str(),
             v_block.qc().network_id(), 
             v_block.qc().pool_index(), 
             v_block.qc().view() - 1);
-        if (view_block_chain->HighQC().view() < (v_block.qc().view() + db_stored_view_) && 
-                v_block.qc().view() > 0 && 
-                !BlockHeightCommited(
-                    prefix_db_,
-                    v_block.qc().network_id(), 
-                    v_block.qc().pool_index(), 
-                    v_block.block_info().height() - 1)) {
-            kv_sync_->AddSyncViewHash(
-                v_block.qc().network_id(), 
-                v_block.qc().pool_index(), 
-                v_block.parent_hash(),
-                0);
-        } else if (!BlockHeightCommited(
-                prefix_db_,
-                v_block.qc().network_id(), 
-                v_block.qc().pool_index(), 
-                v_block.block_info().height() - 1)) {
-            SETH_DEBUG("now add sync height 0, %u_%u_%lu", 
-                v_block.qc().network_id(), 
-                v_block.qc().pool_index(), 
-                v_block.block_info().height() - 1);
+        // Sync the parent hash
+        kv_sync_->AddSyncViewHash(
+            v_block.qc().network_id(), 
+            v_block.qc().pool_index(), 
+            v_block.parent_hash(),
+            0);
+        // Also sync by height for the immediate predecessor — hash-based sync
+        // can be slow if the block isn't in the peer's view_blocks_info_ map yet.
+        if (v_block.block_info().height() > 1) {
             kv_sync_->AddSyncHeight(
                 v_block.qc().network_id(), 
                 v_block.qc().pool_index(), 
