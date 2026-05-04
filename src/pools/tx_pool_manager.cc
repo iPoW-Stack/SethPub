@@ -542,20 +542,20 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
             }
 
             msg_ptr->address_info = address_info;
-#ifndef NDEBUG
-            auto now_tm = common::TimeUtils::TimestampMs();
-            ++prev_tps_count_;
-            uint64_t dur = 1000lu;
-            if (now_tm > prev_show_tm_ms_ + dur) {
-                SETH_DEBUG("pools stored message size: %d, pool index: %d, tx all size: %u, tps: %lu", 
-                        -1,
-                        address_info->pool_index(),
-                        tx_pool_[address_info->pool_index()].all_tx_size(),
-                        (prev_tps_count_/(dur / 1000)));
-                prev_show_tm_ms_ = now_tm;
-                prev_tps_count_ = 0;
-            }
-#endif
+// #ifndef NDEBUG
+//             auto now_tm = common::TimeUtils::TimestampMs();
+//             ++prev_tps_count_;
+//             uint64_t dur = 1000lu;
+//             if (now_tm > prev_show_tm_ms_ + dur) {
+//                 SETH_DEBUG("pools stored message size: %d, pool index: %d, tx all size: %u, tps: %lu", 
+//                         -1,
+//                         address_info->pool_index(),
+//                         tx_pool_[address_info->pool_index()].all_tx_size(),
+//                         (prev_tps_count_/(dur / 1000)));
+//                 prev_show_tm_ms_ = now_tm;
+//                 prev_tps_count_ = 0;
+//             }
+// #endif
         }
     }
 
