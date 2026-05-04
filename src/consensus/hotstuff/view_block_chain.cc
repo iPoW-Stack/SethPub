@@ -39,7 +39,7 @@ void ViewBlockChain::Init(
     new_block_cache_callback_ = new_block_cache_callback;
     prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
     // Recover high_view_block_ from DB if it was persisted before restart
-    RecoverHighViewBlock();
+    // RecoverHighViewBlock();
 }
 
 ViewBlockChain::~ViewBlockChain(){}
