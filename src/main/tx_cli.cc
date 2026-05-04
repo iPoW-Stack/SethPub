@@ -1001,7 +1001,7 @@ int main(int argc, char** argv) {
         auto stress_test_thread = [&](uint32_t thread_id, std::vector<uint32_t> my_account_indices) {
             if (my_account_indices.empty()) return;
             // Per-thread SDK for nonce queries (httplib is not thread-safe)
-            SethSDK thread_sdk(global_chain_node_ip, global_chain_node_http_port);
+            auto thread_sdk = std::make_unique<SethSDK>(global_chain_node_ip, global_chain_node_http_port);
             uint32_t consecutive_failures = 0;
             static const uint32_t kFailureThreshold = 10;  // After 10 consecutive failures, assume node is down
             uint32_t pos = 0;
@@ -1085,8 +1085,8 @@ int main(int argc, char** argv) {
                         while (!global_stop) {
                             usleep(2000000);  // 2s
                             // Try a simple nonce fetch as connectivity probe
-                            thread_sdk = SethSDK(global_chain_node_ip, global_chain_node_http_port);
-                            int64_t probe_nonce = thread_sdk.fetchNonce(
+                            thread_sdk = std::make_unique<SethSDK>(global_chain_node_ip, global_chain_node_http_port);
+                            int64_t probe_nonce = thread_sdk->fetchNonce(
                                 common::Encode::HexEncode(from_addr));
                             if (probe_nonce >= 0) {
                                 std::cerr << "  [Thread " << thread_id << "] Node " << dest_ip
@@ -1103,7 +1103,7 @@ int main(int argc, char** argv) {
                         for (uint32_t idx : my_account_indices) {
                             if (global_stop) break;
                             std::string addr_hex = common::Encode::HexEncode(test_addrs[idx]);
-                            int64_t fresh_nonce = thread_sdk.fetchNonce(addr_hex);
+                            int64_t fresh_nonce = thread_sdk->fetchNonce(addr_hex);
                             if (fresh_nonce >= 0) {
                                 prikey_with_nonce[test_addrs[idx]] = fresh_nonce;
                                 src_prikey_with_nonce[test_addrs[idx]] = fresh_nonce;
