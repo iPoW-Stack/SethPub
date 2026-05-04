@@ -1003,7 +1003,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
                 auto chain = hotstuff_mgr_->chain(i);
                 auto hs = hotstuff_mgr_->hotstuff(i);
                 if (chain && hs) {
-                    bool is_member = (hs->GetLocalMemberIdx() != common::kInvalidUint32);
+                    bool is_member = hs->IsLocalMember();
                     if (is_member) {
                         auto high_vb = chain->HighViewBlock();
                         if (high_vb && high_vb->has_block_info() && 

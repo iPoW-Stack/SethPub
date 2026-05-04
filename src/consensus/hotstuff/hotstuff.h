@@ -258,6 +258,12 @@ public:
         return leader;
     }
 
+    // Check if the local node is an active committee member for this pool.
+    // Used by sync to decide whether consensus can produce blocks locally.
+    inline bool IsLocalMember() const {
+        return GetLocalMemberIdx() != common::kInvalidUint32;
+    }
+
 private:
     void InitAddNewViewBlock(
         std::shared_ptr<ViewBlockChain> view_block_chain,
