@@ -1095,13 +1095,21 @@ void KeyValueSync::SyncAllLatestBlocks() {
     std::set<uint64_t> sended_neigbors;
     uint32_t sent_count = 0;
     for (auto iter = sync_dht_map.begin(); iter != sync_dht_map.end(); ++iter) {
-        uint64_t choose_node = SendSyncRequest(
-            iter->first,
-            iter->second,
-            sended_neigbors);
-        if (choose_node != 0) {
-            sended_neigbors.insert(choose_node);
-            ++sent_count;
+        // Send to multiple peers in parallel for faster catch-up.
+        // The old code sent each network's request to just 1 peer, bottlenecked
+        // by that single peer's response size (768KB). By sending to 3 peers,
+        // we get 3x the data per round (each peer returns different blocks
+        // since they all have the same chain but the response is capped by size).
+        uint32_t peers_per_net = 3;
+        for (uint32_t p = 0; p < peers_per_net; ++p) {
+            uint64_t choose_node = SendSyncRequest(
+                iter->first,
+                iter->second,
+                sended_neigbors);
+            if (choose_node != 0) {
+                sended_neigbors.insert(choose_node);
+                ++sent_count;
+            }
         }
     }
     SETH_DEBUG("SyncAllLatestBlocks done: sync_dht_map size=%lu, sent=%u, "
