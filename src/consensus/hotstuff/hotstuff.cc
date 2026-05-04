@@ -90,7 +90,7 @@ void Hotstuff::StartInit() {
         // pool_latest_info.view() which may be stale. Without this, the node
         // starts with cur_view_=0 while the network is at view 100+.
         pacemaker_->NewQcView(high_view_block->qc().view());
-        SETH_DEBUG("pool: %d, high view block view: %lu, high view block hash: %s, "
+        SETH_DEBUG("init load pool: %d, high view block view: %lu, high view block hash: %s, "
             "pacemaker updated to view: %lu",
             pool_idx_,
             high_view_block->qc().view(),
@@ -107,7 +107,7 @@ void Hotstuff::StartInit() {
             &header, 
             &tmp_msg_ptr->latest_qc_view)) {
         latest_leader_propose_message_ = tmp_msg_ptr;
-        SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = value, view: %lu", 
+        SETH_DEBUG("init load pool: %d, set latest_leader_propose_message_ = value, view: %lu", 
             pool_idx_, tmp_msg_ptr->header.hotstuff().pro_msg().view_item().qc().view());
     }
 
