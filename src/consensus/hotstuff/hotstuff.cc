@@ -1911,16 +1911,26 @@ Status Hotstuff::VerifyViewBlock(
         return Status::kError;
     }
 
-    if (v_block.block_info().height() != view_block_chain->HighViewBlock()->block_info().height() + 1) {
-        auto high_height = view_block_chain->HighViewBlock()->block_info().height();
-        auto gap = v_block.block_info().height() - high_height;
+    // Get the effective height for comparison. If HighViewBlock has no
+    // block_info (TC timeout placeholder after restart), fall back to
+    // LatestCommittedBlock's height to avoid comparing against 0.
+    uint64_t local_high_height = view_block_chain->HighViewBlock()->block_info().height();
+    if (local_high_height == 0 && !view_block_chain->HighViewBlock()->has_block_info()) {
+        auto committed = view_block_chain->LatestCommittedBlock();
+        if (committed && committed->has_block_info()) {
+            local_high_height = committed->block_info().height();
+        }
+    }
+
+    if (v_block.block_info().height() != local_high_height + 1) {
+        auto gap = v_block.block_info().height() - local_high_height;
         SETH_WARN("%u_%u_%lu_%lu, new view block height gap: %lu (local: %lu, propose: %lu)", 
             common::GlobalInfo::Instance()->network_id(),
             pool_idx_,
             v_block.qc().view(),
             v_block.block_info().height(),
             gap,
-            high_height,
+            local_high_height,
             v_block.block_info().height());
         // Don't add individual sync items per height here — that floods the sync
         // queue with thousands of items (33 pools × hundreds of heights each).
