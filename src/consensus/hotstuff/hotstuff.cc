@@ -1922,23 +1922,21 @@ Status Hotstuff::VerifyViewBlock(
             gap,
             high_height,
             v_block.block_info().height());
-        // Trigger batch sync for the entire missing range instead of just one block.
-        // This dramatically speeds up catch-up: instead of syncing one parent at a time
-        // (each taking a full round-trip), we request all missing heights in one shot.
-        if (gap > 1 && gap < 10000) {
-            for (uint64_t h = high_height + 1; h < v_block.block_info().height(); ++h) {
-                if (!BlockHeightCommited(
-                        prefix_db_,
-                        v_block.qc().network_id(),
-                        v_block.qc().pool_index(),
-                        h)) {
-                    kv_sync_->AddSyncHeight(
-                        v_block.qc().network_id(),
-                        v_block.qc().pool_index(),
-                        h,
-                        0);
-                }
-            }
+        // Don't add individual sync items per height here — that floods the sync
+        // queue with thousands of items (33 pools × hundreds of heights each).
+        // Instead, just request the next missing height. SyncAllLatestBlocks
+        // handles bulk range sync every 1s via the latest_sync_item mechanism,
+        // which is far more efficient (one request covers up to 256 heights per pool).
+        if (gap > 0 && !BlockHeightCommited(
+                prefix_db_,
+                v_block.qc().network_id(),
+                v_block.qc().pool_index(),
+                high_height + 1)) {
+            kv_sync_->AddSyncHeight(
+                v_block.qc().network_id(),
+                v_block.qc().pool_index(),
+                high_height + 1,
+                0);
         }
         return Status::kError;
     }
