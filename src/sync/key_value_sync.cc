@@ -993,38 +993,33 @@ void KeyValueSync::SyncAllLatestBlocks() {
                 }
             }
 
-            // Fix: Also consider the high_view_block height from consensus.
-            // Blocks that are in consensus (proposed but not yet committed) have
-            // a higher height than latest_height. Without this check, sync
-            // requests blocks that consensus already has, wasting bandwidth.
-            // However, only skip sync if the local node is an active committee
-            // member — non-members cannot vote and must rely on sync.
+            // Fix: For active committee members, avoid syncing blocks that
+            // consensus is about to produce. The look-ahead is based on
+            // committed_height (not high_view_block) because blocks between
+            // committed and high_view are still in the consensus pipeline
+            // and will be committed automatically — no sync needed for those.
+            // We add +2 to committed_height to also skip the block currently
+            // being proposed and the next one in the pipeline.
             if (network::IsSameToLocalShard(network_id) && hotstuff_mgr_) {
                 auto chain = hotstuff_mgr_->chain(i);
                 auto hs = hotstuff_mgr_->hotstuff(i);
                 if (chain && hs) {
-                    bool is_member = hs->IsLocalMember();
-                    if (is_member) {
-                        auto high_vb = chain->HighViewBlock();
-                        if (high_vb && high_vb->has_block_info() && 
-                                high_vb->block_info().height() >= latest_height) {
-                            // For active committee members, skip not only blocks
-                            // up to high_view_block, but also the NEXT block
-                            // (high + 1) which consensus is about to produce.
-                            // Without this, there's a race window where sync
-                            // requests height H+1 right before consensus proposes
-                            // it, wasting bandwidth.
-                            // Use +2 look-ahead: high_view is the latest proposed
-                            // block, +1 is being proposed now, +2 is the next one.
-                            latest_height = high_vb->block_info().height() + 2;
-                        }
-                    }
                     // Always check LatestCommittedBlock — it may be ahead of
                     // tx_pool latest_height regardless of membership.
                     auto committed_vb = chain->LatestCommittedBlock();
                     if (committed_vb && committed_vb->has_block_info() &&
                             committed_vb->block_info().height() > latest_height) {
                         latest_height = committed_vb->block_info().height();
+                    }
+                    // For active members, also skip the next 2 blocks after
+                    // committed height — they are in the consensus pipeline
+                    // (proposed/voted but not yet committed).
+                    bool is_member = hs->IsLocalMember();
+                    if (is_member && committed_vb && committed_vb->has_block_info()) {
+                        auto committed_h = committed_vb->block_info().height();
+                        if (committed_h + 2 > latest_height) {
+                            latest_height = committed_h + 2;
+                        }
                     }
                 }
             }
