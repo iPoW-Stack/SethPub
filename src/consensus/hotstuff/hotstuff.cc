@@ -83,19 +83,22 @@ void Hotstuff::StartInit() {
 
     auto high_view_block = view_block_chain_->HighViewBlock();
     if (high_view_block) {
-        auto qc_item_ptr = std::make_shared<view_block::protobuf::QcItem>(high_view_block->qc());
-        UpdateLatestQcItemPtr(qc_item_ptr);
-        // Fix: After recovering high_view_block from DB, update the pacemaker's
-        // cur_view_ to match. The pacemaker was initialized earlier from
-        // pool_latest_info.view() which may be stale. Without this, the node
-        // starts with cur_view_=0 while the network is at view 100+.
+        // Only update pacemaker's cur_view_ from HighViewBlock, do NOT update
+        // latest_qc_item_ptr_ here. InitLoadLatestBlock already set
+        // latest_qc_item_ptr_ to the latest COMMITTED block's QC.
+        // If we overwrite it with HighViewBlock's QC (which may be an
+        // uncommitted view, e.g. view 176 while committed is 175), then
+        // the "locked view" check in HandleProposeMsgStep_HasVote will
+        // reject the resent propose for the same view (176 >= 176 → reject).
+        // The pacemaker still needs the high view to advance cur_view_.
         pacemaker_->NewQcView(high_view_block->qc().view());
         SETH_DEBUG("init load pool: %d, high view block view: %lu, high view block hash: %s, "
-            "pacemaker updated to view: %lu",
+            "pacemaker updated to view: %lu, latest_qc_item_ptr_ view: %lu",
             pool_idx_,
             high_view_block->qc().view(),
             common::Encode::HexEncode(high_view_block->qc().view_block_hash()).c_str(),
-            high_view_block->qc().view());
+            high_view_block->qc().view(),
+            latest_qc_item_ptr_ ? latest_qc_item_ptr_->view() : 0);
     }
 
     auto tmp_msg_ptr = std::make_shared<transport::TransportMessage>();
@@ -113,10 +116,17 @@ void Hotstuff::StartInit() {
         if (!saved_vb_hash.empty()) {
             leader_view_block_hash_ = saved_vb_hash;
         }
+        // Restore last_leader_propose_view_ so that Propose() won't construct
+        // new proposes for views <= the saved view. Without this, after restart
+        // the node starts proposing from view 1 upward, each new propose
+        // overwriting the saved message in DB before reaching the saved view.
+        auto saved_view = header.hotstuff().pro_msg().view_item().qc().view();
+        last_leader_propose_view_ = saved_view;
         SETH_DEBUG("init load pool: %d, set latest_leader_propose_message_ = value, view: %lu, "
-            "view_block_hash: %s", 
-            pool_idx_, tmp_msg_ptr->header.hotstuff().pro_msg().view_item().qc().view(),
-            common::Encode::HexEncode(saved_vb_hash).c_str());
+            "view_block_hash: %s, last_leader_propose_view_: %lu", 
+            pool_idx_, saved_view,
+            common::Encode::HexEncode(saved_vb_hash).c_str(),
+            last_leader_propose_view_);
     }
 
     SETH_DEBUG("success start init network: %d, pool index: %d, root_view_block_chain_: %d", 
