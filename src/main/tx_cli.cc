@@ -1000,6 +1000,10 @@ int main(int argc, char** argv) {
         // Each thread handles one or more pools, sends to the pool's leader directly
         auto stress_test_thread = [&](uint32_t thread_id, std::vector<uint32_t> my_account_indices) {
             if (my_account_indices.empty()) return;
+            // Per-thread SDK for nonce queries (httplib is not thread-safe)
+            SethSDK thread_sdk(global_chain_node_ip, global_chain_node_http_port);
+            uint32_t consecutive_failures = 0;
+            static const uint32_t kFailureThreshold = 10;  // After 10 consecutive failures, assume node is down
             uint32_t pos = 0;
             while (!global_stop) {
                 uint32_t from_idx = my_account_indices[pos % my_account_indices.size()];
@@ -1063,11 +1067,55 @@ int main(int argc, char** argv) {
                 if (sent_ok) {
                     ++tx_count;
                     ++(pool_stats[pool].tx_sent);
+                    consecutive_failures = 0;
                 } else {
                     // Roll back nonce to avoid permanent gap
                     --prikey_with_nonce[from_addr];
                     ++tx_failed;
                     ++(pool_stats[pool].tx_failed);
+                    ++consecutive_failures;
+
+                    // Node likely down — pause, wait for reconnection, re-fetch nonces
+                    if (consecutive_failures >= kFailureThreshold) {
+                        std::cerr << "  [Thread " << thread_id << "] " << consecutive_failures
+                                  << " consecutive send failures to " << dest_ip << ":" << dest_port
+                                  << " — node may be down, pausing..." << std::endl;
+
+                        // Wait until we can reach the node again (poll every 2s)
+                        while (!global_stop) {
+                            usleep(2000000);  // 2s
+                            // Try a simple nonce fetch as connectivity probe
+                            thread_sdk.resetClient();
+                            int64_t probe_nonce = thread_sdk.fetchNonce(
+                                common::Encode::HexEncode(from_addr));
+                            if (probe_nonce >= 0) {
+                                std::cerr << "  [Thread " << thread_id << "] Node " << dest_ip
+                                          << ":" << dest_port << " is back, re-fetching nonces..."
+                                          << std::endl;
+                                break;
+                            }
+                        }
+
+                        if (global_stop) break;
+
+                        // Re-fetch nonces for all accounts this thread handles
+                        uint32_t refreshed = 0;
+                        for (uint32_t idx : my_account_indices) {
+                            if (global_stop) break;
+                            std::string addr_hex = common::Encode::HexEncode(test_addrs[idx]);
+                            int64_t fresh_nonce = thread_sdk.fetchNonce(addr_hex);
+                            if (fresh_nonce >= 0) {
+                                prikey_with_nonce[test_addrs[idx]] = fresh_nonce;
+                                src_prikey_with_nonce[test_addrs[idx]] = fresh_nonce;
+                                ++refreshed;
+                            }
+                        }
+
+                        std::cerr << "  [Thread " << thread_id << "] Refreshed " << refreshed
+                                  << "/" << my_account_indices.size() << " nonces, resuming sends"
+                                  << std::endl;
+                        consecutive_failures = 0;
+                    }
                 }
 
                 usleep(tps_interval_us);
