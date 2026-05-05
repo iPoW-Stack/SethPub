@@ -1,0 +1,121 @@
+name: Unit Tests (Fast)
+
+# Runs on every push/PR for quick feedback.
+# Only builds and runs the lightweight unit tests that don't need
+# a full seth network (common, db, dht, bls, vss, sync, protos, etc.)
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: fast-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast-unit-tests:
+    name: Fast Unit Tests
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build \
+            libssl-dev libgmp-dev uuid-dev \
+            python3 xxd pkg-config git \
+            libgmssl-dev 2>/dev/null || \
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build \
+            libssl-dev libgmp-dev uuid-dev \
+            python3 xxd pkg-config git
+
+      - name: Cache third-party build
+        id: cache-tp
+        uses: actions/cache@v4
+        with:
+          path: |
+            third_party/lib
+            third_party/lib64
+            third_party/include
+            third_party/depends
+          key: third-party-${{ runner.os }}-${{ hashFiles('build_third.sh', '.gitmodules') }}
+
+      - name: Build third-party (if not cached)
+        if: steps.cache-tp.outputs.cache-hit != 'true'
+        run: bash build_third.sh
+        timeout-minutes: 90
+
+      - name: Build and run fast unit tests
+        run: |
+          # Build only the lightweight tests (no network required)
+          NPROC=$(nproc)
+          TARGET=Debug
+
+          mkdir -p cbuild_$TARGET
+          cd cbuild_$TARGET
+
+          # Generate ephemeral key pair
+          openssl genpkey -algorithm x25519 -out private_key.pem 2>/dev/null
+          RAW_SK=$(openssl pkey -in private_key.pem -outform DER | tail -c 32 | xxd -p -c 32)
+          RAW_PK=$(openssl pkey -in private_key.pem -pubout -outform DER | tail -c 32 | xxd -p -c 32)
+          format_c_array() { echo "{$(echo "$1" | sed 's/../0x&,/g' | sed 's/,$//')}"; }
+          PK_ARRAY=$(format_c_array "$RAW_PK")
+          SK_ARRAY=$(format_c_array "$RAW_SK")
+
+          rm -rf ../third_party/lib/lib*.so* ../third_party/lib64/lib*.so*
+
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=$TARGET \
+            -DOPENSSL_ROOT_DIR=./third_party/depends/include/ \
+            -DCMAKE_INSTALL_PREFIX=~/seth \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
+            -DREPLACE_WHITEBOX_PK="$PK_ARRAY" \
+            -DREPLACE_WHITEBOX_SK="$SK_ARRAY" \
+            -DENABLE_ASAN=OFF
+
+          # Fast tests: modules that compile and run quickly
+          FAST_TESTS=(
+            common_test
+            db_test
+            dht_test
+            vss_test
+            sync_test
+            protos_test
+            block_test
+            tmblock_test
+          )
+
+          FAILED=()
+          for test in "${FAST_TESTS[@]}"; do
+            echo "──── Building $test ────"
+            if make -j"$NPROC" "$test" 2>&1; then
+              subdir="${test}"
+              bin="./${subdir}/${test}"
+              if [[ -x "$bin" ]]; then
+                echo "──── Running $test ────"
+                if "$bin" --gtest_color=yes 2>&1; then
+                  echo "✅ $test PASSED"
+                else
+                  echo "❌ $test FAILED"
+                  FAILED+=("$test")
+                fi
+              fi
+            else
+              echo "⚠️  $test build failed (skipped)"
+            fi
+          done
+
+          if [[ ${#FAILED[@]} -gt 0 ]]; then
+            echo ""
+            echo "❌ Failed tests: ${FAILED[*]}"
+            exit 1
+          fi
+          echo "✅ All fast unit tests passed"
