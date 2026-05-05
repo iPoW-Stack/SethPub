@@ -69,14 +69,14 @@
 #define DEBUG(logfmt, ...)
 #define SETH_DEBUG(logfmt, ...)
 #else
-#define DEBUG(logfmt, ...)
-#define SETH_DEBUG(logfmt, ...)
-// #define DEBUG(logfmt, ...)  do {\
-//     spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
-// } while (0)
-// #define SETH_DEBUG(logfmt, ...)  do {\
-//     spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
-// } while (0)
+//#define DEBUG(logfmt, ...)
+//#define SETH_DEBUG(logfmt, ...)
+#define DEBUG(logfmt, ...)  do {\
+    spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+} while (0)
+#define SETH_DEBUG(logfmt, ...)  do {\
+    spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+} while (0)
 #endif
 // #define SETH_INFO(logfmt, ...)
 // #define SETH_WARN(logfmt, ...)
@@ -149,7 +149,6 @@
 #endif
 
 static inline std::string ProtobufToJson(const google::protobuf::Message& message, bool pretty_print = false) {
-    return "";
 #ifdef NDEBUG
     return "";
 #endif

@@ -67,7 +67,7 @@ init() {
 
     if [ "$node_ips" == "" ]; then
         echo "just use local single node."
-        node_ips='127.0.0.1'
+        node_ips='10.10.1.115'
     fi
 
     bash cmd.sh $node_ips "tc qdisc del dev eth0 root"  > /dev/null 2>&1 &
@@ -80,7 +80,7 @@ init() {
     fi
 
     if [ "$TARGET" == "" ]; then
-        TARGET=Release
+        TARGET=Debug
     fi
 
     killall -9 seth
@@ -155,7 +155,7 @@ with open(conf_path, 'w') as f:
 "
 
 # 3. 删除临时文件
-rm /tmp/bootstrap_data.tmp    
+rm /tmp/bootstrap_data.tmp
 echo $bootstrap
 }
 
