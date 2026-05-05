@@ -21,12 +21,7 @@ static transport::MultiThreadHandler msg_handler_;
 
 class TestFilterBroadcast : public testing::Test {
 public:
-    static void SetUpTestCase() {    
-        seth::transport::TcpTransport::Instance()->Init(
-            "127.0.0.1:8990",
-            128,
-            true,
-            &msg_handler_);
+    static void SetUpTestCase() {
     }
 
     static void TearDownTestCase() {
@@ -172,6 +167,6 @@ TEST_F(TestFilterBroadcast, BroadcastingOverlap) {
 
 }  // namespace test
 
-}  // namespace db
+}  // namespace broadcast
 
 }  // namespace seth
