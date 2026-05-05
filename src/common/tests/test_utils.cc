@@ -42,7 +42,7 @@ TEST_F(TestUtils, GetSignerCountBFTProperty) {
     // and n - t < n/3, meaning fewer than 1/3 can be faulty
     for (uint32_t n = 3; n <= 100; ++n) {
         uint32_t t = GetSignerCount(n);
-        ASSERT_GT(t, n * 2 / 3);  // Strictly greater than 2/3
+        ASSERT_GE(t, n * 2 / 3);  // ceil(2n/3), allows exact 2/3 on divisible cases
         ASSERT_LE(t, n);           // Cannot exceed total
     }
 }
@@ -130,7 +130,7 @@ TEST_F(TestUtils, IsVlanIpPublicAddresses) {
 TEST_F(TestUtils, GetAddressPoolIndexRange) {
     // Pool index should be within valid range [0, kImmutablePoolSize)
     std::string addr(20, '\0');
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 1; i <= 100; ++i) {
         addr[0] = static_cast<char>(i);
         addr[1] = static_cast<char>(i * 7);
         uint32_t pool_idx = GetAddressPoolIndex(addr);

@@ -141,7 +141,8 @@ TEST_F(TestEcdsa, TestBench) {
             std::cout << "sign verify tps: " << (double(kTestCount) / (double((etime - btime) / 1000000.0))) << std::endl;
         }
 
-        security::PrivateKey prikey("eed7c1a51fa08b8c8b781a3b6fd1425590109be596fcaf1e77d9f57512287d2e");
+        security::PrivateKey prikey(common::Encode::HexDecode(
+            "eed7c1a51fa08b8c8b781a3b6fd1425590109be596fcaf1e77d9f57512287d2e"));
         security::PublicKey pubkey(ecdsa.curve_, prikey);
         {
             auto btime = common::TimeUtils::TimestampUs();

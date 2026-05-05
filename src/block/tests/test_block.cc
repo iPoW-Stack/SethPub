@@ -216,7 +216,7 @@ TEST_F(TestBlock, AddressInfoSerialize) {
     addr.set_addr(common::Random::RandomString(20));
     addr.set_balance(1000000);
     addr.set_nonce(42);
-    addr.set_type(address::protobuf::kNormalAddress);
+    addr.set_type(address::protobuf::kNormal);
 
     std::string serialized = addr.SerializeAsString();
     address::protobuf::AddressInfo deserialized;

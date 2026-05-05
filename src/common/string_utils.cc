@@ -396,12 +396,14 @@ void StringUtil::Trim(std::string& str) {
     if (str.empty()) {
         return;
     }
-    str.erase(0, str.find_first_not_of(" "));
-    str.erase(str.find_last_not_of(" ") + 1);
-    str.erase(0, str.find_first_not_of("\t"));
-    str.erase(str.find_last_not_of("\t") + 1);
-    str.erase(0, str.find_first_not_of("\n"));
-    str.erase(str.find_last_not_of("\n") + 1);
+    const char* kWhitespace = " \t\n\r";
+    const auto begin = str.find_first_not_of(kWhitespace);
+    if (begin == std::string::npos) {
+        str.clear();
+        return;
+    }
+    const auto end = str.find_last_not_of(kWhitespace);
+    str = str.substr(begin, end - begin + 1);
 }
 
 }  // namespace common

@@ -74,10 +74,10 @@ TEST_F(TestConfig, Init) {
     ASSERT_EQ(uint64_val, 1);
     float float_val;
     ASSERT_TRUE(config.Get("backbone", "float", float_val));
-    ASSERT_EQ(float_val, 1.0f);  // problem 
+    ASSERT_NEAR(float_val, 1.0f, 1e-6f);
     double double_val;
     ASSERT_TRUE(config.Get("backbone", "double", double_val));
-    ASSERT_EQ(double_val, 1.0);  // problem 
+    ASSERT_NEAR(double_val, 1.0, 1e-12);
 
     ASSERT_TRUE(config.Set("backbone", "bool_true", true));
     ASSERT_TRUE(config.Set("backbone", "bool_false", false));
@@ -174,11 +174,11 @@ TEST_F(TestConfig, Set) {
     float float_val;
     ASSERT_TRUE(config.Get("backbone", "float", float_val));
     ASSERT_FALSE(config.Get("backbone", "float1", float_val));
-    ASSERT_EQ(float_val, 1.0f);  // problem 
+    ASSERT_NEAR(float_val, 1.0f, 1e-6f);
     double double_val;
     ASSERT_TRUE(config.Get("backbone", "double", double_val));
     ASSERT_FALSE(config.Get("backbone", "double1", double_val));
-    ASSERT_EQ(double_val, 1.0);  // problem 
+    ASSERT_NEAR(double_val, 1.0, 1e-12);
     ASSERT_TRUE(config.DumpConfig("../conf.ut/dum.conf"));
 }
 

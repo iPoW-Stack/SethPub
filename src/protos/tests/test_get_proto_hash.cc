@@ -6,6 +6,7 @@
 #include "common/hash.h"
 #include "common/random.h"
 #include "protos/get_proto_hash.h"
+#include "protos/tx_storage_key.h"
 #include "protos/transport.pb.h"
 #include "protos/pools.pb.h"
 #include "protos/bls.pb.h"
