@@ -1,6 +1,7 @@
 #include "big_num/snark.h"
 
 #include "libff/common/profiling.hpp"
+#include <stdexcept>
 
 namespace seth {
 
@@ -92,7 +93,7 @@ libff::bigint<libff::alt_bn128_q_limbs> Snark::ToLibsnarkBigint(const std::strin
     static_assert(sizeof(mp_limb_t) == L, "Unexpected limb size in libff::bigint.");
     for (size_t i = 0; i < N; i++) {
         for (size_t j = 0; j < L; j++) {
-            b.data[N - 1 - i] |= mp_limb_t(in_x[i * L + j]) << (8 * (L - 1 - j));
+            b.data[N - 1 - i] |= mp_limb_t(static_cast<uint8_t>(in_x[i * L + j])) << (8 * (L - 1 - j));
         }
     }
 
@@ -131,7 +132,7 @@ libff::alt_bn128_G1 Snark::DecodePointG1(const std::string& data) {
 
     libff::alt_bn128_G1 p(x, y, libff::alt_bn128_Fq::one());
     if (!p.is_well_formed()) {
-        assert(false);
+        throw std::runtime_error("invalid alt_bn128 G1 point");
     }
 
     return p;
@@ -161,7 +162,7 @@ libff::alt_bn128_G2 Snark::DecodePointG2(const std::string& data) {
         return libff::alt_bn128_G2::zero();
     libff::alt_bn128_G2 p(x, y, libff::alt_bn128_Fq2::one());
     if (!p.is_well_formed()) {
-        assert(false);
+        throw std::runtime_error("invalid alt_bn128 G2 point");
     }
 
     return p;
