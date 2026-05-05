@@ -14,11 +14,17 @@ set -euo pipefail
 #   bash build.sh ws   [Debug]      # build wss / wsc
 # ---------------------------------------------------------------------------
 
-# ---- 1. Determine build type -----------------------------------------------
+# ---- 1. Parse command + determine build type --------------------------------
+CMD="${1:-}"
 TARGET="${2:-Release}"
 if [[ "$TARGET" != "Debug" && "$TARGET" != "Release" ]]; then
     echo "Unknown build type '$TARGET'. Use Debug or Release."
     exit 1
+fi
+
+ENABLE_COVERAGE=0
+if [[ "$CMD" == "coverage" || "${3:-}" == "coverage" ]]; then
+    ENABLE_COVERAGE=1
 fi
 
 BUILD_DIR="cbuild_${TARGET}"
@@ -43,14 +49,30 @@ rm -rf ../third_party/lib/lib*.so*
 rm -rf ../third_party/lib64/lib*.so*
 
 # ---- 4. CMake configure ----------------------------------------------------
-cmake .. \
-    -DCMAKE_BUILD_TYPE="$TARGET" \
-    -DOPENSSL_ROOT_DIR=./third_party/depends/include/ \
-    -DCMAKE_INSTALL_PREFIX=~/seth \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
-    -DREPLACE_WHITEBOX_PK="$PK_ARRAY" \
-    -DREPLACE_WHITEBOX_SK="$SK_ARRAY" \
-    -DENABLE_ASAN=OFF
+if [[ "$ENABLE_COVERAGE" -eq 1 ]]; then
+    cmake .. \
+        -DCMAKE_BUILD_TYPE="$TARGET" \
+        -DOPENSSL_ROOT_DIR=./third_party/depends/include/ \
+        -DCMAKE_INSTALL_PREFIX=~/seth \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
+        -DREPLACE_WHITEBOX_PK="$PK_ARRAY" \
+        -DREPLACE_WHITEBOX_SK="$SK_ARRAY" \
+        -DENABLE_ASAN=OFF \
+        -DXENABLE_CODE_COVERAGE=ON \
+        -DCMAKE_C_FLAGS="--coverage -O0" \
+        -DCMAKE_CXX_FLAGS="--coverage -O0" \
+        -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
+        -DCMAKE_SHARED_LINKER_FLAGS="--coverage"
+else
+    cmake .. \
+        -DCMAKE_BUILD_TYPE="$TARGET" \
+        -DOPENSSL_ROOT_DIR=./third_party/depends/include/ \
+        -DCMAKE_INSTALL_PREFIX=~/seth \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
+        -DREPLACE_WHITEBOX_PK="$PK_ARRAY" \
+        -DREPLACE_WHITEBOX_SK="$SK_ARRAY" \
+        -DENABLE_ASAN=OFF
+fi
 
 # ---- 5. Determine parallelism ----------------------------------------------
 NPROC=$(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || echo 4)
@@ -112,13 +134,52 @@ run_test() {
     fi
 }
 
-# ---- 8. Dispatch on first argument -----------------------------------------
-CMD="${1:-}"
+# ---- 8. Coverage helpers ----------------------------------------------------
+map_module_dir() {
+    local exe="$1"
+    case "$exe" in
+        bignum_test) echo "big_num" ;;
+        tmblock_test) echo "timeblock" ;;
+        *) echo "${exe%_test}" ;;
+    esac
+}
+
+print_module_coverage() {
+    local gcovr_cmd="gcovr"
+    if [[ -x "/root/.venvs/gcovr/bin/gcovr" ]]; then
+        gcovr_cmd="/root/.venvs/gcovr/bin/gcovr"
+    elif ! command -v gcovr >/dev/null 2>&1; then
+        echo "  [WARN] gcovr not found (install it first)."
+        return 0
+    fi
+
+    echo ""
+    echo "════════════════════════════════════════════════════════════════"
+    echo "  Module Coverage (lines)"
+    echo "════════════════════════════════════════════════════════════════"
+    for entry in "${ALL_TESTS[@]}"; do
+        local exe="${entry%%:*}"
+        local module_dir
+        module_dir="$(map_module_dir "$exe")"
+        echo ""
+        echo "[$module_dir]"
+        "$gcovr_cmd" \
+            --root .. \
+            --object-directory . \
+            --filter "../src/${module_dir}" \
+            --exclude "../src/${module_dir}/tests" \
+            --gcov-ignore-errors no_working_dir_found \
+            --gcov-ignore-errors source_not_found \
+            --print-summary | awk '/^lines:/ { print "  " $0 }'
+    done
+}
+
+# ---- 9. Dispatch on first argument -----------------------------------------
 
 case "$CMD" in
 
     # ---- Run all tests -------------------------------------------------------
-    "" | "test")
+    "" | "test" | "coverage")
         FAILED_TESTS=()
 
         echo ""
@@ -142,6 +203,10 @@ case "$CMD" in
             exit 1
         fi
         echo "════════════════════════════════════════════════════════════════"
+
+        if [[ "$ENABLE_COVERAGE" -eq 1 ]]; then
+            print_module_coverage
+        fi
         ;;
 
     # ---- Build main binary only ---------------------------------------------
