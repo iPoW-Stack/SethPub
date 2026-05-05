@@ -186,7 +186,7 @@ jobs:
         with:
           repository: iPoW-Stack/SethTests
           path: SethTests
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Install Python dependencies
         run: |
