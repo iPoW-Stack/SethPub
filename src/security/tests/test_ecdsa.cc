@@ -75,7 +75,12 @@ TEST_F(TestEcdsa, TestAll) {
             ASSERT_EQ(ecdsa.Sign(msg_for_sign, &sign), 0);
             ASSERT_EQ(ecdsa.Verify(msg_for_sign, pk, sign), 0);
             std::string recover_pk = ecdsa.Recover(sign, msg_for_sign);
-            ASSERT_EQ(recover_pk, pk);
+            // Recover returns 32-byte raw key (no prefix byte),
+            // while GetPublicKey() returns 33-byte compressed key (with prefix).
+            // Compare the 32-byte body (skip the first prefix byte of pk).
+            ASSERT_EQ(recover_pk.size(), 32u);
+            ASSERT_EQ(pk.size(), kPublicCompressKeySize);
+            ASSERT_EQ(recover_pk, pk.substr(1));
         }
     }
 }

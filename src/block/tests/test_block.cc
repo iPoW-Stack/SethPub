@@ -141,7 +141,10 @@ TEST_F(TestBlock, AccountLruMapThreadSafety) {
         threads.emplace_back([&map, t]() {
             for (int i = 0; i < kOpsPerThread; ++i) {
                 std::string addr = "addr_" + std::to_string(t) + "_" + std::to_string(i);
-                map.insert(MakeAccount(addr, i));
+                auto acc = std::make_shared<address::protobuf::AddressInfo>();
+                acc->set_addr(addr);
+                acc->set_balance(i);
+                map.insert(acc);
                 map.get(addr);
             }
         });
@@ -213,7 +216,7 @@ TEST_F(TestBlock, AddressInfoSerialize) {
     addr.set_addr(common::Random::RandomString(20));
     addr.set_balance(1000000);
     addr.set_nonce(42);
-    addr.set_type(kNormalAddress);
+    addr.set_type(address::protobuf::kNormalAddress);
 
     std::string serialized = addr.SerializeAsString();
     address::protobuf::AddressInfo deserialized;

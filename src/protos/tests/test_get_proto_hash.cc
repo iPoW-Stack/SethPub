@@ -265,10 +265,10 @@ TEST_F(TestGetProtoHash, JoinElectReqHashWithVerifyVec) {
 
 TEST_F(TestGetProtoHash, TxStorageKeyConstants) {
     // Verify constants are non-empty and have expected values
-    ASSERT_FALSE(kContractBytesStartCode.empty());
-    ASSERT_EQ(kContractBytesStartCode, common::Encode::HexDecode("60806040"));
-    ASSERT_FALSE(kJoinElectVerifyG2.empty());
-    ASSERT_EQ(kJoinElectVerifyG2, "__join_g2");
+    ASSERT_FALSE(protos::kContractBytesStartCode.empty());
+    ASSERT_EQ(protos::kContractBytesStartCode, common::Encode::HexDecode("60806040"));
+    ASSERT_FALSE(protos::kJoinElectVerifyG2.empty());
+    ASSERT_EQ(protos::kJoinElectVerifyG2, "__join_g2");
 }
 
 }  // namespace test

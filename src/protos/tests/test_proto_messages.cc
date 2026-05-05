@@ -200,17 +200,17 @@ TEST_F(TestProtoMessages, ElectBlockSerialize) {
 TEST_F(TestProtoMessages, DhtMessageBootstrap) {
     dht::protobuf::DhtMessage dht_msg;
     auto* boot = dht_msg.mutable_bootstrap_req();
-    boot->set_local_ip("192.168.1.100");
-    boot->set_local_port(9001);
-    boot->set_node_id("node_id_hash_20bytes");
+    boot->set_public_ip("192.168.1.100");
+    boot->set_public_port(9001);
+    boot->set_pubkey("pubkey_data");
 
     std::string serialized = dht_msg.SerializeAsString();
     dht::protobuf::DhtMessage deserialized;
     ASSERT_TRUE(deserialized.ParseFromString(serialized));
     ASSERT_TRUE(deserialized.has_bootstrap_req());
-    ASSERT_EQ(deserialized.bootstrap_req().local_ip(), "192.168.1.100");
-    ASSERT_EQ(deserialized.bootstrap_req().local_port(), 9001u);
-    ASSERT_EQ(deserialized.bootstrap_req().node_id(), "node_id_hash_20bytes");
+    ASSERT_EQ(deserialized.bootstrap_req().public_ip(), "192.168.1.100");
+    ASSERT_EQ(deserialized.bootstrap_req().public_port(), 9001);
+    ASSERT_EQ(deserialized.bootstrap_req().pubkey(), "pubkey_data");
 }
 
 // --- VSS Message Tests ---
