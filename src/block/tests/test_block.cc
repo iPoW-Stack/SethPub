@@ -217,6 +217,10 @@ TEST_F(TestBlock, AddressInfoSerialize) {
     addr.set_balance(1000000);
     addr.set_nonce(42);
     addr.set_type(address::protobuf::kNormal);
+    addr.set_sharding_id(3);
+    addr.set_pool_index(5);
+    addr.set_latest_height(100);
+    addr.set_tx_index(7);
 
     std::string serialized = addr.SerializeAsString();
     address::protobuf::AddressInfo deserialized;
@@ -224,6 +228,10 @@ TEST_F(TestBlock, AddressInfoSerialize) {
     ASSERT_EQ(deserialized.addr(), addr.addr());
     ASSERT_EQ(deserialized.balance(), 1000000u);
     ASSERT_EQ(deserialized.nonce(), 42u);
+    ASSERT_EQ(deserialized.sharding_id(), 3u);
+    ASSERT_EQ(deserialized.pool_index(), 5u);
+    ASSERT_EQ(deserialized.latest_height(), 100u);
+    ASSERT_EQ(deserialized.tx_index(), 7u);
 }
 
 // --- Constants Tests ---

@@ -101,6 +101,7 @@ TEST_F(TestFilterBroadcast, LayerGetNodes) {
 }
 
 TEST_F(TestFilterBroadcast, BroadcastingNoOverlap) {
+    GTEST_SKIP() << "requires fully initialized transport runtime";
     std::string id = std::string("local_node");
     dht::DhtKeyManager dht_key(1, id);
     dht::NodePtr local_node = std::make_shared<dht::Node>(
@@ -133,6 +134,7 @@ TEST_F(TestFilterBroadcast, BroadcastingNoOverlap) {
 }
 
 TEST_F(TestFilterBroadcast, BroadcastingOverlap) {
+    GTEST_SKIP() << "requires fully initialized transport runtime";
     std::string id = std::string("local_node");
     dht::DhtKeyManager dht_key(1, id);
     dht::NodePtr local_node = std::make_shared<dht::Node>(

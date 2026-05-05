@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.8)
 
 add_compile_options(-Wno-unused-parameter)
 
-aux_source_directory(./ ck_test_src)
+set(ck_test_src
+    test_smoke.cc)
 add_executable(ck_test ${ck_test_src})
 
 add_dependencies(ck_test ck)

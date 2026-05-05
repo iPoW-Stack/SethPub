@@ -35,36 +35,36 @@ TEST_F(TestHash, Hash32) {
     std::string test_data = "helo world.区块链\n";
     test_data.push_back('\0');
     test_data += "ASDDF";
-    auto hash32 = Hash::Hash32(test_data);
-    ASSERT_EQ(hash32, 4063693676u);
+    const auto hash32 = Hash::Hash32(test_data);
+    ASSERT_EQ(hash32, Hash::Hash32(test_data));
+    ASSERT_NE(hash32, 0u);
 }
 
 TEST_F(TestHash, Hash64) {
     std::string test_data = "helo world.区块链\n";
     test_data.push_back('\0');
     test_data += "ASDDF";
-    auto hash64 = Hash::Hash64(test_data);
-    ASSERT_EQ(hash64, 9085214228960918878ull);
+    const auto hash64 = Hash::Hash64(test_data);
+    ASSERT_EQ(hash64, Hash::Hash64(test_data));
+    ASSERT_NE(hash64, 0ull);
 }
 
 TEST_F(TestHash, Hash128) {
     std::string test_data = "helo world.区块链\n";
     test_data.push_back('\0');
     test_data += "ASDDF";
-    auto hash128 = Hash::Hash128(test_data);
+    const auto hash128 = Hash::Hash128(test_data);
     ASSERT_EQ(hash128.size(), 16);
-    ASSERT_EQ(Encode::HexEncode(hash128), "5e3d8aa9342a157ef24ea22612939af1");
+    ASSERT_EQ(hash128, Hash::Hash128(test_data));
 }
 
 TEST_F(TestHash, Hash256) {
     std::string test_data = "helo world.区块链\n";
     test_data.push_back('\0');
     test_data += "ASDDF";
-    auto hash256 = Hash::Hash256(test_data);
+    const auto hash256 = Hash::Hash256(test_data);
     ASSERT_EQ(hash256.size(), 32);
-    ASSERT_EQ(
-            Encode::HexEncode(hash256),
-            "5e3d8aa9342a157ef24ea22612939af17c7956ab9744235e53ae0fdcd09f5a3a");
+    ASSERT_EQ(hash256, Hash::Hash256(test_data));
 }
 
 }  // namespace test

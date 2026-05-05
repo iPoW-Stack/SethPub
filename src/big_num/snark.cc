@@ -86,7 +86,9 @@ void Snark::InitLibSnark() {
 }
 
 libff::bigint<libff::alt_bn128_q_limbs> Snark::ToLibsnarkBigint(const std::string& in_x) {
-    assert(in_x.size() == 32);
+    if (in_x.size() != 32) {
+        throw std::runtime_error("invalid bigint byte length");
+    }
     libff::bigint<libff::alt_bn128_q_limbs> b;
     auto const N = b.N;
     constexpr size_t L = sizeof(b.data[0]);
@@ -123,7 +125,9 @@ libff::alt_bn128_Fq Snark::DecodeFqElement(const std::string& data) {
 }
 
 libff::alt_bn128_G1 Snark::DecodePointG1(const std::string& data) {
-    assert(data.size() > 32);
+    if (data.size() < 64) {
+        throw std::runtime_error("invalid alt_bn128 G1 encoding length");
+    }
     libff::alt_bn128_Fq x = DecodeFqElement(data.substr(0, data.size()));
     libff::alt_bn128_Fq y = DecodeFqElement(data.substr(32, data.size() - 32));
     if (x == libff::alt_bn128_Fq::zero() && y == libff::alt_bn128_Fq::zero()) {
@@ -148,14 +152,18 @@ std::string Snark::EncodePointG1(libff::alt_bn128_G1 p) {
 }
 
 libff::alt_bn128_Fq2 Snark::DecodeFq2Element(const std::string& data) {
-    assert(data.size() > 32);
+    if (data.size() < 64) {
+        throw std::runtime_error("invalid alt_bn128 Fq2 encoding length");
+    }
     return libff::alt_bn128_Fq2(
         DecodeFqElement(data.substr(32, data.size() - 32)),
         DecodeFqElement(data.substr(0, data.size())));
 }
 
 libff::alt_bn128_G2 Snark::DecodePointG2(const std::string& data) {
-    assert(data.size() > 64);
+    if (data.size() < 128) {
+        throw std::runtime_error("invalid alt_bn128 G2 encoding length");
+    }
     libff::alt_bn128_Fq2 const x = DecodeFq2Element(data);
     libff::alt_bn128_Fq2 const y = DecodeFq2Element(data.substr(64, data.size() - 64));
     if (x == libff::alt_bn128_Fq2::zero() && y == libff::alt_bn128_Fq2::zero())

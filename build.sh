@@ -104,7 +104,7 @@ run_test() {
     echo ""
     echo "  Running: $bin"
     echo "────────────────────────────────────────────────────────────────"
-    if "$bin" --gtest_color=yes 2>&1; then
+    if env -u GTEST_OUTPUT "$bin" --gtest_color=yes 2>&1; then
         echo "  [PASS] $exe"
     else
         echo "  [FAIL] $exe (exit code $?)"
