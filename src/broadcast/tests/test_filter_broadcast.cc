@@ -128,7 +128,7 @@ TEST_F(TestFilterBroadcast, BroadcastingNoOverlap) {
     broad_param->set_layer_left(0);
     broad_param->set_layer_right((std::numeric_limits<uint64_t>::max)());
     broad_param->set_hop_to_layer(0);
-    msg_ptr->thread_idx = 0;
+    msg_ptr->thread_index = 0;
     filter_broad.Broadcasting(base_dht, msg_ptr);
 }
 
@@ -156,7 +156,7 @@ TEST_F(TestFilterBroadcast, BroadcastingOverlap) {
     FilterBroadcast filter_broad;
     auto msg_ptr = std::make_shared<transport::TransportMessage>();
     auto& message = msg_ptr->header;
-    msg_ptr->thread_idx = 0;
+    msg_ptr->thread_index = 0;
     auto broad_param = message.mutable_broadcast();
     broad_param->set_layer_left(0);
     broad_param->set_layer_right((std::numeric_limits<uint64_t>::max)());

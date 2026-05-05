@@ -106,9 +106,11 @@ TEST_F(TestEcdsa, TestBench) {
     std::string enc1;
     std::string plantext = "plantext";
     std::string sectext;
-    ASSERT_EQ(ecdsa.Encrypt(plantext, sec1, &sectext), 0);
+    RawPrivateKey raw_sec1 = std::make_pair(sec1.c_str(), (uint32_t)sec1.size());
+    RawPrivateKey raw_sec2 = std::make_pair(sec2.c_str(), (uint32_t)sec2.size());
+    ASSERT_EQ(ecdsa.Encrypt(plantext, raw_sec1, &sectext), 0);
     std::string dectext;
-    ASSERT_EQ(ecdsa.Decrypt(sectext, sec2, &dectext), 0);
+    ASSERT_EQ(ecdsa.Decrypt(sectext, raw_sec2, &dectext), 0);
     ASSERT_EQ(memcmp(plantext.c_str(), dectext.c_str(), plantext.size()), 0);
     {
         std::string msg_for_sign = common::Hash::keccak256("test");
