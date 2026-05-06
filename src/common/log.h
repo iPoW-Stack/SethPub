@@ -2,6 +2,10 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <string>
+
+#include <google/protobuf/message.h>
+#include <google/protobuf/util/json_util.h>
 
 #include <spdlog/spdlog.h>
 
@@ -57,3 +61,21 @@ void ShutdownSpdlog();
             fmt::sprintf(fmt_str, ##__VA_ARGS__));                                                  \
         std::abort();                                                                                \
     } while (0)
+
+/** Debug JSON dump for protobuf messages (empty string in NDEBUG builds). */
+inline std::string ProtobufToJson(const google::protobuf::Message& message, bool pretty_print = false) {
+#ifdef NDEBUG
+    (void)message;
+    (void)pretty_print;
+    return "";
+#else
+    std::string json_str;
+    google::protobuf::util::JsonPrintOptions options;
+    options.add_whitespace = pretty_print;
+    const auto status = google::protobuf::util::MessageToJsonString(message, &json_str, options);
+    if (!status.ok()) {
+        return "";
+    }
+    return json_str;
+#endif
+}
