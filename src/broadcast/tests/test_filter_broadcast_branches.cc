@@ -106,6 +106,58 @@ TEST(TestFilterBroadcastBranches, GetLayerNodesRespectsNeighborCountAndBloom) {
     EXPECT_GT(brd->bloomfilter_size(), 0);
 }
 
+TEST(TestFilterBroadcastBranches, GetLayerNodesReturnsEmptyOnInvalidRange) {
+    auto dht_ptr = MakeBaseDhtWithNodes(8);
+    FilterBroadcast filter;
+    transport::protobuf::Header msg;
+    auto* brd = msg.mutable_broadcast();
+    // Build an inverted range so left > right after BinarySearch.
+    brd->set_layer_left(std::numeric_limits<uint64_t>::max());
+    brd->set_layer_right(0);
+    brd->set_neighbor_count(5);
+    brd->set_ign_bloomfilter_hop(0);
+    msg.set_hop_count(0);
+
+    auto bloom = std::make_shared<std::unordered_set<uint64_t>>();
+    auto nodes = filter.GetlayerNodes(dht_ptr, bloom, msg);
+    EXPECT_TRUE(nodes.empty());
+}
+
+TEST(TestFilterBroadcastBranches, GetRandomFilterNodesCoversBloomAndLimit) {
+    auto dht_ptr = MakeBaseDhtWithNodes(12);
+    FilterBroadcast filter;
+    transport::protobuf::Header msg;
+    auto* brd = msg.mutable_broadcast();
+    brd->set_neighbor_count(4);
+    brd->set_ign_bloomfilter_hop(0);
+    msg.set_hop_count(1);
+
+    auto bloom = std::make_shared<std::unordered_set<uint64_t>>();
+    auto readonly = dht_ptr->readonly_hash_sort_dht();
+    ASSERT_TRUE(readonly != nullptr);
+    ASSERT_FALSE(readonly->empty());
+    // Pre-filter at least one node to exercise continue branch.
+    bloom->insert((*readonly)[0]->id_hash);
+
+    auto nodes = filter.GetRandomFilterNodes(dht_ptr, bloom, msg);
+    EXPECT_LE(nodes.size(), 4u);
+    EXPECT_GT(msg.broadcast().bloomfilter_size(), 0);
+}
+
+TEST(TestFilterBroadcastBranches, LayerRangeHelpersWithoutOverlapKeepBounds) {
+    FilterBroadcast filter;
+    transport::protobuf::Header msg;
+    msg.set_hop_count(3);
+    // has_overlap() is false, should not adjust.
+    EXPECT_EQ(filter.GetLayerLeft(1234, msg), 1234u);
+    EXPECT_EQ(filter.GetLayerRight(5678, msg), 5678u);
+
+    // overlap set to 0 triggers epsilon branch (no adjustment) even when present.
+    msg.mutable_broadcast()->set_overlap(0.0f);
+    EXPECT_EQ(filter.GetLayerLeft(2222, msg), 2222u);
+    EXPECT_EQ(filter.GetLayerRight(3333, msg), 3333u);
+}
+
 TEST(TestFilterBroadcastBranches, BroadcastingReturnsEarlyOnHopLimit) {
     auto dht_ptr = MakeBaseDhtWithNodes(8);
     FilterBroadcast filter;
