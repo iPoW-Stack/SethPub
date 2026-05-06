@@ -1,7 +1,9 @@
 #include "common/fts_tree.h"
 
 #include <cassert>
+#include <iostream>
 
+#include "common/log.h"
 #include "common/random.h"
 
 namespace seth {
@@ -129,6 +131,6 @@ int32_t FtsTree::GetOneNode(std::mt19937_64& g2) {
     return -1;
 }
 
-};  // namespace common
+}  // namespace common
 
-};  // namespace seth
+}  // namespace seth

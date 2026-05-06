@@ -3,7 +3,9 @@
 #include <cstdint>
 #include <limits>
 #include <unordered_set>
+
 #include "common/hash.h"
+#include "common/log.h"
 
 namespace seth {
 

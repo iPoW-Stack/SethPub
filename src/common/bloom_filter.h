@@ -1,9 +1,9 @@
 #pragma once
 
-#include <cstdint>
-#include <vector>
 #include <cassert>
+#include <cstdint>
 #include <string>
+#include <vector>
 
 namespace seth {
 
@@ -27,9 +27,7 @@ public:
         return data_;
     }
 
-    uint32_t hash_count() {
-        return hash_count_;
-    }
+    uint32_t hash_count() { return hash_count_; }
 
     std::string Serialize() const;
     void Deserialize(const uint64_t* data, uint32_t count, uint32_t hash_count);
