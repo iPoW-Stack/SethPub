@@ -1,34 +1,22 @@
 #pragma once
 
-#include <unordered_map>
-#include <limits>
-
-#include "common/utils.h"
+#include <cstdint>
 
 namespace seth {
-
 namespace common {
 
+/** Singleton table: DiffCount(v) == population count (bits set) of v in low 16 bits. */
 class U16BitCount {
 public:
     static U16BitCount* Instance();
-    uint32_t DiffCount(uint16_t num) {
-        return u16_bit_count_map_[num];
-    }
+
+    /** Number of 1-bits in @p value (same as __builtin_popcount on uint16). */
+    uint32_t DiffCount(uint16_t value);
 
 private:
-    U16BitCount() {
-        memset(u16_bit_count_map_, 0, sizeof(u16_bit_count_map_));
-        for (int i = 0; i < (std::numeric_limits<uint16_t>::max)(); ++i) {
-            u16_bit_count_map_[i] = (i & 1) + u16_bit_count_map_[i / 2];
-        }
-    }
-
-    ~U16BitCount() {}
-
-    uint32_t u16_bit_count_map_[(std::numeric_limits<uint16_t>::max)()];
+    U16BitCount();
+    uint8_t table_[65536];
 };
 
-};  // namespace common
-
-};  // namespace seth
+}  // namespace common
+}  // namespace seth
