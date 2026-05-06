@@ -191,6 +191,51 @@ TEST_F(TestUtils, GetNodeConnectIntDeterministic) {
     ASSERT_EQ(key1, key2);
 }
 
+TEST_F(TestUtils, CreateAndFixedGidBehavior) {
+    const std::string pubkey = "pubkey_abc";
+    auto gid1 = CreateGID(pubkey);
+    auto gid2 = CreateGID(pubkey);
+    EXPECT_FALSE(gid1.empty());
+    EXPECT_FALSE(gid2.empty());
+    EXPECT_NE(gid1, gid2);  // includes random suffix
+
+    auto fixed1 = FixedCreateGID(pubkey);
+    auto fixed2 = FixedCreateGID(pubkey);
+    EXPECT_EQ(fixed1, fixed2);
+}
+
+TEST_F(TestUtils, RandomCountryAndMemberIndexRange) {
+    for (int i = 0; i < 64; ++i) {
+        auto c = RandomCountry();
+        EXPECT_LE(c, static_cast<uint8_t>(239));
+    }
+
+    std::string addr(kUnicastAddressLength, 'A');
+    auto idx = GetAddressMemberIndex(addr);
+    EXPECT_LT(idx, kElectNodeMinMemberIndex);
+}
+
+TEST_F(TestUtils, PoolAddressHelpersDeterministicAndLength) {
+    auto p1 = GetPoolAddress(0);
+    auto p2 = GetPoolAddress(0);
+    auto p3 = GetPoolAddress(1);
+    EXPECT_EQ(p1, p2);
+    EXPECT_NE(p1, p3);
+    EXPECT_LE(p1.size(), static_cast<size_t>(kUnicastAddressLength));
+
+    auto root1 = GetRootStakePoolAddress();
+    auto root2 = GetRootStakePoolAddress();
+    EXPECT_EQ(root1, root2);
+    EXPECT_LE(root1.size(), static_cast<size_t>(kUnicastAddressLength));
+}
+
+TEST_F(TestUtils, IpConversionAndVlanInvalidInputs) {
+    EXPECT_EQ(IpToUint32("not_an_ip"), 0u);
+    EXPECT_EQ(Uint32ToIp(0u), "0.0.0.0");
+    EXPECT_FALSE(IsVlanIp("1.2.3"));
+    EXPECT_FALSE(IsVlanIp("a.b.c.d"));
+}
+
 // --- Constants Sanity Tests ---
 
 TEST_F(TestUtils, ConstantsSanity) {
@@ -283,6 +328,12 @@ TEST_F(TestUtils, MicTimestampToLiteDatetime) {
     ASSERT_FALSE(result.empty());
     // Should be in MM/DD HH:MM format
     ASSERT_EQ(result.size(), 11u);  // "01/01 08:00"
+}
+
+TEST_F(TestUtils, MicTimestampToDateReturnsCompactYmd) {
+    auto ymd = MicTimestampToDate(1577836800000LL);
+    EXPECT_GE(ymd, 20200101u);
+    EXPECT_LE(ymd, 20991231u);
 }
 
 // --- Economic Model Constants Tests ---
