@@ -32,7 +32,10 @@ void BloomFilter::Deserialize(const uint64_t* data, uint32_t count, uint32_t has
 }
 
 std::string BloomFilter::Serialize() const {
-    assert(!data_.empty());
+    if (data_.empty()) {
+        return "";
+    }
+
     uint64_t* data = new uint64_t[data_.size()];
     for (uint32_t i = 0; i < data_.size(); ++i) {
         data[i] = data_[i];
@@ -51,6 +54,10 @@ BloomFilter::BloomFilter(const std::vector<uint64_t>& data, uint32_t hash_count)
 BloomFilter::~BloomFilter() {}
 
 void BloomFilter::Add(uint64_t hash) {
+    if (data_.empty() || hash_count_ == 0) {
+        return;
+    }
+
     uint32_t hash_high = static_cast<uint32_t>((hash >> 32) & 0x00000000FFFFFFFFull);
     uint32_t hash_low = static_cast<uint32_t>(hash & 0x00000000FFFFFFFFull);
     for (uint32_t i = 0; i < hash_count_; ++i) {
@@ -62,6 +69,10 @@ void BloomFilter::Add(uint64_t hash) {
 }
 
 bool BloomFilter::Contain(uint64_t hash) const{
+    if (data_.empty() || hash_count_ == 0) {
+        return false;
+    }
+
     uint32_t hash_high = static_cast<uint32_t>((hash >> 32) & 0x00000000FFFFFFFFull);
     uint32_t hash_low = static_cast<uint32_t>(hash & 0x00000000FFFFFFFFull);
     for (uint32_t i = 0; i < hash_count_; ++i) {
@@ -78,7 +89,7 @@ bool BloomFilter::Contain(uint64_t hash) const{
 
 uint32_t BloomFilter::DiffCount(const BloomFilter& other) {
     if (data_.size() != other.data_.size()) {
-        SETH_ERROR("data_.size()[%u] != other.data_.size()[%u]",
+        SETH_ERROR("data_.size()[%zu] != other.data_.size()[%zu]",
             data_.size(), other.data_.size());
         return (std::numeric_limits<uint32_t>::max)();
     }
@@ -87,9 +98,9 @@ uint32_t BloomFilter::DiffCount(const BloomFilter& other) {
     for (uint32_t i = 0; i < data_.size(); ++i) {
         uint16_t* u16_data_l = (uint16_t*)(&data_[i]);
         uint16_t* u16_data_r = (uint16_t*)(&other.data_[i]);
-        for (uint32_t i = 0; i < 4; ++i) {
+        for (uint32_t j = 0; j < 4; ++j) {
             diff_count += common::U16BitCount::Instance()->DiffCount(
-                u16_data_l[i] ^ u16_data_r[i]);
+                u16_data_l[j] ^ u16_data_r[j]);
         }
     }
 
