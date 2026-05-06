@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdlib>
 #include <cstring>
 
 #include <spdlog/spdlog.h>
@@ -48,3 +49,11 @@ void ShutdownSpdlog();
 #define SETH_ERROR(fmt_str, ...)                                                                   \
     spdlog::error(                                                                                   \
         "[{}][{}][{}] {}", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, fmt::sprintf(fmt_str, ##__VA_ARGS__))
+
+#define SETH_FATAL(fmt_str, ...)                                                                   \
+    do {                                                                                             \
+        spdlog::critical(                                                                            \
+            "[{}][{}][{}] {}", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__,                          \
+            fmt::sprintf(fmt_str, ##__VA_ARGS__));                                                  \
+        std::abort();                                                                                \
+    } while (0)
