@@ -15,7 +15,7 @@ namespace seth {
 namespace common {
 namespace test {
 
-TEST(TestBloomFilter, AddContainAndDiff) {
+TEST(TestBloomFilterExtra, AddContainAndDiff) {
     BloomFilter lhs(std::vector<uint64_t>{0x000000000000000FULL, 0x00000000000000F0ULL}, 1);
     BloomFilter rhs(std::vector<uint64_t>{0x0000000000000000ULL, 0x00000000000000F0ULL}, 1);
 
@@ -23,7 +23,7 @@ TEST(TestBloomFilter, AddContainAndDiff) {
     EXPECT_EQ(lhs.DiffCount(lhs), 0u);
 }
 
-TEST(TestBloomFilter, SerializeDeserializeRoundTrip) {
+TEST(TestBloomFilterExtra, SerializeDeserializeRoundTrip) {
     BloomFilter src(256, 3);
     src.Add(0xAAAAAAAAAAAAAAAAULL);
     src.Add(0xBBBBBBBBBBBBBBBBULL);
@@ -42,19 +42,19 @@ TEST(TestBloomFilter, SerializeDeserializeRoundTrip) {
     EXPECT_EQ(dst.DiffCount(src), 0u);
 }
 
-TEST(TestBloomFilter, DiffCountSizeMismatchReturnsMax) {
+TEST(TestBloomFilterExtra, DiffCountSizeMismatchReturnsMax) {
     BloomFilter small(64, 1);
     BloomFilter large(128, 1);
     EXPECT_EQ(small.DiffCount(large), (std::numeric_limits<uint32_t>::max)());
 }
 
-TEST(TestFtsTree, EmptyTreeReturnsMinusOne) {
+TEST(TestFtsTreeExtra, EmptyTreeReturnsMinusOne) {
     FtsTree tree;
     std::mt19937_64 rng(1);
     EXPECT_EQ(tree.GetOneNode(rng), -1);
 }
 
-TEST(TestFtsTree, CreateAndSelectNodes) {
+TEST(TestFtsTreeExtra, CreateAndSelectNodes) {
     FtsTree tree;
     tree.AppendFtsNode(10, 100);
     tree.AppendFtsNode(20, 200);
@@ -72,7 +72,7 @@ TEST(TestFtsTree, CreateAndSelectNodes) {
     EXPECT_FALSE(seen.empty());
 }
 
-TEST(TestFtsTree, PrintFtsTreeSmoke) {
+TEST(TestFtsTreeExtra, PrintFtsTreeSmoke) {
     FtsTree tree;
     tree.AppendFtsNode(1, 1);
     tree.AppendFtsNode(2, 2);

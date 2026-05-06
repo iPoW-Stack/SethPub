@@ -89,8 +89,9 @@ bool BloomFilter::Contain(uint64_t hash) const{
 
 uint32_t BloomFilter::DiffCount(const BloomFilter& other) {
     if (data_.size() != other.data_.size()) {
-        SETH_ERROR("data_.size()[%zu] != other.data_.size()[%zu]",
-            data_.size(), other.data_.size());
+        SETH_ERROR("data_.size()[%llu] != other.data_.size()[%llu]",
+            static_cast<unsigned long long>(data_.size()),
+            static_cast<unsigned long long>(other.data_.size()));
         return (std::numeric_limits<uint32_t>::max)();
     }
 

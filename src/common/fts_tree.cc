@@ -69,6 +69,10 @@ void FtsTree::PrintFtsTree() {
         std::cout << "(empty fts tree)" << std::endl;
         return;
     }
+    if (root_node_index_ >= fts_nodes_.size()) {
+        std::cout << "(invalid fts tree root)" << std::endl;
+        return;
+    }
 
     for (uint32_t i = 0; i < fts_nodes_.size(); ++i) {
         std::cout << fts_nodes_[i].fts_value << " ";
@@ -103,7 +107,9 @@ int32_t FtsTree::GetOneNode(std::mt19937_64& g2) {
         return -1;
     }
 
-    assert(fts_nodes_.size() == root_node_index_ + 1);
+    if (fts_nodes_.size() != root_node_index_ + 1) {
+        return -1;
+    }
     uint32_t choose_idx = root_node_index_;
     while (true) {
         // Reaching a leaf means we found the selected payload.
