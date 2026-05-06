@@ -24,10 +24,13 @@ void FtsTree::CreateFtsTree() {
     }
 
     // Support rebuilding the tree on the same instance.
-    if (valid_nodes_size_ > 0 && fts_nodes_.size() > valid_nodes_size_) {
-        fts_nodes_.resize(valid_nodes_size_);
+    // leaf_nodes_size_ tracks how many leaf nodes exist; strip any internal
+    // nodes added by a previous build before counting the current leaves.
+    if (leaf_nodes_size_ > 0 && fts_nodes_.size() > leaf_nodes_size_) {
+        fts_nodes_.resize(leaf_nodes_size_);
     }
-    valid_nodes_size_ = static_cast<uint32_t>(fts_nodes_.size());
+    leaf_nodes_size_ = static_cast<uint32_t>(fts_nodes_.size());
+    valid_nodes_size_ = leaf_nodes_size_;
 
     base_node_index_ = 1;
     while (base_node_index_ < valid_nodes_size_) {
