@@ -60,8 +60,7 @@ TEST_F(TestConfigBranches, InitWithContentCoversCommentAndIllegalLine) {
         "# comment line\n"
         "[net]\n"
         "port = 1234\n"
-        "name = node_a\n"
-        "\n";
+        "name = node_a # trailing comment\n";
     ASSERT_TRUE(cfg_ok.InitWithContent(ok_content));
     std::string name;
     ASSERT_TRUE(cfg_ok.Get("net", "name", name));
