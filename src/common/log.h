@@ -35,8 +35,12 @@ void ShutdownSpdlog();
 }  // namespace seth::common
 
 #ifdef NDEBUG
+#define DEBUG(fmt_str, ...)
 #define SETH_DEBUG(fmt_str, ...)
 #else
+#define DEBUG(fmt_str, ...)                                                                          \
+    spdlog::debug(                                                                                   \
+        "[{}][{}][{}] {}", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, fmt::sprintf(fmt_str, ##__VA_ARGS__))
 #define SETH_DEBUG(fmt_str, ...)                                                                     \
     spdlog::debug(                                                                                   \
         "[{}][{}][{}] {}", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, fmt::sprintf(fmt_str, ##__VA_ARGS__))
