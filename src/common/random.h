@@ -2,11 +2,7 @@
 
 #include <string>
 
-#ifndef DISALLOW_COPY_AND_ASSIGN
-#define DISALLOW_COPY_AND_ASSIGN(TypeName) \
-    TypeName(const TypeName&);             \
-    TypeName& operator=(const TypeName&)
-#endif
+#include "common/utils.h"
 
 namespace seth {
 
@@ -23,7 +19,6 @@ public:
     static uint32_t RandomUint32();
     static uint64_t RandomUint64();
     static std::string RandomString(uint32_t size);
-
 private:
     Random();
     ~Random();

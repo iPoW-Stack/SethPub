@@ -1,9 +1,11 @@
 #pragma once
 
 #include <cmath>
+#include <vector>
 #include <random>
 #include <set>
-#include <vector>
+
+#include "common/utils.h"
 
 namespace seth {
 
@@ -33,6 +35,6 @@ private:
     uint32_t valid_nodes_size_{ 0 };
 };
 
-}  // namespace common
+};  // namespace common
 
-}  // namespace seth
+};  // namespace seth
