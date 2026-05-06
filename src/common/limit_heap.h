@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <limits>
 #include <unordered_set>
 #include "common/hash.h"
+#include "common/log.h"
 
 namespace seth {
 
@@ -40,14 +42,15 @@ public:
         delete[] data_;
     }
 
-    LimitHeap(const LimitHeap &other) {
-        max_size_ = other.max_size_;
+    LimitHeap(const LimitHeap &other)
+            : unique_(other.unique_),
+              max_size_(other.max_size_),
+              size_(other.size_),
+              unique_set_(other.unique_set_) {
         data_ = new Type[max_size_];
         for (uint32_t i = 0; i < other.size_; ++i) {
             data_[i] = other.data_[i];
         }
-
-        size_ = other.size_;
     }
 
     LimitHeap& operator=(const LimitHeap &other) {
@@ -192,7 +195,8 @@ public:
     int32_t size_{ 0 };
     bool unique_{ false };
     std::unordered_set<uint64_t> unique_set_;
-    uint32_t max_size_{ -1 };
+    /* Sentinel when no explicit limit is needed; avoid int -1 in braces (narrowing). */
+    uint32_t max_size_{ std::numeric_limits<uint32_t>::max() };
 };
 
 }  // namespace common

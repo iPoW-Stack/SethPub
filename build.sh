@@ -166,11 +166,26 @@ print_module_coverage() {
         "$gcovr_cmd" \
             --root .. \
             --object-directory . \
+            --exclude-directories "../cbuild_.*" \
             --filter "../src/${module_dir}" \
             --exclude "../src/${module_dir}/tests" \
+            --exclude ".*\\.h$" \
             --gcov-ignore-errors no_working_dir_found \
             --gcov-ignore-errors source_not_found \
+            --merge-mode-functions merge-use-line-min \
             --print-summary | awk '/^lines:/ { print "  " $0 }'
+        "$gcovr_cmd" \
+            --root .. \
+            --object-directory . \
+            --exclude-directories "../cbuild_.*" \
+            --filter "../src/${module_dir}" \
+            --exclude "../src/${module_dir}/tests" \
+            --exclude ".*\\.h$" \
+            --gcov-ignore-errors no_working_dir_found \
+            --gcov-ignore-errors source_not_found \
+            --merge-mode-functions merge-use-line-min \
+            --txt-metric branch \
+            --print-summary | awk '/^branches:/ { print "  " $0 }'
     done
 }
 
