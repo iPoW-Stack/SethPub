@@ -128,7 +128,7 @@ bool BloomFilter::operator==(const BloomFilter& r) const {
 
 bool BloomFilter::operator!=(const BloomFilter& r) const {
     if (this == &r) {
-        return true;
+        return false;
     }
 
     return !(data_ == r.data_ && hash_count_ == r.hash_count_);
