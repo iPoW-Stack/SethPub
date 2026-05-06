@@ -54,8 +54,7 @@ TEST_F(TestFtsTree, EmptyTree) {
     fts_tree.CreateFtsTree();
     // Should not crash on empty tree
     std::mt19937_64 g2(42);
-    // GetOneNode on empty tree — just verify no crash
-    // (behavior depends on implementation)
+    ASSERT_EQ(fts_tree.GetOneNode(g2), -1);
 }
 
 TEST_F(TestFtsTree, SingleNode) {

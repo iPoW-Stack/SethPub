@@ -33,15 +33,21 @@ TEST_F(TestBloomFilter, AddAndContain) {
         ASSERT_TRUE(bloom_filter.Contain(check_item[i]));
     }
 
-    for (uint32_t i = 0; i < 100; ++i) {
+    uint32_t false_positive = 0;
+    const uint32_t kRandomCheckCount = 100;
+    for (uint32_t i = 0; i < kRandomCheckCount; ++i) {
         auto rand_num = Random::RandomUint64();
         auto iter = std::find(check_item.begin(), check_item.end(), rand_num);
         if (iter != check_item.end()) {
             ASSERT_TRUE(bloom_filter.Contain(rand_num));
         } else {
-            ASSERT_FALSE(bloom_filter.Contain(rand_num));
+            if (bloom_filter.Contain(rand_num)) {
+                ++false_positive;
+            }
         }
     }
+    // Bloom filter allows false positives, but the rate should stay low.
+    ASSERT_LT(false_positive, kRandomCheckCount / 3);
 
     BloomFilter copy_bloom_filter = bloom_filter;
     for (uint32_t i = 0; i < check_item.size(); ++i) {

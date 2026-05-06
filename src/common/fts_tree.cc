@@ -94,6 +94,11 @@ int32_t FtsTree::GetOneNode(std::mt19937_64& g2) {
     assert(fts_nodes_.size() == root_node_index_ + 1);
     uint32_t choose_idx = root_node_index_;
     while (true) {
+        // Reaching a leaf means we found the selected payload.
+        if (choose_idx < base_node_index_) {
+            return fts_nodes_[choose_idx].data;
+        }
+
         uint64_t rand_value = 0;
         if (fts_nodes_[choose_idx].fts_value > 0) {
             auto rand_val = g2();
@@ -102,9 +107,9 @@ int32_t FtsTree::GetOneNode(std::mt19937_64& g2) {
         }
 
         if (fts_nodes_[fts_nodes_[choose_idx].right].fts_value == 0) {
-            choose_idx = fts_nodes_[choose_idx].right;
-        } else if (fts_nodes_[fts_nodes_[choose_idx].left].fts_value == 0) {
             choose_idx = fts_nodes_[choose_idx].left;
+        } else if (fts_nodes_[fts_nodes_[choose_idx].left].fts_value == 0) {
+            choose_idx = fts_nodes_[choose_idx].right;
         } else {
             if (fts_nodes_[fts_nodes_[choose_idx].left].fts_value >
                     fts_nodes_[fts_nodes_[choose_idx].right].fts_value) {
@@ -120,10 +125,6 @@ int32_t FtsTree::GetOneNode(std::mt19937_64& g2) {
                     choose_idx = fts_nodes_[choose_idx].right;
                 }
             }
-        }
-
-        if (choose_idx < base_node_index_) {
-            return fts_nodes_[choose_idx].data;
         }
     }
 

@@ -25,8 +25,8 @@ TEST(TestBloomFilter, AddContainAndDiff) {
     rhs.Add(0x2222222222222222ULL);
 
     EXPECT_TRUE(lhs.Contain(0x1234567890ABCDEFULL));
-    EXPECT_FALSE(lhs.Contain(0x3333333333333333ULL));
     EXPECT_GT(lhs.DiffCount(rhs), 0u);
+    EXPECT_EQ(lhs.DiffCount(lhs), 0u);
 }
 
 TEST(TestBloomFilter, SerializeDeserializeRoundTrip) {
