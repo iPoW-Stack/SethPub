@@ -23,14 +23,21 @@ void FtsTree::CreateFtsTree() {
         return;
     }
 
-    uint32_t base_count = log2(fts_nodes_.size());
-    base_node_index_ = (uint32_t)(pow(2.0, (float)base_count));
-    if (base_node_index_ < fts_nodes_.size()) {
-        base_count += 1;
-        base_node_index_ = (uint32_t)(pow(2.0, (float)base_count));
+    // Support rebuilding the tree on the same instance.
+    if (valid_nodes_size_ > 0 && fts_nodes_.size() > valid_nodes_size_) {
+        fts_nodes_.resize(valid_nodes_size_);
+    }
+    valid_nodes_size_ = static_cast<uint32_t>(fts_nodes_.size());
+
+    base_node_index_ = 1;
+    while (base_node_index_ < valid_nodes_size_) {
+        base_node_index_ <<= 1;
     }
 
-    valid_nodes_size_ = fts_nodes_.size();
+    uint32_t base_count = 0;
+    for (uint32_t n = base_node_index_; n > 1; n >>= 1) {
+        ++base_count;
+    }
     for (uint32_t i = valid_nodes_size_; i < base_node_index_; ++i) {
         auto fts_valid_idx = i % valid_nodes_size_;
         fts_nodes_.push_back({
@@ -41,9 +48,9 @@ void FtsTree::CreateFtsTree() {
             fts_nodes_[fts_valid_idx].data });
     }
 
-    root_node_index_ = (uint32_t)pow(2.0f, (float)(base_count + 1)) - 2;
+    root_node_index_ = base_node_index_ * 2 - 2;
     for (uint32_t i = 0; ; ++i) {
-        fts_nodes_[i].parent = i / 2 + (uint32_t)pow(2.0f, (float)(base_count));
+        fts_nodes_[i].parent = i / 2 + base_node_index_;
         if (i % 2 != 0) {
             continue;
         }
@@ -58,6 +65,11 @@ void FtsTree::CreateFtsTree() {
 }
 
 void FtsTree::PrintFtsTree() {
+    if (fts_nodes_.empty()) {
+        std::cout << "(empty fts tree)" << std::endl;
+        return;
+    }
+
     for (uint32_t i = 0; i < fts_nodes_.size(); ++i) {
         std::cout << fts_nodes_[i].fts_value << " ";
     }
@@ -99,31 +111,31 @@ int32_t FtsTree::GetOneNode(std::mt19937_64& g2) {
             return fts_nodes_[choose_idx].data;
         }
 
-        uint64_t rand_value = 0;
-        if (fts_nodes_[choose_idx].fts_value > 0) {
-            auto rand_val = g2();
-            SETH_DEBUG("fts tree get random value: %lu", rand_val);
-            rand_value = rand_val % fts_nodes_[choose_idx].fts_value;
+        const uint32_t left_idx = fts_nodes_[choose_idx].left;
+        const uint32_t right_idx = fts_nodes_[choose_idx].right;
+        if (left_idx >= fts_nodes_.size() || right_idx >= fts_nodes_.size()) {
+            return -1;
         }
 
-        if (fts_nodes_[fts_nodes_[choose_idx].right].fts_value == 0) {
-            choose_idx = fts_nodes_[choose_idx].left;
-        } else if (fts_nodes_[fts_nodes_[choose_idx].left].fts_value == 0) {
-            choose_idx = fts_nodes_[choose_idx].right;
+        const uint64_t left_weight = fts_nodes_[left_idx].fts_value;
+        const uint64_t right_weight = fts_nodes_[right_idx].fts_value;
+
+        if (right_weight == 0) {
+            choose_idx = left_idx;
+        } else if (left_weight == 0) {
+            choose_idx = right_idx;
         } else {
-            if (fts_nodes_[fts_nodes_[choose_idx].left].fts_value >
-                    fts_nodes_[fts_nodes_[choose_idx].right].fts_value) {
-                if (rand_value < fts_nodes_[fts_nodes_[choose_idx].right].fts_value) {
-                    choose_idx = fts_nodes_[choose_idx].right;
-                } else {
-                    choose_idx = fts_nodes_[choose_idx].left;
-                }
+            auto rand_val = g2();
+            SETH_DEBUG("fts tree get random value: %lu", rand_val);
+            const uint64_t total_weight = left_weight + right_weight;
+            if (total_weight == 0) {
+                return -1;
+            }
+            const uint64_t rand_value = rand_val % total_weight;
+            if (rand_value < left_weight) {
+                choose_idx = left_idx;
             } else {
-                if (rand_value < fts_nodes_[fts_nodes_[choose_idx].left].fts_value) {
-                    choose_idx = fts_nodes_[choose_idx].left;
-                } else {
-                    choose_idx = fts_nodes_[choose_idx].right;
-                }
+                choose_idx = right_idx;
             }
         }
     }
