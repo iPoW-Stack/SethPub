@@ -15,7 +15,15 @@ FtsTree::FtsTree() {}
 FtsTree::~FtsTree() {}
 
 void FtsTree::AppendFtsNode(uint64_t fts_value, int32_t data) {
+    // If tree was already built, strip internal nodes before appending new leaf
+    if (leaf_nodes_size_ > 0 && fts_nodes_.size() > leaf_nodes_size_) {
+        fts_nodes_.resize(leaf_nodes_size_);
+    }
     fts_nodes_.push_back({ fts_value, 0, 0, 0, data });
+    // Keep leaf_nodes_size_ in sync so CreateFtsTree knows the true leaf count
+    if (leaf_nodes_size_ > 0) {
+        ++leaf_nodes_size_;
+    }
 }
 
 void FtsTree::CreateFtsTree() {
@@ -23,9 +31,10 @@ void FtsTree::CreateFtsTree() {
         return;
     }
 
-    // Support rebuilding the tree on the same instance.
-    // leaf_nodes_size_ tracks how many leaf nodes exist; strip any internal
-    // nodes added by a previous build before counting the current leaves.
+    // Strip any internal nodes added by a previous build.
+    // After AppendFtsNode cleans up, fts_nodes_ contains only leaf nodes,
+    // but CreateFtsTree may be called without a preceding AppendFtsNode,
+    // so handle that case here too.
     if (leaf_nodes_size_ > 0 && fts_nodes_.size() > leaf_nodes_size_) {
         fts_nodes_.resize(leaf_nodes_size_);
     }
