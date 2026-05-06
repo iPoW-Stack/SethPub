@@ -5,15 +5,16 @@ namespace common {
 
 namespace {
 
-uint8_t PopCount16(unsigned i) {
+uint32_t PopCountU16(uint16_t value) {
+    const unsigned v = static_cast<unsigned>(value);
 #if defined(__GNUC__) || defined(__clang__)
-    return static_cast<uint8_t>(__builtin_popcount(static_cast<unsigned>(i & 0xFFFFu)));
+    return static_cast<uint32_t>(__builtin_popcount(v));
 #else
-    unsigned v = i & 0xFFFFu;
-    uint8_t n = 0;
-    while (v) {
+    unsigned x = v;
+    uint32_t n = 0;
+    while (x) {
         ++n;
-        v &= v - 1;
+        x &= x - 1U;
     }
     return n;
 #endif
@@ -21,20 +22,13 @@ uint8_t PopCount16(unsigned i) {
 
 }  // namespace
 
-U16BitCount::U16BitCount() {
-    /* Must use unsigned index (at least 32-bit): uint16_t i < 65536 either skips 65535 or wraps forever. */
-    for (unsigned i = 0; i < 65536u; ++i) {
-        table_[i] = PopCount16(i);
-    }
-}
-
 U16BitCount* U16BitCount::Instance() {
     static U16BitCount inst;
     return &inst;
 }
 
 uint32_t U16BitCount::DiffCount(uint16_t value) {
-    return table_[value];
+    return PopCountU16(value);
 }
 
 }  // namespace common

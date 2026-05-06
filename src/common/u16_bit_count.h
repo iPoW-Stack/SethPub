@@ -5,17 +5,16 @@
 namespace seth {
 namespace common {
 
-/** Singleton table: DiffCount(v) == population count (bits set) of v in low 16 bits. */
+/** Population count (Hamming weight) of the lower 16 bits of @p value. */
 class U16BitCount {
 public:
     static U16BitCount* Instance();
 
-    /** Number of 1-bits in @p value (same as __builtin_popcount on uint16). */
+    /** Number of 1-bits in @p value (0 … 16). */
     uint32_t DiffCount(uint16_t value);
 
 private:
-    U16BitCount();
-    uint8_t table_[65536];
+    U16BitCount() = default;
 };
 
 }  // namespace common
