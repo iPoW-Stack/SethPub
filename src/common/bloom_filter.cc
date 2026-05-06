@@ -1,7 +1,9 @@
 #include <cassert>
 #include <iostream>
+#include <limits>
 
 #include "common/bloom_filter.h"
+#include "common/log.h"
 #include "common/u16_bit_count.h"
 
 namespace seth {

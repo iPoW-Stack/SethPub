@@ -10,6 +10,8 @@
 #include <condition_variable>
 
 #include "nlohmann/json.hpp"
+#include <spdlog/async.h>
+#include <spdlog/sinks/basic_file_sink.h>
 #include "common/defer.h"
 #include "common/random.h"
 #include "common/split.h"
@@ -434,7 +436,8 @@ int tx_main(int argc, char** argv) {
         auto from_prikey = g_prikeys[i];
         std::shared_ptr<security::Security> thread_security = std::make_shared<security::Ecdsa>();
         thread_security->SetPrivateKey(from_prikey);
-        if (common::GetAddressPoolIndex(thread_security->GetAddress()) == global_pool_idx) {
+        if (common::GetAddressPoolIndex(thread_security->GetAddress()) ==
+                static_cast<uint32_t>(global_pool_idx)) {
             all_valid_keys.push_back(from_prikey);
         }
     }

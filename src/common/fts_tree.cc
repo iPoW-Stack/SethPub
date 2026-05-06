@@ -1,7 +1,9 @@
 #include "common/fts_tree.h"
 
 #include <cassert>
+#include <iostream>
 
+#include "common/log.h"
 #include "common/random.h"
 
 namespace seth {

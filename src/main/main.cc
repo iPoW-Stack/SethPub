@@ -2,6 +2,9 @@
 #include <queue>
 #include <vector>
 
+#include <spdlog/async.h>
+#include <spdlog/sinks/rotating_file_sink.h>
+
 #include "init/network_init.h"
 
 static void GlobalInitSpdlog() {
