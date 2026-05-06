@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <chrono>
+#include <limits>
 
 #define private public
 #include "common/bloom_filter.h"
@@ -158,6 +159,38 @@ TEST_F(TestBloomFilter, SerializeSize) {
     BloomFilter bf(4096, 3);  // 4096 bits = 64 uint64_t
     std::string s = bf.Serialize();
     ASSERT_EQ(s.size(), 64 * sizeof(uint64_t));
+}
+
+TEST_F(TestBloomFilter, EmptySerializeAndNoHashCountGuard) {
+    BloomFilter empty;
+    ASSERT_TRUE(empty.Serialize().empty());
+    ASSERT_FALSE(empty.Contain(123ull));
+
+    // Add should be a no-op when internal data is empty.
+    empty.Add(123ull);
+    ASSERT_TRUE(empty.Serialize().empty());
+}
+
+TEST_F(TestBloomFilter, DiffCountSelfAndMismatch) {
+    BloomFilter lhs(256, 3);
+    lhs.Add(100ull);
+    lhs.Add(200ull);
+    ASSERT_EQ(lhs.DiffCount(lhs), 0u);
+
+    BloomFilter rhs(128, 3);
+    ASSERT_EQ(lhs.DiffCount(rhs), (std::numeric_limits<uint32_t>::max)());
+}
+
+TEST_F(TestBloomFilter, EqualityWithSelfAndDifferentHashCount) {
+    BloomFilter a(256, 3);
+    a.Add(123ull);
+    ASSERT_TRUE(a == a);
+    ASSERT_FALSE(a != a);
+
+    BloomFilter b(256, 5);
+    b.Add(123ull);
+    ASSERT_FALSE(a == b);
+    ASSERT_TRUE(a != b);
 }
 
 }  // namespace test

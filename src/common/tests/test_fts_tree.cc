@@ -160,6 +160,71 @@ TEST_F(TestFtsTree, LargeTree) {
     ASSERT_LE(seen.size(), 500u);
 }
 
+TEST_F(TestFtsTree, RebuildTreeOnSameInstance) {
+    FtsTree fts_tree;
+    fts_tree.AppendFtsNode(10ull, 1);
+    fts_tree.AppendFtsNode(20ull, 2);
+    fts_tree.CreateFtsTree();
+    auto first_size = fts_tree.fts_nodes_.size();
+
+    fts_tree.AppendFtsNode(30ull, 3);
+    fts_tree.CreateFtsTree();
+    ASSERT_GT(fts_tree.fts_nodes_.size(), first_size);
+
+    std::mt19937_64 g2(7);
+    int32_t picked = fts_tree.GetOneNode(g2);
+    ASSERT_TRUE(picked == 1 || picked == 2 || picked == 3);
+}
+
+TEST_F(TestFtsTree, InvalidTreeShapeReturnsMinusOne) {
+    FtsTree fts_tree;
+    fts_tree.AppendFtsNode(10ull, 1);
+    fts_tree.AppendFtsNode(20ull, 2);
+    fts_tree.CreateFtsTree();
+
+    // Corrupt internal tree size to hit the defensive guard branch.
+    if (!fts_tree.fts_nodes_.empty()) {
+        fts_tree.fts_nodes_.pop_back();
+    }
+
+    std::mt19937_64 g2(11);
+    ASSERT_EQ(fts_tree.GetOneNode(g2), -1);
+}
+
+TEST_F(TestFtsTree, InvalidChildIndexReturnsMinusOne) {
+    FtsTree fts_tree;
+    fts_tree.AppendFtsNode(10ull, 1);
+    fts_tree.AppendFtsNode(20ull, 2);
+    fts_tree.CreateFtsTree();
+
+    // Corrupt child index to hit bounds checks.
+    fts_tree.fts_nodes_[fts_tree.root_node_index_].left = static_cast<uint32_t>(fts_tree.fts_nodes_.size() + 10);
+    std::mt19937_64 g2(13);
+    ASSERT_EQ(fts_tree.GetOneNode(g2), -1);
+}
+
+TEST_F(TestFtsTree, ZeroWeightBranchFallsBackToOtherChild) {
+    FtsTree fts_tree;
+    fts_tree.AppendFtsNode(0ull, 10);
+    fts_tree.AppendFtsNode(100ull, 20);
+    fts_tree.CreateFtsTree();
+
+    std::mt19937_64 g2(17);
+    for (int i = 0; i < 20; ++i) {
+        ASSERT_EQ(fts_tree.GetOneNode(g2), 20);
+    }
+}
+
+TEST_F(TestFtsTree, PrintInvalidRootDoesNotCrash) {
+    FtsTree fts_tree;
+    fts_tree.AppendFtsNode(10ull, 1);
+    fts_tree.CreateFtsTree();
+
+    // Trigger invalid-root guard in PrintFtsTree.
+    fts_tree.root_node_index_ = static_cast<uint32_t>(fts_tree.fts_nodes_.size() + 1);
+    fts_tree.PrintFtsTree();
+}
+
 }  // namespace test
 
 }  // namespace common
