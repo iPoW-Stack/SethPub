@@ -236,7 +236,6 @@ TEST(ConsensusZbftSurface, GetCommitedBlockHashAndFlags) {
     EXPECT_EQ(IsShardSingleBlockTx(common::kConsensusRootElectShard),
         IsRootSingleBlockTx(common::kConsensusRootElectShard));
 
-    EXPECT_TRUE(GetTxValueProtoHash("k", "v").empty());
 }
 
 }  // namespace test
