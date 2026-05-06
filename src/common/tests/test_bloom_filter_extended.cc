@@ -163,7 +163,10 @@ TEST_F(TestBloomFilterExtended, SingleHashCount) {
     BloomFilter bf(64, 1);
     bf.Add(12345ull);
     ASSERT_TRUE(bf.Contain(12345ull));
-    ASSERT_FALSE(bf.Contain(99999ull));
+    // hash_count == 1 means only one bit is checked.
+    // Pick a value with a different high-32 hash bucket from 12345 (high32=0),
+    // avoiding deterministic collision in this tiny 64-bit filter.
+    ASSERT_FALSE(bf.Contain(1ull << 32));
 }
 
 // Test DiffCount() with all bits set in one, none in other

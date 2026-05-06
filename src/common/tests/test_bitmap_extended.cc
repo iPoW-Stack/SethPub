@@ -88,7 +88,7 @@ TEST_F(TestBitmapExtended, InversionBothBranches) {
     ASSERT_TRUE(b.Valid(3));
     ASSERT_TRUE(b.Valid(5));
     
-    ASSERT_EQ(b.valid_count(), 5u);  // 10 - 3 (originally set) = 7, but only 5 in range
+    ASSERT_EQ(b.valid_count(), 7u);  // 10 - 3 (originally set) = 7
 }
 
 // Test inversion with max_idx exactly on 64-bit boundary
