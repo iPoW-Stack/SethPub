@@ -1820,8 +1820,8 @@ void NetworkInit::SendJoinElectTransaction() {
     auto n = common::GlobalInfo::Instance()->each_shard_max_members();
     auto t = common::GetSignerCount(n);
     
-    if (has_sent_g2_req && previous_join_info.has_g2_req() && 
-        previous_join_info.g2_req().verify_vec_size() == t) {
+    if (has_sent_g2_req && previous_join_info.has_g2_req() &&
+        static_cast<uint32_t>(previous_join_info.g2_req().verify_vec_size()) == t) {
         // User has already sent g2_req in a previous transaction (confirmed in consensus block)
         // No need to send it again, leave join_info.g2_req empty
         SETH_DEBUG("User has already sent g2_req in previous join_elect (found in consensus block), "
@@ -1832,7 +1832,7 @@ void NetworkInit::SendJoinElectTransaction() {
         // Must include g2_req in this transaction
         auto* req = join_info.mutable_g2_req();
         auto res = prefix_db_->GetBlsVerifyG2(security_->GetAddress(), req);
-        if (!res || req->verify_vec_size() != t) {
+        if (!res || static_cast<uint32_t>(req->verify_vec_size()) != t) {
             CreateContribution(req);
         }
 #ifndef NDEBUG
