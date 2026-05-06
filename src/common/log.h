@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <string>
@@ -63,6 +64,7 @@ void ShutdownSpdlog();
         spdlog::critical(                                                                            \
             "[{}][{}][{}] {}", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__,                          \
             fmt::sprintf(fmt_str, ##__VA_ARGS__));                                                  \
+        assert(false);                                                                               \
         std::abort();                                                                                \
     } while (0)
 
