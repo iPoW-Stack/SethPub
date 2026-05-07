@@ -79,6 +79,12 @@ fi
 
 # ---- 5. Determine parallelism ----------------------------------------------
 NPROC=$(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || echo 4)
+# Coverage parsing parallelism (gcovr): defaults to NPROC, override via env.
+GCOVR_JOBS="${COVERAGE_GCOVR_JOBS:-$NPROC}"
+if ! [[ "$GCOVR_JOBS" =~ ^[0-9]+$ ]] || [[ "$GCOVR_JOBS" -lt 1 ]]; then
+    echo "[WARN] Invalid COVERAGE_GCOVR_JOBS='$GCOVR_JOBS', fallback to 1"
+    GCOVR_JOBS=1
+fi
 
 # ---- 6. All test targets (executable name → subdirectory path) -------------
 # Format: "executable_name:subdir_in_build"
@@ -307,6 +313,28 @@ append_module_specific_excludes() {
     esac
 }
 
+build_gcovr_parallel_args() {
+    local gcovr_cmd="$1"
+    local -n out_args_ref="$2"
+    out_args_ref=()
+    if [[ "$GCOVR_JOBS" -le 1 ]]; then
+        return 0
+    fi
+
+    local help_text
+    help_text="$("$gcovr_cmd" --help 2>/dev/null || true)"
+    if [[ "$help_text" == *"--gcov-parallel"* ]]; then
+        out_args_ref+=(--gcov-parallel "$GCOVR_JOBS")
+        return 0
+    fi
+    if [[ "$help_text" == *$'\n  -j '* || "$help_text" == *$'\n-j '* ]]; then
+        out_args_ref+=(-j "$GCOVR_JOBS")
+        return 0
+    fi
+
+    echo "  [WARN] gcovr does not support parallel coverage parsing; fallback to single-thread."
+}
+
 print_module_coverage() {
     local gcovr_cmd="gcovr"
     if [[ -x "/root/.venvs/gcovr/bin/gcovr" ]]; then
@@ -315,11 +343,16 @@ print_module_coverage() {
         echo "  [WARN] gcovr not found (install it first)."
         return 0
     fi
+    local -a gcovr_parallel_args=()
+    build_gcovr_parallel_args "$gcovr_cmd" gcovr_parallel_args
 
     echo ""
     echo "════════════════════════════════════════════════════════════════"
     echo "  Module Coverage (lines)"
     echo "════════════════════════════════════════════════════════════════"
+    if [[ "${#gcovr_parallel_args[@]}" -gt 0 ]]; then
+        echo "  gcovr parallel jobs: ${GCOVR_JOBS}"
+    fi
     for entry in "${ALL_TESTS[@]}"; do
         local exe="${entry%%:*}"
         local module_dir
@@ -334,6 +367,7 @@ print_module_coverage() {
             --gcov-ignore-errors no_working_dir_found
             --gcov-ignore-errors source_not_found
             --merge-mode-functions merge-use-line-min
+            "${gcovr_parallel_args[@]}"
         )
         # Header-only (or header-dominant) modules have no .cc/.cpp/.c files
         # under src/<module>; do not drop headers for those modules.
@@ -364,6 +398,8 @@ enforce_branch_minimum() {
         echo "  [WARN] gcovr not found; skip branch gate."
         return 0
     fi
+    local -a gcovr_parallel_args=()
+    build_gcovr_parallel_args "$gcovr_cmd" gcovr_parallel_args
 
     echo ""
     echo "════════════════════════════════════════════════════════════════"
@@ -385,6 +421,7 @@ enforce_branch_minimum() {
             --gcov-ignore-errors no_working_dir_found
             --gcov-ignore-errors source_not_found
             --merge-mode-functions merge-use-line-min
+            "${gcovr_parallel_args[@]}"
         )
         # Header-only (or header-dominant) modules have no .cc/.cpp/.c files
         # under src/<module>; do not drop headers for those modules.
