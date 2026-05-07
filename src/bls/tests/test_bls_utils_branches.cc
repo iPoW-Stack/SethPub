@@ -99,7 +99,9 @@ TEST_F(BlsUtilsBranches, Proto2BlsPopProofPartialFields) {
 }
 
 TEST_F(BlsUtilsBranches, BlsPublicKey2ProtoZeroKeyThrows) {
-    EXPECT_THROW(BlsPublicKey2Proto(libff::alt_bn128_G2::zero()), std::runtime_error);
+    EXPECT_THROW(
+        BlsPublicKey2Proto(libff::alt_bn128_G2::zero()),
+        libBLS::ThresholdUtils::IsNotWellFormed);
 }
 
 TEST_F(BlsUtilsBranches, BlsErrorCodeEnumValues) {
