@@ -19,6 +19,13 @@ TEST(ElectUtilsBranches, HeapItemLessComparesSuccCount) {
     EXPECT_FALSE(c < a);
 }
 
+TEST(ElectUtilsBranches, HeapItemSameSuccCountIsNotLess) {
+    HeapItem x{1u, 10u};
+    HeapItem y{2u, 10u};
+    EXPECT_FALSE(x < y);
+    EXPECT_FALSE(y < x);
+}
+
 TEST(ElectUtilsBranches, MinHeapUniqueValCombinesIndexAndSucc) {
     HeapItem item{0xABCDEF01u, 0x23456789u};
     uint64_t u = common::MinHeapUniqueVal(item);

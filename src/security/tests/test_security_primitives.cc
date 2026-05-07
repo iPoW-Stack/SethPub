@@ -266,6 +266,16 @@ TEST(TestSecurityPrimitives, ContractAddressMediumNonceUsesShortStringHeader) {
     ASSERT_EQ(addr.size(), 20u);
 }
 
+TEST(TestSecurityPrimitives, ContractAddressTruncatesLongSenderToLast20Bytes) {
+    std::string from(25, '\xab');  // > 20 bytes → uses substr(from.size()-20,20)
+    const std::string nonce(4, '\xcd');
+    const std::string addr = GetContractAddress(from, nonce);
+    ASSERT_EQ(addr.size(), 20u);
+    std::string short_from = from.substr(from.size() - 20, 20);
+    const std::string addr2 = GetContractAddress(short_from, nonce);
+    ASSERT_EQ(addr, addr2);
+}
+
 #if GTEST_HAS_DEATH_TEST
 TEST(TestSecurityPrimitives, FatalStubsDeathCoverage) {
     GmSsl gmssl;

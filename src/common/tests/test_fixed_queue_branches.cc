@@ -51,6 +51,24 @@ TEST(FixedQueueBranches, ExistsAfterWrap) {
     EXPECT_FALSE(q.Exists(1));
 }
 
+TEST(FixedQueueBranches, ExistsUsesSplitLoopWhenRearLessThanFront) {
+    // Fill capacity 4, dequeue twice (front=2), enqueue one → rear < front, non-full.
+    FixedQueue<int, 4> q;
+    q.Enqueue(1);
+    q.Enqueue(2);
+    q.Enqueue(3);
+    q.Enqueue(4);
+    q.Dequeue();
+    q.Dequeue();
+    q.Enqueue(5);
+    ASSERT_EQ(q.Size(), static_cast<uint8_t>(3));
+    EXPECT_TRUE(q.Exists(3));
+    EXPECT_TRUE(q.Exists(4));
+    EXPECT_TRUE(q.Exists(5));
+    EXPECT_FALSE(q.Exists(1));
+    EXPECT_FALSE(q.Exists(2));
+}
+
 }  // namespace test
 }  // namespace common
 }  // namespace seth
