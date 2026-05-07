@@ -7,6 +7,7 @@ set(pools_test_src
     test_height_tree_level.cc
     test_leaf_height_tree.cc
     test_pools_tx_utils_branches.cc
+    test_unique_hash_lru_set_branches.cc
     test_smoke.cc)
 add_executable(pools_test ${pools_test_src})
 

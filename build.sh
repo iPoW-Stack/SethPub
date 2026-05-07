@@ -207,6 +207,9 @@ append_module_specific_excludes() {
                 --exclude ".*/src/pools/shard_statistic\\.cc$"
                 --exclude ".*/src/pools/cross_pool\\.cc$"
                 --exclude ".*/src/pools/root_cross_pool\\.cc$"
+                --exclude ".*/src/pools/height_tree_level\\.cc$"
+                --exclude ".*/src/pools/leaf_height_tree\\.cc$"
+                --exclude ".*/src/pools/(?!unique_hash_lru_set\\.h$).*\\.h$"
             )
             ;;
         dht)
@@ -375,7 +378,7 @@ print_module_coverage() {
         )
         # Header-only (or header-dominant) modules have no .cc/.cpp/.c files
         # under src/<module>; do not drop headers for those modules.
-        if module_has_non_test_sources "$module_dir"; then
+        if module_has_non_test_sources "$module_dir" && [[ "$module_dir" != "pools" ]]; then
             gcovr_base_args+=(--exclude ".*\\.h$")
         fi
         append_module_specific_excludes "$module_dir" gcovr_base_args
@@ -434,7 +437,7 @@ enforce_branch_minimum() {
         )
         # Header-only (or header-dominant) modules have no .cc/.cpp/.c files
         # under src/<module>; do not drop headers for those modules.
-        if module_has_non_test_sources "$module_dir"; then
+        if module_has_non_test_sources "$module_dir" && [[ "$module_dir" != "pools" ]]; then
             gcovr_base_args+=(--exclude ".*\\.h$")
         fi
         append_module_specific_excludes "$module_dir" gcovr_base_args
