@@ -286,7 +286,16 @@ Status Hotstuff::Propose(
     }
 
     ResendLeaderLatestProposeMessage();
-    if (max_view() != 0 && 
+    // If we have a saved propose message from before restart that covers the
+    // current leader_view, skip the new-propose guard and let the saved-message
+    // path below handle it. Without this, last_leader_propose_view_ restored
+    // from DB equals the saved view, and the guard below permanently blocks
+    // any new propose because max_view() <= last_leader_propose_view_.
+    bool has_saved_propose_for_view = latest_leader_propose_message_ &&
+        latest_leader_propose_message_->header
+            .hotstuff().pro_msg().view_item().qc().view() >= leader_view;
+    if (!has_saved_propose_for_view &&
+            max_view() != 0 && 
             max_view() <= last_leader_propose_view_ && 
             last_leader_propose_view_ >= leader_view) {
         SETH_DEBUG("pool: %d construct propose msg failed, %d, "
