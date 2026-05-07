@@ -28,6 +28,16 @@ TEST(CountryCodeMapsBranches, UnknownAlpha2ThrowsOrMissing) {
     EXPECT_EQ(global_country_map.find("ZZ"), global_country_map.end());
 }
 
+TEST(CountryCodeMapsBranches, Alpha2CodeRoundTripGermany) {
+    const uint8_t code = global_country_map.at("DE");
+    EXPECT_EQ(global_code_to_country_map.at(code), "DE");
+}
+
+TEST(CountryCodeMapsBranches, EnglishNameForGermany) {
+    const uint8_t code = global_country_map.at("DE");
+    EXPECT_FALSE(global_code_to_country_english_map.at(code).empty());
+}
+
 }  // namespace test
 }  // namespace common
 }  // namespace seth

@@ -28,6 +28,15 @@ TEST(DhtKeyManagerBranches, StrKeyStableAcrossCalls) {
     EXPECT_EQ(m.StrKey(), m.StrKey());
 }
 
+TEST(DhtKeyManagerBranches, FromBinaryKeyRoundTripsNetId) {
+    constexpr uint32_t kNet = 55u;
+    DhtKeyManager origin(kNet);
+    const std::string key = origin.StrKey();
+    DhtKeyManager from_key(key);
+    EXPECT_EQ(from_key.StrKey(), key);
+    EXPECT_EQ(DhtKeyManager::DhtKeyGetNetId(from_key.StrKey()), kNet);
+}
+
 }  // namespace test
 }  // namespace dht
 }  // namespace seth

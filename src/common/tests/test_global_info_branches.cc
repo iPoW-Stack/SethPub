@@ -106,6 +106,12 @@ TEST(GlobalInfoBranches, SetConfigPublicIpRoundTrip) {
     EXPECT_EQ(g->config_public_ip(), kIp);
 }
 
+TEST(GlobalInfoBranches, SetConfigPublicPortRoundTrip) {
+    auto* g = GlobalInfo::Instance();
+    g->set_config_public_port(8443);
+    EXPECT_EQ(g->config_public_port(), 8443);
+}
+
 #ifndef NDEBUG
 TEST(GlobalInfoBranches, SharedObjCountersUpdateInDebug) {
     auto* g = GlobalInfo::Instance();

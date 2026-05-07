@@ -94,6 +94,15 @@ TEST(TestFilterBroadcastBranches, BinarySearchExactMatchUsesEqualityBranch) {
     EXPECT_EQ(filter.BinarySearch(nodes, 200), 1u);
 }
 
+TEST(TestFilterBroadcastBranches, BinarySearchSingleSortedNodeCoversOneElementLoop) {
+    FilterBroadcast filter;
+    dht::Dht nodes;
+    nodes.push_back(MakeNode("only", 9210, 500u));
+    EXPECT_EQ(filter.BinarySearch(nodes, 50u), 0u);
+    EXPECT_EQ(filter.BinarySearch(nodes, 500u), 0u);
+    EXPECT_EQ(filter.BinarySearch(nodes, 900u), 0u);
+}
+
 TEST(TestFilterBroadcastBranches, LayerRangeHelpersHandleSentinelAndOverlap) {
     FilterBroadcast filter;
     transport::protobuf::Header msg;

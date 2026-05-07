@@ -42,6 +42,31 @@ TEST(SplitBranches, TwoSegmentsWhenTemplateAllowsTwoSplits) {
     EXPECT_STREQ(s[1], "b");
 }
 
+TEST(SplitBranches, LeadingDelimiterYieldsEmptyFirstSegment) {
+    Split<> s("|x", '|');
+    ASSERT_EQ(s.Count(), 2u);
+    EXPECT_EQ(s.SubLen(0), 0);
+    ASSERT_NE(s[1], nullptr);
+    EXPECT_STREQ(s[1], "x");
+}
+
+TEST(SplitBranches, ConsecutiveDelimitersYieldEmptyMiddleSegment) {
+    Split<> s("a||b", '|');
+    ASSERT_EQ(s.Count(), 3u);
+    ASSERT_NE(s[0], nullptr);
+    ASSERT_NE(s[2], nullptr);
+    EXPECT_STREQ(s[0], "a");
+    EXPECT_EQ(s.SubLen(1), 0);
+    EXPECT_STREQ(s[2], "b");
+}
+
+TEST(SplitBranches, TrailingDelimiterYieldsEmptyLastSegment) {
+    Split<> s("z|", '|');
+    ASSERT_EQ(s.Count(), 2u);
+    EXPECT_STREQ(s[0], "z");
+    EXPECT_EQ(s.SubLen(1), 0);
+}
+
 TEST(DeferBranches, RunsCleanupAtScopeExit) {
     int x = 0;
     {

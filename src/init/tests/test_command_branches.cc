@@ -17,6 +17,12 @@ TEST(CommandBranches, ProcessEmptyLineIsNoop) {
     cmd.ProcessCommand("");
 }
 
+TEST(CommandBranches, ProcessWhitespaceOnlyLineIsNoop) {
+    Command cmd;
+    ASSERT_TRUE(cmd.Init(true, false));
+    cmd.ProcessCommand("   \t  ");
+}
+
 TEST(CommandBranches, ProcessUnknownCommandPrintsInvalid) {
     Command cmd;
     ASSERT_TRUE(cmd.Init(true, false));

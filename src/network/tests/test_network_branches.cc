@@ -35,6 +35,29 @@ dht::NodePtr MakeNode(uint32_t shard, const char* ip, uint16_t port, const std::
 
 }  // namespace
 
+TEST(NetworkUtilsBranches, NetworkErrorCodeEnumValues) {
+    EXPECT_EQ(kNetworkSuccess, 0);
+    EXPECT_EQ(kNetworkError, 1);
+    EXPECT_EQ(kNetworkJoinUniversalError, 2);
+    EXPECT_EQ(kNetworkJoinShardFailed, 3);
+    EXPECT_EQ(kNetworkNoBootstrapNodes, 4);
+    EXPECT_EQ(kNetworkNetworkJoined, 5);
+    EXPECT_EQ(kNetworkNetworkNotJoined, 6);
+}
+
+TEST(NetworkUtilsBranches, ConsensusShardNetworkCountMatchesBounds) {
+    EXPECT_EQ(kConsensusShardNetworkCount,
+              kConsensusShardEndNetworkId - kConsensusShardBeginNetworkId + 1u);
+}
+
+TEST(NetworkUtilsBranches, ServiceShardBoundsOrdered) {
+    EXPECT_LT(kServiceShardBeginNetworkId, kServiceShardEndNetworkId);
+}
+
+TEST(NetworkUtilsBranches, ServiceNetworkTypeVpnLessThanWaitingPool) {
+    EXPECT_LT(static_cast<uint32_t>(kVpnNetworkId), static_cast<uint32_t>(kWaitingPoolNetworkId));
+}
+
 TEST(NetworkUtilsBranches, IsSameShardOrSameWaitingPoolCoversBranches) {
     EXPECT_TRUE(IsSameShardOrSameWaitingPool(5u, 5u));
 
@@ -45,6 +68,38 @@ TEST(NetworkUtilsBranches, IsSameShardOrSameWaitingPoolCoversBranches) {
     EXPECT_TRUE(IsSameShardOrSameWaitingPool(local, des));
 
     EXPECT_FALSE(IsSameShardOrSameWaitingPool(9u, 8u));
+}
+
+TEST(NetworkUtilsBranches, IsSameShardOrSameWaitingPoolFalseWhenDesBelowConsensusRange) {
+    ASSERT_LT(kNodeNetworkId, kRootCongressNetworkId);
+    EXPECT_FALSE(IsSameShardOrSameWaitingPool(500u, kNodeNetworkId));
+}
+
+TEST(NetworkUtilsBranches, IsSameShardRootCongressWaitingPoolPair) {
+    const uint32_t des = kRootCongressNetworkId;
+    const uint32_t waiting_local = des + kConsensusWaitingShardOffset;
+    ASSERT_LT(des, kConsensusShardEndNetworkId);
+    EXPECT_TRUE(IsSameShardOrSameWaitingPool(waiting_local, des));
+}
+
+TEST(NetworkUtilsBranches, IsSameShardLastConsensusIdPairsWaitingPool) {
+    const uint32_t des = kConsensusShardEndNetworkId - 1u;
+    const uint32_t waiting_local = des + kConsensusWaitingShardOffset;
+    EXPECT_TRUE(IsSameShardOrSameWaitingPool(waiting_local, des));
+}
+
+TEST(NetworkUtilsBranches, GetLocalConsensusNetworkIdShardVersusWaitingNormalization) {
+    {
+        GlobalNetworkIdGuard guard(kConsensusShardEndNetworkId - 1u);
+        EXPECT_EQ(GetLocalConsensusNetworkId(),
+                  static_cast<uint16_t>(kConsensusShardEndNetworkId - 1u));
+    }
+    {
+        GlobalNetworkIdGuard guard(kConsensusShardEndNetworkId);
+        EXPECT_EQ(GetLocalConsensusNetworkId(),
+                  static_cast<uint16_t>(kConsensusShardEndNetworkId -
+                                         kConsensusWaitingShardOffset));
+    }
 }
 
 TEST(NetworkUtilsBranches, IsSameToLocalShardUsesGlobalNetworkId) {

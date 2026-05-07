@@ -58,6 +58,30 @@ TEST(RandomNumBranches, SethashRejectedAfterOwnerTaken) {
     EXPECT_EQ(remote.GetHash(), h);
 }
 
+TEST(RandomNumBranches, RemoteOnTimeBlockClearsValidatedRandom) {
+    constexpr uint64_t secret = 424242ull;
+    const uint64_t h = common::Hash::Hash64(std::to_string(secret));
+
+    RandomNum remote(false);
+    remote.Sethash("node_z", h);
+    remote.SetFinalRandomNum("node_z", secret);
+    ASSERT_TRUE(remote.IsRandomValid());
+
+    remote.OnTimeBlock(10ull);
+    EXPECT_FALSE(remote.IsRandomValid());
+}
+
+TEST(RandomNumBranches, LocalOnTimeBlockSecondCallWithSameTsNoops) {
+    RandomNum local(true);
+    local.OnTimeBlock(100ull);
+    ASSERT_TRUE(local.IsRandomValid());
+    const uint64_t hash_after_first = local.GetHash();
+
+    local.OnTimeBlock(100ull);
+    EXPECT_TRUE(local.IsRandomValid());
+    EXPECT_EQ(local.GetHash(), hash_after_first);
+}
+
 }  // namespace test
 }  // namespace vss
 }  // namespace seth

@@ -48,6 +48,17 @@ TEST(UniqueMapBranches, EraseMissingKeyIsNoop) {
     EXPECT_EQ(m.size(), 0u);
 }
 
+TEST(UniqueMapBranches, GetMissingKeyReturnsFalse) {
+    UniqueMap<std::string, int, 8> m;
+    int v = -1;
+    EXPECT_FALSE(m.get("nope", &v));
+}
+
+TEST(UniqueMapBranches, ExistsFalseForUnknownKey) {
+    UniqueMap<int, std::string, 4> m;
+    EXPECT_FALSE(m.exists(42));
+}
+
 }  // namespace test
 }  // namespace common
 }  // namespace seth

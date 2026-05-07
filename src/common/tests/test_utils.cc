@@ -173,6 +173,39 @@ TEST_F(TestUtils, GetAddressPoolIndexRootPrefix) {
     ASSERT_EQ(idx, kGlobalPoolIndex);
 }
 
+// --- MessageType ---
+
+TEST_F(TestUtils, MessageTypeMaxMarkerFollowsLastConcreteType) {
+    EXPECT_EQ(static_cast<uint32_t>(kMaxMessageTypeCount),
+              static_cast<uint32_t>(kPacemakerTimerMessage) + 1u);
+}
+
+TEST_F(TestUtils, ConsensusTypeEnumRootShardAndTimeBlock) {
+    EXPECT_EQ(kConsensusRootElectShard, 7);
+    EXPECT_EQ(kConsensusRootTimeBlock, 8);
+    EXPECT_LT(kConsensusInvalidType, kConsensusTransaction);
+}
+
+TEST_F(TestUtils, ClientStatusEnumOrdered) {
+    EXPECT_LT(static_cast<int>(kValid), static_cast<int>(kLoginByOtherTerminal));
+}
+
+TEST_F(TestUtils, ClientPlatformEnumOrdered) {
+    EXPECT_LT(static_cast<int>(kUnknown), static_cast<int>(kWindows));
+}
+
+TEST_F(TestUtils, VipLevelEnumZeroThroughFive) {
+    EXPECT_EQ(static_cast<int>(kNotVip), 0);
+    EXPECT_EQ(static_cast<int>(kVipLevel5), 5);
+}
+
+TEST_F(TestUtils, ValidationStatusCodesDistinct) {
+    EXPECT_NE(static_cast<int>(ValidationStatus::SUCCESS),
+              static_cast<int>(ValidationStatus::EMPTY_BYTECODE));
+    EXPECT_NE(static_cast<int>(ValidationStatus::EMPTY_BYTECODE),
+              static_cast<int>(ValidationStatus::INCOMPLETE_PUSH));
+}
+
 // --- GetNodeConnectInt Tests ---
 
 TEST_F(TestUtils, GetNodeConnectIntUnique) {
@@ -448,6 +481,46 @@ TEST_F(TestUtils, IsContractBytescodeValidMetadataTermination) {
     bytecode.push_back(static_cast<char>(0x60));  // PUSH1 after metadata (should be ignored)
     auto status = IsContractBytescodeValid(bytecode);
     ASSERT_EQ(status, ValidationStatus::SUCCESS);
+}
+
+TEST_F(TestUtils, IsContractBytescodeValidPush2) {
+    // PUSH2 (0x61) + 2 immediate bytes + STOP
+    std::string bytecode;
+    bytecode.push_back(static_cast<char>(0x61));
+    bytecode.push_back(static_cast<char>(0xab));
+    bytecode.push_back(static_cast<char>(0xcd));
+    bytecode.push_back(static_cast<char>(0x00));
+    auto status = IsContractBytescodeValid(bytecode);
+    ASSERT_EQ(status, ValidationStatus::SUCCESS);
+}
+
+TEST_F(TestUtils, IsContractBytescodeValidPush2Incomplete) {
+    std::string bytecode;
+    bytecode.push_back(static_cast<char>(0x61));
+    bytecode.push_back(static_cast<char>(0x01));
+    auto status = IsContractBytescodeValid(bytecode);
+    ASSERT_EQ(status, ValidationStatus::INCOMPLETE_PUSH);
+}
+
+TEST_F(TestUtils, IsContractBytescodeValidPush5) {
+    // PUSH5 (0x64) + 5 immediate bytes + STOP
+    std::string bytecode;
+    bytecode.push_back(static_cast<char>(0x64));
+    for (int i = 0; i < 5; ++i) {
+        bytecode.push_back(static_cast<char>(i + 1));
+    }
+    bytecode.push_back(static_cast<char>(0x00));
+    auto status = IsContractBytescodeValid(bytecode);
+    ASSERT_EQ(status, ValidationStatus::SUCCESS);
+}
+
+TEST_F(TestUtils, IsContractBytescodeValidPush5Incomplete) {
+    std::string bytecode;
+    bytecode.push_back(static_cast<char>(0x64));
+    bytecode.push_back(static_cast<char>(0x01));
+    bytecode.push_back(static_cast<char>(0x02));
+    auto status = IsContractBytescodeValid(bytecode);
+    ASSERT_EQ(status, ValidationStatus::INCOMPLETE_PUSH);
 }
 
 // --- isFileExist Tests ---

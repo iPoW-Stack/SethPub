@@ -283,6 +283,13 @@ TEST(TestSecurityPrimitives, ContractAddressTruncatesLongSenderToLast20Bytes) {
     ASSERT_EQ(addr, addr2);
 }
 
+TEST(TestSecurityPrimitives, ContractAddressDiffersWhenSenderChanges) {
+    const std::string from_a(20, '\x11');
+    const std::string from_b(20, '\x22');
+    const std::string nonce(2, '\xee');
+    ASSERT_NE(GetContractAddress(from_a, nonce), GetContractAddress(from_b, nonce));
+}
+
 #if GTEST_HAS_DEATH_TEST
 TEST(TestSecurityPrimitives, FatalStubsDeathCoverage) {
     GmSsl gmssl;

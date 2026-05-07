@@ -44,6 +44,16 @@ TEST(SyncUtilsBranches, TimingAndCapacityConstants) {
     EXPECT_GT(kSyncNeighborCount, 0u);
 }
 
+TEST(SyncUtilsBranches, RetryPeriodConstantsPositive) {
+    EXPECT_GT(kSyncValueRetryPeriod, 0u);
+    EXPECT_GT(kTimeoutCheckPeriod, 0u);
+}
+
+TEST(SyncUtilsBranches, SyncPriorityEnumCompleteRange) {
+    EXPECT_EQ(static_cast<int>(kSyncPriLowest), 0);
+    EXPECT_EQ(static_cast<int>(kSyncPriHighest), 4);
+}
+
 }  // namespace test
 }  // namespace sync
 }  // namespace seth

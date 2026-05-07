@@ -97,10 +97,31 @@ TEST(PoolsTxUtilsBranches, GetTxKeyDiffersWhenNonceDiffers) {
     EXPECT_EQ(k1.size(), k2.size());
 }
 
+TEST(PoolsTxUtilsBranches, GetTxKeyDiffersWhenAddressDiffers) {
+    std::string addr_a(common::kUnicastAddressLength, 'D');
+    std::string addr_b(common::kUnicastAddressLength, 'E');
+    const uint64_t nonce = 99ull;
+    EXPECT_NE(GetTxKey(addr_a, nonce), GetTxKey(addr_b, nonce));
+}
+
 TEST(PoolsTxUtilsBranches, CrossItemRecordHashDiffersAcrossItems) {
     CrossItemRecordHash hasher;
     const CrossItem a{1u, 2u, 100ull};
     const CrossItem b{7u, 2u, 100ull};
+    EXPECT_NE(hasher(a), hasher(b));
+}
+
+TEST(PoolsTxUtilsBranches, CrossItemRecordHashDiffersOnMiddleField) {
+    CrossItemRecordHash hasher;
+    const CrossItem a{4u, 1u, 50ull};
+    const CrossItem b{4u, 2u, 50ull};
+    EXPECT_NE(hasher(a), hasher(b));
+}
+
+TEST(PoolsTxUtilsBranches, CrossItemRecordHashDiffersOnAmountField) {
+    CrossItemRecordHash hasher;
+    const CrossItem a{4u, 5u, 50ull};
+    const CrossItem b{4u, 5u, 51ull};
     EXPECT_NE(hasher(a), hasher(b));
 }
 

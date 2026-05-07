@@ -45,6 +45,24 @@ TEST(UniqueMinPriorityQueueBranches, WorksWithStringType) {
     EXPECT_EQ(q.top(), "b");
 }
 
+TEST(UniqueMinPriorityQueueBranches, RepeatedPushSameValueKeepsSingleEntry) {
+    UniqueMinPriorityQueue<int> q;
+    for (int i = 0; i < 20; ++i) {
+        q.push(7);
+    }
+    EXPECT_EQ(q.size(), 1u);
+    EXPECT_EQ(q.top(), 7);
+}
+
+TEST(UniqueMinPriorityQueueBranches, DistinctPushesIncreaseSize) {
+    UniqueMinPriorityQueue<int> q;
+    q.push(9);
+    q.push(1);
+    q.push(5);
+    EXPECT_EQ(q.size(), 3u);
+    EXPECT_EQ(q.top(), 1);
+}
+
 }  // namespace test
 }  // namespace common
 }  // namespace seth

@@ -47,6 +47,24 @@ TEST(ElectUtilsBranches, GetElectHeartbeatHashDeterministicAndSensitive) {
     EXPECT_EQ(h1.size(), 32u);  // keccak256 binary digest length used by Hash::keccak256 return
 }
 
+TEST(ElectUtilsBranches, GetElectHeartbeatHashSensitiveToIp) {
+    const std::string a = GetElectHeartbeatHash("198.51.100.1", 9000u, 1u, 0ull);
+    const std::string b = GetElectHeartbeatHash("198.51.100.2", 9000u, 1u, 0ull);
+    EXPECT_NE(a, b);
+}
+
+TEST(ElectUtilsBranches, GetElectHeartbeatHashSensitiveToPort) {
+    const std::string a = GetElectHeartbeatHash("192.0.2.1", 8000u, 2u, 0ull);
+    const std::string b = GetElectHeartbeatHash("192.0.2.1", 8001u, 2u, 0ull);
+    EXPECT_NE(a, b);
+}
+
+TEST(ElectUtilsBranches, GetElectHeartbeatHashSensitiveToNetId) {
+    const std::string a = GetElectHeartbeatHash("203.0.113.5", 9000u, 7u, 100ull);
+    const std::string b = GetElectHeartbeatHash("203.0.113.5", 9000u, 8u, 100ull);
+    EXPECT_NE(a, b);
+}
+
 }  // namespace test
 }  // namespace elect
 }  // namespace seth

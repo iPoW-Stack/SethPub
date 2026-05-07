@@ -31,6 +31,11 @@ TEST(UniqueSetBranches, EvictsOldestWhenOverCapacity) {
     EXPECT_TRUE(s.exists(40));
 }
 
+TEST(UniqueSetBranches, ExistsFalseWhenKeyNeverAdded) {
+    UniqueSet<std::string, 8> s;
+    EXPECT_FALSE(s.exists("missing"));
+}
+
 }  // namespace test
 }  // namespace common
 }  // namespace seth

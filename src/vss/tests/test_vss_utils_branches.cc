@@ -29,6 +29,14 @@ TEST(VssUtilsBranches, VssErrorCodeEnum) {
     EXPECT_EQ(kVssError, 1);
 }
 
+TEST(VssUtilsBranches, VssMessageTypeEnumValues) {
+    EXPECT_EQ(kVssRandomHash, 1);
+    EXPECT_EQ(kVssRandom, 2);
+    EXPECT_EQ(kVssFinalRandom, 3);
+    EXPECT_LT(kVssRandomHash, kVssRandom);
+    EXPECT_LT(kVssRandom, kVssFinalRandom);
+}
+
 TEST(VssUtilsBranches, ElectItemConstructibleAndAssignable) {
     ElectItem a;
     ElectItem b;

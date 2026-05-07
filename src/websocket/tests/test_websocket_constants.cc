@@ -14,6 +14,11 @@ TEST(WebSocketUtilsBranches, InvalidReplyConstantsNonEmpty) {
     EXPECT_NE(kInvalidType, kInvalidMessage);
 }
 
+TEST(WebSocketUtilsBranches, InvalidReplyConstantsMatchSentinelStrings) {
+    EXPECT_EQ(kInvalidType, "kInvalidType");
+    EXPECT_EQ(kInvalidMessage, "kInvalidMessage");
+}
+
 }  // namespace test
 }  // namespace ws
 }  // namespace seth

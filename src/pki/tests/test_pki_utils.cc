@@ -36,6 +36,11 @@ TEST(PkiUtils, Byte2stringSingleByteEdges) {
     EXPECT_EQ(byte2string(std::string(1, '\xff')), "ff");
 }
 
+TEST(PkiUtils, Byte2stringHexPairsForMultiByteInput) {
+    EXPECT_EQ(byte2string(std::string("\x01\x23\x45\x67", 4)), "01234567");
+    EXPECT_EQ(byte2string(std::string("\x0a\x0b", 2)), "0a0b");
+}
+
 TEST(PkiUtils, XorStringsEqualLengthAllZerosOrOnes) {
     const std::string a(8, '\xaa');
     const std::string b(8, '\xaa');

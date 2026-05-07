@@ -21,8 +21,18 @@ TEST(TimeBlockUtilsBranches, RootErrorCodeFullEnum) {
     EXPECT_EQ(static_cast<int>(kTimeBlockVssError), 2);
 }
 
+TEST(TimeBlockUtilsBranches, RootErrorCodesStrictlyOrdered) {
+    EXPECT_LT(static_cast<int>(kTimeBlockSuccess), static_cast<int>(kTimeBlockError));
+    EXPECT_LT(static_cast<int>(kTimeBlockError), static_cast<int>(kTimeBlockVssError));
+}
+
 TEST(TimeBlockUtilsBranches, TolerateVersusMaxOffset) {
     EXPECT_GE(kTimeBlockTolerateSeconds, kTimeBlockMaxOffsetSeconds);
+}
+
+TEST(TimeBlockUtilsBranches, CheckPeriodsMatchVssTimeblockConstants) {
+    EXPECT_EQ(kCheckTimeBlockPeriodUs, kCheckBftPeriodUs);
+    EXPECT_GT(kTimeBlockAvgCount, 0u);
 }
 
 }  // namespace test

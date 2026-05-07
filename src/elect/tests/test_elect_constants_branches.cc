@@ -41,6 +41,17 @@ TEST(ElectConstantsBranches, FtsAndShardRatesPositive) {
     EXPECT_GT(kEachShardMaxTps, 0u);
 }
 
+TEST(ElectConstantsBranches, MinShardingAndTolerateRates) {
+    EXPECT_GE(kMinShardingNetworkNodesCount, 1u);
+    EXPECT_LE(kTolerateLeaderBackupFiffRate, 100u);
+    EXPECT_GT(kSmoothGradientAmount, 0ull);
+}
+
+TEST(ElectConstantsBranches, BroadcastAndHopToLayer) {
+    EXPECT_NE(kElectBroadcastIgnBloomfilterHop, kElectBroadcastStopTimes);
+    EXPECT_LE(kElectHopToLayer, kElectHopLimit);
+}
+
 }  // namespace test
 }  // namespace elect
 }  // namespace seth

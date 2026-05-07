@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <limits>
+
 #include "sethvm/sethvm_utils.h"
 
 namespace seth {
@@ -11,8 +13,8 @@ TEST(SethvmUtilsBranches, IsContractBytesCodeDetectsPinnedPrefix) {
     good.push_back(static_cast<char>(0xfe));
     EXPECT_TRUE(IsContractBytesCode(good));
 
-    // memcmp length is kContractHead.size(); inputs must be at least that long (implementation requirement).
     ASSERT_EQ(kContractHead.size(), 4u);
+    EXPECT_FALSE(IsContractBytesCode(std::string(3u, '\0')));
     EXPECT_FALSE(IsContractBytesCode(std::string(4u, '\0')));
     std::string wrong = kContractHead;
     wrong[0] = static_cast<char>(0x01);
@@ -28,6 +30,16 @@ TEST(SethvmUtilsBranches, Uint64EvmcBytes32RoundTrip) {
     check(0ull);
     check(1ull);
     check(0xDEADBEEFCAFEBABEull);
+    check(std::numeric_limits<uint64_t>::max());
+}
+
+TEST(SethvmUtilsBranches, EvmcBytes32ReadsLowEightBytesOnly) {
+    evmc_bytes32 b{};
+    for (size_t i = 0; i < sizeof(b.bytes) - sizeof(uint64_t); ++i) {
+        b.bytes[i] = static_cast<uint8_t>(0xff);
+    }
+    Uint64ToEvmcBytes32(b, 12345ull);
+    EXPECT_EQ(EvmcBytes32ToUint64(b), 12345ull);
 }
 
 TEST(SethvmUtilsBranches, ContractCallModeEnums) {

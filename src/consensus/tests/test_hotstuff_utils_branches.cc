@@ -34,6 +34,13 @@ TEST(HotstuffUtilsBranches, BlockViewKeyLexicographicTieBreaks) {
     EXPECT_TRUE(by_view < bigger_view);
 }
 
+TEST(HotstuffUtilsBranches, BlockViewKeyComparesFirstDifferingFieldOnly) {
+    const BlockViewKey base(3u, 4u, 5ull);
+    EXPECT_TRUE(base < BlockViewKey(4u, 0u, 0ull));
+    EXPECT_TRUE(base < BlockViewKey(3u, 5u, 0ull));
+    EXPECT_TRUE(base < BlockViewKey(3u, 4u, 6ull));
+}
+
 TEST(HotstuffUtilsBranches, BlockViewKeyHashStableForEqualKeys) {
     BlockViewKey k1(5u, 7u, 42ull);
     BlockViewKey k2(5u, 7u, 42ull);
@@ -59,6 +66,26 @@ TEST(HotstuffUtilsBranches, SerializeDeterministicDefaultEmptyBlock) {
     block::protobuf::Block empty;
     std::string s = SerializeDeterministic(empty);
     (void)s;
+}
+
+TEST(HotstuffUtilsBranches, SerializeDeterministicDiffersWhenFieldsChange) {
+    block::protobuf::Block a;
+    a.set_height(10u);
+    a.set_chain_id(100ull);
+    block::protobuf::Block b;
+    b.set_height(11u);
+    b.set_chain_id(100ull);
+    EXPECT_NE(SerializeDeterministic(a), SerializeDeterministic(b));
+}
+
+TEST(HotstuffUtilsBranches, SerializeDeterministicSensitiveToChainId) {
+    block::protobuf::Block a;
+    a.set_height(20u);
+    a.set_chain_id(100ull);
+    block::protobuf::Block b;
+    b.set_height(20u);
+    b.set_chain_id(101ull);
+    EXPECT_NE(SerializeDeterministic(a), SerializeDeterministic(b));
 }
 
 TEST(HotstuffUtilsBranches, ChainTypeConstants) {
