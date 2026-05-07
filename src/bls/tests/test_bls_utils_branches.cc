@@ -98,9 +98,8 @@ TEST_F(BlsUtilsBranches, Proto2BlsPopProofPartialFields) {
     EXPECT_NE(result, nullptr);
 }
 
-TEST_F(BlsUtilsBranches, BlsPublicKey2ProtoZeroKeyHasStrings) {
-    auto proto = BlsPublicKey2Proto(libff::alt_bn128_G2::zero());
-    EXPECT_NE(proto, nullptr);
+TEST_F(BlsUtilsBranches, BlsPublicKey2ProtoZeroKeyThrows) {
+    EXPECT_THROW(BlsPublicKey2Proto(libff::alt_bn128_G2::zero()), std::runtime_error);
 }
 
 TEST_F(BlsUtilsBranches, BlsErrorCodeEnumValues) {
@@ -114,7 +113,7 @@ TEST_F(BlsUtilsBranches, KBlsMaxExchangeMembersRatioValue) {
 
 TEST_F(BlsUtilsBranches, BlsFinishItemMaxBlsMembersMap) {
     BlsFinishItem item;
-    common::Bitmap bm(32);
+    common::Bitmap bm(64);
     auto member = std::make_shared<MaxBlsMemberItem>(3u, bm);
     item.max_bls_members["hash1"] = member;
     EXPECT_EQ(item.max_bls_members.size(), 1u);
