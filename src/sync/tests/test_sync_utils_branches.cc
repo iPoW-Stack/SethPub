@@ -21,6 +21,29 @@ TEST(SyncUtilsBranches, RequestLimitsPositive) {
     EXPECT_GT(kSyncMaxKeyCount, kEachRequestMaxSyncKeyCount);
 }
 
+TEST(SyncUtilsBranches, SyncErrorCodeValues) {
+    EXPECT_EQ(kSyncSuccess, 0);
+    EXPECT_EQ(kSyncError, 1);
+    EXPECT_EQ(kSyncKeyExsits, 2);
+    EXPECT_EQ(kSyncKeyAdded, 3);
+    EXPECT_EQ(kSyncBlockReloaded, 4);
+}
+
+TEST(SyncUtilsBranches, SyncPriorityRanksAreOrdered) {
+    EXPECT_LT(kSyncPriLowest, kSyncPriLow);
+    EXPECT_LT(kSyncPriLow, kSyncNormal);
+    EXPECT_LT(kSyncNormal, kSyncHigh);
+    EXPECT_LT(kSyncHigh, kSyncHighest);
+}
+
+TEST(SyncUtilsBranches, TimingAndCapacityConstants) {
+    EXPECT_GT(kSyncTickPeriod, 0u);
+    EXPECT_GT(kSyncPacketMaxSize, kEachRequestMaxSyncKeyCount * 100u);
+    EXPECT_GE(kMaxSyncMapCapacity, kSyncMaxKeyCount);
+    EXPECT_GT(kSyncMaxRetryTimes, 0u);
+    EXPECT_GT(kSyncNeighborCount, 0u);
+}
+
 }  // namespace test
 }  // namespace sync
 }  // namespace seth

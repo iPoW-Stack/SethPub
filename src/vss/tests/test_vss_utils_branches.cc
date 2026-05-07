@@ -24,6 +24,27 @@ TEST(VssUtilsBranches, VssConstants) {
     EXPECT_EQ(kHandleMessageVssTimePeriodOffsetSeconds, 1u);
 }
 
+TEST(VssUtilsBranches, VssErrorCodeEnum) {
+    EXPECT_EQ(kVssSuccess, 0);
+    EXPECT_EQ(kVssError, 1);
+}
+
+TEST(VssUtilsBranches, ElectItemConstructibleAndAssignable) {
+    ElectItem a;
+    ElectItem b;
+    b.member_count = 3u;
+    b.elect_height = 9ull;
+    b.this_node_is_leader = true;
+    a = b;
+    EXPECT_EQ(a.member_count, 3u);
+    EXPECT_EQ(a.elect_height, 9ull);
+    EXPECT_TRUE(a.this_node_is_leader);
+}
+
+TEST(VssUtilsBranches, TimeoutMicrosecondsPositive) {
+    EXPECT_GT(kVssCheckPeriodTimeout, 0ll);
+}
+
 }  // namespace test
 }  // namespace vss
 }  // namespace seth

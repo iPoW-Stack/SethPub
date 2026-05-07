@@ -15,6 +15,16 @@ TEST(TimeBlockUtilsBranches, RootErrorCodeValues) {
     EXPECT_EQ(kCheckBftPeriodUs, 1000000llu);
 }
 
+TEST(TimeBlockUtilsBranches, RootErrorCodeFullEnum) {
+    EXPECT_EQ(static_cast<int>(kTimeBlockSuccess), 0);
+    EXPECT_EQ(static_cast<int>(kTimeBlockError), 1);
+    EXPECT_EQ(static_cast<int>(kTimeBlockVssError), 2);
+}
+
+TEST(TimeBlockUtilsBranches, TolerateVersusMaxOffset) {
+    EXPECT_GE(kTimeBlockTolerateSeconds, kTimeBlockMaxOffsetSeconds);
+}
+
 }  // namespace test
 }  // namespace timeblock
 }  // namespace seth
