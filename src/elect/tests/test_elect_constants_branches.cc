@@ -25,6 +25,22 @@ TEST(ElectConstantsBranches, BloomAndHopLimitsAreOrdered) {
     EXPECT_GE(kBloomfilterWaitingHashCount, kBloomfilterHashCount);
 }
 
+TEST(ElectConstantsBranches, ElectErrorCodeEnumValues) {
+    EXPECT_EQ(kElectSuccess, 0);
+    EXPECT_EQ(kElectError, 1);
+    EXPECT_EQ(kElectJoinUniversalError, 2);
+    EXPECT_EQ(kElectJoinShardFailed, 3);
+    EXPECT_EQ(kElectNoBootstrapNodes, 4);
+    EXPECT_EQ(kElectNetworkJoined, 5);
+    EXPECT_EQ(kElectNetworkNotJoined, 6);
+}
+
+TEST(ElectConstantsBranches, FtsAndShardRatesPositive) {
+    EXPECT_GT(kFtsWeedoutDividRate, 0u);
+    EXPECT_GT(kInvalidShardNodesRate, 0u);
+    EXPECT_GT(kEachShardMaxTps, 0u);
+}
+
 }  // namespace test
 }  // namespace elect
 }  // namespace seth

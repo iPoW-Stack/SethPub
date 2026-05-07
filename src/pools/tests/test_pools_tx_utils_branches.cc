@@ -89,6 +89,21 @@ TEST(PoolsTxUtilsBranches, CrossItemRecordHashDeterministic) {
     EXPECT_EQ(hasher(item), hasher(item));
 }
 
+TEST(PoolsTxUtilsBranches, GetTxKeyDiffersWhenNonceDiffers) {
+    std::string addr(common::kUnicastAddressLength, 'C');
+    const std::string k1 = GetTxKey(addr, 1ull);
+    const std::string k2 = GetTxKey(addr, 2ull);
+    EXPECT_NE(k1, k2);
+    EXPECT_EQ(k1.size(), k2.size());
+}
+
+TEST(PoolsTxUtilsBranches, CrossItemRecordHashDiffersAcrossItems) {
+    CrossItemRecordHash hasher;
+    const CrossItem a{1u, 2u, 100ull};
+    const CrossItem b{7u, 2u, 100ull};
+    EXPECT_NE(hasher(a), hasher(b));
+}
+
 }  // namespace test
 }  // namespace pools
 }  // namespace seth
