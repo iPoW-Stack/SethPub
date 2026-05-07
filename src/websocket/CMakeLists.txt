@@ -46,15 +46,17 @@ endif()
 aux_source_directory(./ websocket_src)
 add_library(websocket ${websocket_src} "websocket_client.h")
 
-target_include_directories(websocket BEFORE PRIVATE
+# PUBLIC: headers (e.g. websocket_utils.h) include websocketpp/boost; targets that
+# compile tests or other TU including those headers need the same include paths.
+target_include_directories(websocket BEFORE PUBLIC
     "${WEBSOCKETPP_INCLUDE_ROOT}")
 
 if(Boost_FOUND)
-    target_include_directories(websocket BEFORE PRIVATE "${Boost_INCLUDE_DIRS}")
+    target_include_directories(websocket BEFORE PUBLIC "${Boost_INCLUDE_DIRS}")
 elseif(EXISTS "/usr/include/boost/version.hpp")
-    target_include_directories(websocket BEFORE PRIVATE "/usr/include")
+    target_include_directories(websocket BEFORE PUBLIC "/usr/include")
 elseif(EXISTS "/usr/local/include/boost/version.hpp")
-    target_include_directories(websocket BEFORE PRIVATE "/usr/local/include")
+    target_include_directories(websocket BEFORE PUBLIC "/usr/local/include")
 endif()
 
 target_link_libraries(websocket PRIVATE common boost_system boost_thread boost_atomic ssl crypto pthread dl)
