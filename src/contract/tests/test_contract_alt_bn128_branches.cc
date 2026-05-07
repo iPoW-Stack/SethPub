@@ -52,6 +52,19 @@ TEST(AltBn128G1AddBranches, InvalidCurveInput) {
     EXPECT_EQ(add.call(params, 0, "", res), kContractError);
 }
 
+TEST(AltBn128G1AddBranches, InvalidCurveInputWithCorrectLength) {
+    ContractAltBn128G1Add add(kContractAlt_bn128_G1_add);
+    CallParameters params;
+    // Keep EIP-196 length valid (128) but force invalid coordinates.
+    params.data.assign(128, '\xff');
+
+    evmc_result call_result = {};
+    evmc::Result evmc_res{ call_result };
+    evmc_result* res = reinterpret_cast<evmc_result*>(&evmc_res);
+    res->gas_left = 500'000;
+    EXPECT_EQ(add.call(params, 0, "", res), kContractError);
+}
+
 TEST(AltBn128G1AddBranches, SuccessVector) {
     const std::string input = common::Encode::HexDecode(
         "18b18acfb4c2c30276db5411368e7185b311dd124691610c5d3b74034e093dc9"
@@ -110,6 +123,19 @@ TEST(AltBn128G1MulBranches, InvalidInput) {
     ContractAltBn128G1Mul mul(kContractAlt_bn128_G1_mul);
     CallParameters params;
     params.data.assign(64, '\x13');
+
+    evmc_result call_result = {};
+    evmc::Result evmc_res{ call_result };
+    evmc_result* res = reinterpret_cast<evmc_result*>(&evmc_res);
+    res->gas_left = 50'000;
+    EXPECT_EQ(mul.call(params, 0, "", res), kContractError);
+}
+
+TEST(AltBn128G1MulBranches, InvalidInputWithCorrectLength) {
+    ContractAltBn128G1Mul mul(kContractAlt_bn128_G1_mul);
+    CallParameters params;
+    // Keep EIP-196 length valid (96) but force invalid point/scalar payload.
+    params.data.assign(96, '\xff');
 
     evmc_result call_result = {};
     evmc::Result evmc_res{ call_result };
@@ -201,6 +227,19 @@ TEST(AltBn128PairingBranches, InvalidInput) {
     evmc::Result evmc_res{ call_result };
     evmc_result* res = reinterpret_cast<evmc_result*>(&evmc_res);
     res->gas_left = 5'000'000;
+    EXPECT_EQ(pairing.call(params, 0, "", res), kContractError);
+}
+
+TEST(AltBn128PairingBranches, InvalidInputWithCorrectPairStride) {
+    ContractaltBn128PairingProduct pairing(kContractAlt_bn128_pairing_product);
+    CallParameters params;
+    // One pair stride (192 bytes), but invalid curve coordinates.
+    params.data.assign(192, '\xff');
+
+    evmc_result call_result = {};
+    evmc::Result evmc_res{ call_result };
+    evmc_result* res = reinterpret_cast<evmc_result*>(&evmc_res);
+    res->gas_left = 10'000'000;
     EXPECT_EQ(pairing.call(params, 0, "", res), kContractError);
 }
 

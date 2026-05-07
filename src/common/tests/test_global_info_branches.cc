@@ -62,6 +62,14 @@ TEST(GlobalInfoBranches, InitClampsEachTxPoolMaxTxsBelowMinimum) {
     EXPECT_EQ(g->each_tx_pool_max_txs(), 10240u);
 }
 
+TEST(GlobalInfoBranches, InitKeepsEachTxPoolMaxTxsWhenAlreadyHighEnough) {
+    Config cfg = MakeMinimalSethConfig();
+    ASSERT_TRUE(cfg.Set("seth", "each_tx_pool_max_txs", std::string("30000")));
+    auto* g = GlobalInfo::Instance();
+    ASSERT_EQ(g->Init(cfg), kCommonSuccess);
+    EXPECT_EQ(g->each_tx_pool_max_txs(), 30000u);
+}
+
 TEST(GlobalInfoBranches, SetNowValidEndShardOnlyIncreases) {
     auto* g = GlobalInfo::Instance();
     g->set_now_valid_end_shard(10u);
@@ -141,6 +149,22 @@ TEST(GlobalInfoBranches, TimerUpdatesMaxWhenCountExceeds64) {
     g->shared_obj_count_[kSlot].store(150);
     g->Timer();
     EXPECT_EQ(g->shared_obj_max_count_[kSlot], 300);
+}
+
+TEST(GlobalInfoBranches, TimerDoesNotUpdateMaxWhenCountAtOrBelow64) {
+    auto* g = GlobalInfo::Instance();
+    Config cfg = MakeMinimalSethConfig();
+    ASSERT_EQ(g->Init(cfg), kCommonSuccess);
+
+    constexpr int32_t kSlot = 12;
+    g->shared_obj_max_count_[kSlot] = 77;
+    g->shared_obj_count_[kSlot].store(64);
+    g->Timer();
+    EXPECT_EQ(g->shared_obj_max_count_[kSlot], 77);
+
+    g->shared_obj_count_[kSlot].store(10);
+    g->Timer();
+    EXPECT_EQ(g->shared_obj_max_count_[kSlot], 77);
 }
 #endif
 

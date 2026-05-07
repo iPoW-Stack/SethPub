@@ -66,6 +66,34 @@ TEST(BlockUtilsBranches, AddressTypeEnumDistinct) {
     EXPECT_NE(static_cast<int>(kNormalAddress), static_cast<int>(kContractAddress));
 }
 
+TEST(BlockUtilsBranches, BlockTxsItemDefaultsAndTimeoutWindow) {
+    const uint64_t before = common::TimeUtils::TimestampMs();
+    BlockTxsItem item;
+    const uint64_t after = common::TimeUtils::TimestampMs();
+    EXPECT_EQ(item.tx_ptr, nullptr);
+    EXPECT_EQ(item.tx_count, 0u);
+    EXPECT_FALSE(item.success);
+    EXPECT_EQ(item.leader_to_index, -1);
+    EXPECT_GE(item.stop_consensus_timeout, before + kStopConsensusTimeoutMs);
+    EXPECT_LE(item.stop_consensus_timeout, after + kStopConsensusTimeoutMs + 5u);
+}
+
+TEST(BlockUtilsBranches, BlockToDbItemKeepsPointersFromCtor) {
+    auto vb = std::make_shared<view_block::protobuf::ViewBlockItem>();
+    auto batch = std::make_shared<db::DbWriteBatch>();
+    BlockToDbItem item(vb, batch);
+    EXPECT_EQ(item.view_block_ptr, vb);
+    EXPECT_EQ(item.final_db_batch, batch);
+}
+
+TEST(BlockUtilsBranches, LocalToTxInfoConstructorStoresAllFields) {
+    localToTxInfo info("dest_addr", 123ull, 7u, "lib_bytes");
+    EXPECT_EQ(info.des, "dest_addr");
+    EXPECT_EQ(info.amount, 123ull);
+    EXPECT_EQ(info.pool_index, 7u);
+    EXPECT_EQ(info.library_bytes, "lib_bytes");
+}
+
 }  // namespace test
 }  // namespace block
 }  // namespace seth

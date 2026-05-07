@@ -11,6 +11,34 @@ namespace test {
 using hotstuff::BlockViewKey;
 using hotstuff::kGlobalChainId;
 
+namespace {
+
+view_block::protobuf::ViewBlockItem MakeMinimalViewBlock(
+        uint32_t network_id,
+        uint32_t pool_index,
+        uint32_t leader_idx,
+        uint64_t view,
+        uint64_t chain_id,
+        uint64_t height,
+        const std::string& parent_hash) {
+    view_block::protobuf::ViewBlockItem vb;
+    vb.set_parent_hash(parent_hash);
+    auto* qc = vb.mutable_qc();
+    qc->set_network_id(network_id);
+    qc->set_pool_index(pool_index);
+    qc->set_leader_idx(leader_idx);
+    qc->set_view(view);
+    auto* bi = vb.mutable_block_info();
+    bi->set_chain_id(chain_id);
+    bi->set_height(height);
+    bi->set_timestamp(1000);
+    bi->set_consistency_random(1);
+    bi->set_timeblock_height(1);
+    return vb;
+}
+
+}  // namespace
+
 TEST(HotstuffUtilsBranches, BlockViewKeyEqualityAndOrder) {
     BlockViewKey a(3u, 9u, 100ull);
     BlockViewKey b(3u, 9u, 100ull);
@@ -131,6 +159,53 @@ TEST(HotstuffUtilsBranches, ViewDurationAndOrphanTimeoutConstants) {
     EXPECT_GT(hotstuff::ViewDurationMaxTimeoutMs, hotstuff::ViewDurationStartTimeoutMs);
     EXPECT_GT(hotstuff::ViewDurationMultiplier, 1.0);
     EXPECT_GT(hotstuff::ORPHAN_BLOCK_TIMEOUT_US, 0ull);
+}
+
+TEST(HotstuffUtilsBranches, GetBlockHashStableForSameViewBlock) {
+    auto vb = MakeMinimalViewBlock(
+        3u, 1u, 2u, 10ull, kGlobalChainId, 100ull, "parent_a");
+    const std::string h1 = hotstuff::GetBlockHash(vb);
+    const std::string h2 = hotstuff::GetBlockHash(vb);
+    EXPECT_FALSE(h1.empty());
+    EXPECT_EQ(h1, h2);
+}
+
+TEST(HotstuffUtilsBranches, GetBlockHashChangesWhenParentHashChanges) {
+    auto a = MakeMinimalViewBlock(
+        3u, 1u, 2u, 10ull, kGlobalChainId, 100ull, "parent_a");
+    auto b = a;
+    b.set_parent_hash("parent_b");
+    EXPECT_NE(hotstuff::GetBlockHash(a), hotstuff::GetBlockHash(b));
+}
+
+TEST(HotstuffUtilsBranches, GetBlockHashChangesWhenQcOrBlockInfoChanges) {
+    auto base = MakeMinimalViewBlock(
+        7u, 4u, 1u, 22ull, kGlobalChainId, 555ull, "p");
+
+    auto change_view = base;
+    change_view.mutable_qc()->set_view(base.qc().view() + 1);
+    EXPECT_NE(hotstuff::GetBlockHash(base), hotstuff::GetBlockHash(change_view));
+
+    auto change_height = base;
+    change_height.mutable_block_info()->set_height(base.block_info().height() + 1);
+    EXPECT_NE(hotstuff::GetBlockHash(base), hotstuff::GetBlockHash(change_height));
+}
+
+TEST(HotstuffUtilsBranches, GetBlockHashChangesWhenQcRoutingFieldsChange) {
+    auto base = MakeMinimalViewBlock(
+        9u, 2u, 3u, 40ull, kGlobalChainId, 888ull, "parent_x");
+
+    auto change_net = base;
+    change_net.mutable_qc()->set_network_id(base.qc().network_id() + 1);
+    EXPECT_NE(hotstuff::GetBlockHash(base), hotstuff::GetBlockHash(change_net));
+
+    auto change_pool = base;
+    change_pool.mutable_qc()->set_pool_index(base.qc().pool_index() + 1);
+    EXPECT_NE(hotstuff::GetBlockHash(base), hotstuff::GetBlockHash(change_pool));
+
+    auto change_leader = base;
+    change_leader.mutable_qc()->set_leader_idx(base.qc().leader_idx() + 1);
+    EXPECT_NE(hotstuff::GetBlockHash(base), hotstuff::GetBlockHash(change_leader));
 }
 
 }  // namespace test

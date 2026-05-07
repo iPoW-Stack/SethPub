@@ -13,6 +13,18 @@ TEST(TransportMessageBranches, ConstructAndDestructAdjustSharedObjCounter) {
     delete m;
 }
 
+TEST(TransportMessageBranches, ConstructorInitializesKeyStateFields) {
+    TransportMessage msg;
+    EXPECT_EQ(msg.conn, nullptr);
+    EXPECT_FALSE(msg.retry);
+    EXPECT_FALSE(msg.handled);
+    EXPECT_FALSE(msg.is_leader);
+    EXPECT_FALSE(msg.system_message);
+    EXPECT_EQ(msg.thread_index, -1);
+    EXPECT_EQ(msg.handle_timeout, common::kInvalidUint64);
+    EXPECT_GT(msg.timeout, 0ull);
+}
+
 TEST(TransportMessageBranches, SetStatusPendingStatesDoNotNotify) {
     TransportMessage msg;
     msg.msg_hash.assign(8, '\xab');
@@ -50,9 +62,32 @@ TEST(TransportMessageBranches, SetStatusTerminalSkipsCallbackWhenMsgHashEmpty) {
     EXPECT_FALSE(fired);
 }
 
+TEST(TransportMessageBranches, SetStatusTerminalWithoutCallbackStillStoresStatus) {
+    TransportMessage msg;
+    msg.msg_hash.assign(8, '\xaa');
+    msg.status_notify_cb = nullptr;  // explicit null callback branch
+    msg.set_status(kTxInvalidSignature);
+    EXPECT_EQ(msg.handle_status.load(), kTxInvalidSignature);
+}
+
+TEST(TransportMessageBranches, SetStatusTerminalCanNotifyMultipleTimes) {
+    TransportMessage msg;
+    msg.msg_hash.assign(8, '\xee');
+    int notify_count = 0;
+    msg.status_notify_cb = [&](const std::string&, MessageHandleStatus) { ++notify_count; };
+    msg.set_status(kTxInvalidAddress);
+    msg.set_status(kTxPoolFullReject);
+    EXPECT_EQ(notify_count, 2);
+}
+
 TEST(TransportMessageBranches, ClientItemConstructDestructAdjustsSharedCounter) {
     ClientItem* c = new ClientItem();
     delete c;
+}
+
+TEST(TransportMessageBranches, ClientItemStartsWithNullConnection) {
+    ClientItem c;
+    EXPECT_EQ(c.conn, nullptr);
 }
 
 TEST(TransportUtilsMoreConstants, RelayAndBufferBoundsPositive) {
@@ -60,6 +95,20 @@ TEST(TransportUtilsMoreConstants, RelayAndBufferBoundsPositive) {
     EXPECT_GT(kMaxMessageReserveCount, 0u);
     EXPECT_GT(kBroadcastMaxMessageCount, 0u);
     EXPECT_EQ(kKcpRecvWindowSize, kKcpSendWindowSize);
+}
+
+TEST(TransportUtilsMoreConstants, RelayAndTransportVersionConstants) {
+    EXPECT_GT(kBroadcastMaxRelayTimes, 0u);
+    EXPECT_GT(kUniqueMaxMessageCount, 0u);
+    EXPECT_EQ(kTransportVersionNum, 2);
+    EXPECT_EQ(kTransportTxBignumVersionNum, 1);
+    EXPECT_GT(kTcpBuffLength, 0);
+}
+
+TEST(TransportUtilsBranches, CloseSocketHandlesInvalidDescriptor) {
+    // Smoke branch test: should not crash on invalid descriptor.
+    CloseSocket(-1);
+    SUCCEED();
 }
 
 }  // namespace test

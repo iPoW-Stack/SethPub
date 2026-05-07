@@ -65,6 +65,31 @@ TEST(ElectUtilsBranches, GetElectHeartbeatHashSensitiveToNetId) {
     EXPECT_NE(a, b);
 }
 
+TEST(ElectUtilsBranches, MinHeapUniqueValSensitiveToBothFields) {
+    HeapItem base{11u, 22u};
+    HeapItem diff_index{12u, 22u};
+    HeapItem diff_succ{11u, 23u};
+    const uint64_t h_base = common::MinHeapUniqueVal(base);
+    EXPECT_NE(h_base, common::MinHeapUniqueVal(diff_index));
+    EXPECT_NE(h_base, common::MinHeapUniqueVal(diff_succ));
+}
+
+TEST(ElectUtilsBranches, GetElectHeartbeatHashHandlesEmptyIpInput) {
+    const std::string h1 = GetElectHeartbeatHash("", 0u, 0u, 0ull);
+    const std::string h2 = GetElectHeartbeatHash("", 0u, 0u, 1ull);
+    EXPECT_EQ(h1.size(), 32u);
+    EXPECT_EQ(h2.size(), 32u);
+    EXPECT_NE(h1, h2);
+}
+
+TEST(ElectUtilsBranches, HeapItemOrderingDependsOnlyOnSuccCount) {
+    HeapItem lhs{1u, 100u};
+    HeapItem rhs{999u, 101u};
+    EXPECT_TRUE(lhs < rhs);
+    rhs.succ_count = lhs.succ_count;
+    EXPECT_FALSE(lhs < rhs);
+}
+
 }  // namespace test
 }  // namespace elect
 }  // namespace seth

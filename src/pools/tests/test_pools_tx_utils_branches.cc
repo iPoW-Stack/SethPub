@@ -302,6 +302,81 @@ TEST(PoolsTxUtilsBranches, GetTxMessageHashOptionalFieldsChangeDigest) {
     EXPECT_NE(GetTxMessageHash(a), GetTxMessageHash(b));
 }
 
+TEST(PoolsTxUtilsBranches, GetTxMessageHashDiffersWhenStepPresenceDiffers) {
+    pools::protobuf::TxMessage no_step;
+    FillMinimalTxMessage(&no_step);
+    no_step.set_pubkey(std::string(64u, 'z'));
+    no_step.clear_step();  // exercise has_step() == false branch
+
+    pools::protobuf::TxMessage with_step = no_step;
+    with_step.set_step(pools::protobuf::kNormalFrom);  // has_step() == true branch
+
+    EXPECT_NE(GetTxMessageHash(no_step), GetTxMessageHash(with_step));
+}
+
+TEST(PoolsTxUtilsBranches, GetTxMessageHashSameWhenStepUnsetInBothMessages) {
+    pools::protobuf::TxMessage a;
+    FillMinimalTxMessage(&a);
+    a.set_pubkey(std::string(64u, 'y'));
+    a.clear_step();
+
+    pools::protobuf::TxMessage b = a;
+    EXPECT_EQ(GetTxMessageHash(a), GetTxMessageHash(b));
+}
+
+TEST(PoolsTxUtilsBranches, GetTxMessageHashContractInputChangesDigest) {
+    pools::protobuf::TxMessage a;
+    FillMinimalTxMessage(&a);
+    a.set_pubkey(std::string(64u, 's'));
+    a.set_step(pools::protobuf::kNormalFrom);
+
+    pools::protobuf::TxMessage b = a;
+    b.set_contract_input("input_payload");
+
+    EXPECT_NE(GetTxMessageHash(a), GetTxMessageHash(b));
+}
+
+TEST(PoolsTxUtilsBranches, GetTxMessageHashContractPrefundChangesDigest) {
+    pools::protobuf::TxMessage a;
+    FillMinimalTxMessage(&a);
+    a.set_pubkey(std::string(64u, 't'));
+    a.set_step(pools::protobuf::kNormalFrom);
+
+    pools::protobuf::TxMessage b = a;
+    b.set_contract_prefund(888ull);
+
+    EXPECT_NE(GetTxMessageHash(a), GetTxMessageHash(b));
+}
+
+TEST(PoolsTxUtilsBranches, GetTxMessageHashKeyAndValueBranches) {
+    pools::protobuf::TxMessage base;
+    FillMinimalTxMessage(&base);
+    base.set_pubkey(std::string(64u, 'u'));
+    base.set_step(pools::protobuf::kNormalFrom);
+
+    pools::protobuf::TxMessage key_only = base;
+    key_only.set_key("k");
+
+    pools::protobuf::TxMessage key_and_value = key_only;
+    key_and_value.set_value("v");
+
+    EXPECT_NE(GetTxMessageHash(base), GetTxMessageHash(key_only));
+    EXPECT_NE(GetTxMessageHash(key_only), GetTxMessageHash(key_and_value));
+}
+
+TEST(PoolsTxUtilsBranches, GetTxMessageHashValueWithoutKeyDoesNotAffectDigest) {
+    pools::protobuf::TxMessage a;
+    FillMinimalTxMessage(&a);
+    a.set_pubkey(std::string(64u, 'w'));
+    a.set_step(pools::protobuf::kNormalFrom);
+
+    pools::protobuf::TxMessage b = a;
+    b.set_value("value_only_should_be_ignored_without_key");
+
+    // has_value() is true on b, but code only appends value inside has_key() branch.
+    EXPECT_EQ(GetTxMessageHash(a), GetTxMessageHash(b));
+}
+
 }  // namespace test
 }  // namespace pools
 }  // namespace seth

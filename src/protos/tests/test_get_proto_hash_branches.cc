@@ -331,13 +331,13 @@ TEST(GetProtoHashBranches, ZbftProtoTxBftPrepareFinalHashChangesHash) {
 TEST(GetProtoHashBranches, ZbftProtoTxBftTxTypeChangesHash) {
     transport::protobuf::Header h1;
     transport::protobuf::Header h2;
-    auto fill = [](transport::protobuf::Header* h, int32_t t) {
+    auto fill = [](transport::protobuf::Header* h, pools::protobuf::StepType t) {
         auto* z = h->mutable_zbft();
         z->set_leader_idx(1);
         z->mutable_tx_bft()->set_tx_type(t);
     };
-    fill(&h1, 0);
-    fill(&h2, 7);
+    fill(&h1, pools::protobuf::kNormalFrom);
+    fill(&h2, pools::protobuf::kContractGasPrefund);
     std::string a;
     std::string b;
     GetProtoHash(h1, &a);
@@ -942,6 +942,188 @@ TEST(GetProtoHashBranches, JoinElectReqHashSensitiveToFields) {
     b.set_change_idx(2u);
 
     EXPECT_NE(GetJoinElectReqHash(a), GetJoinElectReqHash(b));
+}
+
+TEST(GetProtoHashBranches, GetProtoHashTxProtoTakesPrecedenceOverOtherSubmessages) {
+    transport::protobuf::Header h1;
+    transport::protobuf::Header h2;
+
+    // Fill both tx_proto and zbft; GetProtoHash should take tx_proto branch first.
+    auto fill_tx = [](transport::protobuf::Header* h, uint64_t nonce) {
+        auto* tx = h->mutable_tx_proto();
+        tx->set_nonce(nonce);
+        tx->set_pubkey("pk");
+        tx->set_gas_limit(21000ull);
+        tx->set_gas_price(1ull);
+        tx->set_step(pools::protobuf::kNormalFrom);
+        tx->set_amount(1ull);
+    };
+    fill_tx(&h1, 7ull);
+    fill_tx(&h2, 8ull);
+
+    auto fill_same_zbft = [](transport::protobuf::Header* h) {
+        auto* z = h->mutable_zbft();
+        z->set_leader_idx(1);
+        z->set_net_id(3u);
+        z->set_pool_index(5u);
+        z->set_prepare_gid("same_z");
+    };
+    fill_same_zbft(&h1);
+    fill_same_zbft(&h2);
+
+    std::string a;
+    std::string b;
+    GetProtoHash(h1, &a);
+    GetProtoHash(h2, &b);
+    EXPECT_NE(a, b);  // nonce differs in tx branch
+}
+
+TEST(GetProtoHashBranches, GetProtoHashLeavesOutputUntouchedWhenNoKnownSubmessage) {
+    transport::protobuf::Header h;
+    std::string out = "sentinel";
+    GetProtoHash(h, &out);
+    EXPECT_EQ(out, "sentinel");
+}
+
+TEST(GetProtoHashBranches, GetProtoHashZbftTakesPrecedenceOverVssAndBls) {
+    transport::protobuf::Header h1;
+    transport::protobuf::Header h2;
+
+    auto fill_same_zbft = [](transport::protobuf::Header* h) {
+        auto* z = h->mutable_zbft();
+        z->set_leader_idx(9);
+        z->set_net_id(3u);
+        z->set_pool_index(1u);
+        z->set_prepare_gid("zbft_same");
+    };
+    fill_same_zbft(&h1);
+    fill_same_zbft(&h2);
+
+    // Change only VSS/BLS fields; if zbft branch has priority, hash payload should stay equal.
+    auto* v1 = h1.mutable_vss_proto();
+    v1->set_member_index(1u);
+    v1->set_tm_height(2ull);
+    v1->set_elect_height(3ull);
+    v1->set_type(4);
+    auto* v2 = h2.mutable_vss_proto();
+    v2->set_member_index(99u);
+    v2->set_tm_height(88ull);
+    v2->set_elect_height(77ull);
+    v2->set_type(6);
+
+    h1.mutable_bls_proto()->set_index(1u);
+    h2.mutable_bls_proto()->set_index(2u);
+
+    std::string a;
+    std::string b;
+    GetProtoHash(h1, &a);
+    GetProtoHash(h2, &b);
+    EXPECT_EQ(a, b);
+}
+
+TEST(GetProtoHashBranches, GetProtoHashTxAndZbftAppendToExistingBuffer) {
+    transport::protobuf::Header tx_h;
+    auto* tx = tx_h.mutable_tx_proto();
+    tx->set_nonce(1ull);
+    tx->set_pubkey("pk");
+    tx->set_gas_limit(21000ull);
+    tx->set_gas_price(1ull);
+    tx->set_step(pools::protobuf::kNormalFrom);
+    tx->set_amount(1ull);
+
+    std::string out = "prefix";
+    GetProtoHash(tx_h, &out);
+    EXPECT_GT(out.size(), std::string("prefix").size());
+    EXPECT_EQ(out.substr(0, 6), "prefix");
+
+    transport::protobuf::Header zbft_h;
+    auto* z = zbft_h.mutable_zbft();
+    z->set_leader_idx(1);
+    z->set_prepare_gid("g");
+    z->set_net_id(1u);
+    z->set_pool_index(2u);
+    std::string out2 = "seed";
+    GetProtoHash(zbft_h, &out2);
+    EXPECT_GT(out2.size(), std::string("seed").size());
+    EXPECT_EQ(out2.substr(0, 4), "seed");
+}
+
+TEST(GetProtoHashBranches, GetProtoHashVssAndBlsOverwriteExistingBuffer) {
+    transport::protobuf::Header vss_h;
+    auto* v = vss_h.mutable_vss_proto();
+    v->set_member_index(1u);
+    v->set_tm_height(2ull);
+    v->set_elect_height(3ull);
+    v->set_type(1);
+    std::string out = "preexisting_data";
+    GetProtoHash(vss_h, &out);
+    EXPECT_EQ(out.size(), 32u);
+
+    transport::protobuf::Header bls_h;
+    auto* b = bls_h.mutable_bls_proto();
+    b->set_index(7u);
+    b->set_elect_height(9ull);
+    std::string out2 = "another_seed";
+    GetProtoHash(bls_h, &out2);
+    EXPECT_EQ(out2.size(), 32u);
+}
+
+TEST(GetProtoHashBranches, GetProtoHashVssTakesPrecedenceOverBlsWhenNoTxOrZbft) {
+    transport::protobuf::Header h1;
+    transport::protobuf::Header h2;
+
+    auto fill_same_vss = [](transport::protobuf::Header* h) {
+        auto* v = h->mutable_vss_proto();
+        v->set_member_index(8u);
+        v->set_tm_height(9ull);
+        v->set_elect_height(10ull);
+        v->set_type(1);
+        v->set_random_hash(123ull);
+    };
+    fill_same_vss(&h1);
+    fill_same_vss(&h2);
+
+    // Change only BLS fields; if vss branch has priority, output stays equal.
+    h1.mutable_bls_proto()->set_index(1u);
+    h2.mutable_bls_proto()->set_index(2u);
+
+    std::string a;
+    std::string b;
+    GetProtoHash(h1, &a);
+    GetProtoHash(h2, &b);
+    EXPECT_EQ(a, b);
+    EXPECT_EQ(a.size(), 32u);
+}
+
+TEST(GetProtoHashBranches, RepeatedCallAppendsForTxButOverwritesForVss) {
+    transport::protobuf::Header tx_h;
+    auto* tx = tx_h.mutable_tx_proto();
+    tx->set_nonce(42ull);
+    tx->set_pubkey("pk");
+    tx->set_gas_limit(21000ull);
+    tx->set_gas_price(1ull);
+    tx->set_step(pools::protobuf::kNormalFrom);
+    tx->set_amount(2ull);
+
+    std::string tx_out;
+    GetProtoHash(tx_h, &tx_out);
+    const size_t tx_once = tx_out.size();
+    GetProtoHash(tx_h, &tx_out);
+    EXPECT_GT(tx_out.size(), tx_once);
+    EXPECT_EQ(tx_out.substr(0, tx_once), tx_out.substr(tx_once, tx_once));
+
+    transport::protobuf::Header vss_h;
+    auto* v = vss_h.mutable_vss_proto();
+    v->set_member_index(1u);
+    v->set_tm_height(2ull);
+    v->set_elect_height(3ull);
+    v->set_type(4);
+    std::string vss_out = "seed";
+    GetProtoHash(vss_h, &vss_out);
+    const std::string first_hash = vss_out;
+    GetProtoHash(vss_h, &vss_out);
+    EXPECT_EQ(vss_out, first_hash);
+    EXPECT_EQ(vss_out.size(), 32u);
 }
 
 }  // namespace test
