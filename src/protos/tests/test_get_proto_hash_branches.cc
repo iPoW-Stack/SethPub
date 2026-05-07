@@ -104,6 +104,15 @@ TEST(GetProtoHashBranches, ElectBlockHashDeterministic) {
     EXPECT_NE(GetElectBlockHash(eb1).size(), 0u);
 }
 
+TEST(GetProtoHashBranches, ElectBlockHashSensitiveToElectHeight) {
+    elect::protobuf::ElectBlock a;
+    a.set_shard_network_id(1u);
+    a.set_elect_height(10ull);
+    elect::protobuf::ElectBlock b = a;
+    b.set_elect_height(11ull);
+    EXPECT_NE(GetElectBlockHash(a), GetElectBlockHash(b));
+}
+
 TEST(GetProtoHashBranches, JoinElectReqHashMinimal) {
     bls::protobuf::JoinElectInfo req;
     req.set_shard_id(11u);

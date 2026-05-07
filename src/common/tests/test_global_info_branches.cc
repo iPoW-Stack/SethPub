@@ -99,6 +99,13 @@ TEST(GlobalInfoBranches, GetThreadIndexClearsCheckModeThenUsesElseBranch) {
     ResetThreadState(g);
 }
 
+TEST(GlobalInfoBranches, SetConfigPublicIpRoundTrip) {
+    auto* g = GlobalInfo::Instance();
+    const std::string kIp = "198.51.100.22";
+    g->set_config_public_ip(kIp);
+    EXPECT_EQ(g->config_public_ip(), kIp);
+}
+
 #ifndef NDEBUG
 TEST(GlobalInfoBranches, SharedObjCountersUpdateInDebug) {
     auto* g = GlobalInfo::Instance();

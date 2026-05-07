@@ -36,6 +36,18 @@ TEST(MsgDecoderBranches, ZeroPayloadLengthExitsWithoutEnqueueingPacket) {
     EXPECT_EQ(dec.GetPacket(), nullptr);
 }
 
+TEST(MsgDecoderBranches, GetPacketReturnsNullWhenQueueEmpty) {
+    const std::string payload(3u, 'z');
+    std::string wire = MakeWire(static_cast<uint32_t>(payload.size()), tnet::kProtobuff, payload);
+
+    MsgDecoder dec;
+    ASSERT_TRUE(dec.Decode(wire.data(), wire.size()));
+    tnet::Packet* first = dec.GetPacket();
+    ASSERT_NE(first, nullptr);
+    first->Free();
+    EXPECT_EQ(dec.GetPacket(), nullptr);
+}
+
 TEST(MsgDecoderBranches, DecodeFullHeaderAndPayloadInOneChunk) {
     const std::string payload(10u, 'z');
     std::string wire = MakeWire(static_cast<uint32_t>(payload.size()), tnet::kProtobuff, payload);
