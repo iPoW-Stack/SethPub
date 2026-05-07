@@ -39,7 +39,8 @@ TEST(EncodeBranches, HexSubstrShortUsesFullHexEncode) {
 TEST(EncodeBranches, HexSubstrLongUsesEllipsisMiddle) {
     const std::string long_bytes(10, '\xab');
     const std::string sub = Encode::HexSubstr(long_bytes);
-    EXPECT_GT(sub.size(), 14u);
+    // HexSubstr pads to fixed 14 chars for len>=7 (3 nibbles hex + ".." + 3 nibbles hex).
+    EXPECT_EQ(sub.size(), 14u);
     EXPECT_NE(sub.find(".."), std::string::npos);
 }
 
@@ -57,9 +58,10 @@ TEST(EncodeBranches, Base64DecodeInvalidCharacterReturnsEmpty) {
 }
 
 TEST(EncodeBranches, Base64SubstrTruncatesLongStrings) {
-    const std::string long_plain(64, 'z');
+    const std::string long_plain(100, 'z');
     const std::string sub = Encode::Base64Substr(long_plain);
-    EXPECT_GT(sub.size(), 16u);
+    // Base64Substr yields 7 + 2 ("..") + 7 chars when encoded output exceeds 16.
+    EXPECT_EQ(sub.size(), 16u);
     EXPECT_NE(sub.find(".."), std::string::npos);
 }
 
