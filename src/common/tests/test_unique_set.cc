@@ -57,6 +57,7 @@ TEST_F(TestUniqueSet, Eviction) {
     s.add(4);  // evicts 1
     ASSERT_FALSE(s.exists(1));
     ASSERT_TRUE(s.exists(4));
+    ASSERT_FALSE(s.add(4));  // duplicate branch after eviction
 }
 
 TEST_F(TestUniqueSet, Size) {
@@ -65,6 +66,25 @@ TEST_F(TestUniqueSet, Size) {
     s.add(1);
     s.add(2);
     ASSERT_EQ(s.size(), 2u);
+}
+
+TEST_F(TestUniqueSet, ZeroCapacitySetAlwaysEvicts) {
+    UniqueSet<int, 0> s;
+    ASSERT_TRUE(s.add(7));
+    ASSERT_EQ(s.size(), 0u);
+    ASSERT_FALSE(s.exists(7));
+}
+
+TEST_F(TestUniqueSet, ReinsertAfterEviction) {
+    UniqueSet<int, 2> s;
+    ASSERT_TRUE(s.add(1));
+    ASSERT_TRUE(s.add(2));
+    ASSERT_TRUE(s.add(3));  // evict 1
+    ASSERT_FALSE(s.exists(1));
+
+    ASSERT_TRUE(s.add(1));   // should be insertable again
+    ASSERT_TRUE(s.exists(1));
+    ASSERT_FALSE(s.add(1));  // duplicate branch
 }
 
 }  // namespace test

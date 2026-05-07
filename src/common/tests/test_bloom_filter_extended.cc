@@ -257,6 +257,37 @@ TEST_F(TestBloomFilterExtended, NotEqualDifferentFilters) {
     (void)result;
 }
 
+TEST_F(TestBloomFilterExtended, DeserializeZeroCountKeepsDataEmpty) {
+    BloomFilter bf;
+    const uint64_t dummy = 0;
+    bf.Deserialize(&dummy, 0, 9);
+    ASSERT_EQ(bf.hash_count(), 9u);
+    ASSERT_TRUE(bf.data().empty());
+    ASSERT_TRUE(bf.Serialize().empty());
+    ASSERT_FALSE(bf.Contain(123ull));
+}
+
+TEST_F(TestBloomFilterExtended, DeserializeManualDataAndContainBehavior) {
+    BloomFilter bf;
+    std::vector<uint64_t> raw(2, 0ull);  // 128 bits total
+    // Set bit 5 and bit 70 manually.
+    raw[0] = (1ull << 5);
+    raw[1] = (1ull << 6);
+    bf.Deserialize(raw.data(), static_cast<uint32_t>(raw.size()), 1);
+
+    // hash_high=5, hash_low=0 -> maps to bit 5
+    ASSERT_TRUE(bf.Contain(0x0000000500000000ull));
+    // hash_high=70 -> vec1 bit6
+    ASSERT_TRUE(bf.Contain(0x0000004600000000ull));
+    ASSERT_FALSE(bf.Contain(0x0000004700000000ull));
+}
+
+TEST_F(TestBloomFilterExtended, NotEqualSelfIsFalse) {
+    BloomFilter bf(128, 2);
+    bf.Add(999ull);
+    ASSERT_FALSE(bf != bf);
+}
+
 }  // namespace test
 }  // namespace common
 }  // namespace seth

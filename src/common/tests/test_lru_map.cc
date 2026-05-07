@@ -252,6 +252,37 @@ TEST_F(TestLRUMap, GetStats) {
     ASSERT_NE(stats.find("max_size=10"), std::string::npos);
 }
 
+TEST_F(TestLRUMap, EmptyContainerOperationsCoverFailureBranches) {
+    LRUMap<std::string, int> cache(2);
+    int value = 0;
+    ASSERT_FALSE(cache.Get("none", value));
+    ASSERT_FALSE(cache.Peek("none", value));
+    ASSERT_FALSE(cache.Remove("none"));
+    std::string key;
+    ASSERT_FALSE(cache.GetLRUKey(key));
+    ASSERT_FALSE(cache.GetMRUKey(key));
+}
+
+TEST_F(TestLRUMap, SetMaxSizeZeroResetsToOneAndEvictsTail) {
+    LRUMap<int, int> cache(4);
+    cache.Put(1, 10);
+    cache.Put(2, 20);
+    cache.Put(3, 30);
+    cache.SetMaxSize(0);  // branch: normalize to 1 and shrink loop
+    ASSERT_EQ(cache.GetMaxSize(), 1u);
+    ASSERT_EQ(cache.Size(), 1u);
+}
+
+TEST_F(TestLRUMap, ForEachOnEmptyContainerDoesNothing) {
+    LRUMap<int, int> cache(3);
+    int count = 0;
+    cache.ForEach([&count](const int&, const int&) {
+        ++count;
+        return true;
+    });
+    ASSERT_EQ(count, 0);
+}
+
 }  // namespace test
 
 }  // namespace common

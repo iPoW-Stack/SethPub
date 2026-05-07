@@ -112,6 +112,21 @@ TEST_F(TestStringUtils, ToBoolInvalid) {
     ASSERT_FALSE(StringUtil::ToBool("abc", &res));
 }
 
+TEST_F(TestStringUtils, NullCStringInputsReturnFalse) {
+    const char* null_str = nullptr;
+    bool b = false;
+    int32_t i = 0;
+    uint64_t u = 0;
+    float f = 0.0f;
+    double d = 0.0;
+    ASSERT_FALSE(StringUtil::ToBool(null_str, &b));
+    ASSERT_FALSE(StringUtil::ToInt32(null_str, &i));
+    ASSERT_FALSE(StringUtil::ToUint64(null_str, &u));
+    ASSERT_FALSE(StringUtil::ToFloat(null_str, &f));
+    ASSERT_FALSE(StringUtil::ToDouble(null_str, &d));
+    ASSERT_FALSE(StringUtil::IsNumeric(null_str));
+}
+
 // --- ToInt Tests ---
 
 TEST_F(TestStringUtils, ToInt8Valid) {
@@ -177,6 +192,14 @@ TEST_F(TestStringUtils, ToInt64Invalid) {
     ASSERT_FALSE(StringUtil::ToInt64("", &res));
 }
 
+TEST_F(TestStringUtils, ToInt64RangeAndPrefixCases) {
+    int64_t res = 0;
+    ASSERT_TRUE(StringUtil::ToInt64("00000123", &res));
+    ASSERT_EQ(res, 123);
+    ASSERT_FALSE(StringUtil::ToInt64("9223372036854775808", &res));   // overflow
+    ASSERT_FALSE(StringUtil::ToInt64("-9223372036854775809", &res));  // underflow
+}
+
 // --- ToUint Tests ---
 
 TEST_F(TestStringUtils, ToUint8Valid) {
@@ -238,6 +261,12 @@ TEST_F(TestStringUtils, ToUint64Invalid) {
     ASSERT_FALSE(StringUtil::ToUint64("abc", &res));
 }
 
+TEST_F(TestStringUtils, ToUint64RejectsNegativeAndOverflow) {
+    uint64_t res = 0;
+    ASSERT_FALSE(StringUtil::ToUint64("-42", &res));
+    ASSERT_FALSE(StringUtil::ToUint64("18446744073709551616", &res));
+}
+
 // --- ToFloat Tests ---
 
 TEST_F(TestStringUtils, ToFloatValid) {
@@ -255,6 +284,13 @@ TEST_F(TestStringUtils, ToFloatInvalid) {
     ASSERT_FALSE(StringUtil::ToFloat("abc", &res));
     ASSERT_FALSE(StringUtil::ToFloat("12.34abc", &res));
     ASSERT_FALSE(StringUtil::ToFloat("", &res));
+}
+
+TEST_F(TestStringUtils, ToFloatAndDoubleRangeErrors) {
+    float f = 0.0f;
+    double d = 0.0;
+    ASSERT_FALSE(StringUtil::ToFloat("1e50", &f));    // float ERANGE
+    ASSERT_FALSE(StringUtil::ToDouble("1e500", &d));  // double ERANGE
 }
 
 // --- ToDouble Tests ---
@@ -330,6 +366,102 @@ TEST_F(TestStringUtils, StringOverloads) {
     s = "2.718";
     ASSERT_TRUE(StringUtil::ToDouble(s, &d));
     ASSERT_NEAR(d, 2.718, 0.001);
+}
+
+TEST_F(TestStringUtils, IsNumericSpecialFormats) {
+    ASSERT_TRUE(StringUtil::IsNumeric("0x10"));   // base autodetect path
+    ASSERT_TRUE(StringUtil::IsNumeric("1e3"));
+    ASSERT_FALSE(StringUtil::IsNumeric("1e3x"));
+}
+
+TEST_F(TestStringUtils, StringOverloadFailurePaths) {
+    int8_t i8 = 0;
+    uint8_t u8 = 0;
+    int16_t i16 = 0;
+    uint16_t u16 = 0;
+    uint32_t u32 = 0;
+    bool b = false;
+
+    ASSERT_FALSE(StringUtil::ToInt8(std::string("128"), &i8));
+    ASSERT_FALSE(StringUtil::ToUint8(std::string("-1"), &u8));
+    ASSERT_FALSE(StringUtil::ToInt16(std::string("40000"), &i16));
+    ASSERT_FALSE(StringUtil::ToUint16(std::string("70000"), &u16));
+    ASSERT_FALSE(StringUtil::ToUint32(std::string("abc"), &u32));
+    ASSERT_FALSE(StringUtil::ToBool(std::string("true"), &b));
+}
+
+TEST_F(TestStringUtils, CStringOverloadsAndWhitespaceCases) {
+    const char* with_spaces = " 42 ";
+    int32_t i32 = 0;
+    ASSERT_FALSE(StringUtil::ToInt32(with_spaces, &i32));
+
+    const char* plus_sign = "+123";
+    ASSERT_TRUE(StringUtil::ToInt32(plus_sign, &i32));
+    ASSERT_EQ(i32, 123);
+
+    const char* hex = "0xff";
+    uint32_t u32 = 0;
+    ASSERT_FALSE(StringUtil::ToUint32(hex, &u32));
+}
+
+TEST_F(TestStringUtils, BoolAndUint64AdditionalEdgeCases) {
+    bool b = false;
+    ASSERT_FALSE(StringUtil::ToBool("2", &b));
+    ASSERT_FALSE(StringUtil::ToBool("-1", &b));
+
+    uint64_t u64 = 0;
+    ASSERT_TRUE(StringUtil::ToUint64("+42", &u64));
+    ASSERT_EQ(u64, 42u);
+    ASSERT_TRUE(StringUtil::ToUint64(" 42", &u64));
+    ASSERT_EQ(u64, 42u);
+}
+
+TEST_F(TestStringUtils, IsNumericWhitespaceAndSignedScientific) {
+    ASSERT_TRUE(StringUtil::IsNumeric(" 1"));
+    ASSERT_FALSE(StringUtil::IsNumeric("1 "));
+    ASSERT_TRUE(StringUtil::IsNumeric("+1.5e2"));
+}
+
+TEST_F(TestStringUtils, TrimCarriageReturnOnlyAndTrailingCR) {
+    std::string only_cr = "\r\n\r";
+    StringUtil::Trim(only_cr);
+    ASSERT_TRUE(only_cr.empty());
+
+    std::string word = "text\r";
+    StringUtil::Trim(word);
+    ASSERT_EQ(word, "text");
+}
+
+TEST_F(TestStringUtils, ToUint64HexOctalAndTrailingJunk) {
+    uint64_t u = 0;
+    ASSERT_TRUE(StringUtil::ToUint64("0xff", &u));
+    ASSERT_EQ(u, 255u);
+    u = 0;
+    ASSERT_TRUE(StringUtil::ToUint64("010", &u));
+    ASSERT_EQ(u, 8u);
+    ASSERT_FALSE(StringUtil::ToUint64("99zz", &u));
+}
+
+TEST_F(TestStringUtils, ToUint64StringOverloadHex) {
+    uint64_t u = 0;
+    ASSERT_TRUE(StringUtil::ToUint64(std::string("0x10"), &u));
+    ASSERT_EQ(u, 16u);
+}
+
+TEST_F(TestStringUtils, ToInt32StringOverloadLeadingZeros) {
+    int32_t i = 0;
+    ASSERT_TRUE(StringUtil::ToInt32(std::string("0000099"), &i));
+    ASSERT_EQ(i, 99);
+}
+
+TEST_F(TestStringUtils, IsNumericRejectsExtremeExponent) {
+    ASSERT_FALSE(StringUtil::IsNumeric("1e10000"));
+}
+
+TEST_F(TestStringUtils, ToDoubleLargeFinite) {
+    double d = 0.0;
+    ASSERT_TRUE(StringUtil::ToDouble("1e100", &d));
+    ASSERT_GT(d, 1e99);
 }
 
 }  // namespace test

@@ -89,6 +89,17 @@ TEST_F(TestLimitHeap, MaxSizeLimit) {
     ASSERT_LE((uint32_t)heap.size(), 5u);
 }
 
+TEST_F(TestLimitHeap, PushRejectedWhenFullAndValueWorseThanTop) {
+    LimitHeap<uint64_t> heap(false, 3);
+    heap.push(1);
+    heap.push(2);
+    heap.push(3);
+    ASSERT_EQ(heap.size(), 3u);
+    // Min-heap top is 1; pushing 0 hits early reject branch in current logic.
+    ASSERT_EQ(heap.push(0), -1);
+    ASSERT_EQ(heap.size(), 3u);
+}
+
 TEST_F(TestLimitHeap, UniqueConstraint) {
     LimitHeap<uint64_t> heap(true, 100);
     heap.push(42ull);
@@ -183,12 +194,57 @@ TEST_F(TestLimitHeap, ParentIndexCalculation) {
     ASSERT_EQ(heap.ParentIndex(3), 1);
 }
 
+TEST_F(TestLimitHeap, AssignmentSelfAndPopOnNonUnique) {
+    LimitHeap<uint64_t> heap(false, 10);
+    heap.push(3);
+    heap.push(1);
+    heap.push(2);
+    heap = heap;  // self-assignment branch
+    ASSERT_EQ(heap.top(), 1u);
+    heap.pop();
+    ASSERT_EQ(heap.top(), 2u);
+}
+
 TEST_F(TestLimitHeap, ChildIndexCalculation) {
     LimitHeap<uint64_t> heap(false, 100);
     ASSERT_EQ(heap.LeftChild(0), 1);
     ASSERT_EQ(heap.RightChild(0), 2);
     ASSERT_EQ(heap.LeftChild(1), 3);
     ASSERT_EQ(heap.RightChild(1), 4);
+}
+
+TEST_F(TestLimitHeap, UniquePopRemovesFromUniqueSetAllowingReinsert) {
+    LimitHeap<uint64_t> heap(true, 10);
+    ASSERT_EQ(heap.push(9), 0);
+    ASSERT_EQ(heap.push(1), 0);
+    ASSERT_EQ(heap.push(5), 2);
+    ASSERT_EQ(heap.size(), 3u);
+
+    // Pop removes top from unique_set_, so value 1 can be inserted again.
+    heap.pop();
+    ASSERT_EQ(heap.push(1), 0);
+    ASSERT_EQ(heap.size(), 3u);
+}
+
+TEST_F(TestLimitHeap, AdjustDownSingleLeftChildSwapPath) {
+    LimitHeap<uint64_t> heap(false, 8);
+    // Build shape where index 0 has only left child and needs swap.
+    heap.size_ = 2;
+    heap.data_[0] = 10;
+    heap.data_[1] = 3;
+    ASSERT_EQ(heap.AdjustDown(0), 1);
+    ASSERT_EQ(heap.top(), 3u);
+}
+
+TEST_F(TestLimitHeap, AdjustDownChoosesRightChildBranch) {
+    LimitHeap<uint64_t> heap(false, 8);
+    // left=8 right=2, both better than parent=10, should swap with right child.
+    heap.size_ = 3;
+    heap.data_[0] = 10;
+    heap.data_[1] = 8;
+    heap.data_[2] = 2;
+    ASSERT_EQ(heap.AdjustDown(0), 2);
+    ASSERT_EQ(heap.top(), 2u);
 }
 
 }  // namespace test

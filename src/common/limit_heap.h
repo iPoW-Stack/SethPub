@@ -68,7 +68,7 @@ public:
 
     inline int32_t push(Type val) {
         if (size_ >= max_size_ && OperaterMinOrMax(val, data_[0])) {
-            SETH_ERROR("min heap push failed![%d] is max heap: %d",
+            SETH_ERROR("min heap push rejected, compare_result=%d",
                 OperaterMinOrMax(val, data_[0]));
             return -1;
         }

@@ -50,6 +50,19 @@ TEST(TestFilterBroadcastBranches, GetBloomfilterHandlesEmptyAndFilled) {
     EXPECT_TRUE(filled->count(22) > 0);
 }
 
+TEST(TestFilterBroadcastBranches, GetBloomfilterDeduplicatesEntries) {
+    FilterBroadcast filter;
+    transport::protobuf::Header msg;
+    auto* brd = msg.mutable_broadcast();
+    brd->add_bloomfilter(7);
+    brd->add_bloomfilter(7);
+    brd->add_bloomfilter(8);
+    auto setv = filter.GetBloomfilter(msg);
+    EXPECT_EQ(setv->size(), 2u);
+    EXPECT_TRUE(setv->count(7) > 0);
+    EXPECT_TRUE(setv->count(8) > 0);
+}
+
 TEST(TestFilterBroadcastBranches, BinarySearchCoversEdges) {
     FilterBroadcast filter;
     dht::Dht nodes;
@@ -60,6 +73,16 @@ TEST(TestFilterBroadcastBranches, BinarySearchCoversEdges) {
     EXPECT_EQ(filter.BinarySearch(nodes, 50), 0u);
     EXPECT_EQ(filter.BinarySearch(nodes, 200), 1u);
     EXPECT_EQ(filter.BinarySearch(nodes, 999), 2u);
+}
+
+TEST(TestFilterBroadcastBranches, BinarySearchAdjustsToPreviousIndex) {
+    FilterBroadcast filter;
+    dht::Dht nodes;
+    nodes.push_back(MakeNode("a", 9201, 100));
+    nodes.push_back(MakeNode("b", 9202, 200));
+    nodes.push_back(MakeNode("c", 9203, 300));
+    // 150 lands between 100 and 200, should take "mid > 0 then --mid" path.
+    EXPECT_EQ(filter.BinarySearch(nodes, 150), 0u);
 }
 
 TEST(TestFilterBroadcastBranches, LayerRangeHelpersHandleSentinelAndOverlap) {
@@ -104,6 +127,49 @@ TEST(TestFilterBroadcastBranches, GetLayerNodesRespectsNeighborCountAndBloom) {
     auto nodes = filter.GetlayerNodes(dht_ptr, bloom, msg);
     EXPECT_LE(nodes.size(), 3u);
     EXPECT_GT(brd->bloomfilter_size(), 0);
+}
+
+TEST(TestFilterBroadcastBranches, GetLayerNodesCapsBloomFilterSerializationAt64) {
+    auto dht_ptr = MakeBaseDhtWithNodes(80);
+    FilterBroadcast filter;
+    transport::protobuf::Header msg;
+    auto* brd = msg.mutable_broadcast();
+    brd->set_layer_left(0);
+    brd->set_layer_right(std::numeric_limits<uint64_t>::max());
+    brd->set_neighbor_count(80);
+    brd->set_ign_bloomfilter_hop(0);
+    msg.set_hop_count(1);
+
+    auto bloom = std::make_shared<std::unordered_set<uint64_t>>();
+    auto nodes = filter.GetlayerNodes(dht_ptr, bloom, msg);
+    EXPECT_FALSE(nodes.empty());
+    EXPECT_LE(brd->bloomfilter_size(), 64);
+}
+
+TEST(TestFilterBroadcastBranches, GetLayerNodesSkipsPrefilteredAndNoIgnInsert) {
+    auto dht_ptr = MakeBaseDhtWithNodes(10);
+    auto readonly = dht_ptr->readonly_hash_sort_dht();
+    ASSERT_TRUE(readonly != nullptr);
+    ASSERT_FALSE(readonly->empty());
+
+    FilterBroadcast filter;
+    transport::protobuf::Header msg;
+    auto* brd = msg.mutable_broadcast();
+    brd->set_layer_left(0);
+    brd->set_layer_right(std::numeric_limits<uint64_t>::max());
+    brd->set_neighbor_count(6);
+    brd->set_ign_bloomfilter_hop(100);  // keep line-148 false
+    msg.set_hop_count(1);
+
+    auto bloom = std::make_shared<std::unordered_set<uint64_t>>();
+    // Pre-filter several candidates to exercise continue path.
+    bloom->insert((*readonly)[0]->id_hash);
+    bloom->insert((*readonly)[1]->id_hash);
+    bloom->insert((*readonly)[2]->id_hash);
+    auto before_size = bloom->size();
+    auto nodes = filter.GetlayerNodes(dht_ptr, bloom, msg);
+    EXPECT_LE(nodes.size(), 6u);
+    EXPECT_EQ(bloom->size(), before_size + 1);  // only local node is inserted
 }
 
 TEST(TestFilterBroadcastBranches, GetLayerNodesReturnsEmptyOnInvalidRange) {
@@ -159,6 +225,48 @@ TEST(TestFilterBroadcastBranches, GetRandomFilterNodesWithoutBloomInsertionBranc
     EXPECT_GE(msg.broadcast().bloomfilter_size(), 1);  // at least local node hash
 }
 
+TEST(TestFilterBroadcastBranches, GetRandomFilterNodesCapsSerializedBloomAt64) {
+    auto dht_ptr = MakeBaseDhtWithNodes(20);
+    FilterBroadcast filter;
+    transport::protobuf::Header msg;
+    auto* brd = msg.mutable_broadcast();
+    brd->set_neighbor_count(10);
+    brd->set_ign_bloomfilter_hop(0);
+    msg.set_hop_count(1);
+
+    auto bloom = std::make_shared<std::unordered_set<uint64_t>>();
+    for (uint64_t i = 0; i < 128; ++i) {
+        bloom->insert(100000 + i);
+    }
+
+    auto nodes = filter.GetRandomFilterNodes(dht_ptr, bloom, msg);
+    EXPECT_LE(nodes.size(), 10u);
+    EXPECT_LE(msg.broadcast().bloomfilter_size(), 64);
+}
+
+TEST(TestFilterBroadcastBranches, GetRandomFilterNodesAllPrefilteredReturnsEmpty) {
+    auto dht_ptr = MakeBaseDhtWithNodes(10);
+    auto readonly = dht_ptr->readonly_hash_sort_dht();
+    ASSERT_TRUE(readonly != nullptr);
+    ASSERT_FALSE(readonly->empty());
+
+    FilterBroadcast filter;
+    transport::protobuf::Header msg;
+    auto* brd = msg.mutable_broadcast();
+    brd->set_neighbor_count(10);
+    brd->set_ign_bloomfilter_hop(0);
+    msg.set_hop_count(1);
+
+    auto bloom = std::make_shared<std::unordered_set<uint64_t>>();
+    for (const auto& node : *readonly) {
+        bloom->insert(node->id_hash);
+    }
+
+    auto nodes = filter.GetRandomFilterNodes(dht_ptr, bloom, msg);
+    EXPECT_TRUE(nodes.empty());
+    EXPECT_GE(msg.broadcast().bloomfilter_size(), 1);
+}
+
 TEST(TestFilterBroadcastBranches, LayerRangeHelpersWithoutOverlapKeepBounds) {
     FilterBroadcast filter;
     transport::protobuf::Header msg;
@@ -189,11 +297,39 @@ TEST(TestFilterBroadcastBranches, BroadcastingNormalPathIncrementsHop) {
     EXPECT_EQ(msg_ptr->header.hop_count(), 1u);
 }
 
+TEST(TestFilterBroadcastBranches, BroadcastingWithoutHopLimitStillRuns) {
+    auto dht_ptr = MakeBaseDhtWithNodes(6);
+    FilterBroadcast filter;
+    auto msg_ptr = std::make_shared<transport::TransportMessage>();
+    auto* brd = msg_ptr->header.mutable_broadcast();
+    brd->set_layer_left(0);
+    brd->set_layer_right(std::numeric_limits<uint64_t>::max());
+    brd->set_neighbor_count(2);
+    brd->set_ign_bloomfilter_hop(0);
+    // no hop_limit field set: exercise has_hop_limit()==false path
+    msg_ptr->header.set_hop_count(0);
+
+    filter.Broadcasting(dht_ptr, msg_ptr);
+    EXPECT_EQ(msg_ptr->header.hop_count(), 1u);
+}
+
 TEST(TestFilterBroadcastBranches, SendWithEmptyNodesIsNoop) {
     auto dht_ptr = MakeBaseDhtWithNodes(4);
     FilterBroadcast filter;
     auto msg_ptr = std::make_shared<transport::TransportMessage>();
     std::vector<dht::NodePtr> nodes;
+    filter.Send(dht_ptr, msg_ptr, nodes);
+    SUCCEED();
+}
+
+TEST(TestFilterBroadcastBranches, SendWithOneNodeExecutesLoopBody) {
+    auto dht_ptr = MakeBaseDhtWithNodes(4);
+    auto readonly = dht_ptr->readonly_hash_sort_dht();
+    ASSERT_TRUE(readonly != nullptr);
+    ASSERT_FALSE(readonly->empty());
+    FilterBroadcast filter;
+    auto msg_ptr = std::make_shared<transport::TransportMessage>();
+    std::vector<dht::NodePtr> nodes = {(*readonly)[0]};
     filter.Send(dht_ptr, msg_ptr, nodes);
     SUCCEED();
 }
@@ -224,6 +360,94 @@ TEST(TestFilterBroadcastBranches, LayerSendCoversOneAndMultipleNodeBranches) {
     std::vector<dht::NodePtr> multi = {(*readonly)[0], (*readonly)[1], (*readonly)[2]};
     filter.LayerSend(dht_ptr, msg_ptr, multi);
     EXPECT_GE(msg_ptr->header.broadcast().layer_right(), msg_ptr->header.broadcast().layer_left());
+}
+
+TEST(TestFilterBroadcastBranches, LayerSendWithTwoNodesCoversLastBranch) {
+    auto dht_ptr = MakeBaseDhtWithNodes(4);
+    auto readonly = dht_ptr->readonly_hash_sort_dht();
+    ASSERT_TRUE(readonly != nullptr);
+    ASSERT_GE(readonly->size(), 2u);
+
+    FilterBroadcast filter;
+    auto msg_ptr = std::make_shared<transport::TransportMessage>();
+    auto* brd = msg_ptr->header.mutable_broadcast();
+    brd->set_overlap(1.0f);
+    brd->set_layer_left(10);
+    brd->set_layer_right(500);
+    msg_ptr->header.set_hop_count(1);
+
+    std::vector<dht::NodePtr> two = {(*readonly)[0], (*readonly)[1]};
+    filter.LayerSend(dht_ptr, msg_ptr, two);
+    EXPECT_GE(msg_ptr->header.broadcast().layer_right(), msg_ptr->header.broadcast().layer_left());
+}
+
+TEST(TestFilterBroadcastBranches, GetLayerNodesAllPrefilteredReturnsEmpty) {
+    auto dht_ptr = MakeBaseDhtWithNodes(8);
+    auto readonly = dht_ptr->readonly_hash_sort_dht();
+    ASSERT_TRUE(readonly != nullptr);
+    ASSERT_FALSE(readonly->empty());
+
+    FilterBroadcast filter;
+    transport::protobuf::Header msg;
+    auto* brd = msg.mutable_broadcast();
+    brd->set_layer_left(0);
+    brd->set_layer_right(std::numeric_limits<uint64_t>::max());
+    brd->set_neighbor_count(8);
+    brd->set_ign_bloomfilter_hop(0);
+    msg.set_hop_count(1);
+
+    auto bloom = std::make_shared<std::unordered_set<uint64_t>>();
+    for (const auto& node : *readonly) {
+        bloom->insert(node->id_hash);
+    }
+
+    auto nodes = filter.GetlayerNodes(dht_ptr, bloom, msg);
+    EXPECT_TRUE(nodes.empty());
+    EXPECT_GE(brd->bloomfilter_size(), 1);
+}
+
+TEST(TestFilterBroadcastBranches, GetLayerNodesAppliesOverlapAdjustment) {
+    auto dht_ptr = MakeBaseDhtWithNodes(20);
+    FilterBroadcast filter;
+    transport::protobuf::Header msg;
+    auto* brd = msg.mutable_broadcast();
+    brd->set_layer_left(250);
+    brd->set_layer_right(260);
+    brd->set_neighbor_count(5);
+    brd->set_ign_bloomfilter_hop(0);
+    brd->set_overlap(0.5f);
+    msg.set_hop_count(2);  // pow(0.5,2)=0.25, triggers adjust branches
+
+    auto bloom = std::make_shared<std::unordered_set<uint64_t>>();
+    auto nodes = filter.GetlayerNodes(dht_ptr, bloom, msg);
+    EXPECT_LE(nodes.size(), 5u);
+    EXPECT_GE(msg.broadcast().bloomfilter_size(), 1);
+}
+
+TEST(TestFilterBroadcastBranches, LayerSendWithEmptyNodesIsNoop) {
+    auto dht_ptr = MakeBaseDhtWithNodes(3);
+    FilterBroadcast filter;
+    auto msg_ptr = std::make_shared<transport::TransportMessage>();
+    auto* brd = msg_ptr->header.mutable_broadcast();
+    brd->set_layer_left(10);
+    brd->set_layer_right(200);
+    std::vector<dht::NodePtr> none;
+    filter.LayerSend(dht_ptr, msg_ptr, none);
+    EXPECT_EQ(msg_ptr->header.broadcast().layer_left(), 10u);
+    EXPECT_EQ(msg_ptr->header.broadcast().layer_right(), 200u);
+}
+
+TEST(TestFilterBroadcastBranches, BroadcastingReturnsWhenHopLimitEqualsCurrentHop) {
+    auto dht_ptr = MakeBaseDhtWithNodes(6);
+    FilterBroadcast filter;
+    auto msg_ptr = std::make_shared<transport::TransportMessage>();
+    auto* brd = msg_ptr->header.mutable_broadcast();
+    brd->set_hop_limit(2);
+    brd->set_layer_left(0);
+    brd->set_layer_right(std::numeric_limits<uint64_t>::max());
+    msg_ptr->header.set_hop_count(2);  // equal boundary
+    filter.Broadcasting(dht_ptr, msg_ptr);
+    EXPECT_EQ(msg_ptr->header.hop_count(), 2u);
 }
 
 TEST(TestFilterBroadcastBranches, BroadcastingReturnsEarlyOnHopLimit) {

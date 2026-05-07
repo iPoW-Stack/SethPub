@@ -145,6 +145,111 @@ TEST_F(TestEncode, HexEncodeSingleByte) {
     ASSERT_EQ(encoded, "ab");
 }
 
+TEST_F(TestEncode, Base64DecodeRejectsNonMultipleOfFour) {
+    EXPECT_TRUE(Encode::Base64Decode("ABCD").size() > 0);
+    EXPECT_EQ(Encode::Base64Decode("ABC"), "");
+    EXPECT_EQ(Encode::Base64Decode("ABCDE"), "");
+}
+
+TEST_F(TestEncode, Base64DecodeRejectsInvalidCharacter) {
+    EXPECT_EQ(Encode::Base64Decode("AB~D"), "");
+    EXPECT_EQ(Encode::Base64Decode("!!!!"), "");
+}
+
+TEST_F(TestEncode, Base64EncodeRemainderOneAndTwoBytes) {
+    const std::string one(1, 'Z');
+    const std::string two = "Z9";
+    const std::string enc1 = Encode::Base64Encode(one);
+    const std::string enc2 = Encode::Base64Encode(two);
+    ASSERT_EQ(Encode::Base64Decode(enc1), one);
+    ASSERT_EQ(Encode::Base64Decode(enc2), two);
+    EXPECT_EQ(enc1.size(), 4u);
+    EXPECT_EQ(enc2.size(), 4u);
+}
+
+TEST_F(TestEncode, Base64SubstrLongStringTruncatesMiddle) {
+    std::string longish(40, 'm');
+    auto sub = Encode::Base64Substr(longish);
+    ASSERT_GT(sub.size(), 0u);
+    EXPECT_NE(sub.find(".."), std::string::npos);
+}
+
+TEST_F(TestEncode, HexSubstrSevenBytesUsesEllipsisPath) {
+    std::string seven(7, 'y');
+    auto sub = Encode::HexSubstr(seven);
+    ASSERT_EQ(sub.size(), 14u);
+    EXPECT_NE(sub.find(".."), std::string::npos);
+}
+
+TEST_F(TestEncode, Base64DecodePlusSlashAndPaddingDefault) {
+    // Literal quads (RFC Base64) exercising '/' and '+' decode branches.
+    ASSERT_EQ(Encode::Base64Decode("////"), std::string("\xff\xff\xff", 3));
+    const std::string tri_both("\x00\x0f\xbf", 3);
+    const std::string enc_both = Encode::Base64Encode(tri_both);
+    EXPECT_NE(enc_both.find('+'), std::string::npos);
+    EXPECT_NE(enc_both.find('/'), std::string::npos);
+    ASSERT_EQ(Encode::Base64Decode(enc_both), tri_both);
+
+    // Padding with invalid remaining length hits default branch -> empty.
+    EXPECT_EQ(Encode::Base64Decode("===="), "");
+}
+
+TEST_F(TestEncode, Base64Full256ByteRoundTripExercisesAlphabet) {
+    std::string raw;
+    raw.reserve(256);
+    for (int i = 0; i < 256; ++i) {
+        raw.push_back(static_cast<char>(i));
+    }
+    const std::string enc = Encode::Base64Encode(raw);
+    ASSERT_FALSE(enc.empty());
+    EXPECT_NE(enc.find('+'), std::string::npos);
+    EXPECT_NE(enc.find('/'), std::string::npos);
+    ASSERT_EQ(Encode::Base64Decode(enc), raw);
+}
+
+TEST_F(TestEncode, Base64DecodeEmptyString) {
+    EXPECT_EQ(Encode::Base64Decode(""), "");
+}
+
+TEST_F(TestEncode, Base64SixBytesTwoFullQuads) {
+    const std::string six(6, 'q');
+    const std::string enc = Encode::Base64Encode(six);
+    ASSERT_EQ(enc.size(), 8u);
+    ASSERT_EQ(Encode::Base64Decode(enc), six);
+}
+
+TEST_F(TestEncode, Base64DecodeSingleTrailingPadExercisesPaddingCount) {
+    const std::string five(5, 'A');
+    const std::string enc = Encode::Base64Encode(five);
+    ASSERT_EQ(enc.size(), 8u);
+    ASSERT_EQ(enc.back(), '=');
+    ASSERT_NE(enc[enc.size() - 2], '=');
+    ASSERT_EQ(Encode::Base64Decode(enc), five);
+}
+
+TEST_F(TestEncode, Base64SubstrBoundarySixteenChars) {
+    std::string twelve(12, 'b');
+    const std::string enc = Encode::Base64Encode(twelve);
+    ASSERT_EQ(enc.size(), 16u);
+    EXPECT_EQ(Encode::Base64Substr(twelve), enc);
+}
+
+TEST_F(TestEncode, Base64SubstrSeventeenCharsInsertsEllipsis) {
+    std::string thirteen(13, 'c');
+    const std::string enc = Encode::Base64Encode(thirteen);
+    ASSERT_GT(enc.size(), 16u);
+    const std::string sub = Encode::Base64Substr(thirteen);
+    EXPECT_NE(sub.find(".."), std::string::npos);
+    EXPECT_NE(sub, enc);
+}
+
+TEST_F(TestEncode, HexSubstrEightBytes) {
+    std::string eight(8, 'z');
+    const std::string sub = Encode::HexSubstr(eight);
+    ASSERT_EQ(sub.size(), 14u);
+    EXPECT_NE(sub.find(".."), std::string::npos);
+}
+
 }  // namespace test
 
 }  // namespace common

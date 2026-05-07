@@ -49,6 +49,8 @@ TEST_F(TestUniqueMap, Erase) {
     m.erase("key1");
     ASSERT_FALSE(m.exists("key1"));
     ASSERT_TRUE(m.exists("key2"));
+    m.erase("missing");  // no-op branch
+    ASSERT_TRUE(m.exists("key2"));
 }
 
 TEST_F(TestUniqueMap, Eviction) {
@@ -59,6 +61,35 @@ TEST_F(TestUniqueMap, Eviction) {
     m.add(4, 40);  // evicts 1
     ASSERT_FALSE(m.exists(1));
     ASSERT_TRUE(m.exists(4));
+    int v = 0;
+    ASSERT_FALSE(m.get(1, &v));  // miss branch in get()
+}
+
+TEST_F(TestUniqueMap, ZeroCapacityMapAlwaysEvicts) {
+    UniqueMap<int, int, 0> m;
+    ASSERT_TRUE(m.add(1, 10));
+    ASSERT_EQ(m.size(), 0u);
+    ASSERT_FALSE(m.exists(1));
+
+    int v = 0;
+    ASSERT_FALSE(m.get(1, &v));
+}
+
+TEST_F(TestUniqueMap, ReinsertAfterEvictionAndEraseTwice) {
+    UniqueMap<int, int, 2> m;
+    ASSERT_TRUE(m.add(1, 10));
+    ASSERT_TRUE(m.add(2, 20));
+    ASSERT_TRUE(m.add(3, 30));  // evict 1
+    ASSERT_FALSE(m.exists(1));
+
+    ASSERT_TRUE(m.add(1, 100));  // can reinsert after eviction
+    int v = 0;
+    ASSERT_TRUE(m.get(1, &v));
+    ASSERT_EQ(v, 100);
+
+    m.erase(1);
+    m.erase(1);  // erase missing key branch after one successful erase
+    ASSERT_FALSE(m.exists(1));
 }
 
 }  // namespace test
