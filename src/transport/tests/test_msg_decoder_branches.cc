@@ -121,6 +121,31 @@ TEST(MsgDecoderBranches, DecodeTwoBackToBackPacketsInOneBuffer) {
     second->Free();
 }
 
+TEST(MsgDecoderBranches, FreeDeletesDecoderHeapInstance) {
+    MsgDecoder* dec = new MsgDecoder();
+    dec->Free();
+}
+
+TEST(MsgDecoderBranches, DecodePayloadOneByteAtATime) {
+    const std::string payload(12u, 'y');
+    std::string wire = MakeWire(static_cast<uint32_t>(payload.size()), tnet::kProtobuff, payload);
+
+    MsgDecoder dec;
+    for (size_t i = 0; i < wire.size(); ++i) {
+        ASSERT_TRUE(dec.Decode(wire.data() + i, 1));
+    }
+
+    tnet::Packet* pkt = dec.GetPacket();
+    ASSERT_NE(pkt, nullptr);
+    auto* mp = dynamic_cast<tnet::MsgPacket*>(pkt);
+    ASSERT_NE(mp, nullptr);
+    char* data = nullptr;
+    uint32_t len = 0;
+    mp->GetMessageEx(&data, &len);
+    EXPECT_EQ(len, 12u);
+    pkt->Free();
+}
+
 }  // namespace test
 }  // namespace transport
 }  // namespace seth

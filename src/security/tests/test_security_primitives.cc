@@ -243,6 +243,29 @@ TEST(TestSecurityPrimitives, ContractAddressLongNonceAndShortFrom) {
     ASSERT_EQ(addr.size(), 20u);
 }
 
+TEST(TestSecurityPrimitives, ContractAddressRlpBranchesShortNonceSingleByte) {
+    const std::string from(20, '\x03');
+    const std::string nonce(1, '\x05');
+    const std::string a = GetContractAddress(from, nonce);
+    const std::string b = GetContractAddress(from, nonce);
+    ASSERT_EQ(a.size(), 20u);
+    ASSERT_EQ(a, b);
+}
+
+TEST(TestSecurityPrimitives, ContractAddressRlpEmptyNonceUsesSingletonEncoding) {
+    const std::string from(20, '\x07');
+    const std::string nonce_empty;
+    const std::string addr = GetContractAddress(from, nonce_empty);
+    ASSERT_EQ(addr.size(), 20u);
+}
+
+TEST(TestSecurityPrimitives, ContractAddressMediumNonceUsesShortStringHeader) {
+    const std::string from(20, '\x09');
+    std::string nonce(40, 'm');
+    const std::string addr = GetContractAddress(from, nonce);
+    ASSERT_EQ(addr.size(), 20u);
+}
+
 #if GTEST_HAS_DEATH_TEST
 TEST(TestSecurityPrimitives, FatalStubsDeathCoverage) {
     GmSsl gmssl;
