@@ -25,6 +25,12 @@ int ContractAltBn128G1Add::call(
         return kContractError;
     }
 
+    // EIP-196: two G1 points (x1,y1,x2,y2), 32 bytes each.
+    constexpr size_t kEip196G1AddInputBytes = 128;
+    if (param.data.size() != kEip196G1AddInputBytes) {
+        return kContractError;
+    }
+
     bytesConstRef bytes_ref((byte*)param.data.c_str(), param.data.size());
     std::pair<bool, bytes> add_res = alt_bn128_G1_add(bytes_ref);
     if (!add_res.first) {

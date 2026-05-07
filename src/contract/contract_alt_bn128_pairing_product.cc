@@ -26,6 +26,12 @@ int ContractaltBn128PairingProduct::call(
         return kContractError;
     }
 
+    // EIP-197: concatenation of (G1,G2) pairs; each pair is 192 bytes.
+    constexpr size_t kEip197PairStrideBytes = 192;
+    if (param.data.size() % kEip197PairStrideBytes != 0) {
+        return kContractError;
+    }
+
     bytesConstRef bytes_ref((byte*)param.data.c_str(), param.data.size());
     std::pair<bool, bytes> add_res = alt_bn128_pairing_product(bytes_ref);
     if (!add_res.first) {

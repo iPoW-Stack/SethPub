@@ -25,6 +25,12 @@ int ContractAltBn128G1Mul::call(
         return kContractError;
     }
 
+    // EIP-196: one G1 point (x,y) plus 32-byte big-endian scalar.
+    constexpr size_t kEip196G1MulInputBytes = 96;
+    if (param.data.size() != kEip196G1MulInputBytes) {
+        return kContractError;
+    }
+
     bytesConstRef bytes_ref((byte*)param.data.c_str(), param.data.size());
     std::pair<bool, bytes> mul_res = alt_bn128_G1_mul(bytes_ref);
     if (!mul_res.first) {
