@@ -1,315 +1,308 @@
-# ViewChange 机制与 HighQC 一致性分析
+# 当前 HotStuff 实现中 ViewChange 与 HighQC 一致性分析
 
-> 基于 `src/consensus/hotstuff/hotstuff.h` 中的 `GetLeader()` 函数及相关实现
+## 1. 核心结论
 
----
+**当前实现没有独立的 viewchange 消息流程，也没有阈值签名聚合步骤。**
 
-## 一、背景：阈值签名下的 QC 结构
+视图变更完全通过 `GetLeader()` 的时间戳计算来驱动：所有节点基于**相同的区块时间戳**和**相同的 30 秒窗口对齐**，独立计算出相同的 leader 和相同的 view 跳跃量，从而实现无需通信的确定性 leader 轮换。
 
-本系统采用 **BLS 阈值签名**（t-of-n）替代传统 HotStuff 的聚合签名（AggQC）。每个 QC 的结构为：
-
-```
-QC = {
-    network_id, pool_index, view,
-    view_block_hash,    // 被认证的区块哈希
-    elect_height,       // 选举高度（用于密钥版本）
-    leader_idx,         // 提议该区块的 leader 索引
-    sign_x, sign_y      // BLS 阈值签名的 G1 点坐标
-}
-```
-
-QC 的有效性由 `IsQcTcValid()` 验证，核心是 `sign_x` 非空且签名可被公共公钥验证。
+代码中 HighQC 就是上一轮共识产生的 QC，leader 在每次 propose 时直接携带自己本地保存的 HighQC 广播给所有副本。
 
 ---
 
-## 二、HighQC 的定义与维护
+## 2. GetLeader() 的时间一致性机制
 
-### 2.1 什么是 HighQC
-
-`HighQC` 是副本节点见过的**最高视图号的有效 QC**，存储在 `ViewBlockChain::high_view_block_` 中：
+### 2.1 时间基准：30 秒窗口对齐
 
 ```cpp
-// view_block_chain.h
-inline std::shared_ptr<ViewBlock> HighViewBlock() const {
-    return high_view_block_;
+// hotstuff.h
+inline uint64_t get_consensus_timestamp(uint64_t window_size) {
+    uint64_t current_utc = ...秒级 UTC 时间戳...;
+    uint64_t consensus_time = (current_utc / window_size) * window_size;
+    return consensus_time;  // 向下取整到 30 秒边界
 }
-inline const QC& HighQC() const {
-    return high_view_block_->qc();
-}
+
+// GetLeader() 中使用
+int64_t now = get_consensus_timestamp(30);  // window_size = 30
 ```
 
-### 2.2 HighQC 的更新时机
+`get_consensus_timestamp(30)` 把当前时间向下取整到 30 秒边界。例如：
+- 节点 A 的本地时间是 `14:00:17` → `now = 14:00:00`
+- 节点 B 的本地时间是 `14:00:28` → `now = 14:00:00`
+- 节点 C 的本地时间是 `14:00:31` → `now = 14:00:30`
 
-HighQC 在以下三个时机更新：
+**只要节点间时差 < 30 秒，同一个 30 秒窗口内的所有节点得到相同的 `now`。**
 
-| 时机 | 代码位置 | 说明 |
-|------|---------|------|
-| Leader 收集到 ≥ t 个投票，聚合成功 | `HandleVoteMsgImpl()` → `view_block_chain()->UpdateHighViewBlock(qc_item)` | 正常路径 |
-| 副本收到 Propose 消息并验证通过 | `HandleProposeMsgStep_ChainStore()` → `view_block_chain()->UpdateHighViewBlock()` | 副本跟随 |
-| 收到同步的 ViewBlock | `HandleSyncedViewBlock()` → `view_block_chain()->UpdateHighViewBlock(vblock->qc())` | 同步路径 |
+### 2.2 时差容忍：15 秒
 
----
-
-## 三、ViewChange 触发机制
-
-### 3.1 超时触发
-
-ViewChange 由 `TryRecoverFromStuck()` 触发，当 leader 在超时时间内未能完成共识时：
+时差检查在 `BlockAcceptor::IsBlockValid()` 中完成，副本在接受区块前会验证时间戳合法性：
 
 ```cpp
-// hotstuff.cc - TryRecoverFromStuck()
-if (latest_qc_item_ptr_ && update_latest_view_tm_) {
-    laste_vote_prev_view_tm_.Put(latest_qc_item_ptr_->view(), now_tm_ms);
-    update_latest_view_tm_ = false;
-}
-// ...
-auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view, leader_block_tm, false);
-```
+// block_acceptor.cc - IsBlockValid()
+auto cur_time = common::TimeUtils::TimestampMs();
+uint64_t preblock_time = pools_mgr_->latest_timestamp(pool_idx());
 
-### 3.2 超时时间的指数退避
-
-`GetLeader()` 中的超时计算：
-
-```cpp
-int64_t timeout = static_cast<int64_t>(
-    common::kLeaderRoatationBaseTimeoutSec * std::pow(2, std::min(consecutive_failures_, 6u)));
-int64_t elapsed = now - prev_qc_timestamp_sec;
-if (elapsed < timeout) {
-    // 未超时，继续使用当前 leader
-    return (*members)[last_stable_leader_member_index_ % members->size()];
+// 区块时间戳必须满足：
+// 1. 大于上一个区块的时间戳（单调递增）
+// 2. 不能超过当前本地时间 10 秒以上（防止未来时间戳）
+if (seth_block->timestamp() <= preblock_time && 
+    seth_block->timestamp() + 10000lu >= cur_time) {
+    // 时间戳非法，丢弃该区块
+    return false;
 }
 ```
 
-基础超时为 `kLeaderRoatationBaseTimeoutSec = 30` 秒，最多指数退避到 `2^6 = 64` 倍。
+这个检查保证了：
+- **时间戳单调递增**：新块时间戳必须大于上一个已提交块的时间戳
+- **不接受未来时间戳**：区块时间戳不能超过本地时间 10 秒，即隐含要求节点间时差 < 10 秒
 
----
-
-## 四、ViewChange 时副本的处理流程
-
-### 4.1 完整流程图
-
-```
-副本超时
-    │
-    ▼
-TryRecoverFromStuck()
-    │
-    ├── 计算 elapsed = now - HighQC.block_timestamp
-    ├── 计算 k = elapsed / base_timeout + 7
-    ├── 计算新 leader_idx = (last_stable_leader_member_index_ + k + pool_idx_) % valid_leaders.size()
-    └── 计算 out_view = HighQC.view + k + 1   ← 跳过 k 个视图
-    │
-    ▼
-Propose(out_view, new_leader, HighQC_as_TC, ...)
-    │
-    ├── ConstructProposeMsg()
-    │       └── pb_pro_msg->mutable_tc() = *latest_qc_item_ptr_  ← HighQC 作为 TC 携带
-    │
-    └── 广播 ProposeMsg（包含 TC = HighQC）
-    │
-    ▼
-其他副本收到 ProposeMsg
-    │
-    ├── HandleTC() 验证 TC（即 HighQC）
-    ├── HandleProposeMsgStep_VerifyLeader() 验证新 leader 合法性
-    └── 投票 → 新 leader 聚合 → 新 QC → UpdateLatestQcItemPtr()
-```
-
-### 4.2 关键代码：HighQC 作为 TC 携带
+`GetLeader()` 中使用 propose 消息携带的 leader 时间戳作为 `now`：
 
 ```cpp
-// hotstuff.cc - Propose()
-ConstructHotstuffMsg(PROPOSE, pb_pro_msg, nullptr, nullptr, hotstuff_msg);
-if (latest_qc_item_ptr_) {
-    *pb_pro_msg->mutable_tc() = *latest_qc_item_ptr_;  // HighQC 作为 TC
-}
-```
-
-**这是保证 HighQC 一致性的核心机制**：每个 Propose 消息都携带发起者的 `latest_qc_item_ptr_`（即其本地 HighQC），接收方通过 `HandleTC()` 验证并更新自己的 HighQC。
-
----
-
-## 五、HighQC 一致性保证机制
-
-### 5.1 `latest_qc_item_ptr_` 的语义
-
-`latest_qc_item_ptr_` 是副本节点持久化的"锁定 QC"，通过 `UpdateLatestQcItemPtr()` 更新：
-
-```cpp
-void UpdateLatestQcItemPtr(std::shared_ptr<view_block::protobuf::QcItem> qc_ptr) {
-    if (qc_ptr->elect_height() >= latest_elect_height_ && 
-        qc_ptr->leader_idx() != common::kInvalidUint32) {
-        last_stable_leader_member_index_ = qc_ptr->leader_idx();
-        laste_vote_prev_view_tm_.Put(qc_ptr->view(), common::TimeUtils::TimestampUs());
-    }
-    latest_qc_item_ptr_ = qc_ptr;
-}
-```
-
-更新时机：
-1. **正常路径**：Leader 聚合投票成功后 → `HandleVoteMsgImpl()` 末尾
-2. **TC 验证通过**：收到 Propose 中的 TC 且视图更高 → `HandleTC()`
-3. **同步路径**：收到同步的 ViewBlock → `HandleSyncedViewBlock()`
-4. **重启恢复**：从 DB 加载最新已提交区块 → `InitLoadLatestBlock()`
-
-### 5.2 锁定规则（Safety Lock）
-
-副本在 `HandleProposeMsgStep_HasVote()` 中检查锁定规则：
-
-```cpp
-// hotstuff.cc
-if (latest_qc_item_ptr_->view() >= view_item.qc().view()) {
-    // locked view — 拒绝旧视图的提案
-    return Status::kError;
-}
-```
-
-**含义**：副本只接受视图号 **严格大于** 其 `latest_qc_item_ptr_->view()` 的提案。这防止了回滚攻击。
-
-### 5.3 TC 验证保证 HighQC 单调递增
-
-```cpp
-// hotstuff.cc - HandleTC()
-if (pro_msg.tc().view() < latest_qc_item_ptr_->view()) {
-    SETH_WARN("pool: %d verify tc old view: %lu, latest qc view: %lu",
-        pool_idx_, pro_msg.tc().view(), latest_qc_item_ptr_->view());
-    return Status::kError;
-}
-// ...
-if (latest_qc_item_ptr_ == nullptr ||
-        tc_ptr->view() >= latest_qc_item_ptr_->view()) {
-    UpdateLatestQcItemPtr(tc_ptr);
-}
-```
-
-**含义**：TC（即携带的 HighQC）的视图号必须 ≥ 本地 `latest_qc_item_ptr_` 的视图号，否则拒绝。这保证了 HighQC 只能单调递增。
-
----
-
-## 六、GetLeader() 中的视图跳跃机制
-
-### 6.1 正常路径（未超时）
-
-```
-out_view = HighQC.view + 1
-leader   = members[last_stable_leader_member_index_]
-```
-
-### 6.2 超时路径（发生 ViewChange）
-
-```cpp
-auto k = (elapsed / common::kLeaderRoatationBaseTimeoutSec) + 7;
-auto index = (last_stable_leader_member_index_ + k + pool_idx_) % valid_leaders.size();
-auto leader_idx = elect_item->valid_leaders()->at(index)->index;
-
-// 视图跳跃：跳过 k 个视图
-out_view = HighQC.view + k + 1;
-```
-
-**视图跳跃的作用**：
-- 跳过的视图号 `[HighQC.view+1, HighQC.view+k]` 对应失败的 leader 的视图
-- 新 leader 从 `HighQC.view + k + 1` 开始提案
-- 所有副本基于相同的 `HighQC.view` 和相同的 `elapsed` 计算出相同的 `k`，因此得到相同的 `out_view` 和 `leader_idx`
-
-### 6.3 初始化保护期
-
-```cpp
-auto now_tm = common::TimeUtils::TimestampSeconds();
-if (now_tm <= common::GlobalInfo::Instance()->leader_change_init_tm()) {
-    // 初始化期间不做 leader 轮换，直接使用 last_stable_leader_member_index_
-    *out_view = high_view_block->qc().view() + 1;
-    pool_tx_leader_.store((*members)[last_stable_leader_member_index_ % members->size()]);
-    return (*members)[last_stable_leader_member_index_ % members->size()];
-}
-```
-
-系统启动后有一段保护期，期间不触发 leader 轮换，避免启动时的不稳定。
-
----
-
-## 七、HighQC 一致性的完整保证链
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    HighQC 一致性保证链                                │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  1. 阈值签名唯一性                                                    │
-│     BLS 阈值签名对同一消息只有唯一的聚合结果                            │
-│     → 同一视图只能有一个有效 QC                                        │
-│                                                                     │
-│  2. QC 携带在每个 Propose 中（作为 TC）                               │
-│     Propose.tc = latest_qc_item_ptr_                                │
-│     → 新 leader 的 HighQC 传播给所有副本                              │
-│                                                                     │
-│  3. TC 视图单调性检查                                                 │
-│     HandleTC(): tc.view >= latest_qc_item_ptr_.view                 │
-│     → HighQC 只能向前推进，不能回退                                    │
-│                                                                     │
-│  4. 锁定规则                                                         │
-│     HandleProposeMsgStep_HasVote():                                 │
-│     latest_qc_item_ptr_.view >= propose.view → 拒绝                 │
-│     → 副本不会为低于锁定视图的提案投票                                  │
-│                                                                     │
-│  5. 视图跳跃确定性                                                    │
-│     GetLeader(): k = elapsed/base_timeout + 7                       │
-│     out_view = HighQC.view + k + 1                                  │
-│     → 所有副本基于相同 HighQC 计算出相同的新视图和新 leader             │
-│                                                                     │
-│  6. 重启持久化                                                        │
-│     InitLoadLatestBlock(): 从 DB 恢复 latest_qc_item_ptr_           │
-│     → 节点重启后 HighQC 不丢失                                        │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 八、与标准 Fast-HotStuff 的差异
-
-| 特性 | 标准 Fast-HotStuff | 本实现 |
-|------|-------------------|--------|
-| 签名方案 | AggQC（聚合签名，O(n) 验证） | BLS 阈值签名（O(1) 验证） |
-| ViewChange 消息 | 显式 NewView 消息 | 隐式：HighQC 作为 TC 携带在 Propose 中 |
-| 视图推进 | 逐步 +1 | 超时时跳跃 +k+1（k 由 elapsed 决定） |
-| HighQC 传播 | NewView 消息携带 | 每个 Propose 的 tc 字段携带 |
-| 锁定机制 | HighQC.view 锁定 | `latest_qc_item_ptr_.view` 锁定 |
-
----
-
-## 九、潜在问题与注意事项
-
-### 9.1 `elapsed` 计算的时钟依赖
-
-```cpp
-int64_t now = get_consensus_timestamp(30);  // 30秒窗口对齐
 if (leader_tm_ms != 0) {
-    now = leader_tm_ms / 1000lu;  // 使用 leader 的时间戳
+    // if (std::abs((leader_tm_ms / 1000lu) - common::TimeUtils::TimestampSeconds()) < 15) {
+        now = leader_tm_ms / 1000lu;
+    // }
 }
 ```
 
-`get_consensus_timestamp(30)` 将当前时间对齐到 30 秒窗口，减少不同节点时钟偏差的影响。但如果节点时钟差异超过 30 秒，可能导致不同节点计算出不同的 `k`，进而选出不同的 leader。
+由于 `IsBlockValid()` 已经在更早阶段过滤掉时间戳异常的区块，`GetLeader()` 收到的 `leader_tm_ms` 必然是合法的时间戳。因此 **节点间时差约束是整个机制的前提**：时差 < 10 秒 → leader 时间戳通过 `IsBlockValid()` 验证 → `GetLeader()` 使用合法时间戳计算 `elapsed` → 所有节点在同一个 30 秒窗口内得出相同的 `k` → leader 和 view 计算一致。
 
-### 9.2 `last_stable_leader_member_index_` 的原子性
+### 2.3 超时判断与 k 的计算
 
 ```cpp
-std::atomic<uint32_t> last_stable_leader_member_index_ = 0u;
+// utils.h
+static const int32_t kLeaderRoatationBaseTimeoutSec = 30;
+
+// GetLeader() 中
+int64_t prev_qc_timestamp_sec = high_view_block->block_info().timestamp() / 1000lu;
+int64_t timeout = kLeaderRoatationBaseTimeoutSec * pow(2, min(consecutive_failures_, 6u));
+int64_t elapsed = now - prev_qc_timestamp_sec;
+
+if (elapsed < timeout) {
+    // 未超时，保持当前 leader
+    return (*members)[last_stable_leader_member_index_ % members->size()];
+}
+
+// 已超时，计算跳跃量
+auto k = (elapsed / kLeaderRoatationBaseTimeoutSec) + 7;
 ```
 
-该字段是原子变量，在多线程环境下安全更新。但 `GetLeader()` 中的读-计算-写序列不是原子的，在高并发场景下可能存在竞争。
+**`k` 的计算完全由 `elapsed` 决定，而 `elapsed = now - 区块时间戳`。**
 
-### 9.3 ViewBlock 同步与 HighQC 的关系
+- `now` 由 30 秒窗口对齐保证所有节点一致
+- `区块时间戳` 来自 propose 消息里的 `block_info().timestamp()`，所有节点看到的是同一个值
+- 因此所有节点计算出的 `k` 相同，进而 leader index 和 out_view 相同
 
-当节点落后时，通过 `HandleSyncedViewBlock()` 接收同步的 ViewBlock：
+### 2.4 view 跳跃计算
+
+```cpp
+// 超时时的 view 跳跃
+*out_view = high_view_block->qc().view() + k + 1;
+
+// leader index 跳跃
+auto index = (last_stable_leader_member_index_ + k + pool_idx_) 
+             % elect_item->valid_leaders()->size();
+auto leader_idx = elect_item->valid_leaders()->at(index)->index;
+```
+
+`k = (elapsed / 30) + 7`，最小值为 8（elapsed 刚超过 30 秒时）。这意味着：
+
+- **view 至少跳跃 8 个**，跳过的 view 不会有任何 propose，直接作废
+- 跳跃量与 elapsed 成正比，elapsed 越大跳得越多
+- 所有节点基于相同的 `elapsed` 计算出相同的跳跃量，因此对新 leader 和新 view 的判断完全一致
+
+---
+
+## 3. HighQC 一致性的保证机制
+
+### 3.1 HighQC 通过 propose 传播，不通过 viewchange 消息
+
+当前实现中，HighQC（即 `latest_qc_item_ptr_`）在以下时机更新：
+
+**时机 1：收到 propose，处理其中携带的 HighQC**
+
+```cpp
+// hotstuff.cc - HandleTC()（代码中函数名为 HandleTC，实质处理的是 HighQC）
+if (pro_msg.has_tc() && pro_msg.tc().has_view_block_hash()) {
+    // 验证 HighQC 的阈值签名（正常 vote 阶段产生的 QC 签名）
+    if (VerifyQC(pro_msg.tc()) != Status::kSuccess) {
+        return Status::kError;
+    }
+    // 推进视图
+    pacemaker()->NewTc(tc_ptr);
+    view_block_chain()->UpdateHighViewBlock(qc);
+    TryCommit(view_block_chain(), msg_ptr, qc);
+    // 更新本地 HighQC
+    if (tc_ptr->view() >= latest_qc_item_ptr_->view()) {
+        UpdateLatestQcItemPtr(tc_ptr);
+    }
+}
+```
+
+**时机 2：收到同步块**
 
 ```cpp
 if (latest_qc_item_ptr_ == nullptr ||
         vblock->qc().view() >= latest_qc_item_ptr_->view()) {
     if (IsQcTcValid(vblock->qc())) {
-        UpdateLatestQcItemPtr(std::make_shared<view_block::protobuf::QcItem>(vblock->qc()));
+        UpdateLatestQcItemPtr(make_shared<QcItem>(vblock->qc()));
     }
 }
-TryCommit(view_block_chain(), msg_ptr, *latest_qc_item_ptr_);
 ```
 
-同步的 ViewBlock 也会更新 `latest_qc_item_ptr_`，确保落后节点在追上后能正确参与 ViewChange。
+**时机 3：启动时从 DB 加载**
+
+```cpp
+// InitLoadLatestBlock()
+UpdateLatestQcItemPtr(make_shared<QcItem>(latest_view_block->qc()));
+```
+
+### 3.2 为什么不需要"保证所有副本持有相同 HighQC"
+
+**关键洞察：HighQC 的一致性不是在 viewchange 阶段保证的，而是通过 propose 消息的传播来收敛的。**
+
+```
+正常共识阶段：
+  2f+1 个副本对 H(view || view_block_hash || ...) 产生 BLS 签名 share
+  → leader 聚合出阈值签名 → 形成 QC（即 HighQC）
+  → leader 在下一个 propose 里携带这个 HighQC 广播给所有副本
+  → 所有副本收到 propose 后验证 HighQC 的阈值签名
+  → 验证通过则更新本地 HighQC
+
+超时/ViewChange 阶段：
+  GetLeader() 基于时间戳计算，所有节点独立得出相同的新 leader 和新 view
+  → 新 leader 用自己的 HighQC 发 propose
+  → 副本收到 propose，验证 HighQC 的阈值签名（正常 vote 阶段已产生，含 view_block_hash）
+  → 验证通过则接受，更新本地 HighQC
+  → 副本之间的 HighQC 通过接受同一个 propose 来收敛
+```
+
+**HighQC 的阈值签名不是在 viewchange 时重新聚合的，而是正常 vote 阶段已经产生的 QC 签名。** 因此不存在"不同副本持有不同 HighQC 导致无法聚合"的问题。
+
+### 3.3 副本落后时的追赶机制
+
+如果某个副本本地 HighQC 落后，收到 propose 时 `GetLeader()` 计算出的 `out_view` 会小于 propose 的 view，此时有追赶逻辑：
+
+```cpp
+// hotstuff.cc - HandleProposeMsgImpl()
+if (view_item.qc().view() > out_view && view_item.qc().view() > 0) {
+    // 本地视图落后，用 propose 里的 HighQC 追赶
+    view_block_chain_->UpdateHighViewBlock(propose_qc);
+    pacemaker()->NewQcView(propose_qc.view());
+    // 重新计算 leader
+    auto new_leader = GetLeader(
+        view_item.qc().leader_idx(),
+        msg_ptr->header.hotstuff().pro_msg().tc(),
+        &new_out_view, ...);
+    if (new_leader && view_item.qc().view() == new_out_view) {
+        goto view_matched;  // 追赶成功，继续处理
+    }
+}
+```
+
+---
+
+## 4. 完整 ViewChange 流程图
+
+```
+副本收到 propose 消息
+         ↓
+  IsBlockValid()：验证区块时间戳合法性
+    → block.timestamp <= prev_committed_timestamp → 丢弃（时间戳未单调递增）
+    → block.timestamp > cur_time + 10s → 丢弃（未来时间戳，节点时差过大）
+         ↓
+  GetLeader()：用 propose 携带的 leader 时间戳计算
+  elapsed = leader_tm_ms/1000 - block.timestamp（秒）
+         ↓
+  elapsed >= 30s ?
+    ├── 否：保持当前 leader，out_view = last_HighQC.view + 1
+    └── 是：k = (elapsed/30) + 7
+              new_leader_idx = (last_stable_idx + k + pool_idx) % n
+              out_view = last_HighQC.view + k + 1
+              （所有节点独立计算，结果相同）
+         ↓
+  验证 propose.view == out_view
+    → 不一致 → 丢弃
+    → 一致 → 继续处理
+         ↓
+  验证 HighQC 阈值签名（正常 vote 阶段已产生）
+    → 验证通过：推进视图，更新本地 HighQC
+    → 通过则投票
+```
+
+---
+
+## 5. 与论文方案的差异及修改建议
+
+### 5.1 差异对比
+
+| 维度 | 当前代码实现 | 论文描述的方案 |
+|------|-------------|--------------|
+| HighQC 的来源 | 正常 vote 阶段产生的 QC，leader 直接复用 | viewchange 阶段由 2f+1 个副本的 timeout 签名聚合后独立选取 |
+| viewchange 消息 | 不存在 | 副本向新 leader 发送携带 HighQC_i 的 viewchange 消息 |
+| leader 选举机制 | 基于时间戳的确定性计算，所有节点独立得出相同结果 | 新 leader 收集 2f+1 个 viewchange 消息后确认 |
+| HighQC 一致性 | 通过接受同一个 propose 收敛 | 需要 2f+1 个副本持有相同 HighQC 才能聚合视图变更证明 |
+| 活性风险 | 无（不需要聚合 viewchange 签名） | 有（不同副本 HighQC 不同时无法聚合） |
+
+### 5.2 论文方案的根本矛盾
+
+论文方案中，副本对以下消息产生阈值签名 share：
+
+```
+σ_i^vc = SignShare( H(ViewChange || v+1 || H(HighQC_i)) )
+```
+
+由于不同副本的 `HighQC_i` 可能不同，签名的消息也不同，**无法聚合成同一个阈值签名**。
+
+当前代码通过"HighQC = 正常 vote 阶段的 QC"完全绕开了这个问题：HighQC 的阈值签名在正常共识阶段已经产生，不需要在 viewchange 时重新聚合。
+
+### 5.3 论文方案的修改建议
+
+如果论文要引入真正的 viewchange 消息和视图变更证明聚合，必须将视图变更证明的签名消息与 HighQC 解耦：
+
+**视图变更证明只签 view，不绑定 HighQC：**
+
+```
+σ_i^vc = SignShare( H(ViewChange || v+1 || network_id || pool_idx) )
+```
+
+所有副本签名的是同一个消息，可以正常聚合：
+
+```
+ViewChangeCert_{v+1} = ThreshSigAgg({σ_i^vc})
+```
+
+该证书只证明：**2f+1 个副本进入了 view v+1**。
+
+**HighQC* 独立选取：**
+
+```
+HighQC* = max{ HighQC_i | i ∈ Q, |Q| ≥ 2f+1 }
+```
+
+leader 从收到的 2f+1 个 viewchange 消息中选最高的有效 QC，单独验证其阈值签名（正常 vote 阶段产生，包含 view_block_hash）。
+
+**NewView 消息结构：**
+
+```
+NewView = ⟨NewView, v+1, ViewChangeCert_{v+1}, HighQC*⟩
+```
+
+副本收到 NewView 后分别验证：
+1. `ViewChangeCert_{v+1}` 是对 `H(ViewChange || v+1 || ...)` 的合法阈值签名
+2. `HighQC*` 是对某个区块的合法阈值签名（含 view_block_hash，独立验证）
+3. `HighQC*` 满足本地 lock rule
+
+---
+
+## 6. 总结
+
+**当前代码中不存在论文描述的活性问题**，原因如下：
+
+1. **没有 viewchange 消息**，没有视图变更阈值签名聚合步骤
+2. **HighQC 就是正常 vote 阶段产生的 QC**，直接由 leader 携带在 propose 里广播，副本验证其阈值签名后接受并更新本地 HighQC
+3. **leader 轮换基于时间戳确定性计算**：`get_consensus_timestamp(30)` 将时间对齐到 30 秒窗口，节点间时差 < 15 秒时所有节点计算出相同的 `now`，进而得出相同的 `k`、相同的新 leader、相同的新 view
+4. **HighQC 通过 propose 传播收敛**，副本接受同一个 propose 后本地 HighQC 自然一致
+
+**论文方案引入真正的 viewchange 流程时**，必须将视图变更证明的签名消息与 HighQC 解耦：视图变更证明只对 view 编号签名（保证可聚合），HighQC 作为独立字段单独验证（保证安全性）。这样视图同步机制、视图变更证明和 HighQC 三者的职责边界才清晰，活性也得以保证。
