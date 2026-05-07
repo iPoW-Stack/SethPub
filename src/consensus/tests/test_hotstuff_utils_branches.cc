@@ -20,6 +20,20 @@ TEST(HotstuffUtilsBranches, BlockViewKeyEqualityAndOrder) {
     EXPECT_FALSE(c < a);
 }
 
+TEST(HotstuffUtilsBranches, BlockViewKeyLexicographicTieBreaks) {
+    BlockViewKey by_net(1u, 9u, 100ull);
+    BlockViewKey bigger_net(2u, 1u, 1ull);
+    EXPECT_TRUE(by_net < bigger_net);
+
+    BlockViewKey by_pool(5u, 1u, 100ull);
+    BlockViewKey bigger_pool(5u, 2u, 100ull);
+    EXPECT_TRUE(by_pool < bigger_pool);
+
+    BlockViewKey by_view(5u, 5u, 10ull);
+    BlockViewKey bigger_view(5u, 5u, 11ull);
+    EXPECT_TRUE(by_view < bigger_view);
+}
+
 TEST(HotstuffUtilsBranches, BlockViewKeyHashStableForEqualKeys) {
     BlockViewKey k1(5u, 7u, 42ull);
     BlockViewKey k2(5u, 7u, 42ull);
@@ -41,9 +55,17 @@ TEST(HotstuffUtilsBranches, SerializeDeterministicIsRepeatable) {
     EXPECT_EQ(s1, s2);
 }
 
+TEST(HotstuffUtilsBranches, SerializeDeterministicDefaultEmptyBlock) {
+    block::protobuf::Block empty;
+    std::string s = SerializeDeterministic(empty);
+    (void)s;
+}
+
 TEST(HotstuffUtilsBranches, ChainTypeConstants) {
     EXPECT_EQ(static_cast<int32_t>(hotstuff::kInvalidChain), -1);
     EXPECT_EQ(static_cast<int32_t>(hotstuff::kLocalChain), 0);
+    EXPECT_EQ(static_cast<int32_t>(hotstuff::kCrossRootChian), 1);
+    EXPECT_EQ(static_cast<int32_t>(hotstuff::kCrossShardingChain), 2);
 }
 
 TEST(HotstuffUtilsBranches, GlobalChainIdConstant) {

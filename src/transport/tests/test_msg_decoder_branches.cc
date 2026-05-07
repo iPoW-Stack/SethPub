@@ -97,6 +97,29 @@ TEST(MsgDecoderBranches, DecodeSplitsHeaderAcrossTwoCalls) {
     pkt->Free();
 }
 
+TEST(MsgDecoderBranches, DecodeSplitsHeaderAcrossThreeCallsUsesTmpStrContinuation) {
+    const std::string payload(5u, 'm');
+    std::string wire = MakeWire(static_cast<uint32_t>(payload.size()), tnet::kProtobuff, payload);
+
+    MsgDecoder dec;
+    ASSERT_TRUE(dec.Decode(wire.data(), 1));
+    EXPECT_EQ(dec.GetPacket(), nullptr);
+    ASSERT_TRUE(dec.Decode(wire.data() + 1, 1));
+    EXPECT_EQ(dec.GetPacket(), nullptr);
+
+    ASSERT_TRUE(dec.Decode(wire.data() + 2, wire.size() - 2));
+
+    tnet::Packet* pkt = dec.GetPacket();
+    ASSERT_NE(pkt, nullptr);
+    auto* mp = dynamic_cast<tnet::MsgPacket*>(pkt);
+    ASSERT_NE(mp, nullptr);
+    char* data = nullptr;
+    uint32_t len = 0;
+    mp->GetMessageEx(&data, &len);
+    EXPECT_EQ(len, 5u);
+    pkt->Free();
+}
+
 TEST(MsgDecoderBranches, DecodeTwoBackToBackPacketsInOneBuffer) {
     const std::string p1(4u, 'a');
     const std::string p2(5u, 'b');
