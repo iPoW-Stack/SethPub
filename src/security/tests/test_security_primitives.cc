@@ -243,6 +243,73 @@ TEST(TestSecurityPrimitives, ContractAddressLongNonceAndShortFrom) {
     ASSERT_EQ(addr.size(), 20u);
 }
 
+TEST(TestSecurityPrimitives, ContractAddressRlpBranchesShortNonceSingleByte) {
+    const std::string from(20, '\x03');
+    const std::string nonce(1, '\x05');
+    const std::string a = GetContractAddress(from, nonce);
+    const std::string b = GetContractAddress(from, nonce);
+    ASSERT_EQ(a.size(), 20u);
+    ASSERT_EQ(a, b);
+}
+
+TEST(TestSecurityPrimitives, ContractAddressRlpEmptyNonceUsesSingletonEncoding) {
+    const std::string from(20, '\x07');
+    const std::string nonce_empty;
+    const std::string addr = GetContractAddress(from, nonce_empty);
+    ASSERT_EQ(addr.size(), 20u);
+}
+
+TEST(TestSecurityPrimitives, ContractAddressMediumNonceUsesShortStringHeader) {
+    const std::string from(20, '\x09');
+    std::string nonce(40, 'm');
+    const std::string addr = GetContractAddress(from, nonce);
+    ASSERT_EQ(addr.size(), 20u);
+}
+
+TEST(TestSecurityPrimitives, ContractAddressNonceSingleByteBelow0x80UsesDirectRlp) {
+    const std::string from(20, '\x02');
+    const std::string nonce(1, static_cast<char>(0x03));  // < 0x80 → single-byte RLP encoding branch
+    const std::string addr = GetContractAddress(from, nonce);
+    ASSERT_EQ(addr.size(), 20u);
+}
+
+TEST(TestSecurityPrimitives, ContractAddressTruncatesLongSenderToLast20Bytes) {
+    std::string from(25, '\xab');  // > 20 bytes → uses substr(from.size()-20,20)
+    const std::string nonce(4, '\xcd');
+    const std::string addr = GetContractAddress(from, nonce);
+    ASSERT_EQ(addr.size(), 20u);
+    std::string short_from = from.substr(from.size() - 20, 20);
+    const std::string addr2 = GetContractAddress(short_from, nonce);
+    ASSERT_EQ(addr, addr2);
+}
+
+TEST(TestSecurityPrimitives, ContractAddressDiffersWhenSenderChanges) {
+    const std::string from_a(20, '\x11');
+    const std::string from_b(20, '\x22');
+    const std::string nonce(2, '\xee');
+    ASSERT_NE(GetContractAddress(from_a, nonce), GetContractAddress(from_b, nonce));
+}
+
+TEST(TestSecurityPrimitives, ContractAddressPadsShortSenderToTwentyBytes) {
+    const std::string short_from(8, '\xee');
+    const std::string nonce(2, '\x11');
+    const std::string explicit_pad =
+        std::string(20 - short_from.size(), '\0') + short_from;
+    ASSERT_EQ(explicit_pad.size(), 20u);
+    EXPECT_EQ(GetContractAddress(short_from, nonce),
+              GetContractAddress(explicit_pad, nonce));
+}
+
+TEST(TestSecurityPrimitives, ContractAddressUsesLongRlpWhenNonceExceeds55Bytes) {
+    const std::string from(20, '\xcc');
+    std::string nonce_long(58, '\xdd');
+    const std::string a = GetContractAddress(from, nonce_long);
+    ASSERT_EQ(a.size(), 20u);
+    nonce_long[57] = '\xde';
+    const std::string b = GetContractAddress(from, nonce_long);
+    EXPECT_NE(a, b);
+}
+
 #if GTEST_HAS_DEATH_TEST
 TEST(TestSecurityPrimitives, FatalStubsDeathCoverage) {
     GmSsl gmssl;

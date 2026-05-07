@@ -88,4 +88,14 @@ inline static std::string GetElectHeartbeatHash(
 
 }  // namespace elect
 
+namespace common {
+
+template <>
+inline uint64_t MinHeapUniqueVal(const elect::HeapItem& val) {
+    return (static_cast<uint64_t>(val.index) << 32u) |
+           static_cast<uint64_t>(val.succ_count);
+}
+
+}  // namespace common
+
 }  // namespace seth

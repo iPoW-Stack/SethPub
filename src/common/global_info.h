@@ -41,6 +41,10 @@ public:
         return config_public_ip_;
     }
 
+    void set_config_public_ip(const std::string& ip) {
+        config_public_ip_ = ip;
+    }
+
     void set_config_local_ip(const std::string& ip) {
         config_local_ip_ = ip;
     }

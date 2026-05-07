@@ -83,6 +83,10 @@ TEST_F(TestBroadcastUtils, ConstantsRelationships) {
     ASSERT_LE(kBloomfilterHashCount, kBloomfilterBitSize);
 }
 
+TEST_F(TestBroadcastUtils, HopToLayerWithinHopLimit) {
+    ASSERT_LT(kBroadcastHopToLayer, kBroadcastHopLimit);
+}
+
 // --- BroadcastParam Protobuf Tests ---
 
 TEST_F(TestBroadcastUtils, BroadcastParamSerialize) {

@@ -115,6 +115,16 @@ TEST_F(TestParserArgsBranches, AddArgTypeRejectsInvalidEmptyDefinition) {
     EXPECT_FALSE(p.AddArgType(0, nullptr, kMaybeValue));
 }
 
+TEST_F(TestParserArgsBranches, AddArgTypeAllowsShortNameWithNullLongName) {
+    ParserArgs p;
+    EXPECT_TRUE(p.AddArgType('q', nullptr, kMustValue));
+    std::string err;
+    ASSERT_EQ(p.Parse("-q only_short", err), kParseSuccess);
+    std::string v;
+    ASSERT_EQ(p.Get("q", v), kParseSuccess);
+    EXPECT_EQ(v, "only_short");
+}
+
 TEST_F(TestParserArgsBranches, GetWordOnlyWhitespaceClearsParams) {
     ParserArgs p;
     std::string params = "   ";
@@ -204,6 +214,33 @@ TEST_F(TestParserArgsBranches, ParseEmptyStringSucceeds) {
     ASSERT_TRUE(p.AddArgType('a', "aa", kMaybeValue));
     std::string err;
     EXPECT_EQ(p.Parse("", err), kParseSuccess);
+}
+
+TEST_F(TestParserArgsBranches, GetInt32ParsesSignedDecimal) {
+    ParserArgs p;
+    ASSERT_TRUE(p.AddArgType('n', "num", kMustValue));
+    std::string err;
+    ASSERT_EQ(p.Parse("--num -17", err), kParseSuccess);
+    int v = 0;
+    ASSERT_EQ(p.Get("num", v), kParseSuccess);
+    EXPECT_EQ(v, -17);
+}
+
+TEST_F(TestParserArgsBranches, HasTrueWhenFlagRegisteredWithoutValue) {
+    ParserArgs p;
+    ASSERT_TRUE(p.AddArgType('o', "opt", kMaybeValue));
+    std::string err;
+    ASSERT_EQ(p.Parse("--opt", err), kParseSuccess);
+    EXPECT_TRUE(p.Has("opt"));
+    std::string s;
+    EXPECT_EQ(p.Get("opt", s), kParseFailed);
+}
+
+TEST_F(TestParserArgsBranches, BareWordHitsParseDefaultWhenNoActiveFlag) {
+    ParserArgs p;
+    ASSERT_TRUE(p.AddArgType('m', "maybe", kMaybeValue));
+    std::string err;
+    EXPECT_EQ(p.Parse("not_a_flag_token", err), kParseFailed);
 }
 
 }  // namespace test

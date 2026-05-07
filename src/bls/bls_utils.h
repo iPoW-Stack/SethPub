@@ -130,6 +130,14 @@ static std::shared_ptr<libff::alt_bn128_G1> Proto2BlsPopProof(
         const elect::protobuf::BlsPopProof& proof_proto) {
     auto proof = std::make_shared<libff::alt_bn128_G1>();
 
+    // libff::bigint(const char*) aborts on non-digit input via assert (not an
+    // exception), so validate textual field elements before constructing Fq.
+    if ((!proof_proto.sign_x().empty() && !IsValidBigInt(proof_proto.sign_x())) ||
+            (!proof_proto.sign_y().empty() && !IsValidBigInt(proof_proto.sign_y())) ||
+            (!proof_proto.sign_z().empty() && !IsValidBigInt(proof_proto.sign_z()))) {
+        return nullptr;
+    }
+
     try {
         if (proof_proto.sign_x() != "") {
             proof->X = libff::alt_bn128_Fq(proof_proto.sign_x().c_str());
