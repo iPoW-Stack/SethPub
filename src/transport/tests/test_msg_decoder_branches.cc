@@ -26,6 +26,16 @@ TEST(MsgDecoderBranches, DecodeZeroLengthBufferReturnsTrueAndNoPacket) {
     EXPECT_EQ(dec.GetPacket(), nullptr);
 }
 
+TEST(MsgDecoderBranches, ZeroPayloadLengthExitsWithoutEnqueueingPacket) {
+    // MsgDecoder returns after header when packet_len_ == 0 (no body loop).
+    const std::string payload;
+    std::string wire = MakeWire(0u, tnet::kProtobuff, payload);
+
+    MsgDecoder dec;
+    ASSERT_TRUE(dec.Decode(wire.data(), wire.size()));
+    EXPECT_EQ(dec.GetPacket(), nullptr);
+}
+
 TEST(MsgDecoderBranches, DecodeFullHeaderAndPayloadInOneChunk) {
     const std::string payload(10u, 'z');
     std::string wire = MakeWire(static_cast<uint32_t>(payload.size()), tnet::kProtobuff, payload);
