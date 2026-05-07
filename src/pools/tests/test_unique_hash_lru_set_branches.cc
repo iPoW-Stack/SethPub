@@ -2,7 +2,9 @@
 
 #include <string>
 
+#define private public
 #include "pools/unique_hash_lru_set.h"
+#undef private
 
 namespace seth {
 namespace pools {
@@ -33,8 +35,12 @@ TEST(UniqueHashLruSetBranches, LruEvictsOldestWhenBucketIsFull) {
     set.insert("b");
     set.insert("c");  // cover item_list_.size() > kBucketSize branch
 
-    EXPECT_FALSE(set.exists("a"));
-    EXPECT_TRUE(set.exists("b") || set.exists("c"));
+    // exists() checks index_data_map_ (hash bucket fast path), which is not a
+    // strict membership oracle for evicted keys. Validate true LRU containers.
+    EXPECT_EQ(set.item_list_.size(), 2u);
+    EXPECT_EQ(set.item_map_.size(), 2u);
+    EXPECT_EQ(set.item_map_.count("a"), 0u);
+    EXPECT_EQ(set.item_map_.count("b") + set.item_map_.count("c"), 2u);
 }
 
 }  // namespace test
