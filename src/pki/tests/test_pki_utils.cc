@@ -31,6 +31,27 @@ TEST(PkiUtils, XorStringsVaryingLengths) {
     EXPECT_EQ(x.size(), 6u);
 }
 
+TEST(PkiUtils, Byte2stringSingleByteEdges) {
+    EXPECT_EQ(byte2string(std::string(1, '\x00')), "00");
+    EXPECT_EQ(byte2string(std::string(1, '\xff')), "ff");
+}
+
+TEST(PkiUtils, XorStringsEqualLengthAllZerosOrOnes) {
+    const std::string a(8, '\xaa');
+    const std::string b(8, '\xaa');
+    const std::string z = xor_strings(a, b);
+    ASSERT_EQ(z.size(), 8u);
+    for (char c : z) {
+        EXPECT_EQ(c, '\0');
+    }
+
+    const std::string one = xor_strings(std::string(4, '\xf0'), std::string(4, '\x0f'));
+    ASSERT_EQ(one.size(), 4u);
+    for (char c : one) {
+        EXPECT_EQ(static_cast<unsigned char>(c), 0xffu);
+    }
+}
+
 }  // namespace test
 }  // namespace pki
 }  // namespace seth
