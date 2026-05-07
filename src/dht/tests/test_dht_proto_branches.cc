@@ -10,10 +10,6 @@
 #include "dht/dht_utils.h"
 #include "transport/transport_utils.h"
 
-#define private public
-#include "common/global_info.h"
-#undef private
-
 namespace seth {
 namespace dht {
 namespace test {
@@ -22,7 +18,7 @@ namespace {
 
 void SetGlobalInfoForDhtProto() {
     auto* g = common::GlobalInfo::Instance();
-    g->config_public_ip_ = "203.0.113.10";
+    g->set_config_public_ip("203.0.113.10");
     g->set_config_local_port(6500);
 }
 
