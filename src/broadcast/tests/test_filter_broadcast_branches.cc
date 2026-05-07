@@ -6,6 +6,7 @@
 
 #include "dht/dht_utils.h"
 #include "dht/base_dht.h"
+#include "broadcast/broadcast_utils.h"
 #include "transport/transport_utils.h"
 #define private public
 #include "broadcast/filter_broadcast.h"
@@ -48,6 +49,39 @@ TEST(TestFilterBroadcastBranches, GetBloomfilterHandlesEmptyAndFilled) {
     EXPECT_EQ(filled->size(), 2u);
     EXPECT_TRUE(filled->count(11) > 0);
     EXPECT_TRUE(filled->count(22) > 0);
+}
+
+TEST(TestFilterBroadcastBranches, SetDefaultBroadcastParamAssignsExpectedDefaults) {
+    transport::protobuf::BroadcastParam brd;
+    brd.set_ign_bloomfilter_hop(999);
+    brd.set_hop_to_layer(999);
+    brd.set_hop_limit(999);
+    brd.set_layer_left(999);
+    brd.set_layer_right(999);
+    brd.set_neighbor_count(999);
+    brd.set_overlap(0.125f);
+    brd.add_bloomfilter(1);
+    brd.add_bloomfilter(2);
+
+    SetDefaultBroadcastParam(&brd);
+
+    EXPECT_EQ(brd.ign_bloomfilter_hop(), kBroadcastIgnBloomfilter);
+    EXPECT_EQ(brd.hop_to_layer(), 0);
+    EXPECT_EQ(brd.hop_limit(), static_cast<int32_t>(kBroadcastHopLimit));
+    EXPECT_EQ(brd.layer_left(), 0u);
+    EXPECT_EQ(brd.layer_right(), common::kInvalidUint64);
+    EXPECT_EQ(brd.neighbor_count(), static_cast<int32_t>(kBroadcastDefaultNeighborCount));
+    EXPECT_FLOAT_EQ(brd.overlap(), 1.0f);
+    EXPECT_EQ(brd.bloomfilter_size(), 0);
+}
+
+TEST(TestFilterBroadcastBranches, BroadcastUtilsConstantsAreStable) {
+    EXPECT_EQ(kBroadcastDefaultNeighborCount, 13u);
+    EXPECT_EQ(kBloomfilterBitSize, 256u);
+    EXPECT_EQ(kBloomfilterHashCount, 3u);
+    EXPECT_EQ(kBroadcastHopLimit, 16u);
+    EXPECT_EQ(kBroadcastHopToLayer, 1u);
+    EXPECT_EQ(kBroadcastIgnBloomfilter, 1u);
 }
 
 TEST(TestFilterBroadcastBranches, GetBloomfilterDeduplicatesEntries) {

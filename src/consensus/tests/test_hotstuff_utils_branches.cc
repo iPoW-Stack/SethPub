@@ -13,6 +13,30 @@ using hotstuff::kGlobalChainId;
 
 namespace {
 
+struct FakeProtoSerializeFail {
+    size_t ByteSizeLong() const { return 7; }
+    bool IsInitialized() const { return true; }
+    bool SerializePartialToCodedStream(google::protobuf::io::CodedOutputStream*) const {
+        return false;
+    }
+};
+
+struct FakeProtoUninitializedEmpty {
+    size_t ByteSizeLong() const { return 0; }
+    bool IsInitialized() const { return false; }
+    bool SerializePartialToCodedStream(google::protobuf::io::CodedOutputStream*) const {
+        return true;
+    }
+};
+
+struct FakeProtoInitializedEmpty {
+    size_t ByteSizeLong() const { return 0; }
+    bool IsInitialized() const { return true; }
+    bool SerializePartialToCodedStream(google::protobuf::io::CodedOutputStream*) const {
+        return true;
+    }
+};
+
 view_block::protobuf::ViewBlockItem MakeMinimalViewBlock(
         uint32_t network_id,
         uint32_t pool_index,
@@ -79,6 +103,13 @@ TEST(HotstuffUtilsBranches, BlockViewKeyHashStableForEqualKeys) {
     EXPECT_NE(h(k1), h(k3));
 }
 
+TEST(HotstuffUtilsBranches, BlockViewKeyHashChangesAcrossDifferentFields) {
+    std::hash<BlockViewKey> h;
+    const BlockViewKey base(5u, 7u, 42ull);
+    EXPECT_NE(h(base), h(BlockViewKey(6u, 7u, 42ull)));
+    EXPECT_NE(h(base), h(BlockViewKey(5u, 7u, 43ull)));
+}
+
 TEST(HotstuffUtilsBranches, SerializeDeterministicIsRepeatable) {
     block::protobuf::Block msg;
     msg.set_height(12345u);
@@ -115,6 +146,21 @@ TEST(HotstuffUtilsBranches, SerializeDeterministicSensitiveToChainId) {
     b.set_height(20u);
     b.set_chain_id(101ull);
     EXPECT_NE(SerializeDeterministic(a), SerializeDeterministic(b));
+}
+
+TEST(HotstuffUtilsBranches, SerializeDeterministicReturnsEmptyOnSerializeFailure) {
+    const FakeProtoSerializeFail msg;
+    EXPECT_TRUE(SerializeDeterministic(msg).empty());
+}
+
+TEST(HotstuffUtilsBranches, SerializeDeterministicHandlesUninitializedEmptyMessage) {
+    const FakeProtoUninitializedEmpty msg;
+    EXPECT_TRUE(SerializeDeterministic(msg).empty());
+}
+
+TEST(HotstuffUtilsBranches, SerializeDeterministicHandlesInitializedEmptyMessage) {
+    const FakeProtoInitializedEmpty msg;
+    EXPECT_TRUE(SerializeDeterministic(msg).empty());
 }
 
 TEST(HotstuffUtilsBranches, ChainTypeConstants) {

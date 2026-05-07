@@ -27,12 +27,26 @@ TEST_F(BlsUtilsBranches, IsValidBigIntSingleDigitChars) {
     EXPECT_FALSE(IsValidBigInt(":"));  // ':' == '9' + 1
 }
 
+TEST_F(BlsUtilsBranches, IsValidBigIntEmptyStringIsAccepted) {
+    EXPECT_TRUE(IsValidBigInt(""));
+}
+
 TEST_F(BlsUtilsBranches, IsValidBigIntMixedInvalidAtEnd) {
     EXPECT_FALSE(IsValidBigInt("123a"));
 }
 
 TEST_F(BlsUtilsBranches, IsValidBigIntMixedInvalidAtStart) {
     EXPECT_FALSE(IsValidBigInt("a123"));
+}
+
+TEST_F(BlsUtilsBranches, IsValidBigIntRejectsSignedStrings) {
+    EXPECT_FALSE(IsValidBigInt("+1"));
+    EXPECT_FALSE(IsValidBigInt("-1"));
+}
+
+TEST_F(BlsUtilsBranches, IsValidBigIntRejectsWhitespace) {
+    EXPECT_FALSE(IsValidBigInt(" 1"));
+    EXPECT_FALSE(IsValidBigInt("1 "));
 }
 
 TEST_F(BlsUtilsBranches, MaxBlsMemberItemConstructor) {
@@ -98,10 +112,43 @@ TEST_F(BlsUtilsBranches, Proto2BlsPopProofPartialFields) {
     EXPECT_NE(result, nullptr);
 }
 
+TEST_F(BlsUtilsBranches, Proto2BlsPopProofRejectsSingleInvalidField) {
+    elect::protobuf::BlsPopProof proto;
+    proto.set_sign_x("12345");
+    proto.set_sign_y("12x45");
+    proto.set_sign_z("67890");
+    auto result = Proto2BlsPopProof(proto);
+    EXPECT_EQ(result, nullptr);
+}
+
 TEST_F(BlsUtilsBranches, BlsPublicKey2ProtoZeroKeyThrows) {
     EXPECT_THROW(
         BlsPublicKey2Proto(libff::alt_bn128_G2::zero()),
         libBLS::ThresholdUtils::IsNotWellFormed);
+}
+
+TEST_F(BlsUtilsBranches, BlsPublicKeyProtoRoundTripForValidKey) {
+    auto sk = libff::alt_bn128_Fr::random_element();
+    auto pk = sk * libff::alt_bn128_G2::one();
+    auto proto = BlsPublicKey2Proto(pk);
+    ASSERT_NE(proto, nullptr);
+    auto restored = Proto2BlsPublicKey(*proto);
+    ASSERT_NE(restored, nullptr);
+    EXPECT_TRUE(*restored == pk);
+}
+
+TEST_F(BlsUtilsBranches, BlsPopProofRoundTripKeepsFieldStrings) {
+    auto sk = libff::alt_bn128_Fr::random_element();
+    auto proof = sk * libff::alt_bn128_G1::one();
+    auto proto1 = BlsPopProof2Proto(proof);
+    ASSERT_NE(proto1, nullptr);
+    auto parsed = Proto2BlsPopProof(*proto1);
+    ASSERT_NE(parsed, nullptr);
+    auto proto2 = BlsPopProof2Proto(*parsed);
+    ASSERT_NE(proto2, nullptr);
+    EXPECT_EQ(proto1->sign_x(), proto2->sign_x());
+    EXPECT_EQ(proto1->sign_y(), proto2->sign_y());
+    EXPECT_EQ(proto1->sign_z(), proto2->sign_z());
 }
 
 TEST_F(BlsUtilsBranches, BlsErrorCodeEnumValues) {

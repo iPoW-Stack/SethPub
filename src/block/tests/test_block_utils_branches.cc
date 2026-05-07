@@ -22,6 +22,14 @@ TEST(BlockUtilsBranches, IsContractCreateToTxReflectsLibraryBytes) {
     EXPECT_FALSE(isContractCreateToTxMessageItem(item));
 }
 
+TEST(BlockUtilsBranches, IsContractCreateToTxTreatsEmptyFieldAsPresentWhenSet) {
+    pools::protobuf::ToTxMessageItem item;
+    item.set_library_bytes("");
+    EXPECT_TRUE(isContractCreateToTxMessageItem(item));
+    item.clear_library_bytes();
+    EXPECT_FALSE(isContractCreateToTxMessageItem(item));
+}
+
 TEST(BlockUtilsBranches, GenesisNetworkAccountMatchesHexDecode) {
     const char* hex = "b5be6f0090e4f5d40458258ed9adf843324c0327145c48b55091f33673d2d5a4";
     std::string expected = common::Encode::HexDecode(std::string(hex));
@@ -71,6 +79,7 @@ TEST(BlockUtilsBranches, BlockTxsItemDefaultsAndTimeoutWindow) {
     BlockTxsItem item;
     const uint64_t after = common::TimeUtils::TimestampMs();
     EXPECT_EQ(item.tx_ptr, nullptr);
+    EXPECT_TRUE(item.tx_hash.empty());
     EXPECT_EQ(item.tx_count, 0u);
     EXPECT_FALSE(item.success);
     EXPECT_EQ(item.leader_to_index, -1);
@@ -86,12 +95,32 @@ TEST(BlockUtilsBranches, BlockToDbItemKeepsPointersFromCtor) {
     EXPECT_EQ(item.final_db_batch, batch);
 }
 
+TEST(BlockUtilsBranches, BlockToDbItemAllowsNullBatchPointer) {
+    auto vb = std::make_shared<view_block::protobuf::ViewBlockItem>();
+    std::shared_ptr<db::DbWriteBatch> null_batch;
+    BlockToDbItem item(vb, null_batch);
+    EXPECT_EQ(item.view_block_ptr, vb);
+    EXPECT_EQ(item.final_db_batch, nullptr);
+}
+
 TEST(BlockUtilsBranches, LocalToTxInfoConstructorStoresAllFields) {
     localToTxInfo info("dest_addr", 123ull, 7u, "lib_bytes");
     EXPECT_EQ(info.des, "dest_addr");
     EXPECT_EQ(info.amount, 123ull);
     EXPECT_EQ(info.pool_index, 7u);
     EXPECT_EQ(info.library_bytes, "lib_bytes");
+}
+
+TEST(BlockUtilsBranches, LeaderWithToTxItemStoresAssignedPointers) {
+    LeaderWithToTxItem item;
+    item.to_tx = std::make_shared<BlockTxsItem>();
+    item.elect_height = 88ull;
+    item.leader_idx = 9u;
+    item.to_txs_msg = std::make_shared<transport::TransportMessage>();
+    EXPECT_NE(item.to_tx, nullptr);
+    EXPECT_EQ(item.elect_height, 88ull);
+    EXPECT_EQ(item.leader_idx, 9u);
+    EXPECT_NE(item.to_txs_msg, nullptr);
 }
 
 }  // namespace test

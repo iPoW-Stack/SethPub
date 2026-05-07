@@ -65,6 +65,86 @@ TEST(AltBn128G1AddBranches, InvalidCurveInputWithCorrectLength) {
     EXPECT_EQ(add.call(params, 0, "", res), kContractError);
 }
 
+TEST(AltBn128G1AddBranches, CanonicalButNonCurvePointsFailInEngine) {
+    ContractAltBn128G1Add add(kContractAlt_bn128_G1_add);
+    CallParameters params;
+    // 4 coordinates with byte value 0x01:
+    // - Canonical (< q), so field-bound check passes.
+    // - Not guaranteed to be on curve, so alt_bn128 add should fail.
+    params.data.assign(128, '\x01');
+
+    evmc_result call_result = {};
+    evmc::Result evmc_res{ call_result };
+    evmc_result* res = reinterpret_cast<evmc_result*>(&evmc_res);
+    res->gas_left = 500'000;
+    EXPECT_EQ(add.call(params, 0, "", res), kContractError);
+}
+
+TEST(AltBn128G1AddBranches, SecondPointInvalidCanonicalCheckFails) {
+    ContractAltBn128G1Add add(kContractAlt_bn128_G1_add);
+    CallParameters params;
+    params.data.assign(128, '\x00');
+    // Keep the first point canonical (all zero), but make second point x
+    // clearly invalid (> q) so the second ValidateG1EncodedPoint path is hit.
+    for (size_t i = 64; i < 96; ++i) {
+        params.data[i] = static_cast<char>(0xff);
+    }
+
+    evmc_result call_result = {};
+    evmc::Result evmc_res{ call_result };
+    evmc_result* res = reinterpret_cast<evmc_result*>(&evmc_res);
+    res->gas_left = 500'000;
+    EXPECT_EQ(add.call(params, 0, "", res), kContractError);
+}
+
+TEST(AltBn128G1AddBranches, FirstPointYInvalidCanonicalCheckFails) {
+    ContractAltBn128G1Add add(kContractAlt_bn128_G1_add);
+    CallParameters params;
+    params.data.assign(128, '\x00');
+    // First point x is canonical zero, but y is intentionally > q.
+    for (size_t i = 32; i < 64; ++i) {
+        params.data[i] = static_cast<char>(0xff);
+    }
+
+    evmc_result call_result = {};
+    evmc::Result evmc_res{ call_result };
+    evmc_result* res = reinterpret_cast<evmc_result*>(&evmc_res);
+    res->gas_left = 500'000;
+    EXPECT_EQ(add.call(params, 0, "", res), kContractError);
+}
+
+TEST(AltBn128G1AddBranches, CoordinateEqualToFieldModulusIsRejected) {
+    ContractAltBn128G1Add add(kContractAlt_bn128_G1_add);
+    CallParameters params;
+    // x1 equals field modulus q exactly => not strictly lower than q.
+    const std::string q = common::Encode::HexDecode(
+        "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47");
+    params.data.assign(128, '\x00');
+    params.data.replace(0, q.size(), q);
+
+    evmc_result call_result = {};
+    evmc::Result evmc_res{ call_result };
+    evmc_result* res = reinterpret_cast<evmc_result*>(&evmc_res);
+    res->gas_left = 500'000;
+    EXPECT_EQ(add.call(params, 0, "", res), kContractError);
+}
+
+TEST(AltBn128G1AddBranches, InputLengthBoundaryAround128IsRejected) {
+    ContractAltBn128G1Add add(kContractAlt_bn128_G1_add);
+    evmc_result call_result = {};
+    evmc::Result evmc_res{ call_result };
+    evmc_result* res = reinterpret_cast<evmc_result*>(&evmc_res);
+    res->gas_left = 500'000;
+
+    CallParameters short_params;
+    short_params.data.assign(127, '\x00');
+    EXPECT_EQ(add.call(short_params, 0, "", res), kContractError);
+
+    CallParameters long_params;
+    long_params.data.assign(129, '\x00');
+    EXPECT_EQ(add.call(long_params, 0, "", res), kContractError);
+}
+
 TEST(AltBn128G1AddBranches, SuccessVector) {
     const std::string input = common::Encode::HexDecode(
         "18b18acfb4c2c30276db5411368e7185b311dd124691610c5d3b74034e093dc9"
@@ -89,6 +169,27 @@ TEST(AltBn128G1AddBranches, SuccessVector) {
     EXPECT_EQ(res->gas_left, kStart - 150);
     ASSERT_EQ(res->output_size, expect_out.size());
     EXPECT_EQ(std::string(reinterpret_cast<const char*>(res->output_data), res->output_size), expect_out);
+    delete[] res->output_data;
+    res->output_data = nullptr;
+}
+
+TEST(AltBn128G1AddBranches, SuccessVectorWorksAtExactGasBoundary) {
+    const std::string input = common::Encode::HexDecode(
+        "18b18acfb4c2c30276db5411368e7185b311dd124691610c5d3b74034e093dc9"
+        "063c909c4720840cb5134cb9f59fa749755796819658d32efc0d288198f37266"
+        "07c2b7f58a84bd6145f00c9c2bc0bb1a187f20ff2c92963a88019e7c6a014eed"
+        "06614e20c147e940f2d70da3f74c9a17df361706a4485c742bd6788478fa17d7");
+    ContractAltBn128G1Add add(kContractAlt_bn128_G1_add);
+    CallParameters params;
+    params.data = input;
+
+    evmc_result call_result = {};
+    evmc::Result evmc_res{ call_result };
+    evmc_result* res = reinterpret_cast<evmc_result*>(&evmc_res);
+    res->gas_left = 150;  // exactly gas_cast_
+
+    ASSERT_EQ(add.call(params, 0, "", res), kContractSuccess);
+    EXPECT_EQ(res->gas_left, 0);
     delete[] res->output_data;
     res->output_data = nullptr;
 }
@@ -144,6 +245,22 @@ TEST(AltBn128G1MulBranches, InvalidInputWithCorrectLength) {
     EXPECT_EQ(mul.call(params, 0, "", res), kContractError);
 }
 
+TEST(AltBn128G1MulBranches, InputLengthBoundaryAround96IsRejected) {
+    ContractAltBn128G1Mul mul(kContractAlt_bn128_G1_mul);
+    evmc_result call_result = {};
+    evmc::Result evmc_res{ call_result };
+    evmc_result* res = reinterpret_cast<evmc_result*>(&evmc_res);
+    res->gas_left = 100'000;
+
+    CallParameters short_params;
+    short_params.data.assign(95, '\x00');
+    EXPECT_EQ(mul.call(short_params, 0, "", res), kContractError);
+
+    CallParameters long_params;
+    long_params.data.assign(97, '\x00');
+    EXPECT_EQ(mul.call(long_params, 0, "", res), kContractError);
+}
+
 TEST(AltBn128G1MulBranches, SuccessVector) {
     const std::string input = common::Encode::HexDecode(
         "2bd3e6d0f3b142924f5ca7b49ce5b9d54c4703d7ae5648e61d02268b1a0a9fb7"
@@ -167,6 +284,26 @@ TEST(AltBn128G1MulBranches, SuccessVector) {
     EXPECT_EQ(res->gas_left, kStart - 6000);
     ASSERT_EQ(res->output_size, expect_out.size());
     EXPECT_EQ(std::string(reinterpret_cast<const char*>(res->output_data), res->output_size), expect_out);
+    delete[] res->output_data;
+    res->output_data = nullptr;
+}
+
+TEST(AltBn128G1MulBranches, SuccessVectorWorksAtExactGasBoundary) {
+    const std::string input = common::Encode::HexDecode(
+        "2bd3e6d0f3b142924f5ca7b49ce5b9d54c4703d7ae5648e61d02268b1a0a9fb7"
+        "21611ce0a6af85915e2f1d70300909ce2e49dfad4a4619c8390cae66cefdb204"
+        "00000000000000000000000000000000000000000000000011138ce750fa15c2");
+    ContractAltBn128G1Mul mul(kContractAlt_bn128_G1_mul);
+    CallParameters params;
+    params.data = input;
+
+    evmc_result call_result = {};
+    evmc::Result evmc_res{ call_result };
+    evmc_result* res = reinterpret_cast<evmc_result*>(&evmc_res);
+    res->gas_left = 6000;  // exact gas required
+
+    ASSERT_EQ(mul.call(params, 0, "", res), kContractSuccess);
+    EXPECT_EQ(res->gas_left, 0);
     delete[] res->output_data;
     res->output_data = nullptr;
 }
@@ -243,6 +380,22 @@ TEST(AltBn128PairingBranches, InvalidInputWithCorrectPairStride) {
     EXPECT_EQ(pairing.call(params, 0, "", res), kContractError);
 }
 
+TEST(AltBn128PairingBranches, LengthBoundaryAround192StrideRejected) {
+    ContractaltBn128PairingProduct pairing(kContractAlt_bn128_pairing_product);
+    evmc_result call_result = {};
+    evmc::Result evmc_res{ call_result };
+    evmc_result* res = reinterpret_cast<evmc_result*>(&evmc_res);
+    res->gas_left = 10'000'000;
+
+    CallParameters short_params;
+    short_params.data.assign(191, '\x00');
+    EXPECT_EQ(pairing.call(short_params, 0, "", res), kContractError);
+
+    CallParameters long_params;
+    long_params.data.assign(193, '\x00');
+    EXPECT_EQ(pairing.call(long_params, 0, "", res), kContractError);
+}
+
 TEST(AltBn128PairingBranches, SuccessVector) {
     const std::string input = common::Encode::HexDecode(kPairingValidHex);
     const std::string expect_one = common::Encode::HexDecode(
@@ -264,6 +417,25 @@ TEST(AltBn128PairingBranches, SuccessVector) {
     ASSERT_EQ(res->output_size, expect_one.size());
     EXPECT_EQ(std::string(reinterpret_cast<const char*>(res->output_data), res->output_size), expect_one);
 
+    delete[] res->output_data;
+    res->output_data = nullptr;
+}
+
+TEST(AltBn128PairingBranches, SuccessVectorWorksAtExactGasBoundary) {
+    const std::string input = common::Encode::HexDecode(kPairingValidHex);
+    const int64_t gas_need = static_cast<int64_t>(45000 + input.size() * 34000);
+
+    ContractaltBn128PairingProduct pairing(kContractAlt_bn128_pairing_product);
+    CallParameters params;
+    params.data = input;
+
+    evmc_result call_result = {};
+    evmc::Result evmc_res{ call_result };
+    evmc_result* res = reinterpret_cast<evmc_result*>(&evmc_res);
+    res->gas_left = gas_need;
+
+    ASSERT_EQ(pairing.call(params, 0, "", res), kContractSuccess);
+    EXPECT_EQ(res->gas_left, 0);
     delete[] res->output_data;
     res->output_data = nullptr;
 }

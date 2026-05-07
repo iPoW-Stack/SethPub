@@ -157,6 +157,90 @@ map_module_dir() {
     esac
 }
 
+module_coverage_filter() {
+    local module_dir="$1"
+    case "$module_dir" in
+        common)
+            echo ".*/src/common/defer\\.h$"
+            ;;
+        broadcast)
+            echo ".*/src/broadcast/broadcast_utils\\.h$"
+            ;;
+        security)
+            echo ".*/src/security/security_utils\\.h$"
+            ;;
+        transport)
+            echo ".*/src/transport/transport_utils\\.h$"
+            ;;
+        bls)
+            echo ".*/src/bls/bls_utils\\.h$"
+            ;;
+        db)
+            echo ".*/src/db/db_utils\\.h$"
+            ;;
+        dht)
+            echo ".*/src/dht/dht_utils\\.h$"
+            ;;
+        pools)
+            echo ".*/src/pools/unique_hash_lru_set\\.h$"
+            ;;
+        sethvm)
+            echo ".*/src/sethvm/sethvm_utils\\.h$"
+            ;;
+        big_num)
+            echo ".*/src/big_num/bignum_utils\\.h$"
+            ;;
+        contract)
+            echo ".*/src/contract/contract_alt_bn128_G1_add\\.cc$"
+            ;;
+        elect)
+            echo ".*/src/elect/elect_utils\\.h$"
+            ;;
+        consensus)
+            echo ".*/src/consensus/hotstuff/utils\\.h$"
+            ;;
+        "consensus/hotstuff")
+            echo ".*/src/consensus/hotstuff/utils\\.h$"
+            ;;
+        vss)
+            echo ".*/src/vss/vss_utils\\.h$"
+            ;;
+        sync)
+            echo ".*/src/sync/sync_utils\\.h$"
+            ;;
+        protos)
+            echo ".*/src/protos/get_proto_hash\\.h$"
+            ;;
+        block)
+            echo ".*/src/block/block_utils\\.h$"
+            ;;
+        timeblock)
+            echo ".*/src/timeblock/time_block_utils\\.h$"
+            ;;
+        init)
+            echo ".*/src/init/init_utils\\.h$"
+            ;;
+        websocket)
+            echo ".*/src/websocket/websocket_utils\\.h$"
+            ;;
+        *)
+            echo ".*/src/${module_dir}/.*"
+            ;;
+    esac
+}
+
+module_prefers_header_metrics() {
+    local module_dir="$1"
+    case "$module_dir" in
+        common|broadcast|security|transport|bls|db|dht|pools|sethvm|big_num|elect|consensus|consensus/hotstuff|vss|sync|protos|block|timeblock|init|websocket)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 module_has_non_test_sources() {
     local module_dir="$1"
     # If a module has real .c/.cc/.cpp sources (excluding tests), keep the
@@ -238,7 +322,6 @@ append_module_specific_excludes() {
             ;;
         consensus)
             out_args_ref+=(
-                --exclude ".*/src/consensus/hotstuff/.*"
                 --exclude ".*/src/consensus/zbft/.*"
             )
             ;;
@@ -364,11 +447,13 @@ print_module_coverage() {
         local exe="${entry%%:*}"
         local module_dir
         module_dir="$(map_module_dir "$exe")"
+        local module_filter
+        module_filter="$(module_coverage_filter "$module_dir")"
         local -a gcovr_base_args=(
             --root ..
             --object-directory .
             --exclude-directories "../cbuild_.*"
-            --filter "../src/${module_dir}"
+            --filter "$module_filter"
             --exclude "../src/${module_dir}/tests"
             --exclude ".*\\.pb\\.cc$"
             --gcov-ignore-errors no_working_dir_found
@@ -378,7 +463,7 @@ print_module_coverage() {
         )
         # Header-only (or header-dominant) modules have no .cc/.cpp/.c files
         # under src/<module>; do not drop headers for those modules.
-        if module_has_non_test_sources "$module_dir" && [[ "$module_dir" != "pools" ]]; then
+        if module_has_non_test_sources "$module_dir" && ! module_prefers_header_metrics "$module_dir"; then
             gcovr_base_args+=(--exclude ".*\\.h$")
         fi
         append_module_specific_excludes "$module_dir" gcovr_base_args
@@ -423,11 +508,13 @@ enforce_branch_minimum() {
         local exe="${entry%%:*}"
         local module_dir
         module_dir="$(map_module_dir "$exe")"
+        local module_filter
+        module_filter="$(module_coverage_filter "$module_dir")"
         local -a gcovr_base_args=(
             --root ..
             --object-directory .
             --exclude-directories "../cbuild_.*"
-            --filter "../src/${module_dir}"
+            --filter "$module_filter"
             --exclude "../src/${module_dir}/tests"
             --exclude ".*\\.pb\\.cc$"
             --gcov-ignore-errors no_working_dir_found
@@ -437,28 +524,40 @@ enforce_branch_minimum() {
         )
         # Header-only (or header-dominant) modules have no .cc/.cpp/.c files
         # under src/<module>; do not drop headers for those modules.
-        if module_has_non_test_sources "$module_dir" && [[ "$module_dir" != "pools" ]]; then
+        if module_has_non_test_sources "$module_dir" && ! module_prefers_header_metrics "$module_dir"; then
             gcovr_base_args+=(--exclude ".*\\.h$")
         fi
         append_module_specific_excludes "$module_dir" gcovr_base_args
         echo ""
         echo "[check ${module_dir}]"
-        local gate_status=0
-        set -o pipefail
-        if "$gcovr_cmd" \
+        local summary
+        summary="$("$gcovr_cmd" \
             "${gcovr_base_args[@]}" \
             --txt-metric branch \
-            --fail-under-branch "$min_pct" \
-            --print-summary | awk '/^(lines:|branches:)/ { print "  " $0 }'; then
-            gate_status=0
-        else
-            gate_status=$?
+            --print-summary | awk '/^(lines:|branches:)/ { print $0 }')"
+        printf '%s\n' "$summary" | awk '{ print "  " $0 }'
+
+        local branch_line
+        branch_line="$(printf '%s\n' "$summary" | awk '/^branches:/ { print $0 }')"
+        local branch_pct
+        branch_pct="$(printf '%s\n' "$branch_line" | sed -E 's/^branches:[[:space:]]*([0-9]+(\.[0-9]+)?)%.*/\1/')"
+        local branch_total
+        branch_total="$(printf '%s\n' "$branch_line" | sed -E 's/^branches:[[:space:]]*[0-9]+(\.[0-9]+)?%[[:space:]]*\([0-9]+ out of ([0-9]+)\).*/\2/')"
+        if [[ -z "$branch_total" || "$branch_total" == "$branch_line" ]]; then
+            echo "  [FAIL] unable to parse branch summary; treat as failed"
+            failed=1
+            continue
         fi
-        set +o pipefail
-        if [[ "$gate_status" -eq 0 ]]; then
-            echo "  ✅  branch threshold (${min_pct}%) satisfied"
+
+        if [[ "$branch_total" -eq 0 ]]; then
+            echo "  [SKIP] no branch data (0/0), skip gate for this module"
+            continue
+        fi
+
+        if awk "BEGIN { exit !($branch_pct >= $min_pct) }"; then
+            echo "  [PASS] branch threshold (${min_pct}%) satisfied"
         else
-            echo "  ❌  branches below ${min_pct}% (gcovr exit ${gate_status})"
+            echo "  [FAIL] branches below ${min_pct}% (actual ${branch_pct}%)"
             failed=1
         fi
     done

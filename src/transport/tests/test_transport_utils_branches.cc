@@ -46,6 +46,20 @@ TEST(TransportUtilsBranches, MessageStatusToStringTxAndEvmcBranches) {
     EXPECT_EQ(MessageStatusToString(kEvmcOutOfMemory), "kEvmcOutOfMemory");
 }
 
+TEST(TransportUtilsBranches, MessageStatusToStringAliasZeroPrefersConsensusLabel) {
+    // kConsensusSuccess and kEvmcSuccess are both 0; switch should hit first case.
+    EXPECT_EQ(static_cast<int>(kConsensusSuccess), static_cast<int>(kEvmcSuccess));
+    EXPECT_EQ(MessageStatusToString(kEvmcSuccess), "kConsensusSuccess");
+}
+
+TEST(TransportUtilsBranches, MessageStatusToStringUnknownContainsNumericCode) {
+    const int32_t code = 1234567;
+    const std::string s =
+        MessageStatusToString(static_cast<MessageHandleStatus>(code));
+    EXPECT_NE(s.find("unknown("), std::string::npos);
+    EXPECT_NE(s.find(std::to_string(code)), std::string::npos);
+}
+
 TEST(TransportUtilsBranches, MessageStatusToStringTxPipelineStatuses) {
     EXPECT_EQ(MessageStatusToString(kMessageHandleError), "kMessageHandleError");
     EXPECT_EQ(MessageStatusToString(kTxInvalidSignature), "kTxInvalidSignature");
@@ -156,11 +170,46 @@ TEST(TransportUtilsBranches, MessageStatusToStringUnknownDefaultBranch) {
     EXPECT_NE(s.find("unknown("), std::string::npos);
 }
 
+TEST(TransportUtilsBranches, MessageStatusToStringUnknownGapCodeAlsoUsesDefault) {
+    // 5003 is intentionally not mapped in the switch table.
+    const std::string s =
+        MessageStatusToString(static_cast<MessageHandleStatus>(5003));
+    EXPECT_NE(s.find("unknown("), std::string::npos);
+}
+
+TEST(TransportUtilsBranches, MessageStatusToStringUnknownNegativeUsesDefault) {
+    const std::string s =
+        MessageStatusToString(static_cast<MessageHandleStatus>(-99));
+    EXPECT_NE(s.find("unknown("), std::string::npos);
+}
+
 TEST(TransportUtilsBranches, TimeoutAndPoolConstantsPositive) {
     EXPECT_GT(kConsensusMessageTimeoutUs, 0ull);
     EXPECT_GT(kHandledTimeoutMs, 0ull);
     EXPECT_GT(kMessagePeriodUs, 0ull);
     EXPECT_GT(kEachMessagePoolMaxCount, 0u);
+}
+
+TEST(TransportUtilsBranches, TransportGlobalConstantsExactValues) {
+    EXPECT_EQ(kMaxHops, 20u);
+    EXPECT_EQ(kBroadcastMaxRelayTimes, 2u);
+    EXPECT_EQ(kKcpRecvWindowSize, 128u);
+    EXPECT_EQ(kKcpSendWindowSize, 128u);
+    EXPECT_EQ(kMsgPacketMagicNum, 345234223u);
+    EXPECT_EQ(kTransportTxBignumVersionNum, 1);
+    EXPECT_EQ(kTransportVersionNum, 2);
+    EXPECT_EQ(kTcpBuffLength, 10 * 1024 * 1024);
+}
+
+TEST(TransportUtilsBranches, MessageHandleStatusNumericAnchors) {
+    EXPECT_EQ(static_cast<int32_t>(kMessageHandle), 10001);
+    EXPECT_EQ(static_cast<int32_t>(kNotExists), 100010);
+    EXPECT_EQ(static_cast<int32_t>(kEvmcInternalError), -1);
+}
+
+TEST(TransportUtilsBranches, TransportMessageReserveSizingRelations) {
+    EXPECT_GT(kMaxMessageReserveCount, kEachMessagePoolMaxCount);
+    EXPECT_GT(kBroadcastMaxMessageCount, kUniqueMaxMessageCount);
 }
 
 }  // namespace test

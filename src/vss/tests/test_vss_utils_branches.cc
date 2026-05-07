@@ -59,6 +59,19 @@ TEST(VssUtilsBranches, PeriodOffsetsOrderedAndBelowTimeoutWindow) {
               kVssCheckPeriodTimeout);
 }
 
+TEST(VssUtilsBranches, VssTimingAndDuplicationConstantsExactValues) {
+    EXPECT_EQ(kVssRandomSplitCount, 3);
+    EXPECT_EQ(kVssRandomduplicationCount, 7u);
+    EXPECT_EQ(kVssCheckPeriodTimeout, 3000000ll);
+}
+
+TEST(VssUtilsBranches, ElectItemLeaderFlagCanBeToggled) {
+    ElectItem item;
+    EXPECT_FALSE(item.this_node_is_leader);
+    item.this_node_is_leader = true;
+    EXPECT_TRUE(item.this_node_is_leader);
+}
+
 }  // namespace test
 }  // namespace vss
 }  // namespace seth

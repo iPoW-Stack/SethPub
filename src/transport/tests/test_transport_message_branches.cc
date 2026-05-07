@@ -21,6 +21,8 @@ TEST(TransportMessageBranches, ConstructorInitializesKeyStateFields) {
     EXPECT_FALSE(msg.is_leader);
     EXPECT_FALSE(msg.system_message);
     EXPECT_EQ(msg.thread_index, -1);
+    EXPECT_EQ(msg.times_idx, 0u);
+    EXPECT_EQ(msg.latest_qc_view, 0ull);
     EXPECT_EQ(msg.handle_timeout, common::kInvalidUint64);
     EXPECT_GT(msg.timeout, 0ull);
 }
@@ -34,9 +36,15 @@ TEST(TransportMessageBranches, SetStatusPendingStatesDoNotNotify) {
 
     msg.set_status(kMessageHandle);
     EXPECT_EQ(notify_count, 0);
+    EXPECT_EQ(msg.handle_status.load(), kMessageHandle);
 
     msg.set_status(kTxAccept);
     EXPECT_EQ(notify_count, 0);
+    EXPECT_EQ(msg.handle_status.load(), kTxAccept);
+
+    msg.set_status(kTxAccept);
+    EXPECT_EQ(notify_count, 0);
+    EXPECT_EQ(msg.handle_status.load(), kTxAccept);
 }
 
 TEST(TransportMessageBranches, SetStatusTerminalInvokesCallbackWhenHashSet) {
@@ -60,6 +68,7 @@ TEST(TransportMessageBranches, SetStatusTerminalSkipsCallbackWhenMsgHashEmpty) {
 
     msg.set_status(kTxPoolFullReject);
     EXPECT_FALSE(fired);
+    EXPECT_EQ(msg.handle_status.load(), kTxPoolFullReject);
 }
 
 TEST(TransportMessageBranches, SetStatusTerminalWithoutCallbackStillStoresStatus) {
@@ -78,6 +87,33 @@ TEST(TransportMessageBranches, SetStatusTerminalCanNotifyMultipleTimes) {
     msg.set_status(kTxInvalidAddress);
     msg.set_status(kTxPoolFullReject);
     EXPECT_EQ(notify_count, 2);
+    EXPECT_EQ(msg.handle_status.load(), kTxPoolFullReject);
+}
+
+TEST(TransportMessageBranches, SetStatusCallbackReceivesExactStatus) {
+    TransportMessage msg;
+    msg.msg_hash = "abcd";
+    MessageHandleStatus got = kConsensusSuccess;
+    msg.status_notify_cb = [&](const std::string& h, MessageHandleStatus s) {
+        EXPECT_EQ(h, "abcd");
+        got = s;
+    };
+    msg.set_status(kRequestInvalid);
+    EXPECT_EQ(got, kRequestInvalid);
+}
+
+TEST(TransportMessageBranches, SetStatusCallbackUsesCurrentMsgHashEachTime) {
+    TransportMessage msg;
+    std::string seen_hash;
+    msg.status_notify_cb = [&](const std::string& h, MessageHandleStatus) { seen_hash = h; };
+
+    msg.msg_hash = "h1";
+    msg.set_status(kTxInvalidAddress);
+    EXPECT_EQ(seen_hash, "h1");
+
+    msg.msg_hash = "h2";
+    msg.set_status(kTxPoolFullReject);
+    EXPECT_EQ(seen_hash, "h2");
 }
 
 TEST(TransportMessageBranches, ClientItemConstructDestructAdjustsSharedCounter) {

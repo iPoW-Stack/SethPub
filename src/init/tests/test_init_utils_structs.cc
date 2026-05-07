@@ -48,6 +48,71 @@ TEST(InitUtilsStructs, RotatitionVersionInfoHandlesInserts) {
     EXPECT_EQ(v.count_map[100u], 3u);
 }
 
+TEST(InitUtilsStructs, LeaderRotationInfoContainersCanBeMutated) {
+    LeaderRotationInfo info;
+    info.invalid_leaders.insert(7u);
+    RotatitionLeaders leaders;
+    leaders.rotation_leaders.push_back(2u);
+    info.rotations.push_back(leaders);
+    EXPECT_EQ(info.invalid_leaders.size(), 1u);
+    ASSERT_EQ(info.rotations.size(), 1u);
+    EXPECT_EQ(info.rotations[0].rotation_leaders.size(), 1u);
+}
+
+TEST(InitUtilsStructs, GenisisNodeInfoSupportsFieldAssignment) {
+    GenisisNodeInfo node;
+    node.prikey = "pri";
+    node.pubkey = "pub";
+    node.id = "id";
+    node.nonce = 42u;
+    EXPECT_EQ(node.prikey, "pri");
+    EXPECT_EQ(node.pubkey, "pub");
+    EXPECT_EQ(node.id, "id");
+    EXPECT_EQ(node.nonce, 42u);
+}
+
+TEST(InitUtilsStructs, RotatitionLeadersNestedVersionCounters) {
+    RotatitionLeaders leaders;
+    RotatitionVersionInfo info;
+    info.handled_set.insert(5u);
+    info.count_map[5u] = 2u;
+    leaders.version_with_count[9u] = info;
+
+    ASSERT_EQ(leaders.version_with_count.size(), 1u);
+    ASSERT_EQ(leaders.version_with_count.count(9u), 1u);
+    EXPECT_EQ(leaders.version_with_count[9u].handled_set.count(5u), 1u);
+    EXPECT_EQ(leaders.version_with_count[9u].count_map[5u], 2u);
+}
+
+TEST(InitUtilsStructs, RotatitionLeadersHandlesMultipleVersionEntries) {
+    RotatitionLeaders leaders;
+    RotatitionVersionInfo v1;
+    RotatitionVersionInfo v2;
+    v1.count_map[1u] = 10u;
+    v2.count_map[2u] = 20u;
+    leaders.version_with_count[100u] = v1;
+    leaders.version_with_count[200u] = v2;
+
+    EXPECT_EQ(leaders.version_with_count.size(), 2u);
+    EXPECT_EQ(leaders.version_with_count[100u].count_map[1u], 10u);
+    EXPECT_EQ(leaders.version_with_count[200u].count_map[2u], 20u);
+}
+
+TEST(InitUtilsStructs, GenisisNodeInfoVectorFieldsAcceptPushBack) {
+    GenisisNodeInfo node;
+    node.polynomial.push_back(libff::alt_bn128_Fr::zero());
+    node.verification.push_back(libff::alt_bn128_G2::zero());
+    EXPECT_EQ(node.polynomial.size(), 1u);
+    EXPECT_EQ(node.verification.size(), 1u);
+}
+
+TEST(InitUtilsStructs, GenisisNodeInfoPtrAliasHoldsSharedInstance) {
+    GenisisNodeInfoPtr node = std::make_shared<GenisisNodeInfo>();
+    ASSERT_NE(node, nullptr);
+    node->nonce = 9u;
+    EXPECT_EQ(node->nonce, 9u);
+}
+
 }  // namespace test
 }  // namespace init
 }  // namespace seth

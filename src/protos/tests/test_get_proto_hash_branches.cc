@@ -252,6 +252,85 @@ TEST(GetProtoHashBranches, ZbftProtoHashIncludesOptionalGids) {
     EXPECT_NE(a, b);
 }
 
+TEST(GetProtoHashBranches, ZbftPrepareGidPresenceWithEmptyStringAffectsHash) {
+    transport::protobuf::Header absent;
+    transport::protobuf::Header present_empty;
+    auto fill = [](transport::protobuf::Header* h) {
+        auto* z = h->mutable_zbft();
+        z->set_leader_idx(1);
+        z->set_net_id(1u);
+        z->set_pool_index(2u);
+    };
+    fill(&absent);
+    fill(&present_empty);
+    present_empty.mutable_zbft()->set_prepare_gid("");  // has_prepare_gid() true
+    std::string a;
+    std::string b;
+    GetProtoHash(absent, &a);
+    GetProtoHash(present_empty, &b);
+    EXPECT_NE(a, b);
+}
+
+TEST(GetProtoHashBranches, ZbftAgreePrecommitPresenceAffectsHashEvenWhenFalse) {
+    transport::protobuf::Header absent;
+    transport::protobuf::Header present_false;
+    auto fill_base = [](transport::protobuf::Header* h) {
+        auto* z = h->mutable_zbft();
+        z->set_prepare_gid("prep");
+        z->set_leader_idx(1);
+        z->set_net_id(1u);
+        z->set_pool_index(2u);
+    };
+    fill_base(&absent);
+    fill_base(&present_false);
+    present_false.mutable_zbft()->set_agree_precommit(false);  // has_agree_precommit() == true
+    std::string a;
+    std::string b;
+    GetProtoHash(absent, &a);
+    GetProtoHash(present_false, &b);
+    EXPECT_NE(a, b);
+}
+
+TEST(GetProtoHashBranches, ZbftAgreeCommitPresenceAffectsHashEvenWhenFalse) {
+    transport::protobuf::Header absent;
+    transport::protobuf::Header present_false;
+    auto fill_base = [](transport::protobuf::Header* h) {
+        auto* z = h->mutable_zbft();
+        z->set_prepare_gid("prep");
+        z->set_leader_idx(2);
+        z->set_net_id(1u);
+        z->set_pool_index(2u);
+    };
+    fill_base(&absent);
+    fill_base(&present_false);
+    present_false.mutable_zbft()->set_agree_commit(false);  // has_agree_commit() == true
+    std::string a;
+    std::string b;
+    GetProtoHash(absent, &a);
+    GetProtoHash(present_false, &b);
+    EXPECT_NE(a, b);
+}
+
+TEST(GetProtoHashBranches, ZbftFieldPresenceNetIdPoolIndexErrorAffectsHash) {
+    transport::protobuf::Header base;
+    transport::protobuf::Header with_fields;
+    auto fill = [](transport::protobuf::Header* h) {
+        auto* z = h->mutable_zbft();
+        z->set_prepare_gid("gid");
+        z->set_leader_idx(1);
+    };
+    fill(&base);
+    fill(&with_fields);
+    with_fields.mutable_zbft()->set_net_id(0u);      // presence-only branch
+    with_fields.mutable_zbft()->set_pool_index(0u);  // presence-only branch
+    with_fields.mutable_zbft()->set_error(0);        // presence-only branch
+    std::string a;
+    std::string b;
+    GetProtoHash(base, &a);
+    GetProtoHash(with_fields, &b);
+    EXPECT_NE(a, b);
+}
+
 TEST(GetProtoHashBranches, ZbftProtoHashChangesWhenErrorChanges) {
     transport::protobuf::Header h1;
     transport::protobuf::Header h2;
@@ -399,6 +478,25 @@ TEST(GetProtoHashBranches, ZbftProtoTxBftTwoEmbeddedTxsSecondChangesHash) {
     EXPECT_NE(a, b);
 }
 
+TEST(GetProtoHashBranches, ZbftProtoEmptyTxBftSubmessagePathIsStable) {
+    transport::protobuf::Header h1;
+    transport::protobuf::Header h2;
+    auto fill = [](transport::protobuf::Header* h) {
+        auto* z = h->mutable_zbft();
+        z->set_leader_idx(12);
+        z->set_net_id(2u);
+        z->set_pool_index(3u);
+        z->mutable_tx_bft();  // present but empty
+    };
+    fill(&h1);
+    fill(&h2);
+    std::string a;
+    std::string b;
+    GetProtoHash(h1, &a);
+    GetProtoHash(h2, &b);
+    EXPECT_EQ(a, b);
+}
+
 TEST(GetProtoHashBranches, ZbftProtoMemberIndexChangesHash) {
     transport::protobuf::Header h1;
     transport::protobuf::Header h2;
@@ -416,6 +514,25 @@ TEST(GetProtoHashBranches, ZbftProtoMemberIndexChangesHash) {
     EXPECT_NE(a, b);
 }
 
+TEST(GetProtoHashBranches, ZbftProtoMemberIndexPresenceWithZeroAffectsHash) {
+    transport::protobuf::Header absent;
+    transport::protobuf::Header present_zero;
+    auto fill = [](transport::protobuf::Header* h) {
+        auto* z = h->mutable_zbft();
+        z->set_leader_idx(1);
+        z->set_net_id(1u);
+        z->set_pool_index(1u);
+    };
+    fill(&absent);
+    fill(&present_zero);
+    present_zero.mutable_zbft()->set_member_index(0u);  // has_member_index() true
+    std::string a;
+    std::string b;
+    GetProtoHash(absent, &a);
+    GetProtoHash(present_zero, &b);
+    EXPECT_NE(a, b);
+}
+
 TEST(GetProtoHashBranches, ZbftProtoElectHeightChangesHash) {
     transport::protobuf::Header h1;
     transport::protobuf::Header h2;
@@ -430,6 +547,25 @@ TEST(GetProtoHashBranches, ZbftProtoElectHeightChangesHash) {
     std::string b;
     GetProtoHash(h1, &a);
     GetProtoHash(h2, &b);
+    EXPECT_NE(a, b);
+}
+
+TEST(GetProtoHashBranches, ZbftProtoElectHeightPresenceWithZeroAffectsHash) {
+    transport::protobuf::Header absent;
+    transport::protobuf::Header present_zero;
+    auto fill = [](transport::protobuf::Header* h) {
+        auto* z = h->mutable_zbft();
+        z->set_leader_idx(1);
+        z->set_net_id(1u);
+        z->set_pool_index(2u);
+    };
+    fill(&absent);
+    fill(&present_zero);
+    present_zero.mutable_zbft()->set_elect_height(0ull);  // has_elect_height() true
+    std::string a;
+    std::string b;
+    GetProtoHash(absent, &a);
+    GetProtoHash(present_zero, &b);
     EXPECT_NE(a, b);
 }
 
@@ -465,6 +601,46 @@ TEST(GetProtoHashBranches, ZbftProtoBlsSignYChangesHash) {
     GetProtoHash(h1, &a);
     GetProtoHash(h2, &b);
     EXPECT_NE(a, b);
+}
+
+TEST(GetProtoHashBranches, ZbftProtoBlsSignYIsAppendedTwiceWhenPresent) {
+    transport::protobuf::Header without_sig;
+    transport::protobuf::Header with_sig;
+    auto fill = [](transport::protobuf::Header* h) {
+        auto* z = h->mutable_zbft();
+        z->set_leader_idx(3);
+        z->set_net_id(1u);
+        z->set_pool_index(2u);
+    };
+    fill(&without_sig);
+    fill(&with_sig);
+    with_sig.mutable_zbft()->set_bls_sign_y("xy");  // length 2
+
+    std::string a;
+    std::string b;
+    GetProtoHash(without_sig, &a);
+    GetProtoHash(with_sig, &b);
+    // Code appends bls_sign_y twice, so length delta should be 2 * len("xy").
+    EXPECT_EQ(b.size(), a.size() + 4u);
+}
+
+TEST(GetProtoHashBranches, ZbftBlsSignYPresenceWithEmptyStringKeepsHashLength) {
+    transport::protobuf::Header absent;
+    transport::protobuf::Header present_empty;
+    auto fill = [](transport::protobuf::Header* h) {
+        auto* z = h->mutable_zbft();
+        z->set_leader_idx(3);
+        z->set_net_id(1u);
+        z->set_pool_index(2u);
+    };
+    fill(&absent);
+    fill(&present_empty);
+    present_empty.mutable_zbft()->set_bls_sign_y("");  // has_bls_sign_y() true, append empty twice
+    std::string a;
+    std::string b;
+    GetProtoHash(absent, &a);
+    GetProtoHash(present_empty, &b);
+    EXPECT_EQ(a.size(), b.size());
 }
 
 TEST(GetProtoHashBranches, ZbftProtoNetIdChangesHash) {
@@ -555,6 +731,48 @@ TEST(GetProtoHashBranches, BlsProtoVerifyBrdEmptySubmessageVsAbsent) {
     EXPECT_NE(a, b);
 }
 
+TEST(GetProtoHashBranches, BlsProtoSwapReqEmptySubmessageVsAbsent) {
+    transport::protobuf::Header with_empty_swap;
+    {
+        auto* b = with_empty_swap.mutable_bls_proto();
+        b->mutable_swap_req();  // present but zero keys
+        b->set_index(1u);
+        b->set_elect_height(2ull);
+    }
+    transport::protobuf::Header no_swap;
+    {
+        auto* b = no_swap.mutable_bls_proto();
+        b->set_index(1u);
+        b->set_elect_height(2ull);
+    }
+    std::string a;
+    std::string b;
+    GetProtoHash(with_empty_swap, &a);
+    GetProtoHash(no_swap, &b);
+    EXPECT_NE(a, b);
+}
+
+TEST(GetProtoHashBranches, BlsProtoFinishReqEmptySubmessageVsAbsent) {
+    transport::protobuf::Header with_empty_finish;
+    {
+        auto* b = with_empty_finish.mutable_bls_proto();
+        b->mutable_finish_req();  // present but no bitmap/pubkey/common_pubkey
+        b->set_index(8u);
+        b->set_elect_height(9ull);
+    }
+    transport::protobuf::Header no_finish;
+    {
+        auto* b = no_finish.mutable_bls_proto();
+        b->set_index(8u);
+        b->set_elect_height(9ull);
+    }
+    std::string a;
+    std::string b;
+    GetProtoHash(with_empty_finish, &a);
+    GetProtoHash(no_finish, &b);
+    EXPECT_NE(a, b);
+}
+
 TEST(GetProtoHashBranches, BlsProtoHashSwapReqPathChangesWithKeys) {
     transport::protobuf::Header h1;
     transport::protobuf::Header h2;
@@ -592,6 +810,60 @@ TEST(GetProtoHashBranches, BlsProtoSwapReqTwoKeysConcatChangesHash) {
     };
     fill(&h1, "aaa_b");
     fill(&h2, "aaa_c");
+    std::string a;
+    std::string b;
+    GetProtoHash(h1, &a);
+    GetProtoHash(h2, &b);
+    EXPECT_NE(a, b);
+}
+
+TEST(GetProtoHashBranches, BlsProtoSwapReqSecKeyLenAffectsHash) {
+    transport::protobuf::Header h1;
+    transport::protobuf::Header h2;
+    auto fill = [](transport::protobuf::Header* h, uint32_t len) {
+        auto* b = h->mutable_bls_proto();
+        b->set_index(2u);
+        b->set_elect_height(5ull);
+        auto* sr = b->mutable_swap_req();
+        auto* k = sr->add_keys();
+        k->set_sec_key("same_key_material");
+        k->set_sec_key_len(len);
+    };
+    fill(&h1, 16u);
+    fill(&h2, 17u);
+    std::string a;
+    std::string b;
+    GetProtoHash(h1, &a);
+    GetProtoHash(h2, &b);
+    EXPECT_NE(a, b);
+}
+
+TEST(GetProtoHashBranches, BlsProtoSwapReqKeyOrderAffectsHash) {
+    transport::protobuf::Header h1;
+    transport::protobuf::Header h2;
+    auto fill = [](transport::protobuf::Header* h, bool reverse) {
+        auto* b = h->mutable_bls_proto();
+        b->set_index(3u);
+        b->set_elect_height(7ull);
+        auto* sr = b->mutable_swap_req();
+        if (!reverse) {
+            auto* k0 = sr->add_keys();
+            k0->set_sec_key("a");
+            k0->set_sec_key_len(1u);
+            auto* k1 = sr->add_keys();
+            k1->set_sec_key("b");
+            k1->set_sec_key_len(1u);
+        } else {
+            auto* k0 = sr->add_keys();
+            k0->set_sec_key("b");
+            k0->set_sec_key_len(1u);
+            auto* k1 = sr->add_keys();
+            k1->set_sec_key("a");
+            k1->set_sec_key_len(1u);
+        }
+    };
+    fill(&h1, false);
+    fill(&h2, true);
     std::string a;
     std::string b;
     GetProtoHash(h1, &a);
@@ -667,6 +939,52 @@ TEST(GetProtoHashBranches, BlsProtoFinishReqWithoutCommonPubkeyUsesPlaceholder) 
     EXPECT_NE(a, b);
 }
 
+TEST(GetProtoHashBranches, BlsProtoFinishReqHasPubkeyEmptyFieldsDiffersFromAbsent) {
+    transport::protobuf::Header with_empty_pubkey;
+    {
+        auto* b = with_empty_pubkey.mutable_bls_proto();
+        b->set_index(12u);
+        b->set_elect_height(1ull);
+        auto* fr = b->mutable_finish_req();
+        fr->mutable_pubkey();  // has_pubkey true, but all strings empty
+    }
+    transport::protobuf::Header without_pubkey;
+    {
+        auto* b = without_pubkey.mutable_bls_proto();
+        b->set_index(12u);
+        b->set_elect_height(1ull);
+        b->mutable_finish_req();  // has_finish_req true, has_pubkey false
+    }
+    std::string a;
+    std::string b;
+    GetProtoHash(with_empty_pubkey, &a);
+    GetProtoHash(without_pubkey, &b);
+    EXPECT_NE(a, b);
+}
+
+TEST(GetProtoHashBranches, BlsProtoFinishReqHasCommonPubkeyEmptyFieldsDiffersFromAbsent) {
+    transport::protobuf::Header with_empty_common;
+    {
+        auto* b = with_empty_common.mutable_bls_proto();
+        b->set_index(13u);
+        b->set_elect_height(1ull);
+        auto* fr = b->mutable_finish_req();
+        fr->mutable_common_pubkey();  // has_common_pubkey true, fields empty
+    }
+    transport::protobuf::Header without_common;
+    {
+        auto* b = without_common.mutable_bls_proto();
+        b->set_index(13u);
+        b->set_elect_height(1ull);
+        b->mutable_finish_req();  // has_finish_req true, has_common_pubkey false
+    }
+    std::string a;
+    std::string b;
+    GetProtoHash(with_empty_common, &a);
+    GetProtoHash(without_common, &b);
+    EXPECT_NE(a, b);
+}
+
 TEST(GetProtoHashBranches, BlsProtoHashFinishReqPathBitmapAndPubkeys) {
     transport::protobuf::Header h1;
     transport::protobuf::Header h2;
@@ -690,6 +1008,31 @@ TEST(GetProtoHashBranches, BlsProtoHashFinishReqPathBitmapAndPubkeys) {
     fill_base(&h2);
     h2.mutable_bls_proto()->mutable_finish_req()->clear_bitmap();
     h2.mutable_bls_proto()->mutable_finish_req()->add_bitmap(701ull);
+    std::string a;
+    std::string b;
+    GetProtoHash(h1, &a);
+    GetProtoHash(h2, &b);
+    EXPECT_NE(a, b);
+}
+
+TEST(GetProtoHashBranches, BlsProtoFinishReqBitmapOrderAffectsHash) {
+    transport::protobuf::Header h1;
+    transport::protobuf::Header h2;
+    auto fill = [](transport::protobuf::Header* h, bool reverse) {
+        auto* b = h->mutable_bls_proto();
+        b->set_index(10u);
+        b->set_elect_height(20ull);
+        auto* fr = b->mutable_finish_req();
+        if (!reverse) {
+            fr->add_bitmap(1ull);
+            fr->add_bitmap(2ull);
+        } else {
+            fr->add_bitmap(2ull);
+            fr->add_bitmap(1ull);
+        }
+    };
+    fill(&h1, false);
+    fill(&h2, true);
     std::string a;
     std::string b;
     GetProtoHash(h1, &a);
@@ -773,6 +1116,46 @@ TEST(GetProtoHashBranches, VssProtoHashChangesWhenRandomHashChanges) {
     EXPECT_EQ(b.size(), 32u);
 }
 
+TEST(GetProtoHashBranches, VssRandomHashPresenceAffectsHashWhenValueIsZero) {
+    transport::protobuf::Header absent;
+    transport::protobuf::Header present_zero;
+    auto fill_base = [](transport::protobuf::Header* h) {
+        auto* v = h->mutable_vss_proto();
+        v->set_member_index(1u);
+        v->set_tm_height(2ull);
+        v->set_elect_height(3ull);
+        v->set_type(4);
+    };
+    fill_base(&absent);
+    fill_base(&present_zero);
+    present_zero.mutable_vss_proto()->set_random_hash(0ull);  // has_random_hash() true
+    std::string a;
+    std::string b;
+    GetProtoHash(absent, &a);
+    GetProtoHash(present_zero, &b);
+    EXPECT_NE(a, b);
+}
+
+TEST(GetProtoHashBranches, VssRandomPresenceAffectsHashWhenValueIsZero) {
+    transport::protobuf::Header absent;
+    transport::protobuf::Header present_zero;
+    auto fill_base = [](transport::protobuf::Header* h) {
+        auto* v = h->mutable_vss_proto();
+        v->set_member_index(1u);
+        v->set_tm_height(2ull);
+        v->set_elect_height(3ull);
+        v->set_type(4);
+    };
+    fill_base(&absent);
+    fill_base(&present_zero);
+    present_zero.mutable_vss_proto()->set_random(0ull);  // has_random() true
+    std::string a;
+    std::string b;
+    GetProtoHash(absent, &a);
+    GetProtoHash(present_zero, &b);
+    EXPECT_NE(a, b);
+}
+
 TEST(GetProtoHashBranches, VssProtoRandomOnlyWithoutRandomHashStillHashes) {
     transport::protobuf::Header h1;
     transport::protobuf::Header h2;
@@ -793,6 +1176,26 @@ TEST(GetProtoHashBranches, VssProtoRandomOnlyWithoutRandomHashStillHashes) {
     EXPECT_NE(a, b);
     EXPECT_EQ(a.size(), 32u);
     EXPECT_EQ(b.size(), 32u);
+}
+
+TEST(GetProtoHashBranches, VssProtoHashChangesWhenTypeChanges) {
+    transport::protobuf::Header h1;
+    transport::protobuf::Header h2;
+    auto fill = [](transport::protobuf::Header* h, int32_t t) {
+        auto* v = h->mutable_vss_proto();
+        v->set_member_index(4u);
+        v->set_tm_height(11ull);
+        v->set_elect_height(22ull);
+        v->set_type(t);
+        v->set_random_hash(100ull);
+    };
+    fill(&h1, 1);
+    fill(&h2, 2);
+    std::string a;
+    std::string b;
+    GetProtoHash(h1, &a);
+    GetProtoHash(h2, &b);
+    EXPECT_NE(a, b);
 }
 
 TEST(GetProtoHashBranches, ElectBlockHashPrevMembersChangesHash) {
@@ -817,6 +1220,19 @@ TEST(GetProtoHashBranches, ElectBlockHashPrevMembersChangesHash) {
     base.set_elect_height(20ull);
 
     EXPECT_NE(GetElectBlockHash(with_prev), GetElectBlockHash(base));
+}
+
+TEST(GetProtoHashBranches, ElectBlockHashEmptyPrevMembersStillAffectsHash) {
+    elect::protobuf::ElectBlock with_prev_flag;
+    with_prev_flag.set_shard_network_id(10u);
+    with_prev_flag.set_elect_height(20ull);
+    with_prev_flag.mutable_prev_members();  // present but empty/default
+
+    elect::protobuf::ElectBlock without_prev;
+    without_prev.set_shard_network_id(10u);
+    without_prev.set_elect_height(20ull);
+
+    EXPECT_NE(GetElectBlockHash(with_prev_flag), GetElectBlockHash(without_prev));
 }
 
 TEST(GetProtoHashBranches, ElectBlockHashInEntriesChangeHash) {
@@ -910,6 +1326,26 @@ TEST(GetProtoHashBranches, JoinElectReqHashIncludesVerifyVec) {
     v->set_z_c1("vz1");
 
     EXPECT_NE(GetJoinElectReqHash(base), GetJoinElectReqHash(with_vec));
+}
+
+TEST(GetProtoHashBranches, JoinElectReqHashDependsOnVerifyVecOrder) {
+    bls::protobuf::JoinElectInfo a;
+    a.set_shard_id(1u);
+    a.set_member_idx(2u);
+    a.set_change_idx(3u);
+    auto* a0 = a.mutable_g2_req()->add_verify_vec();
+    a0->set_x_c0("A0");
+    auto* a1 = a.mutable_g2_req()->add_verify_vec();
+    a1->set_x_c0("A1");
+
+    bls::protobuf::JoinElectInfo b = a;
+    b.mutable_g2_req()->clear_verify_vec();
+    auto* b0 = b.mutable_g2_req()->add_verify_vec();
+    b0->set_x_c0("A1");
+    auto* b1 = b.mutable_g2_req()->add_verify_vec();
+    b1->set_x_c0("A0");
+
+    EXPECT_NE(GetJoinElectReqHash(a), GetJoinElectReqHash(b));
 }
 
 TEST(GetProtoHashBranches, JoinElectReqHashSensitiveToShardId) {
@@ -1124,6 +1560,50 @@ TEST(GetProtoHashBranches, RepeatedCallAppendsForTxButOverwritesForVss) {
     GetProtoHash(vss_h, &vss_out);
     EXPECT_EQ(vss_out, first_hash);
     EXPECT_EQ(vss_out.size(), 32u);
+}
+
+TEST(GetProtoHashBranches, ZbftPrecommitAndCommitPresenceWithEmptyStringsAffectHash) {
+    transport::protobuf::Header absent;
+    transport::protobuf::Header present_empty;
+    auto fill = [](transport::protobuf::Header* h) {
+        auto* z = h->mutable_zbft();
+        z->set_leader_idx(1);
+        z->set_net_id(1u);
+        z->set_pool_index(2u);
+    };
+    fill(&absent);
+    fill(&present_empty);
+    present_empty.mutable_zbft()->set_precommit_gid("");
+    present_empty.mutable_zbft()->set_commit_gid("");
+    std::string a;
+    std::string b;
+    GetProtoHash(absent, &a);
+    GetProtoHash(present_empty, &b);
+    EXPECT_NE(a, b);
+}
+
+TEST(GetProtoHashBranches, TxProtoExplicitEmptyOptionalStringsKeepSameHash) {
+    transport::protobuf::Header base;
+    transport::protobuf::Header with_empty;
+    auto fill = [](transport::protobuf::Header* h) {
+        auto* tx = h->mutable_tx_proto();
+        tx->set_nonce(100ull);
+        tx->set_pubkey("pk");
+        tx->set_gas_limit(21000ull);
+        tx->set_gas_price(1ull);
+        tx->set_step(pools::protobuf::kNormalFrom);
+        tx->set_amount(2ull);
+    };
+    fill(&base);
+    fill(&with_empty);
+    with_empty.mutable_tx_proto()->set_key("");
+    with_empty.mutable_tx_proto()->set_value("");
+    with_empty.mutable_tx_proto()->set_to("");
+    std::string a;
+    std::string b;
+    GetProtoHash(base, &a);
+    GetProtoHash(with_empty, &b);
+    EXPECT_EQ(a, b);
 }
 
 }  // namespace test

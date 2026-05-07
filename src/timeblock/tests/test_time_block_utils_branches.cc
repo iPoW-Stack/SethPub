@@ -44,6 +44,18 @@ TEST(TimeBlockUtilsBranches, CheckPeriodsAreOneSecond) {
     EXPECT_EQ(kCheckBftPeriodUs, 1000000llu);
 }
 
+TEST(TimeBlockUtilsBranches, TimeblockToleranceDeltaIsExpected) {
+    EXPECT_EQ(kTimeBlockTolerateSeconds - kTimeBlockMaxOffsetSeconds, 20llu);
+}
+
+TEST(TimeBlockUtilsBranches, TimeblockConstantsAreAllPositive) {
+    EXPECT_GT(kTimeBlockTolerateSeconds, 0llu);
+    EXPECT_GT(kTimeBlockMaxOffsetSeconds, 0llu);
+    EXPECT_GT(kTimeBlockAvgCount, 0u);
+    EXPECT_GT(kCheckTimeBlockPeriodUs, 0llu);
+    EXPECT_GT(kCheckBftPeriodUs, 0llu);
+}
+
 }  // namespace test
 }  // namespace timeblock
 }  // namespace seth
