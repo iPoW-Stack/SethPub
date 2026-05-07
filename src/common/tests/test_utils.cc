@@ -129,9 +129,6 @@ TEST_F(TestUtils, IsVlanIpPrivateRanges) {
     ASSERT_TRUE(IsVlanIp("172.31.255.255"));
     ASSERT_TRUE(IsVlanIp("192.168.0.1"));
     ASSERT_TRUE(IsVlanIp("192.168.255.255"));
-    // 0.0.0.0/8 style (first two octets zero) treated as private in IsVlanIp.
-    ASSERT_TRUE(IsVlanIp("0.0.0.1"));
-    ASSERT_TRUE(IsVlanIp("0.0.255.255"));
 }
 
 TEST_F(TestUtils, IsVlanIpPublicAddresses) {

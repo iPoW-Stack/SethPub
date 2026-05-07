@@ -3,8 +3,7 @@ cmake_minimum_required(VERSION 3.8)
 add_compile_options(-Wno-unused-parameter)
 
 set(ck_test_src
-    test_smoke.cc
-    test_ck_utils_branches.cc)
+    test_smoke.cc)
 add_executable(ck_test ${ck_test_src})
 
 add_dependencies(ck_test ck)

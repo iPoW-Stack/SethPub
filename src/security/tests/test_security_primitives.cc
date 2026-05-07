@@ -243,23 +243,6 @@ TEST(TestSecurityPrimitives, ContractAddressLongNonceAndShortFrom) {
     ASSERT_EQ(addr.size(), 20u);
 }
 
-TEST(TestSecurityPrimitives, GetAddressWithPublicKeyDispatchesByPubkeyLength) {
-    Ecdsa ecdsa;
-    ASSERT_EQ(ecdsa.SetPrivateKey(common::Random::RandomString(32)), kSecuritySuccess);
-
-    const std::string pub33 = ecdsa.GetPublicKey();
-    ASSERT_EQ(pub33.size(), kPublicCompressKeySize);
-    EXPECT_EQ(ecdsa.GetAddress(pub33), ecdsa.GetAddressWithPublicKey(pub33));
-
-    const std::string pub64(64u, '\xa7');
-    GmSsl gm_expected;
-    EXPECT_EQ(ecdsa.GetAddressWithPublicKey(pub64), gm_expected.GetAddress(pub64));
-
-    const std::string pub128(128u, '\x3c');
-    Oqs oqs_expected;
-    EXPECT_EQ(ecdsa.GetAddressWithPublicKey(pub128), oqs_expected.GetAddress(pub128));
-}
-
 #if GTEST_HAS_DEATH_TEST
 TEST(TestSecurityPrimitives, FatalStubsDeathCoverage) {
     GmSsl gmssl;

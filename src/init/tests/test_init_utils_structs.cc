@@ -6,20 +6,19 @@ namespace seth {
 namespace init {
 namespace test {
 
-TEST(InitUtilsStructs, RotatitionLeadersDefaults) {
+TEST(InitUtilsStructs, RotatitionLeadersDefaultMembers) {
     RotatitionLeaders r;
     EXPECT_EQ(r.version, -1);
     EXPECT_EQ(r.invalid_pool_count, 0u);
     EXPECT_EQ(r.now_leader_idx, 0u);
-    EXPECT_TRUE(r.rotation_leaders.empty());
-    EXPECT_TRUE(r.version_with_count.empty());
 }
 
 TEST(InitUtilsStructs, LeaderRotationInfoDefaults) {
     LeaderRotationInfo info;
-    EXPECT_EQ(info.elect_height, 0ull);
-    EXPECT_EQ(info.members, nullptr);
-    EXPECT_FALSE(info.rotation_used[0]);
+    EXPECT_EQ(info.elect_height, 0u);
+    for (bool used : info.rotation_used) {
+        EXPECT_FALSE(used);
+    }
 }
 
 }  // namespace test

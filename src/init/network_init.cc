@@ -1836,7 +1836,7 @@ void NetworkInit::SendJoinElectTransaction() {
             CreateContribution(req);
         }
 #ifndef NDEBUG
-        assert(req->verify_vec_size() >= t);
+        assert(static_cast<uint32_t>(req->verify_vec_size()) >= t);
 #endif
         SETH_DEBUG("First time sending join_elect or no valid g2_req in consensus block, "
             "including g2_req in transaction. verify_vec_size: %d", req->verify_vec_size());
