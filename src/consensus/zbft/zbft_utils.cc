@@ -59,6 +59,10 @@ bool IsShardSingleBlockTx(uint32_t tx_type) {
     return IsRootSingleBlockTx(tx_type);
 }
 
+bool IsShardSuperSingleBlockTx(uint32_t tx_type) {
+    return IsShardSingleBlockTx(tx_type);
+}
+
 }  // namespace consensus
 
 }  //namespace seth

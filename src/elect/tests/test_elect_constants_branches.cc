@@ -52,6 +52,24 @@ TEST(ElectConstantsBranches, BroadcastAndHopToLayer) {
     EXPECT_LE(kElectHopToLayer, kElectHopLimit);
 }
 
+TEST(ElectConstantsBranches, BloomfilterConstantsPositive) {
+    EXPECT_GT(kBloomfilterHashCount, 0u);
+    EXPECT_GT(kBloomfilterSize, 0u);
+    EXPECT_GT(kBloomfilterWaitingSize, 0u);
+}
+
+TEST(ElectConstantsBranches, WaitingBloomVsElectBloomOrdering) {
+    EXPECT_GE(kBloomfilterWaitingHashCount, kBloomfilterHashCount);
+}
+
+TEST(ElectConstantsBranches, HopLimitsStayBelowBloomWaitingSizes) {
+    EXPECT_LT(kElectHopLimit * kElectNeighborCount, kBloomfilterWaitingSize);
+}
+
+TEST(ElectConstantsBranches, AvailableJoinExceedsTolerateWindow) {
+    EXPECT_GT(kElectAvailableJoinTime, kElectAvailableTolerateTime);
+}
+
 }  // namespace test
 }  // namespace elect
 }  // namespace seth

@@ -290,6 +290,26 @@ TEST(TestSecurityPrimitives, ContractAddressDiffersWhenSenderChanges) {
     ASSERT_NE(GetContractAddress(from_a, nonce), GetContractAddress(from_b, nonce));
 }
 
+TEST(TestSecurityPrimitives, ContractAddressPadsShortSenderToTwentyBytes) {
+    const std::string short_from(8, '\xee');
+    const std::string nonce(2, '\x11');
+    const std::string explicit_pad =
+        std::string(20 - short_from.size(), '\0') + short_from;
+    ASSERT_EQ(explicit_pad.size(), 20u);
+    EXPECT_EQ(GetContractAddress(short_from, nonce),
+              GetContractAddress(explicit_pad, nonce));
+}
+
+TEST(TestSecurityPrimitives, ContractAddressUsesLongRlpWhenNonceExceeds55Bytes) {
+    const std::string from(20, '\xcc');
+    std::string nonce_long(58, '\xdd');
+    const std::string a = GetContractAddress(from, nonce_long);
+    ASSERT_EQ(a.size(), 20u);
+    nonce_long[57] = '\xde';
+    const std::string b = GetContractAddress(from, nonce_long);
+    EXPECT_NE(a, b);
+}
+
 #if GTEST_HAS_DEATH_TEST
 TEST(TestSecurityPrimitives, FatalStubsDeathCoverage) {
     GmSsl gmssl;

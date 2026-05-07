@@ -69,6 +69,11 @@ TEST(SethvmUtilsBranches, ContractHeadMatchesDecode60806040) {
     EXPECT_TRUE(IsContractBytesCode(kContractHead));
 }
 
+TEST(SethvmUtilsBranches, ContractCallModeBetweenJustCallAndCreate2) {
+    EXPECT_GT(static_cast<int>(kCreate2), static_cast<int>(kJustCall));
+    EXPECT_GT(static_cast<int>(kCreateAndCall), static_cast<int>(kJustCreate));
+}
+
 }  // namespace test
 }  // namespace sethvm
 }  // namespace seth

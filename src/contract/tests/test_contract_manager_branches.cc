@@ -69,6 +69,21 @@ TEST(ContractManagerBranches, RoutesToRegisteredPrecompile) {
     res->output_data = nullptr;
 }
 
+TEST(ContractUtilsBranches, ErrorCodesAndCallStepsOrdered) {
+    EXPECT_EQ(kContractSuccess, 0);
+    EXPECT_EQ(kContractNotExists, 2);
+    EXPECT_LT(static_cast<int>(kCallStepCallerInited), static_cast<int>(kCallStepContractCalled));
+    EXPECT_LT(static_cast<int>(kCallStepContractCalled), static_cast<int>(kCallStepContractFinal));
+}
+
+TEST(ContractUtilsBranches, PrecompileAddressesAreTwentyBytesAndDistinct) {
+    EXPECT_EQ(kContractCreate2.size(), 20u);
+    EXPECT_EQ(kContractBlake2_compression.size(), 20u);
+    EXPECT_NE(kContractCreate2, kContractEcrecover);
+    EXPECT_NE(kContractSha256, kContractModexp);
+    EXPECT_NE(kContractAlt_bn128_G1_add, kContractAlt_bn128_G1_mul);
+}
+
 }  // namespace test
 }  // namespace contract
 }  // namespace seth

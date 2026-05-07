@@ -39,6 +39,15 @@ TEST(InitUtilsStructs, RotatitionLeadersMemberContainersInitiallyEmpty) {
     EXPECT_TRUE(r.version_with_count.empty());
 }
 
+TEST(InitUtilsStructs, RotatitionVersionInfoHandlesInserts) {
+    RotatitionVersionInfo v;
+    v.handled_set.insert(11u);
+    v.handled_set.insert(22u);
+    v.count_map[100u] = 3u;
+    EXPECT_EQ(v.handled_set.size(), 2u);
+    EXPECT_EQ(v.count_map[100u], 3u);
+}
+
 }  // namespace test
 }  // namespace init
 }  // namespace seth

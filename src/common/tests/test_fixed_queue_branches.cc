@@ -51,6 +51,21 @@ TEST(FixedQueueBranches, ExistsAfterWrap) {
     EXPECT_FALSE(q.Exists(1));
 }
 
+TEST(FixedQueueBranches, ExistsWhenFullUsesFullScanBranch) {
+    // Full queue: rear_ wraps to equal front_; Exists hits rear_==front_ branch (scan all slots).
+    FixedQueue<int, 4> q;
+    q.Enqueue(11);
+    q.Enqueue(22);
+    q.Enqueue(33);
+    q.Enqueue(44);
+    ASSERT_TRUE(q.IsFull());
+    ASSERT_EQ(q.front_, q.rear_);
+
+    EXPECT_TRUE(q.Exists(11));
+    EXPECT_TRUE(q.Exists(44));
+    EXPECT_FALSE(q.Exists(55));
+}
+
 TEST(FixedQueueBranches, ExistsUsesSplitLoopWhenRearLessThanFront) {
     // Fill capacity 4, dequeue twice (front=2), enqueue one → rear < front, non-full.
     FixedQueue<int, 4> q;

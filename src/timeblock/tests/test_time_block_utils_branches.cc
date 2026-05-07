@@ -35,6 +35,15 @@ TEST(TimeBlockUtilsBranches, CheckPeriodsMatchVssTimeblockConstants) {
     EXPECT_GT(kTimeBlockAvgCount, 0u);
 }
 
+TEST(TimeBlockUtilsBranches, TolerateWindowCoversMaxOffset) {
+    EXPECT_GE(kTimeBlockTolerateSeconds, kTimeBlockMaxOffsetSeconds);
+}
+
+TEST(TimeBlockUtilsBranches, CheckPeriodsAreOneSecond) {
+    EXPECT_EQ(kCheckTimeBlockPeriodUs, 1000000llu);
+    EXPECT_EQ(kCheckBftPeriodUs, 1000000llu);
+}
+
 }  // namespace test
 }  // namespace timeblock
 }  // namespace seth

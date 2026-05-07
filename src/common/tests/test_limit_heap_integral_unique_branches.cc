@@ -25,6 +25,14 @@ TEST(LimitHeapIntegralUniqueBranches, Int32DuplicateUsesSpecialization) {
     ASSERT_EQ(heap.push(-42), -1);
 }
 
+TEST(LimitHeapIntegralUniqueBranches, Uint64DuplicateUsesSpecialization) {
+    LimitHeap<uint64_t> heap(true, 8);
+    constexpr uint64_t kVal = 0xCAFEULL << 32 | 0xBABEu;
+    ASSERT_EQ(heap.push(kVal), 0);
+    EXPECT_EQ(heap.unique_set_.count(kVal), 1u);
+    ASSERT_EQ(heap.push(kVal), -1);
+}
+
 TEST(LimitHeapIntegralUniqueBranches, Int64DuplicateUsesSpecialization) {
     LimitHeap<int64_t> heap(true, 8);
     ASSERT_EQ(heap.push(static_cast<int64_t>(1) << 40), 0);

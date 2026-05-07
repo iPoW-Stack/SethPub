@@ -75,6 +75,12 @@ TEST(NetworkUtilsBranches, IsSameShardOrSameWaitingPoolFalseWhenDesBelowConsensu
     EXPECT_FALSE(IsSameShardOrSameWaitingPool(500u, kNodeNetworkId));
 }
 
+TEST(NetworkUtilsBranches, IsSameShardFalseWhenNeitherEqualNorWaitingPair) {
+    EXPECT_FALSE(IsSameShardOrSameWaitingPool(50u, 51u));
+    EXPECT_FALSE(IsSameShardOrSameWaitingPool(kConsensusShardBeginNetworkId + 3u,
+                                              kConsensusShardBeginNetworkId + 5u));
+}
+
 TEST(NetworkUtilsBranches, IsSameShardRootCongressWaitingPoolPair) {
     const uint32_t des = kRootCongressNetworkId;
     const uint32_t waiting_local = des + kConsensusWaitingShardOffset;

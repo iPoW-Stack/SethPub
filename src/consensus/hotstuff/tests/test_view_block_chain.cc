@@ -240,7 +240,7 @@ TEST_F(TestViewBlockChain, TestPruneTo_ForksAndHistory) {
 
 } // namespace test
 
-} // namespace consensus
+} // namespace hotstuff
 
 } // namespace seth
 

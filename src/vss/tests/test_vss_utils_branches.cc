@@ -53,6 +53,12 @@ TEST(VssUtilsBranches, TimeoutMicrosecondsPositive) {
     EXPECT_GT(kVssCheckPeriodTimeout, 0ll);
 }
 
+TEST(VssUtilsBranches, PeriodOffsetsOrderedAndBelowTimeoutWindow) {
+    EXPECT_GT(kVssTimePeriodOffsetSeconds, kHandleMessageVssTimePeriodOffsetSeconds);
+    EXPECT_LT(static_cast<int64_t>(kVssTimePeriodOffsetSeconds * 1000ll),
+              kVssCheckPeriodTimeout);
+}
+
 }  // namespace test
 }  // namespace vss
 }  // namespace seth

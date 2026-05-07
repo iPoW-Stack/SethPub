@@ -148,6 +148,7 @@ map_module_dir() {
     case "$exe" in
         bignum_test) echo "big_num" ;;
         tmblock_test) echo "timeblock" ;;
+        hotstuff_test) echo "consensus/hotstuff" ;;
         *) echo "${exe%_test}" ;;
     esac
 }

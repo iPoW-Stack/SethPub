@@ -122,6 +122,26 @@ TEST(GlobalInfoBranches, SharedObjCountersUpdateInDebug) {
     g->DecSharedObj(kIdx);
     g->DecSharedObj(kIdx);
 }
+
+TEST(GlobalInfoBranches, TimerUpdatesMaxWhenCountExceeds64) {
+    auto* g = GlobalInfo::Instance();
+    Config cfg = MakeMinimalSethConfig();
+    ASSERT_EQ(g->Init(cfg), kCommonSuccess);
+
+    constexpr int32_t kSlot = 11;
+    for (int32_t i = 0; i < 64; ++i) {
+        g->shared_obj_max_count_[i] = 0;
+        g->shared_obj_count_[i].store(0);
+    }
+    g->shared_obj_count_[kSlot].store(200);
+    g->Timer();
+    EXPECT_GE(g->shared_obj_max_count_[kSlot], 64);
+
+    g->shared_obj_max_count_[kSlot] = 300;
+    g->shared_obj_count_[kSlot].store(150);
+    g->Timer();
+    EXPECT_EQ(g->shared_obj_max_count_[kSlot], 300);
+}
 #endif
 
 }  // namespace test

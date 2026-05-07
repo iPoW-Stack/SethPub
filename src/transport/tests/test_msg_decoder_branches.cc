@@ -109,6 +109,30 @@ TEST(MsgDecoderBranches, DecodeSplitsHeaderAcrossTwoCalls) {
     pkt->Free();
 }
 
+TEST(MsgDecoderBranches, DecodeSplitsHeaderOneByteAtATime) {
+    const std::string payload(6u, 'n');
+    std::string wire = MakeWire(static_cast<uint32_t>(payload.size()), tnet::kProtobuff, payload);
+    const size_t hdr_len = sizeof(tnet::PacketHeader);
+    ASSERT_EQ(wire.size(), hdr_len + payload.size());
+
+    MsgDecoder dec;
+    for (size_t i = 0; i < hdr_len; ++i) {
+        ASSERT_TRUE(dec.Decode(wire.data() + i, 1));
+        EXPECT_EQ(dec.GetPacket(), nullptr);
+    }
+    ASSERT_TRUE(dec.Decode(wire.data() + hdr_len, payload.size()));
+
+    tnet::Packet* pkt = dec.GetPacket();
+    ASSERT_NE(pkt, nullptr);
+    auto* mp = dynamic_cast<tnet::MsgPacket*>(pkt);
+    ASSERT_NE(mp, nullptr);
+    char* data = nullptr;
+    uint32_t len = 0;
+    mp->GetMessageEx(&data, &len);
+    EXPECT_EQ(len, 6u);
+    pkt->Free();
+}
+
 TEST(MsgDecoderBranches, DecodeSplitsHeaderAcrossThreeCallsUsesTmpStrContinuation) {
     const std::string payload(5u, 'm');
     std::string wire = MakeWire(static_cast<uint32_t>(payload.size()), tnet::kProtobuff, payload);
@@ -164,6 +188,16 @@ TEST(MsgDecoderBranches, DecodeTwoBackToBackPacketsInOneBuffer) {
 
     first->Free();
     second->Free();
+}
+
+TEST(MsgDecoderBranches, DestructorDeletesUndrainedPackets) {
+    const std::string payload(5u, 'q');
+    std::string wire = MakeWire(static_cast<uint32_t>(payload.size()), tnet::kProtobuff, payload);
+    {
+        MsgDecoder dec;
+        ASSERT_TRUE(dec.Decode(wire.data(), wire.size()));
+        // Leave packet queued (do not GetPacket) so ~MsgDecoder deletes queued MsgPackets.
+    }
 }
 
 TEST(MsgDecoderBranches, FreeDeletesDecoderHeapInstance) {

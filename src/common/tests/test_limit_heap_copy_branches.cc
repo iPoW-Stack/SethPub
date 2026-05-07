@@ -19,6 +19,14 @@ TEST(LimitHeapCopyBranches, CopyConstructorDuplicatesHeapState) {
     EXPECT_EQ(dst.top(), src.top());
 }
 
+TEST(LimitHeapCopyBranches, SelfAssignmentReturnsWithoutCorruption) {
+    LimitHeap<int> h(false, 4);
+    ASSERT_GE(h.push(7), 0);
+    LimitHeap<int>* p = &h;
+    h = *p;
+    EXPECT_EQ(h.top(), 7);
+}
+
 TEST(LimitHeapCopyBranches, AssignmentCopiesContent) {
     LimitHeap<int> a(false, 6);
     ASSERT_GE(a.push(5), 0);

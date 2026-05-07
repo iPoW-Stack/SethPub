@@ -223,6 +223,10 @@ TEST(ConsensusHotstuffSurface, BlockViewKeyOrderingAndHash) {
     EXPECT_EQ(h(a), h(b));
 }
 
+TEST(ConsensusZbftSurface, GetTxValueProtoHashReturnsEmpty) {
+    EXPECT_EQ(GetTxValueProtoHash("key", "value"), "");
+}
+
 TEST(ConsensusZbftSurface, GetCommitedBlockHashAndFlags) {
     const std::string ph("prepare");
     auto ch = GetCommitedBlockHash(ph);
@@ -237,6 +241,9 @@ TEST(ConsensusZbftSurface, GetCommitedBlockHashAndFlags) {
     EXPECT_EQ(IsShardSingleBlockTx(common::kConsensusRootElectShard),
         IsRootSingleBlockTx(common::kConsensusRootElectShard));
 
+    EXPECT_EQ(IsShardSuperSingleBlockTx(common::kConsensusRootElectShard),
+        IsShardSingleBlockTx(common::kConsensusRootElectShard));
+    EXPECT_EQ(IsShardSuperSingleBlockTx(0u), IsShardSingleBlockTx(0u));
 }
 
 }  // namespace test

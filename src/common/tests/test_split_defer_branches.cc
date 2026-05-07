@@ -67,6 +67,20 @@ TEST(SplitBranches, TrailingDelimiterYieldsEmptyLastSegment) {
     EXPECT_EQ(s.SubLen(1), 0);
 }
 
+TEST(SplitBranches, StopsParsingWhenDelimiterBudgetExceeded) {
+    // Default kMaxSplitNum is 32: the 33rd '|' hits tmp_div_cnt >= kMaxSplitNum and Parser breaks.
+    std::string s;
+    constexpr unsigned kParts = 40;
+    for (unsigned i = 0; i < kParts; ++i) {
+        if (i > 0) {
+            s.push_back('|');
+        }
+        s.push_back('x');
+    }
+    Split<> sp(s.c_str(), '|');
+    EXPECT_EQ(sp.Count(), 33u);
+}
+
 TEST(DeferBranches, RunsCleanupAtScopeExit) {
     int x = 0;
     {

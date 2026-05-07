@@ -2,9 +2,10 @@ cmake_minimum_required(VERSION 3.8)
 
 add_compile_options(-Wno-unused-parameter)
 
-set(contract_test_src
-    test_main.cc
-    test_contract_manager.cc)
-add_executable(contract_test ${contract_test_src})
+# All *.cc tests (branch runners + legacy smoke). Custom test_main.cc removed:
+# we link gtest_main for ::testing::InitGoogleTest / RUN_ALL_TESTS.
+file(GLOB CONTRACT_TEST_CC CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cc")
+list(FILTER CONTRACT_TEST_CC EXCLUDE REGEX "test_main\\.cc$")
+add_executable(contract_test ${CONTRACT_TEST_CC})
 
 target_link_libraries(contract_test PRIVATE contract security common gtest gtest_main gmock gmock_main pthread dl)

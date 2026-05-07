@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <sstream>
+#include <stdexcept>
 #include <string>
 
 #define private public
@@ -59,6 +60,26 @@ TEST(CommandBranches, PrtWithIdNoDhtDoesNotCrash) {
     Command cmd;
     ASSERT_TRUE(cmd.Init(true, false));
     cmd.ProcessCommand("prt 99");
+}
+
+TEST(CommandBranches, RegisteredHandlerExceptionIsPrinted) {
+    Command cmd;
+    ASSERT_TRUE(cmd.Init(true, false));
+    cmd.AddCommand("___throws___", [](const std::vector<std::string>&) {
+        throw std::runtime_error("handler boom");
+    });
+    std::stringstream buf;
+    std::streambuf* orig = std::cout.rdbuf(buf.rdbuf());
+    cmd.ProcessCommand("___throws___");
+    std::cout.rdbuf(orig);
+    EXPECT_NE(buf.str().find("catch error"), std::string::npos);
+    EXPECT_NE(buf.str().find("handler boom"), std::string::npos);
+}
+
+TEST(CommandBranches, PrtParsesFirstArgAndIgnoresExtras) {
+    Command cmd;
+    ASSERT_TRUE(cmd.Init(true, false));
+    cmd.ProcessCommand("prt 7 999 1000");
 }
 
 }  // namespace test

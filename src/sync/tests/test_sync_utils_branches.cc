@@ -51,7 +51,7 @@ TEST(SyncUtilsBranches, RetryPeriodConstantsPositive) {
 
 TEST(SyncUtilsBranches, SyncPriorityEnumCompleteRange) {
     EXPECT_EQ(static_cast<int>(kSyncPriLowest), 0);
-    EXPECT_EQ(static_cast<int>(kSyncPriHighest), 4);
+    EXPECT_EQ(static_cast<int>(kSyncHighest), 4);
 }
 
 }  // namespace test

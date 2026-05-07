@@ -146,6 +146,16 @@ TEST_F(TestUtils, IsVlanIpBoundaryValues) {
     ASSERT_TRUE(IsVlanIp("10.0.0.0"));
 }
 
+TEST_F(TestUtils, IsVlanIpZeroFirstOctetPairTreatedAsPrivate) {
+    ASSERT_TRUE(IsVlanIp("0.0.0.1"));
+    ASSERT_TRUE(IsVlanIp("0.0.255.255"));
+}
+
+TEST_F(TestUtils, IsVlanIp172ClassBBelowPrivateRange) {
+    ASSERT_FALSE(IsVlanIp("172.15.0.1"));
+    ASSERT_FALSE(IsVlanIp("172.15.255.255"));
+}
+
 // --- GetAddressPoolIndex Tests ---
 
 TEST_F(TestUtils, GetAddressPoolIndexRange) {

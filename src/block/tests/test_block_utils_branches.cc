@@ -35,6 +35,37 @@ TEST(BlockUtilsBranches, ConstantsSanityFromBlockUtils) {
     EXPECT_EQ(kStopConsensusTimeoutMs, 30000llu);
 }
 
+TEST(BlockUtilsBranches, BlockErrorCodeEnumComplete) {
+    EXPECT_EQ(kBlockSuccess, 0);
+    EXPECT_EQ(kBlockError, 1);
+    EXPECT_EQ(kBlockDbNotExists, 2);
+    EXPECT_EQ(kBlockDbDataInvalid, 3);
+    EXPECT_EQ(kBlockAddressNotExists, 4);
+    EXPECT_EQ(kBlockVerifyAggSignFailed, 5);
+}
+
+TEST(BlockUtilsBranches, LeaderWithStatisticTxItemDefaults) {
+    LeaderWithStatisticTxItem item;
+    EXPECT_EQ(item.elect_height, 0u);
+    EXPECT_EQ(item.leader_idx, common::kInvalidUint32);
+    EXPECT_EQ(item.leader_to_index, -1);
+    EXPECT_EQ(item.shard_statistic_tx, nullptr);
+    EXPECT_EQ(item.cross_statistic_tx, nullptr);
+}
+
+TEST(BlockUtilsBranches, HeightItemStoresHeightAndHash) {
+    HeightItem a{100ull, "abc"};
+    HeightItem b{100ull, "abc"};
+    HeightItem c{101ull, "abc"};
+    EXPECT_EQ(a.height, b.height);
+    EXPECT_EQ(a.hash, b.hash);
+    EXPECT_NE(a.height, c.height);
+}
+
+TEST(BlockUtilsBranches, AddressTypeEnumDistinct) {
+    EXPECT_NE(static_cast<int>(kNormalAddress), static_cast<int>(kContractAddress));
+}
+
 }  // namespace test
 }  // namespace block
 }  // namespace seth

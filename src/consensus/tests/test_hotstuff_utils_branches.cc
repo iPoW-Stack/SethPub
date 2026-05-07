@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include "consensus/hotstuff/types.h"
 #include "consensus/hotstuff/utils.h"
 #include "protos/block.pb.h"
 
@@ -97,6 +98,39 @@ TEST(HotstuffUtilsBranches, ChainTypeConstants) {
 
 TEST(HotstuffUtilsBranches, GlobalChainIdConstant) {
     EXPECT_EQ(kGlobalChainId, 3355103125llu);
+}
+
+TEST(HotstuffUtilsBranches, StatusEnumOrderedDistinct) {
+    EXPECT_EQ(hotstuff::kSuccess, 0);
+    EXPECT_EQ(hotstuff::kError, 1);
+    EXPECT_EQ(hotstuff::kNotFound, 2);
+    EXPECT_EQ(hotstuff::kInvalidArgument, 3);
+    EXPECT_EQ(hotstuff::kBlsVerifyWaiting, 4);
+    EXPECT_EQ(hotstuff::kBlsVerifyFailed, 5);
+    EXPECT_EQ(hotstuff::kAcceptorTxsEmpty, 6);
+    EXPECT_EQ(hotstuff::kAcceptorBlockInvalid, 7);
+    EXPECT_EQ(hotstuff::kOldView, 8);
+    EXPECT_EQ(hotstuff::kElectItemNotFound, 9);
+    EXPECT_EQ(hotstuff::kWrapperTxsEmpty, 10);
+    EXPECT_EQ(hotstuff::kBlsHandled, 11);
+    EXPECT_EQ(hotstuff::kTxRepeated, 12);
+    EXPECT_EQ(hotstuff::kLackOfParentBlock, 13);
+    EXPECT_EQ(hotstuff::kNotExpectHash, 14);
+    EXPECT_EQ(hotstuff::kInvalidOpposedCount, 15);
+    EXPECT_EQ(hotstuff::kLeaderInvalid, 16);
+}
+
+TEST(HotstuffUtilsBranches, WaitingBlockTypeEnumValues) {
+    EXPECT_EQ(static_cast<int>(hotstuff::kRootBlock), 0);
+    EXPECT_EQ(static_cast<int>(hotstuff::kSyncBlock), 1);
+    EXPECT_EQ(static_cast<int>(hotstuff::kToBlock), 2);
+}
+
+TEST(HotstuffUtilsBranches, ViewDurationAndOrphanTimeoutConstants) {
+    EXPECT_GT(hotstuff::ViewDurationSampleSize, 0u);
+    EXPECT_GT(hotstuff::ViewDurationMaxTimeoutMs, hotstuff::ViewDurationStartTimeoutMs);
+    EXPECT_GT(hotstuff::ViewDurationMultiplier, 1.0);
+    EXPECT_GT(hotstuff::ORPHAN_BLOCK_TIMEOUT_US, 0ull);
 }
 
 }  // namespace test
