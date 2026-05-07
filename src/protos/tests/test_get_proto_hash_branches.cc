@@ -116,6 +116,18 @@ TEST(GetProtoHashBranches, JoinElectReqHashMinimal) {
     EXPECT_EQ(h1.size(), 32u);
 }
 
+TEST(GetProtoHashBranches, JoinElectReqHashSensitiveToFields) {
+    bls::protobuf::JoinElectInfo a;
+    a.set_shard_id(5u);
+    a.set_member_idx(3u);
+    a.set_change_idx(1u);
+
+    bls::protobuf::JoinElectInfo b = a;
+    b.set_change_idx(2u);
+
+    EXPECT_NE(GetJoinElectReqHash(a), GetJoinElectReqHash(b));
+}
+
 }  // namespace test
 }  // namespace protos
 }  // namespace seth
