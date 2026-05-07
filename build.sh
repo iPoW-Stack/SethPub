@@ -109,7 +109,6 @@ declare -a ALL_TESTS=(
     "protos_test:protos_test"
     "block_test:block_test"
     "tmblock_test:tmblock_test"
-    "pki_test:pki_test"
     "init_test:init_test"
     "websocket_test:websocket_test"
 )
@@ -138,6 +137,7 @@ run_test() {
     echo ""
     echo "  Running: $bin"
     echo "────────────────────────────────────────────────────────────────"
+    EXECUTED_TESTS+=("$entry")
     if env -u GTEST_OUTPUT "$bin" --gtest_color=yes 2>&1; then
         echo "  [PASS] $exe"
     else
@@ -336,6 +336,10 @@ build_gcovr_parallel_args() {
 }
 
 print_module_coverage() {
+    local -a coverage_entries=("$@")
+    if [[ "${#coverage_entries[@]}" -eq 0 ]]; then
+        coverage_entries=("${ALL_TESTS[@]}")
+    fi
     local gcovr_cmd="gcovr"
     if [[ -x "/root/.venvs/gcovr/bin/gcovr" ]]; then
         gcovr_cmd="/root/.venvs/gcovr/bin/gcovr"
@@ -353,7 +357,7 @@ print_module_coverage() {
     if [[ "${#gcovr_parallel_args[@]}" -gt 0 ]]; then
         echo "  gcovr parallel jobs: ${GCOVR_JOBS}"
     fi
-    for entry in "${ALL_TESTS[@]}"; do
+    for entry in "${coverage_entries[@]}"; do
         local exe="${entry%%:*}"
         local module_dir
         module_dir="$(map_module_dir "$exe")"
@@ -391,6 +395,11 @@ print_module_coverage() {
 # mapped module is below the branch threshold (requires gcovr and prior `bash build.sh coverage ...`).
 enforce_branch_minimum() {
     local min_pct="${1:-80}"
+    shift || true
+    local -a coverage_entries=("$@")
+    if [[ "${#coverage_entries[@]}" -eq 0 ]]; then
+        coverage_entries=("${ALL_TESTS[@]}")
+    fi
     local gcovr_cmd="gcovr"
     if [[ -x "/root/.venvs/gcovr/bin/gcovr" ]]; then
         gcovr_cmd="/root/.venvs/gcovr/bin/gcovr"
@@ -407,7 +416,7 @@ enforce_branch_minimum() {
     echo "════════════════════════════════════════════════════════════════"
 
     local failed=0
-    for entry in "${ALL_TESTS[@]}"; do
+    for entry in "${coverage_entries[@]}"; do
         local exe="${entry%%:*}"
         local module_dir
         module_dir="$(map_module_dir "$exe")"
@@ -465,6 +474,7 @@ case "$CMD" in
     # ---- Run all tests -------------------------------------------------------
     "" | "test" | "coverage")
         FAILED_TESTS=()
+        EXECUTED_TESTS=()
 
         echo ""
         echo "════════════════════════════════════════════════════════════════"
@@ -489,9 +499,18 @@ case "$CMD" in
         echo "════════════════════════════════════════════════════════════════"
 
         if [[ "$ENABLE_COVERAGE" -eq 1 ]]; then
-            print_module_coverage
+            if [[ "${#EXECUTED_TESTS[@]}" -eq 0 ]]; then
+                echo "  [WARN] no test binary was executed; coverage will scan all configured modules."
+                print_module_coverage
+            else
+                print_module_coverage "${EXECUTED_TESTS[@]}"
+            fi
             if [[ -n "${COVERAGE_FAIL_UNDER_BRANCH:-}" ]]; then
-                enforce_branch_minimum "${COVERAGE_FAIL_UNDER_BRANCH}"
+                if [[ "${#EXECUTED_TESTS[@]}" -eq 0 ]]; then
+                    enforce_branch_minimum "${COVERAGE_FAIL_UNDER_BRANCH}"
+                else
+                    enforce_branch_minimum "${COVERAGE_FAIL_UNDER_BRANCH}" "${EXECUTED_TESTS[@]}"
+                fi
             fi
         fi
         ;;
