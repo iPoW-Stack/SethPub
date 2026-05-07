@@ -28,10 +28,12 @@ void ResetThreadState(GlobalInfo* g) {
 
 Config MakeMinimalSethConfig() {
     Config cfg;
-    EXPECT_TRUE(cfg.AddField("seth"));
-    EXPECT_TRUE(cfg.Set("seth", "local_ip", std::string("127.0.0.1")));
-    EXPECT_TRUE(cfg.Set("seth", "country", std::string("US")));
-    EXPECT_TRUE(cfg.Set("seth", "first_node", std::string("true")));
+    constexpr const char* kIni = R"([seth]
+local_ip=127.0.0.1
+country=US
+first_node=true
+)";
+    EXPECT_TRUE(cfg.InitWithContent(std::string(kIni)));
     return cfg;
 }
 
