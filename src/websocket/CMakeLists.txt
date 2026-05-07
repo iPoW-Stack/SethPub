@@ -26,10 +26,12 @@ if(NOT WEBSOCKETPP_INCLUDE_ROOT)
             "or configure with -DP2P_FETCH_WEBSOCKETPP=ON.")
     endif()
     include(FetchContent)
-    message(STATUS "websocket: FetchContent downloading websocketpp 0.8.2...")
+    # 0.8.2 and upstream websocketpp/develop break on Boost 1.87+ (removed io_service) and GCC 13
+    # (logger/destructor parses). Vendor PR fork until zaphoyd/websocketpp#1164 merges.
+    message(STATUS "websocket: FetchContent downloading websocketpp (Boost 1.87 compat, PR #1164)...")
     FetchContent_Declare(
         deps_websocketpp
-        URL https://github.com/zaphoyd/websocketpp/archive/refs/tags/0.8.2.tar.gz
+        URL https://github.com/amini-allight/websocketpp/archive/ee8cf4257e001d939839cff5b1766a835b749cd6.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
     FetchContent_MakeAvailable(deps_websocketpp)

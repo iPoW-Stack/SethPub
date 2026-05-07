@@ -1,7 +1,5 @@
 #include "websocket/websocket_server.h"
 
-#include <evhtp/internal.h>
-
 #include "common/global_info.h"
 
 namespace seth {
