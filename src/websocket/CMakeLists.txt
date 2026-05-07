@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.8)
 
-find_package(Boost REQUIRED COMPONENTS system thread atomic)
+# Boost (Asio) — websocketpp pulls boost/asio headers. Prefer CMake package if present,
+# otherwise fall back to typical system prefixes (avoid hard REQUIRED for minimal images).
+find_package(Boost QUIET COMPONENTS system thread atomic)
 
 # Headers live either at repo root (.../websocketpp/common/...) or under include/
 find_path(WEBSOCKETPP_INCLUDE_ROOT
@@ -24,7 +26,14 @@ aux_source_directory(./ websocket_src)
 add_library(websocket ${websocket_src} "websocket_client.h")
 
 target_include_directories(websocket BEFORE PRIVATE
-    "${WEBSOCKETPP_INCLUDE_ROOT}"
-    "${Boost_INCLUDE_DIRS}")
+    "${WEBSOCKETPP_INCLUDE_ROOT}")
+
+if(Boost_FOUND)
+    target_include_directories(websocket BEFORE PRIVATE "${Boost_INCLUDE_DIRS}")
+elseif(EXISTS "/usr/include/boost/version.hpp")
+    target_include_directories(websocket BEFORE PRIVATE "/usr/include")
+elseif(EXISTS "/usr/local/include/boost/version.hpp")
+    target_include_directories(websocket BEFORE PRIVATE "/usr/local/include")
+endif()
 
 target_link_libraries(websocket PRIVATE common boost_system boost_thread boost_atomic ssl crypto pthread dl)
