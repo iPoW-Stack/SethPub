@@ -12,6 +12,9 @@ set -euo pipefail
 #   bash build.sh tcp  [Debug]      # build tnets / tnetc
 #   bash build.sh http [Debug]      # build https / httpc
 #   bash build.sh ws   [Debug]      # build wss / wsc
+#
+# After a coverage run, optional per-module branch gate (gcovr):
+#   COVERAGE_FAIL_UNDER_BRANCH=80 bash build.sh coverage Debug
 # ---------------------------------------------------------------------------
 
 # ---- 1. Parse command + determine build type --------------------------------
@@ -81,6 +84,7 @@ NPROC=$(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || echo 4)
 # Format: "executable_name:subdir_in_build"
 declare -a ALL_TESTS=(
     "common_test:common_test"
+    "network_test:network_test"
     "broadcast_test:broadcast_test"
     "security_test:security_test"
     "transport_test:transport_test"
@@ -100,6 +104,10 @@ declare -a ALL_TESTS=(
     "protos_test:protos_test"
     "block_test:block_test"
     "tmblock_test:tmblock_test"
+    "tnet_test:tnet_test"
+    "pki_test:pki_test"
+    "init_test:init_test"
+    "websocket_test:websocket_test"
 )
 
 # ---- 7. Helper: build + run a single test ----------------------------------
@@ -189,6 +197,65 @@ print_module_coverage() {
     done
 }
 
+# Optional gate: set COVERAGE_FAIL_UNDER_BRANCH=80 (or export before running) to fail the build if any
+# mapped module is below the branch threshold (requires gcovr and prior `bash build.sh coverage ...`).
+enforce_branch_minimum() {
+    local min_pct="${1:-80}"
+    local gcovr_cmd="gcovr"
+    if [[ -x "/root/.venvs/gcovr/bin/gcovr" ]]; then
+        gcovr_cmd="/root/.venvs/gcovr/bin/gcovr"
+    elif ! command -v gcovr >/dev/null 2>&1; then
+        echo "  [WARN] gcovr not found; skip branch gate."
+        return 0
+    fi
+
+    echo ""
+    echo "════════════════════════════════════════════════════════════════"
+    echo "  Branch coverage gate: each module must be >= ${min_pct}%"
+    echo "════════════════════════════════════════════════════════════════"
+
+    local failed=0
+    for entry in "${ALL_TESTS[@]}"; do
+        local exe="${entry%%:*}"
+        local module_dir
+        module_dir="$(map_module_dir "$exe")"
+        echo ""
+        echo "[check ${module_dir}]"
+        local gate_status=0
+        set -o pipefail
+        if "$gcovr_cmd" \
+            --root .. \
+            --object-directory . \
+            --exclude-directories "../cbuild_.*" \
+            --filter "../src/${module_dir}" \
+            --exclude "../src/${module_dir}/tests" \
+            --exclude ".*\\.h$" \
+            --gcov-ignore-errors no_working_dir_found \
+            --gcov-ignore-errors source_not_found \
+            --merge-mode-functions merge-use-line-min \
+            --txt-metric branch \
+            --fail-under-branch "$min_pct" \
+            --print-summary | awk '/^(lines:|branches:)/ { print "  " $0 }'; then
+            gate_status=0
+        else
+            gate_status=$?
+        fi
+        set +o pipefail
+        if [[ "$gate_status" -eq 0 ]]; then
+            echo "  ✅  branch threshold (${min_pct}%) satisfied"
+        else
+            echo "  ❌  branches below ${min_pct}% (gcovr exit ${gate_status})"
+            failed=1
+        fi
+    done
+
+    if [[ "$failed" -ne 0 ]]; then
+        echo ""
+        echo "Branch coverage gate FAILED (target ${min_pct}% per module)."
+        exit 1
+    fi
+}
+
 # ---- 9. Dispatch on first argument -----------------------------------------
 
 case "$CMD" in
@@ -221,6 +288,9 @@ case "$CMD" in
 
         if [[ "$ENABLE_COVERAGE" -eq 1 ]]; then
             print_module_coverage
+            if [[ -n "${COVERAGE_FAIL_UNDER_BRANCH:-}" ]]; then
+                enforce_branch_minimum "${COVERAGE_FAIL_UNDER_BRANCH}"
+            fi
         fi
         ;;
 

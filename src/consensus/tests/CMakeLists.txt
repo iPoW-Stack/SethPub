@@ -4,7 +4,8 @@ add_compile_options(-Wno-unused-parameter)
 
 set(consensus_test_src
     test_consensus_utils.cc
-    test_consensus_hotstuff_zbft_surface.cc)
+    test_consensus_hotstuff_zbft_surface.cc
+    test_hotstuff_utils_branches.cc)
 add_executable(consensus_test ${consensus_test_src})
 
 target_link_libraries(
