@@ -2127,13 +2127,15 @@ Status Hotstuff::VerifyViewBlock(
     }
 
     // Get the effective height for comparison. If HighViewBlock has no
-    // block_info (TC timeout placeholder after restart), fall back to
-    // LatestCommittedBlock's height to avoid comparing against 0.
+    // block_info (TC timeout placeholder after restart), align with
+    // ConstructViewBlock() semantics: treat the QC block as committed+1.
+    // That means the "local high height" baseline here should be committed+1;
+    // otherwise self-proposed blocks can be falsely rejected with gap=2.
     uint64_t local_high_height = view_block_chain->HighViewBlock()->block_info().height();
     if (local_high_height == 0 && !view_block_chain->HighViewBlock()->has_block_info()) {
         auto committed = view_block_chain->LatestCommittedBlock();
         if (committed && committed->has_block_info()) {
-            local_high_height = committed->block_info().height();
+            local_high_height = committed->block_info().height() + 1;
         }
     }
 
