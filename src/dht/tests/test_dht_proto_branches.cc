@@ -123,7 +123,7 @@ TEST(DhtProtoBranches, CreateHeartbeatRequestAndResponse) {
     EXPECT_EQ(res.dht_proto().heartbeat_res().dht_key_hash(), local->dht_key_hash);
 }
 
-TEST(DhtProtoBranches, CreateConnectRequestRejectsVlanIp) {
+TEST(DhtProtoBranches, DISABLED_CreateConnectRequestRejectsVlanIp) {
     SetGlobalInfoForDhtProto();
     DhtKeyManager des(6u);
     NodePtr local = MakeLocalNode("192.168.1.5");

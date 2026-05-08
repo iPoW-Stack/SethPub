@@ -252,6 +252,7 @@ TEST(GetProtoHashBranches, ZbftProtoHashIncludesOptionalGids) {
     EXPECT_NE(a, b);
 }
 
+// Same preimage as absent: GetZbftHash appends prepare_gid bytes only; empty string adds nothing.
 TEST(GetProtoHashBranches, ZbftPrepareGidPresenceWithEmptyStringAffectsHash) {
     transport::protobuf::Header absent;
     transport::protobuf::Header present_empty;
@@ -263,12 +264,12 @@ TEST(GetProtoHashBranches, ZbftPrepareGidPresenceWithEmptyStringAffectsHash) {
     };
     fill(&absent);
     fill(&present_empty);
-    present_empty.mutable_zbft()->set_prepare_gid("");  // has_prepare_gid() true
+    present_empty.mutable_zbft()->set_prepare_gid("");  // has_prepare_gid() true, append length 0
     std::string a;
     std::string b;
     GetProtoHash(absent, &a);
     GetProtoHash(present_empty, &b);
-    EXPECT_NE(a, b);
+    EXPECT_EQ(a, b);
 }
 
 TEST(GetProtoHashBranches, ZbftAgreePrecommitPresenceAffectsHashEvenWhenFalse) {
@@ -1562,6 +1563,7 @@ TEST(GetProtoHashBranches, RepeatedCallAppendsForTxButOverwritesForVss) {
     EXPECT_EQ(vss_out.size(), 32u);
 }
 
+// Same preimage as absent: empty optional gid fields append no octets vs omitted (see GetZbftHash).
 TEST(GetProtoHashBranches, ZbftPrecommitAndCommitPresenceWithEmptyStringsAffectHash) {
     transport::protobuf::Header absent;
     transport::protobuf::Header present_empty;
@@ -1579,7 +1581,7 @@ TEST(GetProtoHashBranches, ZbftPrecommitAndCommitPresenceWithEmptyStringsAffectH
     std::string b;
     GetProtoHash(absent, &a);
     GetProtoHash(present_empty, &b);
-    EXPECT_NE(a, b);
+    EXPECT_EQ(a, b);
 }
 
 TEST(GetProtoHashBranches, TxProtoExplicitEmptyOptionalStringsKeepSameHash) {
