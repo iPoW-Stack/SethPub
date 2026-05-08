@@ -22,6 +22,43 @@ inline uint64_t HotstuffLogHash64() {
     return g_hotstuff_log_hash64;
 }
 
+const char* HotstuffStatusName(hotstuff::Status status) {
+    switch (status) {
+    case hotstuff::Status::kSuccess: return "kSuccess";
+    case hotstuff::Status::kError: return "kError";
+    case hotstuff::Status::kNotFound: return "kNotFound";
+    case hotstuff::Status::kInvalidArgument: return "kInvalidArgument";
+    case hotstuff::Status::kBlsVerifyWaiting: return "kBlsVerifyWaiting";
+    case hotstuff::Status::kBlsVerifyFailed: return "kBlsVerifyFailed";
+    case hotstuff::Status::kAcceptorTxsEmpty: return "kAcceptorTxsEmpty";
+    case hotstuff::Status::kAcceptorBlockInvalid: return "kAcceptorBlockInvalid";
+    case hotstuff::Status::kOldView: return "kOldView";
+    case hotstuff::Status::kElectItemNotFound: return "kElectItemNotFound";
+    case hotstuff::Status::kWrapperTxsEmpty: return "kWrapperTxsEmpty";
+    case hotstuff::Status::kBlsHandled: return "kBlsHandled";
+    case hotstuff::Status::kTxRepeated: return "kTxRepeated";
+    case hotstuff::Status::kLackOfParentBlock: return "kLackOfParentBlock";
+    case hotstuff::Status::kNotExpectHash: return "kNotExpectHash";
+    case hotstuff::Status::kInvalidOpposedCount: return "kInvalidOpposedCount";
+    case hotstuff::Status::kLeaderInvalid: return "kLeaderInvalid";
+    default: return "kUnknownStatus";
+    }
+}
+
+bool ShouldClearCachedLeaderPropose(
+        uint64_t saved_propose_view,
+        uint64_t leader_view,
+        uint64_t saved_latest_qc_view,
+        uint64_t latest_qc_view) {
+    // Keep cache for same-view idempotent resend.
+    // Clear only when:
+    // 1) a newer QC has arrived (consensus progressed), and
+    // 2) cached propose view is older than current leader view.
+    // This avoids premature cache drops that can break dedup recovery.
+    return latest_qc_view > saved_latest_qc_view &&
+        saved_propose_view < leader_view;
+}
+
 class ScopedHotstuffLogHash64 {
 public:
     explicit ScopedHotstuffLogHash64(uint64_t hash64)
@@ -385,25 +422,44 @@ Status Hotstuff::Propose(
         return Status::kError;
     }
 
+    if (latest_leader_propose_message_ && latest_qc_item_ptr_) {
+        const auto saved_propose_view = latest_leader_propose_message_->header
+            .hotstuff().pro_msg().view_item().qc().view();
+        const auto saved_latest_qc_view = latest_leader_propose_message_->latest_qc_view;
+        const auto latest_qc_view = latest_qc_item_ptr_->view();
+        if (ShouldClearCachedLeaderPropose(
+                saved_propose_view, leader_view, saved_latest_qc_view, latest_qc_view)) {
+            SETH_DEBUG("pool: %d clear stale cached propose: saved_propose_view=%lu, "
+                "leader_view=%lu, saved_latest_qc_view=%lu, latest_qc_view=%lu",
+                pool_idx_, saved_propose_view, leader_view, saved_latest_qc_view, latest_qc_view);
+            latest_leader_propose_message_ = nullptr;
+        }
+    }
+
     ResendLeaderLatestProposeMessage();
 
-    // After restart, latest_leader_propose_message_ may hold a propose for
-    // the same or higher view that was already sent before the crash.
-    // Other nodes have already voted on it, so we must NOT construct a new
-    // propose for the same view (which would have different content and hash).
-    // Instead, just resend the saved message and return.
+    // After restart, latest_leader_propose_message_ may hold a propose that
+    // was already sent before the crash.
+    // We only reuse it for the exact same view (idempotent resend).
+    // If saved_view is higher/lower than current leader_view, do not block
+    // fresh construction for current view.
     if (latest_leader_propose_message_) {
         auto saved_view = latest_leader_propose_message_->header
             .hotstuff().pro_msg().view_item().qc().view();
-        if (saved_view >= leader_view) {
-            SETH_DEBUG("pool: %d, skip new propose — saved propose view %lu >= leader_view %lu, "
-                "resending saved message instead",
+        if (saved_view == leader_view) {
+            SETH_DEBUG("pool: %d, reuse cached propose — saved propose view %lu == leader_view %lu, "
+                "resending same message for idempotency",
                 pool_idx_, saved_view, leader_view);
             // NOTE: do NOT update last_leader_propose_view_ here.
             // Updating it to saved_view would re-arm the dedup guard and block
             // construction after the cache is cleared, causing a permanent stall
             // (dedup_recover_view_ already consumed its one self-heal for this view).
             return Status::kSuccess;
+        }
+        if (saved_view > leader_view) {
+            SETH_WARN("pool: %d keep cached future-view propose: saved_view=%lu, leader_view=%lu; "
+                "skip cache reuse for current view and continue fresh propose flow",
+                pool_idx_, saved_view, leader_view);
         }
     }
 
@@ -461,8 +517,14 @@ Status Hotstuff::Propose(
     auto construct_end_ms = common::TimeUtils::TimestampMs();
     if (s != Status::kSuccess) {
         if (!tc) {
-            SETH_DEBUG("pool: %d construct propose msg failed, %d",
-                pool_idx_, (int32_t)s);
+            if (s == Status::kWrapperTxsEmpty) {
+                SETH_DEBUG("pool: %d postpone propose: %s(%d), no tx ready and empty block disallowed "
+                    "for current parent block",
+                    pool_idx_, HotstuffStatusName(s), (int32_t)s);
+            } else {
+                SETH_DEBUG("pool: %d construct propose msg failed: %s(%d)",
+                    pool_idx_, HotstuffStatusName(s), (int32_t)s);
+            }
             return s;
         }
 
