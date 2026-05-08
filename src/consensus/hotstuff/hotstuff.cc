@@ -2060,6 +2060,17 @@ Status Hotstuff::VerifyViewBlock(
                 local_high_height + 1,
                 0);
         }
+        // Height-based answers are ambiguous under competing views at the same height:
+        // GetViewBlockWithHeight may return a fork that is not the leader's branch.
+        // The proposal's parent_hash is the exact predecessor block on the leader chain
+        // (height = propose_height - 1); syncing by hash aligns highQC with the leader.
+        if (gap > 0 && v_block.has_parent_hash() && !v_block.parent_hash().empty()) {
+            kv_sync_->AddSyncViewHash(
+                v_block.qc().network_id(),
+                v_block.qc().pool_index(),
+                v_block.parent_hash(),
+                0);
+        }
         return Status::kError;
     }
 
