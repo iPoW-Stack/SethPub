@@ -720,6 +720,29 @@ void BlockManager::CreateStatisticTx() {
         elect_statistic.statistic_height(), des_timeblock_height);
     if (!unique_hash.empty()) {
         if (elect_statistic.statistic_height() != des_timeblock_height) {
+            // After a restart the queue only holds the latest timeblock height,
+            // but statistic_pool_info_ may have intermediate heights loaded from
+            // historical block data. Push the missing height into the queue so
+            // the next tick computes des_timeblock_height correctly.
+            uint64_t need_h = elect_statistic.statistic_height();
+            timeblock_height_pq_.push(need_h);
+            if (timeblock_height_with_nonce_.count(need_h) == 0 ||
+                    timeblock_height_with_nonce_[need_h] == 0) {
+                view_block::protobuf::ViewBlockItem tmp_block;
+                if (GetBlockWithHeight(
+                        network::kRootCongressNetworkId,
+                        common::kImmutablePoolSize,
+                        need_h,
+                        tmp_block) == kBlockSuccess) {
+                    for (int i = 0; i < tmp_block.block_info().tx_list_size(); ++i) {
+                        timeblock_height_with_nonce_[need_h] =
+                            tmp_block.block_info().tx_list(i).nonce();
+                        break;
+                    }
+                }
+                SETH_WARN("recovered missing timeblock height %lu in queue, nonce: %lu",
+                    need_h, timeblock_height_with_nonce_[need_h]);
+            }
             return;
         }
 
