@@ -323,9 +323,23 @@ Status Hotstuff::Propose(
     // instead of re-constructing a potentially different block for same view.
     if (ShouldRejectReconstructPropose(max_view(), last_leader_propose_view_, leader_view)) {
         if (!latest_leader_propose_message_) {
-            SETH_WARN("pool: %d dedup hit without cached propose, reject new construct. "
-                "max_view: %lu, last_leader_propose_view_: %lu, leader_view: %lu",
-                pool_idx_, max_view(), last_leader_propose_view_, leader_view);
+            // Recovery path: cache can be lost after restart/cleanup while
+            // last_leader_propose_view_ still blocks construction. To avoid
+            // dead-looping forever, allow one self-heal per blocked view.
+            if (dedup_recover_view_ != max_view()) {
+                auto old_last = last_leader_propose_view_;
+                last_leader_propose_view_ = max_view() > 0 ? (max_view() - 1) : 0;
+                dedup_recover_view_ = max_view();
+                auto now_ms = common::TimeUtils::TimestampMs();
+                empty_propose_backoff_until_ms_ = now_ms + kEmptyProposeBackoffBaseMs;
+                SETH_WARN("pool: %d dedup hit without cached propose, self-heal once for view %lu: "
+                    "last_leader_propose_view_ %lu -> %lu, leader_view: %lu",
+                    pool_idx_, dedup_recover_view_, old_last, last_leader_propose_view_, leader_view);
+            } else {
+                SETH_WARN("pool: %d dedup hit without cached propose, reject new construct. "
+                    "max_view: %lu, last_leader_propose_view_: %lu, leader_view: %lu",
+                    pool_idx_, max_view(), last_leader_propose_view_, leader_view);
+            }
         } else {
             SETH_DEBUG("pool: %d construct propose msg failed, %d, "
                 "max_view(): %lu last_leader_propose_view_: %lu",
