@@ -367,6 +367,15 @@ Status Hotstuff::Propose(
 
         pb_pro_msg->release_view_item();
     }
+    if (pb_pro_msg->has_view_item() && pb_pro_msg->view_item().has_qc()) {
+        auto* built_qc = pb_pro_msg->mutable_view_item()->mutable_qc();
+        if (built_qc->view_block_hash().empty()) {
+            // Ensure every propose carries an anchored QC hash.
+            // ConstructViewBlock may leave this field empty in some paths.
+            const auto computed_hash = GetBlockHash(pb_pro_msg->view_item());
+            built_qc->set_view_block_hash(computed_hash);
+        }
+    }
     if (!pb_pro_msg->has_view_item() ||
             !pb_pro_msg->view_item().has_qc() ||
             !IsAnchoredQc(pb_pro_msg->view_item().qc())) {
