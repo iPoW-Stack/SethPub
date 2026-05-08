@@ -1441,6 +1441,23 @@ void ViewBlockChain::RecoverHighViewBlock() {
 }
 
 void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_item) {
+    if (qc_item.view_block_hash().empty()) {
+        // Some incoming QC items (e.g. catch-up path on partially filled propose)
+        // may carry view/leader fields but no concrete view block hash yet.
+        // Avoid pushing an invalid sync-by-hash item that would assert/abort.
+        SETH_WARN("skip UpdateHighViewBlock sync: empty qc view_block_hash, %u_%u_%lu",
+            qc_item.network_id(),
+            qc_item.pool_index(),
+            qc_item.view());
+        if (high_view_block_ == nullptr || high_view_block_->qc().view() < qc_item.view()) {
+            auto placeholder = std::make_shared<ViewBlock>();
+            *placeholder->mutable_qc() = qc_item;
+            high_view_block_ = placeholder;
+            high_view_block_view_.store(qc_item.view());
+        }
+        return;
+    }
+
     auto view_block_ptr_info = Get(qc_item.view_block_hash());
     if (!view_block_ptr_info) {
         view_block_ptr_info = std::make_shared<ViewBlockInfo>();

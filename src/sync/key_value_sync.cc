@@ -188,8 +188,13 @@ void KeyValueSync::AddSyncViewHash(
         uint32_t pool_idx,
         const std::string& view_hash, 
         uint32_t priority) {
-    // return;
-    assert(!view_hash.empty());
+    // Defensive: malformed/partial messages may miss hash fields.
+    // Never abort the process for this; just skip invalid sync item.
+    if (view_hash.empty()) {
+        SETH_WARN("ignore AddSyncViewHash with empty hash, net: %u, pool: %u, pri: %u",
+            network_id, pool_idx, priority);
+        return;
+    }
     char key[2 + view_hash.size()] = {0};
     uint16_t* pools = (uint16_t*)(key);
     pools[0] = pool_idx;
