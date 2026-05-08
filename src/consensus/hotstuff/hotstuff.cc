@@ -14,6 +14,73 @@
 #include "security/ecdsa/ecdsa.h"
 #include <tools/utils.h>
 
+namespace {
+
+thread_local uint64_t g_hotstuff_log_hash64 = 0;
+
+inline uint64_t HotstuffLogHash64() {
+    return g_hotstuff_log_hash64;
+}
+
+class ScopedHotstuffLogHash64 {
+public:
+    explicit ScopedHotstuffLogHash64(uint64_t hash64)
+        : prev_(g_hotstuff_log_hash64) {
+        g_hotstuff_log_hash64 = hash64;
+    }
+
+    ~ScopedHotstuffLogHash64() {
+        g_hotstuff_log_hash64 = prev_;
+    }
+
+private:
+    uint64_t prev_;
+};
+
+}  // namespace
+
+// hotstuff.cc local override: append hash64 to all logs in this file.
+#ifdef SETH_DEBUG
+#undef SETH_DEBUG
+#endif
+#ifdef SETH_WARN
+#undef SETH_WARN
+#endif
+#ifdef SETH_ERROR
+#undef SETH_ERROR
+#endif
+#ifdef SETH_FATAL
+#undef SETH_FATAL
+#endif
+
+#ifdef NDEBUG
+#define SETH_DEBUG(fmt_str, ...)
+#else
+#define SETH_DEBUG(fmt_str, ...)                                                                     \
+    spdlog::debug(                                                                                   \
+        "[{}][{}][{}] {}", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__,                              \
+        fmt::sprintf(fmt_str ", hash64: %lu", ##__VA_ARGS__, HotstuffLogHash64()))
+#endif
+
+#define SETH_WARN(fmt_str, ...)                                                                      \
+    spdlog::warn(                                                                                    \
+        "[{}][{}][{}] {}", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__,                              \
+        fmt::sprintf(fmt_str ", hash64: %lu", ##__VA_ARGS__, HotstuffLogHash64()))
+
+#define SETH_ERROR(fmt_str, ...)                                                                     \
+    spdlog::error(                                                                                   \
+        "[{}][{}][{}] {}", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__,                              \
+        fmt::sprintf(fmt_str ", hash64: %lu", ##__VA_ARGS__, HotstuffLogHash64()))
+
+#define SETH_FATAL(fmt_str, ...)                                                                     \
+    do {                                                                                             \
+        spdlog::critical(                                                                            \
+            "[{}][{}][{}] {}", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__,                          \
+            fmt::sprintf(fmt_str ", hash64: %lu", ##__VA_ARGS__, HotstuffLogHash64()));             \
+        assert(false);                                                                               \
+        std::abort();                                                                                \
+    } while (0)
+
 namespace seth {
 
 namespace hotstuff {
@@ -226,6 +293,7 @@ Status Hotstuff::Propose(
         std::shared_ptr<AggregateQC> agg_qc,
         const transport::MessagePtr& msg_ptr,
         uint64_t leader_tm_ms) {
+    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     auto propose_begin_ms = common::TimeUtils::TimestampMs();
     ADD_DEBUG_PROCESS_TIMESTAMP();
     SETH_DEBUG("pool: %d, called propose!", pool_idx_);
@@ -681,6 +749,7 @@ void Hotstuff::BroadcastGlobalPoolBlock(const std::shared_ptr<ViewBlock>& v_bloc
 }
 
 void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
+    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     int res = HandleProposeMsgImpl(msg_ptr);
     if (res != Status::kSuccess) {
         if (res == Status::kLeaderInvalid) {
@@ -697,6 +766,7 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
 }
 
 int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
+    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     if (!view_block_chain()->HighViewBlock()) {
         return Status::kLeaderInvalid;
     }
@@ -846,21 +916,19 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
         // We only advance if the propose view is AHEAD of our local view (not behind).
         // If propose view < out_view, the proposal is stale and should be rejected.
         if (view_item.qc().view() > out_view && view_item.qc().view() > 0) {
-            auto& propose_qc = msg_ptr->header.hotstuff().pro_msg().view_item().qc();
-            // Advance the view block chain only when QC has a concrete anchor hash.
-            // Empty hash QC can advance pacemaker view, but must not mutate high block.
-            if (IsAnchoredQc(propose_qc)) {
-                view_block_chain_->UpdateHighViewBlock(propose_qc);
+            // Critical: only use the verified TC to catch up local high-view state.
+            // view_item.qc in propose is not a committed certificate and may be stale/forged.
+            const auto& catchup_tc = msg_ptr->header.hotstuff().pro_msg().tc();
+            if (IsAnchoredQc(catchup_tc)) {
+                view_block_chain_->UpdateHighViewBlock(catchup_tc);
             } else {
-                SETH_WARN("pool: %d catch-up propose qc has empty view_block_hash, "
-                    "skip UpdateHighViewBlock, view: %lu",
-                    pool_idx_, propose_qc.view());
+                SETH_WARN("pool: %d catch-up tc has empty view_block_hash, "
+                    "skip UpdateHighViewBlock, tc_view: %lu, propose_view: %lu",
+                    pool_idx_, catchup_tc.view(), view_item.qc().view());
             }
-            pacemaker()->NewQcView(propose_qc.view());
-            SETH_DEBUG("pool: %d, catching up: advanced local view from %lu to %lu via proposal QC, "
-                "hash: %lu",
-                pool_idx_, out_view, view_item.qc().view(), 
-                pro_msg_wrap->msg_ptr->header.hash64());
+            pacemaker()->NewQcView(catchup_tc.view());
+            SETH_DEBUG("pool: %d, catching up via verified tc: old out_view %lu, tc_view %lu, propose_view %lu",
+                pool_idx_, out_view, catchup_tc.view(), view_item.qc().view());
             // Recompute out_view after advancing
             View new_out_view = 0;
             auto new_leader = GetLeader(
@@ -1471,6 +1539,7 @@ Status Hotstuff::HandleProposeMsgStep_Vote(std::shared_ptr<ProposeMsgWrapper>& p
 }
 
 Status Hotstuff::VerifyFollower(const transport::MessagePtr& msg_ptr) {
+    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
 #ifdef USE_SERVER_TEST_TRANSACTION
     return Status::kSuccess;
 #endif
@@ -1515,6 +1584,7 @@ Status Hotstuff::VerifyFollower(const transport::MessagePtr& msg_ptr) {
 }
 
 void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
+    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     if (VerifyFollower(msg_ptr) != Status::kSuccess) {
         return;
     }
@@ -1530,6 +1600,7 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
 }
 
 Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
+    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto b = common::TimeUtils::TimestampMs();
    
@@ -1743,6 +1814,7 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
 }
 
 void Hotstuff::HandlePreResetTimerMsg(const transport::MessagePtr& msg_ptr) {
+    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto& pre_rst_timer_msg = msg_ptr->header.hotstuff().pre_reset_timer_msg();
     if (pre_rst_timer_msg.txs_size() == 0 && !pre_rst_timer_msg.has_single_tx()) {
@@ -1800,6 +1872,7 @@ Status Hotstuff::TryCommit(
         const std::shared_ptr<ViewBlockChain>& view_block_chain,
         const transport::MessagePtr& msg_ptr, 
         const QC& commit_qc) {
+    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     assert(commit_qc.has_view_block_hash());
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto v_block_to_commit_info = CheckCommit(view_block_chain, commit_qc);
@@ -1838,6 +1911,7 @@ Status Hotstuff::Commit(
         const transport::MessagePtr& msg_ptr,
         const std::shared_ptr<ViewBlockInfo>& v_block_info,
         const QC& commit_qc) {
+    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     view_block_chain->Commit(v_block_info);
     return Status::kSuccess;
 }
@@ -2249,6 +2323,7 @@ Status Hotstuff::ConstructProposeMsg(
         common::BftMemberPtr leader,
         const transport::MessagePtr& msg_ptr, 
         hotstuff::protobuf::ProposeMsg* pro_msg) {
+    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     auto elect_item = elect_info_->GetElectItemWithShardingId(
         common::GlobalInfo::Instance()->network_id());
     if (!elect_item || !elect_item->IsValid()) {
@@ -2276,6 +2351,7 @@ Status Hotstuff::ConstructVoteMsg(
         uint64_t tm_height, 
         const std::shared_ptr<ViewBlock>& v_block,
         const LeaderNonceMap* leader_nonce_map) {
+    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto elect_item = elect_info_->GetElectItem(
         common::GlobalInfo::Instance()->network_id(), 
@@ -2357,6 +2433,7 @@ Status Hotstuff::ConstructViewBlock(
         const transport::MessagePtr& msg_ptr, 
         ViewBlock* view_block,
         hotstuff::protobuf::TxPropose* tx_propose) {
+    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     auto local_elect_item = elect_info_->GetElectItemWithShardingId(
         common::GlobalInfo::Instance()->network_id());
     if (local_elect_item == nullptr) {
@@ -2577,6 +2654,7 @@ void Hotstuff::TryRecoverFromStuck(
         const transport::MessagePtr& msg_ptr, 
         bool has_user_tx, 
         bool has_system_tx) {
+    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     auto now_tm_ms = common::TimeUtils::TimestampMs();
     if (latest_qc_item_ptr_ && update_latest_view_tm_) {
         laste_vote_prev_view_tm_.Put(latest_qc_item_ptr_->view(), now_tm_ms);
@@ -2751,6 +2829,7 @@ void Hotstuff::SyncLocalTxToLeader(
         const transport::MessagePtr& msg_ptr, 
         common::BftMemberPtr leader, 
         bool has_system_tx) {
+    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     if (!has_user_tx_tag_ && !has_system_tx) {
         // SETH_DEBUG("pool: %u not has_user_tx_tag_ and no system tx.", pool_idx_);
         return;

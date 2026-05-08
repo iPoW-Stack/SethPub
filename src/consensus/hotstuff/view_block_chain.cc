@@ -1451,6 +1451,18 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
         return;
     }
 
+    // Guard local-chain high view from invalid/unsigned QC input.
+    // This is especially important for catch-up paths where remote proposals
+    // may carry a view_item.qc that is not a verified certificate.
+    if (chain_type_ == kLocalChain && !IsQcTcValid(qc_item)) {
+        SETH_WARN("skip UpdateHighViewBlock: invalid qc item, %u_%u_%lu, hash: %s",
+            qc_item.network_id(),
+            qc_item.pool_index(),
+            qc_item.view(),
+            common::Encode::HexEncode(qc_item.view_block_hash()).c_str());
+        return;
+    }
+
     auto view_block_ptr_info = Get(qc_item.view_block_hash());
     if (!view_block_ptr_info) {
         view_block_ptr_info = std::make_shared<ViewBlockInfo>();
