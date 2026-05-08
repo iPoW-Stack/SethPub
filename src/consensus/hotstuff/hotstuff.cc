@@ -286,15 +286,6 @@ Status Hotstuff::Propose(
     }
 
     ResendLeaderLatestProposeMessage();
-    if (max_view() != 0 && 
-            max_view() <= last_leader_propose_view_ && 
-            last_leader_propose_view_ >= leader_view) {
-        SETH_DEBUG("pool: %d construct propose msg failed, %d, "
-            "max_view(): %lu last_leader_propose_view_: %lu",
-            pool_idx_, (int32_t)Status::kError,
-            max_view(), last_leader_propose_view_);
-        return Status::kError;
-    }
 
     // After restart, latest_leader_propose_message_ may hold a propose for
     // the same or higher view that was already sent before the crash.
@@ -311,6 +302,27 @@ Status Hotstuff::Propose(
             last_leader_propose_view_ = saved_view;
             return Status::kSuccess;
         }
+    }
+
+    // Dedup guard for leader-propose views. Only reject when we really have a
+    // cached propose to resend. If cache is empty but last_leader_propose_view_
+    // is stale (e.g. after cleanup/restart), self-heal to avoid dead-looping.
+    if (max_view() != 0 &&
+            max_view() <= last_leader_propose_view_ &&
+            last_leader_propose_view_ >= leader_view) {
+        if (latest_leader_propose_message_) {
+            SETH_DEBUG("pool: %d construct propose msg failed, %d, "
+                "max_view(): %lu last_leader_propose_view_: %lu",
+                pool_idx_, (int32_t)Status::kError,
+                max_view(), last_leader_propose_view_);
+            return Status::kError;
+        }
+
+        auto old_last = last_leader_propose_view_;
+        last_leader_propose_view_ = max_view() > 0 ? (max_view() - 1) : 0;
+        SETH_WARN("pool: %d stale last_leader_propose_view_ without cached propose, "
+            "self-heal last view %lu -> %lu, max_view: %lu, leader_view: %lu",
+            pool_idx_, old_last, last_leader_propose_view_, max_view(), leader_view);
     }
 
 #ifndef NDEBUG
