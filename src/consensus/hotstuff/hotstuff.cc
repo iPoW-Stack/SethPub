@@ -346,6 +346,25 @@ Status Hotstuff::Propose(
         return Status::kError;
     }
 
+    // Guard: the HighViewBlock must actually exist in the local chain so that
+    // MergeAllPrevBalanceMap / ChainGetAccountInfo can read the correct account
+    // state. After a restart the pacemaker may advance to a high view via TC
+    // without the corresponding view block being stored locally, causing the
+    // leader to execute txs against stale state and produce a different
+    // view_block_hash than followers who have the full chain.
+    {
+        const auto& high_vb = view_block_chain_->HighViewBlock();
+        if (high_vb && !high_vb->qc().view_block_hash().empty()) {
+            if (!view_block_chain_->Has(high_vb->qc().view_block_hash())) {
+                SETH_WARN("pool %u HighViewBlock hash %s not in local chain, "
+                    "waiting for sync before proposing.",
+                    pool_idx_,
+                    common::Encode::HexEncode(high_vb->qc().view_block_hash()).c_str());
+                return Status::kError;
+            }
+        }
+    }
+
     // ADD_DEBUG_PROCESS_TIMESTAMP();
     // if (latest_leader_propose_message_ &&
     //         latest_leader_propose_message_->latest_qc_view < latest_qc_item_ptr_->view()) {
