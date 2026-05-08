@@ -143,6 +143,13 @@ Status ViewBlockChain::Store(
     if (!start_block_) {
         start_block_ = view_block;
         SetViewBlockToMap(block_info_ptr);
+        // Seed high_view_block_ from the genesis/start block so that HighViewBlock()
+        // is non-null even before any QC certificate arrives via UpdateHighViewBlock.
+        // Guard: RecoverHighViewBlock() may have already set a newer value from DB.
+        if (high_view_block_ == nullptr && !view_block->qc().view_block_hash().empty()) {
+            high_view_block_ = view_block;
+            high_view_block_view_.store(view_block->qc().view());
+        }
         return Status::kSuccess;
     }
 
