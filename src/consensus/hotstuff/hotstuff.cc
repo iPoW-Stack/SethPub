@@ -1992,6 +1992,48 @@ Status Hotstuff::VerifyViewBlock(
         }
     }
 
+    // Same height as local head (gap 0): leader replay / duplicate broadcast, or fork.
+    // Expected next block height is local_high_height + 1; equal height means we already
+    // have a block at this height — accept only if it is the same head block.
+    if (v_block.block_info().height() == local_high_height) {
+        auto high = view_block_chain->HighViewBlock();
+        if (!high) {
+            return Status::kError;
+        }
+        bool same_as_head = false;
+        if (!v_block.qc().view_block_hash().empty() && !high->qc().view_block_hash().empty() &&
+                v_block.qc().view_block_hash() == high->qc().view_block_hash()) {
+            same_as_head = true;
+        } else if (high->has_block_info() && v_block.has_block_info()) {
+            same_as_head = (GetBlockHash(v_block) == GetBlockHash(*high));
+        }
+        if (same_as_head) {
+            SETH_DEBUG("pool: %d, VerifyViewBlock: duplicate propose at height %lu (same head hash), ok",
+                pool_idx_, local_high_height);
+            return Status::kSuccess;
+        }
+        SETH_WARN("%u_%u_%lu_%lu, fork at height %lu: propose differs from local head, sync parent %s",
+            common::GlobalInfo::Instance()->network_id(),
+            pool_idx_,
+            v_block.qc().view(),
+            v_block.block_info().height(),
+            local_high_height,
+            common::Encode::HexEncode(v_block.parent_hash()).c_str());
+        kv_sync_->AddSyncViewHash(
+            v_block.qc().network_id(),
+            v_block.qc().pool_index(),
+            v_block.parent_hash(),
+            0);
+        if (v_block.block_info().height() > 1) {
+            kv_sync_->AddSyncHeight(
+                v_block.qc().network_id(),
+                v_block.qc().pool_index(),
+                v_block.block_info().height() - 1,
+                0);
+        }
+        return Status::kError;
+    }
+
     if (v_block.block_info().height() != local_high_height + 1) {
         auto gap = v_block.block_info().height() - local_high_height;
         SETH_WARN("%u_%u_%lu_%lu, new view block height gap: %lu (local: %lu, propose: %lu)", 
