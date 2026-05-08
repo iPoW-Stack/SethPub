@@ -22,6 +22,19 @@ namespace hotstuff {
 std::atomic<uint32_t> Hotstuff::sendout_bft_message_count_ = 0;
 // #endif
 
+bool Hotstuff::IsAnchoredQc(const view_block::protobuf::QcItem& qc_item) {
+    return !qc_item.view_block_hash().empty();
+}
+
+bool Hotstuff::ShouldRejectReconstructPropose(
+        uint64_t max_view,
+        uint64_t last_leader_propose_view,
+        uint64_t leader_view) {
+    return max_view != 0 &&
+        max_view <= last_leader_propose_view &&
+        last_leader_propose_view >= leader_view;
+}
+
 void Hotstuff::StartInit() {
     // set pacemaker timeout callback function
     last_vote_view_ = 0lu;
@@ -308,9 +321,7 @@ Status Hotstuff::Propose(
     // never construct a new propose for the same (or older) view.
     // If cache is missing here, return error and wait for view advancement/sync
     // instead of re-constructing a potentially different block for same view.
-    if (max_view() != 0 &&
-            max_view() <= last_leader_propose_view_ &&
-            last_leader_propose_view_ >= leader_view) {
+    if (ShouldRejectReconstructPropose(max_view(), last_leader_propose_view_, leader_view)) {
         if (!latest_leader_propose_message_) {
             SETH_WARN("pool: %d dedup hit without cached propose, reject new construct. "
                 "max_view: %lu, last_leader_propose_view_: %lu, leader_view: %lu",
@@ -358,7 +369,7 @@ Status Hotstuff::Propose(
     }
     if (!pb_pro_msg->has_view_item() ||
             !pb_pro_msg->view_item().has_qc() ||
-            pb_pro_msg->view_item().qc().view_block_hash().empty()) {
+            !IsAnchoredQc(pb_pro_msg->view_item().qc())) {
         SETH_WARN("pool: %d reject propose construction due to empty qc view_block_hash, "
             "leader_view: %lu",
             pool_idx_, leader_view);
@@ -578,7 +589,7 @@ void Hotstuff::ResendLeaderLatestProposeMessage() {
         if (!leader_view_block_hash_.empty()) {
             leader_qc->set_view_block_hash(leader_view_block_hash_);
         }
-        if (leader_qc->view_block_hash().empty()) {
+        if (!IsAnchoredQc(*leader_qc)) {
             SETH_WARN("pool: %d skip resend propose due to empty qc view_block_hash, view: %lu",
                 pool_idx_, leader_qc->view());
             return;
@@ -815,7 +826,7 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
             auto& propose_qc = msg_ptr->header.hotstuff().pro_msg().view_item().qc();
             // Advance the view block chain only when QC has a concrete anchor hash.
             // Empty hash QC can advance pacemaker view, but must not mutate high block.
-            if (!propose_qc.view_block_hash().empty()) {
+            if (IsAnchoredQc(propose_qc)) {
                 view_block_chain_->UpdateHighViewBlock(propose_qc);
             } else {
                 SETH_WARN("pool: %d catch-up propose qc has empty view_block_hash, "

@@ -4,6 +4,7 @@ add_compile_options(-Wno-unused-parameter)
 
 # Branch/coverage tests for hotstuff types; keep heavy integration tests out unless deps allow.
 set(hotstuff_test_src
+    test_hotstuff_constraints.cc
     test_types.cc
     test_view_block_chain.cc
     test_smoke.cc)

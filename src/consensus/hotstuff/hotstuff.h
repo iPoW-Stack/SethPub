@@ -55,6 +55,12 @@ static const bool WITH_CONSENSUS_STATISTIC =
 
 class Hotstuff {
 public:
+    static bool IsAnchoredQc(const view_block::protobuf::QcItem& qc_item);
+    static bool ShouldRejectReconstructPropose(
+            uint64_t max_view,
+            uint64_t last_leader_propose_view,
+            uint64_t leader_view);
+
     Hotstuff() = default;
     Hotstuff(
             std::shared_ptr<block::BlockManager>& block_mgr,
