@@ -380,7 +380,10 @@ Status Hotstuff::Propose(
             SETH_DEBUG("pool: %d, skip new propose — saved propose view %lu >= leader_view %lu, "
                 "resending saved message instead",
                 pool_idx_, saved_view, leader_view);
-            last_leader_propose_view_ = saved_view;
+            // NOTE: do NOT update last_leader_propose_view_ here.
+            // Updating it to saved_view would re-arm the dedup guard and block
+            // construction after the cache is cleared, causing a permanent stall
+            // (dedup_recover_view_ already consumed its one self-heal for this view).
             return Status::kSuccess;
         }
     }
@@ -392,22 +395,19 @@ Status Hotstuff::Propose(
     if (ShouldRejectReconstructPropose(max_view(), last_leader_propose_view_, leader_view)) {
         if (!latest_leader_propose_message_) {
             // Recovery path: cache can be lost after restart/cleanup while
-            // last_leader_propose_view_ still blocks construction. To avoid
-            // dead-looping forever, allow one self-heal per blocked view.
-            if (dedup_recover_view_ != max_view()) {
-                auto old_last = last_leader_propose_view_;
-                last_leader_propose_view_ = max_view() > 0 ? (max_view() - 1) : 0;
-                dedup_recover_view_ = max_view();
-                auto now_ms = common::TimeUtils::TimestampMs();
-                empty_propose_backoff_until_ms_ = now_ms + kEmptyProposeBackoffBaseMs;
-                SETH_WARN("pool: %d dedup hit without cached propose, self-heal once for view %lu: "
-                    "last_leader_propose_view_ %lu -> %lu, leader_view: %lu",
-                    pool_idx_, dedup_recover_view_, old_last, last_leader_propose_view_, leader_view);
-            } else {
-                SETH_WARN("pool: %d dedup hit without cached propose, reject new construct. "
-                    "max_view: %lu, last_leader_propose_view_: %lu, leader_view: %lu",
-                    pool_idx_, max_view(), last_leader_propose_view_, leader_view);
-            }
+            // last_leader_propose_view_ still blocks construction.
+            // Self-heal unconditionally: lower last_leader_propose_view_ so the
+            // next call passes the dedup guard. Do NOT gate on dedup_recover_view_
+            // because the cached propose can be cleared multiple times at the same
+            // view, causing permanent stall if we only allow one self-heal.
+            auto old_last = last_leader_propose_view_;
+            last_leader_propose_view_ = max_view() > 0 ? (max_view() - 1) : 0;
+            dedup_recover_view_ = max_view();
+            auto now_ms = common::TimeUtils::TimestampMs();
+            empty_propose_backoff_until_ms_ = now_ms + kEmptyProposeBackoffBaseMs;
+            SETH_WARN("pool: %d dedup hit without cached propose, self-heal for view %lu: "
+                "last_leader_propose_view_ %lu -> %lu, leader_view: %lu",
+                pool_idx_, dedup_recover_view_, old_last, last_leader_propose_view_, leader_view);
         } else {
             SETH_DEBUG("pool: %d construct propose msg failed, %d, "
                 "max_view(): %lu last_leader_propose_view_: %lu",
