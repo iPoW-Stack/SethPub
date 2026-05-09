@@ -827,7 +827,7 @@ DecodeKey PkiClAgka::generate_d_for_list(int& index, std::vector<Msg>& msgs) {
   }
 
   DecodeKey res(index, std::move(di));
-  return std::move(res);
+  return res;
 }
 
 void PkiClAgka::output_message_if_(bool no_abort, PlainText& message) {
