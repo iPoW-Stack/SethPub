@@ -1446,7 +1446,7 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
             qc_item.network_id(), qc_item.pool_index(), qc_item.view());
         return;
     }
-    
+
     auto view_block_ptr_info = Get(qc_item.view_block_hash());
     if (!view_block_ptr_info) {
         view_block_ptr_info = std::make_shared<ViewBlockInfo>();
@@ -1500,7 +1500,7 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
             view_block_ptr->block_info().height());
     }
 
-    if (high_view_block_ == nullptr ||
+    if (high_view_block_ == nullptr || high_view_block_->qc().sign_x().empty() ||
             high_view_block_->qc().view() < view_block_ptr->qc().view()) {
 #ifndef NDEBUG
         if (high_view_block_ != nullptr) {
