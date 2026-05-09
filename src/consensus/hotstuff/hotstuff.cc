@@ -429,7 +429,7 @@ Status Hotstuff::Propose(
         pb_pro_msg->view_item().block_info().timestamp());
     
 
-    if (msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size() == 0 && 
+    if (hotstuff_msg->pro_msg().tx_propose().txs_size() == 0 && 
             latest_qc_item_ptr_ && latest_qc_item_ptr_->view() > 0) {
         auto latest_view_block_ptr = view_block_chain()->Get(latest_qc_item_ptr_->view_block_hash());
         if (latest_view_block_ptr && latest_view_block_ptr->view_block &&
