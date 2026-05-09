@@ -1386,10 +1386,15 @@ Status Hotstuff::HandleProposeMsgStep_TxAccept(std::shared_ptr<ProposeMsgWrapper
     auto btime = common::TimeUtils::TimestampMs();
     sethvm::SethhainHost& seth_host = *pro_msg_wrap->seth_host_ptr;
     pro_msg_wrap->leader_nonce_map = std::make_shared<std::unordered_map<std::string, uint64_t>>();
+    // When the leader processes its own broadcast Propose (is_leader=true),
+    // kNormalTo txs are no longer guaranteed to be present in tx_pools_ —
+    // the leader may have consumed them when constructing the block.
+    // Use the same path as HandleProposeMsgStep_Directly (directly_user_leader_txs=true)
+    // so ToTxItem is built from the message body instead of GetToTxs().
     Status s = acceptor()->Accept(
         pro_msg_wrap, 
         true, 
-        false, 
+        pro_msg_wrap->msg_ptr->is_leader,
         balance_and_nonce_map,
         seth_host,
         pro_msg_wrap->leader_nonce_map.get());

@@ -835,7 +835,8 @@ pools::TxItemPtr BlockManager::GetToTx(
     }
 
     pools::protobuf::ShardToTxItem heights;
-    if (heights_str.empty()) {
+    const bool from_leader_heights = !heights_str.empty();
+    if (!from_leader_heights) {
         auto cur_time = common::TimeUtils::TimestampMs();
         if (leader_prev_get_to_tx_tm_ > cur_time) {
             SETH_DEBUG("GetToTx rejected: cooldown active, remaining: %lu ms",
@@ -865,8 +866,12 @@ pools::TxItemPtr BlockManager::GetToTx(
         }
     }
 
-    heights.set_sharding_id(network::GetLocalConsensusNetworkId());
-    auto tx_ptr = HandleToTxsMessage(heights);
+    // Leader-provided heights must be consumed as-is for deterministic replay.
+    // Only locally generated heights (leader build path) inject local sharding_id.
+    if (!from_leader_heights) {
+        heights.set_sharding_id(network::GetLocalConsensusNetworkId());
+    }
+    auto tx_ptr = HandleToTxsMessage(heights, !from_leader_heights);
     if (tx_ptr != nullptr) {
         SETH_DEBUG("success get to tx tx info: %s, nonce: %lu, val: %s, heights: %s",
             ProtobufToJson(*tx_ptr->tx_info).c_str(),
@@ -884,7 +889,8 @@ pools::TxItemPtr BlockManager::GetToTx(
 }
 
 pools::TxItemPtr BlockManager::HandleToTxsMessage(
-        const pools::protobuf::ShardToTxItem& heights) {
+        const pools::protobuf::ShardToTxItem& heights,
+        bool allow_height_reduce) {
     if (create_to_tx_cb_ == nullptr) {
         return nullptr;
     }
@@ -923,6 +929,15 @@ pools::TxItemPtr BlockManager::HandleToTxsMessage(
         auto serialized_value = SerializeDeterministic(all_to_txs);
         
         if (serialized_value.size() > kMaxToTxValueBytes) {
+            if (!allow_height_reduce) {
+                // Keep leader-provided heights unchanged. If oversized, fail fast
+                // instead of mutating heights, so follower replay stays leader-consistent.
+                SETH_WARN("HandleToTxsMessage: leader heights oversized %zu > limit %zu, "
+                    "reject without reducing heights",
+                    serialized_value.size(), kMaxToTxValueBytes);
+                to_txs_pool_->ClearLeaderToHeights();
+                return nullptr;
+            }
             // Too large — halve the height range for each pool and retry
             bool any_reduced = false;
             pools::protobuf::ShardToTxItem reduced;
