@@ -631,7 +631,13 @@ Status Hotstuff::Propose(
         pb_pro_msg->view_item().block_info().timestamp());
     
 
-    if (msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size() == 0) {
+    // Only suppress caching if the *newly constructed* propose has no txs
+    // and the parent block also has no txs (i.e. truly empty block).
+    // Previously this checked msg_ptr (the trigger message) instead of
+    // tmp_msg_ptr (the constructed propose), which caused the cache to be
+    // cleared even when the new propose contained transactions, leading to
+    // the same view being re-proposed with a different hash on every retry.
+    if (hotstuff_msg->pro_msg().tx_propose().txs_size() == 0) {
         auto latest_view_block_ptr = view_block_chain()->HighViewBlock();
         if (latest_view_block_ptr->block_info().tx_list_size() == 0) {
             latest_leader_propose_message_ = nullptr;
