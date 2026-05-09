@@ -1104,8 +1104,6 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
         if (latest_qc_item_ptr_ == nullptr ||
                 tc_ptr->view() >= latest_qc_item_ptr_->view()) {
             assert(IsQcTcValid(*tc_ptr));
-            SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
-            latest_leader_propose_message_ = nullptr;
             UpdateLatestQcItemPtr(tc_ptr);
         }
 

@@ -292,6 +292,13 @@ private:
         }
 
         latest_qc_item_ptr_ = qc_ptr;
+        auto high_view_block = view_block_chain_->HighViewBlock();
+        if (high_view_block != nullptr && high_view_block->qc().view() < qc_ptr->view()) {
+            SETH_DEBUG("pool: %u, update latest qc item ptr view: %lu is higher than high view block view: %lu",
+                pool_idx_, qc_ptr->view(), high_view_block->qc().view());
+            SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
+            latest_leader_propose_message_ = nullptr;
+        }
     }
 
     bool HandleProposeMsgCondition(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
