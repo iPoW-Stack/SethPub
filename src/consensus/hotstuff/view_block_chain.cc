@@ -1501,6 +1501,8 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
     }
 
     if (high_view_block_ == nullptr || high_view_block_->qc().sign_x().empty() ||
+            !high_view_block_->block_info().has_height() ||
+            high_view_block_->block_info().height() < view_block_ptr->block_info().height() ||
             high_view_block_->qc().view() < view_block_ptr->qc().view()) {
 #ifndef NDEBUG
         if (high_view_block_ != nullptr) {
