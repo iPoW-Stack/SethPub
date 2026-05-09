@@ -807,32 +807,33 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
         // 
         // We only advance if the propose view is AHEAD of our local view (not behind).
         // If propose view < out_view, the proposal is stale and should be rejected.
-        // if (view_item.qc().view() > out_view && view_item.qc().view() > 0) {
-        //     auto& propose_qc = msg_ptr->header.hotstuff().pro_msg().view_item().qc();
-        //     // Advance the view block chain to accept the higher view.
-        //     // This triggers sync for the missing block if needed.
-        //     view_block_chain_->UpdateHighViewBlock(propose_qc);
-        //     pacemaker()->NewQcView(propose_qc.view());
-        //     SETH_DEBUG("pool: %d, catching up: advanced local view from %lu to %lu via proposal QC, "
-        //         "hash: %lu",
-        //         pool_idx_, out_view, view_item.qc().view(), 
-        //         pro_msg_wrap->msg_ptr->header.hash64());
-        //     // Recompute out_view after advancing
-        //     View new_out_view = 0;
-        //     auto new_leader = GetLeader(
-        //         view_item.qc().leader_idx(),
-        //         msg_ptr->header.hotstuff().pro_msg().tc(),
-        //         &new_out_view,
-        //         pro_msg_wrap->view_block_ptr->block_info().timestamp(),
-        //         true);
-        //     if (new_leader && view_item.qc().view() == new_out_view) {
-        //         // Successfully caught up, continue processing
-        //         pro_msg_wrap->leader = new_leader;
-        //         out_view = new_out_view;
-        //         leader = new_leader;
-        //         goto view_matched;
-        //     }
-        // }
+        if (view_item.qc().view() > out_view && view_item.qc().view() > 0) {
+            kv_sync_->AddSyncView(view_item.qc().network_id(), view_item.qc().pool_index(), view_item.qc().view());
+            // auto& propose_qc = msg_ptr->header.hotstuff().pro_msg().view_item().qc();
+            // // Advance the view block chain to accept the higher view.
+            // // This triggers sync for the missing block if needed.
+            // view_block_chain_->UpdateHighViewBlock(propose_qc);
+            // pacemaker()->NewQcView(propose_qc.view());
+            // SETH_DEBUG("pool: %d, catching up: advanced local view from %lu to %lu via proposal QC, "
+            //     "hash: %lu",
+            //     pool_idx_, out_view, view_item.qc().view(), 
+            //     pro_msg_wrap->msg_ptr->header.hash64());
+            // // Recompute out_view after advancing
+            // View new_out_view = 0;
+            // auto new_leader = GetLeader(
+            //     view_item.qc().leader_idx(),
+            //     msg_ptr->header.hotstuff().pro_msg().tc(),
+            //     &new_out_view,
+            //     pro_msg_wrap->view_block_ptr->block_info().timestamp(),
+            //     true);
+            // if (new_leader && view_item.qc().view() == new_out_view) {
+            //     // Successfully caught up, continue processing
+            //     pro_msg_wrap->leader = new_leader;
+            //     out_view = new_out_view;
+            //     leader = new_leader;
+            //     goto view_matched;
+            // }
+        }
 
         SETH_DEBUG("pool: %d, propose message view not match leader view, "
             "leader view: %lu, propose view: %lu, hash: %lu, propose_debug: %s",
