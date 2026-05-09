@@ -435,7 +435,10 @@ Status Hotstuff::Propose(
         if (latest_view_block_ptr && latest_view_block_ptr->view_block &&
                 latest_view_block_ptr->view_block->block_info().tx_list_size() == 0) {
             SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr, "
-                "latest_view_block_ptr->view_block->block_info().tx_list_size() == 0", pool_idx_);
+                "latest_view_block_ptr->view_block->block_info().tx_list_size() == 0, "
+                "msg view: %lu, latest view: %lu", pool_idx_, 
+                pb_pro_msg->view_item().qc().view(), 
+                latest_view_block_ptr->view_block->qc().view());
             latest_leader_propose_message_ = nullptr;
         }
     }
