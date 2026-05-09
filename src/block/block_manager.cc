@@ -904,6 +904,7 @@ pools::TxItemPtr BlockManager::HandleToTxsMessage(
     for (int attempt = 0; attempt <= kMaxReduceAttempts; ++attempt) {
         pools::protobuf::AllToTxMessage all_to_txs;
         pools::protobuf::ShardToTxItem prev_heights;
+        bool has_any_cross_to = false;
         for (uint32_t sharding_id = network::kRootCongressNetworkId;
                 sharding_id <= max_consensus_sharding_id_; ++sharding_id) {
             auto& to_tx = *all_to_txs.add_to_tx_arr();
@@ -916,12 +917,29 @@ pools::TxItemPtr BlockManager::HandleToTxsMessage(
                 all_to_txs.mutable_to_tx_arr()->RemoveLast();
                 SETH_DEBUG("1 failed get to tx for shard: %u, heights: %s",
                     sharding_id, ProtobufToJson(cur_heights).c_str());
+                continue;
+            }
+
+            if (to_tx.tos_size() > 0) {
+                has_any_cross_to = true;
             }
         }
 
         if (all_to_txs.to_tx_arr_size() == 0) {
             SETH_DEBUG("2 failed get to tx tx info, all shards failed, max_shard: %u, heights: %s",
                 max_consensus_sharding_id_.load(), ProtobufToJson(cur_heights).c_str());
+            // Avoid stale leader_to_heights cache blocking the next attempt.
+            to_txs_pool_->ClearLeaderToHeights();
+            return nullptr;
+        }
+
+        if (!has_any_cross_to) {
+            // Empty ToTx is legal but should not be packaged into Propose.
+            // Clear cached heights so the next leader round can recompute and
+            // advance to newer legal heights when cross-shard data appears.
+            SETH_DEBUG("HandleToTxsMessage: all to_tx entries empty, skip packaging, heights: %s",
+                ProtobufToJson(cur_heights).c_str());
+            to_txs_pool_->ClearLeaderToHeights();
             return nullptr;
         }
         

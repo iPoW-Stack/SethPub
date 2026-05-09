@@ -414,9 +414,19 @@ int ToTxsPools::CreateToTxWithHeights(
 #ifdef TEST_NO_CROSS
     return kPoolsError;
 #endif
-    if (leader_to_heights.heights_size() != common::kInvalidPoolIndex) {
+    const auto leader_heights_size = leader_to_heights.heights_size();
+    if (leader_heights_size == 0) {
+        // Legal case: leader reports no cross-shard height data.
+        // Keep deterministic output across nodes with an empty ToTx payload.
+        to_tx.set_elect_height(elect_height);
+        to_tx.set_des_shard(sharding_id);
+        SETH_DEBUG("CreateToTxWithHeights: empty leader heights accepted, shard: %u", sharding_id);
+        return kPoolsSuccess;
+    }
+
+    if (leader_heights_size != common::kInvalidPoolIndex) {
         SETH_DEBUG("leader_to_heights.heights_size() != common::kInvalidPoolIndex: %u, %u", 
-            leader_to_heights.heights_size(), common::kInvalidPoolIndex);
+            leader_heights_size, common::kInvalidPoolIndex);
         assert(false);
         return kPoolsError;
     }
