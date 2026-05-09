@@ -1,7 +1,6 @@
 #include "big_num/snark.h"
 
 #include "libff/common/profiling.hpp"
-#include <stdexcept>
 
 namespace seth {
 
@@ -86,16 +85,14 @@ void Snark::InitLibSnark() {
 }
 
 libff::bigint<libff::alt_bn128_q_limbs> Snark::ToLibsnarkBigint(const std::string& in_x) {
-    if (in_x.size() != 32) {
-        throw std::runtime_error("invalid bigint byte length");
-    }
+    assert(in_x.size() == 32);
     libff::bigint<libff::alt_bn128_q_limbs> b;
     auto const N = b.N;
     constexpr size_t L = sizeof(b.data[0]);
     static_assert(sizeof(mp_limb_t) == L, "Unexpected limb size in libff::bigint.");
     for (size_t i = 0; i < N; i++) {
         for (size_t j = 0; j < L; j++) {
-            b.data[N - 1 - i] |= mp_limb_t(static_cast<uint8_t>(in_x[i * L + j])) << (8 * (L - 1 - j));
+            b.data[N - 1 - i] |= mp_limb_t(in_x[i * L + j]) << (8 * (L - 1 - j));
         }
     }
 
@@ -125,9 +122,7 @@ libff::alt_bn128_Fq Snark::DecodeFqElement(const std::string& data) {
 }
 
 libff::alt_bn128_G1 Snark::DecodePointG1(const std::string& data) {
-    if (data.size() < 64) {
-        throw std::runtime_error("invalid alt_bn128 G1 encoding length");
-    }
+    assert(data.size() > 32);
     libff::alt_bn128_Fq x = DecodeFqElement(data.substr(0, data.size()));
     libff::alt_bn128_Fq y = DecodeFqElement(data.substr(32, data.size() - 32));
     if (x == libff::alt_bn128_Fq::zero() && y == libff::alt_bn128_Fq::zero()) {
@@ -136,7 +131,7 @@ libff::alt_bn128_G1 Snark::DecodePointG1(const std::string& data) {
 
     libff::alt_bn128_G1 p(x, y, libff::alt_bn128_Fq::one());
     if (!p.is_well_formed()) {
-        throw std::runtime_error("invalid alt_bn128 G1 point");
+        assert(false);
     }
 
     return p;
@@ -152,25 +147,21 @@ std::string Snark::EncodePointG1(libff::alt_bn128_G1 p) {
 }
 
 libff::alt_bn128_Fq2 Snark::DecodeFq2Element(const std::string& data) {
-    if (data.size() < 64) {
-        throw std::runtime_error("invalid alt_bn128 Fq2 encoding length");
-    }
+    assert(data.size() > 32);
     return libff::alt_bn128_Fq2(
         DecodeFqElement(data.substr(32, data.size() - 32)),
         DecodeFqElement(data.substr(0, data.size())));
 }
 
 libff::alt_bn128_G2 Snark::DecodePointG2(const std::string& data) {
-    if (data.size() < 128) {
-        throw std::runtime_error("invalid alt_bn128 G2 encoding length");
-    }
+    assert(data.size() > 64);
     libff::alt_bn128_Fq2 const x = DecodeFq2Element(data);
     libff::alt_bn128_Fq2 const y = DecodeFq2Element(data.substr(64, data.size() - 64));
     if (x == libff::alt_bn128_Fq2::zero() && y == libff::alt_bn128_Fq2::zero())
         return libff::alt_bn128_G2::zero();
     libff::alt_bn128_G2 p(x, y, libff::alt_bn128_Fq2::one());
     if (!p.is_well_formed()) {
-        throw std::runtime_error("invalid alt_bn128 G2 point");
+        assert(false);
     }
 
     return p;

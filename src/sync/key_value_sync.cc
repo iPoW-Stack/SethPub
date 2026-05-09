@@ -23,16 +23,6 @@ namespace seth {
 
 namespace sync {
 
-// Provide out-of-class definitions for ODR-used static constants.
-const uint64_t KeyValueSync::kSyncPeriodUs;
-const uint64_t KeyValueSync::kSyncTimeoutPeriodUs;
-const uint32_t KeyValueSync::kEachTimerHandleCount;
-const uint32_t KeyValueSync::kMaxBatchDrainCount;
-const uint32_t KeyValueSync::kCacheSyncKeyValueCount;
-const uint32_t KeyValueSync::kSyncCount;
-const uint32_t KeyValueSync::kMaxSyncLatestNotRootCount;
-const uint32_t KeyValueSync::kConsumerBatchSize;
-
 KeyValueSync::KeyValueSync() {}
 
 KeyValueSync::~KeyValueSync() {
@@ -188,13 +178,8 @@ void KeyValueSync::AddSyncViewHash(
         uint32_t pool_idx,
         const std::string& view_hash, 
         uint32_t priority) {
-    // Defensive: malformed/partial messages may miss hash fields.
-    // Never abort the process for this; just skip invalid sync item.
-    if (view_hash.empty()) {
-        SETH_WARN("ignore AddSyncViewHash with empty hash, net: %u, pool: %u, pri: %u",
-            network_id, pool_idx, priority);
-        return;
-    }
+    // return;
+    assert(!view_hash.empty());
     char key[2 + view_hash.size()] = {0};
     uint16_t* pools = (uint16_t*)(key);
     pools[0] = pool_idx;

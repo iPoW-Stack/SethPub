@@ -1177,31 +1177,10 @@ bool BlsManager::VerifyAggSignValid(
 
 int BlsManager::CheckBlsConsensusInfo(const elect::protobuf::ElectBlock& ec_block) {
     // Verify that the Leader's BLS consensus info matches local verified data
-    // Requirement: all finish nodes in leader must be in locally verified nodes,
+    // Requirement: all finish nodes in leader must be in locally verified nodes, 
     // and the count must exceed 80% of total members
-
+    
     uint32_t network_id = ec_block.shard_network_id();
-
-    // If the leader included no BLS membership data, check local state.
-    // When the leader's BLS is empty AND local has nothing to verify against,
-    // accept the proposal — neither side can validate, so blocking is wrong.
-    if (ec_block.prev_members().bls_pubkey_size() == 0) {
-        auto local_iter = finish_networks_map_.find(network_id);
-        bool local_empty = (local_iter == finish_networks_map_.end()) ||
-                           (!local_iter->second->success_verified) ||
-                           (local_iter->second->max_finish_count == 0);
-        if (local_empty) {
-            BLS_DEBUG("[CheckBLS] net %u: leader BLS empty and local also empty, accepting",
-                network_id);
-            return kBlsSuccess;
-        }
-        // Local has BLS data but leader sent none — leader decided BLS isn't ready.
-        // Accept: we cannot verify absent data, and the leader's judgment stands.
-        BLS_WARN("[CheckBLS] net %u: leader BLS empty but local has %u members, accepting",
-            network_id, local_iter->second->max_finish_count);
-        return kBlsSuccess;
-    }
-
     // Get local verification state
     auto iter = finish_networks_map_.find(network_id);
     if (iter == finish_networks_map_.end()) {

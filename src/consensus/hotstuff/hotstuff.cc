@@ -14,110 +14,6 @@
 #include "security/ecdsa/ecdsa.h"
 #include <tools/utils.h>
 
-namespace {
-
-thread_local uint64_t g_hotstuff_log_hash64 = 0;
-
-inline uint64_t HotstuffLogHash64() {
-    return g_hotstuff_log_hash64;
-}
-
-const char* HotstuffStatusName(seth::hotstuff::Status status) {
-    switch (status) {
-    case seth::hotstuff::Status::kSuccess: return "kSuccess";
-    case seth::hotstuff::Status::kError: return "kError";
-    case seth::hotstuff::Status::kNotFound: return "kNotFound";
-    case seth::hotstuff::Status::kInvalidArgument: return "kInvalidArgument";
-    case seth::hotstuff::Status::kBlsVerifyWaiting: return "kBlsVerifyWaiting";
-    case seth::hotstuff::Status::kBlsVerifyFailed: return "kBlsVerifyFailed";
-    case seth::hotstuff::Status::kAcceptorTxsEmpty: return "kAcceptorTxsEmpty";
-    case seth::hotstuff::Status::kAcceptorBlockInvalid: return "kAcceptorBlockInvalid";
-    case seth::hotstuff::Status::kOldView: return "kOldView";
-    case seth::hotstuff::Status::kElectItemNotFound: return "kElectItemNotFound";
-    case seth::hotstuff::Status::kWrapperTxsEmpty: return "kWrapperTxsEmpty";
-    case seth::hotstuff::Status::kBlsHandled: return "kBlsHandled";
-    case seth::hotstuff::Status::kTxRepeated: return "kTxRepeated";
-    case seth::hotstuff::Status::kLackOfParentBlock: return "kLackOfParentBlock";
-    case seth::hotstuff::Status::kNotExpectHash: return "kNotExpectHash";
-    case seth::hotstuff::Status::kInvalidOpposedCount: return "kInvalidOpposedCount";
-    case seth::hotstuff::Status::kLeaderInvalid: return "kLeaderInvalid";
-    default: return "kUnknownStatus";
-    }
-}
-
-bool ShouldClearCachedLeaderPropose(
-        uint64_t saved_propose_view,
-        uint64_t leader_view,
-        uint64_t saved_latest_qc_view,
-        uint64_t latest_qc_view) {
-    // Keep cache for same-view idempotent resend.
-    // Clear only when:
-    // 1) a newer QC has arrived (consensus progressed), and
-    // 2) cached propose view is older than current leader view.
-    // This avoids premature cache drops that can break dedup recovery.
-    return latest_qc_view > saved_latest_qc_view &&
-        saved_propose_view < leader_view;
-}
-
-class ScopedHotstuffLogHash64 {
-public:
-    explicit ScopedHotstuffLogHash64(uint64_t hash64)
-        : prev_(g_hotstuff_log_hash64) {
-        g_hotstuff_log_hash64 = hash64;
-    }
-
-    ~ScopedHotstuffLogHash64() {
-        g_hotstuff_log_hash64 = prev_;
-    }
-
-private:
-    uint64_t prev_;
-};
-
-}  // namespace
-
-// hotstuff.cc local override: append hash64 to all logs in this file.
-#ifdef SETH_DEBUG
-#undef SETH_DEBUG
-#endif
-#ifdef SETH_WARN
-#undef SETH_WARN
-#endif
-#ifdef SETH_ERROR
-#undef SETH_ERROR
-#endif
-#ifdef SETH_FATAL
-#undef SETH_FATAL
-#endif
-
-#ifdef NDEBUG
-#define SETH_DEBUG(fmt_str, ...)
-#else
-#define SETH_DEBUG(fmt_str, ...)                                                                     \
-    spdlog::debug(                                                                                   \
-        "[{}][{}][{}] {}", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__,                              \
-        fmt::sprintf(fmt_str ", hash64: %lu", ##__VA_ARGS__, HotstuffLogHash64()))
-#endif
-
-#define SETH_WARN(fmt_str, ...)                                                                      \
-    spdlog::warn(                                                                                    \
-        "[{}][{}][{}] {}", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__,                              \
-        fmt::sprintf(fmt_str ", hash64: %lu", ##__VA_ARGS__, HotstuffLogHash64()))
-
-#define SETH_ERROR(fmt_str, ...)                                                                     \
-    spdlog::error(                                                                                   \
-        "[{}][{}][{}] {}", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__,                              \
-        fmt::sprintf(fmt_str ", hash64: %lu", ##__VA_ARGS__, HotstuffLogHash64()))
-
-#define SETH_FATAL(fmt_str, ...)                                                                     \
-    do {                                                                                             \
-        spdlog::critical(                                                                            \
-            "[{}][{}][{}] {}", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__,                          \
-            fmt::sprintf(fmt_str ", hash64: %lu", ##__VA_ARGS__, HotstuffLogHash64()));             \
-        assert(false);                                                                               \
-        std::abort();                                                                                \
-    } while (0)
-
 namespace seth {
 
 namespace hotstuff {
@@ -125,19 +21,6 @@ namespace hotstuff {
 // #ifndef NDEBUG
 std::atomic<uint32_t> Hotstuff::sendout_bft_message_count_ = 0;
 // #endif
-
-bool Hotstuff::IsAnchoredQc(const view_block::protobuf::QcItem& qc_item) {
-    return !qc_item.view_block_hash().empty();
-}
-
-bool Hotstuff::ShouldRejectReconstructPropose(
-        uint64_t max_view,
-        uint64_t last_leader_propose_view,
-        uint64_t leader_view) {
-    return max_view != 0 &&
-        max_view <= last_leader_propose_view &&
-        last_leader_propose_view >= leader_view;
-}
 
 void Hotstuff::StartInit() {
     // set pacemaker timeout callback function
@@ -330,7 +213,6 @@ Status Hotstuff::Propose(
         std::shared_ptr<AggregateQC> agg_qc,
         const transport::MessagePtr& msg_ptr,
         uint64_t leader_tm_ms) {
-    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     auto propose_begin_ms = common::TimeUtils::TimestampMs();
     ADD_DEBUG_PROCESS_TIMESTAMP();
     SETH_DEBUG("pool: %d, called propose!", pool_idx_);
@@ -383,25 +265,6 @@ Status Hotstuff::Propose(
         return Status::kError;
     }
 
-    // Guard: the HighViewBlock must actually exist in the local chain so that
-    // MergeAllPrevBalanceMap / ChainGetAccountInfo can read the correct account
-    // state. After a restart the pacemaker may advance to a high view via TC
-    // without the corresponding view block being stored locally, causing the
-    // leader to execute txs against stale state and produce a different
-    // view_block_hash than followers who have the full chain.
-    {
-        const auto& high_vb = view_block_chain_->HighViewBlock();
-        if (high_vb && !high_vb->qc().view_block_hash().empty()) {
-            if (!view_block_chain_->Has(high_vb->qc().view_block_hash())) {
-                SETH_WARN("pool %u HighViewBlock hash %s not in local chain, "
-                    "waiting for sync before proposing.",
-                    pool_idx_,
-                    common::Encode::HexEncode(high_vb->qc().view_block_hash()).c_str());
-                return Status::kError;
-            }
-        }
-    }
-
     // ADD_DEBUG_PROCESS_TIMESTAMP();
     // if (latest_leader_propose_message_ &&
     //         latest_leader_propose_message_->latest_qc_view < latest_qc_item_ptr_->view()) {
@@ -422,74 +285,32 @@ Status Hotstuff::Propose(
         return Status::kError;
     }
 
-    if (latest_leader_propose_message_ && latest_qc_item_ptr_) {
-        const auto saved_propose_view = latest_leader_propose_message_->header
-            .hotstuff().pro_msg().view_item().qc().view();
-        const auto saved_latest_qc_view = latest_leader_propose_message_->latest_qc_view;
-        const auto latest_qc_view = latest_qc_item_ptr_->view();
-        if (ShouldClearCachedLeaderPropose(
-                saved_propose_view, leader_view, saved_latest_qc_view, latest_qc_view)) {
-            SETH_DEBUG("pool: %d clear stale cached propose: saved_propose_view=%lu, "
-                "leader_view=%lu, saved_latest_qc_view=%lu, latest_qc_view=%lu",
-                pool_idx_, saved_propose_view, leader_view, saved_latest_qc_view, latest_qc_view);
-            latest_leader_propose_message_ = nullptr;
-        }
+    ResendLeaderLatestProposeMessage();
+    if (max_view() != 0 && 
+            max_view() <= last_leader_propose_view_ && 
+            last_leader_propose_view_ >= leader_view) {
+        SETH_DEBUG("pool: %d construct propose msg failed, %d, "
+            "max_view(): %lu last_leader_propose_view_: %lu",
+            pool_idx_, (int32_t)Status::kError,
+            max_view(), last_leader_propose_view_);
+        return Status::kError;
     }
 
-    ResendLeaderLatestProposeMessage();
-
-    // After restart, latest_leader_propose_message_ may hold a propose that
-    // was already sent before the crash.
-    // We only reuse it for the exact same view (idempotent resend).
-    // If saved_view is higher/lower than current leader_view, do not block
-    // fresh construction for current view.
+    // After restart, latest_leader_propose_message_ may hold a propose for
+    // the same or higher view that was already sent before the crash.
+    // Other nodes have already voted on it, so we must NOT construct a new
+    // propose for the same view (which would have different content and hash).
+    // Instead, just resend the saved message and return.
     if (latest_leader_propose_message_) {
         auto saved_view = latest_leader_propose_message_->header
             .hotstuff().pro_msg().view_item().qc().view();
-        if (saved_view == leader_view) {
-            SETH_DEBUG("pool: %d, reuse cached propose — saved propose view %lu == leader_view %lu, "
-                "resending same message for idempotency",
+        if (saved_view >= leader_view) {
+            SETH_DEBUG("pool: %d, skip new propose — saved propose view %lu >= leader_view %lu, "
+                "resending saved message instead",
                 pool_idx_, saved_view, leader_view);
-            // NOTE: do NOT update last_leader_propose_view_ here.
-            // Updating it to saved_view would re-arm the dedup guard and block
-            // construction after the cache is cleared, causing a permanent stall
-            // (dedup_recover_view_ already consumed its one self-heal for this view).
+            last_leader_propose_view_ = saved_view;
             return Status::kSuccess;
         }
-        if (saved_view > leader_view) {
-            SETH_WARN("pool: %d keep cached future-view propose: saved_view=%lu, leader_view=%lu; "
-                "skip cache reuse for current view and continue fresh propose flow",
-                pool_idx_, saved_view, leader_view);
-        }
-    }
-
-    // Strict dedup guard for leader-propose views:
-    // never construct a new propose for the same (or older) view.
-    // If cache is missing here, return error and wait for view advancement/sync
-    // instead of re-constructing a potentially different block for same view.
-    if (ShouldRejectReconstructPropose(max_view(), last_leader_propose_view_, leader_view)) {
-        if (!latest_leader_propose_message_) {
-            // Recovery path: cache can be lost after restart/cleanup while
-            // last_leader_propose_view_ still blocks construction.
-            // Self-heal unconditionally: lower last_leader_propose_view_ so the
-            // next call passes the dedup guard. Do NOT gate on dedup_recover_view_
-            // because the cached propose can be cleared multiple times at the same
-            // view, causing permanent stall if we only allow one self-heal.
-            auto old_last = last_leader_propose_view_;
-            last_leader_propose_view_ = max_view() > 0 ? (max_view() - 1) : 0;
-            dedup_recover_view_ = max_view();
-            auto now_ms = common::TimeUtils::TimestampMs();
-            empty_propose_backoff_until_ms_ = now_ms + kEmptyProposeBackoffBaseMs;
-            SETH_WARN("pool: %d dedup hit without cached propose, self-heal for view %lu: "
-                "last_leader_propose_view_ %lu -> %lu, leader_view: %lu",
-                pool_idx_, dedup_recover_view_, old_last, last_leader_propose_view_, leader_view);
-        } else {
-            SETH_DEBUG("pool: %d construct propose msg failed, %d, "
-                "max_view(): %lu last_leader_propose_view_: %lu",
-                pool_idx_, (int32_t)Status::kError,
-                max_view(), last_leader_propose_view_);
-        }
-        return Status::kError;
     }
 
 #ifndef NDEBUG
@@ -517,35 +338,12 @@ Status Hotstuff::Propose(
     auto construct_end_ms = common::TimeUtils::TimestampMs();
     if (s != Status::kSuccess) {
         if (!tc) {
-            if (s == Status::kWrapperTxsEmpty) {
-                SETH_DEBUG("pool: %d postpone propose: %s(%d), no tx ready and empty block disallowed "
-                    "for current parent block",
-                    pool_idx_, HotstuffStatusName(s), (int32_t)s);
-            } else {
-                SETH_DEBUG("pool: %d construct propose msg failed: %s(%d)",
-                    pool_idx_, HotstuffStatusName(s), (int32_t)s);
-            }
+            SETH_DEBUG("pool: %d construct propose msg failed, %d",
+                pool_idx_, (int32_t)s);
             return s;
         }
 
         pb_pro_msg->release_view_item();
-    }
-    if (pb_pro_msg->has_view_item() && pb_pro_msg->view_item().has_qc()) {
-        auto* built_qc = pb_pro_msg->mutable_view_item()->mutable_qc();
-        if (built_qc->view_block_hash().empty()) {
-            // Ensure every propose carries an anchored QC hash.
-            // ConstructViewBlock may leave this field empty in some paths.
-            const auto computed_hash = GetBlockHash(pb_pro_msg->view_item());
-            built_qc->set_view_block_hash(computed_hash);
-        }
-    }
-    if (!pb_pro_msg->has_view_item() ||
-            !pb_pro_msg->view_item().has_qc() ||
-            !IsAnchoredQc(pb_pro_msg->view_item().qc())) {
-        SETH_WARN("pool: %d reject propose construction due to empty qc view_block_hash, "
-            "leader_view: %lu",
-            pool_idx_, leader_view);
-        return Status::kError;
     }
     
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -631,13 +429,7 @@ Status Hotstuff::Propose(
         pb_pro_msg->view_item().block_info().timestamp());
     
 
-    // Only suppress caching if the *newly constructed* propose has no txs
-    // and the parent block also has no txs (i.e. truly empty block).
-    // Previously this checked msg_ptr (the trigger message) instead of
-    // tmp_msg_ptr (the constructed propose), which caused the cache to be
-    // cleared even when the new propose contained transactions, leading to
-    // the same view being re-proposed with a different hash on every retry.
-    if (hotstuff_msg->pro_msg().tx_propose().txs_size() == 0) {
+    if (msg_ptr->header.hotstuff().pro_msg().tx_propose().txs_size() == 0) {
         auto latest_view_block_ptr = view_block_chain()->HighViewBlock();
         if (latest_view_block_ptr->block_info().tx_list_size() == 0) {
             latest_leader_propose_message_ = nullptr;
@@ -767,11 +559,6 @@ void Hotstuff::ResendLeaderLatestProposeMessage() {
         if (!leader_view_block_hash_.empty()) {
             leader_qc->set_view_block_hash(leader_view_block_hash_);
         }
-        if (!IsAnchoredQc(*leader_qc)) {
-            SETH_WARN("pool: %d skip resend propose due to empty qc view_block_hash, view: %lu",
-                pool_idx_, leader_qc->view());
-            return;
-        }
 
         auto broadcast = tmp_msg_ptr->header.mutable_broadcast();
         broadcast::SetDefaultBroadcastParam(broadcast);       
@@ -836,7 +623,6 @@ void Hotstuff::BroadcastGlobalPoolBlock(const std::shared_ptr<ViewBlock>& v_bloc
 }
 
 void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
-    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     int res = HandleProposeMsgImpl(msg_ptr);
     if (res != Status::kSuccess) {
         if (res == Status::kLeaderInvalid) {
@@ -853,7 +639,6 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
 }
 
 int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
-    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     if (!view_block_chain()->HighViewBlock()) {
         return Status::kLeaderInvalid;
     }
@@ -1003,19 +788,15 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
         // We only advance if the propose view is AHEAD of our local view (not behind).
         // If propose view < out_view, the proposal is stale and should be rejected.
         if (view_item.qc().view() > out_view && view_item.qc().view() > 0) {
-            // Critical: only use the verified TC to catch up local high-view state.
-            // view_item.qc in propose is not a committed certificate and may be stale/forged.
-            const auto& catchup_tc = msg_ptr->header.hotstuff().pro_msg().tc();
-            if (IsAnchoredQc(catchup_tc)) {
-                view_block_chain_->UpdateHighViewBlock(catchup_tc);
-            } else {
-                SETH_WARN("pool: %d catch-up tc has empty view_block_hash, "
-                    "skip UpdateHighViewBlock, tc_view: %lu, propose_view: %lu",
-                    pool_idx_, catchup_tc.view(), view_item.qc().view());
-            }
-            pacemaker()->NewQcView(catchup_tc.view());
-            SETH_DEBUG("pool: %d, catching up via verified tc: old out_view %lu, tc_view %lu, propose_view %lu",
-                pool_idx_, out_view, catchup_tc.view(), view_item.qc().view());
+            auto& propose_qc = msg_ptr->header.hotstuff().pro_msg().view_item().qc();
+            // Advance the view block chain to accept the higher view.
+            // This triggers sync for the missing block if needed.
+            view_block_chain_->UpdateHighViewBlock(propose_qc);
+            pacemaker()->NewQcView(propose_qc.view());
+            SETH_DEBUG("pool: %d, catching up: advanced local view from %lu to %lu via proposal QC, "
+                "hash: %lu",
+                pool_idx_, out_view, view_item.qc().view(), 
+                pro_msg_wrap->msg_ptr->header.hash64());
             // Recompute out_view after advancing
             View new_out_view = 0;
             auto new_leader = GetLeader(
@@ -1454,15 +1235,10 @@ Status Hotstuff::HandleProposeMsgStep_TxAccept(std::shared_ptr<ProposeMsgWrapper
     auto btime = common::TimeUtils::TimestampMs();
     sethvm::SethhainHost& seth_host = *pro_msg_wrap->seth_host_ptr;
     pro_msg_wrap->leader_nonce_map = std::make_shared<std::unordered_map<std::string, uint64_t>>();
-    // When the leader processes its own broadcast Propose (is_leader=true),
-    // kNormalTo txs are no longer guaranteed to be present in tx_pools_ —
-    // the leader may have consumed them when constructing the block.
-    // Use the same path as HandleProposeMsgStep_Directly (directly_user_leader_txs=true)
-    // so ToTxItem is built from the message body instead of GetToTxs().
     Status s = acceptor()->Accept(
         pro_msg_wrap, 
         true, 
-        pro_msg_wrap->msg_ptr->is_leader,
+        false, 
         balance_and_nonce_map,
         seth_host,
         pro_msg_wrap->leader_nonce_map.get());
@@ -1631,7 +1407,6 @@ Status Hotstuff::HandleProposeMsgStep_Vote(std::shared_ptr<ProposeMsgWrapper>& p
 }
 
 Status Hotstuff::VerifyFollower(const transport::MessagePtr& msg_ptr) {
-    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
 #ifdef USE_SERVER_TEST_TRANSACTION
     return Status::kSuccess;
 #endif
@@ -1676,7 +1451,6 @@ Status Hotstuff::VerifyFollower(const transport::MessagePtr& msg_ptr) {
 }
 
 void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
-    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     if (VerifyFollower(msg_ptr) != Status::kSuccess) {
         return;
     }
@@ -1692,7 +1466,6 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
 }
 
 Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
-    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto b = common::TimeUtils::TimestampMs();
    
@@ -1906,7 +1679,6 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
 }
 
 void Hotstuff::HandlePreResetTimerMsg(const transport::MessagePtr& msg_ptr) {
-    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto& pre_rst_timer_msg = msg_ptr->header.hotstuff().pre_reset_timer_msg();
     if (pre_rst_timer_msg.txs_size() == 0 && !pre_rst_timer_msg.has_single_tx()) {
@@ -1964,7 +1736,6 @@ Status Hotstuff::TryCommit(
         const std::shared_ptr<ViewBlockChain>& view_block_chain,
         const transport::MessagePtr& msg_ptr, 
         const QC& commit_qc) {
-    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     assert(commit_qc.has_view_block_hash());
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto v_block_to_commit_info = CheckCommit(view_block_chain, commit_qc);
@@ -2003,7 +1774,6 @@ Status Hotstuff::Commit(
         const transport::MessagePtr& msg_ptr,
         const std::shared_ptr<ViewBlockInfo>& v_block_info,
         const QC& commit_qc) {
-    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     view_block_chain->Commit(v_block_info);
     return Status::kSuccess;
 }
@@ -2200,58 +1970,14 @@ Status Hotstuff::VerifyViewBlock(
     }
 
     // Get the effective height for comparison. If HighViewBlock has no
-    // block_info (TC timeout placeholder after restart), align with
-    // ConstructViewBlock() semantics: treat the QC block as committed+1.
-    // That means the "local high height" baseline here should be committed+1;
-    // otherwise self-proposed blocks can be falsely rejected with gap=2.
+    // block_info (TC timeout placeholder after restart), fall back to
+    // LatestCommittedBlock's height to avoid comparing against 0.
     uint64_t local_high_height = view_block_chain->HighViewBlock()->block_info().height();
     if (local_high_height == 0 && !view_block_chain->HighViewBlock()->has_block_info()) {
         auto committed = view_block_chain->LatestCommittedBlock();
         if (committed && committed->has_block_info()) {
-            local_high_height = committed->block_info().height() + 1;
+            local_high_height = committed->block_info().height();
         }
-    }
-
-    // Same height as local head (gap 0): leader replay / duplicate broadcast, or fork.
-    // Expected next block height is local_high_height + 1; equal height means we already
-    // have a block at this height — accept only if it is the same head block.
-    if (v_block.block_info().height() == local_high_height) {
-        auto high = view_block_chain->HighViewBlock();
-        if (!high) {
-            return Status::kError;
-        }
-        bool same_as_head = false;
-        if (!v_block.qc().view_block_hash().empty() && !high->qc().view_block_hash().empty() &&
-                v_block.qc().view_block_hash() == high->qc().view_block_hash()) {
-            same_as_head = true;
-        } else if (high->has_block_info() && v_block.has_block_info()) {
-            same_as_head = (GetBlockHash(v_block) == GetBlockHash(*high));
-        }
-        if (same_as_head) {
-            SETH_DEBUG("pool: %d, VerifyViewBlock: duplicate propose at height %lu (same head hash), ok",
-                pool_idx_, local_high_height);
-            return Status::kSuccess;
-        }
-        SETH_WARN("%u_%u_%lu_%lu, fork at height %lu: propose differs from local head, sync parent %s",
-            common::GlobalInfo::Instance()->network_id(),
-            pool_idx_,
-            v_block.qc().view(),
-            v_block.block_info().height(),
-            local_high_height,
-            common::Encode::HexEncode(v_block.parent_hash()).c_str());
-        kv_sync_->AddSyncViewHash(
-            v_block.qc().network_id(),
-            v_block.qc().pool_index(),
-            v_block.parent_hash(),
-            0);
-        if (v_block.block_info().height() > 1) {
-            kv_sync_->AddSyncHeight(
-                v_block.qc().network_id(),
-                v_block.qc().pool_index(),
-                v_block.block_info().height() - 1,
-                0);
-        }
-        return Status::kError;
     }
 
     if (v_block.block_info().height() != local_high_height + 1) {
@@ -2278,17 +2004,6 @@ Status Hotstuff::VerifyViewBlock(
                 v_block.qc().network_id(),
                 v_block.qc().pool_index(),
                 local_high_height + 1,
-                0);
-        }
-        // Height-based answers are ambiguous under competing views at the same height:
-        // GetViewBlockWithHeight may return a fork that is not the leader's branch.
-        // The proposal's parent_hash is the exact predecessor block on the leader chain
-        // (height = propose_height - 1); syncing by hash aligns highQC with the leader.
-        if (gap > 0 && v_block.has_parent_hash() && !v_block.parent_hash().empty()) {
-            kv_sync_->AddSyncViewHash(
-                v_block.qc().network_id(),
-                v_block.qc().pool_index(),
-                v_block.parent_hash(),
                 0);
         }
         return Status::kError;
@@ -2417,7 +2132,6 @@ Status Hotstuff::ConstructProposeMsg(
         common::BftMemberPtr leader,
         const transport::MessagePtr& msg_ptr, 
         hotstuff::protobuf::ProposeMsg* pro_msg) {
-    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     auto elect_item = elect_info_->GetElectItemWithShardingId(
         common::GlobalInfo::Instance()->network_id());
     if (!elect_item || !elect_item->IsValid()) {
@@ -2445,7 +2159,6 @@ Status Hotstuff::ConstructVoteMsg(
         uint64_t tm_height, 
         const std::shared_ptr<ViewBlock>& v_block,
         const LeaderNonceMap* leader_nonce_map) {
-    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto elect_item = elect_info_->GetElectItem(
         common::GlobalInfo::Instance()->network_id(), 
@@ -2527,7 +2240,6 @@ Status Hotstuff::ConstructViewBlock(
         const transport::MessagePtr& msg_ptr, 
         ViewBlock* view_block,
         hotstuff::protobuf::TxPropose* tx_propose) {
-    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     auto local_elect_item = elect_info_->GetElectItemWithShardingId(
         common::GlobalInfo::Instance()->network_id());
     if (local_elect_item == nullptr) {
@@ -2572,26 +2284,20 @@ Status Hotstuff::ConstructViewBlock(
     qc->set_network_id(common::GlobalInfo::Instance()->network_id());
     qc->set_pool_index(pool_idx_);
     view_block->set_parent_hash(pre_v_block->qc().view_block_hash());
-    // If HighViewBlock is a placeholder (no block_info, e.g. after TC timeout or
-    // restart), use LatestCommittedBlock only as a height reference. The QC'd
-    // block is at committed+1 so the new block must be at committed+2.
-    // Do NOT overwrite parent_hash — it already points to the correct QC'd block.
+    // If HighViewBlock has no block_info (e.g., TC timeout placeholder after
+    // restart), fall back to LatestCommittedBlock as the parent for height
+    // calculation. Otherwise Wrap() would set height = 0+1 = 1, which is
+    // rejected by all voters that have already committed higher blocks.
     if (!pre_v_block->has_block_info() || pre_v_block->block_info().height() == 0) {
         auto committed = view_block_chain_->LatestCommittedBlock();
-        if (committed && committed->has_block_info() &&
+        if (committed && committed->has_block_info() && 
                 committed->block_info().height() > 0) {
             SETH_WARN("pool: %d, HighViewBlock has no valid block_info (view: %lu), "
-                "using committed (height: %lu) as height proxy, keeping QC hash as parent_hash",
-                pool_idx_, pre_v_block->qc().view(),
+                "falling back to LatestCommittedBlock (height: %lu) for propose",
+                pool_idx_, pre_v_block->qc().view(), 
                 committed->block_info().height());
-            // Build a height proxy: QC'd block sits at committed+1, so Wrap()
-            // will produce new_height = (committed+1)+1 = committed+2.
-            auto proxy = std::make_shared<ViewBlock>();
-            *proxy->mutable_qc() = view_block_chain_->HighViewBlock()->qc();
-            proxy->mutable_block_info()->set_height(committed->block_info().height() + 1);
-            proxy->mutable_block_info()->set_timestamp(committed->block_info().timestamp());
-            proxy->mutable_block_info()->set_timeblock_height(committed->block_info().timeblock_height());
-            pre_v_block = proxy;
+            pre_v_block = committed;
+            view_block->set_parent_hash(pre_v_block->qc().view_block_hash());
         }
     }
     SETH_DEBUG("get prev block hash: %s, height: %lu, leader->index: %d", 
@@ -2754,7 +2460,6 @@ void Hotstuff::TryRecoverFromStuck(
         const transport::MessagePtr& msg_ptr, 
         bool has_user_tx, 
         bool has_system_tx) {
-    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     auto now_tm_ms = common::TimeUtils::TimestampMs();
     if (latest_qc_item_ptr_ && update_latest_view_tm_) {
         laste_vote_prev_view_tm_.Put(latest_qc_item_ptr_->view(), now_tm_ms);
@@ -2929,7 +2634,6 @@ void Hotstuff::SyncLocalTxToLeader(
         const transport::MessagePtr& msg_ptr, 
         common::BftMemberPtr leader, 
         bool has_system_tx) {
-    ScopedHotstuffLogHash64 scoped_hash64(msg_ptr ? msg_ptr->header.hash64() : 0);
     if (!has_user_tx_tag_ && !has_system_tx) {
         // SETH_DEBUG("pool: %u not has_user_tx_tag_ and no system tx.", pool_idx_);
         return;

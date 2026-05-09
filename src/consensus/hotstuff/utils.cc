@@ -122,6 +122,6 @@ bool ViewBlockIsCheckedParentHash(
     return prefix_db->ParentHashExists(hash);
 }
 
-} // namespace hotstuff
+} // namespace consensus
 
 } // namespace seth

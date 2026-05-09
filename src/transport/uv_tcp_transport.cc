@@ -463,10 +463,6 @@ uint8_t TcpTransport::GetThreadIndexWithPool(uint32_t pool_index) {
 int TcpTransport::Send(
         std::shared_ptr<tnet::TcpInterface> conn,
         const transport::protobuf::Header& message) {
-    if (!uv_transport_inited || output_queues_ == nullptr) {
-        SETH_WARN("Send skipped: uv transport not initialized");
-        return kTransportError;
-    }
     auto output_item = std::make_shared<ClientItem>();
     output_item->conn = conn;
     output_item->type = message.type();
@@ -485,10 +481,6 @@ int TcpTransport::Send(
 int TcpTransport::Send(
         std::shared_ptr<tnet::TcpInterface> conn,
         const std::string& message) {
-    if (!uv_transport_inited || output_queues_ == nullptr) {
-        SETH_WARN("Send skipped: uv transport not initialized");
-        return kTransportError;
-    }
     auto output_item = std::make_shared<ClientItem>();
     output_item->conn = conn;
     output_item->hash64 = 0;
@@ -507,10 +499,6 @@ int TcpTransport::Send(
         const std::string& des_ip,
         uint16_t des_port,
         transport::protobuf::Header& message) {
-    if (!uv_transport_inited || output_queues_ == nullptr) {
-        SETH_WARN("Send skipped: uv transport not initialized");
-        return kTransportError;
-    }
     assert(des_port > 0);
     auto tmpHeader = const_cast<transport::protobuf::Header*>(&message);
     tmpHeader->set_from_public_port(common::GlobalInfo::Instance()->config_public_port());

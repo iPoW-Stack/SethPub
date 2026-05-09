@@ -30,9 +30,6 @@ static const std::string kContractHead = common::Encode::HexDecode("60806040");
 static const uint32_t kContractCallMaxDepth = 1024u;
 
 inline static bool IsContractBytesCode(const std::string& bytes_code) {
-    if (bytes_code.size() < kContractHead.size()) {
-        return false;
-    }
     return memcmp(kContractHead.c_str(), bytes_code.c_str(), kContractHead.size()) == 0;
 }
 

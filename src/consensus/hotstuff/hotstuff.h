@@ -55,12 +55,6 @@ static const bool WITH_CONSENSUS_STATISTIC =
 
 class Hotstuff {
 public:
-    static bool IsAnchoredQc(const view_block::protobuf::QcItem& qc_item);
-    static bool ShouldRejectReconstructPropose(
-            uint64_t max_view,
-            uint64_t last_leader_propose_view,
-            uint64_t leader_view);
-
     Hotstuff() = default;
     Hotstuff(
             std::shared_ptr<block::BlockManager>& block_mgr,
@@ -679,7 +673,6 @@ private:
     // delay retries with exponential backoff to avoid CPU-burning tight loops.
     uint32_t empty_propose_count_ = 0;
     uint64_t empty_propose_backoff_until_ms_ = 0;
-    uint64_t dedup_recover_view_ = 0;
     uint64_t prev_pool32_debug_tm_ = 0;
     static constexpr uint32_t kEmptyProposeBackoffBaseMs = 50;    // 50ms base
     static constexpr uint32_t kEmptyProposeBackoffMaxMs = 5000;   // 5s cap

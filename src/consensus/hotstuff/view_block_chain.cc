@@ -143,13 +143,6 @@ Status ViewBlockChain::Store(
     if (!start_block_) {
         start_block_ = view_block;
         SetViewBlockToMap(block_info_ptr);
-        // Seed high_view_block_ from the genesis/start block so that HighViewBlock()
-        // is non-null even before any QC certificate arrives via UpdateHighViewBlock.
-        // Guard: RecoverHighViewBlock() may have already set a newer value from DB.
-        if (high_view_block_ == nullptr && !view_block->qc().view_block_hash().empty()) {
-            high_view_block_ = view_block;
-            high_view_block_view_.store(view_block->qc().view());
-        }
         return Status::kSuccess;
     }
 
@@ -1448,28 +1441,6 @@ void ViewBlockChain::RecoverHighViewBlock() {
 }
 
 void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_item) {
-    if (qc_item.view_block_hash().empty()) {
-        // Never mutate high_view_block_ with an unanchored QC.
-        // Empty hash means we cannot bind this view to a concrete block.
-        SETH_WARN("skip UpdateHighViewBlock: empty qc view_block_hash, %u_%u_%lu",
-            qc_item.network_id(),
-            qc_item.pool_index(),
-            qc_item.view());
-        return;
-    }
-
-    // Guard local-chain high view from invalid/unsigned QC input.
-    // This is especially important for catch-up paths where remote proposals
-    // may carry a view_item.qc that is not a verified certificate.
-    if (chain_type_ == kLocalChain && !IsQcTcValid(qc_item)) {
-        SETH_WARN("skip UpdateHighViewBlock: invalid qc item, %u_%u_%lu, hash: %s",
-            qc_item.network_id(),
-            qc_item.pool_index(),
-            qc_item.view(),
-            common::Encode::HexEncode(qc_item.view_block_hash()).c_str());
-        return;
-    }
-
     auto view_block_ptr_info = Get(qc_item.view_block_hash());
     if (!view_block_ptr_info) {
         view_block_ptr_info = std::make_shared<ViewBlockInfo>();

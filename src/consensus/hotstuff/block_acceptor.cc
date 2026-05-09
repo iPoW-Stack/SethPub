@@ -954,30 +954,17 @@ Status BlockAcceptor::addTxsToPool(
                 tx_ptr = std::make_shared<consensus::ToTxItem>(
                     msg_ptr, i, account_mgr_, security_ptr_, address_info);
             } else {
-                // Backup node: verify local tx matches leader's proposal, then defer to leader.
                 auto tx_item = tx_pools_->GetToTxs(
                     pool_idx(), all_to_txs.to_heights().SerializeAsString());
-                if (tx_item == nullptr || tx_item->txs.empty()) {
-                    SETH_WARN("kNormalTo backup: no local tx found, discarding propose. pool=%u key=%s",
-                        pool_idx(), common::Encode::HexEncode(tx->key()).c_str());
-                    create_success = false;
-                    break;
+                if (tx_item != nullptr && !tx_item->txs.empty() && view_block_chain_) {
+                    tx_ptr = *(tx_item->txs.begin());
+                    std::string val;
+                    if (seth_host.GetKeyValue(tx_ptr->tx_info->to(), tx_ptr->tx_info->key(), &val) == sethvm::kSethvmSuccess) {
+                        SETH_WARN("invalid add tx local exists");
+                        tx_ptr = nullptr;
+                        create_success = false;
+                    }
                 }
-                auto local_tx = *(tx_item->txs.begin());
-                if (local_tx->tx_info->key() != tx->key() ||
-                        local_tx->tx_info->value() != tx->value()) {
-                    SETH_WARN("kNormalTo backup: local tx mismatch, discarding propose. "
-                        "local_key=%s leader_key=%s key_match=%d value_match=%d pool=%u",
-                        common::Encode::HexEncode(local_tx->tx_info->key()).c_str(),
-                        common::Encode::HexEncode(tx->key()).c_str(),
-                        (local_tx->tx_info->key() == tx->key()),
-                        (local_tx->tx_info->value() == tx->value()),
-                        pool_idx());
-                    create_success = false;
-                    break;
-                }
-                tx_ptr = std::make_shared<consensus::ToTxItem>(
-                    msg_ptr, i, account_mgr_, security_ptr_, address_info);
             }
             break;
         }

@@ -38,9 +38,7 @@ TEST_F(TestConfig, UnvalidConf) {
 
 TEST_F(TestConfig, Init) {
     Config config;
-    if (!config.Init("../conf.ut/bootstrap.conf")) {
-        GTEST_SKIP() << "bootstrap.conf is not loadable in current environment";
-    }
+    ASSERT_TRUE(config.Init("../conf.ut/bootstrap.conf"));
     std::string val;
     ASSERT_TRUE(config.Get("backbone", "string", val));
     ASSERT_EQ(val, "string");
@@ -76,10 +74,10 @@ TEST_F(TestConfig, Init) {
     ASSERT_EQ(uint64_val, 1);
     float float_val;
     ASSERT_TRUE(config.Get("backbone", "float", float_val));
-    ASSERT_NEAR(float_val, 1.0f, 1e-6f);
+    ASSERT_EQ(float_val, 1.0f);  // problem 
     double double_val;
     ASSERT_TRUE(config.Get("backbone", "double", double_val));
-    ASSERT_NEAR(double_val, 1.0, 1e-12);
+    ASSERT_EQ(double_val, 1.0);  // problem 
 
     ASSERT_TRUE(config.Set("backbone", "bool_true", true));
     ASSERT_TRUE(config.Set("backbone", "bool_false", false));
@@ -107,9 +105,7 @@ TEST_F(TestConfig, Init) {
 
 TEST_F(TestConfig, InitError) {
     Config config;
-    if (!config.Init("../conf.ut/bootstrap.conf")) {
-        GTEST_SKIP() << "bootstrap.conf is not loadable in current environment";
-    }
+    ASSERT_TRUE(config.Init("../conf.ut/bootstrap.conf"));
     std::string val;
     ASSERT_TRUE(config.Get("backbone", "string", val));
     ASSERT_EQ(val, "string");
@@ -136,9 +132,7 @@ TEST_F(TestConfig, InitError) {
 
 TEST_F(TestConfig, Set) {
     Config config;
-    if (!config.Init("../conf.ut/dump.conf")) {
-        GTEST_SKIP() << "dump.conf is not loadable in current environment";
-    }
+    ASSERT_TRUE(config.Init("../conf.ut/dump.conf"));
     std::string val;
     ASSERT_TRUE(config.Get("backbone", "string", val));
     ASSERT_EQ(val, "string");
@@ -180,11 +174,11 @@ TEST_F(TestConfig, Set) {
     float float_val;
     ASSERT_TRUE(config.Get("backbone", "float", float_val));
     ASSERT_FALSE(config.Get("backbone", "float1", float_val));
-    ASSERT_NEAR(float_val, 1.0f, 1e-6f);
+    ASSERT_EQ(float_val, 1.0f);  // problem 
     double double_val;
     ASSERT_TRUE(config.Get("backbone", "double", double_val));
     ASSERT_FALSE(config.Get("backbone", "double1", double_val));
-    ASSERT_NEAR(double_val, 1.0, 1e-12);
+    ASSERT_EQ(double_val, 1.0);  // problem 
     ASSERT_TRUE(config.DumpConfig("../conf.ut/dum.conf"));
 }
 

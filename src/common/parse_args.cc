@@ -84,7 +84,7 @@ bool ParserArgs::AddArgType(char short_name, const char * long_name, KeyFlag fla
         return false;
     }
     Option tmp;
-    tmp.long_name = long_name ? long_name : "";
+    tmp.long_name = long_name;
     tmp.short_name = short_name;
     tmp.flag = flag;
     args_.push_back(tmp);
@@ -94,13 +94,10 @@ bool ParserArgs::AddArgType(char short_name, const char * long_name, KeyFlag fla
 KeyFlag ParserArgs::GetKeyFlag(std::string &key) {
     for (uint32_t i = 0; i < args_.size(); ++i) {
         std::string short_name = "-";
+        std::string long_name = "--";
         short_name += args_[i].short_name;
-        std::string long_form;
-        if (!args_[i].long_name.empty()) {
-            long_form = std::string("--") + args_[i].long_name;
-        }
-        if (0 == key.compare(short_name) ||
-                (!long_form.empty() && 0 == key.compare(long_form))) {
+        long_name += args_[i].long_name;
+        if (0 == key.compare(short_name) || (0 == key.compare(long_name))) {
             RemoveKeyFlag(key);
             return args_[i].flag;
         }
@@ -213,13 +210,10 @@ bool ParserArgs::IsDuplicateKey(const std::string& key) {
     }
 
     for (uint32_t i = 0; i < args_.size(); ++i) {
-        const std::string& ln = args_[i].long_name;
-        if (!ln.empty() && key.compare(ln) == 0 &&
-                result_.find(std::string(1, args_[i].short_name)) != result_.end()) {
-            return true;
-        }
-        if (key.compare(std::string(1, args_[i].short_name)) == 0 && !ln.empty() &&
-                result_.find(ln) != result_.end()) {
+        if ((key.compare(args_[i].long_name) == 0 &&
+                result_.find(std::string(1, args_[i].short_name)) != result_.end()) ||
+                (key.compare(std::string(1, args_[i].short_name)) == 0 &&
+                result_.find(args_[i].long_name) != result_.end())) {
             return true;
         }
     }
