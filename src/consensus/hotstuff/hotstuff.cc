@@ -290,9 +290,9 @@ Status Hotstuff::Propose(
             max_view() <= last_leader_propose_view_ && 
             last_leader_propose_view_ >= leader_view) {
         SETH_DEBUG("pool: %d construct propose msg failed, %d, "
-            "max_view(): %lu last_leader_propose_view_: %lu",
+            "max_view(): %lu last_leader_propose_view_: %lu, leader_view: %lu",
             pool_idx_, (int32_t)Status::kError,
-            max_view(), last_leader_propose_view_);
+            max_view(), last_leader_propose_view_, leader_view);
         return Status::kError;
     }
 
@@ -609,6 +609,12 @@ void Hotstuff::ResendLeaderLatestProposeMessage() {
             latest_qc_item_ptr_->view());
 #endif
         latest_propose_msg_tm_ms_ = common::TimeUtils::TimestampMs();
+    } else {
+        SETH_DEBUG("pool: %d, no need resend leader latest propose message, "
+            "latest_leader_propose_message_ view: %lu, pacemaker cur view: %lu",
+            pool_idx_,
+            latest_leader_propose_message_ ? latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view() : 0,
+            pacemaker_->CurView());
     }
 }
 
