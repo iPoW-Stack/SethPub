@@ -91,7 +91,8 @@ private:
     void HandleAllNewBlock();
     void HandleMessage(const transport::MessagePtr& msg_ptr);
     pools::TxItemPtr HandleToTxsMessage(
-        const pools::protobuf::ShardToTxItem& msg_ptr);
+        const pools::protobuf::ShardToTxItem& msg_ptr,
+        bool allow_height_reduce);
     void HandleAllConsensusBlocks();
     void AddNewBlock(
         const std::shared_ptr<hotstuff::ViewBlockInfo>& block_item);
