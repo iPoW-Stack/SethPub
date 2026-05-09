@@ -1441,6 +1441,12 @@ void ViewBlockChain::RecoverHighViewBlock() {
 }
 
 void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_item) {
+    if (qc_item.view_block_hash().empty()) {
+        SETH_DEBUG("qc_item view_block_hash is empty for %u_%u_%lu",
+            qc_item.network_id(), qc_item.pool_index(), qc_item.view());
+        return;
+    }
+    
     auto view_block_ptr_info = Get(qc_item.view_block_hash());
     if (!view_block_ptr_info) {
         view_block_ptr_info = std::make_shared<ViewBlockInfo>();
