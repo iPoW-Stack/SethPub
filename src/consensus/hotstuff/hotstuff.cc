@@ -808,7 +808,11 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
         // We only advance if the propose view is AHEAD of our local view (not behind).
         // If propose view < out_view, the proposal is stale and should be rejected.
         if (view_item.qc().view() > out_view && view_item.qc().view() > 0) {
-            kv_sync_->AddSyncView(view_item.qc().network_id(), view_item.qc().pool_index(), view_item.qc().view());
+            kv_sync_->AddSyncView(
+                view_item.qc().network_id(), 
+                view_item.qc().pool_index(), 
+                view_item.qc().view(), 
+                sync::kSyncHigh);
             // auto& propose_qc = msg_ptr->header.hotstuff().pro_msg().view_item().qc();
             // // Advance the view block chain to accept the higher view.
             // // This triggers sync for the missing block if needed.
