@@ -1104,6 +1104,8 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
         if (latest_qc_item_ptr_ == nullptr ||
                 tc_ptr->view() >= latest_qc_item_ptr_->view()) {
             assert(IsQcTcValid(*tc_ptr));
+            SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
+            latest_leader_propose_message_ = nullptr;
             UpdateLatestQcItemPtr(tc_ptr);
         }
 
@@ -1481,13 +1483,11 @@ void Hotstuff::HandleVoteMsg(const transport::MessagePtr& msg_ptr) {
     }
     
     auto res = HandleVoteMsgImpl(msg_ptr);
-    if (res != Status::kSuccess) {
-        auto& vote_msg = msg_ptr->header.hotstuff().vote_msg();
-        if (vote_msg.leader_idx() == GetLocalMemberIdx()) {
-            // SETH_DEBUG("set latest_leader_propose_message_ = nullptr");
-            // latest_leader_propose_message_ = nullptr;
-        }
-    }
+    // if (res != Status::kSuccess) {
+    //     auto& vote_msg = msg_ptr->header.hotstuff().vote_msg();
+    //     if (vote_msg.leader_idx() == GetLocalMemberIdx()) {
+    //     }
+    // }
 }
 
 Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
@@ -1856,6 +1856,8 @@ void Hotstuff::HandleSyncedViewBlock(
         if (latest_qc_item_ptr_ == nullptr ||
                 vblock->qc().view() >= latest_qc_item_ptr_->view()) {
             if (IsQcTcValid(vblock->qc())) {
+                SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
+                latest_leader_propose_message_ = nullptr;
                 UpdateLatestQcItemPtr(std::make_shared<view_block::protobuf::QcItem>(vblock->qc()));
             }
         }
