@@ -559,14 +559,16 @@ int ToTxsPools::CreateToTxWithHeights(
         }
     }
 
-    // if (acc_amount_map.empty() && cross_set.empty()) {
+    // Even when no cross-shard TXs are found, we must still create the normal_to TX
+    // so that prev_to_heights_ watermarks advance. Without this, if there's a period
+    // of no cross-shard activity, the watermarks get permanently stuck and the
+    // statistic pipeline stalls. The TX will have empty tos() entries but carries
+    // valid to_heights that SaveLatestToTxsHeights uses to advance the watermarks.
     if (acc_amount_map.empty()) {
-//         assert(false);
-        SETH_DEBUG("acc amount map empty.");
-        return kPoolsError;
+        SETH_DEBUG("acc amount map empty, but heights advanced — creating watermark-only TX.");
     }
 
-    SETH_DEBUG("success statistic to txs prev_to_heights: %s, leader_to_heights: %s", 
+    SETH_DEBUG("success statistic to txs prev_to_heights: %s, leader_to_heights: %s",
         ProtobufToJson(*prev_to_heights).c_str(), 
         ProtobufToJson(leader_to_heights).c_str());
     for (auto iter = acc_amount_map.begin(); iter != acc_amount_map.end(); ++iter) {
