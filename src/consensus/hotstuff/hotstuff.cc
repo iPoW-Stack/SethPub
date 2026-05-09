@@ -22,25 +22,25 @@ inline uint64_t HotstuffLogHash64() {
     return g_hotstuff_log_hash64;
 }
 
-const char* HotstuffStatusName(hotstuff::Status status) {
+const char* HotstuffStatusName(seth::hotstuff::Status status) {
     switch (status) {
-    case hotstuff::Status::kSuccess: return "kSuccess";
-    case hotstuff::Status::kError: return "kError";
-    case hotstuff::Status::kNotFound: return "kNotFound";
-    case hotstuff::Status::kInvalidArgument: return "kInvalidArgument";
-    case hotstuff::Status::kBlsVerifyWaiting: return "kBlsVerifyWaiting";
-    case hotstuff::Status::kBlsVerifyFailed: return "kBlsVerifyFailed";
-    case hotstuff::Status::kAcceptorTxsEmpty: return "kAcceptorTxsEmpty";
-    case hotstuff::Status::kAcceptorBlockInvalid: return "kAcceptorBlockInvalid";
-    case hotstuff::Status::kOldView: return "kOldView";
-    case hotstuff::Status::kElectItemNotFound: return "kElectItemNotFound";
-    case hotstuff::Status::kWrapperTxsEmpty: return "kWrapperTxsEmpty";
-    case hotstuff::Status::kBlsHandled: return "kBlsHandled";
-    case hotstuff::Status::kTxRepeated: return "kTxRepeated";
-    case hotstuff::Status::kLackOfParentBlock: return "kLackOfParentBlock";
-    case hotstuff::Status::kNotExpectHash: return "kNotExpectHash";
-    case hotstuff::Status::kInvalidOpposedCount: return "kInvalidOpposedCount";
-    case hotstuff::Status::kLeaderInvalid: return "kLeaderInvalid";
+    case seth::hotstuff::Status::kSuccess: return "kSuccess";
+    case seth::hotstuff::Status::kError: return "kError";
+    case seth::hotstuff::Status::kNotFound: return "kNotFound";
+    case seth::hotstuff::Status::kInvalidArgument: return "kInvalidArgument";
+    case seth::hotstuff::Status::kBlsVerifyWaiting: return "kBlsVerifyWaiting";
+    case seth::hotstuff::Status::kBlsVerifyFailed: return "kBlsVerifyFailed";
+    case seth::hotstuff::Status::kAcceptorTxsEmpty: return "kAcceptorTxsEmpty";
+    case seth::hotstuff::Status::kAcceptorBlockInvalid: return "kAcceptorBlockInvalid";
+    case seth::hotstuff::Status::kOldView: return "kOldView";
+    case seth::hotstuff::Status::kElectItemNotFound: return "kElectItemNotFound";
+    case seth::hotstuff::Status::kWrapperTxsEmpty: return "kWrapperTxsEmpty";
+    case seth::hotstuff::Status::kBlsHandled: return "kBlsHandled";
+    case seth::hotstuff::Status::kTxRepeated: return "kTxRepeated";
+    case seth::hotstuff::Status::kLackOfParentBlock: return "kLackOfParentBlock";
+    case seth::hotstuff::Status::kNotExpectHash: return "kNotExpectHash";
+    case seth::hotstuff::Status::kInvalidOpposedCount: return "kInvalidOpposedCount";
+    case seth::hotstuff::Status::kLeaderInvalid: return "kLeaderInvalid";
     default: return "kUnknownStatus";
     }
 }
