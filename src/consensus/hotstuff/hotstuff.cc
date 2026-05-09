@@ -548,6 +548,13 @@ Status Hotstuff::Propose(
 }
 
 void Hotstuff::ResendLeaderLatestProposeMessage() {
+    SETH_DEBUG("pool: %d, call ResendLeaderLatestProposeMessage, latest_leader_propose_message_ %s, "
+        "latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view() %lu, "
+        "pacemaker_->CurView() %lu",
+        pool_idx_,
+        latest_leader_propose_message_ ? "is not null" : "is null",
+        latest_leader_propose_message_ ? latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view() : 0,
+        pacemaker_->CurView());
     if (latest_leader_propose_message_ &&
             latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().view() >= 
             pacemaker_->CurView()) {
@@ -634,8 +641,8 @@ void Hotstuff::HandleProposeMsg(const transport::MessagePtr& msg_ptr) {
         if (res == Status::kLeaderInvalid) {
             if (msg_ptr->is_leader) {
                 SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
-                latest_leader_propose_message_ = nullptr;
-                last_leader_propose_view_ = 0llu;
+                // latest_leader_propose_message_ = nullptr;
+                // last_leader_propose_view_ = 0llu;
             }
         }
 
