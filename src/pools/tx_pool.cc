@@ -425,7 +425,6 @@ void TxPool::GetTxSyncToLeader(
     static const uint32_t kMaxVoteMsgTxBytes = 768 * 1024;  // 768 KB for tx payload
     static const uint32_t kMaxTxPerAddr      = 256;         // per-address tx cap
     uint32_t accumulated_bytes = 0;
-
     for (auto iter = tx_map_.begin(); iter != tx_map_.end(); ++iter) {
         if ((uint32_t)txs->size() >= count) {
             break;
@@ -527,37 +526,35 @@ void TxPool::GetTxSyncToLeader(
 
             valid_nonce = tx_ptr->tx_info->nonce();
             tx_ptr->synced_leaders_.Set(leader_idx);
-            if (!IsUserTransaction(tx_ptr->tx_info->step())) {
-                // Per-address cap: at most kMaxTxPerAddr txs per address per sync round.
-                if (addr_tx_count >= kMaxTxPerAddr) {
-                    SETH_DEBUG("trace tx pool: %d, addr tx cap reached addr: %s, count: %u",
-                        pool_index_,
-                        common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
-                        addr_tx_count);
-                    break;
-                }
+            // Per-address cap: at most kMaxTxPerAddr txs per address per sync round.
+            if (addr_tx_count >= kMaxTxPerAddr) {
+                SETH_DEBUG("trace tx pool: %d, addr tx cap reached addr: %s, count: %u",
+                    pool_index_,
+                    common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
+                    addr_tx_count);
+                break;
+            }
 
-                // Byte budget: estimate serialized size and stop if over limit.
-                uint32_t tx_bytes = static_cast<uint32_t>(tx_ptr->tx_info->ByteSizeLong());
-                if (accumulated_bytes + tx_bytes > kMaxVoteMsgTxBytes) {
-                    SETH_DEBUG("trace tx pool: %d, byte budget exhausted: accumulated=%u tx_bytes=%u limit=%u",
-                        pool_index_, accumulated_bytes, tx_bytes, kMaxVoteMsgTxBytes);
-                    break;
-                }
+            // Byte budget: estimate serialized size and stop if over limit.
+            uint32_t tx_bytes = static_cast<uint32_t>(tx_ptr->tx_info->ByteSizeLong());
+            if (accumulated_bytes + tx_bytes > kMaxVoteMsgTxBytes) {
+                SETH_DEBUG("trace tx pool: %d, byte budget exhausted: accumulated=%u tx_bytes=%u limit=%u",
+                    pool_index_, accumulated_bytes, tx_bytes, kMaxVoteMsgTxBytes);
+                break;
+            }
 
-                SETH_DEBUG("trace tx pool: %d, success sync to leader: %u, tx_key: %s, from: %s, to: %s, nonce: %lu, step: %d", 
-                    pool_index_, leader_idx, common::Encode::HexEncode(tx_ptr->tx_key).c_str(), 
-                    (tx_ptr->tx_info->pubkey().size() == (security::kPublicKeyUncompressSize - 1)) ? 
-                        common::Encode::HexEncode(security_->GetAddress(tx_ptr->tx_info->pubkey())).c_str() : "",
-                    common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
-                    tx_ptr->tx_info->nonce(), (int32_t)tx_ptr->tx_info->step());
-                auto* tx = txs->Add();
-                *tx = *tx_ptr->tx_info;
-                accumulated_bytes += tx_bytes;
-                ++addr_tx_count;
-                if ((uint32_t)txs->size() >= count) {
-                    break;
-                }
+            SETH_DEBUG("trace tx pool: %d, success sync to leader: %u, tx_key: %s, from: %s, to: %s, nonce: %lu, step: %d", 
+                pool_index_, leader_idx, common::Encode::HexEncode(tx_ptr->tx_key).c_str(), 
+                (tx_ptr->tx_info->pubkey().size() == (security::kPublicKeyUncompressSize - 1)) ? 
+                    common::Encode::HexEncode(security_->GetAddress(tx_ptr->tx_info->pubkey())).c_str() : "",
+                common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
+                tx_ptr->tx_info->nonce(), (int32_t)tx_ptr->tx_info->step());
+            auto* tx = txs->Add();
+            *tx = *tx_ptr->tx_info;
+            accumulated_bytes += tx_bytes;
+            ++addr_tx_count;
+            if ((uint32_t)txs->size() >= count) {
+                break;
             }
         }
 
