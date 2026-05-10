@@ -1468,16 +1468,16 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
             // advance together. This keeps GetLeader()'s out_view consistent with the
             // network's current view, allowing the backup node to accept proposals
             // and participate in consensus while sync catches up.
-            if (high_view_block_ == nullptr || 
-                    high_view_block_->qc().view() < qc_item.view()) {
-                auto placeholder = std::make_shared<ViewBlock>();
-                *placeholder->mutable_qc() = qc_item;
-                high_view_block_ = placeholder;
-                high_view_block_view_.store(qc_item.view());
-                SETH_DEBUG("advanced high_view_block via QC placeholder: %u_%u_%lu, hash: %s",
-                    qc_item.network_id(), qc_item.pool_index(), qc_item.view(),
-                    common::Encode::HexEncode(qc_item.view_block_hash()).c_str());
-            }
+            // if (high_view_block_ == nullptr || 
+            //         high_view_block_->qc().view() < qc_item.view()) {
+            //     auto placeholder = std::make_shared<ViewBlock>();
+            //     *placeholder->mutable_qc() = qc_item;
+            //     high_view_block_ = placeholder;
+            //     high_view_block_view_.store(qc_item.view());
+            //     SETH_DEBUG("advanced high_view_block via QC placeholder: %u_%u_%lu, hash: %s",
+            //         qc_item.network_id(), qc_item.pool_index(), qc_item.view(),
+            //         common::Encode::HexEncode(qc_item.view_block_hash()).c_str());
+            // }
             return;
         }
 
