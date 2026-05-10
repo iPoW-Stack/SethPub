@@ -16,6 +16,37 @@ namespace seth {
 
 namespace hotstuff {
 
+namespace {
+
+// Consensus nodes persist receipt blobs via key_value_array during Store; synced
+// blocks often omit that array but carry the same data on BlockTx. Mirror
+// SaveKeyValue("tx", tx_hash, TxHashStatus) so receipt queries work on syncers.
+void PersistTxReceiptKvsFromBlockTxList(
+        const ViewBlock& view_block,
+        const std::shared_ptr<sethvm::SethhainHost>& seth_host_ptr,
+        const std::shared_ptr<protos::PrefixDb>& prefix_db) {
+    static const std::string kTxReceiptId = "tx";
+    const auto& bi = view_block.block_info();
+    for (int32_t i = 0; i < bi.tx_list_size(); ++i) {
+        const auto& tx = bi.tx_list(i);
+        if (tx.tx_hash().empty()) {
+            continue;
+        }
+        block::protobuf::TxHashStatus tx_hash_status;
+        tx_hash_status.set_status(static_cast<int32_t>(tx.status()));
+        if (tx.has_output()) {
+            tx_hash_status.set_output(tx.output());
+        }
+        *tx_hash_status.mutable_events() = tx.events();
+        const std::string val = tx_hash_status.SerializeAsString();
+        const std::string compound_key = kTxReceiptId + tx.tx_hash();
+        prefix_db->SaveTemporaryKv(compound_key, val, seth_host_ptr->db_batch_);
+        seth_host_ptr->SaveKeyValue(kTxReceiptId, tx.tx_hash(), val);
+    }
+}
+
+}  // namespace
+
 ViewBlockChain::ViewBlockChain() {}
 
 void ViewBlockChain::Init(
@@ -113,6 +144,8 @@ Status ViewBlockChain::Store(
                 common::Encode::HexEncode(view_block->block_info().key_value_array(i).value()).c_str());
         }
 
+        PersistTxReceiptKvsFromBlockTxList(*view_block, seth_host_ptr, prefix_db_);
+
         for (int32_t i = 0; i < view_block->block_info().joins_size(); i++) {
             auto& join_info = view_block->block_info().joins(i);
             security::Ecdsa ecdsa;
@@ -128,6 +161,10 @@ Status ViewBlockChain::Store(
 #endif
             prefix_db_->AddBlsVerifyG2(addr, join_info.g2_req(), seth_host_ptr->db_batch_);
         }
+    } else if (balane_map_ptr == nullptr) {
+        // Cross/root chains skip the local-chain KV bootstrap above; still persist
+        // per-tx receipts from tx_list for synced blocks.
+        PersistTxReceiptKvsFromBlockTxList(*view_block, seth_host_ptr, prefix_db_);
     }
 
 #ifndef NDEBUG
