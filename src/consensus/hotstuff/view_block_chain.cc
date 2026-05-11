@@ -7,7 +7,6 @@
 #include "consensus/hotstuff/block_acceptor.h"
 #include "consensus/hotstuff/view_block_chain.h"
 #include "consensus/hotstuff/types.h"
-#include "protos/block.pb.h"
 #include "protos/pools.pb.h"
 #include "security/ecdsa/ecdsa.h"
 #include "security/ecdsa/secp256k1.h"
@@ -15,42 +14,6 @@
 namespace seth {
 
 namespace hotstuff {
-
-namespace {
-
-// Consensus nodes persist receipt blobs via key_value_array during Store; synced
-// blocks often omit that array but carry the same data on BlockTx. Mirror
-// SaveKeyValue("tx", tx_hash, TxHashStatus) so receipt queries work on syncers.
-void PersistTxReceiptKvsFromBlockTxList(
-        const ViewBlock& view_block,
-        const std::shared_ptr<sethvm::SethhainHost>& seth_host_ptr,
-        const std::shared_ptr<protos::PrefixDb>& prefix_db) {
-    static const std::string kTxReceiptId = "tx";
-    const auto& bi = view_block.block_info();
-    for (int32_t i = 0; i < bi.tx_list_size(); ++i) {
-        const auto& tx = bi.tx_list(i);
-        if (tx.tx_hash().empty()) {
-            continue;
-        }
-        block::protobuf::TxHashStatus tx_hash_status;
-        tx_hash_status.set_status(static_cast<int32_t>(tx.status()));
-        if (tx.has_output()) {
-            tx_hash_status.set_output(tx.output());
-        }
-        *tx_hash_status.mutable_events() = tx.events();
-        const std::string val = tx_hash_status.SerializeAsString();
-        const std::string compound_key = kTxReceiptId + tx.tx_hash();
-        prefix_db->SaveTemporaryKv(compound_key, val, seth_host_ptr->db_batch_);
-        seth_host_ptr->SaveKeyValue(kTxReceiptId, tx.tx_hash(), val);
-        SETH_DEBUG("persist tx receipt kv, tx hash: %s, status: %d, output size: %zu, events size: %d",
-            common::Encode::HexEncode(tx.tx_hash()).c_str(),
-            tx.status(),
-            tx.has_output() ? tx.output().size() : 0,
-            tx.events().size());
-    }
-}
-
-}  // namespace
 
 ViewBlockChain::ViewBlockChain() {}
 
@@ -111,17 +74,6 @@ Status ViewBlockChain::Store(
             view_block->qc().view(),
             ProtobufToJson(cons_debug).c_str());        
 #endif
-        // Block is already in view_blocks_info_; consensus may have inserted a
-        // placeholder before tx_list / receipts were present. Non-consensus nodes
-        // still need SaveKeyValue("tx", ...) for receipt RPC — that path was
-        // previously skipped entirely on this early return.
-        if (balane_map_ptr == nullptr) {
-            auto sh = seth_host_ptr;
-            if (sh == nullptr) {
-                sh = std::make_shared<sethvm::SethhainHost>();
-            }
-            PersistTxReceiptKvsFromBlockTxList(*view_block, sh, prefix_db_);
-        }
         return Status::kSuccess;
     }
 
@@ -160,8 +112,6 @@ Status ViewBlockChain::Store(
                 common::Encode::HexEncode(view_block->block_info().key_value_array(i).value()).c_str());
         }
 
-        PersistTxReceiptKvsFromBlockTxList(*view_block, seth_host_ptr, prefix_db_);
-
         for (int32_t i = 0; i < view_block->block_info().joins_size(); i++) {
             auto& join_info = view_block->block_info().joins(i);
             security::Ecdsa ecdsa;
@@ -177,10 +127,6 @@ Status ViewBlockChain::Store(
 #endif
             prefix_db_->AddBlsVerifyG2(addr, join_info.g2_req(), seth_host_ptr->db_batch_);
         }
-    } else if (balane_map_ptr == nullptr) {
-        // Cross/root chains skip the local-chain KV bootstrap above; still persist
-        // per-tx receipts from tx_list for synced blocks.
-        PersistTxReceiptKvsFromBlockTxList(*view_block, seth_host_ptr, prefix_db_);
     }
 
 #ifndef NDEBUG
