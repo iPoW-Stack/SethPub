@@ -30,7 +30,9 @@ void BloomFilter::Deserialize(const uint64_t* data, uint32_t count, uint32_t has
 }
 
 std::string BloomFilter::Serialize() const {
-    assert(!data_.empty());
+    if (data_.empty()) {
+        return {};
+    }
     uint64_t* data = new uint64_t[data_.size()];
     for (uint32_t i = 0; i < data_.size(); ++i) {
         data[i] = data_[i];
@@ -49,6 +51,9 @@ BloomFilter::BloomFilter(const std::vector<uint64_t>& data, uint32_t hash_count)
 BloomFilter::~BloomFilter() {}
 
 void BloomFilter::Add(uint64_t hash) {
+    if (data_.empty() || hash_count_ == 0) {
+        return;
+    }
     uint32_t hash_high = static_cast<uint32_t>((hash >> 32) & 0x00000000FFFFFFFFull);
     uint32_t hash_low = static_cast<uint32_t>(hash & 0x00000000FFFFFFFFull);
     for (uint32_t i = 0; i < hash_count_; ++i) {
@@ -60,6 +65,9 @@ void BloomFilter::Add(uint64_t hash) {
 }
 
 bool BloomFilter::Contain(uint64_t hash) const{
+    if (data_.empty() || hash_count_ == 0) {
+        return false;
+    }
     uint32_t hash_high = static_cast<uint32_t>((hash >> 32) & 0x00000000FFFFFFFFull);
     uint32_t hash_low = static_cast<uint32_t>(hash & 0x00000000FFFFFFFFull);
     for (uint32_t i = 0; i < hash_count_; ++i) {

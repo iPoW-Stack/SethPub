@@ -291,6 +291,7 @@ add_subdirectory(${SRC_DIR}/pki pki)
 
 # Tests (Consider wrapping in 'if(BUILD_TESTING)' to speed up Release builds if tests aren't needed)
 add_subdirectory(${SRC_DIR}/common/tests common_test)
+add_subdirectory(${SRC_DIR}/network/tests network_test)
 add_subdirectory(${SRC_DIR}/broadcast/tests broadcast_test)
 add_subdirectory(${SRC_DIR}/security/tests security_test)
 add_subdirectory(${SRC_DIR}/transport/tests transport_test)
