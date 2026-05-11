@@ -182,7 +182,9 @@ module_coverage_filter() {
     local module_dir="$1"
     case "$module_dir" in
         common)
-            echo ".*/src/common/defer\\.h$"
+            # Whole library: defer.h alone has no gcov-counted branches (templates only),
+            # which produced misleading "0 out of 0" branch lines in module summaries.
+            echo ".*/src/common/.*"
             ;;
         broadcast)
             echo ".*/src/broadcast/broadcast_utils\\.h$"
