@@ -1,5 +1,14 @@
 #include "consensus/hotstuff/block_acceptor.h"
 
+#include <algorithm>
+#include <atomic>
+#include <condition_variable>
+#include <functional>
+#include <mutex>
+#include <queue>
+#include <thread>
+#include <vector>
+
 #include "bls/agg_bls.h"
 #include "common/defer.h"
 #include "common/utils.h"
@@ -34,83 +43,130 @@ namespace seth {
 
 namespace hotstuff {
 
-BlockAcceptor::BlockAcceptor() {}
+namespace {
 
-BlockAcceptor::~BlockAcceptor() {
-    StopVerifyThreadPool();
-}
-
-// ── Persistent verify thread pool ────────────────────────────────────────────
-
-void BlockAcceptor::StartVerifyThreadPool(int n) {
-    verify_stop_ = false;
-    verify_threads_.reserve(n);
-    for (int i = 0; i < n; ++i) {
-        verify_threads_.emplace_back([this] {
-            while (true) {
-                std::function<void()> fn;
-                {
-                    std::unique_lock<std::mutex> lk(verify_mutex_);
-                    verify_cv_.wait(lk, [this] {
-                        return verify_stop_ || !verify_task_queue_.empty();
-                    });
-                    if (verify_stop_ && verify_task_queue_.empty()) return;
-                    fn = std::move(verify_task_queue_.front().fn);
-                    verify_task_queue_.pop();
-                }
-                fn();
-            }
-        });
-    }
-}
-
-void BlockAcceptor::StopVerifyThreadPool() {
-    {
-        std::lock_guard<std::mutex> lk(verify_mutex_);
-        verify_stop_ = true;
-    }
-    verify_cv_.notify_all();
-    for (auto& t : verify_threads_) {
-        if (t.joinable()) t.join();
-    }
-    verify_threads_.clear();
-}
-
-// Submit tasks and block until all complete.
-void BlockAcceptor::RunVerifyBatch(std::vector<std::function<void()>>& tasks) {
-    if (tasks.empty()) return;
-
-    const int n = static_cast<int>(tasks.size());
-    std::atomic<int> remaining(n);
-    // Use a shared_ptr so the mutex/cv outlive RunVerifyBatch even if a worker
-    // fires notify_one() after the wait() predicate check but before wait() sleeps.
-    struct Sync {
-        std::mutex mu;
-        std::condition_variable cv;
+// One process-wide pool: every BlockAcceptor shares the same workers so total
+// verify threads stay at max(2, 2 * hardware_concurrency()) instead of
+// (that count) * (number of tx pools).
+struct GlobalTxVerifyPool {
+    struct Task {
+        std::function<void()> fn;
     };
-    auto sync = std::make_shared<Sync>();
 
-    {
-        std::lock_guard<std::mutex> lk(verify_mutex_);
-        for (auto& fn : tasks) {
-            verify_task_queue_.push({
-                [sync, &remaining, f = std::move(fn)]() mutable {
+    void Acquire() {
+        std::lock_guard<std::mutex> lk(mu_);
+        if (ref_count_++ > 0) {
+            return;
+        }
+        stop_ = false;
+        int cores = static_cast<int>(std::thread::hardware_concurrency());
+        if (cores <= 0) {
+            cores = 4;
+        }
+        const int nthreads = std::max(2, 2 * cores);
+        threads_.reserve(nthreads);
+        for (int i = 0; i < nthreads; ++i) {
+            threads_.emplace_back([this] { WorkerLoop(); });
+        }
+    }
+
+    void Release() {
+        {
+            std::lock_guard<std::mutex> lk(mu_);
+            if (--ref_count_ > 0) {
+                return;
+            }
+            stop_ = true;
+        }
+        cv_.notify_all();
+        for (auto& t : threads_) {
+            if (t.joinable()) {
+                t.join();
+            }
+        }
+        std::lock_guard<std::mutex> lk(mu_);
+        threads_.clear();
+        while (!queue_.empty()) {
+            queue_.pop();
+        }
+        stop_ = false;
+    }
+
+    void RunVerifyBatch(std::vector<std::function<void()>>& tasks) {
+        if (tasks.empty()) {
+            return;
+        }
+
+        const int n = static_cast<int>(tasks.size());
+        std::atomic<int> remaining(n);
+        struct Sync {
+            std::mutex mu;
+            std::condition_variable cv;
+        };
+        auto sync = std::make_shared<Sync>();
+
+        {
+            std::lock_guard<std::mutex> lk(mu_);
+            for (auto& fn : tasks) {
+                queue_.push({[sync, &remaining, f = std::move(fn)]() mutable {
                     f();
-                    // Decrement under the lock so the waiter cannot miss the
-                    // notification between checking remaining and sleeping.
                     {
                         std::lock_guard<std::mutex> g(sync->mu);
                         --remaining;
                     }
                     sync->cv.notify_one();
+                }});
+            }
+        }
+        cv_.notify_all();
+
+        std::unique_lock<std::mutex> lk(sync->mu);
+        sync->cv.wait(lk, [&remaining] { return remaining.load() == 0; });
+    }
+
+private:
+    void WorkerLoop() {
+        while (true) {
+            std::function<void()> fn;
+            {
+                std::unique_lock<std::mutex> lk(mu_);
+                cv_.wait(lk, [this] { return stop_ || !queue_.empty(); });
+                if (stop_ && queue_.empty()) {
+                    return;
                 }
-            });
+                fn = std::move(queue_.front().fn);
+                queue_.pop();
+            }
+            fn();
         }
     }
-    verify_cv_.notify_all();
 
-    std::unique_lock<std::mutex> lk(sync->mu);
-    sync->cv.wait(lk, [&remaining] { return remaining.load() == 0; });
+    std::mutex mu_;
+    std::condition_variable cv_;
+    std::queue<Task> queue_;
+    std::vector<std::thread> threads_;
+    bool stop_ = false;
+    int ref_count_ = 0;
+};
+
+GlobalTxVerifyPool& GlobalPool() {
+    static GlobalTxVerifyPool pool;
+    return pool;
+}
+
+} // namespace
+
+BlockAcceptor::BlockAcceptor() {}
+
+BlockAcceptor::~BlockAcceptor() {
+    if (tx_verify_pool_acquired_) {
+        GlobalPool().Release();
+        tx_verify_pool_acquired_ = false;
+    }
+}
+
+void BlockAcceptor::RunVerifyBatch(std::vector<std::function<void()>>& tasks) {
+    GlobalPool().RunVerifyBatch(tasks);
 }
 
 void BlockAcceptor::Init(
@@ -143,12 +199,9 @@ void BlockAcceptor::Init(
     tx_pools_ = std::make_shared<consensus::WaitingTxsPools>(pools_mgr_, block_mgr_, tm_block_mgr_);
     prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
 
-    // Start persistent verify thread pool — threads are reused across all addTxsToPool calls.
-    // Use min(hw_concurrency, 8) threads; at least 2.
-    int nthreads = static_cast<int>(std::thread::hardware_concurrency());
-    if (nthreads < 2)  nthreads = 2;
-    if (nthreads > 8)  nthreads = 8;
-    StartVerifyThreadPool(nthreads);
+    // Share one verify pool across all BlockAcceptors (see GlobalTxVerifyPool).
+    GlobalPool().Acquire();
+    tx_verify_pool_acquired_ = true;
 }
 
 // Accept verifies the new proposal information of the Leader, executes txs, and modifies the block

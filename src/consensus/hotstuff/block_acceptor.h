@@ -8,18 +8,13 @@
 #include <consensus/hotstuff/hotstuff_utils.h>
 #include <consensus/zbft/waiting_txs_pools.h>
 #include <dht/dht_key.h>
-#include <functional>
 #include <network/route.h>
 #include <protos/block.pb.h>
 #include <protos/pools.pb.h>
 #include <timeblock/time_block_manager.h>
 
 #include <atomic>
-#include <condition_variable>
 #include <functional>
-#include <mutex>
-#include <queue>
-#include <thread>
 #include <vector>
 
 namespace seth {
@@ -196,21 +191,11 @@ public:
     std::shared_ptr<ViewBlockChain> view_block_chain_;
     common::LRUSet<std::string> checked_tx_hash_{10 * common::kMaxTxCount};
 
-    // ── Persistent verify thread pool ────────────────────────────────────────
-    // Threads are created once in Init() and reused across all addTxsToPool calls,
-    // eliminating per-call thread creation/destruction overhead.
-    struct VerifyTask {
-        std::function<void()> fn;
-    };
-    std::vector<std::thread>        verify_threads_;
-    std::queue<VerifyTask>          verify_task_queue_;
-    std::mutex                      verify_mutex_;
-    std::condition_variable         verify_cv_;
-    bool                            verify_stop_ = false;
+    // Set after successful attach to the global tx verify pool in Init().
+    bool tx_verify_pool_acquired_ = false;
 
-    void StartVerifyThreadPool(int n);
-    void StopVerifyThreadPool();
-    // Submit n tasks and block until all complete.
+    // Tx signature verify uses a single process-wide thread pool (shared by all
+    // pools); see block_acceptor.cc. RunVerifyBatch forwards to that pool.
     void RunVerifyBatch(std::vector<std::function<void()>>& tasks);
 
 };
