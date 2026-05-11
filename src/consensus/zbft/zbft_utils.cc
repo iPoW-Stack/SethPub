@@ -1,58 +1,33 @@
 #include "consensus/zbft/zbft_utils.h"
 
-#include "consensus/consensus_utils.h"
-#include "elect/elect_manager.h"
-#include "network/network_utils.h"
+#include "common/hash.h"
+#include "common/utils.h"
 
 namespace seth {
-
 namespace consensus {
 
 std::string StatusToString(uint32_t status) {
-    switch (status) {
-    case kConsensusInit:
-        return "bft_init";
-    case kConsensusPrepare:
-        return "bft_prepare";
-    case kConsensusPreCommit:
-        return "bft_precommit";
-    case kConsensusCommit:
-        return "bft_commit";
-    case kConsensusCommited:
-        return "bft_success";
-    default:
-        return "unknown";
-    }
+    return std::to_string(status);
 }
 
 std::string GetTxValueProtoHash(const std::string& key, const std::string& value) {
+    (void)key;
+    (void)value;
     return "";
 }
 
-
 std::string GetCommitedBlockHash(const std::string& prepare_hash) {
-    auto tmp_hash = prepare_hash;
-    bool is_commited_block = true;
-    tmp_hash.append((char*)&is_commited_block, sizeof(is_commited_block));
-    tmp_hash = common::Hash::keccak256(tmp_hash);
-    return tmp_hash;
+    return common::Hash::keccak256(prepare_hash + "commited");
 }
 
 uint32_t NewAccountGetNetworkId(const std::string& addr) {
-    return 3;
-    // return static_cast<uint32_t>((common::Hash::Hash64(addr) *
-    //     vss::VssManager::Instance()->EpochRandom()) %
-    //     common::GlobalInfo::Instance()->consensus_shard_count()) +
-    //     network::kConsensusShardBeginNetworkId;
+    (void)addr;
+    return static_cast<uint32_t>(common::kConsensusCreateAcount);
 }
 
 bool IsRootSingleBlockTx(uint32_t tx_type) {
-    if (tx_type == common::kConsensusRootElectShard ||
-            tx_type == common::kConsensusRootTimeBlock) {
-        return true;
-    }
-
-    return false;
+    return tx_type == common::kConsensusRootElectShard ||
+            tx_type == common::kConsensusRootTimeBlock;
 }
 
 bool IsShardSingleBlockTx(uint32_t tx_type) {
@@ -60,5 +35,4 @@ bool IsShardSingleBlockTx(uint32_t tx_type) {
 }
 
 }  // namespace consensus
-
-}  //namespace seth
+}  // namespace seth
