@@ -35,7 +35,7 @@ protected:
             hotstuff::BalanceAndNonceMap& acc_balance_map,
             block::protobuf::BlockTx& block_tx) {
         uint32_t status_code = 0;
-        seth_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
+        // seth_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
         return consensus::kConsensusSuccess;
     }
 
