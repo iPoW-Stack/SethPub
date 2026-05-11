@@ -79,6 +79,9 @@ struct ElectItem {
 };
 
 static inline bool IsValidBigInt(const std::string& big_int) {
+    if (big_int.empty()) {
+        return false;
+    }
     for (size_t i = 0; i < big_int.size(); ++i)
     {
         if (big_int[i] >= '0' && big_int[i] <= '9') {
