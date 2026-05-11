@@ -1,9 +1,17 @@
 #include "websocket/websocket_server.h"
 
 #include <boost/asio/ip/address_v4.hpp>
-#include <boost/version.hpp>
-#if BOOST_VERSION >= 108700
-#include <boost/asio/ip/make_address.hpp>
+#include <stdexcept>
+#include <string>
+
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
+#include <arpa/inet.h>
 #endif
 
 #include "common/global_info.h"
@@ -11,10 +19,18 @@
 namespace {
 
 boost::asio::ip::address_v4 ParseListenIpv4(std::string const& ip) {
-#if BOOST_VERSION >= 108700
-    return boost::asio::ip::make_address_v4(ip);
+#ifdef _WIN32
+    IN_ADDR addr{};
+    if (InetPtonA(AF_INET, ip.c_str(), &addr) != 1) {
+        throw std::runtime_error("invalid IPv4 for websocket listen: " + ip);
+    }
+    return boost::asio::ip::address_v4{ntohl(addr.S_un.S_addr)};
 #else
-    return boost::asio::ip::address_v4::from_string(ip);
+    in_addr addr{};
+    if (inet_pton(AF_INET, ip.c_str(), &addr) != 1) {
+        throw std::runtime_error("invalid IPv4 for websocket listen: " + ip);
+    }
+    return boost::asio::ip::address_v4{ntohl(addr.s_addr)};
 #endif
 }
 
