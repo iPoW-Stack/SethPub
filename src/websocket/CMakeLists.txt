@@ -7,10 +7,10 @@ if(EXISTS "${_WEBSOCKETPP_VENDOR_INCLUDE}/websocketpp/common/thread.hpp")
 else()
     include(FetchContent)
     # Boost 1.87+ removed io_service, resolver::query/iterator, timer::expires_from_now, address_v4::from_string.
-    # develop@bce25867 still targeted old Asio; use upstream commit that migrates to io_context (PR #1164).
+    # PR #1164 fix (io_context migration) is not merged on zaphoyd/develop; the SHA exists on this fork's master.
     FetchContent_Declare(
         websocketpp
-        GIT_REPOSITORY https://github.com/zaphoyd/websocketpp.git
+        GIT_REPOSITORY https://github.com/amini-allight/websocketpp.git
         GIT_TAG 363ec80247782e4b933f93079f02a0835de28570
     )
     FetchContent_GetProperties(websocketpp)
