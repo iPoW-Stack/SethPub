@@ -6,6 +6,7 @@
 #include "common/global_info.h"
 #include "common/utils.h"
 #include "dht/base_dht.h"
+#include "dht/dht_key.h"
 #include "dht/dht_utils.h"
 #include "network/dht_manager.h"
 #include "network/network_proto.h"
