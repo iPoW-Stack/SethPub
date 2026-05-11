@@ -2,7 +2,10 @@ cmake_minimum_required(VERSION 3.8)
 
 add_compile_options(-Wno-unused-parameter)
 
-aux_source_directory(./ ck_test_src)
+# Header-only / light ck_utils coverage (table names, structs). Heavy client tests stay separate.
+set(ck_test_src
+    test_smoke.cc
+    test_ck_utils_branches.cc)
 add_executable(ck_test ${ck_test_src})
 
 add_dependencies(ck_test ck)
