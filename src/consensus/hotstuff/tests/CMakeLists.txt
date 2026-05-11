@@ -8,4 +8,24 @@ set(hotstuff_test_src test_hotstuff_placeholder.cc)
 add_executable(hotstuff_test ${hotstuff_test_src})
 
 add_dependencies(hotstuff_test consensus)
-target_link_libraries(hotstuff_test PRIVATE consensus gmp gmpxx gtest gtest_main gmock gmock_main pthread dl)
+# consensus -> elect -> block; block needs pools symbols (BlockManager, etc.)
+target_link_libraries(
+    hotstuff_test
+    PRIVATE
+    consensus
+    block
+    elect
+    timeblock
+    pools
+    db
+    protos
+    common
+    security
+    gmp
+    gmpxx
+    gtest
+    gtest_main
+    gmock
+    gmock_main
+    pthread
+    dl)
