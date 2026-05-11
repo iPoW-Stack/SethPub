@@ -799,9 +799,18 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                 break;
             }
 
-            synced_res_map_[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->block_info().height()] = std::make_pair((verify_res == 0), pb_vblock);
-            if (pb_vblock->qc().network_id() != network::kRootCongressNetworkId) {
-                ++not_root_synced_res_map_count_;
+            {
+                // Only increment the counter for genuinely new entries.
+                // If the same [network][pool][height] already exists in the map
+                // (duplicate sync response from multiple peers), the assignment
+                // overwrites the value but must NOT increment the counter again,
+                // otherwise not_root_synced_res_map_count_ grows unboundedly.
+                auto& height_map = synced_res_map_[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()];
+                bool is_new_entry = (height_map.find(pb_vblock->block_info().height()) == height_map.end());
+                height_map[pb_vblock->block_info().height()] = std::make_pair((verify_res == 0), pb_vblock);
+                if (pb_vblock->qc().network_id() != network::kRootCongressNetworkId && is_new_entry) {
+                    ++not_root_synced_res_map_count_;
+                }
             }
 
             if (verify_res != 0) {
@@ -1026,15 +1035,19 @@ void KeyValueSync::SyncAllLatestBlocks() {
             SETH_DEBUG("  pool %u net %u: latest_height=%lu, synced entries=%lu",
                 i, network_id, latest_height, pool_iter->second.size());
 
-            auto latest_height_iter = pool_iter->second.find(latest_height);
-            if (latest_height_iter != pool_iter->second.end()) {
-                auto now_size = pool_iter->second.size();
-                // Fix: erase up to AND INCLUDING latest_height (it's already committed).
-                // Old code used erase(begin, iter) which excludes iter itself,
-                // leaving committed heights in the map → peer re-sends them.
-                pool_iter->second.erase(pool_iter->second.begin(), std::next(latest_height_iter));
-                if (network_id != network::kRootCongressNetworkId) {
-                    not_root_synced_res_map_count_ -= now_size - pool_iter->second.size();
+            // Always erase all entries with height <= latest_height, regardless
+            // of whether latest_height itself is in the map. The old code only
+            // cleaned up when latest_height was present, leaving stale entries
+            // when blocks were committed via consensus (not sync), causing
+            // not_root_synced_res_map_count_ to grow unboundedly.
+            {
+                auto erase_end = pool_iter->second.upper_bound(latest_height);
+                if (erase_end != pool_iter->second.begin()) {
+                    auto now_size = pool_iter->second.size();
+                    pool_iter->second.erase(pool_iter->second.begin(), erase_end);
+                    if (network_id != network::kRootCongressNetworkId) {
+                        not_root_synced_res_map_count_ -= now_size - pool_iter->second.size();
+                    }
                 }
             }
 
@@ -1094,13 +1107,15 @@ void KeyValueSync::SyncAllLatestBlocks() {
             continue;
         }
 
-        auto latest_height_iter = pool_iter->second.find(latest_height);
-        if (latest_height_iter != pool_iter->second.end()) {
-            auto now_size = pool_iter->second.size();
-            // Same fix: include latest_height in erase range
-            pool_iter->second.erase(pool_iter->second.begin(), std::next(latest_height_iter));
-            if (network_id != network::kRootCongressNetworkId) {
-                not_root_synced_res_map_count_ -= now_size - pool_iter->second.size();
+        // Same fix: erase all entries with height <= latest_height unconditionally.
+        {
+            auto erase_end = pool_iter->second.upper_bound(latest_height);
+            if (erase_end != pool_iter->second.begin()) {
+                auto now_size = pool_iter->second.size();
+                pool_iter->second.erase(pool_iter->second.begin(), erase_end);
+                if (network_id != network::kRootCongressNetworkId) {
+                    not_root_synced_res_map_count_ -= now_size - pool_iter->second.size();
+                }
             }
         }
 
