@@ -1,53 +1,10 @@
 #include "big_num/snark.h"
 
-#include <cstdint>
+#include <cassert>
+#include <cstring>
 #include <stdexcept>
-#include <string>
-#include <vector>
 
 #include "libff/common/profiling.hpp"
-
-namespace {
-
-// Wire format: 32-byte big-endian unsigned integer in [0, p). Use libff's
-// from_words/to_words so encoding matches Fp_model::bigint_repr / stream
-// format; the old hand-rolled bigint<->bytes path could disagree with
-// as_bigint() for some values (e.g. 2*G round-tripped in G1AddCommutative).
-constexpr size_t kAltBn128FqBytes = 32;
-constexpr size_t kAltBn128FqWords = kAltBn128FqBytes / sizeof(uint64_t);
-
-bool FqFromCanonicalBe32(const std::string& be32, libff::alt_bn128_Fq* out) {
-    if (be32.size() < kAltBn128FqBytes || out == nullptr) {
-        return false;
-    }
-    std::vector<uint64_t> words(kAltBn128FqWords, 0);
-    for (size_t wi = 0; wi < kAltBn128FqWords; ++wi) {
-        uint64_t w = 0;
-        for (size_t b = 0; b < sizeof(uint64_t); ++b) {
-            w |= static_cast<uint64_t>(static_cast<unsigned char>(
-                     be32[(kAltBn128FqWords - 1 - wi) * sizeof(uint64_t) + b]))
-                << (8 * b);
-        }
-        words[wi] = w;
-    }
-    return out->from_words(words);
-}
-
-std::string FqToCanonicalBe32(const libff::alt_bn128_Fq& fe) {
-    std::vector<uint64_t> const words = fe.to_words();
-    const size_t nw = words.size();
-    std::string out(kAltBn128FqBytes, '\0');
-    for (size_t wi = 0; wi < kAltBn128FqWords; ++wi) {
-        const uint64_t w = (wi < nw) ? words[wi] : 0ULL;
-        for (size_t b = 0; b < sizeof(uint64_t); ++b) {
-            out[(kAltBn128FqWords - 1 - wi) * sizeof(uint64_t) + b] =
-                static_cast<char>((w >> (8 * b)) & 0xff);
-        }
-    }
-    return out;
-}
-
-}  // namespace
 
 namespace seth {
 
@@ -151,8 +108,8 @@ libff::bigint<libff::alt_bn128_q_limbs> Snark::ToLibsnarkBigint(const std::strin
 }
 
 std::string Snark::FromLibsnarkBigint(libff::bigint<libff::alt_bn128_q_limbs> const& b) {
-    static size_t const N = static_cast<size_t>(b.N);
-    static size_t const L = sizeof(b.data[0]);
+    const size_t N = static_cast<size_t>(b.N);
+    const size_t L = sizeof(b.data[0]);
     static_assert(sizeof(mp_limb_t) == L, "Unexpected limb size in libff::bigint.");
     std::string out_x;
     out_x.resize(32);
@@ -166,12 +123,8 @@ std::string Snark::FromLibsnarkBigint(libff::bigint<libff::alt_bn128_q_limbs> co
 }
 
 libff::alt_bn128_Fq Snark::DecodeFqElement(const std::string& data) {
-    assert(data.size() >= kAltBn128FqBytes);
-    libff::alt_bn128_Fq fe;
-    if (!FqFromCanonicalBe32(data.substr(0, kAltBn128FqBytes), &fe)) {
-        throw std::runtime_error("DecodeFqElement: value out of field range");
-    }
-    return fe;
+    assert(data.size() >= 32);
+    return libff::alt_bn128_Fq(ToLibsnarkBigint(data.substr(0, 32)));
 }
 
 libff::alt_bn128_G1 Snark::DecodePointG1(const std::string& data) {
@@ -196,7 +149,7 @@ std::string Snark::EncodePointG1(libff::alt_bn128_G1 p) {
     }
 
     p.to_affine_coordinates();
-    return FqToCanonicalBe32(p.X) + FqToCanonicalBe32(p.Y);
+    return FromLibsnarkBigint(p.X.as_bigint()) + FromLibsnarkBigint(p.Y.as_bigint());
 }
 
 libff::alt_bn128_Fq2 Snark::DecodeFq2Element(const std::string& data) {
