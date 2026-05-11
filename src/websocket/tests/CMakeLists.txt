@@ -13,4 +13,30 @@ set_target_properties(websocket_test PROPERTIES
 )
 
 add_dependencies(websocket_test websocket)
-target_link_libraries(websocket_test PRIVATE websocket boost_system gtest gtest_main gmock gmock_main pthread dl)
+# common/hash.cc pulls GM SM3; mirror common_test (Linux) so symbols resolve.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(
+        websocket_test
+        PRIVATE
+        websocket
+        boost_system
+        gmssl
+        gtest
+        gtest_main
+        gmock
+        gmock_main
+        pthread
+        dl)
+else()
+    target_link_libraries(
+        websocket_test
+        PRIVATE
+        websocket
+        boost_system
+        gtest
+        gtest_main
+        gmock
+        gmock_main
+        pthread
+        dl)
+endif()

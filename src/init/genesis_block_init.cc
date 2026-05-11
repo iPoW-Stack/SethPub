@@ -223,6 +223,8 @@ void ComputeG2ForNode(
         uint32_t change_idx = 0;
         auto new_g2 = polynomial[change_idx] * libff::alt_bn128_G2::one();
         auto old_g2 = polynomial[change_idx] * libff::alt_bn128_G2::one();
+        (void)new_g2;
+        (void)old_g2;
         for (uint32_t mem_idx = 0; mem_idx < valid_n; ++mem_idx) {
             if (mem_idx == local_member_index_) {
                 continue;

@@ -30,6 +30,8 @@ enum ChainType : int32_t {
     kCrossShardingChain = 2,
 };
 
+/** Chain id for constexpr contexts; must match `kGlobalChainId` in utils.cc. */
+inline constexpr uint64_t kGlobalChainIdValue = 3355103125ULL;
 extern const uint64_t kGlobalChainId;
 
 struct BlockViewKey {

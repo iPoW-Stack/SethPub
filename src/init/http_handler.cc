@@ -1861,8 +1861,8 @@ HttpHandler::~HttpHandler() {
 }
 
 // ── MetaMask / Ethereum JSON-RPC helpers ─────────────────────────────────────
-// Chain ID for Seth — matches kGlobalChainId in hotstuff/types.h.
-static constexpr uint64_t kSethChainId = hotstuff::kGlobalChainId;
+// Chain ID for Seth — matches hotstuff::kGlobalChainId / kGlobalChainIdValue.
+static constexpr uint64_t kSethChainId = hotstuff::kGlobalChainIdValue;
 
 static inline std::string EthAddr(const std::string& raw20) {
     return "0x" + common::Encode::HexEncode(raw20);
