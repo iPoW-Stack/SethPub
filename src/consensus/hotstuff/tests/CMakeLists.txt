@@ -4,7 +4,9 @@ add_compile_options(-Wno-unused-parameter)
 
 # Legacy sources (test_block_acceptor.cc, test_view_block_chain.cc, etc.) target removed
 # APIs and protobuf field accessors; re-enable them here after updating to current code.
-set(hotstuff_test_src test_hotstuff_placeholder.cc)
+set(hotstuff_test_src
+    test_hotstuff_placeholder.cc
+    test_hotstuff_branches.cc)
 add_executable(hotstuff_test ${hotstuff_test_src})
 
 add_dependencies(hotstuff_test consensus)
