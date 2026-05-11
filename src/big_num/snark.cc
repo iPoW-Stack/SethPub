@@ -10,31 +10,6 @@ namespace seth {
 
 namespace bignum {
 
-namespace {
-
-// libff::bigint may not define operator< in all builds; compare limbs MSB-first.
-inline bool fq_bigint_lt_modulus_q(libff::bigint<libff::alt_bn128_q_limbs> const& b) noexcept {
-    libff::bigint<libff::alt_bn128_q_limbs> const& m = libff::alt_bn128_modulus_q;
-    constexpr int N = static_cast<int>(libff::alt_bn128_q_limbs);
-    for (int i = N - 1; i >= 0; --i) {
-        if (b.data[i] < m.data[i]) {
-            return true;
-        }
-        if (b.data[i] > m.data[i]) {
-            return false;
-        }
-    }
-    return false;
-}
-
-inline void require_fq_canonical(libff::bigint<libff::alt_bn128_q_limbs> const& b) {
-    if (!fq_bigint_lt_modulus_q(b)) {
-        throw std::runtime_error("alt_bn128 Fq limb not canonical (< field modulus)");
-    }
-}
-
-}  // namespace
-
 Snark* Snark::Instance() {
     static Snark ins;
     return &ins;
@@ -160,8 +135,12 @@ libff::alt_bn128_Fq Snark::DecodeFqElement(const std::string& data) {
         throw std::invalid_argument("DecodeFqElement: need at least 32 bytes");
     }
     libff::bigint<libff::alt_bn128_q_limbs> const b = ToLibsnarkBigint(data.substr(0, 32));
-    require_fq_canonical(b);
-    return libff::alt_bn128_Fq(b);
+    libff::alt_bn128_Fq const fq(b);
+    // EIP-196: encoding must be the unique integer in [0, p); use libff reduction, not a hand limb compare.
+    if (!(fq.as_bigint() == b)) {
+        throw std::runtime_error("alt_bn128 Fq not canonical (< field modulus)");
+    }
+    return fq;
 }
 
 libff::alt_bn128_G1 Snark::DecodePointG1(const std::string& data) {

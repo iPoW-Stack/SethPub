@@ -26,32 +26,13 @@ libff::bigint<libff::alt_bn128_q_limbs> toLibsnarkBigint(h256 const& _x)
     auto const N = b.N;
     constexpr size_t L = sizeof(b.data[0]);
     static_assert(sizeof(mp_limb_t) == L, "Unexpected limb size in libff::bigint.");
+    for (size_t k = 0; k < N; ++k) {
+        b.data[k] = 0;
+    }
     for (size_t i = 0; i < N; i++)
         for (size_t j = 0; j < L; j++)
             b.data[N - 1 - i] |= mp_limb_t(_x[i * L + j]) << (8 * (L - 1 - j));
     return b;
-}
-
-// libff::bigint may not define operator< in all builds; compare limbs MSB-first.
-static bool fq_bigint_lt_modulus_q(libff::bigint<libff::alt_bn128_q_limbs> const& b) noexcept {
-    libff::bigint<libff::alt_bn128_q_limbs> const& m = libff::alt_bn128_modulus_q;
-    constexpr int N = static_cast<int>(libff::alt_bn128_q_limbs);
-    for (int i = N - 1; i >= 0; --i) {
-        if (b.data[i] < m.data[i]) {
-            return true;
-        }
-        if (b.data[i] > m.data[i]) {
-            return false;
-        }
-    }
-    return false;
-}
-
-static void requireCanonicalFqElement(h256 const& xbin) {
-    libff::bigint<libff::alt_bn128_q_limbs> const b = toLibsnarkBigint(xbin);
-    if (!fq_bigint_lt_modulus_q(b)) {
-        throw std::runtime_error("alt_bn128 Fq element not canonical (<p)");
-    }
 }
 
 h256 fromLibsnarkBigint(libff::bigint<libff::alt_bn128_q_limbs> const& _b)
@@ -72,8 +53,12 @@ libff::alt_bn128_Fq decodeFqElement(bytesConstRef _data)
         throw std::runtime_error("decodeFqElement: need 32 bytes");
     }
     h256 const xbin(_data.cropped(0, 32));
-    requireCanonicalFqElement(xbin);
-    return libff::alt_bn128_Fq(toLibsnarkBigint(xbin));
+    libff::bigint<libff::alt_bn128_q_limbs> const b = toLibsnarkBigint(xbin);
+    libff::alt_bn128_Fq const fq(b);
+    if (!(fq.as_bigint() == b)) {
+        throw std::runtime_error("alt_bn128 Fq element not canonical (<p)");
+    }
+    return fq;
 }
 
 libff::alt_bn128_G1 decodePointG1(bytesConstRef _data)
