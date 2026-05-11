@@ -1,5 +1,7 @@
 #include "sync/key_value_sync.h"
 
+#include <algorithm>
+
 #include "block/block_manager.h"
 #include "broadcast/broadcast_utils.h"
 #include "common/defer.h"
@@ -1094,60 +1096,79 @@ void KeyValueSync::SyncAllLatestBlocks() {
             continue;
         }
 
-        auto latest_height = tx_pool_mgr_->cross_latest_height(network_id);
+        const uint64_t latest_height_base = tx_pool_mgr_->cross_latest_height(network_id);
         auto iter = synced_res_map_.find(network_id);
         if (iter == synced_res_map_.end()) {
-            add_sync_item(network_id, common::kGlobalPoolIndex, latest_height + 1, true);
+            add_sync_item(network_id, common::kGlobalPoolIndex, latest_height_base + 1, true);
             continue;
         }
 
-        auto pool_iter = iter->second.find(common::kGlobalPoolIndex);
-        if (pool_iter == iter->second.end()) {
-            add_sync_item(network_id, common::kGlobalPoolIndex, latest_height + 1, true);
+        // Responses key synced blocks by real qc().pool_index(), but this loop
+        // previously only cleaned common::kGlobalPoolIndex — other pools never
+        // got erased, so not_root_synced_res_map_count_ stayed high and grew.
+        std::vector<uint32_t> cross_pool_keys;
+        cross_pool_keys.reserve(iter->second.size());
+        for (const auto& pr : iter->second) {
+            cross_pool_keys.push_back(pr.first);
+        }
+        if (cross_pool_keys.empty()) {
+            add_sync_item(network_id, common::kGlobalPoolIndex, latest_height_base + 1, true);
             continue;
         }
 
-        // Same fix: erase all entries with height <= latest_height unconditionally.
-        {
-            auto erase_end = pool_iter->second.upper_bound(latest_height);
-            if (erase_end != pool_iter->second.begin()) {
-                auto now_size = pool_iter->second.size();
-                pool_iter->second.erase(pool_iter->second.begin(), erase_end);
-                if (network_id != network::kRootCongressNetworkId) {
-                    not_root_synced_res_map_count_ -= now_size - pool_iter->second.size();
-                }
+        uint64_t max_latest_for_global_sync = latest_height_base;
+        for (uint32_t pool_key : cross_pool_keys) {
+            auto pool_iter = iter->second.find(pool_key);
+            if (pool_iter == iter->second.end()) {
+                continue;
             }
-        }
 
-        auto height_iter = pool_iter->second.find(++latest_height);
-        while (height_iter != pool_iter->second.end()) {
-            if (!height_iter->second.first) {
-                auto& pb_vblock = height_iter->second.second;
-                int verify_res = view_block_synced_callback_(*pb_vblock);
-                if (verify_res == 0) {
-                    height_iter->second.first = true;
-                    res_map[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->qc().view()] = pb_vblock;
-                    SETH_DEBUG("success check viewblock handle network new view "
-                        "block: %u_%u_%lu, height: %lu ", 
-                        pb_vblock->qc().network_id(),
-                        pb_vblock->qc().pool_index(),
-                        pb_vblock->qc().view(),
-                        pb_vblock->block_info().height());
+            uint64_t latest_height = latest_height_base;
+            SETH_DEBUG("  cross pool %u net %u: latest_height=%lu, synced entries=%lu",
+                pool_key, network_id, latest_height, pool_iter->second.size());
+
+            {
+                auto erase_end = pool_iter->second.upper_bound(latest_height);
+                if (erase_end != pool_iter->second.begin()) {
+                    auto now_size = pool_iter->second.size();
+                    pool_iter->second.erase(pool_iter->second.begin(), erase_end);
+                    if (network_id != network::kRootCongressNetworkId) {
+                        not_root_synced_res_map_count_ -= now_size - pool_iter->second.size();
+                    }
                 }
             }
 
-            height_iter = pool_iter->second.find(++latest_height);
-        }
+            auto height_iter = pool_iter->second.find(++latest_height);
+            while (height_iter != pool_iter->second.end()) {
+                if (!height_iter->second.first) {
+                    auto& pb_vblock = height_iter->second.second;
+                    int verify_res = view_block_synced_callback_(*pb_vblock);
+                    if (verify_res == 0) {
+                        height_iter->second.first = true;
+                        res_map[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->qc().view()] = pb_vblock;
+                        SETH_DEBUG("success check viewblock handle network new view "
+                            "block: %u_%u_%lu, height: %lu ",
+                            pb_vblock->qc().network_id(),
+                            pb_vblock->qc().pool_index(),
+                            pb_vblock->qc().view(),
+                            pb_vblock->block_info().height());
+                    }
+                }
 
-        // Same fix as above: skip past all heights already in synced_res_map_
-        if (!pool_iter->second.empty()) {
-            auto max_synced = pool_iter->second.rbegin()->first;
-            if (max_synced >= latest_height) {
-                latest_height = max_synced + 1;
+                height_iter = pool_iter->second.find(++latest_height);
             }
+
+            if (!pool_iter->second.empty()) {
+                auto max_synced = pool_iter->second.rbegin()->first;
+                if (max_synced >= latest_height) {
+                    latest_height = max_synced + 1;
+                }
+            }
+
+            max_latest_for_global_sync = std::max(max_latest_for_global_sync, latest_height);
         }
 
-        add_sync_item(network_id, common::kGlobalPoolIndex, latest_height, true);
+        add_sync_item(network_id, common::kGlobalPoolIndex, max_latest_for_global_sync, true);
     }
 
     HandlerVerifiedBlock(res_map);
