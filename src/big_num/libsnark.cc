@@ -32,9 +32,24 @@ libff::bigint<libff::alt_bn128_q_limbs> toLibsnarkBigint(h256 const& _x)
     return b;
 }
 
+// libff::bigint may not define operator< in all builds; compare limbs MSB-first.
+static bool fq_bigint_lt_modulus_q(libff::bigint<libff::alt_bn128_q_limbs> const& b) noexcept {
+    libff::bigint<libff::alt_bn128_q_limbs> const& m = libff::alt_bn128_modulus_q;
+    constexpr int N = static_cast<int>(libff::alt_bn128_q_limbs);
+    for (int i = N - 1; i >= 0; --i) {
+        if (b.data[i] < m.data[i]) {
+            return true;
+        }
+        if (b.data[i] > m.data[i]) {
+            return false;
+        }
+    }
+    return false;
+}
+
 static void requireCanonicalFqElement(h256 const& xbin) {
     libff::bigint<libff::alt_bn128_q_limbs> const b = toLibsnarkBigint(xbin);
-    if (!(b < libff::alt_bn128_modulus_q)) {
+    if (!fq_bigint_lt_modulus_q(b)) {
         throw std::runtime_error("alt_bn128 Fq element not canonical (<p)");
     }
 }
