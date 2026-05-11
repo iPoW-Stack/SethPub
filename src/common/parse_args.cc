@@ -80,11 +80,11 @@ bool ParserArgs::Has(const std::string& key) const {
 }
 
 bool ParserArgs::AddArgType(char short_name, const char * long_name, KeyFlag flag) {
-    if (long_name == nullptr && short_name == 0) {
+    if (NULL == long_name && 0 == short_name) {
         return false;
     }
     Option tmp;
-    tmp.long_name = (long_name != nullptr) ? std::string(long_name) : std::string();
+    tmp.long_name = long_name != nullptr ? long_name : "";
     tmp.short_name = short_name;
     tmp.flag = flag;
     args_.push_back(tmp);
