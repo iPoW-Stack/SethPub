@@ -264,6 +264,10 @@ bool Config::InitWithContent(const std::string& content) {
             break;
         }
 
+        if (line.empty()) {
+            continue;
+        }
+
         if (line[0] == '#') {
             continue;
         }
@@ -288,7 +292,7 @@ bool Config::InitWithContent(const std::string& content) {
         }
 
         for (uint32_t j = 0; j < line.size(); ++j) {
-            if (line[j] != ' ' && line[j] != ' ' && line[j] != '\n') {
+            if (line[j] != ' ' && line[j] != '\t' && line[j] != '\r' && line[j] != '\n') {
                 SETH_ERROR("line illegal[%s]", line.c_str());
                 printf("line illegal[%s]\n", line.c_str());
                 res = false;
@@ -370,6 +374,10 @@ bool Config::Init(const std::string& conf) {
             break;
         }
 
+        if (line.empty()) {
+            continue;
+        }
+
         if (line[0] == '#') {
             continue;
         }
@@ -393,7 +401,7 @@ bool Config::Init(const std::string& conf) {
         }
 
         for (uint32_t i = 0; i < line.size(); ++i) {
-            if (line[i] != ' ' && line[i] != ' ' && line[i] != '\n') {
+            if (line[i] != ' ' && line[i] != '\t' && line[i] != '\r' && line[i] != '\n') {
                 SETH_ERROR("line illegal[%s]", line.c_str());
                 res = false;
                 break;
@@ -432,7 +440,8 @@ bool Config::HandleKeyValue(const std::string& filed, const std::string& key_val
             }
 
             for (size_t j = i; j < eq_pos; ++j) {
-                if (key_value[j] != ' ' && key_value[j] != '\t' && key_value[j] != '\n') {
+                if (key_value[j] != ' ' && key_value[j] != '\t' && key_value[j] != '\r' &&
+                        key_value[j] != '\n') {
                     SETH_ERROR("invalid char[ ][\\t][\\n]");
                     printf("invalid char[ ][\\t][\\n]\n");
                     return false;
@@ -461,11 +470,12 @@ bool Config::HandleKeyValue(const std::string& filed, const std::string& key_val
         return false;
     }
 
-    int value_start_pos = eq_pos + 1;
+    int value_start_pos = -1;
     std::string value("");
+    bool in_value = false;
     for (size_t i = eq_pos + 1; i < key_value.size(); ++i) {
         if (key_value[i] == '#') {
-            if (i > static_cast<size_t>(value_start_pos)) {
+            if (in_value && value_start_pos >= 0) {
                 value = std::string(key_value.begin() + value_start_pos, key_value.begin() + i);
             }
             break;
@@ -477,46 +487,42 @@ bool Config::HandleKeyValue(const std::string& filed, const std::string& key_val
             return false;
         }
 
-        if (key_value[i] == ' ') {
-            continue;
-        }
-
-        if (key_value[i] == '\n') {
-            if (value_start_pos == -1) {
-                continue;
+        if (key_value[i] == '\r' || key_value[i] == '\n') {
+            if (in_value && value_start_pos >= 0) {
+                value = std::string(key_value.begin() + value_start_pos, key_value.begin() + i);
             }
-
-            for (size_t j = i; j < key_value.size(); ++j) {
+            for (size_t j = i + 1; j < key_value.size(); ++j) {
                 if (key_value[j] == '#') {
                     break;
                 }
-
-                if (key_value[j] != ' ' && key_value[j] != '\t' && key_value[j] != '\n') {
+                if (key_value[j] != ' ' && key_value[j] != '\t' && key_value[j] != '\r' &&
+                        key_value[j] != '\n') {
                     SETH_ERROR("invalid char[ ][\\t][\\n]");
                     printf("invalid char[ ][\\t][\\n]\n");
                     return false;
                 }
             }
-
-            value = std::string(key_value.begin() + value_start_pos, key_value.begin() + i);
             break;
         }
 
-        if (value_start_pos == -1) {
-            value_start_pos = i;
+        if (!in_value && (key_value[i] == ' ' || key_value[i] == '\t')) {
+            continue;
+        }
+
+        if (!in_value) {
+            value_start_pos = static_cast<int>(i);
+            in_value = true;
         }
     }
-    if (value_start_pos == -1 || static_cast<int>(key_value.size()) <= value_start_pos) {
-        SETH_ERROR("invalid value_start_pos[%d]", value_start_pos);
-        printf("invalid value_start_pos[%d]\n", value_start_pos);
-        return false;
-    }
-    if (value.empty()) {
+    if (value.empty() && in_value && value_start_pos >= 0) {
 #ifdef ENCODE_CONFIG_CONTENT
         value = std::string(key_value.begin() + value_start_pos, key_value.end());
 #else
-        value = std::string(key_value.begin() + value_start_pos, key_value.end() - 1);
+        value = std::string(key_value.begin() + value_start_pos, key_value.end());
 #endif
+    }
+    if (!in_value) {
+        value = "";
     }
     StringUtil::Trim(value);
 
@@ -554,7 +560,7 @@ bool Config::HandleFiled(const std::string& field, std::string& field_val) {
                     break;
                 }
 
-                if (field[j] != ' ' && field[j] != '\t' && field[j] != '\n') {
+                if (field[j] != ' ' && field[j] != '\t' && field[j] != '\r' && field[j] != '\n') {
                     SETH_ERROR("unvalid char[ ][\\n]");
                     return false;
                 }
@@ -586,7 +592,7 @@ bool Config::HandleFiled(const std::string& field, std::string& field_val) {
 bool Config::AddField(const std::string& field) {
     auto iter = config_map_.find(field);
     if (iter != config_map_.end()) {
-        return false;
+        return true;
     }
 
     auto ins_iter = config_map_.insert(std::make_pair(
