@@ -100,7 +100,7 @@ Status ViewBlockChain::Store(
                 view_block->block_info().key_value_array(i).key();
             prefix_db_->SaveTemporaryKv(
                 key, 
-                view_block->block_info().key_value_array(i).value(), 
+                view_block->block_info().key_value_array(i).SerializeAsString(), 
                 seth_host_ptr->db_batch_);
             seth_host_ptr->SaveKeyValue(
                 view_block->block_info().key_value_array(i).addr(),
