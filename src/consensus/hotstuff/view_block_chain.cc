@@ -42,6 +42,11 @@ void PersistTxReceiptKvsFromBlockTxList(
         const std::string compound_key = kTxReceiptId + tx.tx_hash();
         prefix_db->SaveTemporaryKv(compound_key, val, seth_host_ptr->db_batch_);
         seth_host_ptr->SaveKeyValue(kTxReceiptId, tx.tx_hash(), val);
+        SETH_DEBUG("persist tx receipt kv, tx hash: %s, status: %d, output size: %zu, events size: %d",
+            common::Encode::HexEncode(tx.tx_hash()).c_str(),
+            tx.status(),
+            tx.has_output() ? tx.output().size() : 0,
+            tx.events().size());
     }
 }
 
