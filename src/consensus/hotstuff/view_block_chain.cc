@@ -106,6 +106,17 @@ Status ViewBlockChain::Store(
             view_block->qc().view(),
             ProtobufToJson(cons_debug).c_str());        
 #endif
+        // Block is already in view_blocks_info_; consensus may have inserted a
+        // placeholder before tx_list / receipts were present. Non-consensus nodes
+        // still need SaveKeyValue("tx", ...) for receipt RPC — that path was
+        // previously skipped entirely on this early return.
+        if (balane_map_ptr == nullptr) {
+            auto sh = seth_host_ptr;
+            if (sh == nullptr) {
+                sh = std::make_shared<sethvm::SethhainHost>();
+            }
+            PersistTxReceiptKvsFromBlockTxList(*view_block, sh, prefix_db_);
+        }
         return Status::kSuccess;
     }
 
