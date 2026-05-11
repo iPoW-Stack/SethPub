@@ -25,6 +25,14 @@ uv_os_sock_t sock;
 static uv_async_t async_handle;
 std::atomic<bool> uv_transport_inited = false;
 
+static bool TcpOutputQueuesReady(const char* context) {
+    if (output_queues_ == nullptr) {
+        SETH_ERROR("%s: TcpTransport output queue not ready (Init not called or already torn down).", context);
+        return false;
+    }
+    return true;
+}
+
 struct connect_ex_t {
     uv_connect_t uv_conn;
     std::string* msg;   
@@ -463,6 +471,9 @@ uint8_t TcpTransport::GetThreadIndexWithPool(uint32_t pool_index) {
 int TcpTransport::Send(
         std::shared_ptr<tnet::TcpInterface> conn,
         const transport::protobuf::Header& message) {
+    if (!TcpOutputQueuesReady("TcpTransport::Send(conn,Header)")) {
+        return kTransportError;
+    }
     auto output_item = std::make_shared<ClientItem>();
     output_item->conn = conn;
     output_item->type = message.type();
@@ -481,6 +492,9 @@ int TcpTransport::Send(
 int TcpTransport::Send(
         std::shared_ptr<tnet::TcpInterface> conn,
         const std::string& message) {
+    if (!TcpOutputQueuesReady("TcpTransport::Send(conn,string)")) {
+        return kTransportError;
+    }
     auto output_item = std::make_shared<ClientItem>();
     output_item->conn = conn;
     output_item->hash64 = 0;
@@ -500,6 +514,9 @@ int TcpTransport::Send(
         uint16_t des_port,
         transport::protobuf::Header& message) {
     assert(des_port > 0);
+    if (!TcpOutputQueuesReady("TcpTransport::Send(ip,port,Header)")) {
+        return kTransportError;
+    }
     auto tmpHeader = const_cast<transport::protobuf::Header*>(&message);
     tmpHeader->set_from_public_port(common::GlobalInfo::Instance()->config_public_port());
     // assert(message.broadcast().bloomfilter_size() < 64);
