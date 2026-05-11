@@ -167,7 +167,8 @@ TEST(NetworkProtoBranches, CreateGetNetworkNodesResponseSkipsEmptyPubkey) {
     with_pk->pubkey_str = "nonempty";
     with_pk->public_ip = "1.1.1.1";
     with_pk->public_port = 1234;
-    auto no_pk = MakeNode(2u, "2.2.2.2", 2345, "", "b");
+    // Node ctor requires non-empty pubkey; clear after construction for empty-key skip path.
+    auto no_pk = MakeNode(2u, "2.2.2.2", 2345, "placeholder", "b");
     no_pk->pubkey_str.clear();
     nodes.push_back(no_pk);
     nodes.push_back(with_pk);

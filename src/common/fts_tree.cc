@@ -1,5 +1,7 @@
 #include "common/fts_tree.h"
 
+#include <iostream>
+
 #include "common/random.h"
 
 namespace seth {
@@ -69,13 +71,23 @@ void FtsTree::CreateFtsTree() {
 }
 
 void FtsTree::PrintFtsTree() {
+    if (fts_nodes_.empty()) {
+        std::cout << "(empty fts tree)" << std::endl;
+        return;
+    }
+
     for (uint32_t i = 0; i < fts_nodes_.size(); ++i) {
         std::cout << fts_nodes_[i].fts_value << " ";
     }
 
     std::cout << std::endl << std::endl;
+    if (root_node_index_ >= fts_nodes_.size()) {
+        std::cout << "(invalid fts tree root)" << std::endl;
+        return;
+    }
+
     int32_t level_count = 0;
-    int32_t end_idx = root_node_index_;
+    int32_t end_idx = static_cast<int32_t>(root_node_index_);
     while (true) {
         int32_t count = (int32_t)pow(2.0, (float)level_count);
         std::cout << "count: " << count << std::endl;

@@ -90,12 +90,12 @@ uint32_t BloomFilter::DiffCount(const BloomFilter& other) {
     }
 
     uint32_t diff_count = 0;
-    for (uint32_t i = 0; i < data_.size(); ++i) {
-        uint16_t* u16_data_l = (uint16_t*)(&data_[i]);
-        uint16_t* u16_data_r = (uint16_t*)(&other.data_[i]);
-        for (uint32_t i = 0; i < 4; ++i) {
+    for (uint32_t w = 0; w < data_.size(); ++w) {
+        uint16_t* u16_data_l = (uint16_t*)(&data_[w]);
+        uint16_t* u16_data_r = (uint16_t*)(&other.data_[w]);
+        for (uint32_t j = 0; j < 4; ++j) {
             diff_count += common::U16BitCount::Instance()->DiffCount(
-                u16_data_l[i] ^ u16_data_r[i]);
+                u16_data_l[j] ^ u16_data_r[j]);
         }
     }
 
@@ -122,7 +122,7 @@ bool BloomFilter::operator==(const BloomFilter& r) const {
 
 bool BloomFilter::operator!=(const BloomFilter& r) const {
     if (this == &r) {
-        return true;
+        return false;
     }
 
     return !(data_ == r.data_ && hash_count_ == r.hash_count_);
