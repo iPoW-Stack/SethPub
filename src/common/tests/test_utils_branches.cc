@@ -180,10 +180,11 @@ TEST(GetSignerCountTest, LargerValues) {
 // ---- GetNodeConnectInt ----
 
 TEST(GetNodeConnectIntTest, PacksIpAndPort) {
-    uint32_t ip = IpToUint32("10.0.0.1");
+    std::string const ip = "10.0.0.1";
+    uint32_t const ip_u = IpToUint32(ip);
     uint16_t port = 9000;
-    uint64_t conn = GetNodeConnectInt(ip, port);
-    EXPECT_EQ(ip, static_cast<uint32_t>(conn >> 32));
+    uint64_t const conn = GetNodeConnectInt(ip, port);
+    EXPECT_EQ(ip_u, static_cast<uint32_t>(conn >> 32));
     EXPECT_EQ(port, static_cast<uint16_t>(conn & 0xFFFF));
 }
 

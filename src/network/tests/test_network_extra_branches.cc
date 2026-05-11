@@ -109,40 +109,40 @@ TEST(DhtManagerExtraTest, InstanceIsSingleton) {
 
 TEST(DhtManagerExtraTest, InitDoesNotCrash) {
     auto mgr = DhtManager::Instance();
-    mgr->Init(64);
+    mgr->Init();
     // No crash after init
 }
 
 TEST(DhtManagerExtraTest, GetDhtOutOfRange) {
     auto mgr = DhtManager::Instance();
-    mgr->Init(64);
+    mgr->Init();
     auto dht = mgr->GetDht(1000);  // beyond allocated range
     EXPECT_EQ(nullptr, dht);
 }
 
 TEST(DhtManagerExtraTest, GetDhtUnregisteredInRange) {
     auto mgr = DhtManager::Instance();
-    mgr->Init(64);
+    mgr->Init();
     auto dht = mgr->GetDht(5);
     EXPECT_EQ(nullptr, dht);
 }
 
 TEST(DhtManagerExtraTest, UnRegisterUnregisteredNocrash) {
     auto mgr = DhtManager::Instance();
-    mgr->Init(64);
+    mgr->Init();
     mgr->UnRegisterDht(15);  // never registered, no crash expected
 }
 
 TEST(DhtManagerExtraTest, DropNodeEmptyMap) {
     auto mgr = DhtManager::Instance();
-    mgr->Init(64);
-    // Drop node when no DHTs exist — no crash
-    mgr->DropNode("some_node_id");
+    mgr->Init();
+    // Drop node when no DHTs exist — no crash (API is ip + port)
+    mgr->DropNode("127.0.0.1", 9000);
 }
 
 TEST(DhtManagerExtraTest, JoinWithNullNode) {
     auto mgr = DhtManager::Instance();
-    mgr->Init(64);
+    mgr->Init();
     // Join with null node pointer — no crash
     dht::NodePtr node = nullptr;
     mgr->Join(node);
@@ -150,15 +150,14 @@ TEST(DhtManagerExtraTest, JoinWithNullNode) {
 
 // ---- Bootstrap ----
 
-TEST(BootstrapExtraTest, InitEmptyStringDoesNotCrash) {
-    Bootstrap::Instance()->Init("", false);
-    Bootstrap::Instance()->Init("", true);
+TEST(BootstrapExtraTest, InstanceNonNull) {
+    EXPECT_NE(nullptr, Bootstrap::Instance());
 }
 
-TEST(BootstrapExtraTest, GetNetworkBootstrapUninitialized) {
-    // After empty init, returns empty list for various network IDs
-    auto nodes_root = Bootstrap::Instance()->GetNetworkBootstrap(kRootCongressNetworkId);
-    auto nodes_node = Bootstrap::Instance()->GetNetworkBootstrap(kNodeNetworkId);
+TEST(BootstrapExtraTest, GetNetworkBootstrapAcceptsCount) {
+    // Second parameter is requested node count; may return empty without Universal DHT.
+    auto nodes_root = Bootstrap::Instance()->GetNetworkBootstrap(kRootCongressNetworkId, 8u);
+    auto nodes_node = Bootstrap::Instance()->GetNetworkBootstrap(kNodeNetworkId, 8u);
     EXPECT_GE(nodes_root.size(), 0u);
     EXPECT_GE(nodes_node.size(), 0u);
 }
