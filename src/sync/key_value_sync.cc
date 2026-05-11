@@ -35,6 +35,18 @@ KeyValueSync::~KeyValueSync() {
     }
 }
 
+// ODR definitions: in-class `static const` scalars are not implicitly `inline`
+// before C++17; gtest (EXPECT_GT, etc.) passes them by const-ref and odr-uses
+// them, so the linker needs one definition per symbol.
+const uint64_t KeyValueSync::kSyncPeriodUs;
+const uint64_t KeyValueSync::kSyncTimeoutPeriodUs;
+const uint32_t KeyValueSync::kEachTimerHandleCount;
+const uint32_t KeyValueSync::kMaxBatchDrainCount;
+const uint32_t KeyValueSync::kCacheSyncKeyValueCount;
+const uint32_t KeyValueSync::kSyncCount;
+const uint32_t KeyValueSync::kMaxSyncLatestNotRootCount;
+const uint32_t KeyValueSync::kConsumerBatchSize;
+
 void KeyValueSync::Init(
         const std::shared_ptr<block::BlockManager>& block_mgr,
         const std::shared_ptr<consensus::HotstuffManager>& hotstuff_mgr,

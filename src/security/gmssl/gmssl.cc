@@ -1,6 +1,7 @@
 #include "security/ecdsa/ecdsa.h"
 
 #include <gmssl/sm2_recover.h>
+#include <stdexcept>
 
 #include "common/encode.h"
 #include "common/log.h"
@@ -58,15 +59,13 @@ int GmSsl::Verify(const std::string& hash, const std::string& str_pk, const std:
 }
 
 std::string GmSsl::GetSign(const std::string& r, const std::string& s, uint8_t v) {
-    SETH_FATAL("invalid!");
-    return "";
+    throw std::logic_error("GmSsl::GetSign not implemented");
 }
 
 std::string GmSsl::Recover(
         const std::string& sign,
         const std::string& hash) {
-    SETH_FATAL("invalid!");
-    return "";
+    throw std::logic_error("GmSsl::Recover not implemented");
 }
 
 const std::string& GmSsl::GetAddress() const {
@@ -86,23 +85,19 @@ const std::string& GmSsl::GetPublicKeyUnCompressed() const {
 }
 
 int GmSsl::Encrypt(const std::string& msg, RawPrivateKey key, std::string* out) {
-    SETH_FATAL("invalid!");
-    return -1;
+    throw std::logic_error("GmSsl::Encrypt not implemented");
 }
 
 int GmSsl::Decrypt(const std::string& msg, RawPrivateKey key, std::string* out) {
-    SETH_FATAL("invalid!");
-    return -1;
+    throw std::logic_error("GmSsl::Decrypt not implemented");
 }
 
 bool GmSsl::IsValidPublicKey(const std::string& pubkey) {
-    SETH_FATAL("invalid!");
-    return false;
+    throw std::logic_error("GmSsl::IsValidPublicKey not implemented");
 }
 
 std::string GmSsl::UnicastAddress(const std::string& src_address) {
-    SETH_FATAL("invalid");
-    return "";
+    throw std::logic_error("GmSsl::UnicastAddress not implemented");
 }
 
 }  // namespace security

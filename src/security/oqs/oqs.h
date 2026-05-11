@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdexcept>
+
 #include "common/unique_map.h"
 
 #include <oqs/oqs.h>
@@ -25,8 +27,7 @@ public:
 
     virtual int SetPrivateKey(const std::string& prikey);
     virtual int SetPrivateKey(const char* prikey, uint32_t length) {
-        assert(false);
-        return kSecurityError;
+        throw std::logic_error("Oqs::SetPrivateKey(char*, uint32_t) not implemented");
     }
     int SetPrivateKey(const std::string& prikey, const std::string& pubkey);
     virtual int Sign(const std::string& hash, std::string* sign);
@@ -47,8 +48,7 @@ public:
     virtual int Decrypt(const std::string& msg, RawPrivateKey key, std::string* out);
 
     virtual int GetEcdhKey(const std::string& peer_pubkey, std::string* ecdh_key) {
-        SETH_FATAL("invalid!");
-        return -1;
+        throw std::logic_error("Oqs::GetEcdhKey not implemented");
     }
 
     virtual bool IsValidPublicKey(const std::string& pubkey);

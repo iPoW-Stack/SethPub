@@ -310,26 +310,26 @@ TEST(TestSecurityPrimitives, ContractAddressUsesLongRlpWhenNonceExceeds55Bytes) 
     EXPECT_NE(a, b);
 }
 
-#if GTEST_HAS_DEATH_TEST
-TEST(TestSecurityPrimitives, FatalStubsDeathCoverage) {
+// Stubs must not abort the test process: use std::logic_error (catchable) instead
+// of SETH_FATAL/assert so this runs reliably without death-test fork quirks.
+TEST(TestSecurityPrimitives, UnreachableGmSslAndOqsStubsThrowLogicError) {
     GmSsl gmssl;
     Oqs oqs;
-    EXPECT_DEATH((void)gmssl.GetSign("r", "s", 0), "Assertion");
-    EXPECT_DEATH((void)oqs.Recover("sign", "hash"), "Assertion");
-    EXPECT_DEATH((void)gmssl.Encrypt("m", std::make_pair("", 0u), nullptr), "Assertion");
-    EXPECT_DEATH((void)gmssl.Decrypt("m", std::make_pair("", 0u), nullptr), "Assertion");
-    EXPECT_DEATH((void)gmssl.IsValidPublicKey("pk"), "Assertion");
-    EXPECT_DEATH((void)gmssl.UnicastAddress("addr"), "Assertion");
-    EXPECT_DEATH((void)gmssl.GetEcdhKey("pk", nullptr), "Assertion");
-    EXPECT_DEATH((void)oqs.Encrypt("m", std::make_pair("", 0u), nullptr), "Assertion");
-    EXPECT_DEATH((void)oqs.Decrypt("m", std::make_pair("", 0u), nullptr), "Assertion");
-    EXPECT_DEATH((void)oqs.IsValidPublicKey("pk"), "Assertion");
-    EXPECT_DEATH((void)oqs.UnicastAddress("addr"), "Assertion");
-    EXPECT_DEATH((void)oqs.GetEcdhKey("pk", nullptr), "Assertion");
-    EXPECT_DEATH((void)oqs.SetPrivateKey("x", 1u), "Assertion");
-    EXPECT_DEATH((void)gmssl.SetPrivateKey("x", 1u), "Assertion");
+    EXPECT_THROW((void)gmssl.GetSign("r", "s", 0), std::logic_error);
+    EXPECT_THROW((void)oqs.Recover("sign", "hash"), std::logic_error);
+    EXPECT_THROW((void)gmssl.Encrypt("m", std::make_pair("", 0u), nullptr), std::logic_error);
+    EXPECT_THROW((void)gmssl.Decrypt("m", std::make_pair("", 0u), nullptr), std::logic_error);
+    EXPECT_THROW((void)gmssl.IsValidPublicKey("pk"), std::logic_error);
+    EXPECT_THROW((void)gmssl.UnicastAddress("addr"), std::logic_error);
+    EXPECT_THROW((void)gmssl.GetEcdhKey("pk", nullptr), std::logic_error);
+    EXPECT_THROW((void)oqs.Encrypt("m", std::make_pair("", 0u), nullptr), std::logic_error);
+    EXPECT_THROW((void)oqs.Decrypt("m", std::make_pair("", 0u), nullptr), std::logic_error);
+    EXPECT_THROW((void)oqs.IsValidPublicKey("pk"), std::logic_error);
+    EXPECT_THROW((void)oqs.UnicastAddress("addr"), std::logic_error);
+    EXPECT_THROW((void)oqs.GetEcdhKey("pk", nullptr), std::logic_error);
+    EXPECT_THROW((void)oqs.SetPrivateKey("x", 1u), std::logic_error);
+    EXPECT_THROW((void)gmssl.SetPrivateKey("x", 1u), std::logic_error);
 }
-#endif
 
 }  // namespace test
 }  // namespace security

@@ -1,6 +1,53 @@
 #include "big_num/snark.h"
 
+#include <cstdint>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
 #include "libff/common/profiling.hpp"
+
+namespace {
+
+// Wire format: 32-byte big-endian unsigned integer in [0, p). Use libff's
+// from_words/to_words so encoding matches Fp_model::bigint_repr / stream
+// format; the old hand-rolled bigint<->bytes path could disagree with
+// as_bigint() for some values (e.g. 2*G round-tripped in G1AddCommutative).
+constexpr size_t kAltBn128FqBytes = 32;
+constexpr size_t kAltBn128FqWords = kAltBn128FqBytes / sizeof(uint64_t);
+
+bool FqFromCanonicalBe32(const std::string& be32, libff::alt_bn128_Fq* out) {
+    if (be32.size() < kAltBn128FqBytes || out == nullptr) {
+        return false;
+    }
+    std::vector<uint64_t> words(kAltBn128FqWords, 0);
+    for (size_t wi = 0; wi < kAltBn128FqWords; ++wi) {
+        uint64_t w = 0;
+        for (size_t b = 0; b < sizeof(uint64_t); ++b) {
+            w |= static_cast<uint64_t>(static_cast<unsigned char>(
+                     be32[(kAltBn128FqWords - 1 - wi) * sizeof(uint64_t) + b]))
+                << (8 * b);
+        }
+        words[wi] = w;
+    }
+    return out->from_words(words);
+}
+
+std::string FqToCanonicalBe32(const libff::alt_bn128_Fq& fe) {
+    std::vector<uint64_t> const words = fe.to_words();
+    const size_t nw = words.size();
+    std::string out(kAltBn128FqBytes, '\0');
+    for (size_t wi = 0; wi < kAltBn128FqWords; ++wi) {
+        const uint64_t w = (wi < nw) ? words[wi] : 0ULL;
+        for (size_t b = 0; b < sizeof(uint64_t); ++b) {
+            out[(kAltBn128FqWords - 1 - wi) * sizeof(uint64_t) + b] =
+                static_cast<char>((w >> (8 * b)) & 0xff);
+        }
+    }
+    return out;
+}
+
+}  // namespace
 
 namespace seth {
 
@@ -90,6 +137,10 @@ libff::bigint<libff::alt_bn128_q_limbs> Snark::ToLibsnarkBigint(const std::strin
     auto const N = b.N;
     constexpr size_t L = sizeof(b.data[0]);
     static_assert(sizeof(mp_limb_t) == L, "Unexpected limb size in libff::bigint.");
+    // Default-constructed bigint may not clear all limbs; |= would leave garbage bits.
+    for (size_t k = 0; k < N; ++k) {
+        b.data[k] = 0;
+    }
     for (size_t i = 0; i < N; i++) {
         for (size_t j = 0; j < L; j++) {
             b.data[N - 1 - i] |= mp_limb_t(in_x[i * L + j]) << (8 * (L - 1 - j));
@@ -115,23 +166,25 @@ std::string Snark::FromLibsnarkBigint(libff::bigint<libff::alt_bn128_q_limbs> co
 }
 
 libff::alt_bn128_Fq Snark::DecodeFqElement(const std::string& data) {
-    char xbin[32];
-    memset(xbin, 0, sizeof(xbin));
-    memcpy(xbin, data.c_str(), data.size() > sizeof(xbin) ? sizeof(xbin) : data.size());
-    return ToLibsnarkBigint(std::string(xbin, sizeof(xbin)));
+    assert(data.size() >= kAltBn128FqBytes);
+    libff::alt_bn128_Fq fe;
+    if (!FqFromCanonicalBe32(data.substr(0, kAltBn128FqBytes), &fe)) {
+        throw std::runtime_error("DecodeFqElement: value out of field range");
+    }
+    return fe;
 }
 
 libff::alt_bn128_G1 Snark::DecodePointG1(const std::string& data) {
-    assert(data.size() > 32);
-    libff::alt_bn128_Fq x = DecodeFqElement(data.substr(0, data.size()));
-    libff::alt_bn128_Fq y = DecodeFqElement(data.substr(32, data.size() - 32));
+    assert(data.size() >= 64);
+    libff::alt_bn128_Fq x = DecodeFqElement(data.substr(0, 32));
+    libff::alt_bn128_Fq y = DecodeFqElement(data.substr(32, 32));
     if (x == libff::alt_bn128_Fq::zero() && y == libff::alt_bn128_Fq::zero()) {
         return libff::alt_bn128_G1::zero();
     }
 
     libff::alt_bn128_G1 p(x, y, libff::alt_bn128_Fq::one());
     if (!p.is_well_formed()) {
-        assert(false);
+        throw std::runtime_error("DecodePointG1: coordinates not on curve");
     }
 
     return p;
@@ -143,7 +196,7 @@ std::string Snark::EncodePointG1(libff::alt_bn128_G1 p) {
     }
 
     p.to_affine_coordinates();
-    return FromLibsnarkBigint(p.X.as_bigint()) + FromLibsnarkBigint(p.Y.as_bigint());
+    return FqToCanonicalBe32(p.X) + FqToCanonicalBe32(p.Y);
 }
 
 libff::alt_bn128_Fq2 Snark::DecodeFq2Element(const std::string& data) {
@@ -161,7 +214,7 @@ libff::alt_bn128_G2 Snark::DecodePointG2(const std::string& data) {
         return libff::alt_bn128_G2::zero();
     libff::alt_bn128_G2 p(x, y, libff::alt_bn128_Fq2::one());
     if (!p.is_well_formed()) {
-        assert(false);
+        throw std::runtime_error("DecodePointG2: coordinates not on curve");
     }
 
     return p;

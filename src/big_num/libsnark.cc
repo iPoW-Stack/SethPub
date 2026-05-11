@@ -1,5 +1,7 @@
 #include "big_num/libsnark.h"
 
+#include <stdexcept>
+
 #include "libff/common/profiling.hpp"
 #include "big_num/bignum_utils.h"
 
@@ -87,8 +89,9 @@ libff::alt_bn128_G2 decodePointG2(bytesConstRef _data)
     if (x == libff::alt_bn128_Fq2::zero() && y == libff::alt_bn128_Fq2::zero())
         return libff::alt_bn128_G2::zero();
     libff::alt_bn128_G2 p(x, y, libff::alt_bn128_Fq2::one());
-    if (!p.is_well_formed())
-        assert(false);
+    if (!p.is_well_formed()) {
+        throw std::runtime_error("decodePointG2: coordinates not on curve");
+    }
     return p;
 }
 

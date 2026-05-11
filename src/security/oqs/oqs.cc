@@ -1,6 +1,7 @@
 #include "security/oqs/oqs.h"
 
 #include <gmssl/sm2_recover.h>
+#include <stdexcept>
 
 #include "common/encode.h"
 #include "common/log.h"
@@ -76,15 +77,13 @@ int Oqs::Verify(const std::string& hash, const std::string& str_pk, const std::s
 }
 
 std::string Oqs::GetSign(const std::string& r, const std::string& s, uint8_t v) {
-    SETH_FATAL("invalid!");
-    return "";
+    throw std::logic_error("Oqs::GetSign not implemented");
 }
 
 std::string Oqs::Recover(
         const std::string& sign,
         const std::string& hash) {
-    SETH_FATAL("invalid!");
-    return "";
+    throw std::logic_error("Oqs::Recover not implemented");
 }
 
 const std::string& Oqs::GetAddress() const {
@@ -104,23 +103,19 @@ const std::string& Oqs::GetPublicKeyUnCompressed() const {
 }
 
 int Oqs::Encrypt(const std::string& msg, RawPrivateKey key, std::string* out) {
-    SETH_FATAL("invalid!");
-    return -1;
+    throw std::logic_error("Oqs::Encrypt not implemented");
 }
 
 int Oqs::Decrypt(const std::string& msg, RawPrivateKey key, std::string* out) {
-    SETH_FATAL("invalid!");
-    return -1;
+    throw std::logic_error("Oqs::Decrypt not implemented");
 }
 
 bool Oqs::IsValidPublicKey(const std::string& pubkey) {
-    SETH_FATAL("invalid!");
-    return false;
+    throw std::logic_error("Oqs::IsValidPublicKey not implemented");
 }
 
 std::string Oqs::UnicastAddress(const std::string& src_address) {
-    SETH_FATAL("invalid");
-    return "";
+    throw std::logic_error("Oqs::UnicastAddress not implemented");
 }
 
 }  // namespace security

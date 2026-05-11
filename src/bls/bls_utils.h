@@ -131,15 +131,26 @@ static std::shared_ptr<libff::alt_bn128_G1> Proto2BlsPopProof(
     auto proof = std::make_shared<libff::alt_bn128_G1>();
 
     try {
+        // libff::alt_bn128_Fq(const char*) parses decimal via bigint and
+        // asserts on invalid characters — it does not throw. Validate first.
         if (proof_proto.sign_x() != "") {
+            if (!IsValidBigInt(proof_proto.sign_x())) {
+                return nullptr;
+            }
             proof->X = libff::alt_bn128_Fq(proof_proto.sign_x().c_str());
         }
         if (proof_proto.sign_y() != "") {
+            if (!IsValidBigInt(proof_proto.sign_y())) {
+                return nullptr;
+            }
             proof->Y = libff::alt_bn128_Fq(proof_proto.sign_y().c_str());
         }
         if (proof_proto.sign_z() != "") {
+            if (!IsValidBigInt(proof_proto.sign_z())) {
+                return nullptr;
+            }
             proof->Z = libff::alt_bn128_Fq(proof_proto.sign_z().c_str());
-        }        
+        }
     } catch (...) {
         return nullptr;
     }
