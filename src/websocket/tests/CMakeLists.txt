@@ -13,14 +13,27 @@ set_target_properties(websocket_test PROPERTIES
 )
 
 add_dependencies(websocket_test websocket)
-# common/hash.cc pulls GM SM3; mirror common_test (Linux) so symbols resolve.
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+# Pull common then gmssl so sm3_* from libcommon.a resolve (-l order matters with --as-needed).
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
+    target_link_libraries(
+        websocket_test
+        PRIVATE
+        websocket
+        common
+        gmssl
+        boost_system
+        gtest
+        gtest_main
+        gmock
+        gmock_main
+        pthread
+        dl)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     target_link_libraries(
         websocket_test
         PRIVATE
         websocket
         boost_system
-        gmssl
         gtest
         gtest_main
         gmock
