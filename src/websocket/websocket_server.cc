@@ -1,8 +1,24 @@
 #include "websocket/websocket_server.h"
 
+#include <boost/asio/ip/address_v4.hpp>
+#include <boost/version.hpp>
+#if BOOST_VERSION >= 108700
 #include <boost/asio/ip/make_address.hpp>
+#endif
 
 #include "common/global_info.h"
+
+namespace {
+
+boost::asio::ip::address_v4 ParseListenIpv4(std::string const& ip) {
+#if BOOST_VERSION >= 108700
+    return boost::asio::ip::make_address_v4(ip);
+#else
+    return boost::asio::ip::address_v4::from_string(ip);
+#endif
+}
+
+}  // namespace
 
 namespace seth {
 
@@ -57,7 +73,7 @@ void WebSocketServer::Run() {
     auto thread_index = common::GlobalInfo::Instance()->get_thread_index();
     try {
         server_.listen(websocketpp::lib::asio::ip::tcp::endpoint(
-            boost::asio::ip::make_address_v4(ws_ip_),
+            ParseListenIpv4(ws_ip_),
             ws_port_));
         server_.start_accept();
         server_.run();

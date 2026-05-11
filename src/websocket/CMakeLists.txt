@@ -23,5 +23,12 @@ endif()
 aux_source_directory(./ websocket_src)
 add_library(websocket ${websocket_src} "websocket_client.h")
 
+# WebSocket++ 0.8-era headers (incl. PR #1164 forks) are not C++20-clean; compile this target as C++17.
+set_target_properties(websocket PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
+)
+
 target_include_directories(websocket PUBLIC "${_WEBSOCKETPP_INCLUDE_DIR}")
 target_link_libraries(websocket PRIVATE common boost_system boost_thread boost_atomic ssl crypto pthread dl)
