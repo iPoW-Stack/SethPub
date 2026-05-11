@@ -1,5 +1,6 @@
 #include "big_num/snark.h"
 
+#include <cstdint>
 #include <cstring>
 #include <stdexcept>
 
@@ -108,7 +109,10 @@ libff::bigint<libff::alt_bn128_q_limbs> Snark::ToLibsnarkBigint(const std::strin
     }
     for (size_t i = 0; i < N; i++) {
         for (size_t j = 0; j < L; j++) {
-            b.data[N - 1 - i] |= mp_limb_t(in_x[i * L + j]) << (8 * (L - 1 - j));
+            // std::string::operator[] is char; on Linux char is often signed — cast so bytes >= 0x80
+            // are not sign-extended into mp_limb_t (breaks Fq decode for encoded curve points).
+            uint8_t const u = static_cast<uint8_t>(static_cast<unsigned char>(in_x[i * L + j]));
+            b.data[N - 1 - i] |= mp_limb_t(u) << (8 * (L - 1 - j));
         }
     }
 

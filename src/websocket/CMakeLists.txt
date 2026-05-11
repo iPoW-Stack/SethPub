@@ -6,10 +6,12 @@ if(EXISTS "${_WEBSOCKETPP_VENDOR_INCLUDE}/websocketpp/common/thread.hpp")
     set(_WEBSOCKETPP_INCLUDE_DIR "${_WEBSOCKETPP_VENDOR_INCLUDE}")
 else()
     include(FetchContent)
+    # Pinned develop: Boost 1.87+ removed io_service / resolver::query; C++20 fixes destructor template-id.
+    # Tag 0.8.2 no longer builds against current Boost.Asio.
     FetchContent_Declare(
         websocketpp
         GIT_REPOSITORY https://github.com/zaphoyd/websocketpp.git
-        GIT_TAG 0.8.2
+        GIT_TAG bce258674b2d544f981da4bf149244a76e8126c9
     )
     FetchContent_GetProperties(websocketpp)
     if(NOT websocketpp_POPULATED)
