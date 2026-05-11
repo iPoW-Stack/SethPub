@@ -5,6 +5,7 @@
 #include "common/log.h"
 #include "common/node_members.h"
 #include "common/hash.h"
+#include "common/limit_heap.h"
 #include "common/utils.h"
 #include "protos/elect.pb.h"
 
@@ -43,8 +44,6 @@ inline bool operator<(const HeapItem& lhs, const HeapItem& rhs) {
 }
 
 }  // namespace elect
-
-#include "common/limit_heap.h"
 
 namespace common {
 

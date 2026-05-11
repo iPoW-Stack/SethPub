@@ -10,7 +10,7 @@ namespace common {
 
 template<class Type>
 uint64_t MinHeapUniqueVal(const Type& val) {
-    return common::Hash::Hash64(val);
+    return Hash::Hash64(val);
 }
 
 template<>
