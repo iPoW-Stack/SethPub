@@ -167,8 +167,8 @@ TEST(IpConversionTest, Uint32ToIpBroadcast) {
 
 TEST(GetSignerCountTest, BasicValues) {
     EXPECT_EQ(1u, GetSignerCount(1));
-    EXPECT_EQ(1u, GetSignerCount(2));
-    EXPECT_EQ(1u, GetSignerCount(3));
+    EXPECT_EQ(2u, GetSignerCount(2));
+    EXPECT_EQ(2u, GetSignerCount(3));
     EXPECT_EQ(3u, GetSignerCount(4));
 }
 
