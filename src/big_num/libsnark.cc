@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 
+#include "libff/algebra/curves/alt_bn128/alt_bn128_pp.hpp"
 #include "libff/common/profiling.hpp"
 #include "big_num/bignum_utils.h"
 
@@ -31,6 +32,13 @@ libff::bigint<libff::alt_bn128_q_limbs> toLibsnarkBigint(h256 const& _x)
     return b;
 }
 
+static void requireCanonicalFqElement(h256 const& xbin) {
+    libff::bigint<libff::alt_bn128_q_limbs> const b = toLibsnarkBigint(xbin);
+    if (!(b < libff::alt_bn128_modulus_q)) {
+        throw std::runtime_error("alt_bn128 Fq element not canonical (<p)");
+    }
+}
+
 h256 fromLibsnarkBigint(libff::bigint<libff::alt_bn128_q_limbs> const& _b)
 {
     static size_t const N = static_cast<size_t>(_b.N);
@@ -45,19 +53,27 @@ h256 fromLibsnarkBigint(libff::bigint<libff::alt_bn128_q_limbs> const& _b)
 
 libff::alt_bn128_Fq decodeFqElement(bytesConstRef _data)
 {
-    // h256::AlignLeft ensures that the h256 is zero-filled on the right if _data
-    // is too short.
-    h256 xbin(_data, h256::AlignLeft);
-    return toLibsnarkBigint(xbin);
+    if (_data.size() < 32) {
+        throw std::runtime_error("decodeFqElement: need 32 bytes");
+    }
+    h256 const xbin(_data.cropped(0, 32));
+    requireCanonicalFqElement(xbin);
+    return libff::alt_bn128_Fq(toLibsnarkBigint(xbin));
 }
 
 libff::alt_bn128_G1 decodePointG1(bytesConstRef _data)
 {
+    if (_data.size() < 64) {
+        throw std::runtime_error("decodePointG1: need 64 bytes");
+    }
     libff::alt_bn128_Fq x = decodeFqElement(_data.cropped(0));
     libff::alt_bn128_Fq y = decodeFqElement(_data.cropped(32));
     if (x == libff::alt_bn128_Fq::zero() && y == libff::alt_bn128_Fq::zero())
         return libff::alt_bn128_G1::zero();
     libff::alt_bn128_G1 p(x, y, libff::alt_bn128_Fq::one());
+    if (!p.is_well_formed()) {
+        throw std::runtime_error("decodePointG1: not on curve");
+    }
     return p;
 }
 
@@ -74,6 +90,9 @@ bytes encodePointG1(libff::alt_bn128_G1 _p)
 
 libff::alt_bn128_Fq2 decodeFq2Element(bytesConstRef _data)
 {
+    if (_data.size() < 64) {
+        throw std::runtime_error("decodeFq2Element: need 64 bytes");
+    }
     // Encoding: c1 (256 bits) c0 (256 bits)
     // "Big endian", just like the numbers
     return libff::alt_bn128_Fq2(
@@ -84,6 +103,9 @@ libff::alt_bn128_Fq2 decodeFq2Element(bytesConstRef _data)
 
 libff::alt_bn128_G2 decodePointG2(bytesConstRef _data)
 {
+    if (_data.size() < 128) {
+        throw std::runtime_error("decodePointG2: need 128 bytes");
+    }
     libff::alt_bn128_Fq2 const x = decodeFq2Element(_data);
     libff::alt_bn128_Fq2 const y = decodeFq2Element(_data.cropped(64));
     if (x == libff::alt_bn128_Fq2::zero() && y == libff::alt_bn128_Fq2::zero())
@@ -137,6 +159,9 @@ pair<bool, bytes> alt_bn128_pairing_product(bytesConstRef _in)
 
 pair<bool, bytes> alt_bn128_G1_add(bytesConstRef _in)
 {
+    if (_in.size() != 128) {
+        return {false, bytes{}};
+    }
     try
     {
         initLibSnark();
@@ -153,6 +178,9 @@ pair<bool, bytes> alt_bn128_G1_add(bytesConstRef _in)
 
 pair<bool, bytes> alt_bn128_G1_mul(bytesConstRef _in)
 {
+    if (_in.size() != 96) {
+        return {false, bytes{}};
+    }
     try
     {
         initLibSnark();

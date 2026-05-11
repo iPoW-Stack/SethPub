@@ -1,14 +1,24 @@
 #include "big_num/snark.h"
 
-#include <cassert>
 #include <cstring>
 #include <stdexcept>
 
+#include "libff/algebra/curves/alt_bn128/alt_bn128_pp.hpp"
 #include "libff/common/profiling.hpp"
 
 namespace seth {
 
 namespace bignum {
+
+namespace {
+
+inline void require_fq_canonical(libff::bigint<libff::alt_bn128_q_limbs> const& b) {
+    if (!(b < libff::alt_bn128_modulus_q)) {
+        throw std::runtime_error("alt_bn128 Fq limb not canonical (< field modulus)");
+    }
+}
+
+}  // namespace
 
 Snark* Snark::Instance() {
     static Snark ins;
@@ -57,9 +67,12 @@ std::string Snark::AltBn128PairingProduct(const std::string& in) {
 
 std::string Snark::AltBn128G1Add(const std::string& in) {
     try {
+        if (in.size() != 128) {
+            return "";
+        }
         InitLibSnark();
-        libff::alt_bn128_G1 const p1 = DecodePointG1(in);
-        libff::alt_bn128_G1 const p2 = DecodePointG1(in.substr(32 * 2, in.size() - 32 * 2));
+        libff::alt_bn128_G1 const p1 = DecodePointG1(in.substr(0, 64));
+        libff::alt_bn128_G1 const p2 = DecodePointG1(in.substr(64, 64));
         return EncodePointG1(p1 + p2);
     } catch (...) {
         return "";
@@ -68,9 +81,12 @@ std::string Snark::AltBn128G1Add(const std::string& in) {
 
 std::string Snark::AltBn128G1Mul(const std::string& in) {
     try {
+        if (in.size() != 96) {
+            return "";
+        }
         InitLibSnark();
-        libff::alt_bn128_G1 const p = DecodePointG1(in.substr(0, in.size()));
-        libff::alt_bn128_G1 const result = ToLibsnarkBigint(in.substr(64, in.size() - 64)) * p;
+        libff::alt_bn128_G1 const p = DecodePointG1(in.substr(0, 64));
+        libff::alt_bn128_G1 const result = ToLibsnarkBigint(in.substr(64, 32)) * p;
         return EncodePointG1(result);
     } catch (...) {
         return "";
@@ -89,7 +105,9 @@ void Snark::InitLibSnark() {
 }
 
 libff::bigint<libff::alt_bn128_q_limbs> Snark::ToLibsnarkBigint(const std::string& in_x) {
-    assert(in_x.size() == 32);
+    if (in_x.size() != 32) {
+        throw std::invalid_argument("ToLibsnarkBigint: expected 32 bytes");
+    }
     libff::bigint<libff::alt_bn128_q_limbs> b;
     auto const N = b.N;
     constexpr size_t L = sizeof(b.data[0]);
@@ -123,12 +141,18 @@ std::string Snark::FromLibsnarkBigint(libff::bigint<libff::alt_bn128_q_limbs> co
 }
 
 libff::alt_bn128_Fq Snark::DecodeFqElement(const std::string& data) {
-    assert(data.size() >= 32);
-    return libff::alt_bn128_Fq(ToLibsnarkBigint(data.substr(0, 32)));
+    if (data.size() < 32) {
+        throw std::invalid_argument("DecodeFqElement: need at least 32 bytes");
+    }
+    libff::bigint<libff::alt_bn128_q_limbs> const b = ToLibsnarkBigint(data.substr(0, 32));
+    require_fq_canonical(b);
+    return libff::alt_bn128_Fq(b);
 }
 
 libff::alt_bn128_G1 Snark::DecodePointG1(const std::string& data) {
-    assert(data.size() >= 64);
+    if (data.size() < 64) {
+        throw std::invalid_argument("DecodePointG1: need at least 64 bytes");
+    }
     libff::alt_bn128_Fq x = DecodeFqElement(data.substr(0, 32));
     libff::alt_bn128_Fq y = DecodeFqElement(data.substr(32, 32));
     if (x == libff::alt_bn128_Fq::zero() && y == libff::alt_bn128_Fq::zero()) {
@@ -153,14 +177,18 @@ std::string Snark::EncodePointG1(libff::alt_bn128_G1 p) {
 }
 
 libff::alt_bn128_Fq2 Snark::DecodeFq2Element(const std::string& data) {
-    assert(data.size() > 32);
+    if (data.size() < 64) {
+        throw std::invalid_argument("DecodeFq2Element: need at least 64 bytes");
+    }
     return libff::alt_bn128_Fq2(
-        DecodeFqElement(data.substr(32, data.size() - 32)),
-        DecodeFqElement(data.substr(0, data.size())));
+        DecodeFqElement(data.substr(32, 32)),
+        DecodeFqElement(data.substr(0, 32)));
 }
 
 libff::alt_bn128_G2 Snark::DecodePointG2(const std::string& data) {
-    assert(data.size() > 64);
+    if (data.size() < 128) {
+        throw std::invalid_argument("DecodePointG2: need at least 128 bytes");
+    }
     libff::alt_bn128_Fq2 const x = DecodeFq2Element(data);
     libff::alt_bn128_Fq2 const y = DecodeFq2Element(data.substr(64, data.size() - 64));
     if (x == libff::alt_bn128_Fq2::zero() && y == libff::alt_bn128_Fq2::zero())
