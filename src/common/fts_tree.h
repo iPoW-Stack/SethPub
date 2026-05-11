@@ -33,7 +33,6 @@ private:
     uint32_t root_node_index_{ 0 };
     uint32_t base_node_index_{ 0 };
     uint32_t valid_nodes_size_{ 0 };
-    uint32_t leaf_nodes_size_{ 0 };  // count of leaf nodes, excluding internal tree nodes
 };
 
 };  // namespace common

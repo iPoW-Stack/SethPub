@@ -8,7 +8,6 @@
 #include "common/encode.h"
 #include "common/global_info.h"
 #include "common/hash.h"
-#include "common/log.h"
 #include "common/string_utils.h"
 #include "common/tick.h"
 #include "common/time_utils.h"

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <deque>
-#include <functional>
 #include <protos/elect.pb.h>
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
@@ -205,12 +204,13 @@ static inline bool operator==(const struct CrossItem & X,const struct CrossItem 
 
 struct CrossItemRecordHash {
     size_t operator()(const struct CrossItem& item) const {
-        // Hash members explicitly so all fields affect the result (portable; no
-        // reliance on struct padding or std::hash<std::string>(object bytes)).
-        size_t h = std::hash<uint32_t>{}(item.src_shard);
-        h ^= std::hash<uint32_t>{}(item.src_pool) + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
-        h ^= std::hash<uint64_t>{}(item.height) + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
-        return h;
+        char data[sizeof(CrossItem)];
+        uint32_t* u32_arr = (uint32_t*)data;
+        u32_arr[0] = item.src_shard;
+        u32_arr[1] = item.src_pool;
+        u32_arr[2] = static_cast<uint32_t>(item.height && 0xFFFFFFFFu);
+        u32_arr[3] = static_cast<uint32_t>((item.height >> 32) && 0xFFFFFFFFu);
+        return std::hash<std::string>()(data);
     }
 };
 

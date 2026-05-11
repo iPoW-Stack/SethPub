@@ -16,6 +16,37 @@ namespace seth {
 
 namespace hotstuff {
 
+namespace {
+
+// Consensus nodes persist receipt blobs via key_value_array during Store; synced
+// blocks often omit that array but carry the same data on BlockTx. Mirror
+// SaveKeyValue("tx", tx_hash, TxHashStatus) so receipt queries work on syncers.
+void PersistTxReceiptKvsFromBlockTxList(
+        const ViewBlock& view_block,
+        const std::shared_ptr<sethvm::SethhainHost>& seth_host_ptr,
+        const std::shared_ptr<protos::PrefixDb>& prefix_db) {
+    static const std::string kTxReceiptId = "tx";
+    const auto& bi = view_block.block_info();
+    for (int32_t i = 0; i < bi.tx_list_size(); ++i) {
+        const auto& tx = bi.tx_list(i);
+        if (tx.tx_hash().empty()) {
+            continue;
+        }
+        block::protobuf::TxHashStatus tx_hash_status;
+        tx_hash_status.set_status(static_cast<int32_t>(tx.status()));
+        if (tx.has_output()) {
+            tx_hash_status.set_output(tx.output());
+        }
+        *tx_hash_status.mutable_events() = tx.events();
+        const std::string val = tx_hash_status.SerializeAsString();
+        const std::string compound_key = kTxReceiptId + tx.tx_hash();
+        prefix_db->SaveTemporaryKv(compound_key, val, seth_host_ptr->db_batch_);
+        seth_host_ptr->SaveKeyValue(kTxReceiptId, tx.tx_hash(), val);
+    }
+}
+
+}  // namespace
+
 ViewBlockChain::ViewBlockChain() {}
 
 void ViewBlockChain::Init(
@@ -113,6 +144,8 @@ Status ViewBlockChain::Store(
                 common::Encode::HexEncode(view_block->block_info().key_value_array(i).value()).c_str());
         }
 
+        PersistTxReceiptKvsFromBlockTxList(*view_block, seth_host_ptr, prefix_db_);
+
         for (int32_t i = 0; i < view_block->block_info().joins_size(); i++) {
             auto& join_info = view_block->block_info().joins(i);
             security::Ecdsa ecdsa;
@@ -128,6 +161,10 @@ Status ViewBlockChain::Store(
 #endif
             prefix_db_->AddBlsVerifyG2(addr, join_info.g2_req(), seth_host_ptr->db_batch_);
         }
+    } else if (balane_map_ptr == nullptr) {
+        // Cross/root chains skip the local-chain KV bootstrap above; still persist
+        // per-tx receipts from tx_list for synced blocks.
+        PersistTxReceiptKvsFromBlockTxList(*view_block, seth_host_ptr, prefix_db_);
     }
 
 #ifndef NDEBUG
@@ -143,13 +180,6 @@ Status ViewBlockChain::Store(
     if (!start_block_) {
         start_block_ = view_block;
         SetViewBlockToMap(block_info_ptr);
-        // Seed high_view_block_ from the genesis/start block so that HighViewBlock()
-        // is non-null even before any QC certificate arrives via UpdateHighViewBlock.
-        // Guard: RecoverHighViewBlock() may have already set a newer value from DB.
-        if (high_view_block_ == nullptr && !view_block->qc().view_block_hash().empty()) {
-            high_view_block_ = view_block;
-            high_view_block_view_.store(view_block->qc().view());
-        }
         return Status::kSuccess;
     }
 
@@ -1449,24 +1479,8 @@ void ViewBlockChain::RecoverHighViewBlock() {
 
 void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_item) {
     if (qc_item.view_block_hash().empty()) {
-        // Never mutate high_view_block_ with an unanchored QC.
-        // Empty hash means we cannot bind this view to a concrete block.
-        SETH_WARN("skip UpdateHighViewBlock: empty qc view_block_hash, %u_%u_%lu",
-            qc_item.network_id(),
-            qc_item.pool_index(),
-            qc_item.view());
-        return;
-    }
-
-    // Guard local-chain high view from invalid/unsigned QC input.
-    // This is especially important for catch-up paths where remote proposals
-    // may carry a view_item.qc that is not a verified certificate.
-    if (chain_type_ == kLocalChain && !IsQcTcValid(qc_item)) {
-        SETH_WARN("skip UpdateHighViewBlock: invalid qc item, %u_%u_%lu, hash: %s",
-            qc_item.network_id(),
-            qc_item.pool_index(),
-            qc_item.view(),
-            common::Encode::HexEncode(qc_item.view_block_hash()).c_str());
+        SETH_DEBUG("qc_item view_block_hash is empty for %u_%u_%lu",
+            qc_item.network_id(), qc_item.pool_index(), qc_item.view());
         return;
     }
 
@@ -1491,16 +1505,16 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
             // advance together. This keeps GetLeader()'s out_view consistent with the
             // network's current view, allowing the backup node to accept proposals
             // and participate in consensus while sync catches up.
-            if (high_view_block_ == nullptr || 
-                    high_view_block_->qc().view() < qc_item.view()) {
-                auto placeholder = std::make_shared<ViewBlock>();
-                *placeholder->mutable_qc() = qc_item;
-                high_view_block_ = placeholder;
-                high_view_block_view_.store(qc_item.view());
-                SETH_DEBUG("advanced high_view_block via QC placeholder: %u_%u_%lu, hash: %s",
-                    qc_item.network_id(), qc_item.pool_index(), qc_item.view(),
-                    common::Encode::HexEncode(qc_item.view_block_hash()).c_str());
-            }
+            // if (high_view_block_ == nullptr || 
+            //         high_view_block_->qc().view() < qc_item.view()) {
+            //     auto placeholder = std::make_shared<ViewBlock>();
+            //     *placeholder->mutable_qc() = qc_item;
+            //     high_view_block_ = placeholder;
+            //     high_view_block_view_.store(qc_item.view());
+            //     SETH_DEBUG("advanced high_view_block via QC placeholder: %u_%u_%lu, hash: %s",
+            //         qc_item.network_id(), qc_item.pool_index(), qc_item.view(),
+            //         common::Encode::HexEncode(qc_item.view_block_hash()).c_str());
+            // }
             return;
         }
 
@@ -1523,7 +1537,9 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
             view_block_ptr->block_info().height());
     }
 
-    if (high_view_block_ == nullptr ||
+    if (high_view_block_ == nullptr || high_view_block_->qc().sign_x().empty() ||
+            !high_view_block_->block_info().has_height() ||
+            high_view_block_->block_info().height() < view_block_ptr->block_info().height() ||
             high_view_block_->qc().view() < view_block_ptr->qc().view()) {
 #ifndef NDEBUG
         if (high_view_block_ != nullptr) {

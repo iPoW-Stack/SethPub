@@ -2,17 +2,33 @@ cmake_minimum_required(VERSION 3.8)
 
 add_compile_options(-Wno-unused-parameter)
 
-# Include tx_utils / struct branch tests (gcov maps pools_test → src/pools).
-set(pools_test_src
-    test_height_tree_level.cc
-    test_leaf_height_tree.cc
-    test_pools_tx_utils_branches.cc
-    test_unique_hash_lru_set_branches.cc
-    test_smoke.cc)
+aux_source_directory(./ pools_test_src)
 add_executable(pools_test ${pools_test_src})
 
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(pools_test PRIVATE pools db protos common gtest gtest_main gmock gmock_main pthread dl)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    target_link_libraries(pools_test PRIVATE pools db protos common gtest gtest_main gmock gmock_main)
-endif()
+add_dependencies(pools_test pools)
+target_link_libraries(pools_test PRIVATE consensus
+    sync
+    sethvm
+    block
+    vss
+    ck
+    elect
+    timeblock
+    pools
+    bls
+    network
+    broadcast
+    dht
+    transport
+    websocket
+    http
+    contract
+    pki
+    big_num
+    db
+    security
+    common
+    protos
+    tcmalloc
+    pthread
+    gmp gtest gtest_main gmock gmock_main pthread dl)

@@ -1,5 +1,7 @@
 #include "websocket/websocket_server.h"
 
+#include <evhtp/internal.h>
+
 #include "common/global_info.h"
 
 namespace seth {
@@ -55,7 +57,7 @@ void WebSocketServer::Run() {
     auto thread_index = common::GlobalInfo::Instance()->get_thread_index();
     try {
         server_.listen(websocketpp::lib::asio::ip::tcp::endpoint(
-            websocketpp::lib::asio::ip::make_address_v4(ws_ip_),
+            boost::asio::ip::address_v4::from_string(ws_ip_.c_str()),
             ws_port_));
         server_.start_accept();
         server_.run();

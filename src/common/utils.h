@@ -225,7 +225,7 @@ static const uint32_t kTestForNetworkId = 4u;
 static const uint16_t kDefaultVpnPort = 9033u;
 static const uint16_t kDefaultRoutePort = 9034u;
 // static const int64_t kRotationPeriod = 600ll * 1000ll * 1000ll; // epoch time
-static const int64_t kRotationPeriod = 600ll * 1000ll * 1000ll; // for quicker debugging
+static const int64_t kRotationPeriod = 60ll * 1000ll * 1000ll; // for quicker debugging
 static const int64_t kMessageTimeoutMs = 10000ll;
 static const uint32_t kMaxRotationCount = 4u;
 static const uint16_t kNodePortRangeMin = 1000u;
@@ -320,7 +320,7 @@ static const uint32_t kVpnShareStakingPrice = 1u;
 static const uint64_t kSethMaxAmount = 10llu * 100000000llu * kSethMiniTransportUnit;
 static const uint32_t kTransactionNoVersion = 0u;
 static const uint32_t kTransactionVersion = 1u;
-// 10% 
+// 10%
 static const uint64_t kGenesisShardingNodesMaxSeth = kSethMaxAmount / 100llu * 10llu;
 static const uint32_t kElectNodeMinMemberIndex = 1024u;
 

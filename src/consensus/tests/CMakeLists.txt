@@ -2,30 +2,8 @@ cmake_minimum_required(VERSION 3.8)
 
 add_compile_options(-Wno-unused-parameter)
 
-# Keep heavy integration tests (e.g. test_tx.cc) out of the default target; they are
-# buildable manually when needed. Branch-coverage gtests are included here.
-set(consensus_test_src
-    test_consensus_utils.cc
-    test_consensus_hotstuff_zbft_surface.cc
-    test_hotstuff_utils_branches.cc
-    test_smoke.cc)
+aux_source_directory(./ consensus_test_src)
 add_executable(consensus_test ${consensus_test_src})
 
-target_link_libraries(
-    consensus_test
-    PRIVATE
-    consensus
-    block
-    elect
-    timeblock
-    pools
-    db
-    protos
-    common
-    security
-    gtest
-    gtest_main
-    gmock
-    gmock_main
-    pthread
-    dl)
+add_dependencies(consensus_test consensus)
+target_link_libraries(consensus_test PRIVATE consensus gtest gtest_main gmock gmock_main pthread dl)

@@ -55,12 +55,6 @@ static const bool WITH_CONSENSUS_STATISTIC =
 
 class Hotstuff {
 public:
-    static bool IsAnchoredQc(const view_block::protobuf::QcItem& qc_item);
-    static bool ShouldRejectReconstructPropose(
-            uint64_t max_view,
-            uint64_t last_leader_propose_view,
-            uint64_t leader_view);
-
     Hotstuff() = default;
     Hotstuff(
             std::shared_ptr<block::BlockManager>& block_mgr,
@@ -298,6 +292,13 @@ private:
         }
 
         latest_qc_item_ptr_ = qc_ptr;
+        auto high_view_block = view_block_chain_->HighViewBlock();
+        if (high_view_block != nullptr && high_view_block->qc().view() < qc_ptr->view()) {
+            SETH_DEBUG("pool: %u, update latest qc item ptr view: %lu is higher than high view block view: %lu",
+                pool_idx_, qc_ptr->view(), high_view_block->qc().view());
+            SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
+            latest_leader_propose_message_ = nullptr;
+        }
     }
 
     bool HandleProposeMsgCondition(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
@@ -679,7 +680,6 @@ private:
     // delay retries with exponential backoff to avoid CPU-burning tight loops.
     uint32_t empty_propose_count_ = 0;
     uint64_t empty_propose_backoff_until_ms_ = 0;
-    uint64_t dedup_recover_view_ = 0;
     uint64_t prev_pool32_debug_tm_ = 0;
     static constexpr uint32_t kEmptyProposeBackoffBaseMs = 50;    // 50ms base
     static constexpr uint32_t kEmptyProposeBackoffMaxMs = 5000;   // 5s cap

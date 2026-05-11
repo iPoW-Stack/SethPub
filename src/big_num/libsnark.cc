@@ -1,7 +1,5 @@
 #include "big_num/libsnark.h"
 
-#include <stdexcept>
-
 #include "libff/common/profiling.hpp"
 #include "big_num/bignum_utils.h"
 
@@ -58,9 +56,6 @@ libff::alt_bn128_G1 decodePointG1(bytesConstRef _data)
     if (x == libff::alt_bn128_Fq::zero() && y == libff::alt_bn128_Fq::zero())
         return libff::alt_bn128_G1::zero();
     libff::alt_bn128_G1 p(x, y, libff::alt_bn128_Fq::one());
-    if (!p.is_well_formed()) {
-        throw std::runtime_error("invalid alt_bn128 G1 point");
-    }
     return p;
 }
 
