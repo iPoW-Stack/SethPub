@@ -81,6 +81,10 @@ public:
         return networks_;
     }
 
+    void set_config_public_ip(const std::string& ip) {
+        config_public_ip_ = ip;
+    }
+
     void set_config_public_port(uint16_t public_port) {
         config_public_port_ = public_port;
     }

@@ -12,16 +12,16 @@ namespace test {
 
 class TestFtsTreeExtended : public testing::Test {};
 
-// Test AppendFtsNode before any build (leaf_nodes_size_ == 0, no cleanup)
+// Test AppendFtsNode before any build (valid_nodes_size_ == 0, no cleanup)
 TEST_F(TestFtsTreeExtended, AppendBeforeBuild) {
     FtsTree tree;
-    ASSERT_EQ(tree.leaf_nodes_size_, 0u);
+    ASSERT_EQ(tree.valid_nodes_size_, 0u);
     
     tree.AppendFtsNode(100ull, 1);
     tree.AppendFtsNode(200ull, 2);
     
     ASSERT_EQ(tree.fts_nodes_.size(), 2u);
-    ASSERT_EQ(tree.leaf_nodes_size_, 0u);  // Not updated until CreateFtsTree
+    ASSERT_EQ(tree.valid_nodes_size_, 0u);  // Not updated until CreateFtsTree
 }
 
 // Test AppendFtsNode after build strips internal nodes
@@ -38,7 +38,7 @@ TEST_F(TestFtsTreeExtended, AppendAfterBuildStripsInternalNodes) {
     tree.AppendFtsNode(300ull, 3);
     
     // After append, should have exactly 3 leaf nodes (internal nodes stripped)
-    ASSERT_EQ(tree.leaf_nodes_size_, 3u);
+    ASSERT_EQ(tree.valid_nodes_size_, 3u);
     ASSERT_EQ(tree.fts_nodes_.size(), 3u);
 }
 
@@ -217,7 +217,6 @@ TEST_F(TestFtsTreeExtended, CreateFtsTreeSingleNode) {
     tree.AppendFtsNode(1000ull, 42);
     tree.CreateFtsTree();
     
-    ASSERT_EQ(tree.leaf_nodes_size_, 1u);
     ASSERT_EQ(tree.valid_nodes_size_, 1u);
     ASSERT_EQ(tree.base_node_index_, 1u);
     
@@ -233,7 +232,7 @@ TEST_F(TestFtsTreeExtended, CreateFtsTreePowerOfTwo) {
     }
     tree.CreateFtsTree();
     
-    ASSERT_EQ(tree.leaf_nodes_size_, 4u);
+    ASSERT_EQ(tree.valid_nodes_size_, 4u);
     ASSERT_EQ(tree.base_node_index_, 4u);  // Exactly 4, no padding
     
     std::mt19937_64 rng(42);
@@ -252,7 +251,7 @@ TEST_F(TestFtsTreeExtended, CreateFtsTreeNonPowerOfTwo) {
     }
     tree.CreateFtsTree();
     
-    ASSERT_EQ(tree.leaf_nodes_size_, 3u);
+    ASSERT_EQ(tree.valid_nodes_size_, 3u);
     ASSERT_EQ(tree.base_node_index_, 4u);  // Next power of 2 >= 3
     
     std::mt19937_64 rng(42);
@@ -279,7 +278,7 @@ TEST_F(TestFtsTreeExtended, MultipleRebuildsWithMultipleAppends) {
     tree.AppendFtsNode(40ull, 4);
     tree.CreateFtsTree();
     
-    ASSERT_EQ(tree.leaf_nodes_size_, 4u);
+    ASSERT_EQ(tree.valid_nodes_size_, 4u);
     
     std::mt19937_64 rng(99);
     std::set<int32_t> seen;
@@ -291,21 +290,21 @@ TEST_F(TestFtsTreeExtended, MultipleRebuildsWithMultipleAppends) {
     ASSERT_GT(seen.size(), 1u);
 }
 
-// Test leaf_nodes_size_ increment in AppendFtsNode
+// Test valid_nodes_size_ increment in AppendFtsNode
 TEST_F(TestFtsTreeExtended, LeafNodesSizeIncrementAfterBuild) {
     FtsTree tree;
     tree.AppendFtsNode(10ull, 1);
     tree.AppendFtsNode(20ull, 2);
     tree.CreateFtsTree();
     
-    ASSERT_EQ(tree.leaf_nodes_size_, 2u);
+    ASSERT_EQ(tree.valid_nodes_size_, 2u);
     
-    // Each append should increment leaf_nodes_size_
+    // Each append should increment valid_nodes_size_
     tree.AppendFtsNode(30ull, 3);
-    ASSERT_EQ(tree.leaf_nodes_size_, 3u);
+    ASSERT_EQ(tree.valid_nodes_size_, 3u);
     
     tree.AppendFtsNode(40ull, 4);
-    ASSERT_EQ(tree.leaf_nodes_size_, 4u);
+    ASSERT_EQ(tree.valid_nodes_size_, 4u);
 }
 
 // Test that GetOneNode correctly traverses to leaf (choose_idx < base_node_index_)
