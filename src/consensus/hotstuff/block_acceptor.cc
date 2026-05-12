@@ -855,16 +855,12 @@ Status BlockAcceptor::addTxsToPool(
 
             auto iter = prevs_balance_map.find(to_tx_item.des());
             if (iter != prevs_balance_map.end()) {
-                //assert(iter->first.size() == common::kUnicastAddressLength ||
-                    iter->first.size() == common::kPreypamentAddressLength);
                 now_balance_map[iter->first] = iter->second;
             } else {
                 auto tmp_address_info = view_block_chain_->ChainGetAccountInfo(to_tx_item.des());
                 if (tmp_address_info != nullptr) {
                     auto new_addr_info = std::make_shared<address::protobuf::AddressInfo>();
                     *new_addr_info = *tmp_address_info;
-                    //assert(to_tx_item.des().size() == common::kUnicastAddressLength || 
-                        to_tx_item.des().size() == common::kPreypamentAddressLength);
                     now_balance_map[to_tx_item.des()] = new_addr_info;
                 }
             }
@@ -939,14 +935,10 @@ Status BlockAcceptor::addTxsToPool(
         
         auto iter = prevs_balance_map.find(address_info->addr());
         if (iter != prevs_balance_map.end()) {
-            //assert(iter->first.size() == common::kUnicastAddressLength ||
-                iter->first.size() == common::kPreypamentAddressLength);
             now_balance_map[iter->first] = iter->second;
         } else {
             auto new_addr_info = std::make_shared<address::protobuf::AddressInfo>();
             *new_addr_info = *address_info;
-            //assert(address_info->addr().size() == common::kUnicastAddressLength || 
-                address_info->addr().size() == common::kPreypamentAddressLength);
             now_balance_map[address_info->addr()] = new_addr_info;
         }
 
@@ -1246,7 +1238,7 @@ Status BlockAcceptor::addTxsToPool(
     auto& final_txs = txs_ptr->txs;
     final_txs.reserve(final_txs.size() + txs.size());
 
-    for (size_t i = 0; i < txs.size(); ++i) {
+    for (int i = 0; i < txs.size(); ++i) {
         if (verify_results[i] == 1 && temp_items[i] != nullptr) {
             final_txs.push_back(temp_items[i]);
         }

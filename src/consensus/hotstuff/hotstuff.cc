@@ -846,7 +846,6 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
         return Status::kLeaderInvalid;
     }
 
-view_matched:
     pro_msg_wrap->leader = leader;
 #ifndef NDEBUG
     SETH_DEBUG("HandleProposeMessageByStep called hash: %lu, "
