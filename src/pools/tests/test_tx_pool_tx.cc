@@ -52,6 +52,7 @@ static TxItemPtr MakeTxItem(uint64_t addr_nonce, uint64_t tx_nonce,
     auto msg  = std::make_shared<transport::TransportMessage>();
     auto ai   = std::make_shared<address::protobuf::AddressInfo>();
     ai->set_nonce(addr_nonce);
+    ai->set_addr(std::string(common::kUnicastAddressLength, 'A'));
     msg->header.mutable_tx_proto()->set_nonce(tx_nonce);
     msg->header.mutable_tx_proto()->set_step(step);
     return std::make_shared<MinTxItem>(msg, ai);
