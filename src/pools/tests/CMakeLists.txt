@@ -29,8 +29,9 @@ if (XENABLE_CODE_COVERAGE)
 endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    # ck after other deps: libbls (via pools->sync->…->elect) needs ClickHouseClient symbols from ck.
-    target_link_libraries(pools_test PRIVATE pools db protos common gtest gtest_main gmock gmock_main pthread dl ck)
+    # libbls calls ClickHouseClient::InsertBlsElectInfo; ld needs libck.a after libbls.a.
+    # Transitive order from pools can place ck before bls; repeat bls then ck at the end.
+    target_link_libraries(pools_test PRIVATE pools db protos common gtest gtest_main gmock gmock_main pthread dl bls ck)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    target_link_libraries(pools_test PRIVATE pools db protos common gtest gtest_main gmock gmock_main ck)
+    target_link_libraries(pools_test PRIVATE pools db protos common gtest gtest_main gmock gmock_main bls ck)
 endif()
