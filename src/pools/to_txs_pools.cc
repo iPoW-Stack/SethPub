@@ -316,6 +316,8 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
         }
 
         auto timeout = common::TimeUtils::TimestampMs();
+        size_t total_size_bytes = 0;
+        common::AutoSpinLock pools_lock(network_txs_pools_mutex_);
         for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
             uint64_t cons_height = pool_consensus_heihgts_[i];
             // Floor: never go below the already-committed height
@@ -354,16 +356,36 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
                 cons_height = floor_height;
             }
 
-            // Cap the height range per pool to prevent oversized propose messages.
-            // Each block's cross-shard data can be large; aggregating too many blocks
-            // produces a kNormalTo tx that exceeds kMaxProposeMsgBytes.
-            if (cons_height > floor_height + kMaxHeightRangePerBatch) {
-                cons_height = floor_height + kMaxHeightRangePerBatch;
+            // Cap cons_height by accumulated serialized to_txs size across all pools.
+            // Trim from the top height down until total_size_bytes + this pool stays
+            // within half of kMaxProposeMsgBytes, preventing oversized propose messages.
+            {
+                auto& hmap = network_txs_pools_[i];
+                size_t pool_size = 0;
+                for (uint64_t h = floor_height + 1; h <= cons_height; ++h) {
+                    auto it = hmap.find(h);
+                    if (it == hmap.end()) continue;
+                    for (auto& kv : it->second) {
+                        pool_size += kv.second.ByteSizeLong();
+                    }
+                }
+                while (cons_height > floor_height &&
+                       total_size_bytes + pool_size > (size_t)(common::kMaxProposeMsgBytes / 2)) {
+                    auto it = hmap.find(cons_height);
+                    if (it != hmap.end()) {
+                        for (auto& kv : it->second) {
+                            pool_size -= kv.second.ByteSizeLong();
+                        }
+                    }
+                    --cons_height;
+                }
+                total_size_bytes += pool_size;
+                has_statistic_height_[i] = cons_height;
             }
 
             to_heights.add_heights(cons_height);
-            SETH_DEBUG("pool: %u, success add cons height: %lu, floor: %lu",
-                i, cons_height, floor_height);
+            SETH_DEBUG("pool: %u, success add cons height: %lu, floor: %lu, total_size: %zu",
+                i, cons_height, floor_height, total_size_bytes);
         }
     }
     
