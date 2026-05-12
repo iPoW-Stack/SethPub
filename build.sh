@@ -21,9 +21,11 @@ set -euo pipefail
 # After a coverage run, optional per-module branch gate (gcovr):
 #   COVERAGE_FAIL_UNDER_BRANCH=80 bash build.sh coverage Debug
 #
-# Uncovered-line log: default dir is repo-root/coverage/missing/ (requires gcovr 7+ --txt-missing).
+# Uncovered-line log: default dir is repo-root/coverage/missing/
+#   (gcovr 8+: --txt table with "Missing" column; older: --txt-missing if present.)
 #   bash build.sh coverage Debug
 #   cat "$(dirname "$(readlink -f build.sh)")/coverage/missing/pools_missing.txt"
+#   If `gcovr` is not on PATH: export GCOVR=/path/to/gcovr   # e.g. .../python3.10/bin/gcovr
 #   Disable: COVERAGE_TXT_MISSING=0 bash build.sh coverage Debug
 #   Override dir: COVERAGE_MISSING_LOG_DIR=/path/to/dir
 # ---------------------------------------------------------------------------
@@ -391,22 +393,51 @@ build_gcovr_parallel_args() {
     echo "  [WARN] gcovr does not support parallel coverage parsing; fallback to single-thread."
 }
 
+# Prefer GCOVR when set, then a known venv path, then PATH.
+resolve_gcovr_cmd() {
+    if [[ -n "${GCOVR:-}" && -x "${GCOVR}" ]]; then
+        printf '%s\n' "${GCOVR}"
+        return 0
+    fi
+    if [[ -x "/root/.venvs/gcovr/bin/gcovr" ]]; then
+        printf '%s\n' "/root/.venvs/gcovr/bin/gcovr"
+        return 0
+    fi
+    if command -v gcovr >/dev/null 2>&1; then
+        command -v gcovr
+        return 0
+    fi
+    return 1
+}
+
+# Echo "txt-missing", "txt", or nothing (stdout empty + return 1).
+detect_gcovr_missing_report_mode() {
+    local gcovr_cmd="$1"
+    local h
+    h="$("$gcovr_cmd" --help 2>/dev/null || true)"
+    if grep -q -- '--txt-missing' <<<"$h"; then
+        echo "txt-missing"
+        return 0
+    fi
+    if grep -qE '[[:space:]]--txt[[:space:]]' <<<"$h"; then
+        echo "txt"
+        return 0
+    fi
+    return 1
+}
+
 print_module_coverage() {
     local -a coverage_entries=("$@")
     if [[ "${#coverage_entries[@]}" -eq 0 ]]; then
         coverage_entries=("${ALL_TESTS[@]}")
     fi
-    local gcovr_cmd="gcovr"
-    if [[ -x "/root/.venvs/gcovr/bin/gcovr" ]]; then
-        gcovr_cmd="/root/.venvs/gcovr/bin/gcovr"
-    elif ! command -v gcovr >/dev/null 2>&1; then
-        echo "  [WARN] gcovr not found (install it first)."
+    local gcovr_cmd
+    if ! gcovr_cmd="$(resolve_gcovr_cmd)"; then
+        echo "  [WARN] gcovr not found (install it first). Set GCOVR=/path/to/gcovr if it is not on PATH."
         return 0
     fi
-    local gcovr_txt_missing=0
-    if "$gcovr_cmd" --help 2>/dev/null | grep -q -- '--txt-missing'; then
-        gcovr_txt_missing=1
-    fi
+    local gcovr_missing_mode=""
+    gcovr_missing_mode="$(detect_gcovr_missing_report_mode "$gcovr_cmd" || true)"
     local -a gcovr_parallel_args=()
     build_gcovr_parallel_args "$gcovr_cmd" gcovr_parallel_args
 
@@ -417,8 +448,8 @@ print_module_coverage() {
     if [[ "${#gcovr_parallel_args[@]}" -gt 0 ]]; then
         echo "  gcovr parallel jobs: ${GCOVR_JOBS}"
     fi
-    if [[ "$gcovr_txt_missing" -eq 0 ]] && { [[ "${COVERAGE_TXT_MISSING:-1}" != "0" ]] || [[ -n "${COVERAGE_MISSING_LOG_DIR:-}" ]]; }; then
-        echo "  [WARN] This gcovr has no --txt-missing (need gcovr 7+). No *_missing.txt files; e.g. pip install --upgrade 'gcovr>=7'"
+    if [[ -z "$gcovr_missing_mode" ]] && { [[ "${COVERAGE_TXT_MISSING:-1}" != "0" ]] || [[ -n "${COVERAGE_MISSING_LOG_DIR:-}" ]]; }; then
+        echo "  [WARN] This gcovr cannot write uncovered-line reports (no --txt-missing or --txt). Install gcovr 5+."
     fi
     for entry in "${coverage_entries[@]}"; do
         local exe="${entry%%:*}"
@@ -459,10 +490,18 @@ print_module_coverage() {
             local missing_root="${COVERAGE_MISSING_LOG_DIR:-${SETH_ROOT}/coverage/missing}"
             local safe_mod="${module_dir//\//_}"
             local missing_file="${missing_root}/${safe_mod}_missing.txt"
-            if [[ "$gcovr_txt_missing" -eq 1 ]]; then
-                "$gcovr_cmd" \
-                    "${gcovr_base_args[@]}" \
-                    --txt-missing "$missing_file"
+            if [[ -n "$gcovr_missing_mode" ]]; then
+                mkdir -p "$missing_root"
+                if [[ "$gcovr_missing_mode" == "txt-missing" ]]; then
+                    "$gcovr_cmd" \
+                        "${gcovr_base_args[@]}" \
+                        --txt-missing "$missing_file"
+                else
+                    # gcovr 8+ removed --txt-missing; line text report includes a "Missing" column.
+                    "$gcovr_cmd" \
+                        "${gcovr_base_args[@]}" \
+                        --txt "$missing_file"
+                fi
                 echo "  uncovered log: $missing_file"
                 if [[ -f "$missing_file" ]]; then
                     echo "  --- uncovered (first 120 lines) ---"
@@ -472,7 +511,7 @@ print_module_coverage() {
         fi
     done
     if [[ "${COVERAGE_TXT_MISSING:-1}" != "0" ]] || [[ -n "${COVERAGE_MISSING_LOG_DIR:-}" ]]; then
-        if [[ "$gcovr_txt_missing" -eq 1 ]]; then
+        if [[ -n "$gcovr_missing_mode" ]]; then
             echo ""
             echo "  Per-module uncovered-line logs: ${COVERAGE_MISSING_LOG_DIR:-${SETH_ROOT}/coverage/missing}/"
         fi
@@ -488,11 +527,9 @@ enforce_branch_minimum() {
     if [[ "${#coverage_entries[@]}" -eq 0 ]]; then
         coverage_entries=("${ALL_TESTS[@]}")
     fi
-    local gcovr_cmd="gcovr"
-    if [[ -x "/root/.venvs/gcovr/bin/gcovr" ]]; then
-        gcovr_cmd="/root/.venvs/gcovr/bin/gcovr"
-    elif ! command -v gcovr >/dev/null 2>&1; then
-        echo "  [WARN] gcovr not found; skip branch gate."
+    local gcovr_cmd
+    if ! gcovr_cmd="$(resolve_gcovr_cmd)"; then
+        echo "  [WARN] gcovr not found; skip branch gate. Set GCOVR=/path/to/gcovr if it is not on PATH."
         return 0
     fi
     local -a gcovr_parallel_args=()
