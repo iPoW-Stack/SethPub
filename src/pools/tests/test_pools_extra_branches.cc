@@ -101,6 +101,15 @@ TEST(AccountQpsLruMapTest, MultipleAddrsIndependent) {
     EXPECT_EQ(lru.item_list_.size(), 3u);
 }
 
+// Exercise trivial destructor (~AccountQpsLruMap) and scoped teardown.
+TEST(AccountQpsLruMapTest, DestructorAfterChecks) {
+    {
+        AccountQpsLruMap<4> lru;
+        EXPECT_TRUE(lru.check("d1"));
+        EXPECT_TRUE(lru.check("d2"));
+    }
+}
+
 }  // namespace test
 }  // namespace pools
 }  // namespace seth

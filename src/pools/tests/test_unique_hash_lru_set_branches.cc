@@ -136,6 +136,17 @@ TEST(UniqueHashLruSetBranches, SingleBucketKeepsOnlyLatestKey) {
     EXPECT_EQ(set.item_list_.size(), 1u);
 }
 
+// Bucket full, reinsert existing key (duplicate path), then add another key (eviction path).
+TEST(UniqueHashLruSetBranches, FullBucketReinsertThenEvict) {
+    UniqueHashLruSet<2> set;
+    set.insert("p1");
+    set.insert("p2");
+    set.insert("p1");
+    set.insert("p3");
+    EXPECT_EQ(set.item_list_.size(), 2u);
+    EXPECT_EQ(set.item_map_.size(), 2u);
+}
+
 }  // namespace test
 }  // namespace pools
 }  // namespace seth
