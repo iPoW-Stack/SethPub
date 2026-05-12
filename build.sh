@@ -350,6 +350,11 @@ append_module_specific_excludes() {
             # meaningfully driven by pools_test alone; leaving them in gcovr drives the module
             # line % far below the rest of the tree. Excluding them scopes [pools] coverage to
             # code reachable from pools_test (same pattern as elect/init transport excludes).
+            #
+            # Full-path (~90%+) line coverage for all of src/pools/*.cc without these excludes
+            # needs either: sync_test / integration runs that exercise TxPoolManager + hotstuff,
+            # or a dedicated pools integration test binary with mocks for Route, HotstuffManager,
+            # PrefixDb-heavy paths, and ShardStatistic replay — not pools_test alone.
             out_args_ref+=(
                 --exclude ".*/src/pools/shard_statistic\\.cc$"
                 --exclude ".*/src/pools/tx_pool_manager\\.cc$"
