@@ -355,7 +355,7 @@ append_module_specific_excludes() {
             # needs either: sync_test / integration runs that exercise TxPoolManager + hotstuff,
             # or a dedicated pools integration test binary with mocks for Route, HotstuffManager,
             # PrefixDb-heavy paths, and ShardStatistic replay — not pools_test alone.
-            # Optional scaffold: cmake .. -DBUILD_POOLS_INTEGRATION_TEST=ON && make pools_integration_test
+            # pools_integration_test is built by default; disable with -DBUILD_POOLS_INTEGRATION_TEST=OFF.
             # (see src/pools/tests_integration/README.txt).
             out_args_ref+=(
                 --exclude ".*/src/pools/shard_statistic\\.cc$"

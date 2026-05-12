@@ -34,4 +34,4 @@ Build
   cmake .. -DBUILD_POOLS_INTEGRATION_TEST=ON
   make pools_integration_test
 
-Default: BUILD_POOLS_INTEGRATION_TEST=OFF so CI and default cbuild_* stay unchanged.
+Default: BUILD_POOLS_INTEGRATION_TEST=ON (disable with -DBUILD_POOLS_INTEGRATION_TEST=OFF if needed).

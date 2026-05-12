@@ -12,7 +12,7 @@ endif()
 
 option(BUILD_POOLS_INTEGRATION_TEST
     "Build pools_integration_test (full LINK_ARGS link; see src/pools/tests_integration/README.txt)"
-    OFF)
+    ON)
 if(BUILD_POOLS_INTEGRATION_TEST)
     add_subdirectory(tests_integration)
 endif()
