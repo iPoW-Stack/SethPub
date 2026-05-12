@@ -376,8 +376,7 @@ public:
                     tx_info = msg_ptr->header.mutable_hotstuff()->mutable_vote_msg()->mutable_txs(tx_info_idx);
                 }
             } else {
-                //assert(false)
-;            }
+            }
         }
 
         if (tx_info == nullptr) {
