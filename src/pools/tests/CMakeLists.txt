@@ -11,6 +11,7 @@ set(pools_test_src
     test_pools_extra_branches.cc
     test_leaf_height_tree_extra.cc
     test_height_tree_extra.cc
+    test_cross_pool.cc
     test_smoke.cc)
 add_executable(pools_test ${pools_test_src})
 
