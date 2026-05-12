@@ -9,3 +9,10 @@ if (XENABLE_CODE_COVERAGE)
     # Enables ShardStatistic::Init synthetic tag + TxPoolManager::AddTx in headers for coverage runs only.
     target_compile_definitions(pools PRIVATE SETH_UNITTEST)
 endif()
+
+option(BUILD_POOLS_INTEGRATION_TEST
+    "Build pools_integration_test (full LINK_ARGS link; see src/pools/tests_integration/README.txt)"
+    OFF)
+if(BUILD_POOLS_INTEGRATION_TEST)
+    add_subdirectory(tests_integration)
+endif()
