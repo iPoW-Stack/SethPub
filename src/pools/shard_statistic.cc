@@ -90,6 +90,13 @@ int ShardStatistic::Init() {
         pools_consensus_blocks_[i] = std::make_shared<PoolBlocksInfo>();
         pools_consensus_blocks_[i]->latest_consensus_height_ =
             statistic_info.pool_statisitcs(static_cast<int>(i)).max_height();
+    }
+
+    // After all pools_consensus_blocks_ exist: OnNewBlock() calls Init() when !inited_,
+    // which would recurse if replay ran while Init() was still "not inited".
+    inited_ = true;
+
+    for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
         for (uint64_t height = statistic_info.pool_statisitcs(static_cast<int>(i)).max_height();;
                 ++height) {
             auto view_block_ptr = std::make_shared<view_block::protobuf::ViewBlockItem>();
@@ -106,7 +113,6 @@ int ShardStatistic::Init() {
         }
     }
 
-    inited_ = true;
     return kPoolsSuccess;
 }
 

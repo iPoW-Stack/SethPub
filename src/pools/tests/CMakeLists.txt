@@ -29,7 +29,8 @@ if (XENABLE_CODE_COVERAGE)
 endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(pools_test PRIVATE pools db protos common gtest gtest_main gmock gmock_main pthread dl)
+    # ck after other deps: libbls (via pools->sync->…->elect) needs ClickHouseClient symbols from ck.
+    target_link_libraries(pools_test PRIVATE pools db protos common gtest gtest_main gmock gmock_main pthread dl ck)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    target_link_libraries(pools_test PRIVATE pools db protos common gtest gtest_main gmock gmock_main)
+    target_link_libraries(pools_test PRIVATE pools db protos common gtest gtest_main gmock gmock_main ck)
 endif()
