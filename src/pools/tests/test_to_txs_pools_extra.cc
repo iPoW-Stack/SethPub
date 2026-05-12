@@ -31,7 +31,7 @@
 #include "network/network_utils.h"
 #include "protos/bls.pb.h"
 #include "protos/pools.pb.h"
-#include "view_block/protobuf/view_block.pb.h"
+#include <protos/view_block.pb.h>
 
 namespace seth {
 namespace pools {

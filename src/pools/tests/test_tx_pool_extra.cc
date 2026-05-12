@@ -35,7 +35,7 @@
 #include "common/utils.h"
 #include "network/network_utils.h"
 #include "protos/prefix_db.h"
-#include "view_block/protobuf/view_block.pb.h"
+#include <protos/view_block.pb.h>
 
 namespace seth {
 namespace pools {
