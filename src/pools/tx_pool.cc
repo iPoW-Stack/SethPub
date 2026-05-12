@@ -516,7 +516,7 @@ void TxPool::GetTxSyncToLeader(
                         common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
                         tx_ptr->tx_info->nonce(),
                         (int32_t)tx_ptr->tx_info->step());
-                    // break;
+                    break;
                 }
             } else {
                 if (valid_nonce + 1 != tx_ptr->tx_info->nonce()) {
