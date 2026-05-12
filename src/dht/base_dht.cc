@@ -57,6 +57,9 @@ int BaseDht::Destroy() {
 }
 
 void BaseDht::UniversalJoin(const NodePtr& node) {
+    if (node == nullptr) {
+        return;
+    }
     NodePtr new_node = std::make_shared<Node>(
         local_node_->sharding_id,
         node->public_ip,
