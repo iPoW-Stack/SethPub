@@ -56,7 +56,7 @@ struct MinTxItem : public TxItem {
 // Create a TxItemPtr.  Pubkey is intentionally left empty (size 0, not 64)
 // so that SETH_DEBUG branches involving security_->GetAddress() are skipped.
 static TxItemPtr MakeTx(uint64_t addr_nonce, uint64_t tx_nonce,
-                        pools::protobuf::TxStep step,
+                        pools::protobuf::StepType step,
                         const std::string& addr = "addr") {
     auto msg = std::make_shared<transport::TransportMessage>();
     auto ai  = std::make_shared<address::protobuf::AddressInfo>();
@@ -69,15 +69,15 @@ static TxItemPtr MakeTx(uint64_t addr_nonce, uint64_t tx_nonce,
 }
 
 // tx_valid_func that always reports the tx as valid (returns 0)
-static int AlwaysValid(address::protobuf::AddressInfo&,
-                       pools::protobuf::TxMessage&,
+static int AlwaysValid(const address::protobuf::AddressInfo&,
+                       const pools::protobuf::TxMessage&,
                        uint64_t*) {
     return 0;
 }
 
 // tx_valid_func that always reports stale nonce (returns negative)
-static int AlwaysInvalid(address::protobuf::AddressInfo&,
-                         pools::protobuf::TxMessage&,
+static int AlwaysInvalid(const address::protobuf::AddressInfo&,
+                         const pools::protobuf::TxMessage&,
                          uint64_t*) {
     return -1;
 }
