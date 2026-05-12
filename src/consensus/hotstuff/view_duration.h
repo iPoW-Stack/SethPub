@@ -87,7 +87,13 @@ public:
         }
 
         // SETH_DEBUG("pool: %d duration is %.2f ms", pool_idx_, duration_ms);
-        return static_cast<uint64_t>(std::llround(std::max(0.0, duration_ms * 1000.0))); // ms → µs
+        double us_d = std::max(0.0, duration_ms * 1000.0); // ms → µs
+        uint64_t us = static_cast<uint64_t>(std::llround(us_d));
+        // After at least one successful view, never report 0 µs (rounding / FP / pathological m2).
+        if (count > 0 && us == 0) {
+            us = 1;
+        }
+        return us;
     }
 
 private:
