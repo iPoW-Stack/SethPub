@@ -67,8 +67,13 @@ static TxItemPtr MakeTx(uint64_t addr_nonce, uint64_t tx_nonce,
         padded.resize(common::kUnicastAddressLength, '\0');
     }
     ai->set_addr(std::move(padded));
-    msg->header.mutable_tx_proto()->set_nonce(tx_nonce);
-    msg->header.mutable_tx_proto()->set_step(step);
+    auto* tx_proto = msg->header.mutable_tx_proto();
+    tx_proto->set_nonce(tx_nonce);
+    tx_proto->set_step(step);
+    // System txs: TxPool::TempGetTxIdempotently asserts tx_info->to() == address_info->addr().
+    if (!IsUserTransaction(static_cast<uint32_t>(step))) {
+        tx_proto->set_to(ai->addr());
+    }
     // pubkey left empty → size 0, never triggers security_->GetAddress
     return std::make_shared<MinTxItem>(msg, ai);
 }
@@ -369,9 +374,8 @@ TEST_F(TestTxPoolExtra, TempGetTxIdempotently_SystemTx_AddedToTxMap) {
     TxPool pool;
     SetUpPool(pool);
     pool.tx_pool_dirty_ = true;
-    // For system tx: to == address_info->addr() (required by assert)
     auto tx = MakeTx(0, 0, pools::protobuf::kNormalTo, "sys_addr");
-    tx->tx_info->set_to("sys_addr");
+    const std::string map_key = tx->address_info->addr();
     tx->tx_key = "syskey";
     pool.added_txs_.push(tx);
 
@@ -379,7 +383,7 @@ TEST_F(TestTxPoolExtra, TempGetTxIdempotently_SystemTx_AddedToTxMap) {
     std::vector<pools::TxItemPtr> res;
     pool.TempGetTxIdempotently(msg, res, 10, AlwaysValid);
     // System tx goes into tx_map_, not res_map (AlwaysInvalid not called for system tx)
-    EXPECT_TRUE(pool.tx_map_.count("sys_addr") > 0u);
+    EXPECT_GT(pool.tx_map_.count(map_key), 0u);
 }
 
 // ============================================================
