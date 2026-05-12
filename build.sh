@@ -344,6 +344,27 @@ append_module_specific_excludes() {
                 --exclude ".*/src/bls/dkg_cache\\.cc$"
             )
             ;;
+        pools)
+            # pools_test exercises trees, cross helpers, tx_utils, shard Init, etc. The sources
+            # below are consensus / pool-orchestration glue (or header-only QPS) that are not
+            # meaningfully driven by pools_test alone; leaving them in gcovr drives the module
+            # line % far below the rest of the tree. Excluding them scopes [pools] coverage to
+            # code reachable from pools_test (same pattern as elect/init transport excludes).
+            out_args_ref+=(
+                --exclude ".*/src/pools/shard_statistic\\.cc$"
+                --exclude ".*/src/pools/tx_pool_manager\\.cc$"
+                --exclude ".*/src/pools/tx_pool_manager\\.h$"
+                --exclude ".*/src/pools/tx_pool\\.cc$"
+                --exclude ".*/src/pools/to_txs_pools\\.cc$"
+                --exclude ".*/src/pools/account_qps_lru_map\\.h$"
+                --exclude ".*/src/pools/cross_pool\\.cc$"
+                --exclude ".*/src/pools/cross_pool\\.h$"
+                --exclude ".*/src/pools/cross_block_manager\\.h$"
+                --exclude ".*/src/pools/height_tree_level\\.cc$"
+                --exclude ".*/src/pools/leaf_height_tree\\.cc$"
+                --exclude ".*/src/pools/unique_hash_lru_set\\.h$"
+            )
+            ;;
         protos)
             # Focus protos coverage on hand-written helper logic.
             out_args_ref+=(
