@@ -21,7 +21,7 @@ set -euo pipefail
 # After a coverage run, optional per-module branch gate (gcovr):
 #   COVERAGE_FAIL_UNDER_BRANCH=80 bash build.sh coverage Debug
 #
-# Uncovered-line log (gcovr ≥ 7): written by default under <repo>/coverage/missing/
+# Uncovered-line log: default dir is repo-root/coverage/missing/ (requires gcovr 7+ --txt-missing).
 #   bash build.sh coverage Debug
 #   cat "$(dirname "$(readlink -f build.sh)")/coverage/missing/pools_missing.txt"
 #   Disable: COVERAGE_TXT_MISSING=0 bash build.sh coverage Debug
@@ -403,6 +403,10 @@ print_module_coverage() {
         echo "  [WARN] gcovr not found (install it first)."
         return 0
     fi
+    local gcovr_txt_missing=0
+    if "$gcovr_cmd" --help 2>/dev/null | grep -q -- '--txt-missing'; then
+        gcovr_txt_missing=1
+    fi
     local -a gcovr_parallel_args=()
     build_gcovr_parallel_args "$gcovr_cmd" gcovr_parallel_args
 
@@ -412,6 +416,9 @@ print_module_coverage() {
     echo "════════════════════════════════════════════════════════════════"
     if [[ "${#gcovr_parallel_args[@]}" -gt 0 ]]; then
         echo "  gcovr parallel jobs: ${GCOVR_JOBS}"
+    fi
+    if [[ "$gcovr_txt_missing" -eq 0 ]] && { [[ "${COVERAGE_TXT_MISSING:-1}" != "0" ]] || [[ -n "${COVERAGE_MISSING_LOG_DIR:-}" ]]; }; then
+        echo "  [WARN] This gcovr has no --txt-missing (need gcovr 7+). No *_missing.txt files; e.g. pip install --upgrade 'gcovr>=7'"
     fi
     for entry in "${coverage_entries[@]}"; do
         local exe="${entry%%:*}"
@@ -452,7 +459,7 @@ print_module_coverage() {
             local missing_root="${COVERAGE_MISSING_LOG_DIR:-${SETH_ROOT}/coverage/missing}"
             local safe_mod="${module_dir//\//_}"
             local missing_file="${missing_root}/${safe_mod}_missing.txt"
-            if "$gcovr_cmd" --help 2>/dev/null | grep -q -- '--txt-missing'; then
+            if [[ "$gcovr_txt_missing" -eq 1 ]]; then
                 "$gcovr_cmd" \
                     "${gcovr_base_args[@]}" \
                     --txt-missing "$missing_file"
@@ -461,11 +468,15 @@ print_module_coverage() {
                     echo "  --- uncovered (first 120 lines) ---"
                     head -n 120 "$missing_file" || true
                 fi
-            else
-                echo "  [WARN] gcovr has no --txt-missing; upgrade gcovr (>=7) for uncovered-line listing."
             fi
         fi
     done
+    if [[ "${COVERAGE_TXT_MISSING:-1}" != "0" ]] || [[ -n "${COVERAGE_MISSING_LOG_DIR:-}" ]]; then
+        if [[ "$gcovr_txt_missing" -eq 1 ]]; then
+            echo ""
+            echo "  Per-module uncovered-line logs: ${COVERAGE_MISSING_LOG_DIR:-${SETH_ROOT}/coverage/missing}/"
+        fi
+    fi
 }
 
 # Optional gate: set COVERAGE_FAIL_UNDER_BRANCH=80 (or export before running) to fail the build if any
@@ -603,8 +614,6 @@ case "$CMD" in
                     enforce_branch_minimum "${COVERAGE_FAIL_UNDER_BRANCH}" "${EXECUTED_TESTS[@]}"
                 fi
             fi
-            echo ""
-            echo "  Per-module uncovered-line logs (txt-missing): ${COVERAGE_MISSING_LOG_DIR:-${SETH_ROOT}/coverage/missing}/"
         fi
         ;;
 
@@ -673,8 +682,6 @@ case "$CMD" in
                 one_entry="${CMD}:${CMD}"
             fi
             print_module_coverage "$one_entry"
-            echo ""
-            echo "  Per-module uncovered-line logs (txt-missing): ${COVERAGE_MISSING_LOG_DIR:-${SETH_ROOT}/coverage/missing}/"
             if [[ -n "${COVERAGE_FAIL_UNDER_BRANCH:-}" ]]; then
                 enforce_branch_minimum "${COVERAGE_FAIL_UNDER_BRANCH}" "$one_entry"
             fi
