@@ -28,6 +28,10 @@ set -euo pipefail
 #   If `gcovr` is not on PATH: export GCOVR=/path/to/gcovr   # e.g. .../python3.10/bin/gcovr
 #   Disable: COVERAGE_TXT_MISSING=0 bash build.sh coverage Debug
 #   Override dir: COVERAGE_MISSING_LOG_DIR=/path/to/dir
+#
+# Coverage note: if you see "libgcov ... overwriting ... different checksum",
+# stale *.gcda from a previous build are present — this script removes *.gcda
+# under each test target directory after a successful make and before run.
 # ---------------------------------------------------------------------------
 
 # ---- 1. Parse command + determine build type --------------------------------
@@ -150,6 +154,11 @@ run_test() {
     if ! make -j"$NPROC" "$exe" 2>&1; then
         echo "  [SKIP] Build failed for $exe — skipping run"
         return 0
+    fi
+
+    # Stale .gcda from an older instrumented build causes libgcov checksum errors.
+    if [[ "$ENABLE_COVERAGE" -eq 1 && -d "./${subdir}" ]]; then
+        find "./${subdir}" -name '*.gcda' -delete 2>/dev/null || true
     fi
 
     local bin="./${subdir}/${exe}"
@@ -671,6 +680,9 @@ case "$CMD" in
         if [[ -z "$bin" || ! -x "$bin" ]]; then
             echo "  [FAIL] Binary not found or not executable: $CMD"
             exit 1
+        fi
+        if [[ "$ENABLE_COVERAGE" -eq 1 ]]; then
+            find "$(dirname "$bin")" -name '*.gcda' -delete 2>/dev/null || true
         fi
         echo "Running: $bin"
         gtest_run=(--gtest_color=yes)
