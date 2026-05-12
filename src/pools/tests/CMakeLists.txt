@@ -21,7 +21,8 @@ set(pools_test_src
     test_to_txs_pools_extra.cc
     test_pools_stubs.cc
     test_smoke.cc
-    test_shard_statistic_init.cc)
+    test_shard_statistic_init.cc
+    pools_test_ck_link_stub.cc)
 add_executable(pools_test ${pools_test_src})
 
 if (XENABLE_CODE_COVERAGE)
@@ -29,9 +30,7 @@ if (XENABLE_CODE_COVERAGE)
 endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    # libbls calls ClickHouseClient::InsertBlsElectInfo; ld needs libck.a after libbls.a.
-    # Transitive order from pools can place ck before bls; repeat bls then ck at the end.
-    target_link_libraries(pools_test PRIVATE pools db protos common gtest gtest_main gmock gmock_main pthread dl bls ck)
+    target_link_libraries(pools_test PRIVATE pools db protos common gtest gtest_main gmock gmock_main pthread dl)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    target_link_libraries(pools_test PRIVATE pools db protos common gtest gtest_main gmock gmock_main bls ck)
+    target_link_libraries(pools_test PRIVATE pools db protos common gtest gtest_main gmock gmock_main)
 endif()
