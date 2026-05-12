@@ -13,6 +13,7 @@ set(pools_test_src
     test_height_tree_extra.cc
     test_cross_pool.cc
     test_tx_pool_inline.cc
+    test_tx_pool_methods.cc
     test_to_txs_pools.cc
     test_pools_stubs.cc
     test_smoke.cc)
