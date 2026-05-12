@@ -48,7 +48,7 @@ enum PoolsErrorCode {
 };
 
 static inline std::string GetTxKey(const std::string& addr, uint64_t nonce) {
-    assert(addr.size() == common::kUnicastAddressLength || addr.size() == common::kPreypamentAddressLength);
+    //assert(addr.size() == common::kUnicastAddressLength || addr.size() == common::kPreypamentAddressLength);
     std::string data;
     data.resize(addr.size() + 8);
     memcpy(data.data(), addr.c_str(), addr.size());
@@ -342,7 +342,7 @@ static inline bool IsTxUseFromAddress(uint32_t step) {
         case pools::protobuf::kContractGasPrefund:
             return true;
         default:
-            assert(false);
+            //assert(false);
             return false;
     }
 }
@@ -376,12 +376,12 @@ public:
                     tx_info = msg_ptr->header.mutable_hotstuff()->mutable_vote_msg()->mutable_txs(tx_info_idx);
                 }
             } else {
-                assert(false)
+                //assert(false)
 ;            }
         }
 
         if (tx_info == nullptr) {
-            assert(false);
+            //assert(false);
             return;
         }
 

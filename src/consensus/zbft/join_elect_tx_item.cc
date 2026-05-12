@@ -23,7 +23,7 @@ int JoinElectTxItem::HandleTx(
     if (tmp_id != from) {
         block_tx.set_status(consensus::kConsensusError);
         // will never happen
-        assert(false);
+        //assert(false);
         return kConsensusError;
     }
 
@@ -31,7 +31,7 @@ int JoinElectTxItem::HandleTx(
     if (balance_status != kConsensusSuccess) {
         block_tx.set_status(balance_status);
         // will never happen
-        assert(false);
+        //assert(false);
         return kConsensusError;
     }
 

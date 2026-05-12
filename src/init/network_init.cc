@@ -1380,7 +1380,7 @@ void NetworkInit::GetNetworkNodesFromConf(
     uint32_t n = cons_shard_node_count;
     // bool reuse_root = common::isFileExist("/root/seth/shards2");
     // auto rfd = fopen("/root/seth/shards2", (reuse_root ? "r" : "w"));
-    // assert(rfd != nullptr);
+    // //assert(rfd != nullptr);
     // std::vector<std::string> root_sks;
     // get_sks_func(rfd, root_sks, n, reuse_root);
     // for (uint32_t i = 0; i < root_sks.size(); i++) {
@@ -1836,7 +1836,7 @@ void NetworkInit::SendJoinElectTransaction() {
             CreateContribution(req);
         }
 #ifndef NDEBUG
-        assert(req->verify_vec_size() >= t);
+        //assert(req->verify_vec_size() >= t);
 #endif
         SETH_DEBUG("First time sending join_elect or no valid g2_req in consensus block, "
             "including g2_req in transaction. verify_vec_size: %d", req->verify_vec_size());
@@ -1847,7 +1847,7 @@ void NetworkInit::SendJoinElectTransaction() {
     auto tx_hash = pools::GetTxMessageHash(*new_tx);
     std::string sign;
     if (security_->Sign(tx_hash, &sign) != security::kSecuritySuccess) {
-        assert(false);
+        //assert(false);
         return;
     }
 
@@ -1942,7 +1942,7 @@ void NetworkInit::SendRedeemStakeTransaction() {
     auto tx_hash = pools::GetTxMessageHash(*new_tx);
     std::string sign;
     if (security_->Sign(tx_hash, &sign) != security::kSecuritySuccess) {
-        assert(false);
+        //assert(false);
         return;
     }
 

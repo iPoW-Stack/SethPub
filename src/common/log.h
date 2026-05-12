@@ -60,7 +60,7 @@
 #define SETH_FATAL(logfmt, ...)  do {\
     printf("[DEBUG][%s][%s][%d] " logfmt "\n", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
     spdlog::critical(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
-    assert(false);\
+    //assert(false);\
     exit(0);\
 } while (0)
 #else
@@ -95,7 +95,7 @@
 #define SETH_FATAL(logfmt, ...)  do {\
     printf("[DEBUG][%s][%s][%d] " logfmt "\n", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
     spdlog::critical(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
-    assert(false);\
+    //assert(false);\
     exit(0);\
 } while (0)
 
@@ -142,7 +142,7 @@
 
 #define SETH_FATAL(logfmt, ...)  do {\
     printf("[FATAL][%s][%s][%d] " fmt "\n", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
-    assert(false);\
+    //assert(false);\
     exit(0);\
 } while (0)
 

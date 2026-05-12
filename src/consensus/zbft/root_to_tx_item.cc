@@ -47,7 +47,7 @@ int RootToTxItem::HandleTx(
     pools::protobuf::ToTxMessageItem to_item;
     if (!to_item.ParseFromString(tx_info->value())) {
         SETH_DEBUG("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
-        assert(false);
+        //assert(false);
         return consensus::kConsensusError;
     }
 

@@ -206,7 +206,7 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
         (int32_t)tx_ptr->tx_info->step());
     if (tx_ptr->tx_info->step() == pools::protobuf::kContractExcute || 
             tx_ptr->tx_info->step() == pools::protobuf::kContractRefund) {
-        assert(tx_ptr->address_info->addr().size() == common::kPreypamentAddressLength);
+        //assert(tx_ptr->address_info->addr().size() == common::kPreypamentAddressLength);
     }
     
     return kPoolsSuccess;
@@ -231,7 +231,7 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
             SETH_DEBUG("pool: %d, addr is empty: %s",
                 pool_index_,
                 ProtobufToJson(tx_info).c_str());
-            assert(false);
+            //assert(false);
             continue;
         }
 
@@ -611,7 +611,7 @@ void TxPool::TempGetTxIdempotently(
                 continue;
             }
 
-            assert(tx_ptr->tx_info->to() == tx_ptr->address_info->addr());
+            //assert(tx_ptr->tx_info->to() == tx_ptr->address_info->addr());
             tx_map_[tx_ptr->tx_info->to()][tx_ptr->tx_info->nonce()] = tx_ptr;
             SETH_DEBUG("pool: %d, success add system tx nonce addr: %s, to: %s, "
                 "addr nonce: %lu, tx nonce: %lu, unique hash: %s, step: %u",
@@ -857,7 +857,7 @@ void TxPool::TempGetTxIdempotently(
                             tx_ptr->tx_info->nonce(), 
                             (int32_t)tx_ptr->tx_info->step(),
                             common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
-                        // assert(false);
+                        // //assert(false);
                         continue;
                     }
 

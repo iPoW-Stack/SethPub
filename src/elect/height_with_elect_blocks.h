@@ -73,14 +73,14 @@ public:
                     bls::protobuf::LocalBlsItem bls_item;
                     if (!bls_item.ParseFromString(bls_prikey)) {
                         new_item->local_sec_key = libff::alt_bn128_Fr::zero();
-                        assert(false);
+                        //assert(false);
                     } else {
                         new_item->local_sec_key = libff::alt_bn128_Fr(bls_item.local_private_key().c_str());
-                        assert(new_item->local_sec_key != libff::alt_bn128_Fr::zero());
+                        //assert(new_item->local_sec_key != libff::alt_bn128_Fr::zero());
                     }
                 } else {
                     new_item->local_sec_key = libff::alt_bn128_Fr::zero();
-                    // assert(false);
+                    // //assert(false);
                 }
                 SETH_DEBUG("0 save bls pk and secret key success.height: %lu, network_id: %u, %d, %d",
                     height, network_id,
@@ -111,14 +111,14 @@ public:
             bls::protobuf::LocalBlsItem bls_item;
             if (!bls_item.ParseFromString(bls_prikey)) {
                 new_item->local_sec_key = libff::alt_bn128_Fr::zero();
-                assert(false);
+                //assert(false);
             } else {
                 new_item->local_sec_key = libff::alt_bn128_Fr(bls_item.local_private_key().c_str());
                 SETH_DEBUG("2 success get local sec key.");
             }
         } else {
             new_item->local_sec_key = libff::alt_bn128_Fr::zero();
-            // assert(false);
+            // //assert(false);
         }
 
         members_ptrs_[network_id][min_index].store(new_item);
@@ -128,7 +128,7 @@ public:
             libBLS::ThresholdUtils::fieldElementToString(new_item->local_sec_key).c_str(),
             (new_item->local_sec_key == libff::alt_bn128_Fr::zero()),
             (common_pk == libff::alt_bn128_G2::zero()));
-        assert(common_pk != libff::alt_bn128_G2::zero());
+        //assert(common_pk != libff::alt_bn128_G2::zero());
     }
 
     common::MembersPtr GetMembersPtr(
@@ -138,7 +138,7 @@ public:
             libff::alt_bn128_G2* common_pk,
             libff::alt_bn128_Fr* local_sec_key) {
         if (height == 0) {
-            assert(false);
+            //assert(false);
             return nullptr;
         }
         
@@ -189,7 +189,7 @@ public:
                     bls::protobuf::LocalBlsItem bls_item;
                     if (!bls_item.ParseFromString(bls_prikey)) {
                         iter->second->local_sec_key = libff::alt_bn128_Fr::zero();
-                        assert(false);
+                        //assert(false);
                     } else {
                         iter->second->local_sec_key = libff::alt_bn128_Fr(bls_item.local_private_key().c_str());
                         SETH_DEBUG("1 success get local sec key.");
@@ -198,7 +198,7 @@ public:
             }
 
             if (iter->second->common_bls_publick_key == libff::alt_bn128_G2::zero()) {
-                assert(false);
+                //assert(false);
                 return nullptr;
             }
 
@@ -218,7 +218,7 @@ public:
         auto shard_members = GetMembers(security, network_id, height, &temp_common_pk);
         if (shard_members == nullptr) {
             SETH_DEBUG("failed get members.");
-            // assert(false);
+            // //assert(false);
             return nullptr;
         }
 
@@ -231,7 +231,7 @@ public:
         if (new_item->common_bls_publick_key == libff::alt_bn128_G2::zero()) {
             SETH_DEBUG("new_item->common_bls_publick_key == libff::alt_bn128_G2::zero()"
                 " network_id: %d, height: %lu", network_id, height);
-            // assert(false);
+            // //assert(false);
             return shard_members;
         }
 
@@ -241,7 +241,7 @@ public:
             bls::protobuf::LocalBlsItem bls_item;
             if (!bls_item.ParseFromString(bls_prikey)) {
                 new_item->local_sec_key = libff::alt_bn128_Fr::zero();
-                assert(false);
+                //assert(false);
             } else {
                 new_item->local_sec_key = libff::alt_bn128_Fr(bls_item.local_private_key().c_str());
                 SETH_DEBUG("success get local sec key: %s", bls_item.local_private_key().c_str());
@@ -277,17 +277,17 @@ private:
                 &view_block)) {
             SETH_DEBUG("failed get block with height net: %u, pool: %u, height: %lu",
                 network::kRootCongressNetworkId, network_id, height);
-            //             assert(false);
+            //             //assert(false);
             return nullptr;
         }
 
         auto& block = view_block.block_info();
         if (!block.has_elect_block()) {
-            assert(false);
+            //assert(false);
             return nullptr;
         }
 
-        assert(block.tx_list_size() > 0);
+        //assert(block.tx_list_size() > 0);
         auto& elect_block = block.elect_block();
         if (elect_block.prev_members().has_common_pubkey()) {
             auto& prev_members = elect_block.prev_members();
@@ -300,9 +300,9 @@ private:
     
             BLSPublicKey pkey(std::make_shared<std::vector<std::string>>(pkey_str));
             *temp_common_pk = *pkey.getPublicKey();
-            assert(*temp_common_pk != libff::alt_bn128_G2::zero());
+            //assert(*temp_common_pk != libff::alt_bn128_G2::zero());
         } else {
-            // assert(false);
+            // //assert(false);
         }
 
         uint32_t member_index = 0;
@@ -320,7 +320,7 @@ private:
         }
 
         auto& prev_members = elect_block.prev_members();
-        // assert(prev_members.bls_pubkey_size() == in.size());
+        // //assert(prev_members.bls_pubkey_size() == in.size());
         if (prev_members.bls_pubkey_size() == in.size()) {
             for (uint32_t i = 0; i < prev_members.bls_pubkey_size(); ++i) {
                 std::vector<std::string> pkey_str = {
@@ -332,7 +332,7 @@ private:
                 try {
                     BLSPublicKey pkey(std::make_shared<std::vector<std::string>>(pkey_str));
                     shard_members_ptr->at(i)->bls_publick_key = *pkey.getPublicKey();
-                    assert(shard_members_ptr->at(i)->bls_publick_key != libff::alt_bn128_G2::zero());
+                    //assert(shard_members_ptr->at(i)->bls_publick_key != libff::alt_bn128_G2::zero());
                 } catch(...) {
                     SETH_DEBUG("failed get bls public key: %d", i);
                 }

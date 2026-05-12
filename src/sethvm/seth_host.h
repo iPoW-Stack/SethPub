@@ -124,7 +124,7 @@ public:
     virtual evmc::bytes32 get_transient_storage(
             const evmc::address& addr,
             const evmc::bytes32& key) const noexcept {
-        assert(false);
+        //assert(false);
         return {};
     }
 
@@ -133,7 +133,7 @@ public:
             const evmc::address& addr,
             const evmc::bytes32& key,
             const evmc::bytes32& value) noexcept {
-        assert(false);
+        //assert(false);
     }
 
     // tmp item

@@ -192,7 +192,7 @@ public:
             InitLatestInfo();
         }
 
-//         assert(latest_height_ != common::kInvalidUint64);
+//         //assert(latest_height_ != common::kInvalidUint64);
         return latest_height_;
     }
 
@@ -201,7 +201,7 @@ public:
             InitLatestInfo();
         }
 
-//         assert(!latest_hash_.empty());
+//         //assert(!latest_hash_.empty());
         return latest_hash_;
     }
     

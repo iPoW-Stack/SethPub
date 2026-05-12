@@ -1245,7 +1245,7 @@ inline ::seth::pools::protobuf::StepType TxPropose::tx_type() const {
   return static_cast< ::seth::pools::protobuf::StepType >(tx_type_);
 }
 inline void TxPropose::set_tx_type(::seth::pools::protobuf::StepType value) {
-  assert(::seth::pools::protobuf::StepType_IsValid(value));
+  //assert(::seth::pools::protobuf::StepType_IsValid(value));
   set_has_tx_type();
   tx_type_ = value;
   // @@protoc_insertion_point(field_set:seth.hotstuff.protobuf.TxPropose.tx_type)

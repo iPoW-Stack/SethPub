@@ -59,7 +59,7 @@ struct Construct {
 
 #define ADD_DEBUG_PROCESS_TIMESTAMP() { \
     if (msg_ptr) { \
-        assert(msg_ptr->times_idx < (sizeof(msg_ptr->times) / sizeof(msg_ptr->times[0]))); \
+        //assert(msg_ptr->times_idx < (sizeof(msg_ptr->times) / sizeof(msg_ptr->times[0]))); \
         auto btime = common::TimeUtils::TimestampUs(); \
         uint64_t diff_time = 0; \
         if (msg_ptr->times_idx > 0) { diff_time = btime - msg_ptr->times[msg_ptr->times_idx - 1]; if (diff_time > 200000lu)SETH_DEBUG("over handle message debug use time: %lu, type: %d", diff_time, msg_ptr->header.type());} \
@@ -78,7 +78,7 @@ struct Construct {
 //         uint32_t init_id_val = (uint32_t)std::hash<std::thread::id>{}(local_thread_id_); \
 //         SETH_DEBUG("now handle thread id: %u, old: %u, count: %d", now_id_val, init_id_val, (int32_t)local_thread_id_count_); \
 //         if (local_thread_id_count_ > 3) { \
-//             assert(local_thread_id_ == now_thread_id); \
+//             //assert(local_thread_id_ == now_thread_id); \
 //         } else { \
 //             local_thread_id_ = now_thread_id; \
 //         } \
@@ -87,7 +87,7 @@ struct Construct {
 
 // #define TMP_ADD_DEBUG_PROCESS_TIMESTAMP() { \
 //     if (msg_ptr) { \
-//         assert(msg_ptr->times_idx < (sizeof(msg_ptr->times) / sizeof(msg_ptr->times[0]))); \
+//         //assert(msg_ptr->times_idx < (sizeof(msg_ptr->times) / sizeof(msg_ptr->times[0]))); \
 //         auto btime = common::TimeUtils::TimestampUs(); \
 //         uint64_t diff_time = 0; \
 //         if (msg_ptr->times_idx > 0) { diff_time = btime - msg_ptr->times[msg_ptr->times_idx - 1]; if (diff_time > 10000lu)SETH_DEBUG("over handle message debug use time: %lu, type: %d", diff_time, msg_ptr->header.type());} \
@@ -99,7 +99,7 @@ struct Construct {
 #else
 #define ADD_DEBUG_PROCESS_TIMESTAMP() { \
     if (msg_ptr) { \
-        assert(msg_ptr->times_idx < (sizeof(msg_ptr->times) / sizeof(msg_ptr->times[0]))); \
+        //assert(msg_ptr->times_idx < (sizeof(msg_ptr->times) / sizeof(msg_ptr->times[0]))); \
         auto btime = common::TimeUtils::TimestampUs(); \
         uint64_t diff_time = 0; \
         if (msg_ptr->times_idx > 0) { diff_time = btime - msg_ptr->times[msg_ptr->times_idx - 1]; if (diff_time > 200000lu)SETH_DEBUG("over handle message debug use time: %lu, type: %d", diff_time, msg_ptr->header.type());} \

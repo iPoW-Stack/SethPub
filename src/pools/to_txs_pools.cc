@@ -203,7 +203,7 @@ void ToTxsPools::ThreadToStatistic(
 
 void ToTxsPools::LoadLatestHeights() {
     if (common::GlobalInfo::Instance()->network_id() == common::kInvalidUint32) {
-        // assert(false);
+        // //assert(false);
         return;
     }
 
@@ -215,7 +215,7 @@ void ToTxsPools::LoadLatestHeights() {
     }
 
     if (!prefix_db_->GetLatestToTxsHeights(net_id, &to_heights)) {
-        // assert(false);
+        // //assert(false);
         return;
     }
 
@@ -270,7 +270,7 @@ void ToTxsPools::HandleElectJoinVerifyVec(
         std::vector<bls::protobuf::JoinElectInfo>& verify_reqs) {
     bls::protobuf::JoinElectInfo join_info;
     if (!join_info.ParseFromString(g2_value)) {
-        assert(false);
+        //assert(false);
         return;
     }
 
@@ -439,7 +439,7 @@ int ToTxsPools::CreateToTxWithHeights(
     if (leader_to_heights.heights_size() != common::kInvalidPoolIndex) {
         SETH_DEBUG("leader_to_heights.heights_size() != common::kInvalidPoolIndex: %u, %u", 
             leader_to_heights.heights_size(), common::kInvalidPoolIndex);
-        assert(false);
+        //assert(false);
         return kPoolsError;
     }
 
@@ -494,7 +494,7 @@ int ToTxsPools::CreateToTxWithHeights(
                 pool_idx,
                 max_height,
                 pool_consensus_heihgts_[pool_idx]);
-            // assert(false);
+            // //assert(false);
             return kPoolsError;
         }
 
@@ -583,7 +583,7 @@ int ToTxsPools::CreateToTxWithHeights(
 
     // if (acc_amount_map.empty() && cross_set.empty()) {
     if (acc_amount_map.empty()) {
-//         assert(false);
+//         //assert(false);
         SETH_DEBUG("acc amount map empty.");
         return kPoolsError;
     }

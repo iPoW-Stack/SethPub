@@ -180,7 +180,7 @@ Status HotstuffManager::VerifyViewBlockWithCommitQC(const view_block::protobuf::
     //     SETH_ERROR("hash is not same with qc, block: %s, commit_hash: %s",
     //         common::Encode::HexEncode(view_block_hash).c_str(),
     //         common::Encode::HexEncode(vblock.qc().view_block_hash()).c_str());
-    //     assert(false);
+    //     //assert(false);
     //     return Status::kInvalidArgument;
     // }
 

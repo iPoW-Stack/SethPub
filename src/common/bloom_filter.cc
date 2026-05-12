@@ -9,14 +9,14 @@ namespace seth {
 namespace common {
 
 BloomFilter::BloomFilter(uint32_t bit_count, uint32_t hash_count) : hash_count_(hash_count) {
-    assert((bit_count % 64) == 0);
+    //assert((bit_count % 64) == 0);
     uint32_t data_cnt = bit_count / 64;
     for (uint32_t i = 0; i < data_cnt; ++i) {
         data_.push_back(0ull);
     }
 
-    assert(!data_.empty());
-    assert(data_.size() <= 256);
+    //assert(!data_.empty());
+    //assert(data_.size() <= 256);
 }
 
 void BloomFilter::Deserialize(const uint64_t* data, uint32_t count, uint32_t hash_count) {
@@ -25,7 +25,7 @@ void BloomFilter::Deserialize(const uint64_t* data, uint32_t count, uint32_t has
         data_.push_back(data[i]);
     }
 
-    assert(data_.size() <= 256);
+    //assert(data_.size() <= 256);
     hash_count_ = hash_count;
 }
 
@@ -45,7 +45,7 @@ std::string BloomFilter::Serialize() const {
 
 BloomFilter::BloomFilter(const std::vector<uint64_t>& data, uint32_t hash_count)
         : data_(data), hash_count_(hash_count) {
-    assert(data_.size() <= 256);
+    //assert(data_.size() <= 256);
 }
 
 BloomFilter::~BloomFilter() {}

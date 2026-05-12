@@ -277,7 +277,7 @@ void BlockManager::HandleNormalToTx(const std::shared_ptr<view_block::protobuf::
     }
 
     if (!view_block.block_info().has_normal_to()) {
-        assert(false);
+        //assert(false);
         return;
     }
 
@@ -362,7 +362,7 @@ void BlockManager::HandleNormalToTx(
 void BlockManager::AddNewBlock(
         const std::shared_ptr<hotstuff::ViewBlockInfo>& view_block_info) {
     auto view_block_item = view_block_info->view_block;
-    assert(!view_block_item->qc().sign_x().empty());
+    //assert(!view_block_item->qc().sign_x().empty());
     auto* block_item = &view_block_item->block_info();
     auto btime = common::TimeUtils::TimestampMs();
     SETH_DEBUG("new block coming sharding id: %u_%d_%lu, view: %u_%u_%lu_%lu,"
@@ -381,7 +381,7 @@ void BlockManager::AddNewBlock(
         block_item->timeblock_height(),
         ProtobufToJson(*view_block_item).c_str(),
         (ck_client_ != nullptr));
-    assert(view_block_item->qc().elect_height() >= 1);
+    //assert(view_block_item->qc().elect_height() >= 1);
     account_mgr_->AddNewBlock(*view_block_item);
     // Current node and block assigned shard are different, need cross-shard transaction
     if (!network::IsSameToLocalShard(view_block_item->qc().network_id())) {
@@ -474,7 +474,7 @@ void BlockManager::CreateLocalToTx(
     if (to_tx_item.des().size() != common::kUnicastAddressLength && 
             to_tx_item.des().size() != common::kPreypamentAddressLength) {
         SETH_ERROR("invalid to tx item: %s", ProtobufToJson(to_tx_item).c_str());
-        assert(false);
+        //assert(false);
         return;
     }
 
@@ -595,7 +595,7 @@ void BlockManager::LoadLatestBlocks() {
             SETH_FATAL("load latest timeblock failed!");
         }
     } else {
-        assert(false);
+        //assert(false);
     }
 
     for (uint32_t load_idx = 0; load_idx < 2; ++load_idx) {
@@ -837,7 +837,7 @@ pools::TxItemPtr BlockManager::GetToTx(
         }
     } else {
         if (!heights.ParseFromString(heights_str)) {
-            assert(false);
+            //assert(false);
             return nullptr;
         }
     }

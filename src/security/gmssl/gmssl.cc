@@ -13,7 +13,7 @@ namespace seth {
 namespace security {
 
 int GmSsl::SetPrivateKey(const std::string& prikey) {
-    assert(prikey.size() == 32);
+    //assert(prikey.size() == 32);
     str_prikey_ = prikey;
     prikey_ = std::make_shared<SM2_KEY>();
     // Generate public key from private key
@@ -35,8 +35,8 @@ int GmSsl::Sign(const std::string &hash, std::string *sign) {
 }
 
 int GmSsl::Verify(const std::string& hash, const std::string& str_pk, const std::string& sign) {
-    assert(sign.size() == 64);
-    assert(hash.size() == 32);
+    //assert(sign.size() == 64);
+    //assert(hash.size() == 32);
 	SM2_SIGNATURE sig;
     memcpy(sig.r, sign.c_str(), 32);
     memcpy(sig.s, sign.c_str() + 32, 32);

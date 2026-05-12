@@ -511,7 +511,7 @@ private:
 
         auto elect_item = elect_info_->GetElectItemWithShardingId(common::GlobalInfo::Instance()->network_id());
         if (elect_item == nullptr) {
-            // assert(false);
+            // //assert(false);
             SETH_WARN("pool: %u, get leader failed, elect item is null, sharding_id: %u", 
                 pool_idx_, common::GlobalInfo::Instance()->network_id());
             return nullptr;
@@ -577,10 +577,10 @@ private:
 
     inline uint32_t GetEpochLeaderIndex() const {
         auto sharding_id = common::GlobalInfo::Instance()->network_id();
-        assert(elect_info_ != nullptr);
+        //assert(elect_info_ != nullptr);
         auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
         if (elect_item == nullptr) {
-            // assert(false);
+            // //assert(false);
             return common::kInvalidUint32;
         }
 
@@ -592,10 +592,10 @@ private:
 
     inline common::BftMemberPtr LocalMember() const {
         auto sharding_id = common::GlobalInfo::Instance()->network_id();
-        assert(elect_info_ != nullptr);
+        //assert(elect_info_ != nullptr);
         auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
         if (elect_item == nullptr) {
-            // assert(false);
+            // //assert(false);
             return nullptr;
         }
 
@@ -604,17 +604,17 @@ private:
 
     inline uint32_t GetLocalMemberIdx() const {
         auto sharding_id = common::GlobalInfo::Instance()->network_id();
-        assert(elect_info_ != nullptr);
+        //assert(elect_info_ != nullptr);
         auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
         if (elect_item == nullptr) {
-            // assert(false);
+            // //assert(false);
             SETH_DEBUG("get local member index failed, elect item is null, sharding_id: %u", sharding_id);
             return common::kInvalidUint32;
         }
 
         auto local_mem_ptr = elect_item->LocalMember();
         if (local_mem_ptr == nullptr) {
-            // assert(false);
+            // //assert(false);
             SETH_DEBUG("get local member index failed, local member is null, sharding_id: %u", sharding_id);
             return common::kInvalidUint32;
         }

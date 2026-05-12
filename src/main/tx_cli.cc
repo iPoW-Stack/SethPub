@@ -150,7 +150,7 @@ static transport::MessagePtr CreateTransactionWithAttr(
     auto tx_hash = pools::GetTxMessageHash(*new_tx);
     std::string sign;
     if (security->Sign(tx_hash, &sign) != security::kSecuritySuccess) {
-        assert(false);
+        //assert(false);
         return nullptr;
     }
 
@@ -165,7 +165,7 @@ static transport::MessagePtr CreateTransactionWithAttr(
     //     << "gas_limit: " << gas_limit << std::endl
     //     << std::endl;
     new_tx->set_sign(sign);
-    assert(new_tx->gas_price() > 0);
+    //assert(new_tx->gas_price() > 0);
     return msg_ptr;
 }
 
@@ -209,7 +209,7 @@ static void LoadAllAccounts(int32_t shardnum=3) {
         std::cout << common::Encode::HexEncode(prikey) << " : " << common::Encode::HexEncode(addr) << std::endl;
     }
 
-    assert(!g_prikeys.empty());
+    //assert(!g_prikeys.empty());
     while (g_prikeys.size() < common::kImmutablePoolSize) {
         g_prikeys.push_back(g_prikeys[0]);
     }

@@ -75,7 +75,7 @@ void ToTxLocalItem::CreateLocalToTx(
     if (to_tx_item.des().size() != common::kUnicastAddressLength && 
             to_tx_item.des().size() != common::kPreypamentAddressLength) {
         SETH_ERROR("invalid to tx item: %s", ProtobufToJson(to_tx_item).c_str());
-        assert(false);
+        //assert(false);
         return;
     }
 

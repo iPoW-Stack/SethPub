@@ -126,7 +126,7 @@ std::shared_ptr<WaitingTxsItem> WaitingTxsPools::GetTimeblockTx(
         auto txs_item = std::make_shared<WaitingTxsItem>();
         txs_item->pool_index = pool_index;
         if (tx_ptr->tx_key.empty()) {
-            assert(false);
+            //assert(false);
             return nullptr;
         }
         

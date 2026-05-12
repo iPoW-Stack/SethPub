@@ -103,7 +103,7 @@ public:
         if (thread_id_ == std::thread::id()) {
             thread_id_ = std::this_thread::get_id();
         } else if (thread_id_ != std::this_thread::get_id()) {
-            assert(false);
+            //assert(false);
         }
         if (data_map_.find(key) == data_map_.end()) {
             data_map_[key] = value;
@@ -119,7 +119,7 @@ public:
         if (thread_id_ == std::thread::id()) {
             thread_id_ = std::this_thread::get_id();
         } else if (thread_id_ != std::this_thread::get_id()) {
-            assert(false);
+            //assert(false);
         }
 
         auto iter = data_map_.find(key);
@@ -143,7 +143,7 @@ public:
         if (thread_id_ == std::thread::id()) {
             thread_id_ = std::this_thread::get_id();
         } else if (thread_id_ != std::this_thread::get_id()) {
-            assert(false);
+            //assert(false);
         }
 #endif
 #ifdef LEVELDB

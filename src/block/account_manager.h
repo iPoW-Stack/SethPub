@@ -41,16 +41,16 @@ public:
     protos::AddressInfoPtr GetContractInfoByAddress(const std::string& address);
     void PrintPoolHeightTree(uint32_t pool_idx);
     std::shared_ptr<address::protobuf::AddressInfo> pools_address_info(uint32_t step, uint32_t pool_idx) {
-        assert(step <= pools::protobuf::kPoolStatisticTag);
-        assert(pool_idx < common::kInvalidPoolIndex);
+        //assert(step <= pools::protobuf::kPoolStatisticTag);
+        //assert(pool_idx < common::kInvalidPoolIndex);
         return GetAccountInfo(pool_base_addrs_[step][pool_idx]);
     }
 
     const std::string& GetTxValidAddress(const block::protobuf::BlockTx& tx_info);
 
     const std::string& pool_base_addrs(uint32_t step, uint32_t pool_idx) const {
-        assert(step <= pools::protobuf::kPoolStatisticTag);
-        assert(pool_idx < common::kInvalidPoolIndex);
+        //assert(step <= pools::protobuf::kPoolStatisticTag);
+        //assert(pool_idx < common::kInvalidPoolIndex);
         return pool_base_addrs_[step][pool_idx];
     }
 

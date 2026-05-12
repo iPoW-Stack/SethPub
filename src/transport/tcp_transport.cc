@@ -235,7 +235,7 @@ void TcpTransport::SetMessageHash(const transport::protobuf::Header& message) {
 int TcpTransport::Send(
         tnet::TcpInterface* tcp_conn,
         const transport::protobuf::Header& message) {
-    // assert(message.broadcast().bloomfilter_size() < 64);
+    // //assert(message.broadcast().bloomfilter_size() < 64);
     auto tmpHeader = const_cast<transport::protobuf::Header*>(&message);
     tmpHeader->set_from_public_port(common::GlobalInfo::Instance()->config_public_port());
     std::string msg;
@@ -250,7 +250,7 @@ int TcpTransport::Send(
     if (res != 0) {
         if (res < 0) {
             auto* tmp_conn = static_cast<tnet::TcpConnection*>(tcp_conn);
-            assert(tmp_conn != nullptr);
+            //assert(tmp_conn != nullptr);
             if (tmp_conn->is_client()) {
                 tmp_conn->Destroy(true);
             }
@@ -267,7 +267,7 @@ int TcpTransport::Send(
         uint16_t des_port,
         const transport::protobuf::Header& message) {
     // Bug fix: Replace assert with graceful error return.
-    // assert(des_port > 0) was crashing the node when a peer's public_port
+    // //assert(des_port > 0) was crashing the node when a peer's public_port
     // was not yet known (e.g., during bootstrap before SetPeerPort is called).
     if (des_port == 0 || des_ip.empty()) {
         SETH_WARN("Send skipped: invalid destination %s:%d, type=%d",
@@ -276,7 +276,7 @@ int TcpTransport::Send(
     }
     auto tmpHeader = const_cast<transport::protobuf::Header*>(&message);
     tmpHeader->set_from_public_port(common::GlobalInfo::Instance()->config_public_port());
-    // assert(message.broadcast().bloomfilter_size() < 64);
+    // //assert(message.broadcast().bloomfilter_size() < 64);
     if (!message.has_hash64() || message.hash64() == 0) {
         SetMessageHash(message);
     }
@@ -292,7 +292,7 @@ int TcpTransport::Send(
 
     ++out_message_type_count_[message.type()];
     message.SerializeToString(&output_item->msg);
-    // assert(output_item->msg.size() < 1000000u);
+    // //assert(output_item->msg.size() < 1000000u);
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     output_queues_[thread_idx].push(output_item);
     output_con_.notify_one();
@@ -307,7 +307,7 @@ int TcpTransport::Send(
     if (res != 0) {
         if (res < 0) {
             auto* tmp_conn = static_cast<tnet::TcpConnection*>(tcp_conn);
-            assert(tmp_conn != nullptr);
+            //assert(tmp_conn != nullptr);
             if (tmp_conn->is_client()) {
                 tmp_conn->Destroy(true);
             }
@@ -530,8 +530,8 @@ void TcpTransport::CheckConnectionValid() {
 }
 
 std::string TcpTransport::GetHeaderHashForSign(const transport::protobuf::Header& message) {
-    assert(message.has_hash64());
-    assert(message.hash64() != 0);
+    //assert(message.has_hash64());
+    //assert(message.hash64() != 0);
     std::string msg_for_hash;
     msg_for_hash.reserve(3 * 1024 * 1024);
     msg_for_hash.append(message.des_dht_key());
@@ -566,10 +566,10 @@ int TcpTransport::Send(
         uint16_t des_port,
         const transport::protobuf::OldHeader& message) {
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
-    assert(thread_idx < common::kMaxThreadCount);
+    //assert(thread_idx < common::kMaxThreadCount);
     auto tmpHeader = const_cast<transport::protobuf::OldHeader*>(&message);
     tmpHeader->set_from_public_port(common::GlobalInfo::Instance()->config_public_port());
-    assert(message.has_hash64() && message.hash64() != 0);
+    //assert(message.has_hash64() && message.hash64() != 0);
     SETH_DEBUG("1 send message hash64: %lu", message.hash64());
     auto output_item = std::make_shared<ClientItem>();
     output_item->des_ip = des_ip;

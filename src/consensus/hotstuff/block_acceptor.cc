@@ -229,7 +229,7 @@ Status BlockAcceptor::Accept(
                 view_block.qc().view(), 
                 view_block.block_info().height(),
                 common::Encode::HexEncode(view_block.qc().view_block_hash()).c_str());
-            // assert(view_block.qc().view_block_hash().empty());
+            // //assert(view_block.qc().view_block_hash().empty());
             view_block.mutable_qc()->set_view_block_hash(GetBlockHash(view_block));
             SETH_DEBUG("success set view block hash: %s, parent: %s, %u_%u_%lu_%lu, "
                 "chain has hash: %d, db has hash: %d",
@@ -242,12 +242,12 @@ Status BlockAcceptor::Accept(
                 view_block_chain_->Has(view_block.qc().view_block_hash()),
                 prefix_db_->BlockExists(view_block.qc().view_block_hash()));
             if (view_block_chain_->Has(view_block.qc().view_block_hash())) {
-                // assert(false);
+                // //assert(false);
                 return Status::kSuccess;
             }
 
             if (prefix_db_->BlockExists(view_block.qc().view_block_hash())) {
-                assert(false);
+                //assert(false);
                 return Status::kAcceptorBlockInvalid;
             }
         }
@@ -265,7 +265,7 @@ Status BlockAcceptor::Accept(
 
     seth_host.parent_hash_ = view_block.parent_hash();
     seth_host.view_block_chain_ = view_block_chain_;
-    assert(seth_host.view_block_chain_ != nullptr);
+    //assert(seth_host.view_block_chain_ != nullptr);
     seth_host.view_ = view_block.qc().view();
     // 2. Get txs from local pool
     auto txs_ptr = std::make_shared<consensus::WaitingTxsItem>();
@@ -330,7 +330,7 @@ Status BlockAcceptor::Accept(
 
         if (addr_key.size() != common::kUnicastAddressLength && 
                 addr_key.size() != common::kPreypamentAddressLength) {
-            assert(false);
+            //assert(false);
             continue;
         }
 
@@ -405,7 +405,7 @@ Status BlockAcceptor::Accept(
 #ifndef NDEBUG
         auto n = common::GlobalInfo::Instance()->each_shard_max_members();
         auto t = common::GetSignerCount(n);
-        assert(join_info.g2_req().verify_vec_size() >= t);
+        //assert(join_info.g2_req().verify_vec_size() >= t);
 #endif
         prefix_db_->AddBlsVerifyG2(addr, join_info.g2_req(), seth_host.db_batch_);
     }
@@ -448,7 +448,7 @@ Status BlockAcceptor::Accept(
         view_block.qc().view());
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (prefix_db_->BlockExists(view_block.qc().view_block_hash())) {
-        assert(false);
+        //assert(false);
         return Status::kAcceptorBlockInvalid;
     }
 
@@ -855,7 +855,7 @@ Status BlockAcceptor::addTxsToPool(
 
             auto iter = prevs_balance_map.find(to_tx_item.des());
             if (iter != prevs_balance_map.end()) {
-                assert(iter->first.size() == common::kUnicastAddressLength ||
+                //assert(iter->first.size() == common::kUnicastAddressLength ||
                     iter->first.size() == common::kPreypamentAddressLength);
                 now_balance_map[iter->first] = iter->second;
             } else {
@@ -863,7 +863,7 @@ Status BlockAcceptor::addTxsToPool(
                 if (tmp_address_info != nullptr) {
                     auto new_addr_info = std::make_shared<address::protobuf::AddressInfo>();
                     *new_addr_info = *tmp_address_info;
-                    assert(to_tx_item.des().size() == common::kUnicastAddressLength || 
+                    //assert(to_tx_item.des().size() == common::kUnicastAddressLength || 
                         to_tx_item.des().size() == common::kPreypamentAddressLength);
                     now_balance_map[to_tx_item.des()] = new_addr_info;
                 }
@@ -939,13 +939,13 @@ Status BlockAcceptor::addTxsToPool(
         
         auto iter = prevs_balance_map.find(address_info->addr());
         if (iter != prevs_balance_map.end()) {
-            assert(iter->first.size() == common::kUnicastAddressLength ||
+            //assert(iter->first.size() == common::kUnicastAddressLength ||
                 iter->first.size() == common::kPreypamentAddressLength);
             now_balance_map[iter->first] = iter->second;
         } else {
             auto new_addr_info = std::make_shared<address::protobuf::AddressInfo>();
             *new_addr_info = *address_info;
-            assert(address_info->addr().size() == common::kUnicastAddressLength || 
+            //assert(address_info->addr().size() == common::kUnicastAddressLength || 
                 address_info->addr().size() == common::kPreypamentAddressLength);
             now_balance_map[address_info->addr()] = new_addr_info;
         }
@@ -999,7 +999,7 @@ Status BlockAcceptor::addTxsToPool(
         case pools::protobuf::kNormalTo: {
             pools::protobuf::AllToTxMessage all_to_txs;
             if (!all_to_txs.ParseFromString(tx->value()) || all_to_txs.to_tx_arr_size() == 0) {
-                assert(false);
+                //assert(false);
                 create_success = false;
                 break;
             }
@@ -1098,7 +1098,7 @@ Status BlockAcceptor::addTxsToPool(
             break;
         }
         case pools::protobuf::kCross: {
-            assert(false); break;
+            //assert(false); break;
         }
         case pools::protobuf::kConsensusRootElectShard: {
             pools::protobuf::ElectStatistic elect_statistic;
@@ -1298,7 +1298,7 @@ Status BlockAcceptor::GetAndAddTxsLocally(
                 pools::GetTxMessageHash(*txs_ptr->txs[0]->tx_info)).substr(0, 16).c_str()),
             (tx_propose.txs_size() == 0 ? "empty" : common::Encode::HexEncode(
                 pools::GetTxMessageHash(tx_propose.txs(0))).substr(0, 16).c_str()));
-        // assert(false);
+        // //assert(false);
         return Status::kAcceptorTxsEmpty;
     }
     
@@ -1365,7 +1365,7 @@ Status BlockAcceptor::DoTransactions(
 
 //                 auto addr_iter = balance_map.find(*addr);
 //                 if (addr_iter == balance_map.end()) {
-//                     assert(false);
+//                     //assert(false);
 //                 }
                     
 //             SETH_WARN("transaction balance map addr: %s, balance: %lu, view_block_hash: %s, prehash: %s",
@@ -1376,7 +1376,7 @@ Status BlockAcceptor::DoTransactions(
 //         }
 
 //         if (balance_map.empty()) {
-//             assert(valid);
+//             //assert(valid);
 //         }
 //     }
 // #endif

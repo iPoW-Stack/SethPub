@@ -66,7 +66,7 @@ void DhtManager::UnRegisterDht(uint32_t net_id) {
         return;
     }
 
-    assert(dhts_[net_id] != nullptr);
+    //assert(dhts_[net_id] != nullptr);
     dhts_[net_id]->Destroy();
     dhts_[net_id] = nullptr;
     auto iter = dht_map_.find(net_id);

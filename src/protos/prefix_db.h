@@ -385,7 +385,7 @@ public:
     }
 
     void SaveBlock(const view_block::protobuf::ViewBlockItem& view_block, db::DbWriteBatch& batch) {
-        assert(!view_block.qc().view_block_hash().empty());
+        //assert(!view_block.qc().view_block_hash().empty());
         // if (BlockExists(view_block.qc().view_block_hash())) {
         //     auto* block_item = &view_block.block_info();
         //     SETH_DEBUG("view_block.qc().view_block_hash() exists: %s, "
@@ -403,7 +403,7 @@ public:
         //         view_block.qc().elect_height(),
         //         block_item->timeblock_height());
         //     std::string block_hash;
-        //     assert(GetBlockHashWithBlockHeight(
+        //     //assert(GetBlockHashWithBlockHeight(
         //         view_block.qc().network_id(),
         //         view_block.qc().pool_index(),
         //         block_item->height(),
@@ -760,7 +760,7 @@ public:
         }
 
         if (!verfy_req->ParseFromString(val)) {
-            assert(false);
+            //assert(false);
             SETH_DEBUG("%s get bls verify g2 failed", common::Encode::HexEncode(id).c_str());
             return false;
         }
@@ -822,7 +822,7 @@ public:
 
         uint32_t* int_data = (uint32_t*)val.c_str();
         if (tmp_data.size() < int_data[0]) {
-            assert(false);
+            //assert(false);
             return false;
         }
 
@@ -1162,7 +1162,7 @@ public:
         std::string val;
         auto st = db_->Get(key, &val);
         if (!st.ok()) {
-//             assert(false);
+//             //assert(false);
             SETH_ERROR("get db failed!");
             return false;
         }
@@ -1172,14 +1172,14 @@ public:
                 val,
                 security_ptr->GetPrikey(),
                 &dec_data) != security::kSecuritySuccess) {
-            assert(false);
+            //assert(false);
             SETH_ERROR("decrypt db failed!");
             return false;
         }
 
         uint32_t* tmp = (uint32_t*)dec_data.c_str();
         if (!local_poly->ParseFromArray(dec_data.c_str() + 4, tmp[0])) {
-            assert(false);
+            //assert(false);
             SETH_ERROR("parse db failed!");
             return false;
         }

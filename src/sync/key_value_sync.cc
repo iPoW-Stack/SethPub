@@ -86,7 +86,7 @@ void KeyValueSync::AddSyncHeight(
         uint64_t height,
         uint32_t priority) {
     // return;
-    assert(priority <= kSyncHighest);
+    //assert(priority <= kSyncHighest);
     auto item = std::make_shared<SyncItem>(network_id, pool_idx, height, priority, kBlockHeight);
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     item_queues_[thread_idx].push(item);
@@ -100,7 +100,7 @@ void KeyValueSync::AddSyncView(
         uint64_t height,
         uint32_t priority) {
     // return;
-    assert(priority <= kSyncHighest);
+    //assert(priority <= kSyncHighest);
     auto item = std::make_shared<SyncItem>(network_id, pool_idx, height, priority, kBlockView);
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     item_queues_[thread_idx].push(item);
@@ -193,12 +193,12 @@ void KeyValueSync::AddSyncViewHash(
         const std::string& view_hash, 
         uint32_t priority) {
     // return;
-    assert(!view_hash.empty());
+    //assert(!view_hash.empty());
     char key[2 + view_hash.size()] = {0};
     uint16_t* pools = (uint16_t*)(key);
     pools[0] = pool_idx;
     memcpy(key + 2, view_hash.c_str(), view_hash.size());
-    assert(priority <= kSyncHighest);
+    //assert(priority <= kSyncHighest);
     auto item = std::make_shared<SyncItem>(
         network_id, std::string(key, sizeof(key)), priority);
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
@@ -246,7 +246,7 @@ void KeyValueSync::ConsensusTimerMessage() {
             (now_tm_ms1 - now_tm_ms),
             (now_tm_ms2 - now_tm_ms1),
             (now_tm_ms3 - now_tm_ms2));
-        // assert(false);
+        // //assert(false);
     }
 
     if (prev_sync_tm_ms_ + 500lu < now_tm_ms3) {
@@ -465,7 +465,7 @@ uint64_t KeyValueSync::SendSyncRequest(
 void KeyValueSync::HandleMessage(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto& header = msg_ptr->header;
-    assert(header.type() == common::kSyncMessage);
+    //assert(header.type() == common::kSyncMessage);
 //     SETH_DEBUG("key value sync message coming req: %d, res: %d",
 //         header.sync_proto().has_sync_value_req(),
 //         header.sync_proto().has_sync_value_res());
@@ -534,7 +534,7 @@ void KeyValueSync::HandleKvMessage(const transport::MessagePtr& msg_ptr) {
 
 void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr) {
     auto& sync_msg = msg_ptr->header.sync_proto();
-    assert(sync_msg.has_sync_value_req());
+    //assert(sync_msg.has_sync_value_req());
     // Drain cached_block_queue_ for all chains that may be queried below.
     // This must happen here (on the sync timer thread, the sole consumer)
     // rather than inside GetViewBlockWithHeight/GetViewBlockWithView,
@@ -655,7 +655,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
                 req_height.pool_idx(),
                 req_height.height(),
                 msg_ptr->header.hash64());
-            assert(false);
+            //assert(false);
             continue;
         }
         
@@ -759,7 +759,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
 
 void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr) {
     auto& sync_msg = msg_ptr->header.sync_proto();
-    assert(sync_msg.has_sync_value_res());
+    //assert(sync_msg.has_sync_value_res());
     auto& res_arr = sync_msg.sync_value_res().res();
     auto now_tm_us = common::TimeUtils::TimestampUs();
     SETH_DEBUG("now handle kv response hash64: %lu", msg_ptr->header.hash64());
@@ -781,13 +781,13 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
             auto pb_vblock = std::make_shared<view_block::protobuf::ViewBlockItem>();
             if (!pb_vblock->ParseFromString(iter->value())) {
                 SETH_ERROR("pb vblock parse failed: %s", key.c_str());
-                // assert(false);
+                // //assert(false);
                 break;
             }
     
             if (!pb_vblock->has_qc() || pb_vblock->qc().sign_x().empty()) {
                 SETH_ERROR("pb vblock has no qc");
-                assert(false);
+                //assert(false);
                 break;
             }
          
@@ -797,7 +797,7 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                 break;
             }
 
-            assert(!pb_vblock->qc().sign_x().empty());
+            //assert(!pb_vblock->qc().sign_x().empty());
             if (!view_block_synced_callback_) {
                 break;
             }

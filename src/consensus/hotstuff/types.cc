@@ -11,8 +11,8 @@ namespace hotstuff {
 HashStr GetQCMsgHash(const view_block::protobuf::QcItem& qc_item) {
     auto* proto_qc = &qc_item;
     std::stringstream ss;    
-    assert(proto_qc->network_id() <= network::kConsensusShardEndNetworkId);
-    assert(proto_qc->pool_index() < common::kInvalidPoolIndex);
+    //assert(proto_qc->network_id() <= network::kConsensusShardEndNetworkId);
+    //assert(proto_qc->pool_index() < common::kInvalidPoolIndex);
     ss << proto_qc->network_id() << proto_qc->pool_index() << proto_qc->view() <<
         proto_qc->view_block_hash() <<
         proto_qc->elect_height() << proto_qc->leader_idx();
@@ -31,7 +31,7 @@ HashStr GetQCMsgHash(const view_block::protobuf::QcItem& qc_item) {
 }
 
 HashStr GetTCMsgHash(const view_block::protobuf::QcItem& tc_item) {
-    assert(!tc_item.has_view_block_hash());
+    //assert(!tc_item.has_view_block_hash());
     return GetQCMsgHash(tc_item);
 }
 

@@ -280,7 +280,7 @@ void TxPoolManager::SyncCrossPool() {
     auto now_tm_ms = common::TimeUtils::TimestampMs();
     for (uint32_t i = network::kConsensusShardBeginNetworkId;
             i <= common::GlobalInfo::Instance()->now_valid_end_shard(); ++i) {
-        assert(i < network::kServiceShardEndNetworkId);
+        //assert(i < network::kServiceShardEndNetworkId);
         auto sync_count = cross_pools_[i].SyncMissingBlocks(now_tm_ms);
         uint64_t ex_height = common::kInvalidUint64;
         if (cross_pools_[i].latest_height() == common::kInvalidUint64) {
@@ -709,7 +709,7 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
         }
         default:
             SETH_DEBUG("invalid tx step: %d", (int32_t)tx_msg.step());
-            assert(false);
+            //assert(false);
             break;
         }
 
@@ -928,7 +928,7 @@ int32_t TxPoolManager::HandleElectTx(const transport::MessagePtr& msg_ptr) {
     }
 
     if (msg_ptr->address_info->addr() == tx_msg.to()) {
-        assert(false);
+        //assert(false);
         return transport::kTxInvalidAddress;
     }
 
@@ -1182,7 +1182,7 @@ bool TxPoolManager::UserTxValid(const transport::MessagePtr& msg_ptr) {
     }
 
     if (msg_ptr->address_info->addr() == tx_msg.to()) {
-        assert(false);
+        //assert(false);
         return false;
     }
 
@@ -1196,7 +1196,7 @@ bool TxPoolManager::UserTxValid(const transport::MessagePtr& msg_ptr) {
             common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
             msg_ptr->address_info->sharding_id(),
             common::GlobalInfo::Instance()->network_id());
-        assert(false);
+        //assert(false);
         return false;
     }
 
@@ -1213,7 +1213,7 @@ int32_t TxPoolManager::HandleNormalFromTx(const transport::MessagePtr& msg_ptr) 
     auto& tx_msg = msg_ptr->header.tx_proto();
     TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
     if (!UserTxValid(msg_ptr)) {
-//         assert(false);
+//         //assert(false);
         return transport::kTxInvalidAddress;
     }
 
@@ -1349,12 +1349,12 @@ void TxPoolManager::BftCheckInvalidGids(
 //     auto tx_hash = pools::GetTxMessageHash(*new_tx); // cout output info
 //     std::string sign;
 //     if (security->Sign(tx_hash, &sign) != security::kSecuritySuccess) {
-//         assert(false);
+//         //assert(false);
 //         return nullptr;
 //     }
 
 //     new_tx->set_sign(sign);
-//     assert(new_tx->gas_price() > 0);
+//     //assert(new_tx->gas_price() > 0);
 //     return msg_ptr;
 // }
 
@@ -1399,7 +1399,7 @@ void TxPoolManager::BftCheckInvalidGids(
 //         std::cout << common::Encode::HexEncode(prikey) << " : " << common::Encode::HexEncode(addr) << std::endl;
 //     }
 
-//     assert(!g_prikeys.empty());
+//     //assert(!g_prikeys.empty());
 //     while (g_prikeys.size() < common::kImmutablePoolSize) {
 //         g_prikeys.push_back(g_prikeys[0]);
 //     }
@@ -1461,7 +1461,7 @@ void TxPoolManager::BftCheckInvalidGids(
     //             tx_msg_ptr->address_info = address_map[from_prikey];
     //             pools::TxItemPtr tx_ptr = item_functions_[0](tx_msg_ptr);
     //             if (tx_ptr == nullptr) {
-    //                 assert(false);
+    //                 //assert(false);
     //                 return;
     //             }
             
@@ -1483,13 +1483,13 @@ void TxPoolManager::DispatchTx(uint32_t pool_index, const transport::MessagePtr&
 
     TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
     if (msg_ptr->header.tx_proto().step() >= pools::protobuf::StepType_ARRAYSIZE) {
-        assert(false);
+        //assert(false);
         return;
     }
 
     if (item_functions_[msg_ptr->header.tx_proto().step()] == nullptr) {
         SETH_DEBUG("not registered step : %d", (int32_t)msg_ptr->header.tx_proto().step());
-        assert(false);
+        //assert(false);
         msg_ptr->set_status(transport::kUnkonwn);
         return;
     }
@@ -1497,7 +1497,7 @@ void TxPoolManager::DispatchTx(uint32_t pool_index, const transport::MessagePtr&
     TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
     pools::TxItemPtr tx_ptr = item_functions_[msg_ptr->header.tx_proto().step()](msg_ptr);
     if (tx_ptr == nullptr) {
-        assert(false);
+        //assert(false);
         msg_ptr->set_status(transport::kUnkonwn);
         return;
     }

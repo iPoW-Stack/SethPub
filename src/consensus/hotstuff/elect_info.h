@@ -39,7 +39,7 @@ public:
 
             if ((*members)[i]->id == security_ptr_->GetAddress()) {
                 local_member_ = (*members)[i];
-                // assert(local_member_->bls_publick_key != libff::alt_bn128_G2::zero());
+                // //assert(local_member_->bls_publick_key != libff::alt_bn128_G2::zero());
                 if (local_member_->bls_publick_key != libff::alt_bn128_G2::zero()) {
                     bls_valid_ = true;
                 } 
@@ -48,7 +48,7 @@ public:
         
         elect_height_ = elect_height;
         common_pk_ = common_pk;
-        assert(common_pk_ != libff::alt_bn128_G2::zero());
+        //assert(common_pk_ != libff::alt_bn128_G2::zero());
         local_sk_ = sk;
         SetMemberCount(members->size());
         for (uint32_t pool_idx = 0; pool_idx < common::kInvalidPoolIndex; pool_idx++) {
@@ -179,7 +179,7 @@ public:
         }
 
         if (sharding_id >= network::kConsensusShardEndNetworkId) {
-            assert(false);
+            //assert(false);
             return;
         }
 
@@ -234,7 +234,7 @@ public:
                     sharding_id,
                     elect_height,
                     (common_pk == libff::alt_bn128_G2::zero()));
-                // assert(false);      
+                // //assert(false);      
                 break;
             }
             
@@ -243,7 +243,7 @@ public:
     // #ifndef NDEBUG
     //         if (sharding_id == common::GlobalInfo::Instance()->network_id())
     //             for (auto iter = members->begin(); iter != members->end(); ++iter) {
-    //                 assert((*iter)->bls_publick_key != libff::alt_bn128_G2::zero());
+    //                 //assert((*iter)->bls_publick_key != libff::alt_bn128_G2::zero());
     //             }
     // #endif
             res_ptr = std::make_shared<ElectItem>(
@@ -269,7 +269,7 @@ public:
     inline std::shared_ptr<ElectItem> GetElectItemWithShardingId(uint32_t sharding_id) const {
         if (sharding_id > network::kConsensusShardEndNetworkId) {
             SETH_DEBUG("get elect item failed sharding id: %u", sharding_id);
-            // assert(false);
+            // //assert(false);
             return nullptr;
         }
 

@@ -283,7 +283,7 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
                 }
 
                 if (to_txs.tos(to_tx_idx).to().size() != common::kUnicastAddressLength) {
-                    //assert(false);
+                    ////assert(false);
                     continue;
                 }
                 

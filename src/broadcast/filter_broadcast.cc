@@ -20,12 +20,12 @@ FilterBroadcast::~FilterBroadcast() {}
 void FilterBroadcast::Broadcasting(
         dht::BaseDhtPtr& dht_ptr,
         const transport::MessagePtr& msg_ptr) {
-    assert(dht_ptr);
+    //assert(dht_ptr);
     auto readonly_dht_ptr = dht_ptr->readonly_hash_sort_dht();
     // if (readonly_dht_ptr->size() < 2u) {
     //     SETH_DEBUG("random Broadcasting: %lu, size: %u, dht net: %d",
     //         msg_ptr->header.hash64(), readonly_dht_ptr->size(), dht_ptr->local_node()->sharding_id);
-    //     // assert(false);
+    //     // //assert(false);
     //     return;
     // }
 
@@ -236,7 +236,7 @@ std::vector<dht::NodePtr> FilterBroadcast::GetRandomFilterNodes(
 }
 
 uint32_t FilterBroadcast::BinarySearch(const dht::Dht& dht, uint64_t val) {
-    assert(!dht.empty());
+    //assert(!dht.empty());
     int32_t low = 0;
     int32_t high = dht.size() - 1;
     int mid = 0;

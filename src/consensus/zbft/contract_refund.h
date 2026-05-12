@@ -51,18 +51,18 @@ public:
         do {
             if (block_tx.amount() != 0) {
                 block_tx.set_status(kConsensusError);
-                // assert(false);
+                // //assert(false);
                 break;
             }
             if (from_balance <= kTransferGas * block_tx.gas_price()) {
                 block_tx.set_status(kConsensusAccountBalanceError);
-                // assert(false);
+                // //assert(false);
                 break;
             }
 
             if (from_nonce + 1 != block_tx.nonce()) {
                 block_tx.set_status(kConsensusNonceInvalid);
-                // assert(false);
+                // //assert(false);
                 break;
             }
 

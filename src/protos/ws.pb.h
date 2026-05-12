@@ -4021,7 +4021,7 @@ inline ::seth::ws::protobuf::StepType TxMessage::step() const {
   return static_cast< ::seth::ws::protobuf::StepType >(step_);
 }
 inline void TxMessage::set_step(::seth::ws::protobuf::StepType value) {
-  assert(::seth::ws::protobuf::StepType_IsValid(value));
+  //assert(::seth::ws::protobuf::StepType_IsValid(value));
   set_has_step();
   step_ = value;
   // @@protoc_insertion_point(field_set:seth.ws.protobuf.TxMessage.step)
@@ -4470,7 +4470,7 @@ inline ::seth::ws::protobuf::Status OrderInfo::status() const {
   return static_cast< ::seth::ws::protobuf::Status >(status_);
 }
 inline void OrderInfo::set_status(::seth::ws::protobuf::Status value) {
-  assert(::seth::ws::protobuf::Status_IsValid(value));
+  //assert(::seth::ws::protobuf::Status_IsValid(value));
   set_has_status();
   status_ = value;
   // @@protoc_insertion_point(field_set:seth.ws.protobuf.OrderInfo.status)
@@ -4613,7 +4613,7 @@ inline ::seth::ws::protobuf::ReceiveType ReceivableInfo::type() const {
   return static_cast< ::seth::ws::protobuf::ReceiveType >(type_);
 }
 inline void ReceivableInfo::set_type(::seth::ws::protobuf::ReceiveType value) {
-  assert(::seth::ws::protobuf::ReceiveType_IsValid(value));
+  //assert(::seth::ws::protobuf::ReceiveType_IsValid(value));
   set_has_type();
   type_ = value;
   // @@protoc_insertion_point(field_set:seth.ws.protobuf.ReceivableInfo.type)
@@ -7582,7 +7582,7 @@ inline ::seth::ws::protobuf::InitInfoTagType InitInfo::tag() const {
   return static_cast< ::seth::ws::protobuf::InitInfoTagType >(tag_);
 }
 inline void InitInfo::set_tag(::seth::ws::protobuf::InitInfoTagType value) {
-  assert(::seth::ws::protobuf::InitInfoTagType_IsValid(value));
+  //assert(::seth::ws::protobuf::InitInfoTagType_IsValid(value));
   set_has_tag();
   tag_ = value;
   // @@protoc_insertion_point(field_set:seth.ws.protobuf.InitInfo.tag)

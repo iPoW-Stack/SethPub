@@ -51,7 +51,7 @@ void RootBlockExecutor::RootDefaultTx(
 
     if (do_tx_res != consensus::kConsensusSuccess) {
         tx_list->RemoveLast();
-        // assert(false);
+        // //assert(false);
     }
 }
 
@@ -77,7 +77,7 @@ void RootBlockExecutor::RootCreateAccountAddressBlock(
 
         if (do_tx_res != consensus::kConsensusSuccess) {
             tx_list->RemoveLast();
-            // assert(false);
+            // //assert(false);
             continue;
         }
     }
@@ -95,7 +95,7 @@ void RootBlockExecutor::RootCreateElectConsensusShardBlock(
 
     auto iter = tx_map.begin();
     if ((*iter)->tx_info->step() != pools::protobuf::kConsensusRootElectShard) {
-        assert(false);
+        //assert(false);
         return;
     }
 
@@ -111,7 +111,7 @@ void RootBlockExecutor::RootCreateElectConsensusShardBlock(
         tx);
     if (do_tx_res != consensus::kConsensusSuccess) {
         tx_list->RemoveLast();
-        //assert(false);
+        ////assert(false);
         SETH_WARN("consensus elect tx failed!");
         return;
     }

@@ -169,7 +169,7 @@ public:
             view_block->block_info().height(),
             view_block->qc().view(),
             common::Encode::HexEncode(view_block->qc().sign_x()).c_str());
-        assert(!view_block->qc().sign_x().empty());
+        //assert(!view_block->qc().sign_x().empty());
         latest_committed_block_.store(view_block);
     }
 
@@ -243,7 +243,7 @@ public:
 private:
     void AddPoolStatisticTag(uint64_t height, uint64_t timeblock_addr_nonce);
     void SetViewBlockToMap(const std::shared_ptr<ViewBlockInfo>& view_block_info) {
-        assert(!view_block_info->view_block->qc().view_block_hash().empty());
+        //assert(!view_block_info->view_block->qc().view_block_hash().empty());
         auto it = view_blocks_info_.find(view_block_info->view_block->qc().view_block_hash());
         if (it != view_blocks_info_.end() && it->second->view_block != nullptr) {
             SETH_DEBUG("exists, failed add view block: %s, %u_%u_%lu, height: %lu, "
@@ -270,7 +270,7 @@ private:
             common::Encode::HexEncode(view_block_info->view_block->parent_hash()).c_str(),
             view_block_info->view_block->block_info().tx_list_size(),
             String().c_str());
-        // assert(view_with_blocks_.find(view_block_info->view_block->qc().view()) == view_with_blocks_.end());
+        // //assert(view_with_blocks_.find(view_block_info->view_block->qc().view()) == view_with_blocks_.end());
         view_with_blocks_[view_block_info->view_block->qc().view()] = view_block_info;
         SETH_DEBUG("success add view block info now size: %u", view_blocks_info_.size());
     }

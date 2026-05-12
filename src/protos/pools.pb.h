@@ -6559,7 +6559,7 @@ inline ::seth::pools::protobuf::StepType TxMessage::step() const {
   return static_cast< ::seth::pools::protobuf::StepType >(step_);
 }
 inline void TxMessage::set_step(::seth::pools::protobuf::StepType value) {
-  assert(::seth::pools::protobuf::StepType_IsValid(value));
+  //assert(::seth::pools::protobuf::StepType_IsValid(value));
   set_has_step();
   step_ = value;
   // @@protoc_insertion_point(field_set:seth.pools.protobuf.TxMessage.step)

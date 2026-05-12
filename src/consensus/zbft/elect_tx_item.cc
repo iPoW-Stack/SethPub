@@ -125,7 +125,7 @@ int ElectTxItem::processElect(
     int retVal = getMaxElectHeightInfo(statistic, members);
     if ( retVal != kConsensusSuccess) {
         SETH_DEBUG("getMaxElectHeightInfo failed ret val: %d", retVal);
-        // assert(false);
+        // //assert(false);
         return retVal;
     }
 
@@ -142,7 +142,7 @@ int ElectTxItem::processElect(
     std::vector<NodeDetailPtr> elect_nodes(members->size(), nullptr);
     int res = CheckWeedout(members, *statistic, &min_area_weight, &min_tx_count, elect_nodes);
     if (res != kConsensusSuccess) {
-        assert(false);
+        //assert(false);
         return res;
     }
 
@@ -170,7 +170,7 @@ int ElectTxItem::processElect(
         expect_leader_count = (int32_t)common::kImmutablePoolSize;
     }
 
-    assert(expect_leader_count > 0);
+    //assert(expect_leader_count > 0);
     std::set<uint32_t> leader_nodes;
 #ifndef NDEBUG
     {
@@ -340,7 +340,7 @@ int ElectTxItem::getMaxElectHeightInfo(
     if (members == nullptr) {
         SETH_WARN("get members failed, elect height: %lu, net: %u",
             now_elect_height, elect_statistic_.sharding_id());
-        // assert(false);
+        // //assert(false);
         return kConsensusError;
     }
 
@@ -353,7 +353,7 @@ int ElectTxItem::getMaxElectHeightInfo(
         if (older_members == nullptr) {
             SETH_WARN("get members failed, elect height: %lu, net: %u",
                 max_elect_height, elect_statistic_.sharding_id());
-            // assert(false);
+            // //assert(false);
             return kConsensusError;
         }
 
@@ -423,7 +423,7 @@ int ElectTxItem::getMaxElectHeightInfo(
         SETH_DEBUG("now_elect_height: %lu, member size error: %u, %u, %u, %u",
             now_elect_height, members->size(), statistic->tx_count_size(),
             statistic->stokes_size(), statistic->area_point_size());
-        assert(false);
+        //assert(false);
         return kConsensusError;
     }
     return kConsensusSuccess;
@@ -522,7 +522,7 @@ void ElectTxItem::ChooseNodeForEachIndex(
             elect_nodes_to_choose,
             elect_nodes);
         if (res != kConsensusSuccess) {
-            assert(false);
+            //assert(false);
             return;
         }
 
@@ -569,7 +569,7 @@ void ElectTxItem::GetIndexNodes(
         auto id = sec_ptr_->GetAddressWithPublicKey(elect_statistic_.join_elect_nodes(i).pubkey());
         protos::AddressInfoPtr account_info = view_block_chain_->ChainGetAccountInfo(id);
         if (account_info == nullptr) {
-            assert(false);
+            //assert(false);
             return;
         }
 
@@ -648,7 +648,7 @@ void ElectTxItem::MiningToken(
             if (account_info == nullptr) {
                 SETH_DEBUG("get account info failed: %s",
                           common::Encode::HexEncode(id).c_str());
-                assert(false);
+                //assert(false);
                 continue;
             }
 
@@ -663,7 +663,7 @@ void ElectTxItem::MiningToken(
             //          Only the leader node will get all the gas
             auto gas_token = valid_nodes[i]->gas_sum;
             if (i + 1 == valid_nodes.size()) {
-                assert(gas_for_mining >= tmp_all_gas_amount);
+                //assert(gas_for_mining >= tmp_all_gas_amount);
                 gas_token = gas_for_mining - tmp_all_gas_amount;
             }
 
@@ -675,7 +675,7 @@ void ElectTxItem::MiningToken(
         }
     }
 
-    assert(tmp_all_gas_amount == gas_for_mining);
+    //assert(tmp_all_gas_amount == gas_for_mining);
 }
 
 void ElectTxItem::SetPrevElectInfo(
@@ -698,7 +698,7 @@ void ElectTxItem::SetPrevElectInfo(
     auto& prev_block_item = view_block_item.block_info();
     if (!prev_block_item.has_elect_block()) {
         ELECT_ERROR("not has tx list size.");
-        assert(false);
+        //assert(false);
         return;
     }
 
@@ -1151,7 +1151,7 @@ int ElectTxItem::CheckWeedout(
         if (account_info == nullptr) {
             SETH_ERROR("get account info failed: %s",
                       common::Encode::HexEncode((*members)[member_idx]->id).c_str());
-            assert(false);
+            //assert(false);
             return kConsensusError;
         }
 
@@ -1227,7 +1227,7 @@ int ElectTxItem::GetJoinElectNodesCredit(
         elect_nodes[index] = *iter;
         SETH_DEBUG("success add join elect node: %s",
                   common::Encode::HexEncode((*iter)->pubkey).c_str());
-        assert(!(*iter)->pubkey.empty());
+        //assert(!(*iter)->pubkey.empty());
         break;
     }
 

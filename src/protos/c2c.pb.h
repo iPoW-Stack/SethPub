@@ -1362,7 +1362,7 @@ inline ::seth::c2c::protobuf::Status OrderInfo::status() const {
   return static_cast< ::seth::c2c::protobuf::Status >(status_);
 }
 inline void OrderInfo::set_status(::seth::c2c::protobuf::Status value) {
-  assert(::seth::c2c::protobuf::Status_IsValid(value));
+  //assert(::seth::c2c::protobuf::Status_IsValid(value));
   set_has_status();
   status_ = value;
   // @@protoc_insertion_point(field_set:seth.c2c.protobuf.OrderInfo.status)
@@ -1709,7 +1709,7 @@ inline ::seth::c2c::protobuf::Status SellInfo::status() const {
   return static_cast< ::seth::c2c::protobuf::Status >(status_);
 }
 inline void SellInfo::set_status(::seth::c2c::protobuf::Status value) {
-  assert(::seth::c2c::protobuf::Status_IsValid(value));
+  //assert(::seth::c2c::protobuf::Status_IsValid(value));
   set_has_status();
   status_ = value;
   // @@protoc_insertion_point(field_set:seth.c2c.protobuf.SellInfo.status)

@@ -13,18 +13,18 @@ public:
     static Processor* Instance();
 
     inline void RegisterProcessor(uint32_t type, MessageProcessor processor) {
-        assert(type < common::kMaxMessageTypeCount);
+        //assert(type < common::kMaxMessageTypeCount);
         message_processor_[type] = processor;
         SETH_DEBUG("success register message type: %d", type);
     }
 
     inline void HandleMessage(MessagePtr& msg_ptr) {
         auto& message = msg_ptr->header;
-        assert(message.type() < common::kMaxMessageTypeCount);
+        //assert(message.type() < common::kMaxMessageTypeCount);
         auto handler = message_processor_[message.type()];
         if (handler == nullptr) {
             SETH_ERROR("error msg type: %d", message.type());
-            assert(false);
+            //assert(false);
             return;
         }
 

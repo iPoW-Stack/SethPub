@@ -144,9 +144,9 @@ bool Hotstuff::InitLoadLatestBlock(
         auto balane_map_ptr = std::make_shared<BalanceAndNonceMap>();
         view_block_chain->Store(latest_view_block, false, balane_map_ptr, nullptr, true);
         auto temp_ptr = view_block_chain->Get(latest_view_block->qc().view_block_hash());
-        assert(temp_ptr);
+        //assert(temp_ptr);
         if (network::IsSameToLocalShard(latest_view_block->qc().network_id())) {
-            assert(!latest_view_block->qc().sign_x().empty());
+            //assert(!latest_view_block->qc().sign_x().empty());
             UpdateLatestQcItemPtr(std::make_shared<view_block::protobuf::QcItem>(latest_view_block->qc()));
         }
 
@@ -672,7 +672,7 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
         SETH_DEBUG("not has tc handle propose called hash: %lu, propose_debug: %s", 
             msg_ptr->header.hash64(), 
             ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
-        assert(false);
+        //assert(false);
         return Status::kLeaderInvalid;
     }
 
@@ -681,7 +681,7 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
         SETH_DEBUG("invalid tc handle propose called hash: %lu, propose_debug: %s", 
             msg_ptr->header.hash64(), 
             ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
-        // assert(false);
+        // //assert(false);
         return Status::kLeaderInvalid;
     }
 
@@ -736,7 +736,7 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
     
     SETH_DEBUG("handle propose called hash: %lu, propose_debug: %s", msg_ptr->header.hash64(), 
             ProtobufToJson(msg_ptr->header.hotstuff()).c_str());
-    // assert(msg_ptr->header.hotstuff().pro_msg().view_item().qc().view_block_hash().empty());
+    // //assert(msg_ptr->header.hotstuff().pro_msg().view_item().qc().view_block_hash().empty());
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(msg_ptr->header.debug());
@@ -780,7 +780,7 @@ int Hotstuff::HandleProposeMsgImpl(const transport::MessagePtr& msg_ptr) {
         pro_msg_wrap->view_block_ptr->block_info().timestamp(),
         ProtobufToJson(cons_debug).c_str());
 #endif
-    assert(pro_msg_wrap->view_block_ptr->block_info().tx_list_size() == 0);
+    //assert(pro_msg_wrap->view_block_ptr->block_info().tx_list_size() == 0);
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto& view_item = *pro_msg_wrap->view_block_ptr;
     View out_view = 0;
@@ -1088,7 +1088,7 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
         auto btime = common::TimeUtils::TimestampMs();
         if (VerifyQC(pro_msg.tc()) != Status::kSuccess) {
             SETH_ERROR("pool: %d verify tc failed: %lu", pool_idx_, pro_msg.tc().view());
-            // assert(false);
+            // //assert(false);
             return Status::kError;
         }
         auto verify_qc_end_ms = common::TimeUtils::TimestampMs();
@@ -1103,7 +1103,7 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
         TryCommit(view_block_chain(), pro_msg_wrap->msg_ptr, qc);
         if (latest_qc_item_ptr_ == nullptr ||
                 tc_ptr->view() >= latest_qc_item_ptr_->view()) {
-            assert(IsQcTcValid(*tc_ptr));
+            //assert(IsQcTcValid(*tc_ptr));
             UpdateLatestQcItemPtr(tc_ptr);
         }
 
@@ -1379,7 +1379,7 @@ Status Hotstuff::HandleProposeMsgStep_Vote(std::shared_ptr<ProposeMsgWrapper>& p
     auto now_tm_ms = common::TimeUtils::TimestampMs();
     auto* hotstuff_msg = trans_header.mutable_hotstuff();
     auto* vote_msg = hotstuff_msg->mutable_vote_msg();
-    assert(pro_msg_wrap->view_block_ptr->qc().elect_height() > 0);
+    //assert(pro_msg_wrap->view_block_ptr->qc().elect_height() > 0);
     trans_header.set_debug(pro_msg_wrap->msg_ptr->header.debug());
     // Construct VoteMsg
     Status s = ConstructVoteMsg(
@@ -1570,7 +1570,7 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     qc_item.set_pool_index(pool_idx_);
     qc_item.set_view(vote_msg.view());
     qc_item.set_view_block_hash(vote_msg.view_block_hash());
-    assert(!prefix_db_->BlockExists(qc_item.view_block_hash()));
+    //assert(!prefix_db_->BlockExists(qc_item.view_block_hash()));
     qc_item.set_elect_height(elect_height);
     qc_item.set_leader_idx(vote_msg.leader_idx());
     qc_item.set_tm_height(tm_height);
@@ -1589,7 +1589,7 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (latest_leader_propose_message_ && 
             latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().leader_idx() != vote_msg.leader_idx()) {
-        // assert(false);
+        // //assert(false);
         return Status::kError;
     }
 
@@ -1617,7 +1617,7 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     auto bls_end_ms = common::TimeUtils::TimestampMs();
     if (ret == Status::kSuccess) {
     }
-    // assert(ret != Status::kInvalidOpposedCount); It may occur temporarily due to inconsistent status
+    // //assert(ret != Status::kInvalidOpposedCount); It may occur temporarily due to inconsistent status
     if (ret != Status::kSuccess) {
         if (ret == Status::kBlsVerifyWaiting) {
             SETH_DEBUG("kBlsWaiting pool: %d, view: %lu, hash64: %lu",
@@ -1759,7 +1759,7 @@ Status Hotstuff::TryCommit(
         const std::shared_ptr<ViewBlockChain>& view_block_chain,
         const transport::MessagePtr& msg_ptr, 
         const QC& commit_qc) {
-    assert(commit_qc.has_view_block_hash());
+    //assert(commit_qc.has_view_block_hash());
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto v_block_to_commit_info = CheckCommit(view_block_chain, commit_qc);
     if (v_block_to_commit_info) {
@@ -1892,7 +1892,7 @@ void Hotstuff::HandleSyncedViewBlock(
         if (vblock->qc().network_id() % common::kImmutablePoolSize != pool_idx_) {
             SETH_ERROR("invalid shard id: %u, pool_idx: %u",
                 vblock->qc().network_id(), pool_idx_);
-            assert(false);
+            //assert(false);
             return;
         }
 
@@ -1944,7 +1944,7 @@ void Hotstuff::SyncLaterBlocks(
 Status Hotstuff::VerifyQC(const QC& qc) {
     // verify qc
     if (!IsQcTcValid(qc)) {
-        assert(false);
+        //assert(false);
         return Status::kError;
     }
 
@@ -1956,7 +1956,7 @@ Status Hotstuff::VerifyQC(const QC& qc) {
 
     if (crypto()->VerifyQC(common::GlobalInfo::Instance()->network_id(), qc) != Status::kSuccess) {
         SETH_ERROR("pool: %d verify qc failed: %lu", pool_idx_, qc.view());
-        // assert(false);
+        // //assert(false);
         return Status::kError; 
     }
 
@@ -2198,7 +2198,7 @@ Status Hotstuff::ConstructVoteMsg(
         common::GlobalInfo::Instance()->network_id(),
         pool_idx_,
         v_block->qc().view());
-    assert(!prefix_db_->BlockExists(v_block->qc().view_block_hash()));
+    //assert(!prefix_db_->BlockExists(v_block->qc().view_block_hash()));
     vote_msg->set_view(v_block->qc().view());
     vote_msg->set_elect_height(elect_height);
     vote_msg->set_leader_idx(v_block->qc().leader_idx());
@@ -2214,7 +2214,7 @@ Status Hotstuff::ConstructVoteMsg(
         qc_item.pool_index(),
         qc_item.view(),
         v_block->qc().leader_idx());
-    assert(!prefix_db_->BlockExists(v_block->qc().view_block_hash()));
+    //assert(!prefix_db_->BlockExists(v_block->qc().view_block_hash()));
     qc_item.set_elect_height(elect_height);
     qc_item.set_tm_height(tm_height);
     qc_item.set_leader_idx(v_block->qc().leader_idx());

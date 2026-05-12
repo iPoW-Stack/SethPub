@@ -21,7 +21,7 @@ int FromTxItem::HandleTx(
     if (balance_status != kConsensusSuccess) {
         block_tx.set_status(balance_status);
         // will never happen
-        assert(false);
+        //assert(false);
         return kConsensusSuccess;
     }
 

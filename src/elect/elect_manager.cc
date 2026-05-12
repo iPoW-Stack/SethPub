@@ -78,7 +78,7 @@ int ElectManager::Join(uint32_t network_id) {
 }
 
 void ElectManager::HandleMessage(const transport::MessagePtr& msg_ptr) {
-    assert(false);
+    //assert(false);
 }
 
 common::MembersPtr ElectManager::OnNewElectBlock(
@@ -172,7 +172,7 @@ bool ElectManager::ProcessPrevElectMembers(
             elect_block.prev_members().prev_elect_height(),
             elect_block.shard_network_id(),
             elect_block.elect_height());
-//         assert(false);
+//         //assert(false);
         return false;
     }
 
@@ -199,7 +199,7 @@ bool ElectManager::ProcessPrevElectMembers(
             prev_members_bls.size(),
             in.size(),
             elect_block.prev_members().prev_elect_height());
-        assert(false);
+        //assert(false);
         return false;
     }
 
@@ -420,7 +420,7 @@ common::MembersPtr ElectManager::GetNetworkMembersWithHeight(
         libff::alt_bn128_G2* common_pk,
         libff::alt_bn128_Fr* sec_key) {
     if (elect_height == 0) {
-        assert(false);
+        //assert(false);
         return nullptr;
     }
     

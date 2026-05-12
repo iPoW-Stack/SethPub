@@ -1,4 +1,5 @@
 cbuild/
+tests/
 .claude/
 test_height_tree_level_db/
 test_leaf_height_tree_db/

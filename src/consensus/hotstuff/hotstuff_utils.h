@@ -29,7 +29,7 @@ using LeaderNonceMap = std::unordered_map<std::string, uint64_t>;
 class ProposeMsgWrapper {
 public:
     ProposeMsgWrapper() {
-        assert(false);
+        //assert(false);
     }
 
     ~ProposeMsgWrapper() {

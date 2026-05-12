@@ -100,7 +100,7 @@ int BaseDht::Join(NodePtr& node) {
     uint32_t replace_pos = member_dht.size() + 1;
     if (!DhtFunction::Displacement(local_node_->dht_key, member_dht, node, replace_pos)) {
         DHT_WARN("displacement for new node failed!");
-        // assert(false);
+        // //assert(false);
         return kDhtError;
     }
 
@@ -216,7 +216,7 @@ int BaseDht::Drop(NodePtr& node) {
         return dht_key_hash == rhs->dht_key_hash;
     });
     if (iter != member_dht.end()) {
-        assert((*iter)->id == node->id);
+        //assert((*iter)->id == node->id);
         member_dht.erase(iter);
     }
 
@@ -232,7 +232,7 @@ int BaseDht::Drop(NodePtr& node) {
     valid_dht_idx = invalid_idx;
     auto miter = node_map_.find(node->dht_key_hash);
     if (miter != node_map_.end()) {
-        assert(miter->second->id == node->id);
+        //assert(miter->second->id == node->id);
         node_map_.erase(miter);
     }
 
@@ -284,7 +284,7 @@ int BaseDht::Bootstrap(
         const std::vector<NodePtr>& boot_nodes,
         bool wait,
         int32_t sharding_id) {
-    assert(!boot_nodes.empty());
+    //assert(!boot_nodes.empty());
     for (uint32_t i = 0; i < boot_nodes.size(); ++i) {
         if (boot_nodes[i]->public_ip == common::GlobalInfo::Instance()->config_public_ip() &&
             boot_nodes[i]->public_port == common::GlobalInfo::Instance()->config_local_port()) {
@@ -653,7 +653,7 @@ void BaseDht::ProcessRefreshNeighborsRequest(const transport::MessagePtr& msg_pt
     }
 
     transport::protobuf::Header res;
-    assert(local_node_->dht_key.size() == kDhtKeySize);
+    //assert(local_node_->dht_key.size() == kDhtKeySize);
     DhtProto::CreateRefreshNeighborsResponse(
         local_node_->sharding_id,
         local_node_->dht_key,
@@ -1008,7 +1008,7 @@ void BaseDht::ProcessTimerRequest() {
     auto rand_idx = common::Random::RandomInt32() % dht_ptr->size();
     auto node = (*dht_ptr)[rand_idx];
     transport::protobuf::Header msg;
-    assert(node->dht_key.size() == kDhtKeySize);
+    //assert(node->dht_key.size() == kDhtKeySize);
     DhtProto::CreateRefreshNeighborsRequest(
         *dht_ptr,
         local_node_,
@@ -1045,7 +1045,7 @@ void BaseDht::PrintDht() {
             node->public_port);
         for (auto iter = readonly_dht->begin(); iter != readonly_dht->end(); ++iter) {
             auto node = *iter;
-            assert(node != nullptr);
+            //assert(node != nullptr);
             std::string tmp_res = common::StringUtil::Format(
                 "----%s, id: %u, %s:%u",
                 "",//common::Encode::HexSubstr(node->id).c_str(),

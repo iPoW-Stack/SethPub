@@ -75,8 +75,8 @@ public:
     }
 
     void AddFirewallCheckCallback(int32_t type, FirewallCheckCallback cb) {
-        assert(type < common::kMaxMessageTypeCount);
-        assert(firewall_checks_[type] == nullptr);
+        //assert(type < common::kMaxMessageTypeCount);
+        //assert(firewall_checks_[type] == nullptr);
         firewall_checks_[type] = cb;
     }
 

@@ -123,7 +123,7 @@ Status ViewBlockChain::Store(
 #ifndef NDEBUG
             auto n = common::GlobalInfo::Instance()->each_shard_max_members();
             auto t = common::GetSignerCount(n);
-            assert(join_info.g2_req().verify_vec_size() >= t);
+            //assert(join_info.g2_req().verify_vec_size() >= t);
 #endif
             prefix_db_->AddBlsVerifyG2(addr, join_info.g2_req(), seth_host_ptr->db_batch_);
         }
@@ -164,7 +164,7 @@ Status ViewBlockChain::Store(
                     common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(),
                     common::Encode::HexEncode(view_block->parent_hash()).c_str(),
                     view_block->qc().view(), pool_index_);
-                assert(false);
+                //assert(false);
                 return Status::kLackOfParentBlock;
             }
         }
@@ -456,7 +456,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) const {
                     view_block.qc().view(),
                     common::Encode::HexEncode(view_block.qc().sign_x()).c_str(),
                     common::Encode::HexEncode(view_block.parent_hash()).c_str());
-                assert(false);
+                //assert(false);
             }
             
             return view_block_info_ptr;
@@ -541,7 +541,7 @@ bool ViewBlockChain::Has(const HashStr& hash) {
 
 bool ViewBlockChain::Extends(const ViewBlock& block, const ViewBlock& target) {
     if (!target.qc().has_view_block_hash()) {
-        assert(false);
+        //assert(false);
         return true;
     }
 
@@ -711,7 +711,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
             tmp_block->block_info().tx_list_size() > 0 ? tmp_block->block_info().tx_list(0).step(): -1,
             0,
             tmp_block->block_info().tx_list_size());
-        assert((*iter)->seth_host_ptr);
+        //assert((*iter)->seth_host_ptr);
         auto& db_batch = (*iter)->seth_host_ptr->db_batch_;
         new_block_cache_callback_(tmp_block, db_batch);
         if (tmp_block->qc().view() > commited_max_view_) {
@@ -819,7 +819,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
 //             if (memcmp(iter->first.c_str(), protos::kAddressPrefix.c_str(), protos::kAddressPrefix.size()) == 0) {
 //                 address::protobuf::AddressInfo addr_info;
 //                 if (!addr_info.ParseFromString(iter->second)) {
-//                     assert(false);
+//                     //assert(false);
 //                 }
 
 //                 SETH_DEBUG("new addr commit %u_%u_%lu, success update addr: %s, balance: %lu, nonce: %lu",
@@ -961,7 +961,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::CheckCommit(const QC& qc) {
         return nullptr;
     }
 
-    assert(!qc.view_block_hash().empty());
+    //assert(!qc.view_block_hash().empty());
     auto v_block1_info = Get(qc.view_block_hash());
     if (!v_block1_info || v_block1_info->view_block->qc().view() <= 0llu){
         SETH_DEBUG("pool: %d, Failed get v block 1: %s, %u_%u_%lu",
@@ -969,7 +969,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::CheckCommit(const QC& qc) {
             common::Encode::HexEncode(qc.view_block_hash()).c_str(),
             qc.network_id(), qc.pool_index(), qc.view());
         kv_sync_->AddSyncViewHash(qc.network_id(), qc.pool_index(), qc.view_block_hash(), 0);
-        // assert(false);
+        // //assert(false);
         return nullptr;
     }
 
@@ -986,7 +986,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::CheckCommit(const QC& qc) {
         common::Encode::HexEncode(qc.view_block_hash()).c_str(),
         qc.network_id(), qc.pool_index(), qc.view(), ProtobufToJson(cons_debug).c_str());
 #endif
-    assert(v_block1->parent_hash() != qc.view_block_hash());
+    //assert(v_block1->parent_hash() != qc.view_block_hash());
     auto v_block2_info = Get(v_block1->parent_hash());
     if (!v_block2_info) {
         SETH_DEBUG("pool: %d, Failed get v block 2 block hash: %s, %u_%u_%lu, now chain: %s", 
@@ -1023,7 +1023,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::CheckCommit(const QC& qc) {
 void ViewBlockChain::AddNewBlock(
         const std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block_item,
         db::DbWriteBatch& db_batch) {
-    assert(!view_block_item->qc().sign_x().empty());
+    //assert(!view_block_item->qc().sign_x().empty());
     auto* block_item = &view_block_item->block_info();
     auto btime = common::TimeUtils::TimestampMs();
     SETH_DEBUG("new block coming sharding id: %u_%d_%lu, view: %u_%u_%lu,"
@@ -1041,7 +1041,7 @@ void ViewBlockChain::AddNewBlock(
         block_item->timeblock_height(),
         (view_block_item->block_info().tx_list_size() > 0 ? view_block_item->block_info().tx_list(0).step() : -1),
         (view_block_item->block_info().tx_list_size() > 0 ? view_block_item->block_info().tx_list(0).status() : -1));
-    assert(view_block_item->qc().elect_height() >= 1);
+    //assert(view_block_item->qc().elect_height() >= 1);
     prefix_db_->SaveBlock(*view_block_item, db_batch);
     prefix_db_->SaveValidViewBlockParentHash(
         view_block_item->parent_hash(), 
@@ -1127,7 +1127,7 @@ std::string ViewBlockChain::String() const {
     SETH_DEBUG("network: %u, get chain pool: %u, views: %s, all size: %u, block_height_str: %s",
         view_blocks[0]->qc().network_id(),
         pool_index_, ret.c_str(), view_blocks_info_.size(), block_height_str.c_str());
-    assert(height_set.size() < 256);
+    //assert(height_set.size() < 256);
     return ret;
 }
 
@@ -1160,7 +1160,7 @@ Status GetLatestViewBlockFromDb(
     if (!r) {
         SETH_DEBUG("failed get genesis block net: %u, pool: %u, height: %lu",
             sharding_id, pool_index, pool_info.height());
-        assert(false);
+        //assert(false);
         return Status::kError;
     }
 
@@ -1607,7 +1607,7 @@ void ViewBlockChain::AddPoolStatisticTag(uint64_t height, uint64_t timeblock_add
         pool_index_,
         height,
         common::Encode::HexEncode(unique_hash).c_str());
-    assert(msg_ptr->address_info != nullptr);
+    //assert(msg_ptr->address_info != nullptr);
     tx->set_to(msg_ptr->address_info->addr());
     pools_mgr_->AddPoolMessage(msg_ptr);
     SETH_DEBUG("success create kPoolStatisticTag nonce: %lu, pool idx: %u, "

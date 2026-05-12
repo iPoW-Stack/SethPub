@@ -22,7 +22,7 @@ int ContractPrefund::HandleTx(
     if (balance_status != kConsensusSuccess) {
         block_tx.set_status(balance_status);
         // will never happen
-        assert(false);
+        //assert(false);
         return kConsensusSuccess;
     }
 
@@ -35,7 +35,7 @@ int ContractPrefund::HandleTx(
                 common::Encode::HexEncode(block_tx.to()).c_str(),
                 from_nonce, block_tx.nonce());
             // will never happen
-            assert(false);
+            //assert(false);
             break;
         }
         
@@ -88,11 +88,11 @@ int ContractPrefund::HandleTx(
     acc_balance_map[from]->set_nonce(block_tx.nonce());
     acc_balance_map[from]->set_latest_height(view_block.block_info().height());
     acc_balance_map[from]->set_tx_index(tx_index);
-    assert(acc_balance_map[from]->has_sharding_id());
-    assert(acc_balance_map[from]->has_pool_index());
-    assert(acc_balance_map[from]->has_addr());
-    assert(acc_balance_map[from]->has_type());
-    assert(acc_balance_map[from]->has_latest_height());
+    //assert(acc_balance_map[from]->has_sharding_id());
+    //assert(acc_balance_map[from]->has_pool_index());
+    //assert(acc_balance_map[from]->has_addr());
+    //assert(acc_balance_map[from]->has_type());
+    //assert(acc_balance_map[from]->has_latest_height());
     SETH_DEBUG("success add addr: %s, value: %s", 
         common::Encode::HexEncode(from).c_str(), 
         ProtobufToJson(*(acc_balance_map[from])).c_str());

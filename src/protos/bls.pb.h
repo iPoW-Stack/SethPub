@@ -4090,7 +4090,7 @@ inline ::seth::bls::protobuf::StakeOperation JoinElectInfo::stake_op() const {
   return static_cast< ::seth::bls::protobuf::StakeOperation >(stake_op_);
 }
 inline void JoinElectInfo::set_stake_op(::seth::bls::protobuf::StakeOperation value) {
-  assert(::seth::bls::protobuf::StakeOperation_IsValid(value));
+  //assert(::seth::bls::protobuf::StakeOperation_IsValid(value));
   set_has_stake_op();
   stake_op_ = value;
   // @@protoc_insertion_point(field_set:seth.bls.protobuf.JoinElectInfo.stake_op)

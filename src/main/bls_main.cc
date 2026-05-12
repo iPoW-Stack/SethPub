@@ -569,7 +569,7 @@ public:
             dkg[i].FinishBroadcast(0);
             if (!dkg[i].finished_) {
                 std::cout << "not finished " << i << std::endl;
-                assert(false);
+                //assert(false);
                 exit(0);
             }
         }

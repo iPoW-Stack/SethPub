@@ -67,7 +67,7 @@ int Route::Send(const transport::MessagePtr& msg_ptr) {
     if (dht_ptr != nullptr) {
         if (message.has_broadcast()) {
             auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
-            // assert(message.broadcast().bloomfilter_size() < 64);
+            // //assert(message.broadcast().bloomfilter_size() < 64);
 //             broadcast_->Broadcasting(msg_ptr->thread_idx, dht_ptr, msg_ptr);
             SETH_DEBUG("0 broadcast: %lu, now size: %u", msg_ptr->header.hash64(), broadcast_queue_[thread_idx].size());
             broadcast_queue_[thread_idx].push(msg_ptr);
@@ -145,7 +145,7 @@ void Route::HandleMessage(const transport::MessagePtr& header_ptr) {
 bool Route::CheckPoolsMessage(const transport::MessagePtr& header_ptr, dht::BaseDhtPtr dht_ptr) {
     auto& header = header_ptr->header;
     if (header.has_broadcast()) {
-        assert(false);
+        //assert(false);
         SETH_DEBUG("pools message check route coming has broadcast.");
         return false;
     }
@@ -300,7 +300,7 @@ void Route::Broadcast(const transport::MessagePtr& msg_ptr) {
         }
     }
 
-    // assert(msg_ptr->header.broadcast().bloomfilter_size() < 64);
+    // //assert(msg_ptr->header.broadcast().bloomfilter_size() < 64);
     SETH_DEBUG("broadcast success: %lu", header.hash64());
     broadcast_->Broadcasting(des_dht, msg_ptr);
 }

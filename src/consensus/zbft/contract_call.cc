@@ -46,19 +46,19 @@ int ContractCall::HandleTx(
     do {
         if (address_info->destructed()) {
             block_tx.set_status(kConsensusContractDestructed);
-            // assert(false);
+            // //assert(false);
             break;
         }
 
         if (from_balance <= gas_used * block_tx.gas_price() + block_tx.amount()) {
             block_tx.set_status(kConsensusAccountBalanceError);
-            // assert(false);
+            // //assert(false);
             break;
         }
 
         if (from_nonce + 1 != block_tx.nonce()) {
             block_tx.set_status(kConsensusNonceInvalid);
-            // assert(false);
+            // //assert(false);
             break;
         }
 
@@ -430,41 +430,41 @@ int ContractCall::SaveContractCreateInfo(
             transfer_iter != seth_host.to_account_value_.end(); ++transfer_iter) {
         // transfer from must caller or contract address, other not allowed.
         // if (transfer_iter->first != block_tx.from() && transfer_iter->first != block_tx.to()) {
-        //     assert(false);
+        //     //assert(false);
         //     return kConsensusError;
         // }
 
         for (auto to_iter = transfer_iter->second.begin();
                 to_iter != transfer_iter->second.end(); ++to_iter) {
             if (transfer_iter->first == to_iter->first) {
-                assert(false);
+                //assert(false);
                 return kConsensusError;
             }
 
             if (block_tx.to() != transfer_iter->first) {
                 auto addr_info = seth_host.view_block_chain_->ChainGetAccountInfo(to_iter->first);
                 if (addr_info == nullptr) {
-                    assert(false);
+                    //assert(false);
                     return kConsensusError;
                 }
 
                 if (addr_info->destructed()) {
-                    assert(false);
+                    //assert(false);
                     return kConsensusError;
                 }
 
                 if (addr_info->pool_index() != seth_host.view_block_chain_->pool_index()) {
-                    assert(false);
+                    //assert(false);
                     return kConsensusError;
                 }
 
                 if (addr_info->balance() < to_iter->second) {
-                    assert(false);
+                    //assert(false);
                     return kConsensusError;
                 }
 
                 if (addr_info->bytes_code().empty()) {
-                    assert(false);
+                    //assert(false);
                     return kConsensusError;
                 }
 
@@ -498,12 +498,12 @@ int ContractCall::SaveContractCreateInfo(
     }
 
     if (contract_balance_add > 0) {
-        assert(false);
+        //assert(false);
         return kConsensusError;
     }
 
     if (-contract_balance_add != other_add) {
-        assert(false);
+        //assert(false);
         return kConsensusError;
     }
 
@@ -534,7 +534,7 @@ int ContractCall::ContractExcute(
         SETH_ERROR("ContractExcute failed: %d, bytes: %s, input: %s",
             exec_res, common::Encode::HexEncode(contract_info->bytes_code()).c_str(),
             common::Encode::HexEncode(tx.contract_input()).c_str());
-        // assert(false);
+        // //assert(false);
         return kConsensusError;
     }
 

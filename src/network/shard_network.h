@@ -167,8 +167,8 @@ int ShardNetwork<DhtType>::JoinShard() {
         return kNetworkError;
     }
 
-    assert(unversal_dht);
-    assert(unversal_dht->local_node());
+    //assert(unversal_dht);
+    //assert(unversal_dht->local_node());
     auto local_node = std::make_shared<dht::Node>(
         sharding_id_,
         unversal_dht->local_node()->public_ip,

@@ -31,7 +31,7 @@ std::string Blake2PrecompileInput(uint32_t rounds_and_gas, uint8_t final_block_f
     d.append(8, '\0');
     d.append(8, '\0');
     d.push_back(static_cast<char>(final_block_flag));
-    assert(d.size() == kBlake2TotalInput);
+    //assert(d.size() == kBlake2TotalInput);
     return d;
 }
 

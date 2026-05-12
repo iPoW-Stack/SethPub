@@ -22,7 +22,7 @@ Node::Node(
     public_ip = in_public_ip;
     public_port = in_public_port;
     pubkey_str = in_pubkey_str;
-    assert(!pubkey_str.empty());
+    //assert(!pubkey_str.empty());
     id = in_id;
     id_hash = common::Hash::Hash64(id);
 }

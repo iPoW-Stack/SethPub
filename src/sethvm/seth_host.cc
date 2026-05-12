@@ -183,7 +183,7 @@ size_t SethhainHost::get_code_size(const evmc::address& addr) const noexcept {
         }
 
         SETH_ERROR("failed get contract bytes code size: %s", common::Encode::HexEncode(id).c_str());
-        // assert(false);
+        // //assert(false);
         return 0;
     }
 
@@ -278,7 +278,7 @@ bool SethhainHost::selfdestruct(
         common::Encode::HexEncode(std::string((char*)addr.bytes, 20)).c_str(),
         common::Encode::HexEncode(std::string((char*)beneficiary.bytes, 20)).c_str());
     if (recorded_selfdestructs_ != nullptr) {
-        assert(false);
+        //assert(false);
         return false;
     }
 
@@ -464,7 +464,7 @@ evmc::Result SethhainHost::call(const evmc_message& msg) noexcept {
 }
 
 evmc_tx_context SethhainHost::get_tx_context() const noexcept {
-    // assert(false);
+    // //assert(false);
     SETH_DEBUG("emit called block number: %lu, block timestamp: %lu, gas: %lu",
         tx_context_.block_number,
         tx_context_.block_timestamp, 

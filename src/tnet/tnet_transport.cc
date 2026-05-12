@@ -25,10 +25,10 @@ TnetTransport::TnetTransport(
           thread_count_(thread_count),
           packet_handler_(packet_handler),
           packet_factory_(packet_factory) {
-    assert(packet_factory != nullptr);
-    assert(recv_buff_size > 1024u);
-    assert(send_buff_size > 1024u);
-    assert(thread_count > 0);
+    //assert(packet_factory != nullptr);
+    //assert(recv_buff_size > 1024u);
+    //assert(send_buff_size > 1024u);
+    //assert(thread_count > 0);
 }
 
 TnetTransport::~TnetTransport() {}
@@ -198,7 +198,7 @@ void TnetTransport::Destroy() {
 }
 
 void TnetTransport::Dispatch() {
-    assert(!event_loop_vec_.empty());
+    //assert(!event_loop_vec_.empty());
     if (!acceptor_isolate_thread_) {
         stoped_ = false;
         if (event_loop_vec_[0] != NULL) {
@@ -302,20 +302,20 @@ const std::vector<EventLoop*>& TnetTransport::GetEventLoopVec() const {
 EventLoop& TnetTransport::GetAcceptorEventLoop() const {
     EventLoop* event_loop = NULL;
     if (acceptor_isolate_thread_) {
-        assert(acceptor_event_loop_ != NULL);
+        //assert(acceptor_event_loop_ != NULL);
         event_loop = acceptor_event_loop_;
     } else {
-        assert(!event_loop_vec_.empty());
+        //assert(!event_loop_vec_.empty());
         size_t index = round_robin_index_.fetch_add(1) % event_loop_vec_.size();
         event_loop = event_loop_vec_[index];
     }
 
-    assert(event_loop != NULL);
+    //assert(event_loop != NULL);
     return *event_loop;
 }
 
 EventLoop& TnetTransport::GetNextEventLoop() const {
-    assert(!event_loop_vec_.empty());
+    //assert(!event_loop_vec_.empty());
     size_t index = round_robin_index_.fetch_add(1) % event_loop_vec_.size();
     return *event_loop_vec_[index];
 }

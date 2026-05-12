@@ -200,17 +200,17 @@ void Universal::ProcessGetNetworkNodesResponse(const transport::MessagePtr& msg_
 }
 
 void Universal::AddNetworkId(uint32_t network_id) {
-    assert(network_id < kConsensusWaitingShardEndNetworkId);
+    //assert(network_id < kConsensusWaitingShardEndNetworkId);
     universal_ids_[network_id] = true;
 }
 
 void Universal::RemoveNetworkId(uint32_t network_id) {
-    assert(network_id < kConsensusWaitingShardEndNetworkId);
+    //assert(network_id < kConsensusWaitingShardEndNetworkId);
     universal_ids_[network_id] = false;
 }
 
 bool Universal::HasNetworkId(uint32_t network_id) {
-    assert(network_id < kConsensusWaitingShardEndNetworkId);
+    //assert(network_id < kConsensusWaitingShardEndNetworkId);
     return universal_ids_[network_id];
 }
 

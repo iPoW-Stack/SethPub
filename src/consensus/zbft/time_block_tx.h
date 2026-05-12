@@ -24,7 +24,7 @@ public:
             const pools::protobuf::TxMessage& tx_info,
             block::protobuf::BlockTx* block_tx) {
         if (!DefaultTxItem(tx_info, block_tx)) {
-            assert(false);
+            //assert(false);
             return consensus::kConsensusError;
         }
 

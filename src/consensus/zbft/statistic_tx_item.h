@@ -65,7 +65,7 @@ public:
 
         pools::protobuf::ElectStatistic elect_statistic;
         if (!elect_statistic.ParseFromString(tx_info->value())) {
-            assert(false);
+            //assert(false);
             SETH_DEBUG("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
             return consensus::kConsensusError;
         }

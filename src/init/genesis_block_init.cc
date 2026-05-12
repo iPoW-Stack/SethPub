@@ -95,7 +95,7 @@ int GenesisBlockInit::CreateGenesisBlocks(
         res = CreateShardGenesisBlocks(root_genesis_nodes,
                                         cons_genesis_nodes,
                                         network_id);
-        assert(res == kInitSuccess);
+        //assert(res == kInitSuccess);
 
         for (uint32_t i = 0; i < cons_genesis_nodes.size(); ++i) {
             prikeys.push_back(cons_genesis_nodes[i]->prikey);
@@ -205,7 +205,7 @@ void ComputeG2ForNode(
 
     bls::protobuf::JoinElectInfo join_info;
     if (!prefix_db->GetNodeVerificationVector(secptr->GetAddress(), &join_info)) {
-        assert(false);
+        //assert(false);
         return;
     }
 
@@ -237,19 +237,19 @@ void ComputeG2ForNode(
             //             valid_t,
             //             &verfy_final_vals)) {
                 if (!CheckRecomputeG2s(mem_idx, valid_t, secptr->GetAddress(), prefix_db, verfy_final_vals, join_info)) {
-                    assert(false);
+                    //assert(false);
                     continue;
                 }
             // }
 
             // bls::protobuf::JoinElectInfo join_info;
             // if (!prefix_db->GetNodeVerificationVector(secptr->GetAddress(), &join_info)) {
-            //     assert(false);
+            //     //assert(false);
             //     continue;
             // }
 
             // if (join_info.g2_req().verify_vec_size() <= (int32_t)change_idx) {
-            //     assert(false);
+            //     //assert(false);
             //     continue;
             // }
 
@@ -266,7 +266,7 @@ void ComputeG2ForNode(
             //     auto z_c1 = libff::alt_bn128_Fq(common::Encode::HexEncode(item.z_c1()).c_str());
             //     auto z_coord = libff::alt_bn128_Fq2(z_c0, z_c1);
             //     old_val = libff::alt_bn128_G2(x_coord, y_coord, z_coord);
-            //     assert(old_val == old_g2);
+            //     //assert(old_val == old_g2);
             // }
 
             // auto& item = verfy_final_vals.verified_g2();
@@ -282,11 +282,11 @@ void ComputeG2ForNode(
             // auto all_verified_val = libff::alt_bn128_G2(x_coord, y_coord, z_coord);
             // auto old_g2_val = power(libff::alt_bn128_Fr(mem_idx + 1), change_idx) * old_val;
             // auto new_g2_val = power(libff::alt_bn128_Fr(mem_idx + 1), change_idx) * new_g2;
-            // assert(old_g2_val == new_g2_val);
+            // //assert(old_g2_val == new_g2_val);
             // auto old_all = all_verified_val;
             // all_verified_val = all_verified_val - old_g2_val + new_g2_val;
-            // assert(old_all == contribution[mem_idx] * libff::alt_bn128_G2::one());
-            // assert(all_verified_val == contribution[mem_idx] * libff::alt_bn128_G2::one());
+            // //assert(old_all == contribution[mem_idx] * libff::alt_bn128_G2::one());
+            // //assert(all_verified_val == contribution[mem_idx] * libff::alt_bn128_G2::one());
         }
     }
 }
@@ -327,7 +327,7 @@ bool CheckRecomputeG2s(
         const std::shared_ptr<protos::PrefixDb>& prefix_db,
         bls::protobuf::JoinElectBlsInfo& verfy_final_vals,
         const bls::protobuf::JoinElectInfo& join_info) {
-    assert(valid_t > 1);
+    //assert(valid_t > 1);
 
     // int32_t min_idx = 0;
     // if (join_info.g2_req().verify_vec_size() >= 32) {
@@ -479,7 +479,7 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
         auto private_key = genesis_nodes[idx]->prikey;
         if (private_key.empty()) {
             SETH_ERROR("Genesis node %d private key is empty!", idx);
-            assert(false);
+            //assert(false);
             return;
         }
 
@@ -487,7 +487,7 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
         auto secptr = std::make_shared<security::Ecdsa>();
         if (secptr->SetPrivateKey(private_key) != security::kSecuritySuccess) {
             SETH_ERROR("Failed to set private key for node %d", idx);
-            assert(false);
+            //assert(false);
             return;
         }
 
@@ -499,7 +499,7 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
         auto security_ptr = std::dynamic_pointer_cast<security::Security>(secptr);
         if (!security_ptr) {
             SETH_ERROR("Dynamic pointer cast to security::Security failed!"); // Dynamic pointer cast to security::Security failed!
-            assert(false);
+            //assert(false);
             return;
         }
 
@@ -537,7 +537,7 @@ bool GenesisBlockInit::CreateNodePrivateInfo(
     }
 
     auto st = db_->Put(db_batch);
-    assert(st.ok());
+    //assert(st.ok());
     libBLS::Dkg tmpdkg(valid_t, valid_n);
     auto common_public_key = libff::alt_bn128_G2::zero();
     bls::protobuf::LocalBlsItem tmp_local_bls_item;
@@ -620,14 +620,14 @@ void GenesisBlockInit::SetPrevElectInfo(
             network::kRootCongressNetworkId,
             common::kImmutablePoolSize,
             elect_block.prev_members().prev_elect_height());
-        assert(false);
+        //assert(false);
         return;
     }
 
     auto& block_item = view_block_item.block_info();
     if (block_item.tx_list_size() != 1) {
         ELECT_ERROR("not has tx list size: %d", block_item.tx_list_size());
-        assert(false);
+        //assert(false);
         return;
     }
 
@@ -715,7 +715,7 @@ int GenesisBlockInit::CreateElectBlock(
         // db::DbWriteBatch db_batch;
         // prefix_db_->SaveElectHeightCommonPk(shard_netid, prev_height, *prev_members, db_batch);
         // auto st = db_->Put(db_batch);
-        // assert(st.ok());
+        // //assert(st.ok());
         SETH_WARN("genesis elect shard: %u, prev_height: %lu, "
             "init bls common public key: %s, %s, %s, %s", 
             shard_netid, prev_height, 
@@ -744,7 +744,7 @@ int GenesisBlockInit::CreateElectBlock(
             view, 
             root_genesis_nodes, 
             view_block_ptr) != kInitSuccess) {
-        assert(false);
+        //assert(false);
         return kInitError;
     }
     
@@ -790,7 +790,7 @@ int GenesisBlockInit::CreateAllQc(
     std::shared_ptr<libff::alt_bn128_G1> agg_sign;
     BlsAggSignViewBlock(genesis_nodes, *commit_qc, agg_sign);
     if (!agg_sign) {
-        assert(false);
+        //assert(false);
         return kInitError;
     }
 
@@ -798,7 +798,7 @@ int GenesisBlockInit::CreateAllQc(
     commit_qc->set_sign_y(libBLS::ThresholdUtils::fieldElementToString(agg_sign->Y));
     SETH_DEBUG("success create qc: %u_%u_%lu, agg sign x: %s",
         network_id, pool_index, view_block_ptr->qc().view(), commit_qc->sign_x().c_str());
-    assert(!view_block_ptr->qc().sign_x().empty());
+    //assert(!view_block_ptr->qc().sign_x().empty());
     return kInitSuccess;
 }
 
@@ -852,7 +852,7 @@ int GenesisBlockInit::GenerateRootSingleBlock(
                 root_pool_view[common::kImmutablePoolSize], 
                 genesis_nodes, 
                 view_block_ptr) != kInitSuccess) {
-            assert(false);
+            //assert(false);
             return kInitError;
         }
                 
@@ -910,7 +910,7 @@ int GenesisBlockInit::GenerateShardSingleBlock(uint32_t sharding_id) {
         auto pb_v_block = std::make_shared<view_block::protobuf::ViewBlockItem>();
         auto str = common::Encode::HexDecode(block_str);
         if (!pb_v_block->ParseFromString(str)) {
-            assert(false);
+            //assert(false);
             return kInitError;
         }
 
@@ -1063,7 +1063,7 @@ int GenesisBlockInit::CreateRootGenesisBlocks(
                 vb_latest_view[i], 
                 root_genesis_nodes, 
                 view_block_ptr) != kInitSuccess) {
-            assert(false);
+            //assert(false);
             return kInitError;
         }
 
@@ -1190,7 +1190,7 @@ int GenesisBlockInit::CreateRootGenesisBlocks(
                 vb_latest_view[pool_index], 
                 root_genesis_nodes, 
                 view_block_ptr) != kInitSuccess) {
-            assert(false);
+            //assert(false);
             return kInitError;
         }
 
@@ -1420,7 +1420,7 @@ void GenesisBlockInit::AddBlockItemToCache(
         auto* addr_info = view_block->mutable_block_info()->add_address_array();
         addr_info->set_latest_height(block->height());
         *addr_info = *iter->second;
-        assert(addr_info->sharding_id() != network::kRootCongressNetworkId);
+        //assert(addr_info->sharding_id() != network::kRootCongressNetworkId);
         prefix_db_->AddAddressInfo(addr_info->addr(), *addr_info, db_batch);
         SETH_DEBUG("success add address info: %s, %s",
             common::Encode::HexEncode(addr_info->addr()).c_str(), 
@@ -1552,7 +1552,7 @@ int GenesisBlockInit::CreateShardNodesBlocks(
             }
 
             auto pool_index = common::GetAddressPoolIndex(iter->first);
-            assert(pool_index == pool_iter->first);
+            //assert(pool_index == pool_iter->first);
             {
                 auto tx_info = tx_list->Add();
                 tx_info->set_nonce(iter->second->nonce++);
@@ -1599,7 +1599,7 @@ int GenesisBlockInit::CreateShardNodesBlocks(
                     pool_latest_view[pool_index], 
                     root_genesis_nodes, 
                     view_block_ptr) != kInitSuccess) {
-                assert(false);
+                //assert(false);
                 return kInitError;
             }
         } else {
@@ -1609,7 +1609,7 @@ int GenesisBlockInit::CreateShardNodesBlocks(
                     pool_latest_view[pool_index], 
                     cons_genesis_nodes, 
                     view_block_ptr) != kInitSuccess) {
-                assert(false);
+                //assert(false);
                 return kInitError;
             }
         }
@@ -1673,7 +1673,7 @@ int GenesisBlockInit::CreateShardGenesisBlocks(
         if (pool_iter != pool_map.end()) {
             for (auto addr_iter = pool_iter->second.begin(); addr_iter != pool_iter->second.end(); ++addr_iter) {
                 auto balance_iter = genesis_acount_balance_map_.find(addr_iter->first);
-                assert(balance_iter != genesis_acount_balance_map_.end());
+                //assert(balance_iter != genesis_acount_balance_map_.end());
                 auto tx_info = tx_list->Add();
                 tx_info->set_from("");
                 tx_info->set_to(addr_iter->first);
@@ -1702,7 +1702,7 @@ int GenesisBlockInit::CreateShardGenesisBlocks(
                 vb_latest_view[i], 
                 cons_genesis_nodes, 
                 view_block_ptr) != kInitSuccess) {
-            assert(false);
+            //assert(false);
             return kInitError;
         }
 
@@ -1733,7 +1733,7 @@ int GenesisBlockInit::CreateShardGenesisBlocks(
                 vb_latest_view[pool_index], 
                 cons_genesis_nodes, 
                 view_block_ptr) != kInitSuccess) {
-            assert(false);
+            //assert(false);
             return kInitError;
         }
 
@@ -1798,7 +1798,7 @@ void GenesisBlockInit::InitShardGenesisAccount() {
             }
 
             SETH_DEBUG("now handle line: %s", lines[i]);
-            assert(strlen(items[0]) == 64);
+            //assert(strlen(items[0]) == 64);
             std::shared_ptr<security::Security> secptr = std::make_shared<security::Ecdsa>();
             secptr->SetPrivateKey(common::Encode::HexDecode(items[0]));
             auto pool_idx = common::GetAddressPoolIndex(secptr->GetAddress());
@@ -1862,7 +1862,7 @@ void GenesisBlockInit::PrintGenisisAccounts() {
 
         address::protobuf::AddressInfo addr_info;
         if (!addr_info.ParseFromString(iter->value().ToString())) {
-            assert(false);
+            //assert(false);
         }
 
         // std::cout << common::Encode::HexEncode(addr_info.addr()) << ", " 

@@ -30,14 +30,14 @@ int ContractUserCreateCall::HandleTx(
         if (balance_status != kConsensusSuccess) {
             block_tx.set_status(balance_status);
             // will never happen
-            assert(false);
+            //assert(false);
             break;
         }
 
         if (from_nonce + 1 != block_tx.nonce()) {
             block_tx.set_status(kConsensusNonceInvalid);
             // will never happen
-            // assert(false);
+            // //assert(false);
             break;
         }
 

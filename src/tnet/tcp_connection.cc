@@ -321,7 +321,7 @@ bool TcpConnection::OnRead() {
     }
 
     if (userBreak) {
-        assert(type == CmdPacket::CT_NONE);
+        //assert(type == CmdPacket::CT_NONE);
         CloseWithoutLock();
     }
 

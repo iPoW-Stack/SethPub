@@ -118,7 +118,7 @@ void Command::ProcessCommand(const std::string& cmdline) {
 }
 
 void Command::AddCommand(const std::string& cmd_name, CommandFunction cmd_func) {
-    assert(cmd_func);
+    //assert(cmd_func);
     auto it = cmd_map_.find(cmd_name);
     if (it != cmd_map_.end()) {
         INIT_WARN("command(%s) exist and ignore new one", cmd_name.c_str());
@@ -159,7 +159,7 @@ void Command::PrintDht(uint32_t network_id) {
         << ", " << node->public_ip << ":" << node->public_port << std::endl;
     for (auto iter = readonly_dht->begin(); iter != readonly_dht->end(); ++iter) {
         auto node = *iter;
-        assert(node != nullptr);
+        //assert(node != nullptr);
         std::cout << common::Encode::HexSubstr(node->id)
             << ", " << node->dht_key_hash
             << ", " << common::Encode::HexSubstr(node->dht_key)

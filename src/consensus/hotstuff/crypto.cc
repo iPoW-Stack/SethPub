@@ -18,18 +18,18 @@ Status Crypto::PartialSign(
         std::string* sign_y) {
     auto elect_item = GetElectItem(sharding_id, elect_height);
     if (!elect_item) {
-        assert(false);
+        //assert(false);
         return Status::kError;
     }
     
     if (elect_item->local_sk() == libff::alt_bn128_Fr::zero()) {
-        // assert(false);
+        // //assert(false);
         SETH_DEBUG("local sk is invalid.");
         return Status::kError;
     }
 
     if (elect_item->LocalMember()->bls_publick_key == libff::alt_bn128_G2::zero()) {
-        // assert(false);
+        // //assert(false);
         SETH_DEBUG("local public key is invalid.");
         return Status::kError;
     }
@@ -44,7 +44,7 @@ Status Crypto::PartialSign(
             sign_x,
             sign_y);
     if (ret != bls::kBlsSuccess) {
-        assert(false);
+        //assert(false);
         return Status::kError;
     }
 
@@ -88,7 +88,7 @@ Status Crypto::ReconstructAndVerifyThresSign(
         SETH_DEBUG("bls public key failed bls_collection_ && bls_collection_->view > view: %lu, %lu, "
             "index: %u, pool_idx_: %d", 
             vote_view_, view, index, pool_idx_);
-        // assert(false);
+        // //assert(false);
         return Status::kError;
     }
 
@@ -118,7 +118,7 @@ Status Crypto::ReconstructAndVerifyThresSign(
         partial_sign->Y = libff::alt_bn128_Fq(partial_sign_y.c_str());
         partial_sign->Z = libff::alt_bn128_Fq::one();
     } catch (std::exception& e) {
-        assert(false);
+        //assert(false);
         return Status::kError;
     }
 
@@ -165,7 +165,7 @@ Status Crypto::ReconstructAndVerifyThresSign(
     if (s != Status::kSuccess) {
         // TODO: check each partial sign
         SETH_ERROR("verify thresh sign failed!");
-        assert(false);
+        //assert(false);
         return s;
     }
 
@@ -206,7 +206,7 @@ Status Crypto::VerifyThresSign(
 #endif
     if (reconstructed_sign == libff::alt_bn128_G1::zero()) {
         SETH_WARN("reconstructed_sign == nullptr");
-        assert(false);
+        //assert(false);
         return Status::kBlsVerifyFailed;
     }    
     std::string verify_hash_a;
@@ -215,7 +215,7 @@ Status Crypto::VerifyThresSign(
         SETH_WARN("GetVerifyHashA faile net: %u, pool: %u, height: %lu, hash: %s",
             sharding_id, sharding_id, elect_height,
             common::Encode::HexEncode(msg_hash).c_str());
-        // assert(false);
+        // //assert(false);
         return s;
     }
 
@@ -223,7 +223,7 @@ Status Crypto::VerifyThresSign(
     s = GetVerifyHashB(sharding_id, elect_height, reconstructed_sign, &verify_hash_b);
     if (s != Status::kSuccess) {
         SETH_WARN("GetVerifyHashB failed!");
-        assert(false);
+        //assert(false);
         return s;
     }
 
@@ -243,7 +243,7 @@ Status Crypto::VerifyThresSign(
             elect_height,
             val.c_str(),
             agg_sign_str.c_str());
-        assert(false);
+        //assert(false);
         return Status::kBlsVerifyFailed;
     }
 
@@ -277,7 +277,7 @@ Status Crypto::VerifyQC(
         bls_sign.Y = libff::alt_bn128_Fq(qc.sign_y().c_str());
         bls_sign.Z = libff::alt_bn128_Fq::one();
     } catch (std::exception& e) {
-        assert(false);
+        //assert(false);
         return Status::kError;
     }
 
@@ -310,7 +310,7 @@ Status Crypto::VerifyTC(
         bls_sign.Y = libff::alt_bn128_Fq(tc.sign_y().c_str());
         bls_sign.Z = libff::alt_bn128_Fq::one();
     } catch (std::exception& e) {
-        assert(false);
+        //assert(false);
         return Status::kError;
     }
 

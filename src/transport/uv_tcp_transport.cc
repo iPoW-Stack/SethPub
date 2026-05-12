@@ -41,7 +41,7 @@ struct connect_ex_t {
 void on_close(uv_handle_t* handle) {
     SETH_INFO("close called: %p!", static_cast<void*>(handle));
     ex_uv_tcp_t* ex_uv_tcp = (ex_uv_tcp_t*)handle;
-    assert(ex_uv_tcp->msg_decoder != nullptr);
+    //assert(ex_uv_tcp->msg_decoder != nullptr);
     if (ex_uv_tcp->msg_decoder) {
         delete ex_uv_tcp->msg_decoder;
         ex_uv_tcp->msg_decoder = nullptr;
@@ -98,17 +98,17 @@ public:
     }
 
     virtual int Send(const char* data, int32_t len, uint64_t msg_id) {
-        assert(false);
+        //assert(false);
         return kTransportSuccess;
     }
 
     virtual int Send(const char* data, int32_t len) {
-        assert(false);
+        //assert(false);
         return kTransportSuccess;
     }
 
     virtual bool Connect(uint32_t timeout) {
-        assert(false);
+        //assert(false);
         return true;
     }
 
@@ -513,13 +513,13 @@ int TcpTransport::Send(
         const std::string& des_ip,
         uint16_t des_port,
         transport::protobuf::Header& message) {
-    assert(des_port > 0);
+    //assert(des_port > 0);
     if (!TcpOutputQueuesReady("TcpTransport::Send(ip,port,Header)")) {
         return kTransportError;
     }
     auto tmpHeader = const_cast<transport::protobuf::Header*>(&message);
     tmpHeader->set_from_public_port(common::GlobalInfo::Instance()->config_public_port());
-    // assert(message.broadcast().bloomfilter_size() < 64);
+    // //assert(message.broadcast().bloomfilter_size() < 64);
     if (!message.has_hash64() || message.hash64() == 0) {
         SetMessageHash(message);
     }
@@ -858,8 +858,8 @@ void TcpTransport::SetMessageHash(const transport::protobuf::Header& message) {
 }
 
 std::string TcpTransport::GetHeaderHashForSign(const transport::protobuf::Header& message) {
-    assert(message.has_hash64());
-    assert(message.hash64() != 0);
+    //assert(message.has_hash64());
+    //assert(message.hash64() != 0);
     std::string msg_for_hash;
     msg_for_hash.reserve(3 * 1024 * 1024);
     msg_for_hash.append(message.des_dht_key());

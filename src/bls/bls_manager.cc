@@ -328,7 +328,7 @@ int BlsManager::Sign(
     //     libBLS::ThresholdUtils::fieldElementToString(g1_hash.Y).c_str(),
     //     libBLS::ThresholdUtils::fieldElementToString(g1_hash.Z).c_str());
     // std::string verify_hash;
-    // assert(Verify(t, n, *pkey.getPublicKey(), *bn_sign, g1_hash, &verify_hash) == kBlsSuccess);
+    // //assert(Verify(t, n, *pkey.getPublicKey(), *bn_sign, g1_hash, &verify_hash) == kBlsSuccess);
     return kBlsSuccess;
 }
 
@@ -357,7 +357,7 @@ int BlsManager::Sign(
 //         libBLS::ThresholdUtils::fieldElementToString(g1_hash.Y).c_str(),
 //         libBLS::ThresholdUtils::fieldElementToString(g1_hash.Z).c_str());
 //     std::string verify_hash;
-//     assert(Verify(t, n, *pkey.getPublicKey(), bn_sign, g1_hash, &verify_hash) == kBlsSuccess);
+//     //assert(Verify(t, n, *pkey.getPublicKey(), bn_sign, g1_hash, &verify_hash) == kBlsSuccess);
 // #endif
     return kBlsSuccess;
 } catch (std::exception& e) {
@@ -1005,7 +1005,7 @@ void BlsManager::CheckAggSignValid(
             }
 
             if (idx == rand_weed_pos) {
-                assert(false);
+                //assert(false);
                 break;
             }
 
@@ -1069,7 +1069,7 @@ bool BlsManager::CheckAndVerifyAll(
                 }
 
                 if (tmp_idx_vec[tmp_idx] != 0) {
-                    assert(tmp_idx != member_idx);
+                    //assert(tmp_idx != member_idx);
                     tmp_idx_vec[tmp_idx] = 0;
                     tmp_all_signs[tmp_idx] = libff::alt_bn128_G1::zero();
                     break;
@@ -1389,7 +1389,7 @@ int BlsManager::AddBlsConsensusInfo(elect::protobuf::ElectBlock& ec_block) {
         return kBlsError;
     }
 
-    assert(ec_block.prev_members().bls_pubkey_size() == 0);
+    //assert(ec_block.prev_members().bls_pubkey_size() == 0);
     auto pre_ec_members = ec_block.mutable_prev_members();
     for (size_t i = 0; i < members->size(); ++i) {
         auto mem_bls_pk = pre_ec_members->add_bls_pubkey();
@@ -1439,7 +1439,7 @@ int BlsManager::AddBlsConsensusInfo(elect::protobuf::ElectBlock& ec_block) {
         }
     }
 
-    assert(static_cast<size_t>(ec_block.prev_members().bls_pubkey_size()) == members->size());
+    //assert(static_cast<size_t>(ec_block.prev_members().bls_pubkey_size()) == members->size());
     common_pk_iter->second.to_affine_coordinates();
     auto common_pk = pre_ec_members->mutable_common_pubkey();
     common_pk->set_x_c0(

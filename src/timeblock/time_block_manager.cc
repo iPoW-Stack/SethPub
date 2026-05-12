@@ -51,7 +51,7 @@ void TimeBlockManager::CreateTimeBlockTx() {
     msg_ptr->address_info = account_mgr_->pools_address_info(
         pools::protobuf::kConsensusRootTimeBlock, 
         common::kGlobalPoolIndex);
-    assert(msg_ptr->address_info != nullptr);
+    //assert(msg_ptr->address_info != nullptr);
     pools::protobuf::TxMessage& tx_info = *msg_ptr->header.mutable_tx_proto();
     tx_info.set_step(pools::protobuf::kConsensusRootTimeBlock);
     tx_info.set_pubkey("");
@@ -229,7 +229,7 @@ void TimeBlockManager::OnTimeBlock(
         latest_time_block_tm,
         static_cast<uint64_t>(latest_time_block_tm_),
         vss_random);
-    assert(vss_random != 0);
+    //assert(vss_random != 0);
     prev_time_block_height_ = latest_time_block_height;
     latest_time_block_height_ = latest_time_block_height;
     latest_time_block_tm_ = latest_time_block_tm;

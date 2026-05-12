@@ -189,7 +189,7 @@ void BlsDkg::HandleBlsMessage(const transport::MessagePtr msg_ptr) try {
     }
 
     auto& header = msg_ptr->header;
-    assert(header.type() == common::kBlsMessage);
+    //assert(header.type() == common::kBlsMessage);
     // must verify message signature, to avoid evil node
     auto& bls_msg = header.bls_proto();
     if (member_count_ <= bls_msg.index()) {
@@ -266,23 +266,23 @@ bool BlsDkg::IsSignValid(const transport::MessagePtr msg_ptr, std::string* conte
 }
 
 void BlsDkg::HandleVerifyBroadcast(const transport::MessagePtr msg_ptr) try {
-    assert(false);
+    //assert(false);
     auto& header = msg_ptr->header;
     auto& bls_msg = header.bls_proto();
     if (member_count_ <= bls_msg.index()) {
         BLS_ERROR("member_count_ <= bls_msg.index(), %u : %u",
             member_count_, bls_msg.index());
-        assert(false);
+        //assert(false);
         return;
     }
 
 //     if (prefix_db_->ExistsBlsVerifyG2((*members_)[bls_msg.index()]->id)) {
-//         assert(false);
+//         //assert(false);
 //         return;
 //     }
 
     if (!IsVerifyBrdPeriod()) {
-//         assert(false);
+//         //assert(false);
         BLS_DEBUG("invalid verify brd period hash64: %lu, elect height: %lu, member index: %d", 
             msg_ptr->header.hash64(), elect_hegiht_, bls_msg.index());
         return;
@@ -299,7 +299,7 @@ void BlsDkg::HandleVerifyBroadcast(const transport::MessagePtr msg_ptr) try {
             "bls_msg.verify_brd().verify_vec_size()[%d: %d]",
             1,
             bls_msg.verify_brd().verify_vec_size());
-//         assert(false);
+//         //assert(false);
         return;
     }
 
@@ -377,7 +377,7 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr msg_ptr) try {
     auto& header = msg_ptr->header;
     auto& bls_msg = header.bls_proto();
     if (!IsSwapKeyPeriod()) {
-        //assert(false);
+        ////assert(false);
         BLS_DEBUG("invalid swap key period hash64: %lu, elect height: %lu, "
             "member index: %d, id: %s", 
             msg_ptr->header.hash64(), elect_hegiht_, bls_msg.index(),
@@ -464,7 +464,7 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr msg_ptr) try {
         common::Encode::HexEncode(encrypt_key).c_str());
     if (!IsValidBigInt(sec_key)) {
         BLS_ERROR("invalid big int[%s]", sec_key.c_str());
-        // assert(false);
+        // //assert(false);
         return;
     }
 
@@ -481,7 +481,7 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr msg_ptr) try {
             local_member_index_, bls_msg.index(),
             libBLS::ThresholdUtils::fieldElementToString(tmp_swap_key).c_str(),
             min_aggree_member_count_);
-//         assert(false);
+//         //assert(false);
         return;
     }
 
@@ -524,7 +524,7 @@ bool BlsDkg::VerifySekkeyValid(
 //             SETH_WARN("failed get verified g2: %u, %s",
 //                 local_member_index_,
 //                 common::Encode::HexEncode((*members_)[peer_index]->id).c_str());
-// //             assert(false);
+// //             //assert(false);
 //             return false;
 //         }
 //     } else {
@@ -540,18 +540,18 @@ bool BlsDkg::VerifySekkeyValid(
         SETH_ERROR("failed get verify g2 from db, peer_index: %d, "
             "min_aggree_member_count_: %d, net: %d",
             peer_index, min_aggree_member_count_, (*members_)[0]->net_id);
-        assert(false);
+        //assert(false);
         return false;
     }
 
     // bls::protobuf::JoinElectInfo join_info;
     // if (!prefix_db_->GetNodeVerificationVector((*members_)[peer_index]->id, &join_info)) {
-    //     assert(false);
+    //     //assert(false);
     //     return false;
     // }
 
     // if (join_info.g2_req().verify_vec_size() <= (int32_t)changed_idx) {
-    //     assert(false);
+    //     //assert(false);
     //     return false;
     // }
 
@@ -713,7 +713,7 @@ libff::alt_bn128_G2 BlsDkg::GetVerifyG2FromDb(uint32_t peer_mem_index) {
 void BlsDkg::BroadcastVerfify() try {
     if (members_ == nullptr || local_member_index_ >= member_count_) {
         SETH_ERROR("member null or member index invalid!");
-        assert(false);
+        //assert(false);
         return;
     }
 
@@ -736,12 +736,12 @@ void BlsDkg::BroadcastVerfify() try {
     //     // if (!prefix_db_->GetLocalPolynomial(security_, security_->GetAddress(), &local_poly)) {
     //     //     SETH_ERROR("failed GetLocalPolynomial: %s",
     //     //         common::Encode::HexEncode(security_->GetAddress()).c_str());
-    //     //     // assert(false);
+    //     //     // //assert(false);
     //     //     return;
     //     // }
 
     //     // if (local_poly.polynomial_size() == 0) {
-    //     //     assert(false);
+    //     //     //assert(false);
     //     //     return;
     //     // }
 
@@ -763,7 +763,7 @@ void BlsDkg::BroadcastVerfify() try {
     CreateContribution(member_count_, min_aggree_member_count_);
     auto res = prefix_db_->GetBlsVerifyG2((*members_)[local_member_index_]->id, verfiy_brd);
     if (!res) {
-        assert(false);
+        //assert(false);
         return;
     }
 
@@ -888,7 +888,7 @@ void BlsDkg::FinishBroadcast() try {
             common_public_key_ = common_public_key_ + libff::alt_bn128_G2::zero();
             SETH_WARN("elect_height: %d, invalid all_verification_vector index: %d",
                 elect_hegiht_, i);
-            assert(false);
+            //assert(false);
             continue;
         }
 
@@ -903,7 +903,7 @@ void BlsDkg::FinishBroadcast() try {
             common_public_key_ = common_public_key_ + libff::alt_bn128_G2::zero();
             SETH_WARN("elect_height: %d, invalid secret_key_contribution_ index: %d",
                 elect_hegiht_, i);
-            // assert(false);
+            // //assert(false);
             continue;
         }
 
@@ -1104,12 +1104,12 @@ void BlsDkg::CreateContribution(uint32_t valid_n, uint32_t valid_t) {
     if (!prefix_db_->GetLocalPolynomial(security_, security_->GetAddress(), &local_poly)) {
         SETH_ERROR("failed GetLocalPolynomial: %s",
             common::Encode::HexEncode(security_->GetAddress()).c_str());
-        // assert(false);
+        // //assert(false);
         return;
     }
 
     if (local_poly.polynomial_size() < (int32_t)valid_t) {
-        assert(false);
+        //assert(false);
         return;
     }
 

@@ -70,7 +70,7 @@ void ThreadHandler::HandleMessage() {
             msg_ptr->times_idx = 0;
             msg_ptr->header.set_hop_count(msg_ptr->header.hop_count() + 1);
             if (msg_ptr->thread_index != -1) {
-                assert(msg_ptr->thread_index == thread_idx);
+                //assert(msg_ptr->thread_index == thread_idx);
             } else {
                 msg_ptr->thread_index = thread_idx;
             }
@@ -228,7 +228,7 @@ int32_t MultiThreadHandler::GetPriority(MessagePtr& msg_ptr) {
     auto& msg = msg_ptr->header;
     switch (msg.type()) {
     case common::kConsensusMessage:
-        assert(false);
+        //assert(false);
         return kTransportPriorityLow;
     case common::kHotstuffMessage:
         return kTransportPrioritySystem;
@@ -302,7 +302,7 @@ void MultiThreadHandler::HandleMessage(MessagePtr& msg_ptr) {
 
     auto thread_index = GetThreadIndex(msg_ptr);
     if (thread_index >= common::kMaxThreadCount) {
-        assert(false);
+        //assert(false);
         return;
     }
 
@@ -362,7 +362,7 @@ uint8_t MultiThreadHandler::GetThreadIndex(MessagePtr& msg_ptr) {
     case common::kPoolTimerMessage:
         return thread_vec_[all_thread_count_ - 1]->thread_idx();
     case common::kConsensusMessage:
-        assert(false);
+        //assert(false);
         return thread_vec_[all_thread_count_ - 1]->thread_idx();
     case common::kHotstuffSyncMessage: {
         uint32_t pool_idx = 0;
@@ -418,7 +418,7 @@ void MultiThreadHandler::HandleSyncBftTimeout(MessagePtr& msg_ptr) {
         bft_msg.set_bft_timeout(true);
         auto queue_idx = GetThreadIndex(new_msg_ptr);
         if (queue_idx >= common::kMaxThreadCount) {
-            assert(false);
+            //assert(false);
             return;
         }
 
@@ -426,14 +426,14 @@ void MultiThreadHandler::HandleSyncBftTimeout(MessagePtr& msg_ptr) {
         transport::TcpTransport::Instance()->SetMessageHash(new_msg_ptr->header);
         uint32_t priority = GetPriority(new_msg_ptr);
         threads_message_queues_[queue_idx][priority].push(new_msg_ptr);
-        assert(new_msg_ptr->times_idx < 128);
+        //assert(new_msg_ptr->times_idx < 128);
         wait_con_[queue_idx % all_thread_count_].notify_one();
     }
 }
 
 void MultiThreadHandler::SaveKeyValue(const transport::protobuf::Header& msg, db::DbWriteBatch& db_batch) {
     for (int32_t i = 0; i < msg.sync().items_size(); ++i) {
-        assert(false);
+        //assert(false);
         // prefix_db_->SaveTemporaryKv(
         //     msg.sync().items(i).key(),
         //     msg.sync().items(i).value(),

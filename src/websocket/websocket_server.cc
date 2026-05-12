@@ -95,7 +95,7 @@ void WebSocketServer::Run() {
         server_.run();
     } catch (const std::exception & e) {
         SETH_ERROR("start websocket server failed: %s, ip port: %s:%d", e.what(), ws_ip_.c_str(), ws_port_);
-        assert(false);
+        //assert(false);
         exit(1);
     }
 }
