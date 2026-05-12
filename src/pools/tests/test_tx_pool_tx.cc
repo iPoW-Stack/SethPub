@@ -48,7 +48,7 @@ static std::shared_ptr<sync::KeyValueSync> MakeFakeSync() {
 // Helper: create a TxItemPtr whose tx_info has the given nonce and step,
 // and whose address_info has the given nonce.
 static TxItemPtr MakeTxItem(uint64_t addr_nonce, uint64_t tx_nonce,
-                             pools::protobuf::TxStep step) {
+                             pools::protobuf::StepType step) {
     auto msg  = std::make_shared<transport::TransportMessage>();
     auto ai   = std::make_shared<address::protobuf::AddressInfo>();
     ai->set_nonce(addr_nonce);
@@ -154,7 +154,7 @@ TEST_F(TestTxPoolTx, ConsensusAddTxs_ValidUserTx_PushedToQueue) {
     auto tx = MakeTxItem(0, 5, pools::protobuf::kNormalFrom);
     pool.ConsensusAddTxs(tx);
     EXPECT_EQ(pool.consensus_added_txs_.size(), 1u);
-    EXPECT_TRUE(pool.tx_pool_dirty_.load());
+    EXPECT_TRUE(pool.tx_pool_dirty_);
 }
 
 }  // namespace test

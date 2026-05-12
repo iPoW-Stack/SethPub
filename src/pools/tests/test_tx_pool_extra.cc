@@ -252,7 +252,7 @@ TEST_F(TestTxPoolExtra, AddTx_NormalTx_EmptyKey_ComputedAndPushed) {
     tx->tx_key = "";
     EXPECT_EQ(pool.AddTx(tx), kPoolsSuccess);
     EXPECT_FALSE(tx->tx_key.empty());  // key was computed
-    EXPECT_TRUE(pool.tx_pool_dirty_.load());
+    EXPECT_TRUE(pool.tx_pool_dirty_);
 }
 
 // Branch: normal user tx with non-empty tx_key → pushed directly, kPoolsSuccess
@@ -273,7 +273,7 @@ TEST_F(TestTxPoolExtra, TxOver_EmptyViewBlock_NoTxRemoved) {
     pool.tx_pool_dirty_ = false;
     view_block::protobuf::ViewBlockItem vb;
     pool.TxOver(vb);
-    EXPECT_TRUE(pool.tx_pool_dirty_.load());  // always set true at end of TxOver
+    EXPECT_TRUE(pool.tx_pool_dirty_);  // always set true at end of TxOver
 }
 
 // Branch: kNormalFrom tx in tx_map_ (IsUserTransaction=true, nonce matches) → removed
@@ -356,7 +356,7 @@ TEST_F(TestTxPoolExtra, TempGetTxIdempotently_StaleNonce_TxSkipped) {
     std::vector<pools::TxItemPtr> res;
     pool.TempGetTxIdempotently(msg, res, 10, AlwaysValid);
     EXPECT_TRUE(res.empty());
-    EXPECT_FALSE(pool.tx_pool_dirty_.load());  // set to false when res_map empty
+    EXPECT_FALSE(pool.tx_pool_dirty_);  // set to false when res_map empty
 }
 
 // Branch: system tx (kNormalTo): to == addr, key not in unique hash store → added to tx_map_
