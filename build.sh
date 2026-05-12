@@ -190,76 +190,9 @@ map_module_dir() {
 
 module_coverage_filter() {
     local module_dir="$1"
-    case "$module_dir" in
-        common)
-            # Whole library: defer.h alone has no gcov-counted branches (templates only),
-            # which produced misleading "0 out of 0" branch lines in module summaries.
-            echo ".*/src/common/.*"
-            ;;
-        broadcast)
-            echo ".*/src/broadcast/broadcast_utils\\.h$"
-            ;;
-        security)
-            echo ".*/src/security/security_utils\\.h$"
-            ;;
-        transport)
-            echo ".*/src/transport/transport_utils\\.h$"
-            ;;
-        bls)
-            echo ".*/src/bls/bls_utils\\.h$"
-            ;;
-        db)
-            echo ".*/src/db/db_utils\\.h$"
-            ;;
-        dht)
-            echo ".*/src/dht/dht_utils\\.h$"
-            ;;
-        pools)
-            echo ".*/src/pools/unique_hash_lru_set\\.h$"
-            ;;
-        sethvm)
-            echo ".*/src/sethvm/sethvm_utils\\.h$"
-            ;;
-        big_num)
-            echo ".*/src/big_num/bignum_utils\\.h$"
-            ;;
-        contract)
-            echo ".*/src/contract/contract_alt_bn128_G1_add\\.cc$"
-            ;;
-        elect)
-            echo ".*/src/elect/elect_utils\\.h$"
-            ;;
-        consensus)
-            echo ".*/src/consensus/hotstuff/utils\\.h$"
-            ;;
-        "consensus/hotstuff")
-            echo ".*/src/consensus/hotstuff/utils\\.h$"
-            ;;
-        vss)
-            echo ".*/src/vss/vss_utils\\.h$"
-            ;;
-        sync)
-            echo ".*/src/sync/sync_utils\\.h$"
-            ;;
-        protos)
-            echo ".*/src/protos/get_proto_hash\\.h$"
-            ;;
-        block)
-            echo ".*/src/block/block_utils\\.h$"
-            ;;
-        timeblock)
-            echo ".*/src/timeblock/time_block_utils\\.h$"
-            ;;
-        init)
-            echo ".*/src/init/init_utils\\.h$"
-            ;;
-        websocket)
-            echo ".*/src/websocket/websocket_utils\\.h$"
-            ;;
-        *)
-            echo ".*/src/${module_dir}/.*"
-            ;;
-    esac
+    # Use whole-module path. Single-file filters (e.g. only *_utils.h) miss all
+    # .cc coverage and produce "All coverage data is filtered out" / 0 out of 0.
+    echo ".*/src/${module_dir}/.*"
 }
 
 module_prefers_header_metrics() {
