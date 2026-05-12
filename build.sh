@@ -252,22 +252,6 @@ append_module_specific_excludes() {
                 --exclude ".*/src/transport/processor\\.cc$"
             )
             ;;
-        pools)
-            # Keep branch metrics centered on deterministic tx_utils/height tree
-            # logic while integration-heavy pool manager pipelines are covered
-            # by dedicated e2e/perf flows.
-            out_args_ref+=(
-                --exclude ".*/src/pools/tx_pool_manager\\.cc$"
-                --exclude ".*/src/pools/tx_pool\\.cc$"
-                --exclude ".*/src/pools/to_txs_pools\\.cc$"
-                --exclude ".*/src/pools/shard_statistic\\.cc$"
-                --exclude ".*/src/pools/cross_pool\\.cc$"
-                --exclude ".*/src/pools/root_cross_pool\\.cc$"
-                --exclude ".*/src/pools/height_tree_level\\.cc$"
-                --exclude ".*/src/pools/leaf_height_tree\\.cc$"
-                --exclude ".*/src/pools/(?!unique_hash_lru_set\\.h$).*\\.h$"
-            )
-            ;;
         dht)
             # Exclude heavy bootstrap/network orchestration for unit-only runs.
             out_args_ref+=(
