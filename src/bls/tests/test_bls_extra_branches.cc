@@ -17,7 +17,8 @@ TEST(BlsUtilsExtraTest, IsValidBigIntAllDigits) {
 }
 
 TEST(BlsUtilsExtraTest, IsValidBigIntEmpty) {
-    EXPECT_FALSE(IsValidBigInt(""));
+    // Vacuous: no non-digit characters (optional proto coordinates use "" + skip parse)
+    EXPECT_TRUE(IsValidBigInt(""));
 }
 
 TEST(BlsUtilsExtraTest, IsValidBigIntLeadingPlus) {
