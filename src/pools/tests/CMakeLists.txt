@@ -20,8 +20,13 @@ set(pools_test_src
     test_tx_pool_extra.cc
     test_to_txs_pools_extra.cc
     test_pools_stubs.cc
-    test_smoke.cc)
+    test_smoke.cc
+    test_shard_statistic_init.cc)
 add_executable(pools_test ${pools_test_src})
+
+if (XENABLE_CODE_COVERAGE)
+    target_compile_definitions(pools_test PRIVATE SETH_UNITTEST)
+endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(pools_test PRIVATE pools db protos common gtest gtest_main gmock gmock_main pthread dl)

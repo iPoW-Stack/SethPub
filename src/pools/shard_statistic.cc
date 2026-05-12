@@ -35,58 +35,78 @@ int ShardStatistic::Init() {
         return kPoolsError;
     }
 
-    inited_ = true;
     pools::protobuf::PoolStatisticTxInfo statistic_info;
-    if (prefix_db_->GetLatestPoolStatisticTag(
-            common::GlobalInfo::Instance()->network_id(), 
-            &statistic_info)) {
-        latest_statisticed_height_ = statistic_info.height();
-        SETH_DEBUG("success set latest statisticed height: %lu, info: %s", 
-            latest_statisticed_height_, 
-            ProtobufToJson(statistic_info).c_str());
-        if (statistic_info.pool_statisitcs_size() != common::kInvalidPoolIndex) {
-            assert(false);
-            return kPoolsError;
-        }
+    bool have_tag = prefix_db_->GetLatestPoolStatisticTag(
+            common::GlobalInfo::Instance()->network_id(),
+            &statistic_info);
 
-        std::map<uint32_t, StatisticInfoItem> tmp_pool_map;
-        statistic_pool_info_[statistic_info.height()] = tmp_pool_map;
-        auto& pool_map = statistic_pool_info_[statistic_info.height()];
-        for (int32_t i = 0; i < statistic_info.pool_statisitcs_size(); ++i) {
-            StatisticInfoItem statistic_item;
-            statistic_item.statistic_min_height = statistic_info.pool_statisitcs(i).max_height();
-            pool_map[i] = statistic_item;
-            SETH_DEBUG("success set latest statisticed height "
-                "pool: %d, %lu, statistic_min_height: %lu", 
-                i,
-                latest_statisticed_height_, 
-                statistic_item.statistic_min_height);
+#ifdef SETH_UNITTEST
+    // Coverage / unit tests: allow Init without a pre-seeded pool-statistic tag in PrefixDb.
+    // Production nodes always persist this tag before ShardStatistic::Init runs.
+    if (!have_tag) {
+        statistic_info.Clear();
+        statistic_info.set_height(0);
+        for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
+            auto* ps = statistic_info.add_pool_statisitcs();
+            ps->set_max_height(0);
         }
-    } else {
-        SETH_DEBUG("failed load latest pool statistic tag: %d", common::GlobalInfo::Instance()->network_id());
-        assert(false);
+        have_tag = true;
+    }
+#endif
+
+    if (!have_tag) {
+        SETH_DEBUG("failed load latest pool statistic tag: %u",
+            common::GlobalInfo::Instance()->network_id());
         return kPoolsError;
+    }
+
+    latest_statisticed_height_ = statistic_info.height();
+    SETH_DEBUG("success set latest statisticed height: %lu, info: %s",
+        latest_statisticed_height_,
+        ProtobufToJson(statistic_info).c_str());
+
+    if (static_cast<uint32_t>(statistic_info.pool_statisitcs_size()) != common::kInvalidPoolIndex) {
+        SETH_ERROR("invalid pool_statisitcs_size: %d, expected %u",
+            statistic_info.pool_statisitcs_size(),
+            common::kInvalidPoolIndex);
+        return kPoolsError;
+    }
+
+    std::map<uint32_t, StatisticInfoItem> tmp_pool_map;
+    statistic_pool_info_[statistic_info.height()] = tmp_pool_map;
+    auto& pool_map = statistic_pool_info_[statistic_info.height()];
+    for (int32_t i = 0; i < statistic_info.pool_statisitcs_size(); ++i) {
+        StatisticInfoItem statistic_item;
+        statistic_item.statistic_min_height = statistic_info.pool_statisitcs(i).max_height();
+        pool_map[i] = statistic_item;
+        SETH_DEBUG("success set latest statisticed height "
+            "pool: %d, %lu, statistic_min_height: %lu",
+            i,
+            latest_statisticed_height_,
+            statistic_item.statistic_min_height);
     }
 
     for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
         pools_consensus_blocks_[i] = std::make_shared<PoolBlocksInfo>();
-        // assert(statistic_info.pool_statisitcs(i).max_height() >= 0);
-        pools_consensus_blocks_[i]->latest_consensus_height_ = statistic_info.pool_statisitcs(i).max_height();
-        for (uint64_t height = statistic_info.pool_statisitcs(i).max_height();; ++height) {
+        pools_consensus_blocks_[i]->latest_consensus_height_ =
+            statistic_info.pool_statisitcs(static_cast<int>(i)).max_height();
+        for (uint64_t height = statistic_info.pool_statisitcs(static_cast<int>(i)).max_height();;
+                ++height) {
             auto view_block_ptr = std::make_shared<view_block::protobuf::ViewBlockItem>();
             auto& view_block = *view_block_ptr;
             if (!prefix_db_->GetBlockWithHeight(
-                    common::GlobalInfo::Instance()->network_id(), 
-                    i, 
-                    height, 
+                    common::GlobalInfo::Instance()->network_id(),
+                    i,
+                    height,
                     &view_block)) {
                 break;
             }
-                
+
             OnNewBlock(view_block_ptr);
         }
     }
 
+    inited_ = true;
     return kPoolsSuccess;
 }
 
@@ -272,14 +292,14 @@ bool ShardStatistic::HandleStatistic(
     }
 
     if (pool_statistic_riter == statistic_pool_info_.rend()) {
-        // assert(false);
+        // //assert(false);
         // return false;
         pool_statistic_riter = statistic_pool_info_.rbegin();
     }
 
     auto pool_iter = pool_statistic_riter->second.find(pool_idx);
     if (pool_iter == pool_statistic_riter->second.end()) {
-        // assert(false);
+        // //assert(false);
         // return false;
         pool_statistic_riter->second[pool_idx] = StatisticInfoItem();
         pool_iter = pool_statistic_riter->second.find(pool_idx);
@@ -453,7 +473,7 @@ bool ShardStatistic::HandleStatistic(
     statistic_info_ptr->all_gas_amount += block.all_gas();
     std::string leader_id = getLeaderIdFromBlock(*view_block_ptr);
     if (leader_id.empty()) {
-        // assert(false);
+        // //assert(false);
         return false;
     }
 
@@ -490,7 +510,7 @@ bool ShardStatistic::HandleStatistic(
         block.tx_list_size(),
         "",
         "");
-    // assert(pool_statistic_riter->first == block.timeblock_height());
+    // //assert(pool_statistic_riter->first == block.timeblock_height());
     return true;
 }
 
@@ -774,9 +794,9 @@ int ShardStatistic::StatisticWithHeights(
                         tmp_iter->second[join_elect_shard_iter->first] = join_elect_shard_iter->second;
                     } else {
                         SETH_ERROR("invalid pk and shard id: %s, %u",
-                            common::Encode::HexEncode(join_elect_shard_iter->first).c_str(), 
+                            common::Encode::HexEncode(join_elect_shard_iter->first).c_str(),
                             join_elect_shard_iter->second);
-                        assert(false);
+                        return kPoolsError;
                     }
                 }
             }
@@ -854,10 +874,15 @@ int ShardStatistic::StatisticWithHeights(
         latest_timeblock_height_,
         ProtobufToJson(elect_statistic).c_str(),
         piter->first,
-        iter->first, 
-        "", 
+        iter->first,
+        "",
         "");
-    assert(piter->first > iter->first);
+    if (!(piter->first > iter->first)) {
+        SETH_ERROR("invalid statistic height ordering: piter->first=%lu iter->first=%lu",
+            piter->first,
+            iter->first);
+        return kPoolsError;
+    }
     statistic_height_map_[iter->first] = elect_statistic;
     // auto handled_height = iter->first;
     // auto eiter = statistic_pool_info_.find(handled_height);
@@ -974,7 +999,8 @@ void ShardStatistic::addNewNode2JoinStatics(
         if (node_id.size() == common::kUnicastAddressLength) {
             auto iter = id_pk_map.find(node_id);
             if (iter == id_pk_map.end()) {
-                assert(false);
+                SETH_ERROR("missing pubkey for elect node id: %s",
+                    common::Encode::HexEncode(node_id).c_str());
                 continue;
             }
 
