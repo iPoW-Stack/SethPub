@@ -21,10 +21,11 @@ set -euo pipefail
 # After a coverage run, optional per-module branch gate (gcovr):
 #   COVERAGE_FAIL_UNDER_BRANCH=80 bash build.sh coverage Debug
 #
-# Uncovered-line log (gcovr ≥ 7, after `bash build.sh coverage Debug` or single test + coverage):
-#   COVERAGE_TXT_MISSING=1 bash build.sh coverage Debug
-#   Files: ../coverage/missing/<module>_missing.txt ; first 120 lines echoed per module.
-#   Override directory: COVERAGE_MISSING_LOG_DIR=/path/to/dir
+# Uncovered-line log (gcovr ≥ 7): written by default under <repo>/coverage/missing/
+#   bash build.sh coverage Debug
+#   cat "$(dirname "$(readlink -f build.sh)")/coverage/missing/pools_missing.txt"
+#   Disable: COVERAGE_TXT_MISSING=0 bash build.sh coverage Debug
+#   Override dir: COVERAGE_MISSING_LOG_DIR=/path/to/dir
 # ---------------------------------------------------------------------------
 
 # ---- 1. Parse command + determine build type --------------------------------
@@ -40,7 +41,10 @@ if [[ "$CMD" == "coverage" || "${3:-}" == "coverage" ]]; then
     ENABLE_COVERAGE=1
 fi
 
-BUILD_DIR="cbuild_${TARGET}"
+# Repo root (directory containing this build.sh); build dir is always under it.
+SETH_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export SETH_ROOT
+BUILD_DIR="${SETH_ROOT}/cbuild_${TARGET}"
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
@@ -443,10 +447,9 @@ print_module_coverage() {
             --txt-metric branch \
             --print-summary | awk '/^branches:/ { print "  " $0 }'
 
-        # Optional: write + print uncovered lines (gcovr --txt-missing).
-        if [[ "${COVERAGE_TXT_MISSING:-}" == "1" ]] || [[ -n "${COVERAGE_MISSING_LOG_DIR:-}" ]]; then
-            local missing_root="${COVERAGE_MISSING_LOG_DIR:-../coverage/missing}"
-            mkdir -p "$missing_root"
+        # Uncovered lines: default on (set COVERAGE_TXT_MISSING=0 to skip).
+        if [[ "${COVERAGE_TXT_MISSING:-1}" != "0" ]] || [[ -n "${COVERAGE_MISSING_LOG_DIR:-}" ]]; then
+            local missing_root="${COVERAGE_MISSING_LOG_DIR:-${SETH_ROOT}/coverage/missing}"
             local safe_mod="${module_dir//\//_}"
             local missing_file="${missing_root}/${safe_mod}_missing.txt"
             if "$gcovr_cmd" --help 2>/dev/null | grep -q -- '--txt-missing'; then
@@ -600,6 +603,8 @@ case "$CMD" in
                     enforce_branch_minimum "${COVERAGE_FAIL_UNDER_BRANCH}" "${EXECUTED_TESTS[@]}"
                 fi
             fi
+            echo ""
+            echo "  Per-module uncovered-line logs (txt-missing): ${COVERAGE_MISSING_LOG_DIR:-${SETH_ROOT}/coverage/missing}/"
         fi
         ;;
 
@@ -668,6 +673,8 @@ case "$CMD" in
                 one_entry="${CMD}:${CMD}"
             fi
             print_module_coverage "$one_entry"
+            echo ""
+            echo "  Per-module uncovered-line logs (txt-missing): ${COVERAGE_MISSING_LOG_DIR:-${SETH_ROOT}/coverage/missing}/"
             if [[ -n "${COVERAGE_FAIL_UNDER_BRANCH:-}" ]]; then
                 enforce_branch_minimum "${COVERAGE_FAIL_UNDER_BRANCH}" "$one_entry"
             fi
