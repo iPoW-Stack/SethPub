@@ -2,22 +2,14 @@
 //
 // Only the inline functions are exercised; Init() is never called so the
 // heavy dependency chain (PrefixDb, Security, KeyValueSync) is never
-// dereferenced.  The linker stub below satisfies tx_pool.o's sole
-// non-virtual external reference (KeyValueSync::AddSyncHeight).
+// dereferenced.  The linker stub for KeyValueSync::AddSyncHeight lives in
+// test_pools_stubs.cc — do not duplicate it here.
 
 #include <gtest/gtest.h>
 
 #include <memory>
 
 #include "sync/key_value_sync.h"
-
-// ---- Linker stub ----
-namespace seth {
-namespace sync {
-void KeyValueSync::AddSyncHeight(uint32_t, uint32_t, uint64_t, uint32_t) {}
-}  // namespace sync
-}  // namespace seth
-// ---- end stub ----
 
 #define private public
 #define protected public

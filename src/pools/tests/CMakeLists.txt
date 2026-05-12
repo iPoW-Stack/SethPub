@@ -14,6 +14,7 @@ set(pools_test_src
     test_cross_pool.cc
     test_tx_pool_inline.cc
     test_to_txs_pools.cc
+    test_pools_stubs.cc
     test_smoke.cc)
 add_executable(pools_test ${pools_test_src})
 

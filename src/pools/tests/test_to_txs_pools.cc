@@ -1,27 +1,17 @@
 // Branch-coverage tests for ToTxsPools (to_txs_pools.cc).
 //
 // to_txs_pools.o's only non-virtual external reference outside the linked
-// libraries is AccountManager::GetAccountInfo.  The stub below resolves it
-// without pulling in libblock.a.  pools_mgr_ is kept null so that
-// LoadLatestHeights() is skipped (its pools_mgr_->latest_height() call
-// would dereference a TxPool array we'd have to fully initialise).
+// libraries is AccountManager::GetAccountInfo.  The stub lives in
+// test_pools_stubs.cc — do not duplicate it here.  pools_mgr_ is kept null
+// so that LoadLatestHeights() is skipped (its pools_mgr_->latest_height()
+// call would dereference a TxPool array we'd have to fully initialise).
 
 #include <gtest/gtest.h>
 
 #include <memory>
 
-// Include AccountManager header so we can provide the linker stub.
+// Include AccountManager header so the class is declared in this TU.
 #include "block/account_manager.h"
-
-// ---- Linker stub ----
-namespace seth {
-namespace block {
-protos::AddressInfoPtr AccountManager::GetAccountInfo(const std::string&) {
-    return nullptr;
-}
-}  // namespace block
-}  // namespace seth
-// ---- end stub ----
 
 #define private public
 #define protected public

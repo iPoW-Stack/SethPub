@@ -1,27 +1,15 @@
 // Branch-coverage tests for cross_pool.cc (114 lines) and root_cross_pool.cc (31 lines).
 //
-// Link note: KeyValueSync::AddSyncHeight is a non-virtual member function whose
-// symbol is emitted by cross_pool.o even when we test paths where it is never
-// executed.  The stub below satisfies the linker without pulling in libsync.a.
+// Link note: linker stubs for non-virtual external symbols are centralised in
+// test_pools_stubs.cc — do not add them here.
 
 #include <gtest/gtest.h>
 
 #include <memory>
 
-// Must include the real sync header first so the class declaration is in scope
-// when we provide the stub definition below.
+// Must include the real sync header so the class declaration is in scope
+// (the stub definition lives in test_pools_stubs.cc).
 #include "sync/key_value_sync.h"
-
-// ---- Linker stubs: satisfy cross_pool.o's reference to AddSyncHeight ----
-// KeyValueSync::AddSyncHeight is non-virtual, so cross_pool.o emits a direct
-// call symbol.  We provide an empty definition; the stub is never actually
-// invoked through a null pointer because our tests guard such paths.
-namespace seth {
-namespace sync {
-void KeyValueSync::AddSyncHeight(uint32_t, uint32_t, uint64_t, uint32_t) {}
-}  // namespace sync
-}  // namespace seth
-// ---- end stubs ----
 
 #define private public
 #define protected public
