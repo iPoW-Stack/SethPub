@@ -122,7 +122,8 @@ deploy_nodes() {
     done
 }
 
-pkill -9 -f '[s]eth' 2>/dev/null || true
+# Do not use pkill -f seth: command lines under …/seth/… would match and kill this script.
+pkill -9 seth 2>/dev/null || true
 rm -rf /tmp/asan* 2>/dev/null || true
 if [ -w /proc/sys/kernel/core_pattern ] 2>/dev/null; then
     echo "core.%e.%p" > /proc/sys/kernel/core_pattern 2>/dev/null || true

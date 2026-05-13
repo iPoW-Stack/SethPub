@@ -68,8 +68,8 @@ stop_services() {
         systemctl reset-failed 2>/dev/null
     fi
     
-    # 强制杀死名为 seth 的所有残留进程 (无论是否由 systemd 启动)
-    pkill -9 -f seth 2>/dev/null
+    # 按进程名杀死 seth；勿用 -f seth，否则会匹配 bash …/seth/… 路径误杀脚本
+    pkill -9 seth 2>/dev/null
     echo ">>> All seth-related daemons and processes cleared."
 }
 
