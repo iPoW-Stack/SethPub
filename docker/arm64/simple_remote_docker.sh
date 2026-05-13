@@ -5,6 +5,7 @@
 # If you are already inside an Ubuntu container and must NOT nest Docker, use instead:
 #   bash docker/arm64/simple_remote_in_container.sh …
 #   # or from repo root: bash simple_remote_in_container.sh …
+# If you still run simple_remote_docker.sh there, it auto-switches to that flow when /.dockerenv exists and Docker is unavailable.
 #
 # Usage (from repo root):
 #   bash docker/arm64/simple_remote_docker.sh <each_nodes_count> <public_ip> <end_shard> [Release|Debug] [first_node_count]
@@ -22,6 +23,7 @@
 #   SETH_STAGING=…              — override staging root (default <repo>/docker/arm64/staging)
 #   SETH_PKG_DIR=…              — use this dir as the deploy bundle (must contain ./seth), same layout as remote /root/pkg
 #   SETH_NO_ROOT_PKG_FALLBACK=1 — do not auto-use /root/pkg when staging/pkg is missing
+#   SETH_FORCE_IN_CONTAINER=1   — if docker is unavailable, run simple_remote_in_container.sh (also auto when /.dockerenv exists)
 
 set -euo pipefail
 
@@ -79,7 +81,14 @@ if ! PKG_DIR="$(resolve_pkg_dir)"; then
 fi
 
 if ! docker info >/dev/null 2>&1; then
-  echo "Docker is not running."
+  if [[ -f /.dockerenv ]] || [[ "${SETH_FORCE_IN_CONTAINER:-0}" == "1" ]]; then
+    echo ">>> Docker daemon not available here; continuing with in-container deploy (same as simple_remote_in_container.sh)." >&2
+    exec bash "${SETH_ROOT}/docker/arm64/simple_remote_in_container.sh" \
+      "${EACH}" "${PUBLIC_IP}" "${END_SHARD}" "${TARGET}" "${FIRST_NODE}"
+  fi
+  echo "Docker is not running. Start the Docker daemon, or run without nested Docker:" >&2
+  echo "  bash ${SETH_ROOT}/simple_remote_in_container.sh ${EACH} ${PUBLIC_IP} ${END_SHARD} ${TARGET} ${FIRST_NODE}" >&2
+  echo "Inside some runtimes set: SETH_FORCE_IN_CONTAINER=1 to force that path when /.dockerenv is missing." >&2
   exit 1
 fi
 

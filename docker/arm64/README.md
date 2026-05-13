@@ -63,7 +63,7 @@ bash simple_remote_in_container.sh 10 172.17.0.2
 # bash docker/arm64/simple_remote_in_container.sh 10 172.17.0.2
 ```
 
-This script symlinks `/root/pkg` to your resolved bundle when needed, runs `temp_cmd_docker.sh`, then `start_cmd_in_container.sh` (repo `start_cmd.sh` with `SETH_SKIP_SYSCTL=1`). Data ends up under **`/root/seths`** on that machine (not under `docker/arm64/staging/seths`).
+`simple_remote_docker.sh` also **falls back** to the in-container flow when `docker info` fails but **`/.dockerenv`** exists (typical Docker Linux container without a nested daemon), or when **`SETH_FORCE_IN_CONTAINER=1`**.
 
 ## 3) Build runtime image and start nodes (one host)
 
