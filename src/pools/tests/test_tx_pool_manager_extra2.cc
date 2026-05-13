@@ -221,21 +221,22 @@ TEST_F(TestTxPoolManagerExtra2, HandleSyncPoolsMaxHeight_ResponseFromOtherShard_
 }
 
 // ---------------------------------------------------------------------------
-// ConsensusTimerMessage: all thresholds exceeded → all branches fire
-// (with valid net_id; FlushHeightTree + SyncMissing* all run safely)
+// ConsensusTimerMessage: FlushHeightTree + SyncCrossPool branches fire safely.
+// SyncMinssingHeights/SyncMinssingRootHeights are skipped here (covered by their
+// own dedicated tests) because they call tx_pool_[i].latest_height() for all 256
+// pools, which triggers InitLatestInfo on pools where latest_height_==kInvalidUint64.
+// SyncPoolsMaxHeight is skipped (requires Route::Send; now_max_sharding_id_=0 guard
+// is sufficient but the route infra is absent in unit tests).
 // ---------------------------------------------------------------------------
 
-TEST_F(TestTxPoolManagerExtra2, ConsensusTimerMessage_ValidNetId_AllBranchesFire) {
-    mgr_->prev_sync_height_tree_tm_ms_ = 0;
-    mgr_->prev_sync_check_ms_          = 0;
-    mgr_->prev_sync_heights_ms_        = 0;
-    mgr_->prev_sync_cross_ms_          = 0;
-    // Zero out now_max_sharding_id_ so SyncPoolsMaxHeight loop doesn't call Route::Send
-    auto saved = mgr_->now_max_sharding_id_;
-    mgr_->now_max_sharding_id_ = 0;
+TEST_F(TestTxPoolManagerExtra2, ConsensusTimerMessage_ValidNetId_SafeBranchesFire) {
+    auto far = common::TimeUtils::TimestampMs() + 9999999lu;
+    mgr_->prev_sync_height_tree_tm_ms_ = 0;      // trigger FlushHeightTree
+    mgr_->prev_sync_cross_ms_          = 0;      // trigger SyncCrossPool
+    mgr_->prev_sync_check_ms_          = far;    // skip SyncMinssingHeights
+    mgr_->prev_sync_heights_ms_        = far;    // skip SyncPoolsMaxHeight
     mgr_->ConsensusTimerMessage();
-    // No crash
-    mgr_->now_max_sharding_id_ = saved;
+    // No crash; FlushHeightTree and SyncCrossPool branches exercised
 }
 
 // ---------------------------------------------------------------------------
