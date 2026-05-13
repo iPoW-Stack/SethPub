@@ -100,10 +100,16 @@ deploy_nodes() {
             rm -f /root/seths/s$shard_id'_'$i/conf/log4cpp.properties
 
             ln /root/pkg/seth /root/seths/s$shard_id'_'$i/seth
-            ln /root/pkg/txcli /root/seths/s$shard_id'_'$i/txcli
+            if [[ -f /root/pkg/txcli ]]; then
+                ln /root/pkg/txcli /root/seths/s$shard_id'_'$i/txcli
+            fi
             cp -rf /root/pkg/init_accounts* /root/seths/s$shard_id'_'$i/
-            ln /root/pkg/GeoLite2-City.mmdb /root/seths/s$shard_id'_'$i/conf/GeoLite2-City.mmdb
-            ln /root/pkg/log4cpp.properties /root/seths/s$shard_id'_'$i/conf/log4cpp.properties
+            if [[ -f /root/pkg/GeoLite2-City.mmdb ]]; then
+                ln /root/pkg/GeoLite2-City.mmdb /root/seths/s$shard_id'_'$i/conf/GeoLite2-City.mmdb
+            fi
+            if [[ -f /root/pkg/log4cpp.properties ]]; then
+                ln /root/pkg/log4cpp.properties /root/seths/s$shard_id'_'$i/conf/log4cpp.properties
+            fi
             mkdir -p /root/seths/s$shard_id'_'$i/log
 
             # 支持重复执行：删除旧的数据库

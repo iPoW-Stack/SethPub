@@ -99,10 +99,16 @@ deploy_nodes() {
             rm -f "$inst_dir/conf/GeoLite2-City.mmdb" "$inst_dir/conf/log4cpp.properties"
 
             ln /root/pkg/seth "$inst_dir/seth"
-            ln /root/pkg/txcli "$inst_dir/txcli"
+            if [[ -f /root/pkg/txcli ]]; then
+                ln /root/pkg/txcli "$inst_dir/txcli"
+            fi
             cp -rf /root/pkg/init_accounts* "$inst_dir/" 2>/dev/null || true
-            ln /root/pkg/GeoLite2-City.mmdb "$inst_dir/conf/GeoLite2-City.mmdb"
-            ln /root/pkg/log4cpp.properties "$inst_dir/conf/log4cpp.properties"
+            if [[ -f /root/pkg/GeoLite2-City.mmdb ]]; then
+                ln /root/pkg/GeoLite2-City.mmdb "$inst_dir/conf/GeoLite2-City.mmdb"
+            fi
+            if [[ -f /root/pkg/log4cpp.properties ]]; then
+                ln /root/pkg/log4cpp.properties "$inst_dir/conf/log4cpp.properties"
+            fi
             mkdir -p "$inst_dir/log"
 
             rm -rf "$inst_dir/db"
