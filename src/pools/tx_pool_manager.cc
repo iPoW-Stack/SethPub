@@ -87,7 +87,11 @@ TxPoolManager::TxPoolManager(
 }
 
 TxPoolManager::~TxPoolManager() {
-    destroy_ = true;
+    {
+        std::lock_guard<std::mutex> lock(consensus_timer_mutex_);
+        destroy_.store(true, std::memory_order_release);
+        tools_tick_.Destroy();
+    }
     // FlushHeightTree();
 #ifdef USE_SERVER_TEST_TRANSACTION
     if (test_tx_thread_) {
@@ -333,7 +337,9 @@ void TxPoolManager::FlushHeightTree() {
     }
 
     if (cross_pools_ != nullptr) {
-        for (uint32_t i = network::kRootCongressNetworkId; i <= now_max_sharding_id_; ++i) {
+        for (uint32_t i = network::kConsensusShardBeginNetworkId;
+                i < network::kConsensusShardEndNetworkId && i <= now_max_sharding_id_;
+                ++i) {
             cross_pools_[i].FlushHeightTree(db_batch);
         }
     }
@@ -346,6 +352,11 @@ void TxPoolManager::FlushHeightTree() {
 }
 
 void TxPoolManager::ConsensusTimerMessage() {
+    std::lock_guard<std::mutex> lock(consensus_timer_mutex_);
+    if (destroy_.load(std::memory_order_acquire)) {
+        return;
+    }
+
     auto now_tm_ms = common::TimeUtils::TimestampMs();
     if (prev_sync_height_tree_tm_ms_ < now_tm_ms) {
         FlushHeightTree();
@@ -373,9 +384,11 @@ void TxPoolManager::ConsensusTimerMessage() {
         SETH_DEBUG("TxPoolManager handle message use time: %lu", (etime - now_tm_ms));
     }
 
-    tools_tick_.CutOff(
-        100000lu,
-        std::bind(&TxPoolManager::ConsensusTimerMessage, this));
+    if (!destroy_.load(std::memory_order_acquire)) {
+        tools_tick_.CutOff(
+            100000lu,
+            std::bind(&TxPoolManager::ConsensusTimerMessage, this));
+    }
 }
 
 void TxPoolManager::SyncMinssingRootHeights(uint64_t now_tm_ms) {
