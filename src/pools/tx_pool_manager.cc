@@ -816,10 +816,27 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
 }
 
 void TxPoolManager::SyncPoolsMaxHeight() {
+    const uint32_t local_net = common::GlobalInfo::Instance()->network_id();
+    if (local_net == common::kInvalidUint32) {
+        return;
+    }
+    if (network::kConsensusShardEndNetworkId <= network::kRootCongressNetworkId) {
+        return;
+    }
+
     auto msg_ptr = std::make_shared<transport::TransportMessage>();
-    auto net_id = common::GlobalInfo::Instance()->network_id();
-    msg_ptr->header.set_src_sharding_id(net_id);
-    for (uint32_t i = network::kRootCongressNetworkId; i <= now_max_sharding_id_; ++i) {
+    msg_ptr->header.set_src_sharding_id(local_net);
+
+    uint32_t last = now_max_sharding_id_;
+    const uint32_t cap = network::kConsensusShardEndNetworkId - 1;
+    if (last > cap) {
+        last = cap;
+    }
+    if (last < network::kRootCongressNetworkId) {
+        return;
+    }
+
+    for (uint32_t i = network::kRootCongressNetworkId; i <= last; ++i) {
         dht::DhtKeyManager dht_key(i);
         msg_ptr->header.set_des_dht_key(dht_key.StrKey());
         msg_ptr->header.set_type(common::kPoolsMessage);

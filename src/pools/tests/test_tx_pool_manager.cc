@@ -661,6 +661,7 @@ TEST_F(TestTxPoolManager, GetAddressInfo_DelegatesToAccountStub) {
 }
 
 TEST_F(TestTxPoolManager, SyncPoolsMaxHeight_NoCrash) {
+    // Suite uses network_id = kInvalidUint32; SyncPoolsMaxHeight skips Route::Send then.
     mgr_->SyncPoolsMaxHeight();
 }
 
