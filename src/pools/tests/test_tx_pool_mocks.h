@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 
+#include "common/utils.h"
 #include "protos/address.pb.h"
 #include "security/security.h"
 
@@ -22,10 +23,13 @@ extern std::function<std::shared_ptr<address::protobuf::AddressInfo>(const std::
 // HotstuffManager::is_other_leader without linking consensus (see tx_pool_manager.h).
 
 inline std::shared_ptr<address::protobuf::AddressInfo> MakeTestAddressInfo(
-        uint32_t pool_index, const std::string& addr) {
+        uint32_t pool_index,
+        const std::string& addr,
+        uint32_t sharding_id = common::kInvalidUint32) {
     auto p = std::make_shared<address::protobuf::AddressInfo>();
     p->set_pool_index(pool_index);
     p->set_addr(addr);
+    p->set_sharding_id(sharding_id);
     return p;
 }
 

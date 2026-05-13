@@ -30,14 +30,56 @@
 #undef protected
 #undef private
 
+#include "block/account_manager.h"
 #include "common/global_info.h"
 #include "common/node_members.h"
 #include "common/utils.h"
 #include "network/network_utils.h"
+#include "protos/pools.pb.h"
 
 namespace seth {
 namespace pools {
 namespace test {
+
+namespace {
+
+// Non-null AccountManager token so acc_mgr_.lock() succeeds; GetAccountInfo is
+// stubbed in test_pools_stubs.cc.
+struct ScopedAccMgrAttach {
+    TxPoolManager* mgr;
+    std::shared_ptr<block::AccountManager> stub;
+    explicit ScopedAccMgrAttach(TxPoolManager* m)
+        : mgr(m),
+          stub(std::shared_ptr<block::AccountManager>(
+              reinterpret_cast<block::AccountManager*>(0x40uLL),
+              [](block::AccountManager*) {})) {
+        mgr->acc_mgr_ = stub;
+    }
+    ~ScopedAccMgrAttach() { mgr->acc_mgr_ = std::weak_ptr<block::AccountManager>(); }
+};
+
+struct ScopedTxStatusCallbackClear {
+    TxPoolManager* mgr;
+    explicit ScopedTxStatusCallbackClear(TxPoolManager* m) : mgr(m) {}
+    ~ScopedTxStatusCallbackClear() { mgr->SetTxStatusCallback({}); }
+};
+
+static transport::MessagePtr MakeEthUserFirewallMessage(const std::string& pubkey_tag) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kNormalFrom);
+    tx->set_nonce(1);
+    tx->set_pubkey(pubkey_tag);
+    tx->set_sign("sig");
+    tx->set_to(std::string(common::kUnicastAddressLength, 'T'));
+    tx->set_amount(0);
+    tx->set_gas_limit(21000);
+    tx->set_gas_price(1);
+    tx->set_eth_raw_tx("0x01");
+    return msg;
+}
+
+}  // namespace
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -388,6 +430,164 @@ TEST_F(TestTxPoolManager, InitCrossPools_CrossPoolsNonNull) {
         mgr_->cross_pools_[network::kConsensusShardBeginNetworkId].des_sharding_id_,
         network::kConsensusShardBeginNetworkId);
 }
+
+// ---------------------------------------------------------------------------
+// TmpFirewallCheckMessage (tx_pool_manager.cc ~131-294)
+// ---------------------------------------------------------------------------
+
+TEST_F(TestTxPoolManager, TmpFirewall_NonUser_NotSystem_ReturnsError) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    msg->system_message = false;
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kStatistic);
+    tx->set_pubkey("pk_nf");
+    EXPECT_EQ(mgr_->TmpFirewallCheckMessage(msg), transport::kFirewallCheckError);
+}
+
+TEST_F(TestTxPoolManager, TmpFirewall_NonUser_System_ReturnsSuccess) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    msg->system_message = true;
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kStatistic);
+    tx->set_pubkey("pk_sys");
+    EXPECT_EQ(mgr_->TmpFirewallCheckMessage(msg), transport::kFirewallCheckSuccess);
+}
+
+TEST_F(TestTxPoolManager, TmpFirewall_User_MissingSign_ReturnsError) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kNormalFrom);
+    tx->set_pubkey("pk_ms");
+    tx->set_sign("");
+    EXPECT_EQ(mgr_->TmpFirewallCheckMessage(msg), transport::kFirewallCheckError);
+    EXPECT_EQ(msg->handle_status, transport::kTxInvalidSignature);
+}
+
+TEST_F(TestTxPoolManager, TmpFirewall_User_VerifyFails_ReturnsError) {
+    auto* fake = dynamic_cast<FakeSecurityForTxPm*>(mgr_->security_.get());
+    ASSERT_NE(fake, nullptr);
+    fake->set_verify_always_success(false);
+
+    auto msg = std::make_shared<transport::TransportMessage>();
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kNormalFrom);
+    tx->set_nonce(1);
+    tx->set_pubkey("vf");
+    tx->set_sign("bad");
+    tx->set_to(std::string(common::kUnicastAddressLength, 'Z'));
+    tx->set_amount(0);
+    tx->set_gas_limit(21000);
+    tx->set_gas_price(1);
+
+    EXPECT_EQ(mgr_->TmpFirewallCheckMessage(msg), transport::kFirewallCheckError);
+    EXPECT_EQ(msg->handle_status, transport::kTxInvalidSignature);
+    fake->set_verify_always_success(true);
+}
+
+TEST_F(TestTxPoolManager, TmpFirewall_EthWithAddressInfo_MatchingShard_ReturnsSuccess) {
+    auto* fake = dynamic_cast<FakeSecurityForTxPm*>(mgr_->security_.get());
+    ASSERT_NE(fake, nullptr);
+    fake->set_verify_always_success(true);
+
+    auto msg = MakeEthUserFirewallMessage("eth_ok_pk");
+    const std::string& local_addr = mgr_->security_->GetAddress();
+    msg->address_info = MakeTestAddressInfo(0, local_addr, common::kInvalidUint32);
+
+    EXPECT_EQ(mgr_->TmpFirewallCheckMessage(msg), transport::kFirewallCheckSuccess);
+}
+
+TEST_F(TestTxPoolManager, TmpFirewall_EthRaw_EmptyPubkey_ReturnsError) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kNormalFrom);
+    tx->set_nonce(1);
+    tx->set_pubkey("");
+    tx->set_sign("s");
+    tx->set_eth_raw_tx("raw");
+    EXPECT_EQ(mgr_->TmpFirewallCheckMessage(msg), transport::kFirewallCheckError);
+    EXPECT_EQ(msg->handle_status, transport::kTxInvalidSignature);
+}
+
+TEST_F(TestTxPoolManager, TmpFirewall_EthWrongShard_ReturnsErrorAfterRoute) {
+    auto* fake = dynamic_cast<FakeSecurityForTxPm*>(mgr_->security_.get());
+    ASSERT_NE(fake, nullptr);
+    fake->set_verify_always_success(true);
+
+    auto msg = MakeEthUserFirewallMessage("eth_wr_shard");
+    const std::string& local_addr = mgr_->security_->GetAddress();
+    msg->address_info = MakeTestAddressInfo(0, local_addr, /*sharding_id=*/0u);
+
+    EXPECT_EQ(mgr_->TmpFirewallCheckMessage(msg), transport::kFirewallCheckError);
+}
+
+TEST_F(TestTxPoolManager, TmpFirewall_StatusNotify_ChainsExistingCallback) {
+    ScopedTxStatusCallbackClear clear_guard(mgr_.get());
+    auto* fake = dynamic_cast<FakeSecurityForTxPm*>(mgr_->security_.get());
+    ASSERT_NE(fake, nullptr);
+    fake->set_verify_always_success(true);
+
+    auto msg = MakeEthUserFirewallMessage("cb_chain_pk");
+    const std::string& local_addr = mgr_->security_->GetAddress();
+    msg->address_info = MakeTestAddressInfo(0, local_addr, common::kInvalidUint32);
+
+    bool first = false;
+    bool second = false;
+    msg->status_notify_cb = [&](const std::string&, transport::MessageHandleStatus) { first = true; };
+    mgr_->SetTxStatusCallback([&](const std::string&, transport::MessageHandleStatus) { second = true; });
+
+    ASSERT_EQ(mgr_->TmpFirewallCheckMessage(msg), transport::kFirewallCheckSuccess);
+    ASSERT_TRUE(static_cast<bool>(msg->status_notify_cb));
+    msg->status_notify_cb("deadbeef", transport::kMessageHandle);
+    EXPECT_TRUE(first);
+    EXPECT_TRUE(second);
+}
+
+TEST_F(TestTxPoolManager, TmpFirewall_StatusNotify_SetsFromManagerCallbackOnly) {
+    ScopedTxStatusCallbackClear clear_guard(mgr_.get());
+    auto* fake = dynamic_cast<FakeSecurityForTxPm*>(mgr_->security_.get());
+    ASSERT_NE(fake, nullptr);
+    fake->set_verify_always_success(true);
+
+    auto msg = MakeEthUserFirewallMessage("cb_only_pk");
+    const std::string& local_addr = mgr_->security_->GetAddress();
+    msg->address_info = MakeTestAddressInfo(0, local_addr, common::kInvalidUint32);
+
+    bool mgr_cb = false;
+    mgr_->SetTxStatusCallback([&](const std::string&, transport::MessageHandleStatus) { mgr_cb = true; });
+
+    ASSERT_EQ(mgr_->TmpFirewallCheckMessage(msg), transport::kFirewallCheckSuccess);
+    ASSERT_TRUE(static_cast<bool>(msg->status_notify_cb));
+    msg->status_notify_cb("abc", transport::kTxAccept);
+    EXPECT_TRUE(mgr_cb);
+}
+
+// ---------------------------------------------------------------------------
+// TxPoolHandleMessage — user tx account lookup (cc ~536-550)
+// ---------------------------------------------------------------------------
+
+TEST_F(TestTxPoolManager, TxPoolHandleMessage_UserLookupFails_SetsInvalidAddress) {
+    ScopedAccMgrAttach acc_guard(mgr_.get());
+    ScopedAccountInfoOverride acc_ov([](const std::string&) { return nullptr; });
+
+    auto* fake = dynamic_cast<FakeSecurityForTxPm*>(mgr_->security_.get());
+    ASSERT_NE(fake, nullptr);
+    fake->set_verify_always_success(true);
+
+    auto msg = MakeEthUserFirewallMessage("txh_inv_addr");
+    const std::string& local_addr = mgr_->security_->GetAddress();
+    msg->address_info = MakeTestAddressInfo(0, local_addr, common::kInvalidUint32);
+
+    mgr_->TxPoolHandleMessage(msg);
+    EXPECT_EQ(msg->handle_status, transport::kTxInvalidAddress);
+}
+
+#ifdef SETH_UNITTEST
+TEST_F(TestTxPoolManager, IsOtherLeaderHook_SetAndClear) {
+    auto noop = [](uint32_t) -> common::BftMemberPtr { return nullptr; };
+    TxPoolManager::SetIsOtherLeaderHookForTest(noop);
+    TxPoolManager::ClearIsOtherLeaderHookForTest();
+}
+#endif
 
 }  // namespace test
 }  // namespace pools
