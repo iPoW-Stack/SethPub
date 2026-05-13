@@ -25,6 +25,9 @@ set(pools_test_src
     test_shard_statistic_init.cc
     test_shard_statistic_extra.cc
     test_account_qps_lru_map_extra.cc
+    test_tx_pool_manager.cc
+    test_tx_pool_extra3.cc
+    test_shard_statistic_extra3.cc
     pools_test_ck_link_stub.cc)
 add_executable(pools_test ${pools_test_src})
 

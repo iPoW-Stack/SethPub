@@ -32,18 +32,26 @@ protos::AddressInfoPtr AccountManager::GetAccountInfo(const std::string&) {
 // directly (non-virtual). Stub returns safe sentinel values so that
 // HandleStatistic's getLeaderIdFromBlock returns "" and the statistic loop
 // exits cleanly without crashing.
+//
+// Tests that need GetNetworkMembersWithHeight to return a real MembersPtr
+// (e.g. to exercise StatisticWithHeights beyond the nullptr early-return)
+// may set g_test_members_override before the call and reset it to nullptr
+// afterwards. latest_height stub returns g_test_latest_height (default 0).
 namespace elect {
+
+common::MembersPtr g_test_members_override = nullptr;
+uint64_t          g_test_latest_height     = 0;
 
 common::MembersPtr ElectManager::GetNetworkMembersWithHeight(
         uint64_t /*elect_height*/,
         uint32_t /*network_id*/,
         libff::alt_bn128_G2* /*common_pk*/,
         libff::alt_bn128_Fr* /*sec_key*/) {
-    return nullptr;
+    return g_test_members_override;
 }
 
 uint64_t ElectManager::latest_height(uint32_t /*network_id*/) {
-    return 0;
+    return g_test_latest_height;
 }
 
 }  // namespace elect
