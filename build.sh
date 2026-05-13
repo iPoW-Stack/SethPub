@@ -345,32 +345,8 @@ append_module_specific_excludes() {
             )
             ;;
         pools)
-            # pools_test exercises trees, cross helpers, tx_utils, shard Init, etc. The sources
-            # below are consensus / pool-orchestration glue (or header-only QPS) that are not
-            # meaningfully driven by pools_test alone; leaving them in gcovr drives the module
-            # line % far below the rest of the tree. Excluding them scopes [pools] coverage to
-            # code reachable from pools_test (same pattern as elect/init transport excludes).
-            #
-            # Full-path (~90%+) line coverage for all of src/pools/*.cc without these excludes
-            # needs either: sync_test / integration runs that exercise TxPoolManager + hotstuff,
-            # or a dedicated pools integration test binary with mocks for Route, HotstuffManager,
-            # PrefixDb-heavy paths, and ShardStatistic replay — not pools_test alone.
-            # pools_integration_test is built by default; disable with -DBUILD_POOLS_INTEGRATION_TEST=OFF.
-            # (see src/pools/tests_integration/README.txt).
-            out_args_ref+=(
-                --exclude ".*/src/pools/shard_statistic\\.cc$"
-                --exclude ".*/src/pools/tx_pool_manager\\.cc$"
-                --exclude ".*/src/pools/tx_pool_manager\\.h$"
-                --exclude ".*/src/pools/tx_pool\\.cc$"
-                --exclude ".*/src/pools/to_txs_pools\\.cc$"
-                --exclude ".*/src/pools/account_qps_lru_map\\.h$"
-                --exclude ".*/src/pools/cross_pool\\.cc$"
-                --exclude ".*/src/pools/cross_pool\\.h$"
-                --exclude ".*/src/pools/cross_block_manager\\.h$"
-                --exclude ".*/src/pools/height_tree_level\\.cc$"
-                --exclude ".*/src/pools/leaf_height_tree\\.cc$"
-                --exclude ".*/src/pools/unique_hash_lru_set\\.h$"
-            )
+            # Count all pools source files; tests/ and tests_integration/ are
+            # excluded by the base --exclude "../src/pools/tests" pattern (prefix match).
             ;;
         protos)
             # Focus protos coverage on hand-written helper logic.
