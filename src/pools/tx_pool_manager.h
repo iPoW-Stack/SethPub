@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <bitset>
 #include <condition_variable>
 #include <memory>
@@ -277,6 +278,8 @@ private:
     int32_t HandleElectTx(const transport::MessagePtr& msg_ptr);
     bool UserTxValid(const transport::MessagePtr& msg_ptr);
     void ConsensusTimerMessage();
+    void OnConsensusTimerEnter();
+    void OnConsensusTimerLeave();
     void SyncPoolsMaxHeight();
     void HandleSyncPoolsMaxHeight(const transport::MessagePtr& msg_ptr);
     void SyncMinssingHeights(uint64_t now_tm_ms);
@@ -331,9 +334,9 @@ private:
     uint32_t now_max_sharding_id_ = network::kConsensusShardBeginNetworkId;
     uint32_t prev_cross_sync_index_ = 0;
     std::shared_ptr<CrossBlockManager> cross_block_mgr_ = nullptr;
-    // Recursive: ConsensusTimerMessage may re-enter (e.g. SyncPoolsMaxHeight → Route::Send
-    // synchronously dispatching back into pool/timer paths) while the tick callback holds the lock.
-    std::recursive_mutex consensus_timer_mutex_;
+    std::atomic<uint32_t> consensus_timer_in_flight_{ 0 };
+    std::mutex consensus_timer_shutdown_mutex_;
+    std::condition_variable consensus_timer_cv_;
     common::Tick tools_tick_;
     common::ThreadSafeQueue<std::shared_ptr<transport::TransportMessage>> pools_msg_queue_[common::kMaxThreadCount];
     uint64_t prev_elect_height_ = common::kInvalidUint64;

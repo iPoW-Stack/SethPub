@@ -1,5 +1,8 @@
 #include "pools/tx_pool_manager.h"
 
+#include <chrono>
+#include <thread>
+
 #include "block/account_manager.h"
 #include "common/log.h"
 #include "common/global_info.h"
@@ -87,11 +90,28 @@ TxPoolManager::TxPoolManager(
 }
 
 TxPoolManager::~TxPoolManager() {
+    destroy_.store(true, std::memory_order_release);
+    tools_tick_.Destroy();
+
+    // Narrow race: tick thread may be between dequeuing this tick and invoking the callback.
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     {
-        std::lock_guard<std::recursive_mutex> lock(consensus_timer_mutex_);
-        destroy_.store(true, std::memory_order_release);
-        tools_tick_.Destroy();
+        std::unique_lock<std::mutex> lk(consensus_timer_shutdown_mutex_);
+        const bool done = consensus_timer_cv_.wait_for(
+            lk,
+            std::chrono::seconds(30),
+            [&] {
+                return consensus_timer_in_flight_.load(std::memory_order_acquire) == 0;
+            });
+        if (!done) {
+            SETH_ERROR(
+                "TxPoolManager::~TxPoolManager: timed out waiting for consensus timer (in_flight=%u)",
+                static_cast<unsigned>(
+                    consensus_timer_in_flight_.load(std::memory_order_acquire)));
+        }
     }
+
     // FlushHeightTree();
 #ifdef USE_SERVER_TEST_TRANSACTION
     if (test_tx_thread_) {
@@ -351,8 +371,28 @@ void TxPoolManager::FlushHeightTree() {
     }
 }
 
+void TxPoolManager::OnConsensusTimerEnter() {
+    consensus_timer_in_flight_.fetch_add(1, std::memory_order_acq_rel);
+}
+
+void TxPoolManager::OnConsensusTimerLeave() {
+    const uint32_t prev = consensus_timer_in_flight_.fetch_sub(1, std::memory_order_acq_rel);
+    if (prev == 1) {
+        std::lock_guard<std::mutex> lk(consensus_timer_shutdown_mutex_);
+        consensus_timer_cv_.notify_all();
+    }
+}
+
 void TxPoolManager::ConsensusTimerMessage() {
-    std::lock_guard<std::recursive_mutex> lock(consensus_timer_mutex_);
+    OnConsensusTimerEnter();
+    struct ConsensusTimerLeaveCaller {
+        TxPoolManager* m;
+        explicit ConsensusTimerLeaveCaller(TxPoolManager* mgr) : m(mgr) {}
+        ~ConsensusTimerLeaveCaller() {
+            m->OnConsensusTimerLeave();
+        }
+    } leave_guard{ this };
+
     if (destroy_.load(std::memory_order_acquire)) {
         return;
     }
