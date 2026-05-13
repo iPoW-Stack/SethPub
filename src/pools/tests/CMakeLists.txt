@@ -15,6 +15,7 @@ set(pools_test_src
     test_tx_pool_inline.cc
     test_tx_pool_methods.cc
     test_tx_pool_tx.cc
+    test_tx_pool_addtx.cc
     test_to_txs_pools.cc
     test_cross_block_manager.cc
     test_tx_pool_extra.cc
@@ -22,6 +23,8 @@ set(pools_test_src
     test_pools_stubs.cc
     test_smoke.cc
     test_shard_statistic_init.cc
+    test_shard_statistic_extra.cc
+    test_account_qps_lru_map_extra.cc
     pools_test_ck_link_stub.cc)
 add_executable(pools_test ${pools_test_src})
 
