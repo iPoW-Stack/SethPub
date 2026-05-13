@@ -605,6 +605,66 @@ TEST_F(TestTxPoolManager, TxPoolHandleMessage_UserLookupFails_SetsInvalidAddress
 }
 
 // ---------------------------------------------------------------------------
+// TmpFirewall: ETH GetAccountInfo fallback + ECDSA branch (tx_pool_manager.cc ~191-283)
+// GetAddressInfo (cc ~940-943), SyncPoolsMaxHeight (cc ~765-779)
+// ---------------------------------------------------------------------------
+
+TEST_F(TestTxPoolManager, TmpFirewall_EthWithoutAddressInfo_LoadsFromAccountManager) {
+    ScopedAccMgrAttach acc_guard(mgr_.get());
+    const std::string& la = mgr_->security_->GetAddress();
+    ScopedAccountInfoOverride ov([&](const std::string&) {
+        return MakeTestAddressInfo(0, la, common::kInvalidUint32);
+    });
+    auto* fake = dynamic_cast<FakeSecurityForTxPm*>(mgr_->security_.get());
+    ASSERT_NE(fake, nullptr);
+    fake->set_verify_always_success(true);
+
+    auto msg = MakeEthUserFirewallMessage("eth_fb_pk");
+    msg->address_info = nullptr;
+    EXPECT_EQ(mgr_->TmpFirewallCheckMessage(msg), transport::kFirewallCheckSuccess);
+    ASSERT_NE(msg->address_info, nullptr);
+}
+
+TEST_F(TestTxPoolManager, TmpFirewall_NonEthEcdsaPath_Success) {
+    ScopedAccMgrAttach acc_guard(mgr_.get());
+    const std::string& la = mgr_->security_->GetAddress();
+    ScopedAccountInfoOverride ov([&](const std::string&) {
+        return MakeTestAddressInfo(0, la, common::kInvalidUint32);
+    });
+    auto* fake = dynamic_cast<FakeSecurityForTxPm*>(mgr_->security_.get());
+    ASSERT_NE(fake, nullptr);
+    fake->set_verify_always_success(true);
+
+    auto msg = std::make_shared<transport::TransportMessage>();
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kNormalFrom);
+    tx->set_nonce(1);
+    tx->set_pubkey("ecdsa_pk");
+    tx->set_sign("ecdsa_sig");
+    tx->set_to(std::string(common::kUnicastAddressLength, 'Q'));
+    tx->set_amount(0);
+    tx->set_gas_limit(21000);
+    tx->set_gas_price(1);
+
+    EXPECT_EQ(mgr_->TmpFirewallCheckMessage(msg), transport::kFirewallCheckSuccess);
+    EXPECT_FALSE(msg->msg_hash.empty());
+}
+
+TEST_F(TestTxPoolManager, GetAddressInfo_DelegatesToAccountStub) {
+    ScopedAccMgrAttach acc_guard(mgr_.get());
+    ScopedAccountInfoOverride ov([](const std::string& id) {
+        return MakeTestAddressInfo(2, id, common::kInvalidUint32);
+    });
+    auto info = mgr_->GetAddressInfo("probe_addr");
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->pool_index(), 2u);
+}
+
+TEST_F(TestTxPoolManager, SyncPoolsMaxHeight_NoCrash) {
+    mgr_->SyncPoolsMaxHeight();
+}
+
+// ---------------------------------------------------------------------------
 // HandlePoolsMessage (tx_pool_manager.cc ~657-762) — direct calls bypass TmpFirewall
 // ---------------------------------------------------------------------------
 

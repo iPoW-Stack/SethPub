@@ -35,10 +35,26 @@
 #include "common/time_utils.h"
 #include "common/utils.h"
 #include "network/network_utils.h"
+#include "tnet/tcp_interface.h"
 
 namespace seth {
 namespace pools {
 namespace test {
+
+namespace {
+
+struct FakeTcpConnExtra4 : tnet::TcpInterface {
+    std::string PeerIp() override { return "10.0.0.2"; }
+    uint16_t PeerPort() override { return 4001; }
+    void SetPeerIp(const std::string&) override {}
+    void SetPeerPort(uint16_t) override {}
+    int Send(const std::string&) override { return 0; }
+    int Send(const char*, int32_t) override { return 0; }
+    int Send(uint64_t, const std::string&) override { return 0; }
+    int Send(const char*, int32_t, uint64_t) override { return 0; }
+};
+
+}  // namespace
 
 // ---------------------------------------------------------------------------
 // Minimal TxItem subclass with the abstract overrides required by tx_utils.h.
@@ -202,6 +218,19 @@ TEST_F(TestTxPoolManagerExtra4, HandleSyncPoolsMaxHeight_ReqLocalNetTooLarge_Ear
     common::GlobalInfo::Instance()->set_network_id(network::kConsensusShardEndNetworkId + 5);
     mgr_->HandleSyncPoolsMaxHeight(msg);
     common::GlobalInfo::Instance()->set_network_id(saved_net);
+}
+
+// Request path with valid network + Tcp conn → TcpTransport::Send on response (cc ~829-831).
+TEST_F(TestTxPoolManagerExtra4, HandleSyncPoolsMaxHeight_ReqWithConn_ExercisesResponseSend) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    msg->header.set_src_sharding_id(network::kConsensusShardBeginNetworkId);
+    msg->header.mutable_sync_heights()->set_req(true);
+    msg->conn = std::make_shared<FakeTcpConnExtra4>();
+    mgr_->HandleSyncPoolsMaxHeight(msg);
+}
+
+TEST_F(TestTxPoolManagerExtra4, SyncPoolsMaxHeight_NoCrash) {
+    mgr_->SyncPoolsMaxHeight();
 }
 
 // ===========================================================================

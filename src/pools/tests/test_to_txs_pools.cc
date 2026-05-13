@@ -24,6 +24,7 @@
 #include "common/time_utils.h"
 #include "common/utils.h"
 #include "network/network_utils.h"
+#include "pools/tx_pool_manager.h"
 
 namespace seth {
 namespace pools {
@@ -56,6 +57,28 @@ TEST_F(TestToTxsPools, Constructor_NullPoolsMgr_SkipsLoadLatestHeights) {
     auto pool = MakePool();
     // prev_to_heights_ should still be null (LoadLatestHeights was not called)
     EXPECT_EQ(pool.prev_to_heights_, nullptr);
+}
+
+TEST_F(TestToTxsPools, Constructor_NonNullPoolsMgr_InvalidNetwork_LoadLatestReturnsImmediately) {
+    const uint32_t prev = common::GlobalInfo::Instance()->network_id();
+    common::GlobalInfo::Instance()->set_network_id(common::kInvalidUint32);
+    auto stub_mgr = std::shared_ptr<TxPoolManager>(
+        reinterpret_cast<TxPoolManager*>(0xA0uLL), [](TxPoolManager*) {});
+    std::shared_ptr<block::AccountManager> null_acc;
+    ToTxsPools pool(db_ptr_, "lid", 0u, stub_mgr, null_acc);
+    (void)pool;
+    common::GlobalInfo::Instance()->set_network_id(prev);
+}
+
+TEST_F(TestToTxsPools, Constructor_NonNullPoolsMgr_ValidNetwork_GetLatestHeightsMissing_ReturnsEarly) {
+    const uint32_t prev = common::GlobalInfo::Instance()->network_id();
+    common::GlobalInfo::Instance()->set_network_id(network::kConsensusShardBeginNetworkId);
+    auto stub_mgr = std::shared_ptr<TxPoolManager>(
+        reinterpret_cast<TxPoolManager*>(0xA1uLL), [](TxPoolManager*) {});
+    std::shared_ptr<block::AccountManager> null_acc;
+    ToTxsPools pool(db_ptr_, "lid2", 3u, stub_mgr, null_acc);
+    (void)pool;
+    common::GlobalInfo::Instance()->set_network_id(prev);
 }
 
 // ---- LeaderCreateToHeights: prev_to_heights_ == nullptr → kPoolsError ----
