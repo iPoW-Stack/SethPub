@@ -104,26 +104,25 @@ TEST_F(TestToTxsPoolsExtra2, LeaderCreateToHeights_InFlightExpired_Recomputes) {
 
 // ============================================================
 // LeaderCreateToHeights: cons_height entry in added_heights_ but timestamp too
-// fresh (< 1000 ms ago) → decrements cons_height, eventually falls to 0 → valid=false
-// but cons_height == floor(0) → valid=true at that branch
+// fresh (< 1000 ms ago) → decrements cons_height from 2 to 1; height=1 is in
+// valided_heights_ → valid=true → kPoolsSuccess
 // ============================================================
 
-TEST_F(TestToTxsPoolsExtra2, LeaderCreateToHeights_FreshTimestamp_DecrementsToCons) {
+TEST_F(TestToTxsPoolsExtra2, LeaderCreateToHeights_FreshTimestamp_DecrementsThenValid) {
     auto pool = MakePool();
     pool.prev_to_heights_ = ZeroHeights();
 
-    // Pool 0: cons_height=1, entry at height=1 with very recent timestamp
-    pool.pool_consensus_heihgts_[0] = 1;
+    // Pool 0: cons_height=2, entry at height=2 with a very recent timestamp
+    // → decrement to 1.  height=1 is NOT in added_heights_ and IS in
+    //   valided_heights_ → valid=true inside the while loop.
+    pool.pool_consensus_heihgts_[0] = 2;
     uint64_t now_ms = common::TimeUtils::TimestampMs();
-    pool.added_heights_[0][1] = now_ms;  // fresh: now_ms + 1000 > now_ms → decrement
-
-    // valided_heights_[0] has height=0 (floor)
-    pool.valided_heights_[0].insert(0);
+    pool.added_heights_[0][2] = now_ms;   // fresh: triggers --cons_height
+    pool.valided_heights_[0].insert(1);   // cons_height=1 after decrement → found → valid
 
     pools::protobuf::ShardToTxItem out;
-    // After decrement: cons_height=0 which == floor_height(0) → valid=true
-    // Then for pools 1..255 all cons_height=0 → loop condition false → valid stays true
     EXPECT_EQ(pool.LeaderCreateToHeights(out), kPoolsSuccess);
+    EXPECT_EQ(out.heights(0), 1u);
 }
 
 // ============================================================

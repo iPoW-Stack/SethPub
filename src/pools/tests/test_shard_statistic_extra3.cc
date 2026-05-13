@@ -282,6 +282,11 @@ TEST_F(ShardStatExtra3Test, StatisticWithHeights_TwoEntries_ValidMembers) {
 
 // ---------------------------------------------------------------------------
 // StatisticWithHeights: min_height > max_height for a pool → kPoolsError (line 695)
+//
+// The min/max check in StatisticWithHeights runs on iter->second, which is the
+// OLDER (baseline) entry — not on piter->second (the new entry above
+// latest_statisticed_height_).  iter always points to the Init entry at height=0.
+// So we must set min>max directly in statistic_pool_info_[0][pool_idx] after Init().
 // ---------------------------------------------------------------------------
 
 TEST_F(ShardStatExtra3Test, StatisticWithHeights_MinGtMax_ReturnsError) {
@@ -290,17 +295,17 @@ TEST_F(ShardStatExtra3Test, StatisticWithHeights_MinGtMax_ReturnsError) {
     common::GlobalInfo::Instance()->set_network_id(network::kConsensusShardBeginNetworkId);
     ASSERT_EQ(stat.Init(), kPoolsSuccess);
 
-    // Build second entry at height=2 where pool 0 has min_height > max_height
+    // Corrupt the Init entry (height=0): set pool 0 min > max.
+    // This is the entry iter will point to during StatisticWithHeights.
+    stat.statistic_pool_info_[0][0].statistic_min_height = 10;
+    stat.statistic_pool_info_[0][0].statistic_max_height = 5;
+
+    // Add a second entry at height=2 so the iteration produces valid piter != rend
     std::map<uint32_t, StatisticInfoItem> pool_map2;
     for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
         StatisticInfoItem item;
-        if (i == 0) {
-            item.statistic_min_height = 10;
-            item.statistic_max_height = 5;  // min > max → error
-        } else {
-            item.statistic_min_height = 0;
-            item.statistic_max_height = 5;
-        }
+        item.statistic_min_height = 0;
+        item.statistic_max_height = 5;
         pool_map2[i] = item;
     }
     stat.statistic_pool_info_[2] = pool_map2;
