@@ -230,10 +230,12 @@ TEST_F(TestTxPoolManagerExtra2, ConsensusTimerMessage_ValidNetId_AllBranchesFire
     mgr_->prev_sync_check_ms_          = 0;
     mgr_->prev_sync_heights_ms_        = 0;
     mgr_->prev_sync_cross_ms_          = 0;
-    // SyncPoolsMaxHeight with now_max_sharding_id_=0 → loop doesn't run → no Route::Send
-    ASSERT_EQ(mgr_->now_max_sharding_id_, 0u);
+    // Zero out now_max_sharding_id_ so SyncPoolsMaxHeight loop doesn't call Route::Send
+    auto saved = mgr_->now_max_sharding_id_;
+    mgr_->now_max_sharding_id_ = 0;
     mgr_->ConsensusTimerMessage();
     // No crash
+    mgr_->now_max_sharding_id_ = saved;
 }
 
 // ---------------------------------------------------------------------------
