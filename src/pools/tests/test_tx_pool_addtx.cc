@@ -137,7 +137,7 @@ TEST_F(TestTxPoolAddTx, GetTxSyncToLeader_NonUserTx_AlreadyOvered_Skipped) {
     TxPool pool;
     SetUpPool(pool);
 
-    auto tx = MakeTxItem2(0, 1, pools::protobuf::kElectTx);
+    auto tx = MakeTxItem2(0, 1, pools::protobuf::kStatistic);
     // Set a non-empty key so the DB lookup works correctly
     const std::string test_key = "test_overed_key_abc123";
     tx->tx_info->set_key(test_key);
@@ -164,7 +164,7 @@ TEST_F(TestTxPoolAddTx, GetTxSyncToLeader_NonUserTx_ToMismatch_Skipped) {
     TxPool pool;
     SetUpPool(pool);
 
-    auto tx = MakeTxItem2(0, 1, pools::protobuf::kElectTx);
+    auto tx = MakeTxItem2(0, 1, pools::protobuf::kStatistic);
     // Set to != addr to hit the mismatch branch
     tx->tx_info->set_to("different_addr_xxxxxxxxxxxxxxxxxx");
 
@@ -185,7 +185,7 @@ TEST_F(TestTxPoolAddTx, GetTxSyncToLeader_NonUserTx_Valid_AddedToTxMap) {
     SetUpPool(pool);
 
     std::string addr(common::kUnicastAddressLength, 'S');
-    auto tx = MakeTxItem2(0, 1, pools::protobuf::kElectTx, addr);
+    auto tx = MakeTxItem2(0, 1, pools::protobuf::kStatistic, addr);
     tx->tx_info->set_to(addr);  // to == addr
 
     pool.AddTx(tx);

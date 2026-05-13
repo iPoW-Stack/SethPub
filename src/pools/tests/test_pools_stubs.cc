@@ -9,14 +9,7 @@
 
 #include "sync/key_value_sync.h"
 #include "block/account_manager.h"
-#include "common/node_members.h"
-
-// Forward-declare libff types used by ElectManager::GetNetworkMembersWithHeight
-// so we can define the stub without pulling in all of libff.
-namespace libff {
-class alt_bn128_G2;
-class alt_bn128_Fr;
-}  // namespace libff
+#include "elect/elect_manager.h"
 
 namespace seth {
 
@@ -40,7 +33,6 @@ protos::AddressInfoPtr AccountManager::GetAccountInfo(const std::string&) {
 // HandleStatistic's getLeaderIdFromBlock returns "" and the statistic loop
 // exits cleanly without crashing.
 namespace elect {
-class ElectManager;
 
 common::MembersPtr ElectManager::GetNetworkMembersWithHeight(
         uint64_t /*elect_height*/,
@@ -53,6 +45,7 @@ common::MembersPtr ElectManager::GetNetworkMembersWithHeight(
 uint64_t ElectManager::latest_height(uint32_t /*network_id*/) {
     return 0;
 }
+
 }  // namespace elect
 
 }  // namespace seth
