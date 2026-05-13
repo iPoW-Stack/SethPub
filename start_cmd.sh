@@ -75,27 +75,27 @@ stop_services() {
 
 ulimit -n 1000000
 
- # 优化TCP缓冲区
-sysctl -w net.core.rmem_max=134217728 > /dev/null 2>&1
-sysctl -w net.core.wmem_max=134217728 > /dev/null 2>&1
-echo "✓ TCP缓冲区已优化 (128MB)"
-
-# 优化TCP参数
-sysctl -w net.ipv4.tcp_rmem="4096 87380 134217728" > /dev/null 2>&1
-sysctl -w net.ipv4.tcp_wmem="4096 65536 134217728" > /dev/null 2>&1
-echo "✓ TCP读写缓冲已优化"
-
-# 优化TCP连接
-sysctl -w net.ipv4.tcp_tw_reuse=1 > /dev/null 2>&1
-sysctl -w net.ipv4.tcp_fin_timeout=30 > /dev/null 2>&1
-echo "✓ TCP连接复用已启用"
-
-# 写入配置
-echo "net.core.default_qdisc=fq" | sudo tee -a /etc/apt/sysctl.conf
-echo "net.ipv4.tcp_congestion_control=bbr" | sudo tee -a /etc/apt/sysctl.conf
-
-# 刷新配置使其生效
-sudo sysctl -p
+# 优化 TCP（Docker / Mac 容器内常无权限写 sysctl；设 SETH_SKIP_SYSCTL=1 可强制跳过）
+if [ "${SETH_SKIP_SYSCTL:-0}" != "1" ] && [ -w /proc/sys/net/core/rmem_max ] 2>/dev/null; then
+    sysctl -w net.core.rmem_max=134217728 > /dev/null 2>&1
+    sysctl -w net.core.wmem_max=134217728 > /dev/null 2>&1
+    echo "✓ TCP缓冲区已优化 (128MB)"
+    sysctl -w net.ipv4.tcp_rmem="4096 87380 134217728" > /dev/null 2>&1
+    sysctl -w net.ipv4.tcp_wmem="4096 65536 134217728" > /dev/null 2>&1
+    echo "✓ TCP读写缓冲已优化"
+    sysctl -w net.ipv4.tcp_tw_reuse=1 > /dev/null 2>&1
+    sysctl -w net.ipv4.tcp_fin_timeout=30 > /dev/null 2>&1
+    echo "✓ TCP连接复用已启用"
+    if [ -w /etc/sysctl.conf ] 2>/dev/null; then
+        grep -q 'net.core.default_qdisc=fq' /etc/sysctl.conf 2>/dev/null || \
+            echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
+        grep -q 'net.ipv4.tcp_congestion_control=bbr' /etc/sysctl.conf 2>/dev/null || \
+            echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
+        sysctl -p >/dev/null 2>&1 || true
+    fi
+else
+    echo ">>> Skipping TCP sysctl (no write access or SETH_SKIP_SYSCTL=1); typical for Docker on Mac."
+fi
 
 # ==========================================
 # 4. 启动新服务逻辑 (兼容模式)
