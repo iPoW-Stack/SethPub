@@ -213,7 +213,7 @@ TEST_F(TestToTxsPoolsExtra2, CreateToTxWithHeights_SuccessPath_ReturnsSuccess) {
 
     // Set up network_txs_pools_[0][1] with an entry whose sharding_id matches
     std::string addr(common::kUnicastAddressLength, 'X');
-    block::protobuf::ToTxMessageItem to_item;
+    pools::protobuf::ToTxMessageItem to_item;
     to_item.set_des(addr);
     to_item.set_des_sharding_id(network::kRootCongressNetworkId);
     to_item.set_amount(100);
@@ -244,7 +244,7 @@ TEST_F(TestToTxsPoolsExtra2, CreateToTxWithHeights_AccumulateAmount_Success) {
 
     std::string addr(common::kUnicastAddressLength, 'Y');
     auto make_item = [&](uint64_t amount) {
-        block::protobuf::ToTxMessageItem it;
+        pools::protobuf::ToTxMessageItem it;
         it.set_des(addr);
         it.set_des_sharding_id(network::kRootCongressNetworkId);
         it.set_amount(amount);
