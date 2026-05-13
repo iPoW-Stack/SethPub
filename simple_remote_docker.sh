@@ -14,6 +14,8 @@
 #   bash simple_remote_docker.sh 1 192.168.1.10,192.168.1.11 3
 #   bash simple_remote_docker.sh 1 10.0.0.1 3 '' Release
 #
+# Env SETH_PKG_DIR, SETH_STAGING, USE_PKG_TAR, SETH_NO_ROOT_PKG_FALLBACK, etc. pass through to docker/arm64/simple_remote_docker.sh (see docker/arm64/README.md).
+#
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 IPS="${2:-host.docker.internal}"

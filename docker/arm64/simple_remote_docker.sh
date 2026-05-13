@@ -14,6 +14,9 @@
 #   RUN_IMAGE=seth-node:arm64   — runtime image name (default seth-node:arm64)
 #   USE_PKG_TAR=1               — extract docker/arm64/staging/pkg.tar.gz into staging/pkg
 #   SETH_SKIP_SYSCTL=1          — passed to start (default on)
+#   SETH_STAGING=…              — override staging root (default <repo>/docker/arm64/staging)
+#   SETH_PKG_DIR=…              — use this dir as the deploy bundle (must contain ./seth), same layout as remote /root/pkg
+#   SETH_NO_ROOT_PKG_FALLBACK=1 — do not auto-use /root/pkg when staging/pkg is missing
 
 set -euo pipefail
 
@@ -24,7 +27,7 @@ TARGET="${4:-Release}"
 FIRST_NODE="${5:-$EACH}"
 
 SETH_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-STAGING="${SETH_ROOT}/docker/arm64/staging"
+STAGING="${SETH_STAGING:-${SETH_ROOT}/docker/arm64/staging}"
 RUN_IMAGE="${RUN_IMAGE:-seth-node:arm64}"
 
 mkdir -p "${STAGING}/seths"
@@ -35,9 +38,38 @@ if [[ "${USE_PKG_TAR:-0}" == "1" && -f "${STAGING}/pkg.tar.gz" ]]; then
   tar -xzf "${STAGING}/pkg.tar.gz" -C "${STAGING}"
 fi
 
-if [[ ! -d "${STAGING}/pkg" || ! -f "${STAGING}/pkg/seth" ]]; then
-  echo "Missing ${STAGING}/pkg (need unpacked pkg like on remote under /root/pkg)."
-  echo "Set USE_PKG_TAR=1 and place pkg.tar.gz at ${STAGING}/pkg.tar.gz, or unpack manually."
+resolve_pkg_dir() {
+  local d
+  if [[ -n "${SETH_PKG_DIR:-}" ]]; then
+    d="$(cd "${SETH_PKG_DIR}" && pwd)"
+    if [[ -f "${d}/seth" ]]; then
+      echo "${d}"
+      return 0
+    fi
+    echo "SETH_PKG_DIR=${SETH_PKG_DIR} does not contain ./seth" >&2
+    exit 1
+  fi
+  if [[ -d "${STAGING}/pkg" && -f "${STAGING}/pkg/seth" ]]; then
+    echo "$(cd "${STAGING}/pkg" && pwd)"
+    return 0
+  fi
+  if [[ "${SETH_NO_ROOT_PKG_FALLBACK:-0}" != "1" && -d /root/pkg && -f /root/pkg/seth ]]; then
+    echo ">>> Using /root/pkg as deploy bundle (${STAGING}/pkg missing). Override with SETH_PKG_DIR or populate staging/pkg." >&2
+    echo "/root/pkg"
+    return 0
+  fi
+  return 1
+}
+
+PKG_DIR=""
+if ! PKG_DIR="$(resolve_pkg_dir)"; then
+  echo "Missing deployment bundle (need a directory with ./seth, same layout as remote /root/pkg)."
+  echo "  Tried: SETH_PKG_DIR, then ${STAGING}/pkg, then /root/pkg (unless SETH_NO_ROOT_PKG_FALLBACK=1)."
+  echo "Fix one of:"
+  echo "  - mkdir -p ${STAGING} && unpack pkg into ${STAGING}/pkg/"
+  echo "  - USE_PKG_TAR=1 with ${STAGING}/pkg.tar.gz present"
+  echo "  - export SETH_PKG_DIR=/path/to/pkg   # directory that contains seth, txcli, shards*, …"
+  echo "  - Or copy bundle to /root/pkg inside this environment (same as remote)."
   exit 1
 fi
 
@@ -66,7 +98,7 @@ echo "  public_ip=${PUBLIC_IP} start=1 first_count=${FIRST_NODE} each=${EACH} en
 
 docker run --rm --platform linux/arm64 \
   --add-host=host.docker.internal:host-gateway \
-  -v "${STAGING}/pkg:/root/pkg:ro" \
+  -v "${PKG_DIR}:/root/pkg:ro" \
   -v "${STAGING}/seths:/root/seths" \
   -v "${SETH_ROOT}/start_cmd.sh:/root/start_cmd.sh:ro" \
   -v "${SETH_ROOT}/docker/arm64/temp_cmd_docker.sh:/usr/local/bin/temp_cmd_docker.sh:ro" \

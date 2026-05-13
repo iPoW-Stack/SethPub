@@ -42,6 +42,15 @@ USE_PKG_TAR=1 bash docker/arm64/simple_remote_docker.sh ...
 
 (`USE_PKG_TAR=1` unpacks `staging/pkg.tar.gz` into `staging/pkg/` before run.)
 
+**Option C — bundle already under `/root/pkg` (remote-style, or another path)**
+
+If you run from a Linux environment where the deploy tree is already at **`/root/pkg`** (with `./seth` present) and you did **not** populate `docker/arm64/staging/pkg/`, the script will **automatically** use `/root/pkg` as the read-only mount source. To force only `staging/pkg` or an explicit path, set **`SETH_NO_ROOT_PKG_FALLBACK=1`** or **`SETH_PKG_DIR=/path/to/pkg`**.
+
+```bash
+export SETH_PKG_DIR=/data/my_pkg   # optional explicit bundle directory (must contain ./seth)
+export SETH_STAGING=/tmp/seth-staging   # optional: where seths/ data is created (default under repo)
+```
+
 ## 3) Build runtime image and start nodes (one host)
 
 ```bash
@@ -66,7 +75,7 @@ The script:
 
 - Builds **`docker/arm64/Dockerfile.runtime`** (`seth-node:arm64`).
 - Runs **`temp_cmd_docker.sh`** then **`start_cmd_docker.sh`** in one container with:
-  - `/root/pkg` → `docker/arm64/staging/pkg` (read-only)
+  - `/root/pkg` → resolved deploy bundle: `staging/pkg`, or `SETH_PKG_DIR`, or `/root/pkg` when present (see §2)
   - `/root/seths` → `docker/arm64/staging/seths` (read-write, persists data)
 
 `start_cmd.sh` is bind-mounted so edits on the host apply without rebuilding the image (except when you change installed packages).
