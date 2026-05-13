@@ -23,6 +23,9 @@
 #include "test_tx_pool_mocks.h"
 #include "transport/transport_utils.h"
 
+#include "consensus/consensus_utils.h"
+#include "tnet/tcp_interface.h"
+
 #define private public
 #define protected public
 #include "db/db.h"
@@ -77,6 +80,26 @@ static transport::MessagePtr MakeEthUserFirewallMessage(const std::string& pubke
     tx->set_gas_price(1);
     tx->set_eth_raw_tx("0x01");
     return msg;
+}
+
+// Minimal TcpInterface for conn != nullptr guards in HandlePoolsMessage.
+struct FakeTcpConnForPools : tnet::TcpInterface {
+    std::string PeerIp() override { return "127.0.0.1"; }
+    uint16_t PeerPort() override { return 9; }
+    void SetPeerIp(const std::string&) override {}
+    void SetPeerPort(uint16_t) override {}
+    int Send(const std::string&) override { return 0; }
+    int Send(const char*, int32_t) override { return 0; }
+    int Send(uint64_t, const std::string&) override { return 0; }
+    int Send(const char*, int32_t, uint64_t) override { return 0; }
+};
+
+static uint32_t ExpectedLocalShardForInvalidUint32Network() {
+    uint32_t local_shard = common::GlobalInfo::Instance()->network_id();
+    if (local_shard >= network::kConsensusShardEndNetworkId) {
+        local_shard -= network::kConsensusWaitingShardOffset;
+    }
+    return local_shard;
 }
 
 }  // namespace
@@ -579,6 +602,188 @@ TEST_F(TestTxPoolManager, TxPoolHandleMessage_UserLookupFails_SetsInvalidAddress
 
     mgr_->TxPoolHandleMessage(msg);
     EXPECT_EQ(msg->handle_status, transport::kTxInvalidAddress);
+}
+
+// ---------------------------------------------------------------------------
+// HandlePoolsMessage (tx_pool_manager.cc ~657-762) — direct calls bypass TmpFirewall
+// ---------------------------------------------------------------------------
+
+TEST_F(TestTxPoolManager, HandlePoolsMessage_RootCreateAddress_TooShortTo_ReturnsEarly) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    msg->conn = nullptr;
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kRootCreateAddress);
+    tx->set_to("short");
+    mgr_->HandlePoolsMessage(msg);
+}
+
+TEST_F(TestTxPoolManager, HandlePoolsMessage_RootCreateAddress_WithConn_ReturnsEarly) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    msg->conn = std::make_shared<FakeTcpConnForPools>();
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kRootCreateAddress);
+    tx->set_to(std::string(common::kUnicastAddressLength, 'C'));
+    mgr_->HandlePoolsMessage(msg);
+}
+
+TEST_F(TestTxPoolManager, HandlePoolsMessage_RootCreateAddress_ValidTo_ReachesDispatch) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    msg->conn = nullptr;
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kRootCreateAddress);
+    tx->set_to(std::string(common::kUnicastAddressLength, 'D'));
+    tx->set_nonce(1);
+    tx->set_amount(0);
+    mgr_->HandlePoolsMessage(msg);
+    EXPECT_EQ(msg->handle_status, transport::kUnkonwn);
+}
+
+TEST_F(TestTxPoolManager, HandlePoolsMessage_ConsensusLocalTos_SetsPoolAndDispatch) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kConsensusLocalTos);
+    tx->set_to(std::string(common::kUnicastAddressLength, 'E'));
+    tx->set_nonce(2);
+    tx->set_pubkey("pk");
+    tx->set_sign("sg");
+    tx->set_amount(0);
+    tx->set_gas_limit(21000);
+    tx->set_gas_price(1);
+    mgr_->HandlePoolsMessage(msg);
+    EXPECT_EQ(msg->handle_status, transport::kUnkonwn);
+}
+
+TEST_F(TestTxPoolManager, HandlePoolsMessage_RootCross_SetsPoolIndex) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kRootCross);
+    tx->set_to(std::string(common::kUnicastAddressLength, 'F'));
+    mgr_->HandlePoolsMessage(msg);
+    EXPECT_EQ(msg->handle_status, transport::kUnkonwn);
+}
+
+TEST_F(TestTxPoolManager, HandlePoolsMessage_PoolStatisticTag_UsesAddressPool) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    msg->address_info = MakeTestAddressInfo(3, std::string(common::kUnicastAddressLength, 'G'), common::kInvalidUint32);
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kPoolStatisticTag);
+    tx->set_nonce(1);
+    mgr_->HandlePoolsMessage(msg);
+    EXPECT_EQ(msg->handle_status, transport::kUnkonwn);
+}
+
+TEST_F(TestTxPoolManager, HandlePoolsMessage_Statistic_UsesAddressPool) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    msg->address_info = MakeTestAddressInfo(2, std::string(common::kUnicastAddressLength, 'H'), common::kInvalidUint32);
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kStatistic);
+    tx->set_nonce(1);
+    mgr_->HandlePoolsMessage(msg);
+    EXPECT_EQ(msg->handle_status, transport::kUnkonwn);
+}
+
+TEST_F(TestTxPoolManager, HandlePoolsMessage_ConsensusRootElectShard_UsesAddressPool) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    msg->address_info = MakeTestAddressInfo(1, std::string(common::kUnicastAddressLength, 'J'), common::kInvalidUint32);
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kConsensusRootElectShard);
+    tx->set_nonce(1);
+    mgr_->HandlePoolsMessage(msg);
+    EXPECT_EQ(msg->handle_status, transport::kUnkonwn);
+}
+
+TEST_F(TestTxPoolManager, HandlePoolsMessage_DefaultStep_SetsInvalidAddress) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kNormalTo);
+    tx->set_nonce(1);
+    mgr_->HandlePoolsMessage(msg);
+    EXPECT_EQ(msg->handle_status, transport::kTxInvalidAddress);
+}
+
+TEST_F(TestTxPoolManager, HandlePoolsMessage_CreateContract_ShortCode_RequestInvalid) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kCreateContract);
+    tx->mutable_contract_code()->assign(100, 'x');
+    mgr_->HandlePoolsMessage(msg);
+    EXPECT_EQ(msg->handle_status, transport::kRequestInvalid);
+}
+
+TEST_F(TestTxPoolManager, HandlePoolsMessage_CreateLibrary_ShortCode_RequestInvalid) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kCreateLibrary);
+    tx->mutable_contract_code()->assign(64, 'y');
+    mgr_->HandlePoolsMessage(msg);
+    EXPECT_EQ(msg->handle_status, transport::kRequestInvalid);
+}
+
+TEST_F(TestTxPoolManager, HandlePoolsMessage_ContractGasPrefund_InvalidInput_RequestInvalid) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kContractGasPrefund);
+    tx->set_contract_input("nonempty");
+    tx->set_contract_prefund(1);
+    mgr_->HandlePoolsMessage(msg);
+    EXPECT_EQ(msg->handle_status, transport::kRequestInvalid);
+}
+
+TEST_F(TestTxPoolManager, HandlePoolsMessage_ContractRefund_BadGas_ReturnsOutOfGas) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kContractRefund);
+    tx->set_gas_price(0);
+    tx->set_gas_limit(consensus::kTransferGas);
+    mgr_->HandlePoolsMessage(msg);
+    EXPECT_EQ(msg->handle_status, transport::kConsensusOutOfGas);
+}
+
+TEST_F(TestTxPoolManager, HandlePoolsMessage_JoinElect_BadVerifyKey_RequestInvalid) {
+    ScopedAccMgrAttach acc_guard(mgr_.get());
+    ScopedAccountInfoOverride ov([](const std::string&) {
+        auto ai = MakeTestAddressInfo(0, std::string(common::kUnicastAddressLength, 'K'), common::kInvalidUint32);
+        ai->set_balance(100000000llu);
+        return ai;
+    });
+    auto msg = std::make_shared<transport::TransportMessage>();
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kJoinElect);
+    tx->set_pubkey("pkje");
+    tx->set_to(std::string(common::kUnicastAddressLength, 'L'));
+    tx->set_key("not-the-join-elect-key");
+    mgr_->HandlePoolsMessage(msg);
+    EXPECT_EQ(msg->handle_status, transport::kRequestInvalid);
+}
+
+TEST_F(TestTxPoolManager, HandlePoolsMessage_NormalFrom_BalanceOk_ThenDispatchUnknown) {
+    ScopedAccMgrAttach acc_guard(mgr_.get());
+    const std::string from_addr(common::kUnicastAddressLength, 'M');
+    const std::string to_addr(common::kUnicastAddressLength, 'N');
+    const uint32_t adj_shard = ExpectedLocalShardForInvalidUint32Network();
+
+    ScopedAccountInfoOverride ov([&](const std::string&) {
+        auto ai = MakeTestAddressInfo(0, from_addr, adj_shard);
+        ai->set_balance(500000000llu);
+        ai->set_nonce(0);
+        return ai;
+    });
+
+    auto msg = std::make_shared<transport::TransportMessage>();
+    auto* tx = msg->header.mutable_tx_proto();
+    tx->set_step(pools::protobuf::kNormalFrom);
+    tx->set_nonce(1);
+    tx->set_pubkey("pknf");
+    tx->set_to(to_addr);
+    tx->set_amount(1);
+    tx->set_gas_limit(21000);
+    tx->set_gas_price(1);
+    msg->address_info = MakeTestAddressInfo(0, from_addr, adj_shard);
+    msg->address_info->set_balance(500000000llu);
+    msg->address_info->set_nonce(0);
+
+    mgr_->HandlePoolsMessage(msg);
+    EXPECT_EQ(msg->handle_status, transport::kUnkonwn);
 }
 
 #ifdef SETH_UNITTEST
