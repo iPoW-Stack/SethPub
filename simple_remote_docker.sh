@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Same directory as simple_remote.sh — Docker (linux/arm64) single-host flow.
+# Same directory as simple_remote.sh — Docker (linux/arm64) single-host flow on a machine **with Docker**.
+# For running inside an Ubuntu container without nested Docker, use simple_remote_in_container.sh instead.
 #
 # Mirrors simple_remote.sh argument positions where it makes sense:
 #   $1 each_nodes_count
@@ -14,7 +15,8 @@
 #   bash simple_remote_docker.sh 1 192.168.1.10,192.168.1.11 3
 #   bash simple_remote_docker.sh 1 10.0.0.1 3 '' Release
 #
-# Env SETH_PKG_DIR, SETH_STAGING, USE_PKG_TAR, SETH_NO_ROOT_PKG_FALLBACK, etc. pass through to docker/arm64/simple_remote_docker.sh (see docker/arm64/README.md).
+# SETH_PKG_DIR, SETH_STAGING, USE_PKG_TAR, SETH_NO_ROOT_PKG_FALLBACK, etc. pass through to docker/arm64/simple_remote_docker.sh (see docker/arm64/README.md).
+# For no nested Docker, use simple_remote_in_container.sh (same env keys apply to that script).
 #
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"

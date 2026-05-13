@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 # Aligns with simple_remote.sh + temp_cmd.sh + start_cmd.sh for a single Docker host (linux/arm64).
+# Requires a working Docker CLI/daemon on the machine that runs this script (it builds an image and docker run's it).
+#
+# If you are already inside an Ubuntu container and must NOT nest Docker, use instead:
+#   bash docker/arm64/simple_remote_in_container.sh …
+#   # or from repo root: bash simple_remote_in_container.sh …
 #
 # Usage (from repo root):
 #   bash docker/arm64/simple_remote_docker.sh <each_nodes_count> <public_ip> <end_shard> [Release|Debug] [first_node_count]

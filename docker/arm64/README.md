@@ -51,6 +51,20 @@ export SETH_PKG_DIR=/data/my_pkg   # optional explicit bundle directory (must co
 export SETH_STAGING=/tmp/seth-staging   # optional: where seths/ data is created (default under repo)
 ```
 
+## 2.5) Already inside Ubuntu / no nested Docker
+
+If your shell is **inside** a container (or any Linux host) that has **no** Docker daemon and you already have the repo plus a deploy bundle (`/root/pkg` or `SETH_PKG_DIR` / `staging/pkg`), run the same temp + start flow **without** `docker build` / `docker run`:
+
+```bash
+cd /path/to/SethPub   # repository root inside the container
+chmod +x docker/arm64/*.sh simple_remote_in_container.sh 2>/dev/null || true
+bash simple_remote_in_container.sh 10 172.17.0.2
+# equivalent:
+# bash docker/arm64/simple_remote_in_container.sh 10 172.17.0.2
+```
+
+This script symlinks `/root/pkg` to your resolved bundle when needed, runs `temp_cmd_docker.sh`, then `start_cmd_in_container.sh` (repo `start_cmd.sh` with `SETH_SKIP_SYSCTL=1`). Data ends up under **`/root/seths`** on that machine (not under `docker/arm64/staging/seths`).
+
 ## 3) Build runtime image and start nodes (one host)
 
 ```bash
@@ -99,8 +113,11 @@ docker run -d --platform linux/arm64 --name seth-a \
 | `docker/arm64/build_linux_arm64.sh` | Build `seth` + `txcli` in arm64 Ubuntu container |
 | `docker/arm64/Dockerfile.runtime` | Small runtime image (openssl, iproute2, …) |
 | `docker/arm64/temp_cmd_docker.sh` | Container-safe `temp_cmd` + fixed instance dir `s{shard}_{i}` |
-| `docker/arm64/start_cmd_docker.sh` | Sets `SETH_SKIP_SYSCTL=1`, runs repo `start_cmd.sh` |
-| `docker/arm64/simple_remote_docker.sh` | One-shot: build image + temp + start |
+| `docker/arm64/start_cmd_docker.sh` | Sets `SETH_SKIP_SYSCTL=1`, runs `/root/start_cmd.sh` (bind-mounted in `docker run`) |
+| `docker/arm64/start_cmd_in_container.sh` | Same sysctl skip; runs repo `start_cmd.sh` by path (no Docker) |
+| `docker/arm64/simple_remote_docker.sh` | One-shot on a Docker host: build image + `docker run` + temp + start |
+| `docker/arm64/simple_remote_in_container.sh` | One-shot on the current OS: temp + start (no nested Docker) |
+| `simple_remote_in_container.sh` (repo root) | Wrapper with the same argv mapping as `simple_remote_docker.sh` |
 
 ## `start_cmd.sh` change
 
