@@ -44,7 +44,7 @@ struct MinTxItemE4 : public TxItem {
 static TxItemPtr MakeTxE4(const std::string& addr,
                            uint64_t addr_nonce,
                            uint64_t tx_nonce,
-                           pools::protobuf::TxStep step = pools::protobuf::kNormalFrom) {
+                           pools::protobuf::StepType step = pools::protobuf::kNormalFrom) {
     auto msg = std::make_shared<transport::TransportMessage>();
     auto ai  = std::make_shared<address::protobuf::AddressInfo>();
     ai->set_nonce(addr_nonce);
