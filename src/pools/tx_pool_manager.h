@@ -331,7 +331,9 @@ private:
     uint32_t now_max_sharding_id_ = network::kConsensusShardBeginNetworkId;
     uint32_t prev_cross_sync_index_ = 0;
     std::shared_ptr<CrossBlockManager> cross_block_mgr_ = nullptr;
-    std::mutex consensus_timer_mutex_;
+    // Recursive: ConsensusTimerMessage may re-enter (e.g. SyncPoolsMaxHeight → Route::Send
+    // synchronously dispatching back into pool/timer paths) while the tick callback holds the lock.
+    std::recursive_mutex consensus_timer_mutex_;
     common::Tick tools_tick_;
     common::ThreadSafeQueue<std::shared_ptr<transport::TransportMessage>> pools_msg_queue_[common::kMaxThreadCount];
     uint64_t prev_elect_height_ = common::kInvalidUint64;

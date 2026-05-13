@@ -88,7 +88,7 @@ TxPoolManager::TxPoolManager(
 
 TxPoolManager::~TxPoolManager() {
     {
-        std::lock_guard<std::mutex> lock(consensus_timer_mutex_);
+        std::lock_guard<std::recursive_mutex> lock(consensus_timer_mutex_);
         destroy_.store(true, std::memory_order_release);
         tools_tick_.Destroy();
     }
@@ -352,7 +352,7 @@ void TxPoolManager::FlushHeightTree() {
 }
 
 void TxPoolManager::ConsensusTimerMessage() {
-    std::lock_guard<std::mutex> lock(consensus_timer_mutex_);
+    std::lock_guard<std::recursive_mutex> lock(consensus_timer_mutex_);
     if (destroy_.load(std::memory_order_acquire)) {
         return;
     }
