@@ -34,6 +34,7 @@ set(pools_test_src
     test_tx_pool_extra4.cc
     test_to_txs_pools_extra3.cc
     test_tx_pool_manager_extra2.cc
+    test_tx_pool_manager_extra3.cc
     pools_test_ck_link_stub.cc)
 add_executable(pools_test ${pools_test_src})
 

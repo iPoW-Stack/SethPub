@@ -212,8 +212,13 @@ module_coverage_filter() {
 
 module_prefers_header_metrics() {
     local module_dir="$1"
+    # `pools` is intentionally NOT in this list: its headers include heavily
+    # instantiated templates (e.g. AccountQpsLruMap) which gcov reports once
+    # per translation unit, inflating the line denominator (e.g. 185 lines
+    # for an 88-line header). Excluding headers from the totals here gives a
+    # truthful executable-line percentage for the pools module.
     case "$module_dir" in
-        common|broadcast|security|transport|bls|db|dht|pools|sethvm|big_num|elect|consensus|consensus/hotstuff|vss|sync|protos|block|timeblock|init|websocket)
+        common|broadcast|security|transport|bls|db|dht|sethvm|big_num|elect|consensus|consensus/hotstuff|vss|sync|protos|block|timeblock|init|websocket)
             return 0
             ;;
         *)
