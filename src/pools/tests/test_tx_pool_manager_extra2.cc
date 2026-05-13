@@ -200,24 +200,130 @@ TEST_F(TestTxPoolManagerExtra2, HandleSyncPoolsMaxHeight_ResponseFromSelf_Proces
 
 // ---------------------------------------------------------------------------
 // HandleSyncPoolsMaxHeight: response from a different non-root shard →
-// accesses cross_pools_[sharding_id] but cross_heights is empty → break early
-// (lines 818-831: cross_heights.empty() path)
-// Note: cross_block_mgr_ is null; cross_heights empty → UpdateMaxHeight NOT called
+// accesses cross_pools_[sharding_id] then the do { … } while (0) chain
+// followed by cross_block_mgr_->UpdateMaxHeight(sharding_id, update_height).
+// cross_block_mgr_ is created unconditionally in the TxPoolManager constructor
+// (tx_pool_manager.cc:42) so no mock is needed; we assert on its side effect.
+//
+// Common setup: src_sharding_id = kConsensusShardBeginNetworkId + 1 (= 4).
+//   - 4 < kConsensusShardEndNetworkId (1024) → passes outer guard at line 812.
+//   - 4 != local_des_shard_id (== 3 under this fixture) → enters branch at line 817.
+//   - 4 != kRootCongressNetworkId (2) → enters the cross_heights branch at 818.
+// Each test below exercises a distinct sub-branch of the do { … } while (0)
+// chain (cc lines 822-849) plus the trailing UpdateMaxHeight (cc line 850).
 // ---------------------------------------------------------------------------
 
-TEST_F(TestTxPoolManagerExtra2, HandleSyncPoolsMaxHeight_ResponseFromOtherShard_EmptyCrossHeights) {
-    // Use a src shard that is different from local (3) and not root (2)
-    // kConsensusShardBeginNetworkId+1 = 4 if that's a valid shard
-    // But if there's no shard 4, the function should still not crash on the empty path.
-    // Actually local_des_shard_id = GetLocalConsensusNetworkId() with network_id=3 = 3
-    // src_net_id=4: 4 < kConsensusShardEndNetworkId (large) → passes check
-    // src_net_id=4 != local_des_shard_id=3, src_net_id=4 != kRootCongressNetworkId=2
-    // → enters cross path (lines 819-850)
-    // cross_heights is empty → do { if empty → break } → update_height stays
-    // Then cross_block_mgr_->UpdateMaxHeight(sharding_id, update_height) → crash if null!
-    // So this path is UNSAFE with null cross_block_mgr_.
-    // Just skip this sub-case and document why.
-    GTEST_SKIP() << "cross_block_mgr_ null would crash on UpdateMaxHeight call";
+namespace {
+constexpr uint32_t kOtherShardForExtra2 = network::kConsensusShardBeginNetworkId + 1u;
+
+// Reset both TxPoolManager and CrossBlockManager state for shard kOtherShardForExtra2
+// so successive tests don't leak. Called at the head AND tail of each test.
+void ResetCrossStateForOtherShard(TxPoolManager& mgr) {
+    mgr.cross_pools_[kOtherShardForExtra2].latest_height_       = common::kInvalidUint64;
+    mgr.cross_synced_max_heights_[kOtherShardForExtra2]         = 0;
+    mgr.cross_block_mgr_->cross_synced_max_heights_[kOtherShardForExtra2] = 0;
+}
+
+std::shared_ptr<transport::TransportMessage> MakeResponseFromOtherShard(
+        const std::initializer_list<uint64_t>& cross_heights) {
+    auto msg = std::make_shared<transport::TransportMessage>();
+    msg->header.set_src_sharding_id(kOtherShardForExtra2);
+    auto* sh = msg->header.mutable_sync_heights();
+    sh->set_req(false);
+    for (uint64_t h : cross_heights) {
+        sh->add_cross_heights(h);
+    }
+    return msg;
+}
+}  // namespace
+
+// (1) cross_heights is empty → first break (cc 822-824). update_height retains
+// cross_pools_[sid].latest_height() == kInvalidUint64, so UpdateMaxHeight
+// returns immediately (height == kInvalidUint64). cross_block_mgr_'s
+// max-heights array stays 0.
+TEST_F(TestTxPoolManagerExtra2, HandleSyncPoolsMaxHeight_OtherShard_EmptyCrossHeights_NoUpdate) {
+    ResetCrossStateForOtherShard(*mgr_);
+
+    auto msg = MakeResponseFromOtherShard({});
+    mgr_->HandleSyncPoolsMaxHeight(msg);
+
+    EXPECT_EQ(
+        static_cast<uint64_t>(mgr_->cross_block_mgr_->cross_synced_max_heights_[kOtherShardForExtra2]),
+        0u);
+
+    ResetCrossStateForOtherShard(*mgr_);
+}
+
+// (2) cross_pools_[sid].latest_height()==kInvalidUint64 AND
+// cross_synced_max_heights_[sid] < cross_heights[0] → second branch (cc 827-830).
+// update_height = cross_heights[0] = 10, UpdateMaxHeight sets it.
+TEST_F(TestTxPoolManagerExtra2, HandleSyncPoolsMaxHeight_OtherShard_LatestInvalid_BelowMax_SetsHeight) {
+    ResetCrossStateForOtherShard(*mgr_);
+
+    auto msg = MakeResponseFromOtherShard({10u});
+    mgr_->HandleSyncPoolsMaxHeight(msg);
+
+    EXPECT_EQ(
+        static_cast<uint64_t>(mgr_->cross_block_mgr_->cross_synced_max_heights_[kOtherShardForExtra2]),
+        10u);
+
+    ResetCrossStateForOtherShard(*mgr_);
+}
+
+// (3) cross_heights[0] > cross_pools_[sid].latest_height() + 64 → third branch
+// (cc 833-835). update_height capped at latest+64 = 10+64 = 74.
+TEST_F(TestTxPoolManagerExtra2, HandleSyncPoolsMaxHeight_OtherShard_HeightAbove64Cap) {
+    ResetCrossStateForOtherShard(*mgr_);
+    mgr_->cross_pools_[kOtherShardForExtra2].latest_height_ = 10;
+
+    auto msg = MakeResponseFromOtherShard({200u});  // 200 > 10+64=74 → cap branch
+    mgr_->HandleSyncPoolsMaxHeight(msg);
+
+    EXPECT_EQ(
+        static_cast<uint64_t>(mgr_->cross_block_mgr_->cross_synced_max_heights_[kOtherShardForExtra2]),
+        74u);
+
+    ResetCrossStateForOtherShard(*mgr_);
+}
+
+// (4) cross_heights[0] > cross_pools_[sid].latest_height() but NOT above 64 cap
+// → fourth branch (cc 838-840). update_height = cross_heights[0] = 50.
+TEST_F(TestTxPoolManagerExtra2, HandleSyncPoolsMaxHeight_OtherShard_SimpleHeightUpdate) {
+    ResetCrossStateForOtherShard(*mgr_);
+    mgr_->cross_pools_[kOtherShardForExtra2].latest_height_ = 10;
+
+    auto msg = MakeResponseFromOtherShard({50u});  // 10 < 50 ≤ 74 → simple update
+    mgr_->HandleSyncPoolsMaxHeight(msg);
+
+    EXPECT_EQ(
+        static_cast<uint64_t>(mgr_->cross_block_mgr_->cross_synced_max_heights_[kOtherShardForExtra2]),
+        50u);
+
+    ResetCrossStateForOtherShard(*mgr_);
+}
+
+// (5) cross_heights[0] <= cross_pools_[sid].latest_height() → none of the
+// early `break`s apply → falls through to cc 848 which assigns
+// cross_synced_max_heights_[sid] = cross_heights[0]. update_height stays at
+// its initial value (cross_pools_[sid].latest_height() = 100), so the trailing
+// UpdateMaxHeight(sid, 100) is what lands in cross_block_mgr_.
+TEST_F(TestTxPoolManagerExtra2, HandleSyncPoolsMaxHeight_OtherShard_FallThrough_UsesLatestHeight) {
+    ResetCrossStateForOtherShard(*mgr_);
+    mgr_->cross_pools_[kOtherShardForExtra2].latest_height_ = 100;
+
+    auto msg = MakeResponseFromOtherShard({50u});  // 50 < 100 → fall through
+    mgr_->HandleSyncPoolsMaxHeight(msg);
+
+    // TxPoolManager-owned tracker is set to cross_heights[0] (line 848).
+    EXPECT_EQ(
+        static_cast<uint64_t>(mgr_->cross_synced_max_heights_[kOtherShardForExtra2]),
+        50u);
+    // CrossBlockManager-owned tracker is set to the original latest_height (line 850).
+    EXPECT_EQ(
+        static_cast<uint64_t>(mgr_->cross_block_mgr_->cross_synced_max_heights_[kOtherShardForExtra2]),
+        100u);
+
+    ResetCrossStateForOtherShard(*mgr_);
 }
 
 // ---------------------------------------------------------------------------
