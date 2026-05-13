@@ -7,15 +7,20 @@
 // the KeyValueSync::AddSyncHeight stub in test_pools_stubs.cc makes any call
 // through it a no-op.
 //
-// security_, acc_mgr_, and hotstuff_mgr_ are kept null (default
-// shared_ptr{}), which is safe for all methods exercised here.
+// security_: default FakeSecurityForTxPm in suite; override with ScopedSecurityOverride
+// when a specific address is needed. Optional account rows: ScopedAccountInfoOverride +
+// g_test_account_info_override (wired in test_pools_stubs.cc).
+// hotstuff_mgr_: null in this suite (no leader fan-out). With SETH_UNITTEST + coverage,
+// use TxPoolManager::SetIsOtherLeaderHookForTest to mock is_other_leader (see test_tx_pool_mocks.h).
 
 #include <gtest/gtest.h>
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "sync/key_value_sync.h"
+#include "test_tx_pool_mocks.h"
 #include "transport/transport_utils.h"
 
 #define private public
@@ -56,29 +61,36 @@ public:
         prev_net_ = common::GlobalInfo::Instance()->network_id();
         common::GlobalInfo::Instance()->set_network_id(common::kInvalidUint32);
 
-        kv_  = MakeKvStub();
-        // null shared_ptrs for optional deps
-        std::shared_ptr<security::Security>         null_sec;
-        std::shared_ptr<block::AccountManager>      null_acc;
+        kv_ = MakeKvStub();
+        suite_sec_ = std::make_shared<FakeSecurityForTxPm>(
+            std::string(common::kUnicastAddressLength, static_cast<char>(0xAB)));
+        std::shared_ptr<block::AccountManager> null_acc;
         std::shared_ptr<consensus::HotstuffManager> null_hotstuff;
-        mgr_ = std::make_shared<TxPoolManager>(null_sec, db_, kv_, null_acc, null_hotstuff);
+        mgr_ = std::make_shared<TxPoolManager>(suite_sec_, db_, kv_, null_acc, null_hotstuff);
     }
 
     static void TearDownTestSuite() {
+        g_test_account_info_override = nullptr;
+#ifdef SETH_UNITTEST
+        TxPoolManager::ClearIsOtherLeaderHookForTest();
+#endif
         mgr_.reset();
+        suite_sec_.reset();
         common::GlobalInfo::Instance()->set_network_id(prev_net_);
     }
 
-    static std::shared_ptr<db::Db>           db_;
-    static std::shared_ptr<sync::KeyValueSync> kv_;
-    static std::shared_ptr<TxPoolManager>    mgr_;
-    static uint32_t                          prev_net_;
+    static std::shared_ptr<db::Db>                      db_;
+    static std::shared_ptr<sync::KeyValueSync>          kv_;
+    static std::shared_ptr<security::Security>          suite_sec_;
+    static std::shared_ptr<TxPoolManager>               mgr_;
+    static uint32_t                                     prev_net_;
 };
 
-std::shared_ptr<db::Db>           TestTxPoolManager::db_       = nullptr;
-std::shared_ptr<sync::KeyValueSync> TestTxPoolManager::kv_     = nullptr;
-std::shared_ptr<TxPoolManager>    TestTxPoolManager::mgr_      = nullptr;
-uint32_t                          TestTxPoolManager::prev_net_ = common::kInvalidUint32;
+std::shared_ptr<db::Db>                        TestTxPoolManager::db_             = nullptr;
+std::shared_ptr<sync::KeyValueSync>            TestTxPoolManager::kv_             = nullptr;
+std::shared_ptr<security::Security>           TestTxPoolManager::suite_sec_      = nullptr;
+std::shared_ptr<TxPoolManager>                TestTxPoolManager::mgr_             = nullptr;
+uint32_t                                      TestTxPoolManager::prev_net_        = common::kInvalidUint32;
 
 // ---------------------------------------------------------------------------
 // Constructor coverage (lines 29-69 of tx_pool_manager.cc)
@@ -254,19 +266,31 @@ TEST_F(TestTxPoolManager, OnNewElectBlock_MemberWithPoolModNum_IncrementsLeaderC
     auto members = std::make_shared<common::Members>();
     auto m = std::make_shared<common::BftMember>(
         network::kConsensusShardBeginNetworkId,
-        std::string(common::kUnicastAddressLength, '\x01'),  // id != security_->GetAddress() (null)
+        std::string(common::kUnicastAddressLength, '\x01'),  // id != suite default address (0xAB…)
         "pubkey", 0, 1 /* pool_index_mod_num >= 0 */);
     members->push_back(m);
     mgr_->latest_elect_height_ = 0;
-    // security_ is null — the id comparison won't crash because:
-    // (*members)[i]->id == security_->GetAddress() → security_ nullptr → CRASHES
-    // So we pass a member whose id is "" (won't equal null security_->GetAddress())
-    // Actually this WILL crash if security_ is null. Skip if security_ is null.
-    if (mgr_->security_ == nullptr) {
-        GTEST_SKIP() << "security_ is null; cannot call OnNewElectBlock with non-empty members";
-    }
     mgr_->OnNewElectBlock(common::kInvalidUint32, 20, members);
     EXPECT_GE(mgr_->latest_leader_count_, 1u);
+    EXPECT_EQ(mgr_->member_index_, common::kInvalidUint32);
+}
+
+// Member id matches local security address → member_index_ set (header lines 126–128)
+TEST_F(TestTxPoolManager, OnNewElectBlock_MatchingId_SetsMemberIndex) {
+    const std::string local_addr(common::kUnicastAddressLength, '\x77');
+    ScopedSecurityOverride guard(mgr_->security_);
+    guard.emplace(std::make_shared<FakeSecurityForTxPm>(local_addr));
+
+    auto members = std::make_shared<common::Members>();
+    auto m = std::make_shared<common::BftMember>(
+        network::kConsensusShardBeginNetworkId,
+        local_addr,
+        "pubkey", 0, 0 /* pool_index_mod_num >= 0 */);
+    members->push_back(m);
+    mgr_->latest_elect_height_ = 0;
+    mgr_->OnNewElectBlock(common::kInvalidUint32, 30, members);
+    EXPECT_EQ(mgr_->latest_leader_count_, 1u);
+    EXPECT_EQ(mgr_->member_index_, 0u);
 }
 
 // ---------------------------------------------------------------------------

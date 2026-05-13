@@ -22,9 +22,27 @@
 #include "transport/processor.h"
 #include "transport/tcp_transport.h"
 
+#ifdef SETH_UNITTEST
+#include <functional>
+#endif
+
 namespace seth {
 
 namespace pools {
+
+#ifdef SETH_UNITTEST
+namespace {
+std::function<common::BftMemberPtr(uint32_t)> g_txpm_is_other_leader_test_hook;
+}  // namespace
+
+void TxPoolManager::SetIsOtherLeaderHookForTest(std::function<common::BftMemberPtr(uint32_t)> fn) {
+    g_txpm_is_other_leader_test_hook = std::move(fn);
+}
+
+void TxPoolManager::ClearIsOtherLeaderHookForTest() {
+    g_txpm_is_other_leader_test_hook = nullptr;
+}
+#endif
 
 TxPoolManager::TxPoolManager(
         std::shared_ptr<security::Security>& security,
@@ -570,7 +588,15 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
             (msg_ptr->handle_status == transport::kMessageHandle || 
             msg_ptr->handle_status == transport::kTxAccept)) {
         auto& tx_msg = header.tx_proto();
-        auto leader = hotstuff_mgr_->is_other_leader(msg_ptr->address_info->pool_index());
+        common::BftMemberPtr leader = nullptr;
+#if defined(SETH_UNITTEST)
+        if (g_txpm_is_other_leader_test_hook) {
+            leader = g_txpm_is_other_leader_test_hook(msg_ptr->address_info->pool_index());
+        } else
+#endif
+        if (hotstuff_mgr_) {
+            leader = hotstuff_mgr_->is_other_leader(msg_ptr->address_info->pool_index());
+        }
         if (leader) {
             auto network_id = network::GetLocalConsensusNetworkId();
             auto dht = network::DhtManager::Instance()->GetDht(network_id);

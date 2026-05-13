@@ -5,6 +5,11 @@
 #include <memory>
 #include <mutex>
 #include <queue>
+#include <functional>
+
+#ifdef SETH_UNITTEST
+#include "common/node_members.h"
+#endif
 
 #include "common/bitmap.h"
 #include "common/thread_safe_queue.h"
@@ -76,6 +81,12 @@ public:
     using TxStatusCallback = std::function<void(const std::string&, transport::MessageHandleStatus)>;
     void SetTxStatusCallback(TxStatusCallback cb) { tx_status_cb_ = std::move(cb); }
     const TxStatusCallback& GetTxStatusCallback() const { return tx_status_cb_; }
+
+#ifdef SETH_UNITTEST
+    // pools_test: mock HotstuffManager::is_other_leader without linking consensus.
+    static void SetIsOtherLeaderHookForTest(std::function<common::BftMemberPtr(uint32_t pool_index)> fn);
+    static void ClearIsOtherLeaderHookForTest();
+#endif
 
     bool NewTxValid(uint32_t pool_index, const std::string& addr, uint64_t nonce) {
         return tx_pool_[pool_index].NewTxValid(addr, nonce);

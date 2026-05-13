@@ -7,11 +7,21 @@
 // ONE definition per symbol across the entire test binary — do NOT define
 // these stubs in individual test files.
 
-#include "sync/key_value_sync.h"
+#include <functional>
+
 #include "block/account_manager.h"
 #include "elect/elect_manager.h"
+#include "sync/key_value_sync.h"
+#include "test_tx_pool_mocks.h"
 
 namespace seth {
+
+namespace pools {
+namespace test {
+std::function<std::shared_ptr<address::protobuf::AddressInfo>(const std::string&)>
+    g_test_account_info_override;
+}  // namespace test
+}  // namespace pools
 
 // ---- sync::KeyValueSync ----
 // cross_pool.o and tx_pool.o both reference AddSyncHeight directly (non-virtual).
@@ -22,7 +32,10 @@ void KeyValueSync::AddSyncHeight(uint32_t, uint32_t, uint64_t, uint32_t) {}
 // ---- block::AccountManager ----
 // to_txs_pools.o calls GetAccountInfo directly (non-virtual).
 namespace block {
-protos::AddressInfoPtr AccountManager::GetAccountInfo(const std::string&) {
+protos::AddressInfoPtr AccountManager::GetAccountInfo(const std::string& acc_id) {
+    if (pools::test::g_test_account_info_override) {
+        return pools::test::g_test_account_info_override(acc_id);
+    }
     return nullptr;
 }
 }  // namespace block
