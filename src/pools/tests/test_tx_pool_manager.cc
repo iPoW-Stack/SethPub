@@ -736,7 +736,9 @@ TEST_F(TestTxPoolManager, HandlePoolsMessage_ContractRefund_BadGas_ReturnsOutOfG
     tx->set_gas_price(0);
     tx->set_gas_limit(consensus::kTransferGas);
     mgr_->HandlePoolsMessage(msg);
-    EXPECT_EQ(msg->handle_status, transport::kConsensusOutOfGas);
+    EXPECT_EQ(
+            msg->handle_status,
+            static_cast<transport::MessageHandleStatus>(consensus::kConsensusOutOfGas));
 }
 
 TEST_F(TestTxPoolManager, HandlePoolsMessage_JoinElect_BadVerifyKey_RequestInvalid) {
