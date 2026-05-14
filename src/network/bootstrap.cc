@@ -24,8 +24,9 @@ int Bootstrap::Init(common::Config& config, std::shared_ptr<security::Security>&
     }
 
     std::string bootstrap_net;
-    config.Get("seth", "bootstrap_net", bootstrap_net) ;
-    bootstrap += ',' + bootstrap_net;
+    if (config.TryGet("seth", "bootstrap_net", bootstrap_net) && !bootstrap_net.empty()) {
+        bootstrap += ',' + bootstrap_net;
+    }
 
     common::Split<2048> boot_spliter(bootstrap.c_str(), ',');
     std::set<std::string> boot_set;

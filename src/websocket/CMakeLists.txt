@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.22)
 
 # WebSocket++ headers: prefer third_party/include (same layout as global include path).
 set(_WEBSOCKETPP_VENDOR_INCLUDE "${CMAKE_SOURCE_DIR}/third_party/include")
@@ -15,6 +15,9 @@ else()
     )
     FetchContent_GetProperties(websocketpp)
     if(NOT websocketpp_POPULATED)
+        if(POLICY CMP0169)
+            cmake_policy(SET CMP0169 OLD)
+        endif()
         FetchContent_Populate(websocketpp)
     endif()
     set(_WEBSOCKETPP_INCLUDE_DIR "${websocketpp_SOURCE_DIR}")

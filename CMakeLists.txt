@@ -6,6 +6,10 @@ option(BUILD_CLIENT "build seth client" OFF)
 cmake_minimum_required(VERSION 3.22.0)
 project(seth)
 
+if(POLICY CMP0069)
+  cmake_policy(SET CMP0069 NEW)
+endif()
+
 # =========================================================
 # 1. Default Build Type to Release (Performance First)
 # =========================================================
