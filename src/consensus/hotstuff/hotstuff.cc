@@ -1106,7 +1106,8 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
             UpdateLatestQcItemPtr(tc_ptr);
         }
 
-        SETH_DEBUG("commit use time: %lu", (common::TimeUtils::TimestampMs() - btime));
+        SETH_DEBUG("commit use time: %lu, verify_qc_use_ms: %lu",
+            (common::TimeUtils::TimestampMs() - btime), (verify_qc_end_ms - btime));
     }
 
     return Status::kSuccess;

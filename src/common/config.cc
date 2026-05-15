@@ -37,6 +37,19 @@ bool Config::Get(const std::string& field, const std::string& key, std::string& 
     return true;
 }
 
+bool Config::TryGet(const std::string& field, const std::string& key, std::string& value) const {
+    auto iter = config_map_.find(field);
+    if (iter == config_map_.end()) {
+        return false;
+    }
+    auto kv_iter = iter->second.find(key);
+    if (kv_iter == iter->second.end()) {
+        return false;
+    }
+    value = kv_iter->second;
+    return true;
+}
+
 bool Config::Get(const std::string& field, const std::string& key, bool& value)  const {
     std::string tmp_val;
     if (!Get(field, key, tmp_val)) {
