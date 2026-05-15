@@ -201,6 +201,174 @@ TEST_F(TestCrossPool, RootCrossPoolInitDelegatesToCrossPoolInit) {
     EXPECT_EQ(pool.pool_index_, 0u);
 }
 
+// ---- Additional CrossPool edge case tests ----
+
+TEST_F(TestCrossPool, CrossPoolInitWithMaxPoolIndex) {
+    CrossPool pool;
+    auto fake_sync = MakeFakeSync();
+    
+    // Test with maximum pool index
+    pool.Init(UINT32_MAX, db_ptr_, fake_sync);
+    EXPECT_EQ(pool.pool_index_, UINT32_MAX);
+    EXPECT_NE(pool.height_tree_ptr_, nullptr);
+}
+
+TEST_F(TestCrossPool, CrossPoolMultipleInitCalls) {
+    CrossPool pool;
+    auto fake_sync = MakeFakeSync();
+    
+    // First initialization
+    pool.Init(1u, db_ptr_, fake_sync);
+    EXPECT_EQ(pool.pool_index_, 1u);
+    auto first_tree_ptr = pool.height_tree_ptr_;
+    
+    // Second initialization should work
+    pool.Init(2u, db_ptr_, fake_sync);
+    EXPECT_EQ(pool.pool_index_, 2u);
+    // Tree pointer might be different after re-initialization
+}
+
+TEST_F(TestCrossPool, CrossPoolUpdateLatestInfoEdgeCases) {
+    CrossPool pool;
+    auto fake_sync = MakeFakeSync();
+    pool.Init(0u, db_ptr_, fake_sync);
+    
+    // Test with zero height
+    pool.UpdateLatestInfo(0u);
+    EXPECT_EQ(pool.latest_height(), 0u);
+    
+    // Test with maximum height
+    pool.UpdateLatestInfo(UINT64_MAX);
+    EXPECT_EQ(pool.latest_height(), UINT64_MAX);
+    
+    // Test with decreasing height (should still update)
+    pool.UpdateLatestInfo(100u);
+    EXPECT_EQ(pool.latest_height(), 100u);
+}
+
+TEST_F(TestCrossPool, CrossPoolWithDifferentShardingIds) {
+    const uint32_t prev_network_id = common::GlobalInfo::Instance()->network_id();
+    
+    // Test with different network IDs
+    std::vector<uint32_t> test_network_ids = {
+        network::kRootCongressNetworkId,
+        network::kConsensusShardBeginNetworkId,
+        network::kConsensusShardEndNetworkId,
+        0u,
+        1u,
+        UINT32_MAX
+    };
+    
+    for (uint32_t network_id : test_network_ids) {
+        common::GlobalInfo::Instance()->set_network_id(network_id);
+        
+        CrossPool pool;
+        auto fake_sync = MakeFakeSync();
+        pool.Init(0u, db_ptr_, fake_sync);
+        
+        EXPECT_EQ(pool.des_sharding_id_, network_id);
+        EXPECT_NE(pool.height_tree_ptr_, nullptr);
+    }
+    
+    common::GlobalInfo::Instance()->set_network_id(prev_network_id);
+}
+
+TEST_F(TestCrossPool, RootCrossPoolMultipleOperations) {
+    RootCrossPool pool;
+    auto fake_sync = MakeFakeSync();
+    
+    // Test multiple init calls
+    pool.Init(0u, db_ptr_, fake_sync);
+    pool.Init(1u, db_ptr_, fake_sync);
+    pool.Init(2u, db_ptr_, fake_sync);
+    
+    EXPECT_EQ(pool.pool_index_, 2u);
+    EXPECT_EQ(pool.des_sharding_id_, network::kRootCongressNetworkId);
+    
+    // Test multiple height updates
+    pool.UpdateLatestInfo(10u);
+    pool.UpdateLatestInfo(20u);
+    pool.UpdateLatestInfo(5u);  // Lower height
+    
+    EXPECT_EQ(pool.latest_height(), 5u);
+}
+
+TEST_F(TestCrossPool, CrossPoolUpdateSyncedHeightWithValidTree) {
+    CrossPool pool;
+    auto fake_sync = MakeFakeSync();
+    pool.Init(0u, db_ptr_, fake_sync);
+    
+    // Ensure tree is initialized
+    ASSERT_NE(pool.height_tree_ptr_, nullptr);
+    
+    // Update synced height multiple times
+    pool.UpdateSyncedHeight();
+    pool.UpdateSyncedHeight();
+    pool.UpdateSyncedHeight();
+    
+    // Should not crash and should handle gracefully
+}
+
+TEST_F(TestCrossPool, CrossPoolStressTest) {
+    CrossPool pool;
+    auto fake_sync = MakeFakeSync();
+    pool.Init(0u, db_ptr_, fake_sync);
+    
+    // Stress test with many height updates
+    for (uint64_t i = 0; i < 1000; ++i) {
+        pool.UpdateLatestInfo(i);
+        EXPECT_EQ(pool.latest_height(), i);
+        
+        if (i % 100 == 0) {
+            pool.UpdateSyncedHeight();
+        }
+    }
+}
+
+TEST_F(TestCrossPool, RootCrossPoolStressTest) {
+    RootCrossPool pool;
+    auto fake_sync = MakeFakeSync();
+    pool.Init(0u, db_ptr_, fake_sync);
+    
+    // Stress test with many operations
+    for (uint64_t i = 0; i < 500; ++i) {
+        pool.UpdateLatestInfo(i * 2);
+        EXPECT_EQ(pool.latest_height(), i * 2);
+        EXPECT_EQ(pool.des_sharding_id_, network::kRootCongressNetworkId);
+    }
+}
+
+TEST_F(TestCrossPool, CrossPoolConcurrentLikeOperations) {
+    std::vector<CrossPool> pools(10);
+    auto fake_sync = MakeFakeSync();
+    
+    // Initialize multiple pools
+    for (size_t i = 0; i < pools.size(); ++i) {
+        pools[i].Init(static_cast<uint32_t>(i), db_ptr_, fake_sync);
+        EXPECT_EQ(pools[i].pool_index_, static_cast<uint32_t>(i));
+    }
+    
+    // Simulate concurrent-like operations
+    for (uint64_t height = 0; height < 100; ++height) {
+        for (size_t i = 0; i < pools.size(); ++i) {
+            pools[i].UpdateLatestInfo(height + i);
+            EXPECT_EQ(pools[i].latest_height(), height + i);
+        }
+    }
+}
+
+TEST_F(TestCrossPool, CrossPoolMemoryManagement) {
+    // Test that pools can be created and destroyed without issues
+    for (int i = 0; i < 100; ++i) {
+        auto pool = std::make_unique<CrossPool>();
+        auto fake_sync = MakeFakeSync();
+        pool->Init(static_cast<uint32_t>(i), db_ptr_, fake_sync);
+        pool->UpdateLatestInfo(static_cast<uint64_t>(i));
+        EXPECT_EQ(pool->latest_height(), static_cast<uint64_t>(i));
+        // pool automatically destroyed at end of scope
+    }
+}
+
 }  // namespace test
 }  // namespace pools
 }  // namespace seth
