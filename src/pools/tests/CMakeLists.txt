@@ -39,6 +39,8 @@ set(pools_test_src
     test_pools_branch_extra.cc
     test_root_cross_pool_enhanced.cc
     test_cross_pool_enhanced.cc
+    test_pools_coverage_enhancement.cc
+    test_pools_boundary_conditions.cc
     pools_test_ck_link_stub.cc)
 add_executable(pools_test ${pools_test_src})
 
