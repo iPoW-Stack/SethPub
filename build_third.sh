@@ -91,8 +91,16 @@ if [ ! -d "$SRC_PATH/third_party/include/libuv" ]; then
     sed -i 's/"uv\//"libuv\//g' $SRC_PATH/third_party/include/libuv/win.h
 fi
 
+patch_libbls_argtable2() {
+    local arg_int="$SRC_PATH/third_party/libbls/deps/argtable2/src/arg_int.c"
+    if [ -f "$arg_int" ]; then
+        bash "$SRC_PATH/scripts/patch_argtable2_arg_int.sh" "$arg_int"
+    fi
+}
+
 if [ ! -d "$SRC_PATH/third_party/include/libbls" ]; then
     cd $SRC_PATH
+    patch_libbls_argtable2
     cd third_party/libbls && cd ./deps && PARALLEL_COUNT=1 bash build.sh && cp deps_inst/x86_or_x64/lib64/lib* deps_inst/x86_or_x64/lib/ ; cd .. && cmake -S . -B build_release  -DUSE_ASM=False  -DWITH_PROCPS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DLIBBLS_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j8 && make install
     mkdir -p $SRC_PATH/third_party/include/libbls && cp -rnf ../third_party ../tools ../dkg ../bls $SRC_PATH/third_party/include/libbls
     cp -rnf ../deps/deps_inst/x86_or_x64/include/boost/* $SRC_PATH/third_party/include/boost/

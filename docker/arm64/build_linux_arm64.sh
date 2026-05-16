@@ -30,7 +30,7 @@ docker run --rm --platform linux/arm64 \
     apt-get install -y --no-install-recommends \
       build-essential cmake ninja-build pkg-config git curl ca-certificates xxd python3 \
       libssl-dev zlib1g-dev liblz4-dev libzstd-dev \
-      libgmp-dev flex bison
+      libgmp-dev flex bison bzip2 lbzip2
     cd /root/seth
     bash build.sh seth \"\${TARGET}\"
     cd \"/root/seth/cbuild_\${TARGET}\"
