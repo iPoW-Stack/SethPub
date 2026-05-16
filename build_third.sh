@@ -262,11 +262,11 @@ if [ ! -f "$SRC_PATH/third_party/include/libusockets.h" ]; then
     mkdir -p $SRC_PATH/third_party/include/uWebSockets
     cp src/*.h $SRC_PATH/third_party/include/uWebSockets/
     
-    # Build uSockets library
+    # Build uSockets library (no LTO: must match seth link when SETH_ENABLE_LTO is off)
     echo "Building uSockets library..."
     cd uSockets
     make clean || true
-    WITH_OPENSSL=1 make -j${nproc}
+    WITH_OPENSSL=1 make -j${nproc} CFLAGS="-O3 -fPIC -fno-lto" CXXFLAGS="-fno-lto" LDFLAGS="-fno-lto"
     mkdir -p $SRC_PATH/third_party/lib
     cp uSockets.a $SRC_PATH/third_party/lib/libuSockets.a
     

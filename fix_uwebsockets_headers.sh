@@ -35,7 +35,7 @@ cp src/*.h ../include/uWebSockets/
 if [ ! -f "../lib/libuSockets.a" ]; then
     echo "Building uSockets library..."
     cd uSockets
-    WITH_OPENSSL=1 make -j$(nproc)
+    WITH_OPENSSL=1 make -j$(nproc) CFLAGS="-O3 -fPIC -fno-lto" CXXFLAGS="-fno-lto" LDFLAGS="-fno-lto"
     mkdir -p ../../lib
     cp uSockets.a ../../lib/libuSockets.a
     cd ..

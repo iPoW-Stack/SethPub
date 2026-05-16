@@ -19,15 +19,20 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 # =========================================================
-# 2. Enable LTO (Link Time Optimization) - Critical for Performance
+# 2. Optional LTO (off by default: third_party/*.a are often built with another GCC)
 # =========================================================
-include(CheckIPOSupported)
-check_ipo_supported(RESULT ipo_supported OUTPUT ipo_output)
-if(ipo_supported)
-    message(STATUS "IPO/LTO is supported. Enabling Interprocedural Optimization.")
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+option(SETH_ENABLE_LTO "Enable IPO/LTO for Release (all static deps must be built with the same compiler/LTO)" OFF)
+if(SETH_ENABLE_LTO)
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT ipo_supported OUTPUT ipo_output)
+    if(ipo_supported)
+        message(STATUS "IPO/LTO enabled for Release (SETH_ENABLE_LTO=ON).")
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+    else()
+        message(WARNING "SETH_ENABLE_LTO=ON but IPO/LTO is not supported: ${ipo_output}")
+    endif()
 else()
-    message(WARNING "IPO/LTO is not supported: ${ipo_output}")
+    message(STATUS "IPO/LTO disabled (default). Use -DSETH_ENABLE_LTO=ON only if third_party libs were built with matching LTO.")
 endif()
 
 if(NOT BUILD_CLIENT)
