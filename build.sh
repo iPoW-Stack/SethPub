@@ -94,7 +94,9 @@ else
         -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
         -DREPLACE_WHITEBOX_PK="$PK_ARRAY" \
         -DREPLACE_WHITEBOX_SK="$SK_ARRAY" \
-        -DENABLE_ASAN=OFF
+        -DENABLE_ASAN=OFF \
+        -DSETH_ENABLE_LTO=OFF \
+        -DCMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE=OFF
 fi
 
 # ---- 5. Determine parallelism ----------------------------------------------
