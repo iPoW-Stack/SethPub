@@ -4,9 +4,10 @@ aux_source_directory(./ init_src)
 add_library(init STATIC ${init_src})
 
 target_link_libraries(init PRIVATE block network uv ssl crypto)
+# Quoted: value is a braced C array with commas; unquoted splits into invalid macros.
 target_compile_definitions(init PRIVATE
-    REPLACE_WHITEBOX_PK=${REPLACE_WHITEBOX_PK}
-    REPLACE_WHITEBOX_SK=${REPLACE_WHITEBOX_SK}
+    "REPLACE_WHITEBOX_PK=${REPLACE_WHITEBOX_PK}"
+    "REPLACE_WHITEBOX_SK=${REPLACE_WHITEBOX_SK}"
 )
 
 if (XENABLE_CODE_COVERAGE)

@@ -10,6 +10,28 @@ if(POLICY CMP0069)
   cmake_policy(SET CMP0069 NEW)
 endif()
 
+# Whitebox Curve25519 keys for init (build.sh also passes -DREPLACE_WHITEBOX_*).
+if(NOT DEFINED REPLACE_WHITEBOX_PK OR REPLACE_WHITEBOX_PK STREQUAL "")
+  find_program(SETH_OPENSSL openssl)
+  find_program(SETH_XXD xxd)
+  if(NOT SETH_OPENSSL OR NOT SETH_XXD)
+    message(FATAL_ERROR
+      "REPLACE_WHITEBOX_PK not set. Use: bash build.sh seth Release\n"
+      "  or install openssl + xxd and re-run cmake from an empty build dir.")
+  endif()
+  set(_seth_wb_keys "${CMAKE_BINARY_DIR}/seth_whitebox_keys.cmake")
+  execute_process(
+    COMMAND bash "${CMAKE_SOURCE_DIR}/scripts/gen_whitebox_keys.cmake.sh" "${_seth_wb_keys}"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    RESULT_VARIABLE _seth_wb_rc
+  )
+  if(_seth_wb_rc OR NOT EXISTS "${_seth_wb_keys}")
+    message(FATAL_ERROR "Failed to generate whitebox keys (openssl genpkey / xxd).")
+  endif()
+  include("${_seth_wb_keys}")
+  message(STATUS "Generated ephemeral REPLACE_WHITEBOX_PK/SK at configure time")
+endif()
+
 # =========================================================
 # 1. Default Build Type to Release (Performance First)
 # =========================================================
