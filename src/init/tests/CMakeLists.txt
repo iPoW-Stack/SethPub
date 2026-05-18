@@ -24,3 +24,8 @@ target_link_libraries(init_test PRIVATE
     gmock_main
     pthread
     dl)
+
+if (XENABLE_CODE_COVERAGE)
+    target_compile_options(init_test PRIVATE --coverage)
+    target_link_libraries(init_test PRIVATE gcov)
+endif()
