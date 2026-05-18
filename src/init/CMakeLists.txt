@@ -11,6 +11,7 @@ target_compile_definitions(init PRIVATE
 )
 
 if (XENABLE_CODE_COVERAGE)
+    target_compile_options(init PRIVATE --coverage)
     target_link_libraries(init PRIVATE gcov)
 endif()
 
