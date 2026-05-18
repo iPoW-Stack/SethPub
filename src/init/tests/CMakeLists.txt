@@ -17,6 +17,7 @@ add_dependencies(init_test init)
 
 target_link_libraries(init_test PRIVATE
     ${LINK_ARGS}
+    init
     gtest
     gtest_main
     gmock
