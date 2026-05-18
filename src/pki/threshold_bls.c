@@ -383,50 +383,28 @@ int verify_signature(ThresholdBLS *tbls, element_t sigma, const char *message, d
     
     printf("\n=== Verifying Final Signature ===\n");
     
-    element_t t_val, left1, left2, temp1, temp2;
     element_t H_msg;
     element_t pair_left, pair_right;
     
-    element_init_Zr(t_val, tbls->pairing);
-    element_init_G1(left1, tbls->pairing);
-    element_init_G1(left2, tbls->pairing);
-    element_init_G1(temp1, tbls->pairing);
-    element_init_G1(temp2, tbls->pairing);
     element_init_G1(H_msg, tbls->pairing);
     element_init_GT(pair_left, tbls->pairing);
     element_init_GT(pair_right, tbls->pairing);
     
-    // Randomly select t
-    element_random(t_val);
-    
     // Calculate H_msg
     hash_to_G1(H_msg, message, tbls->pairing);
     
-    // Calculate left side: σ + t * apk_1
-    element_mul_zn(temp1, tbls->apk_1, t_val);  // t * apk_1
-    element_add(left1, sigma, temp1);           // σ + t * apk_1
+    // Standard BLS signature verification: e(σ, g_2) = e(H_msg, apk_2)
+    // Calculate pairing: e(σ, g_2)
+    pairing_apply(pair_left, sigma, tbls->g2, tbls->pairing);
     
-    // Calculate right side base: H_msg + t * g1
-    element_mul_zn(temp2, tbls->g1, t_val);     // t * g1
-    element_add(left2, H_msg, temp2);           // H_msg + t * g1
-    
-    // Calculate pairing: e(σ + t·apk_1, g_2)
-    pairing_apply(pair_left, left1, tbls->g2, tbls->pairing);
-    
-    // Calculate pairing: e(H_msg + t·g_1, apk_2)
-    pairing_apply(pair_right, left2, tbls->apk_2, tbls->pairing);
+    // Calculate pairing: e(H_msg, apk_2)
+    pairing_apply(pair_right, H_msg, tbls->apk_2, tbls->pairing);
     
     int valid = !element_cmp(pair_left, pair_right);
     
     printf("Signature Verification: %s\n", valid ? "VALID" : "INVALID");
-    element_printf("t = %B\n", t_val);
     
     // Clean up
-    element_clear(t_val);
-    element_clear(left1);
-    element_clear(left2);
-    element_clear(temp1);
-    element_clear(temp2);
     element_clear(H_msg);
     element_clear(pair_left);
     element_clear(pair_right);
