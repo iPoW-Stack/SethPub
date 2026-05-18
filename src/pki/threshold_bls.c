@@ -157,13 +157,10 @@ void simulate_dkg(ThresholdBLS *tbls) {
 void aggregate_keys(ThresholdBLS *tbls) {
     printf("\n=== Aggregating Public Keys ===\n");
     
-    element_set0(tbls->apk_1);
-    element_set0(tbls->apk_2);
-    
-    for (int i = 0; i < tbls->n; i++) {
-        element_add(tbls->apk_1, tbls->apk_1, tbls->pk_shares_1[i]);
-        element_add(tbls->apk_2, tbls->apk_2, tbls->pk_shares_2[i]);
-    }
+    // In threshold BLS, the aggregated public key is computed from the master secret key
+    // apk_1 = msk * g1, apk_2 = msk * g2
+    element_mul_zn(tbls->apk_1, tbls->g1, tbls->msk);
+    element_mul_zn(tbls->apk_2, tbls->g2, tbls->msk);
     
     printf("Aggregated public key computed:\n");
     element_printf("apk_1 = %B\n", tbls->apk_1);
