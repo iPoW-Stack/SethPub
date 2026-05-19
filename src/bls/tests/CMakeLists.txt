@@ -9,6 +9,7 @@ set(bls_test_src
     test_bls_utils.cc
     test_bls_utils_branches.cc
     test_bls_extra_branches.cc
+    test_bls_function_branches.cc
     test_dkg_basic.cc)
 add_executable(bls_test ${bls_test_src})
 
