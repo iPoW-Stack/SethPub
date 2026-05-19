@@ -10,6 +10,7 @@
 
 #include "common/global_info.h"
 #include "init/http_handler.h"
+#include "init/uws_adapter.h"
 
 namespace seth {
 namespace init {
@@ -201,6 +202,62 @@ TEST_F(HttpHandlerTest, EdgeCases) {
     EXPECT_EQ(very_long_path.length(), 10000);
     EXPECT_TRUE(empty_path.empty());
     EXPECT_FALSE(special_chars_path.empty());
+}
+
+TEST_F(HttpHandlerTest, UwsRequestParsesQueryParamsAndUrlDecodesValues) {
+    UWSRequest req("name=alice+bob&hex=%41%42&empty=&encoded=%7Bok%7D", "");
+
+    EXPECT_TRUE(req.has_param("name"));
+    EXPECT_EQ(req.get_param_value("name"), "alice bob");
+    EXPECT_EQ(req.get_param_value("hex"), "AB");
+    EXPECT_EQ(req.get_param_value("empty"), "");
+    EXPECT_EQ(req.get_param_value("encoded"), "{ok}");
+    EXPECT_EQ(req.get_param_value("missing"), "");
+}
+
+TEST_F(HttpHandlerTest, UwsRequestParsesBodyParamsAndOverridesQueryValue) {
+    UWSRequest req("key=query&only_query=1", "key=body&only_body=2&badpair");
+
+    EXPECT_EQ(req.body, "key=body&only_body=2&badpair");
+    EXPECT_EQ(req.get_param_value("key"), "body");
+    EXPECT_EQ(req.get_param_value("only_query"), "1");
+    EXPECT_EQ(req.get_param_value("only_body"), "2");
+    EXPECT_FALSE(req.has_param("badpair"));
+}
+
+TEST_F(HttpHandlerTest, UwsRequestLeavesInvalidPercentEscapeMostlyIntact) {
+    UWSRequest req("bad=%ZZ&short=%4&plus=a+b", "");
+
+    EXPECT_EQ(req.get_param_value("bad"), "%ZZ");
+    EXPECT_EQ(req.get_param_value("short"), "%4");
+    EXPECT_EQ(req.get_param_value("plus"), "a b");
+}
+
+TEST_F(HttpHandlerTest, UwsRequestDoesNotParseBodyWithoutEquals) {
+    UWSRequest req("", "plain body without form encoding");
+
+    EXPECT_EQ(req.body, "plain body without form encoding");
+    EXPECT_FALSE(req.has_param("plain body without form encoding"));
+}
+
+TEST_F(HttpHandlerTest, UwsResponseStoresStringCharPointerAndJsonContent) {
+    UWSResponse res;
+    EXPECT_EQ(res.status_code(), 200);
+    EXPECT_EQ(res.content_type(), "text/plain");
+
+    res.set_content(std::string("hello"), "text/custom");
+    EXPECT_EQ(res.content(), "hello");
+    EXPECT_EQ(res.content_type(), "text/custom");
+
+    res.set_content("world", "text/plain");
+    EXPECT_EQ(res.content(), "world");
+    EXPECT_EQ(res.content_type(), "text/plain");
+
+    nlohmann::json json = {{"ok", true}, {"count", 2}};
+    res.set_content(json, "application/json");
+    EXPECT_NE(res.content().find(R"("ok":true)"), std::string::npos);
+    EXPECT_NE(res.content().find(R"("count":2)"), std::string::npos);
+    EXPECT_EQ(res.content_type(), "application/json");
 }
 
 }  // namespace test

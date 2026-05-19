@@ -3,13 +3,23 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "common/global_info.h"
+#include "common/thread_safe_queue.h"
 #include "init/ws_server.h"
+#include "protos/block.pb.h"
+#include "protos/pools.pb.h"
+#include "protos/view_block.pb.h"
+#include "transport/transport_utils.h"
+#include <uv.h>
+
+#define private public
 #include "init/tx_ws_server.h"
+#undef private
 
 namespace seth {
 namespace init {
@@ -370,6 +380,158 @@ TEST_F(WebSocketServerTest, CleanupAndShutdown) {
     uint32_t shutdown_timeout_ms = 10000; // 10 seconds
     EXPECT_GT(shutdown_timeout_ms, 0);
     EXPECT_LT(shutdown_timeout_ms, 60000); // Less than 1 minute
+}
+
+TEST_F(WebSocketServerTest, TxWsMakeTextFrameUsesShortPayloadEncoding) {
+    std::string payload = "ok";
+    std::string frame = TxWsServer::MakeTextFrame(payload);
+
+    ASSERT_EQ(frame.size(), payload.size() + 2);
+    EXPECT_EQ(static_cast<uint8_t>(frame[0]), 0x81);
+    EXPECT_EQ(static_cast<uint8_t>(frame[1]), payload.size());
+    EXPECT_EQ(frame.substr(2), payload);
+}
+
+TEST_F(WebSocketServerTest, TxWsMakeTextFrameUsesExtended16BitPayloadEncoding) {
+    std::string payload(126, 'a');
+    std::string frame = TxWsServer::MakeTextFrame(payload);
+
+    ASSERT_EQ(frame.size(), payload.size() + 4);
+    EXPECT_EQ(static_cast<uint8_t>(frame[0]), 0x81);
+    EXPECT_EQ(static_cast<uint8_t>(frame[1]), 126);
+    EXPECT_EQ(static_cast<uint8_t>(frame[2]), 0);
+    EXPECT_EQ(static_cast<uint8_t>(frame[3]), 126);
+    EXPECT_EQ(frame.substr(4), payload);
+}
+
+TEST_F(WebSocketServerTest, TxWsMakeTextFrameUsesExtended64BitPayloadEncoding) {
+    std::string payload(65536, 'b');
+    std::string frame = TxWsServer::MakeTextFrame(payload);
+
+    ASSERT_EQ(frame.size(), payload.size() + 10);
+    EXPECT_EQ(static_cast<uint8_t>(frame[0]), 0x81);
+    EXPECT_EQ(static_cast<uint8_t>(frame[1]), 127);
+    uint64_t decoded_len = 0;
+    for (int i = 0; i < 8; ++i) {
+        decoded_len = (decoded_len << 8) | static_cast<uint8_t>(frame[2 + i]);
+    }
+    EXPECT_EQ(decoded_len, payload.size());
+    EXPECT_EQ(frame.substr(10), payload);
+}
+
+TEST_F(WebSocketServerTest, TxWsStatusJsonIncludesHashCodeAndMessage) {
+    std::string json = TxWsServer::BuildStatusJson(
+        "abcd",
+        transport::kTxInvalidSignature);
+
+    EXPECT_NE(json.find(R"("tx_hash":"abcd")"), std::string::npos);
+    EXPECT_NE(json.find(R"("status":10004)"), std::string::npos);
+    EXPECT_NE(json.find(R"("msg":"kTxInvalidSignature")"), std::string::npos);
+}
+
+TEST_F(WebSocketServerTest, TxWsAcceptKeyMatchesRfcExample) {
+    EXPECT_EQ(
+        TxWsServer::WsAcceptKey("dGhlIHNhbXBsZSBub25jZQ=="),
+        "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=");
+}
+
+TEST_F(WebSocketServerTest, TxWsBuildTxJsonOmitsOptionalFieldsWhenEmpty) {
+    view_block::protobuf::ViewBlockItem view_block;
+    auto* block = view_block.mutable_block_info();
+    block->set_height(42);
+    block->set_chain_id(7);
+    block->set_timestamp(123456);
+    auto* qc = view_block.mutable_qc();
+    qc->set_network_id(3);
+    qc->set_pool_index(5);
+
+    block::protobuf::BlockTx tx;
+    tx.set_tx_hash(std::string("\x01\x02", 2));
+    tx.set_from(std::string("\x03", 1));
+    tx.set_to(std::string("\x04", 1));
+    tx.set_amount(100);
+    tx.set_gas_used(21);
+    tx.set_gas_price(2);
+    tx.set_status(0);
+    tx.set_step(pools::protobuf::kNormalFrom);
+    tx.set_nonce(9);
+
+    std::string json = TxWsServer::BuildTxJson(view_block, tx);
+    EXPECT_NE(json.find(R"("tx_hash":"0102")"), std::string::npos);
+    EXPECT_NE(json.find(R"("from":"03")"), std::string::npos);
+    EXPECT_NE(json.find(R"("to":"04")"), std::string::npos);
+    EXPECT_NE(json.find(R"("block_height":42)"), std::string::npos);
+    EXPECT_NE(json.find(R"("chainid":7)"), std::string::npos);
+    EXPECT_EQ(json.find("contract_input"), std::string::npos);
+    EXPECT_EQ(json.find("events"), std::string::npos);
+}
+
+TEST_F(WebSocketServerTest, TxWsBuildTxJsonIncludesOptionalInputOutputAndEvents) {
+    view_block::protobuf::ViewBlockItem view_block;
+    view_block.mutable_block_info()->set_timestamp(1);
+    view_block.mutable_qc()->set_network_id(2);
+    view_block.mutable_qc()->set_pool_index(3);
+
+    block::protobuf::BlockTx tx;
+    tx.set_tx_hash(std::string("\xaa", 1));
+    tx.set_contract_input(std::string("\x10\x11", 2));
+    tx.set_output(std::string("\x20", 1));
+    auto* event0 = tx.add_events();
+    event0->set_data(std::string("\x30", 1));
+    event0->add_topics(std::string("\x40", 1));
+    event0->add_topics(std::string("\x41", 1));
+    auto* event1 = tx.add_events();
+    event1->set_data(std::string("\x31", 1));
+
+    std::string json = TxWsServer::BuildTxJson(view_block, tx);
+    EXPECT_NE(json.find(R"("contract_input":"1011")"), std::string::npos);
+    EXPECT_NE(json.find(R"("output":"20")"), std::string::npos);
+    EXPECT_NE(json.find(R"("events":[)"), std::string::npos);
+    EXPECT_NE(json.find(R"("data":"30")"), std::string::npos);
+    EXPECT_NE(json.find(R"("topics":["40","41"])"), std::string::npos);
+    EXPECT_NE(json.find(R"("data":"31")"), std::string::npos);
+}
+
+TEST_F(WebSocketServerTest, TxWsHandleWsFrameSubscribeBranchesWithoutSocketWrite) {
+    TxWsServer server;
+    TxWsServer::Conn conn;
+    conn.server = &server;
+    conn.write_pending = true;
+
+    server.HandleWsFrame(&conn, "subscribe:");
+    ASSERT_EQ(conn.send_queue.size(), 1u);
+    EXPECT_NE(conn.send_queue.back().find("empty txhash"), std::string::npos);
+
+    server.HandleWsFrame(&conn, "subscribe:hash1");
+    ASSERT_EQ(conn.send_queue.size(), 2u);
+    EXPECT_EQ(conn.subscriptions.count("hash1"), 1u);
+    EXPECT_EQ(server.hash_to_conns_["hash1"].count(&conn), 1u);
+    EXPECT_NE(conn.send_queue.back().find("subscribed"), std::string::npos);
+
+    server.HandleWsFrame(&conn, "unsubscribe:hash1");
+    ASSERT_EQ(conn.send_queue.size(), 3u);
+    EXPECT_EQ(conn.subscriptions.count("hash1"), 0u);
+    EXPECT_EQ(server.hash_to_conns_.count("hash1"), 0u);
+    EXPECT_NE(conn.send_queue.back().find("unsubscribed"), std::string::npos);
+
+    server.HandleWsFrame(&conn, "bogus");
+    ASSERT_EQ(conn.send_queue.size(), 4u);
+    EXPECT_NE(conn.send_queue.back().find("unknown command"), std::string::npos);
+}
+
+TEST_F(WebSocketServerTest, TxWsCompleteAndPushCachesAndBroadcastsToCurrentSubscribers) {
+    TxWsServer server;
+    TxWsServer::Conn conn;
+    conn.server = &server;
+    conn.write_pending = true;
+    server.conn_to_hashes_[&conn].insert("hash2");
+    server.hash_to_conns_["hash2"].insert(&conn);
+
+    server.CompleteAndPush("hash2", R"({"done":true})");
+
+    ASSERT_EQ(server.completed_txs_.count("hash2"), 1u);
+    ASSERT_EQ(conn.send_queue.size(), 1u);
+    EXPECT_NE(conn.send_queue[0].find(R"({"done":true})"), std::string::npos);
 }
 
 }  // namespace test

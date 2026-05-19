@@ -20,7 +20,7 @@ public:
     ~StorageLruMap() {}
 
     void insert(const std::string& key, const block::protobuf::KeyValueInfo& value) {
-        auto kv_pair_ptr = std::make_shared<std::pair<std::string, std::string>>(
+        auto kv_pair_ptr = std::make_shared<std::pair<std::string, block::protobuf::KeyValueInfo>>(
             std::make_pair(key, value));
         uint32_t index = common::Hash::Hash32(key) % kBucketSize;
         if (item_map_.count(key)) {
