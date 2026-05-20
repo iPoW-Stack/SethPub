@@ -36,17 +36,22 @@ reset_invalid_submodule third_party/uSockets src/libusockets.h
 git submodule sync --recursive
 git submodule update --init --jobs "${nproc}"
 
-require_submodule_file() {
+ensure_submodule_file() {
     local path="$1"
     local marker="$2"
     if [ ! -e "$path/$marker" ]; then
         echo "Required submodule file is missing: $path/$marker"
-        echo "Try rerunning: git submodule sync --recursive && git submodule update --init $path"
+        echo "Refreshing submodule checkout: $path"
+        rm -rf "$path"
+        git submodule update --init --force "$path"
+    fi
+    if [ ! -e "$path/$marker" ]; then
+        echo "Required submodule file is still missing after refresh: $path/$marker"
         exit 1
     fi
 }
 
-require_submodule_file third_party/evmone include/evmone/evmone.h
+ensure_submodule_file third_party/evmone include/evmone/evmone.h
 
 install_deps() {
     if command -v apt-get >/dev/null 2>&1; then
@@ -89,6 +94,7 @@ build_lib() {
 # 修改后的 evmone 编译部分
 if [ ! -d "$SRC_PATH/third_party/include/evmone" ]; then
     cd $SRC_PATH
+    ensure_submodule_file third_party/evmone include/evmone/evmone.h
     # 建议切换到稳定的 v0.11.0 版本，master 分支可能存在不稳定的开发代码
     cd third_party/evmone && git submodule update --init --recursive
 
