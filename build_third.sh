@@ -357,6 +357,9 @@ if [ ! -d "$SRC_PATH/third_party/include/pbc" ]; then
     cp -rnf ./lib*.a  $SRC_PATH/third_party/lib
 fi
 require_installed_file "$SRC_PATH/third_party/include/pbc/pbc.h"
+require_installed_file "$SRC_PATH/third_party/include/pbc/pbcxx.h"
+sed -i 's/private/public/g' "$SRC_PATH/third_party/include/pbc/pbcxx.h"
+sed -i 's/protected/public/g' "$SRC_PATH/third_party/include/pbc/pbcxx.h"
 
 if [ ! -d "$SRC_PATH/third_party/include/json" ]; then
     cd $SRC_PATH
@@ -364,8 +367,6 @@ if [ ! -d "$SRC_PATH/third_party/include/json" ]; then
 fi
 
 if [ ! -d "$SRC_PATH/third_party/include/cpppbc" ]; then
-    sed -i 's/private/public/g' $SRC_PATH/third_party/include/pbc/pbcxx.h
-    sed -i 's/protected/public/g' $SRC_PATH/third_party/include/pbc/pbcxx.h
     cd $SRC_PATH
     cd third_party/cpppbc && git checkout . && sed -i 's/CXXFLAGS=/CXXFLAGS=-I\.\.\/include -L\.\.\/lib /g' ./Makefile && make -j8 libPBC.a
     mkdir -p $SRC_PATH/third_party/include/cpppbc && cp -rnf ./*.h $SRC_PATH/third_party/include/cpppbc
