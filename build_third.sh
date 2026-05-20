@@ -29,6 +29,15 @@ install_deps() {
 
 install_deps
 
+checkout_if_available() {
+    local ref="$1"
+    if git rev-parse --verify --quiet "${ref}^{commit}" >/dev/null; then
+        git checkout "$ref"
+    else
+        echo "Ref $ref is not available locally; using recorded submodule commit $(git rev-parse --short HEAD)."
+    fi
+}
+
 build_lib() {
     if [ ! -f "$1" ] && [ ! -d "$1" ]; then
         echo "Building $2..."
@@ -46,7 +55,7 @@ if [ ! -d "$SRC_PATH/third_party/include/evmone" ]; then
     cd $SRC_PATH
     # 建议切换到稳定的 v0.11.0 版本，master 分支可能存在不稳定的开发代码
     cd third_party/evmone && git submodule update --init --recursive
-    
+
     # 修改编译选项：使用 -O2 避免激进优化导致的 dispatch 错误，并确保静态链接
     rm -rf build_release
     cmake -S . -B build_release \
@@ -55,7 +64,7 @@ if [ ! -d "$SRC_PATH/third_party/include/evmone" ]; then
         -DBUILD_SHARED_LIBS=OFF \
         -DEVMC_INSTALL=ON \
         -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/
-    
+
     cd build_release && make -j${nproc} && make install
 fi
 
@@ -70,13 +79,13 @@ if [ ! -d "$SRC_PATH/third_party/include/evmc" ]; then
         -DCMAKE_CXX_FLAGS="-O2" \
         -DETHERSCORE=OFF \
         -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/
-        
+
     cd build_release && make -j${nproc} && make install
 fi
 
 if [ ! -d "$SRC_PATH/third_party/include/sodium" ]; then
     cd $SRC_PATH
-    cd third_party/libsodium && git checkout 9511c98 && git submodule update --init && ./configure --prefix=$SRC_PATH/third_party/ && make -j${nproc} && make install 
+    cd third_party/libsodium && checkout_if_available 9511c98 && git submodule update --init && ./configure --prefix=$SRC_PATH/third_party/ && make -j${nproc} && make install
 fi
 
 if [ ! -d "$SRC_PATH/third_party/include/maxmind" ]; then
@@ -89,7 +98,7 @@ fi
 
 if [ ! -d "$SRC_PATH/third_party/include/libuv" ]; then
     cd $SRC_PATH
-    cd third_party/libuv && rm -rf build_release && git checkout 5152db2 && git submodule init && git submodule update && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=$TARGET -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j8 && make install
+    cd third_party/libuv && rm -rf build_release && checkout_if_available 5152db2 && git submodule init && git submodule update && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=$TARGET -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j8 && make install
     rm -rf $SRC_PATH/third_party/include/libuv
     mv $SRC_PATH/third_party/include/uv $SRC_PATH/third_party/include/libuv
     sed -i 's/"uv\//"libuv\//g' $SRC_PATH/third_party/include/uv.h
@@ -115,7 +124,7 @@ fi
 
 if [ ! -d "$SRC_PATH/third_party/include/protobuf" ]; then
     cd $SRC_PATH
-    cd third_party/protobuf/ && git checkout 48cb18e && ./autogen.sh && ./configure --disable-shared --enable-static CXXFLAGS="-fPIC -O3" CFLAGS="-fPIC -O3" --prefix=$SRC_PATH/third_party/ && make -j${nproc} && make install
+    cd third_party/protobuf/ && checkout_if_available 48cb18e && ./autogen.sh && ./configure --disable-shared --enable-static CXXFLAGS="-fPIC -O3" CFLAGS="-fPIC -O3" --prefix=$SRC_PATH/third_party/ && make -j${nproc} && make install
 fi
 
 if [ ! -d "$SRC_PATH/third_party/include/spdlog" ]; then
@@ -130,19 +139,19 @@ fi
 
 if [ ! -d "$SRC_PATH/third_party/include/gmssl" ]; then
     cd $SRC_PATH
-    cd third_party/gmssl && git checkout d655c06 && sed -i "s/-march=native//g" ./CMakeLists.txt && sed -i '19i\#include <gmssl/sm2.h>' ./include/gmssl/sm2_recover.h && cmake -S . -B build_release -DBUILD_SHARED_LIBS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DENABLE_SM2_EXTS=on -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && make install
+    cd third_party/gmssl && checkout_if_available d655c06 && sed -i "s/-march=native//g" ./CMakeLists.txt && sed -i '19i\#include <gmssl/sm2.h>' ./include/gmssl/sm2_recover.h && cmake -S . -B build_release -DBUILD_SHARED_LIBS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DENABLE_SM2_EXTS=on -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && make install
     objcopy --localize-symbol=OPENSSL_hexchar2int        --localize-symbol=OPENSSL_hexstr2buf        $SRC_PATH/third_party/lib/libgmssl.a
 fi
 
 if [ ! -d "$SRC_PATH/third_party/include/gperftools" ]; then
     cd $SRC_PATH
-    cd third_party/gperftools/ && git checkout d9a5d38 && ./autogen.sh && ./configure --prefix=$SRC_PATH/third_party/ && make -j${nproc} && make install
+    cd third_party/gperftools/ && checkout_if_available d9a5d38 && ./autogen.sh && ./configure --prefix=$SRC_PATH/third_party/ && make -j${nproc} && make install
 fi
 
 if [ ! -f "$SRC_PATH/third_party/include/secp256k1.h" ]; then
     cd $SRC_PATH
     #cd third_party/secp256k1 && git checkout a660a49 && cmake -S . -B build_release -DSECP256K1_ENABLE_MODULE_RECOVERY=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && make install
-    cd third_party/secp256k1 && git checkout a660a49 && bash ./autogen.sh && ./configure --enable-module-ecdh --with-internal-keccak --disable-ecmult-static-precomputation --enable-module-recovery --enable-module-schnorrsig --prefix=$SRC_PATH/third_party/ && make -j${nproc} && make install
+    cd third_party/secp256k1 && checkout_if_available a660a49 && bash ./autogen.sh && ./configure --enable-module-ecdh --with-internal-keccak --disable-ecmult-static-precomputation --enable-module-recovery --enable-module-schnorrsig --prefix=$SRC_PATH/third_party/ && make -j${nproc} && make install
 fi
 
 if [ ! -d "$SRC_PATH/third_party/include/gtest" ]; then
@@ -205,34 +214,34 @@ fi
 
 if [ ! -d "$SRC_PATH/third_party/include/ethash" ]; then
     cd $SRC_PATH
-    cd third_party/ethash && git checkout 83bd5ad && cmake -S . -B build_release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && mkdir -p $SRC_PATH/third_party/include/ethash && cp -rnf ../include/ethash/* $SRC_PATH/third_party/include/ethash && cp -rnf ./lib/keccak/libkeccak.a ./lib/ethash/libethash.a ./lib/global_context/libethash-global-context.a $SRC_PATH/third_party/lib
+    cd third_party/ethash && checkout_if_available 83bd5ad && cmake -S . -B build_release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && mkdir -p $SRC_PATH/third_party/include/ethash && cp -rnf ../include/ethash/* $SRC_PATH/third_party/include/ethash && cp -rnf ./lib/keccak/libkeccak.a ./lib/ethash/libethash.a ./lib/global_context/libethash-global-context.a $SRC_PATH/third_party/lib
 fi
 
 
 if [ ! -d "$SRC_PATH/third_party/include/openssl" ]; then
     cd $SRC_PATH
-    cd third_party/openssl/ && git checkout 7b371d8 && ./Configure --prefix=$SRC_PATH/third_party/ && make -j${nproc} && make install
+    cd third_party/openssl/ && checkout_if_available 7b371d8 && ./Configure --prefix=$SRC_PATH/third_party/ && make -j${nproc} && make install
 fi
 
 if [ ! -d "$SRC_PATH/third_party/include/readerwriterqueue" ]; then
     cd $SRC_PATH
-    cd third_party/readerwriterqueue && git checkout 8b21766 && mkdir -p $SRC_PATH/third_party/include/readerwriterqueue && cp -rnf ./*.h $SRC_PATH/third_party/include/readerwriterqueue
+    cd third_party/readerwriterqueue && checkout_if_available 8b21766 && mkdir -p $SRC_PATH/third_party/include/readerwriterqueue && cp -rnf ./*.h $SRC_PATH/third_party/include/readerwriterqueue
 fi
 
 if [ ! -d "$SRC_PATH/third_party/include/boost/multiprecision" ]; then
     cd $SRC_PATH
     mkdir -p $SRC_PATH/third_party/include/boost
-    cd third_party/boost/multiprecision && git checkout c48ae18 && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && make install
+    cd third_party/boost/multiprecision && checkout_if_available c48ae18 && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && make install
 fi
 
 if [ ! -d "$SRC_PATH/third_party/include/oqs" ]; then
     cd $SRC_PATH
-    cd third_party/oqs && git checkout 94b421e && cmake -S . -B build_release -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j8 && make install
+    cd third_party/oqs && checkout_if_available 94b421e && cmake -S . -B build_release -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j8 && make install
 fi
 
 if [ ! -d "$SRC_PATH/third_party/include/leveldb" ]; then
     cd $SRC_PATH
-    cd third_party/leveldb && git checkout 99b3c03 && git submodule init && git submodule update && cmake -S . -B build_release -DLEVELDB_BUILD_TESTS=OFF -DLEVELDB_BUILD_BENCHMARKS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j8 && make install
+    cd third_party/leveldb && checkout_if_available 99b3c03 && git submodule init && git submodule update && cmake -S . -B build_release -DLEVELDB_BUILD_TESTS=OFF -DLEVELDB_BUILD_BENCHMARKS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j8 && make install
 fi
 
 if [ ! -f "$SRC_PATH/third_party/include/httplib.h" ]; then
@@ -244,11 +253,11 @@ fi
 if [ ! -f "$SRC_PATH/third_party/include/libusockets.h" ]; then
     echo "Building uWebSockets and uSockets..."
     cd $SRC_PATH
-    
+
     # Use the uWebSockets commit recorded by the parent repository.
     git submodule update --init third_party/uWebSockets
     cd third_party/uWebSockets
-    
+
     # Use the top-level uSockets submodule. uWebSockets also knows about it
     # as a relative submodule on some tags, but updating it from here can make
     # Git search the parent .gitmodules for "../uSockets".
@@ -258,17 +267,17 @@ if [ ! -f "$SRC_PATH/third_party/include/libusockets.h" ]; then
     if [ ! -d "uSockets" ]; then
         ln -s ../uSockets uSockets 2>/dev/null || cp -R ../uSockets uSockets
     fi
-    
+
     # Copy uSockets headers to main include directory (NOT in subdirectory!)
     echo "Installing uSockets headers..."
     mkdir -p $SRC_PATH/third_party/include
     cp uSockets/src/*.h $SRC_PATH/third_party/include/
-    
+
     # Copy uWebSockets headers
     echo "Installing uWebSockets headers..."
     mkdir -p $SRC_PATH/third_party/include/uWebSockets
     cp src/*.h $SRC_PATH/third_party/include/uWebSockets/
-    
+
     # Build uSockets library (no LTO: must match seth link when SETH_ENABLE_LTO is off)
     echo "Building uSockets library..."
     cd uSockets
@@ -276,7 +285,7 @@ if [ ! -f "$SRC_PATH/third_party/include/libusockets.h" ]; then
     WITH_OPENSSL=1 make -j${nproc} CFLAGS="-O3 -fPIC -fno-lto" CXXFLAGS="-fno-lto" LDFLAGS="-fno-lto"
     mkdir -p $SRC_PATH/third_party/lib
     cp uSockets.a $SRC_PATH/third_party/lib/libuSockets.a
-    
+
     cd $SRC_PATH
     echo "uWebSockets and uSockets installation completed!"
 fi
