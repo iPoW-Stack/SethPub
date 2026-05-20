@@ -26,10 +26,34 @@ reset_invalid_submodule() {
     fi
 }
 
+reset_invalid_cmake_submodule() {
+    local path="$1"
+    local cmake_file="$path/CMakeLists.txt"
+    case "$path" in
+        third_party/*|clipy/*) ;;
+        *)
+            echo "Refusing to clean unexpected submodule path: $path"
+            return 1
+            ;;
+    esac
+
+    if [ -f "$cmake_file" ] && ! grep -q "cmake_minimum_required" "$cmake_file"; then
+        echo "Cleaning invalid CMake submodule checkout: $path"
+        rm -rf "$path"
+    fi
+}
+
 reset_invalid_submodule third_party/evmone include/evmone/evmone.h
+reset_invalid_submodule third_party/evmone CMakeLists.txt
+reset_invalid_cmake_submodule third_party/evmone
 reset_invalid_submodule third_party/libsodium configure.ac
 reset_invalid_submodule third_party/libuv CMakeLists.txt
 reset_invalid_submodule third_party/protobuf autogen.sh
+reset_invalid_submodule third_party/maxmind CMakeLists.txt
+reset_invalid_cmake_submodule third_party/maxmind
+reset_invalid_submodule third_party/geolite2pp CMakeLists.txt
+reset_invalid_cmake_submodule third_party/geolite2pp
+reset_invalid_submodule third_party/pbc simple.make
 reset_invalid_submodule third_party/uWebSockets src/App.h
 reset_invalid_submodule third_party/uSockets src/libusockets.h
 
@@ -75,7 +99,23 @@ ensure_submodule_file() {
     fi
 }
 
+ensure_cmake_submodule() {
+    local path="$1"
+    ensure_submodule_file "$path" CMakeLists.txt
+    if ! grep -q "cmake_minimum_required" "$path/CMakeLists.txt"; then
+        echo "Invalid CMakeLists.txt in submodule: $path"
+        echo "Refreshing submodule checkout: $path"
+        rm -rf "$path"
+        refresh_submodule "$path"
+    fi
+    if ! grep -q "cmake_minimum_required" "$path/CMakeLists.txt"; then
+        echo "Invalid CMakeLists.txt remains after refresh: $path/CMakeLists.txt"
+        exit 1
+    fi
+}
+
 ensure_submodule_file third_party/evmone include/evmone/evmone.h
+ensure_cmake_submodule third_party/evmone
 
 reset_incomplete_install_dir() {
     local path="$1"
@@ -136,14 +176,13 @@ build_lib() {
 }
 
 
-# 修改后的 evmone 编译部分
+# Build evmone from the recorded submodule checkout.
 if [ ! -d "$SRC_PATH/third_party/include/evmone" ]; then
     cd $SRC_PATH
     ensure_submodule_file third_party/evmone include/evmone/evmone.h
-    # 建议切换到稳定的 v0.11.0 版本，master 分支可能存在不稳定的开发代码
-    cd third_party/evmone && git submodule update --init --recursive
+    cd third_party/evmone
+    git submodule update --init --recursive
 
-    # 修改编译选项：使用 -O2 避免激进优化导致的 dispatch 错误，并确保静态链接
     rm -rf build_release
     cmake -S . -B build_release \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -155,11 +194,21 @@ if [ ! -d "$SRC_PATH/third_party/include/evmone" ]; then
     cd build_release && make -j${nproc} && make install
 fi
 
-# 修改后的 evmc 编译部分
+# Build evmc from evmone's nested submodule.
 if [ ! -d "$SRC_PATH/third_party/include/evmc" ]; then
     cd $SRC_PATH
-    # evmc 通常作为 evmone 的子模块存在，确保版本对齐
-    cd third_party/evmone/evmc && git submodule update --init
+    cd third_party/evmone
+    git submodule update --init evmc
+    if [ ! -f evmc/CMakeLists.txt ] || ! grep -q "cmake_minimum_required" evmc/CMakeLists.txt; then
+        echo "Invalid evmc submodule checkout; refreshing evmone submodules"
+        rm -rf evmc
+        git submodule update --init --force evmc
+    fi
+    if [ ! -f evmc/CMakeLists.txt ] || ! grep -q "cmake_minimum_required" evmc/CMakeLists.txt; then
+        echo "Invalid evmc CMakeLists.txt remains after refresh"
+        exit 1
+    fi
+    cd evmc
     rm -rf build_release
     cmake -S . -B build_release \
         -DCMAKE_BUILD_TYPE=Release \
