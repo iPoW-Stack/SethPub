@@ -138,6 +138,42 @@ reset_incomplete_install_dir "$SRC_PATH/third_party/include/evmc" "$SRC_PATH/thi
 reset_incomplete_install_dir "$SRC_PATH/third_party/include/maxmind" "$SRC_PATH/third_party/include/maxmind/maxminddb.h"
 reset_incomplete_install_dir "$SRC_PATH/third_party/include/pbc" "$SRC_PATH/third_party/include/pbc/pbc.h"
 
+ensure_evmc_checkout() {
+    cd "$SRC_PATH/third_party/evmone"
+    local evmc_commit
+    evmc_commit="$(git ls-files -s evmc 2>/dev/null | awk '$1 == "160000" {print $2; exit}')"
+    git submodule update --init evmc || true
+    if [ -f evmc/CMakeLists.txt ] && grep -q "cmake_minimum_required" evmc/CMakeLists.txt; then
+        return 0
+    fi
+
+    echo "Invalid evmc submodule checkout; refreshing evmone submodules"
+    rm -rf evmc
+    git submodule update --init --force evmc || true
+    if [ -f evmc/CMakeLists.txt ] && grep -q "cmake_minimum_required" evmc/CMakeLists.txt; then
+        return 0
+    fi
+
+    local evmc_url
+    evmc_url="$(git config --file .gitmodules --get submodule.evmc.url || true)"
+    if [ -z "$evmc_url" ]; then
+        evmc_url="https://github.com/ethereum/evmc.git"
+    fi
+
+    echo "Cloning evmc directly from $evmc_url"
+    rm -rf evmc
+    git clone "$evmc_url" evmc
+    if [ -n "$evmc_commit" ]; then
+        git -C evmc checkout "$evmc_commit" || true
+    fi
+    if [ -f evmc/CMakeLists.txt ] && grep -q "cmake_minimum_required" evmc/CMakeLists.txt; then
+        return 0
+    fi
+
+    echo "Invalid evmc CMakeLists.txt remains after direct clone"
+    exit 1
+}
+
 install_deps() {
     if command -v apt-get >/dev/null 2>&1; then
         $SUDO apt-get update
@@ -197,18 +233,8 @@ fi
 # Build evmc from evmone's nested submodule.
 if [ ! -d "$SRC_PATH/third_party/include/evmc" ]; then
     cd $SRC_PATH
-    cd third_party/evmone
-    git submodule update --init evmc
-    if [ ! -f evmc/CMakeLists.txt ] || ! grep -q "cmake_minimum_required" evmc/CMakeLists.txt; then
-        echo "Invalid evmc submodule checkout; refreshing evmone submodules"
-        rm -rf evmc
-        git submodule update --init --force evmc
-    fi
-    if [ ! -f evmc/CMakeLists.txt ] || ! grep -q "cmake_minimum_required" evmc/CMakeLists.txt; then
-        echo "Invalid evmc CMakeLists.txt remains after refresh"
-        exit 1
-    fi
-    cd evmc
+    ensure_evmc_checkout
+    cd "$SRC_PATH/third_party/evmone/evmc"
     rm -rf build_release
     cmake -S . -B build_release \
         -DCMAKE_BUILD_TYPE=Release \
