@@ -156,6 +156,19 @@ include_directories(SYSTEM
     ${CURL_INCLUDE_DIRS}
 )
 
+set(REQUIRED_THIRD_PARTY_HEADERS
+    ${DEP_DIR}/include/pbc/pbc.h
+    ${DEP_DIR}/include/GeoLite2PP.hpp
+    ${DEP_DIR}/include/libbls/tools/utils.h
+    ${DEP_DIR}/include/evmc/evmc.hpp)
+foreach(required_header IN LISTS REQUIRED_THIRD_PARTY_HEADERS)
+    if(NOT EXISTS "${required_header}")
+        message(FATAL_ERROR
+            "Required third-party header is missing: ${required_header}. "
+            "Run bash build_third.sh and reconfigure from a clean build directory.")
+    endif()
+endforeach()
+
 # compile definitions
 add_definitions(
     -DTEST_LOCAL_NETWORK

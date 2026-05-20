@@ -137,6 +137,7 @@ require_installed_file() {
 reset_incomplete_install_dir "$SRC_PATH/third_party/include/evmc" "$SRC_PATH/third_party/include/evmc/evmc.hpp"
 reset_incomplete_install_dir "$SRC_PATH/third_party/include/maxmind" "$SRC_PATH/third_party/include/maxmind/maxminddb.h"
 reset_incomplete_install_dir "$SRC_PATH/third_party/include/pbc" "$SRC_PATH/third_party/include/pbc/pbc.h"
+reset_incomplete_install_dir "$SRC_PATH/third_party/include/libbls" "$SRC_PATH/third_party/include/libbls/tools/utils.h"
 
 ensure_evmc_checkout() {
     cd "$SRC_PATH/third_party/evmone"
@@ -285,6 +286,7 @@ if [ ! -d "$SRC_PATH/third_party/include/libbls" ]; then
     cp -rnf ../deps/deps_inst/x86_or_x64/include/boost/* $SRC_PATH/third_party/include/boost/
     cp -rnf ./libbls.a $SRC_PATH/third_party/lib/libdkgbls.a
 fi
+require_installed_file "$SRC_PATH/third_party/include/libbls/tools/utils.h"
 
 if [ ! -d "$SRC_PATH/third_party/include/protobuf" ]; then
     cd $SRC_PATH
