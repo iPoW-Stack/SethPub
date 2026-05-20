@@ -1,27 +1,29 @@
-git submodule init
-git submodule update
+#!/bin/bash
+set -e
 
-export nproc=8
-#centos
-dnf install -y gnutls-devel
-dnf install -y perl
-dnf install -y procps-ng-devel
-dnf install -y texinfo
-dnf install -y xz-devel
-#ubuntu
-
-apt update
-sudo apt install autoconf automake libtool -y
-apt install -y libprocps-dev
-apt install -y texinfo
-apt install -y libgnutls28-dev
-apt install -y liblzma-dev
-apt install -y pkg-config
-apt install -y yasm
-apt install -y libgnutls28-dev
-apt install -y zlib1g-dev
-apt install -y libssh2-1-dev
+export nproc=${nproc:-8}
+export TARGET=${TARGET:-Release}
 SRC_PATH=`pwd`
+
+git submodule sync --recursive
+git submodule update --init --recursive
+
+install_deps() {
+    if command -v apt-get >/dev/null 2>&1; then
+        apt-get update
+        apt-get install -y autoconf automake libtool build-essential cmake git perl \
+            texinfo libgnutls28-dev liblzma-dev pkg-config yasm zlib1g-dev libssh2-1-dev
+        apt-get install -y libprocps-dev || apt-get install -y procps
+    elif command -v dnf >/dev/null 2>&1; then
+        dnf install -y gnutls-devel perl procps-ng-devel texinfo xz-devel autoconf automake libtool cmake git
+    elif command -v yum >/dev/null 2>&1; then
+        yum install -y gnutls-devel perl procps-ng-devel texinfo xz-devel autoconf automake libtool cmake git
+    else
+        echo "No supported package manager found; assuming build dependencies are already installed."
+    fi
+}
+
+install_deps
 
 build_lib() {
     if [ ! -f "$1" ] && [ ! -d "$1" ]; then
@@ -39,7 +41,7 @@ build_lib() {
 if [ ! -d "$SRC_PATH/third_party/include/evmone" ]; then
     cd $SRC_PATH
     # 建议切换到稳定的 v0.11.0 版本，master 分支可能存在不稳定的开发代码
-    cd third_party/evmone && git fetch --tags && git checkout v0.11.0 && git submodule update --init --recursive
+    cd third_party/evmone && git submodule update --init --recursive
     
     # 修改编译选项：使用 -O2 避免激进优化导致的 dispatch 错误，并确保静态链接
     rm -rf build_release
@@ -57,7 +59,7 @@ fi
 if [ ! -d "$SRC_PATH/third_party/include/evmc" ]; then
     cd $SRC_PATH
     # evmc 通常作为 evmone 的子模块存在，确保版本对齐
-    cd third_party/evmone/evmc && git checkout v11.0.1 && git submodule update --init
+    cd third_party/evmone/evmc && git submodule update --init
     rm -rf build_release
     cmake -S . -B build_release \
         -DCMAKE_BUILD_TYPE=Release \
@@ -239,18 +241,19 @@ if [ ! -f "$SRC_PATH/third_party/include/libusockets.h" ]; then
     echo "Building uWebSockets and uSockets..."
     cd $SRC_PATH/third_party
     
-    # Clone uWebSockets if not present
-    if [ ! -d "uWebSockets" ]; then
-        git clone https://github.com/uNetworking/uWebSockets.git
-        cd uWebSockets
-        git checkout v20.64.0
-    else
-        cd uWebSockets
-        git checkout v20.64.0
-    fi
+    # Use the uWebSockets commit recorded by the parent repository.
+    git submodule update --init third_party/uWebSockets
+    cd uWebSockets
     
-    # Initialize uSockets submodule
-    git submodule update --init --recursive
+    # Use the top-level uSockets submodule. uWebSockets also knows about it
+    # as a relative submodule on some tags, but updating it from here can make
+    # Git search the parent .gitmodules for "../uSockets".
+    cd "$SRC_PATH"
+    git submodule update --init third_party/uSockets third_party/uWebSockets
+    cd "$SRC_PATH/third_party/uWebSockets"
+    if [ ! -d "uSockets" ]; then
+        ln -s ../uSockets uSockets 2>/dev/null || cp -R ../uSockets uSockets
+    fi
     
     # Copy uSockets headers to main include directory (NOT in subdirectory!)
     echo "Installing uSockets headers..."

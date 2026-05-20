@@ -7,35 +7,20 @@ set -e
 echo "=== Git Submodules Fix Script ==="
 echo "Cleaning up Git submodule configuration..."
 
-# Remove any cached submodule references
-echo "1. Cleaning Git cache..."
-git rm --cached clipy/liboqs 2>/dev/null || true
-git rm --cached third_party/evmone 2>/dev/null || true
+# Verify submodule mappings without changing the index.
+echo "1. Verifying Git cache..."
+git ls-files -s clipy/liboqs third_party/evmone third_party/uSockets >/dev/null 2>&1 || true
 
 # Clean up .git/config
 echo "2. Cleaning .git/config..."
 if [ -f ".git/config" ]; then
-    # Remove problematic submodule entries from .git/config
-    sed -i '/\[submodule.*clipy\/liboqs\]/,/^$/d' .git/config 2>/dev/null || true
-    sed -i '/clipy\/liboqs/d' .git/config 2>/dev/null || true
+    # Keep .git/config in sync with .gitmodules.
+    git submodule sync --recursive 2>/dev/null || true
 fi
 
-# Clean up .git/modules
-echo "3. Cleaning .git/modules..."
-if [ -d ".git/modules/clipy" ]; then
-    rm -rf .git/modules/clipy/liboqs 2>/dev/null || true
-    rmdir .git/modules/clipy 2>/dev/null || true
-fi
+echo "3. Keeping cached submodule repositories intact..."
 
-if [ -d ".git/modules/third_party/evmone" ]; then
-    rm -rf .git/modules/third_party/evmone 2>/dev/null || true
-fi
-
-# Remove physical directories if they exist and are empty
-echo "4. Cleaning physical directories..."
-if [ -d "clipy/liboqs" ] && [ -z "$(ls -A clipy/liboqs)" ]; then
-    rmdir clipy/liboqs 2>/dev/null || true
-fi
+echo "4. Keeping physical submodule directories intact..."
 
 # Reset submodule status
 echo "5. Resetting submodule status..."
