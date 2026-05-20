@@ -131,6 +131,7 @@ declare -a ALL_TESTS=(
     "protos_test:protos_test"
     "block_test:block_test"
     "tmblock_test:tmblock_test"
+    "tnet_test:tnet_test"
     "init_test:init_test"
     "websocket_test:websocket_test"
 )

@@ -358,6 +358,7 @@ add_subdirectory(${SRC_DIR}/sync/tests sync_test)
 add_subdirectory(${SRC_DIR}/protos/tests protos_test)
 add_subdirectory(${SRC_DIR}/block/tests block_test)
 add_subdirectory(${SRC_DIR}/timeblock/tests tmblock_test)
+add_subdirectory(${SRC_DIR}/tnet/tests tnet_test)
 
 add_subdirectory(${SRC_DIR}/init/tests init_test)
 add_subdirectory(${SRC_DIR}/websocket/tests websocket_test)
