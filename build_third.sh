@@ -36,6 +36,30 @@ reset_invalid_submodule third_party/uSockets src/libusockets.h
 git submodule sync --recursive
 git submodule update --init --jobs "${nproc}"
 
+refresh_submodule() {
+    local path="$1"
+    local url
+    local commit
+
+    if git submodule update --init --force "$path"; then
+        return 0
+    fi
+
+    url="$(git config --file .gitmodules --get "submodule.${path}.url" || true)"
+    commit="$(git ls-files -s "$path" 2>/dev/null | awk '$1 == "160000" {print $2; exit}')"
+    if [ -z "$url" ]; then
+        echo "No .gitmodules URL found for $path"
+        return 1
+    fi
+
+    echo "Submodule pathspec update failed for $path; cloning directly from $url"
+    rm -rf "$path"
+    git clone "$url" "$path"
+    if [ -n "$commit" ]; then
+        git -C "$path" checkout "$commit"
+    fi
+}
+
 ensure_submodule_file() {
     local path="$1"
     local marker="$2"
@@ -43,7 +67,7 @@ ensure_submodule_file() {
         echo "Required submodule file is missing: $path/$marker"
         echo "Refreshing submodule checkout: $path"
         rm -rf "$path"
-        git submodule update --init --force "$path"
+        refresh_submodule "$path"
     fi
     if [ ! -e "$path/$marker" ]; then
         echo "Required submodule file is still missing after refresh: $path/$marker"
