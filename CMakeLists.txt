@@ -158,6 +158,7 @@ include_directories(SYSTEM
 
 set(REQUIRED_THIRD_PARTY_HEADERS
     ${DEP_DIR}/include/pbc/pbc.h
+    ${DEP_DIR}/include/cpppbc/PBC.h
     ${DEP_DIR}/include/GeoLite2PP.hpp
     ${DEP_DIR}/include/libbls/tools/utils.h
     ${DEP_DIR}/include/evmc/evmc.hpp)

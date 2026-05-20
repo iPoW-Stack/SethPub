@@ -138,6 +138,7 @@ reset_incomplete_install_dir "$SRC_PATH/third_party/include/evmc" "$SRC_PATH/thi
 reset_incomplete_install_dir "$SRC_PATH/third_party/include/maxmind" "$SRC_PATH/third_party/include/maxmind/maxminddb.h"
 reset_incomplete_install_dir "$SRC_PATH/third_party/include/pbc" "$SRC_PATH/third_party/include/pbc/pbc.h"
 reset_incomplete_install_dir "$SRC_PATH/third_party/include/libbls" "$SRC_PATH/third_party/include/libbls/tools/utils.h"
+reset_incomplete_install_dir "$SRC_PATH/third_party/include/cpppbc" "$SRC_PATH/third_party/include/cpppbc/PBC.h"
 
 ensure_evmc_checkout() {
     cd "$SRC_PATH/third_party/evmone"
@@ -372,6 +373,7 @@ if [ ! -d "$SRC_PATH/third_party/include/cpppbc" ]; then
     mkdir -p $SRC_PATH/third_party/include/cpppbc && cp -rnf ./*.h $SRC_PATH/third_party/include/cpppbc
     cp -rnf ./lib*.a $SRC_PATH/third_party/lib
 fi
+require_installed_file "$SRC_PATH/third_party/include/cpppbc/PBC.h"
 
 if [ ! -d "$SRC_PATH/third_party/include/clickhouse" ]; then
     cd $SRC_PATH
