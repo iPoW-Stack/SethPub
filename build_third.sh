@@ -347,7 +347,7 @@ fi
 
 if [ ! -d "$SRC_PATH/third_party/include/pbc" ]; then
     cd $SRC_PATH
-    cd third_party/pbc && make -f simple.make
+    cd third_party/pbc && make -f simple.make libpbc.a
     mkdir -p $SRC_PATH/third_party/include/pbc
     if [ -d ./include/pbc ]; then
         cp -rnf ./include/pbc/* $SRC_PATH/third_party/include/pbc/
