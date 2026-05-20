@@ -4,20 +4,24 @@ set -e
 export nproc=${nproc:-8}
 export TARGET=${TARGET:-Release}
 SRC_PATH=`pwd`
+SUDO=""
+if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
+    SUDO="sudo"
+fi
 
 git submodule sync --recursive
 git submodule update --init --recursive
 
 install_deps() {
     if command -v apt-get >/dev/null 2>&1; then
-        apt-get update
-        apt-get install -y autoconf automake libtool build-essential cmake git perl \
+        $SUDO apt-get update
+        $SUDO apt-get install -y autoconf automake libtool build-essential cmake git perl \
             texinfo libgnutls28-dev liblzma-dev pkg-config yasm zlib1g-dev libssh2-1-dev
-        apt-get install -y libprocps-dev || apt-get install -y procps
+        $SUDO apt-get install -y libprocps-dev || $SUDO apt-get install -y procps
     elif command -v dnf >/dev/null 2>&1; then
-        dnf install -y gnutls-devel perl procps-ng-devel texinfo xz-devel autoconf automake libtool cmake git
+        $SUDO dnf install -y gnutls-devel perl procps-ng-devel texinfo xz-devel autoconf automake libtool cmake git
     elif command -v yum >/dev/null 2>&1; then
-        yum install -y gnutls-devel perl procps-ng-devel texinfo xz-devel autoconf automake libtool cmake git
+        $SUDO yum install -y gnutls-devel perl procps-ng-devel texinfo xz-devel autoconf automake libtool cmake git
     else
         echo "No supported package manager found; assuming build dependencies are already installed."
     fi
@@ -239,11 +243,11 @@ fi
 # Build uWebSockets and uSockets
 if [ ! -f "$SRC_PATH/third_party/include/libusockets.h" ]; then
     echo "Building uWebSockets and uSockets..."
-    cd $SRC_PATH/third_party
+    cd $SRC_PATH
     
     # Use the uWebSockets commit recorded by the parent repository.
     git submodule update --init third_party/uWebSockets
-    cd uWebSockets
+    cd third_party/uWebSockets
     
     # Use the top-level uSockets submodule. uWebSockets also knows about it
     # as a relative submodule on some tags, but updating it from here can make

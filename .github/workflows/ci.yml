@@ -24,7 +24,7 @@ jobs:
       - name: Checkout SethPub
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
           fetch-depth: 1
 
       - name: Install system packages
@@ -87,7 +87,7 @@ jobs:
       - name: Checkout SethPub
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
           fetch-depth: 1
 
       - name: Install system packages
@@ -132,7 +132,7 @@ jobs:
       - name: Checkout SethPub
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
           fetch-depth: 1
 
       - name: Install system packages
@@ -178,7 +178,7 @@ jobs:
       - name: Checkout SethPub
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
           fetch-depth: 1
 
       - name: Checkout SethTests
@@ -263,21 +263,31 @@ jobs:
   summary:
     name: CI Summary
     runs-on: ubuntu-22.04
-    needs: [unit-tests, integration-tests]
+    needs: [build-deps, unit-tests, build-seth, integration-tests]
     if: always()
 
     steps:
       - name: Check results
         run: |
+          echo "Third-party deps:  ${{ needs.build-deps.result }}"
           echo "Unit tests:        ${{ needs.unit-tests.result }}"
+          echo "seth binary:       ${{ needs.build-seth.result }}"
           echo "Integration tests: ${{ needs.integration-tests.result }}"
 
-          if [[ "${{ needs.unit-tests.result }}" == "failure" ]]; then
-            echo "❌ Unit tests failed"
+          if [[ "${{ needs.build-deps.result }}" == "failure" || "${{ needs.build-deps.result }}" == "cancelled" ]]; then
+            echo "Third-party dependency build failed"
             exit 1
           fi
-          if [[ "${{ needs.integration-tests.result }}" == "failure" ]]; then
-            echo "❌ Integration tests failed"
+          if [[ "${{ needs.unit-tests.result }}" == "failure" || "${{ needs.unit-tests.result }}" == "cancelled" ]]; then
+            echo "Unit tests failed"
             exit 1
           fi
-          echo "✅ All tests passed"
+          if [[ "${{ needs.build-seth.result }}" == "failure" || "${{ needs.build-seth.result }}" == "cancelled" ]]; then
+            echo "seth binary build failed"
+            exit 1
+          fi
+          if [[ "${{ needs.integration-tests.result }}" == "failure" || "${{ needs.integration-tests.result }}" == "cancelled" ]]; then
+            echo "Integration tests failed"
+            exit 1
+          fi
+          echo "CI completed"
