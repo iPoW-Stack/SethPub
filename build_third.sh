@@ -77,6 +77,27 @@ ensure_submodule_file() {
 
 ensure_submodule_file third_party/evmone include/evmone/evmone.h
 
+reset_incomplete_install_dir() {
+    local path="$1"
+    local marker="$2"
+    if [ -e "$path" ] && [ ! -e "$marker" ]; then
+        echo "Cleaning incomplete install output: $path (missing $marker)"
+        rm -rf "$path"
+    fi
+}
+
+require_installed_file() {
+    local file="$1"
+    if [ ! -e "$file" ]; then
+        echo "Required installed file is missing: $file"
+        exit 1
+    fi
+}
+
+reset_incomplete_install_dir "$SRC_PATH/third_party/include/evmc" "$SRC_PATH/third_party/include/evmc/evmc.hpp"
+reset_incomplete_install_dir "$SRC_PATH/third_party/include/maxmind" "$SRC_PATH/third_party/include/maxmind/maxminddb.h"
+reset_incomplete_install_dir "$SRC_PATH/third_party/include/pbc" "$SRC_PATH/third_party/include/pbc/pbc.h"
+
 install_deps() {
     if command -v apt-get >/dev/null 2>&1; then
         $SUDO apt-get update
@@ -148,6 +169,7 @@ if [ ! -d "$SRC_PATH/third_party/include/evmc" ]; then
 
     cd build_release && make -j${nproc} && make install
 fi
+require_installed_file "$SRC_PATH/third_party/include/evmc/evmc.hpp"
 
 if [ ! -d "$SRC_PATH/third_party/include/sodium" ]; then
     cd $SRC_PATH
@@ -161,6 +183,7 @@ if [ ! -d "$SRC_PATH/third_party/include/maxmind" ]; then
     mkdir -p $SRC_PATH/third_party/include/maxmind && cd .. && cp -rnf ./include/* $SRC_PATH/third_party/include/maxmind && cp -rnf build_release/generated/maxminddb_config.h $SRC_PATH/third_party/include/maxmind/
     mkdir -p $SRC_PATH/third_party/include/maxmind/include && cp -rnf ./include/* $SRC_PATH/third_party/include/maxmind/include && cp -rnf build_release/generated/maxminddb_config.h $SRC_PATH/third_party/include/maxmind/include
 fi
+require_installed_file "$SRC_PATH/third_party/include/maxmind/maxminddb.h"
 
 if [ ! -d "$SRC_PATH/third_party/include/libuv" ]; then
     cd $SRC_PATH
@@ -242,6 +265,7 @@ if [ ! -d "$SRC_PATH/third_party/include/pbc" ]; then
     cd third_party/pbc && make -f simple.make
     mkdir -p $SRC_PATH/third_party/include/pbc && cp -rnf ./include/* $SRC_PATH/third_party/include/pbc && cp -rnf ./lib*.a  $SRC_PATH/third_party/lib
 fi
+require_installed_file "$SRC_PATH/third_party/include/pbc/pbc.h"
 
 if [ ! -d "$SRC_PATH/third_party/include/json" ]; then
     cd $SRC_PATH
@@ -271,6 +295,7 @@ if [ ! -f "$SRC_PATH/third_party/include/GeoLite2PP.hpp" ]; then
     cd $SRC_PATH
     cd third_party/geolite2pp && git checkout . && sed -i 's/const auto iter/const auto\& iter/g' ./src-main/main.cpp &&  sed -i '11i\include_directories(SYSTEM '$SRC_PATH'/third_party/include/maxmind/)' CMakeLists.txt && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/  -DCMAKE_PREFIX_PATH=$SRC_PATH/third_party/ -DCMAKE_INCLUDE_PATH=$SRC_PATH/third_party/include/maxmind/ && cd build_release && make -j${nproc} && make install
 fi
+require_installed_file "$SRC_PATH/third_party/include/GeoLite2PP.hpp"
 
 
 if [ ! -d "$SRC_PATH/third_party/include/xxHash" ]; then
