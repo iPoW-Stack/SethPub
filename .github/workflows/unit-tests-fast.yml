@@ -30,12 +30,12 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             build-essential cmake ninja-build \
             libssl-dev libgmp-dev uuid-dev \
-            python3 xxd pkg-config git \
+            python3 xxd pkg-config git unzip \
             libgmssl-dev 2>/dev/null || \
           sudo apt-get install -y --no-install-recommends \
             build-essential cmake ninja-build \
             libssl-dev libgmp-dev uuid-dev \
-            python3 xxd pkg-config git
+            python3 xxd pkg-config git unzip
 
       - name: Generate third-party cache key
         id: third-party-key

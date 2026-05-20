@@ -34,7 +34,7 @@ jobs:
             build-essential cmake ninja-build \
             libssl-dev libgmp-dev uuid-dev \
             python3 python3-pip xxd \
-            pkg-config git curl wget
+            pkg-config git curl wget unzip
           sudo apt-get install -y --no-install-recommends libgmssl-dev || true
           # GmSSL may not be in apt; build from submodule if needed
           echo "System packages installed"

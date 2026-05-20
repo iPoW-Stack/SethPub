@@ -81,12 +81,12 @@ install_deps() {
     if command -v apt-get >/dev/null 2>&1; then
         $SUDO apt-get update
         $SUDO apt-get install -y autoconf automake libtool build-essential cmake git perl \
-            texinfo libgnutls28-dev liblzma-dev pkg-config yasm zlib1g-dev libssh2-1-dev
+            texinfo unzip libgnutls28-dev liblzma-dev pkg-config yasm zlib1g-dev libssh2-1-dev
         $SUDO apt-get install -y libprocps-dev || $SUDO apt-get install -y procps
     elif command -v dnf >/dev/null 2>&1; then
-        $SUDO dnf install -y gnutls-devel perl procps-ng-devel texinfo xz-devel autoconf automake libtool cmake git
+        $SUDO dnf install -y gnutls-devel perl procps-ng-devel texinfo unzip xz-devel autoconf automake libtool cmake git
     elif command -v yum >/dev/null 2>&1; then
-        $SUDO yum install -y gnutls-devel perl procps-ng-devel texinfo xz-devel autoconf automake libtool cmake git
+        $SUDO yum install -y gnutls-devel perl procps-ng-devel texinfo unzip xz-devel autoconf automake libtool cmake git
     else
         echo "No supported package manager found; assuming build dependencies are already installed."
     fi
