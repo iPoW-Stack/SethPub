@@ -281,7 +281,15 @@ patch_libbls_argtable2() {
 if [ ! -d "$SRC_PATH/third_party/include/libbls" ]; then
     cd $SRC_PATH
     patch_libbls_argtable2
-    cd third_party/libbls && cd ./deps && PARALLEL_COUNT=1 bash build.sh && cp deps_inst/x86_or_x64/lib64/lib* deps_inst/x86_or_x64/lib/ ; cd .. && cmake -S . -B build_release  -DUSE_ASM=False  -DWITH_PROCPS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DLIBBLS_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j8 && make install
+    cd third_party/libbls/deps
+    PARALLEL_COUNT=1 bash build.sh
+    mkdir -p deps_inst/x86_or_x64/lib
+    if compgen -G "deps_inst/x86_or_x64/lib64/lib*" >/dev/null; then
+        cp -rnf deps_inst/x86_or_x64/lib64/lib* deps_inst/x86_or_x64/lib/
+    fi
+    cd ..
+    cmake -S . -B build_release  -DUSE_ASM=False  -DWITH_PROCPS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DLIBBLS_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/
+    cd build_release && make -j8 && make install
     mkdir -p $SRC_PATH/third_party/include/libbls && cp -rnf ../third_party ../tools ../dkg ../bls $SRC_PATH/third_party/include/libbls
     cp -rnf ../deps/deps_inst/x86_or_x64/include/boost/* $SRC_PATH/third_party/include/boost/
     cp -rnf ./libbls.a $SRC_PATH/third_party/lib/libdkgbls.a
@@ -340,7 +348,13 @@ fi
 if [ ! -d "$SRC_PATH/third_party/include/pbc" ]; then
     cd $SRC_PATH
     cd third_party/pbc && make -f simple.make
-    mkdir -p $SRC_PATH/third_party/include/pbc && cp -rnf ./include/* $SRC_PATH/third_party/include/pbc && cp -rnf ./lib*.a  $SRC_PATH/third_party/lib
+    mkdir -p $SRC_PATH/third_party/include/pbc
+    if [ -d ./include/pbc ]; then
+        cp -rnf ./include/pbc/* $SRC_PATH/third_party/include/pbc/
+    else
+        cp -rnf ./include/* $SRC_PATH/third_party/include/pbc/
+    fi
+    cp -rnf ./lib*.a  $SRC_PATH/third_party/lib
 fi
 require_installed_file "$SRC_PATH/third_party/include/pbc/pbc.h"
 
