@@ -9,6 +9,7 @@ set(consensus_test_src
     test_consensus_hotstuff_zbft_surface.cc
     test_hotstuff_utils_branches.cc
     test_consensus_function_branches.cc
+    test_consensus_function_coverage_100.cc
     test_consensus_coverage_enhancement.cc
     test_consensus_check_transaction_valid.cc
     test_smoke.cc)
