@@ -21,6 +21,9 @@ set -euo pipefail
 # After a coverage run, optional per-module branch gate (gcovr):
 #   COVERAGE_FAIL_UNDER_BRANCH=80 bash build.sh coverage Debug
 #
+# Optional per-module function gate (gcovr, unit-testable sources only):
+#   COVERAGE_FAIL_UNDER_FUNCTION=100 bash build.sh coverage Debug
+#
 # Uncovered-line log: default dir is repo-root/coverage/missing/
 #   (gcovr 8+: --txt table with "Missing" column; older: --txt-missing if present.)
 #   bash build.sh coverage Debug
@@ -134,6 +137,9 @@ declare -a ALL_TESTS=(
     "tnet_test:tnet_test"
     "init_test:init_test"
     "websocket_test:websocket_test"
+    "main_test:main_test"
+    "pki_test:pki_test"
+    "ck_test:ck_test"
 )
 
 # ---- 7. Helper: build + run a single test ----------------------------------
@@ -202,6 +208,7 @@ map_module_dir() {
         bignum_test) echo "big_num" ;;
         tmblock_test) echo "timeblock" ;;
         hotstuff_test) echo "consensus/hotstuff" ;;
+        ck_test) echo "ck" ;;
         *) echo "${exe%_test}" ;;
     esac
 }
@@ -294,8 +301,19 @@ append_module_specific_excludes() {
             )
             ;;
         consensus)
+            # zbft/ and integration-heavy hotstuff paths are covered by dedicated
+            # tests or excluded; keep types/utils/consensus_statistic for unit gates.
             out_args_ref+=(
                 --exclude ".*/src/consensus/zbft/.*"
+                --exclude ".*/src/consensus/hotstuff/block_acceptor\\.cc$"
+                --exclude ".*/src/consensus/hotstuff/block_wrapper\\.cc$"
+                --exclude ".*/src/consensus/hotstuff/crypto\\.cc$"
+                --exclude ".*/src/consensus/hotstuff/hotstuff\\.cc$"
+                --exclude ".*/src/consensus/hotstuff/hotstuff_manager\\.cc$"
+                --exclude ".*/src/consensus/hotstuff/pacemaker\\.cc$"
+                --exclude ".*/src/consensus/hotstuff/root_block_executor\\.cc$"
+                --exclude ".*/src/consensus/hotstuff/shard_block_executor\\.cc$"
+                --exclude ".*/src/consensus/hotstuff/view_block_chain\\.cc$"
             )
             ;;
         "consensus/hotstuff")
@@ -456,7 +474,7 @@ print_module_coverage() {
 
     echo ""
     echo "════════════════════════════════════════════════════════════════"
-    echo "  Module Coverage (lines)"
+    echo "  Module Coverage (lines / branches / functions)"
     echo "════════════════════════════════════════════════════════════════"
     if [[ "${#gcovr_parallel_args[@]}" -gt 0 ]]; then
         echo "  gcovr parallel jobs: ${GCOVR_JOBS}"
@@ -497,6 +515,10 @@ print_module_coverage() {
             "${gcovr_base_args[@]}" \
             --txt-metric branch \
             --print-summary | awk '/^branches:/ { print "  " $0 }'
+        "$gcovr_cmd" \
+            "${gcovr_base_args[@]}" \
+            --txt-metric function \
+            --print-summary | awk '/^functions:/ { print "  " $0 }'
 
         # Uncovered lines: default on (set COVERAGE_TXT_MISSING=0 to skip).
         if [[ "${COVERAGE_TXT_MISSING:-1}" != "0" ]] || [[ -n "${COVERAGE_MISSING_LOG_DIR:-}" ]]; then
@@ -619,6 +641,92 @@ enforce_branch_minimum() {
     fi
 }
 
+# Optional gate: set COVERAGE_FAIL_UNDER_FUNCTION=100 to require function coverage
+# on each mapped module (same filtered scope as print_module_coverage).
+enforce_function_minimum() {
+    local min_pct="${1:-100}"
+    shift || true
+    local -a coverage_entries=("$@")
+    if [[ "${#coverage_entries[@]}" -eq 0 ]]; then
+        coverage_entries=("${ALL_TESTS[@]}")
+    fi
+    local gcovr_cmd
+    if ! gcovr_cmd="$(resolve_gcovr_cmd)"; then
+        echo "  [WARN] gcovr not found; skip function gate. Set GCOVR=/path/to/gcovr if it is not on PATH."
+        return 0
+    fi
+    local -a gcovr_parallel_args=()
+    build_gcovr_parallel_args "$gcovr_cmd" gcovr_parallel_args
+
+    echo ""
+    echo "════════════════════════════════════════════════════════════════"
+    echo "  Function coverage gate: each module must be >= ${min_pct}%"
+    echo "════════════════════════════════════════════════════════════════"
+
+    local failed=0
+    for entry in "${coverage_entries[@]}"; do
+        local exe="${entry%%:*}"
+        local module_dir
+        module_dir="$(map_module_dir "$exe")"
+        local module_filter
+        module_filter="$(module_coverage_filter "$module_dir")"
+        local -a gcovr_base_args=(
+            --root ..
+            --object-directory .
+            --exclude-directories "../cbuild_.*"
+            --filter "$module_filter"
+            --exclude "../src/${module_dir}/tests"
+            --exclude ".*\\.pb\\.cc$"
+            --gcov-ignore-errors no_working_dir_found
+            --gcov-ignore-errors source_not_found
+            --merge-mode-functions merge-use-line-min
+            "${gcovr_parallel_args[@]}"
+        )
+        if module_has_non_test_sources "$module_dir" && ! module_prefers_header_metrics "$module_dir"; then
+            gcovr_base_args+=(--exclude ".*\\.h$")
+        fi
+        append_module_specific_excludes "$module_dir" gcovr_base_args
+        echo ""
+        echo "[check ${module_dir}]"
+        local summary
+        summary="$("$gcovr_cmd" \
+            "${gcovr_base_args[@]}" \
+            --txt-metric function \
+            --print-summary | awk '/^(functions:)/ { print $0 }')"
+        printf '%s\n' "$summary" | awk '{ print "  " $0 }'
+
+        local func_line
+        func_line="$(printf '%s\n' "$summary" | awk '/^functions:/ { print $0 }')"
+        local func_pct
+        func_pct="$(printf '%s\n' "$func_line" | sed -E 's/^functions:[[:space:]]*([0-9]+(\.[0-9]+)?)%.*/\1/')"
+        local func_total
+        func_total="$(printf '%s\n' "$func_line" | sed -E 's/^functions:[[:space:]]*[0-9]+(\.[0-9]+)?%[[:space:]]*\([0-9]+ out of ([0-9]+)\).*/\2/')"
+        if [[ -z "$func_total" || "$func_total" == "$func_line" ]]; then
+            echo "  [FAIL] unable to parse function summary; treat as failed"
+            failed=1
+            continue
+        fi
+
+        if [[ "$func_total" -eq 0 ]]; then
+            echo "  [SKIP] no function data (0/0), skip gate for this module"
+            continue
+        fi
+
+        if awk "BEGIN { exit !($func_pct >= $min_pct) }"; then
+            echo "  [PASS] function threshold (${min_pct}%) satisfied"
+        else
+            echo "  [FAIL] functions below ${min_pct}% (actual ${func_pct}%)"
+            failed=1
+        fi
+    done
+
+    if [[ "$failed" -ne 0 ]]; then
+        echo ""
+        echo "Function coverage gate FAILED (target ${min_pct}% per module)."
+        exit 1
+    fi
+}
+
 # ---- 9. Dispatch on first argument -----------------------------------------
 
 case "$CMD" in
@@ -662,6 +770,13 @@ case "$CMD" in
                     enforce_branch_minimum "${COVERAGE_FAIL_UNDER_BRANCH}"
                 else
                     enforce_branch_minimum "${COVERAGE_FAIL_UNDER_BRANCH}" "${EXECUTED_TESTS[@]}"
+                fi
+            fi
+            if [[ -n "${COVERAGE_FAIL_UNDER_FUNCTION:-}" ]]; then
+                if [[ "${#EXECUTED_TESTS[@]}" -eq 0 ]]; then
+                    enforce_function_minimum "${COVERAGE_FAIL_UNDER_FUNCTION}"
+                else
+                    enforce_function_minimum "${COVERAGE_FAIL_UNDER_FUNCTION}" "${EXECUTED_TESTS[@]}"
                 fi
             fi
         fi
@@ -737,6 +852,9 @@ case "$CMD" in
             print_module_coverage "$one_entry"
             if [[ -n "${COVERAGE_FAIL_UNDER_BRANCH:-}" ]]; then
                 enforce_branch_minimum "${COVERAGE_FAIL_UNDER_BRANCH}" "$one_entry"
+            fi
+            if [[ -n "${COVERAGE_FAIL_UNDER_FUNCTION:-}" ]]; then
+                enforce_function_minimum "${COVERAGE_FAIL_UNDER_FUNCTION}" "$one_entry"
             fi
         fi
         ;;

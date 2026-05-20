@@ -362,3 +362,6 @@ add_subdirectory(${SRC_DIR}/tnet/tests tnet_test)
 
 add_subdirectory(${SRC_DIR}/init/tests init_test)
 add_subdirectory(${SRC_DIR}/websocket/tests websocket_test)
+add_subdirectory(${SRC_DIR}/main/tests main_test)
+add_subdirectory(${SRC_DIR}/pki/tests pki_test)
+add_subdirectory(${SRC_DIR}/ck/tests ck_test)
