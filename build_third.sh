@@ -10,7 +10,7 @@ if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
 fi
 
 git submodule sync --recursive
-git submodule update --init --recursive
+git submodule update --init --jobs "${nproc}"
 
 install_deps() {
     if command -v apt-get >/dev/null 2>&1; then
