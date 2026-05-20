@@ -9,8 +9,44 @@ if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
     SUDO="sudo"
 fi
 
+reset_invalid_submodule() {
+    local path="$1"
+    local marker="$2"
+    case "$path" in
+        third_party/*|clipy/*) ;;
+        *)
+            echo "Refusing to clean unexpected submodule path: $path"
+            return 1
+            ;;
+    esac
+
+    if [ -d "$path" ] && [ ! -e "$path/$marker" ]; then
+        echo "Cleaning incomplete submodule checkout: $path (missing $marker)"
+        rm -rf "$path"
+    fi
+}
+
+reset_invalid_submodule third_party/evmone include/evmone/evmone.h
+reset_invalid_submodule third_party/libsodium configure.ac
+reset_invalid_submodule third_party/libuv CMakeLists.txt
+reset_invalid_submodule third_party/protobuf autogen.sh
+reset_invalid_submodule third_party/uWebSockets src/App.h
+reset_invalid_submodule third_party/uSockets src/libusockets.h
+
 git submodule sync --recursive
 git submodule update --init --jobs "${nproc}"
+
+require_submodule_file() {
+    local path="$1"
+    local marker="$2"
+    if [ ! -e "$path/$marker" ]; then
+        echo "Required submodule file is missing: $path/$marker"
+        echo "Try rerunning: git submodule sync --recursive && git submodule update --init $path"
+        exit 1
+    fi
+}
+
+require_submodule_file third_party/evmone include/evmone/evmone.h
 
 install_deps() {
     if command -v apt-get >/dev/null 2>&1; then
