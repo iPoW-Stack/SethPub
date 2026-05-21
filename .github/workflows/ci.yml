@@ -353,6 +353,9 @@ jobs:
           echo "::group::Update SethPub"
           cd "$WORKDIR"
           git fetch origin "$REF_NAME"
+          if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+            git stash push --include-untracked -m "ci-autostash-${COMMIT_SHA}" || true
+          fi
           git checkout --detach "$COMMIT_SHA"
           git submodule sync --recursive || true
           git submodule update --init --recursive || true
