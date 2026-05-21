@@ -451,8 +451,14 @@ if [ ! -f "$SRC_PATH/third_party/include/libusockets.h" ]; then
     cd "$SRC_PATH"
     git submodule update --init third_party/uSockets third_party/uWebSockets
     cd "$SRC_PATH/third_party/uWebSockets"
-    if [ ! -d "uSockets" ]; then
+    if [ ! -f "uSockets/src/libusockets.h" ]; then
+        rm -rf uSockets
         ln -s ../uSockets uSockets 2>/dev/null || cp -R ../uSockets uSockets
+    fi
+    if [ ! -f "uSockets/src/libusockets.h" ]; then
+        echo "Required uSockets header is missing: $SRC_PATH/third_party/uSockets/src/libusockets.h"
+        echo "Try rerunning: git submodule sync --recursive && git submodule update --init third_party/uSockets third_party/uWebSockets"
+        exit 1
     fi
 
     # Copy uSockets headers to main include directory (NOT in subdirectory!)
