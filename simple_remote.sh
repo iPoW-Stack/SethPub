@@ -292,7 +292,7 @@ clear_command() {
     start_pos=1
     for ip in "${node_ips_array[@]}"; do
         (
-            run_on_node "$ip" "cd /root && rm -rf pkg*; killall -9 seth" ||
+            run_on_node "$ip" "cd /root && rm -rf pkg* && (killall -9 seth 2>/dev/null || true)" ||
                 record_remote_failure "clear command failed on $ip:$NODE_SSH_PORT"
         ) &
         REMOTE_PIDS+=($!)
