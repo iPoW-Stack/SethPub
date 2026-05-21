@@ -138,6 +138,7 @@ reset_incomplete_install_dir "$SRC_PATH/third_party/include/evmc" "$SRC_PATH/thi
 reset_incomplete_install_dir "$SRC_PATH/third_party/include/maxmind" "$SRC_PATH/third_party/include/maxmind/maxminddb.h"
 reset_incomplete_install_dir "$SRC_PATH/third_party/include/pbc" "$SRC_PATH/third_party/include/pbc/pbc.h"
 reset_incomplete_install_dir "$SRC_PATH/third_party/include/libbls" "$SRC_PATH/third_party/include/libbls/tools/utils.h"
+reset_incomplete_install_dir "$SRC_PATH/third_party/include/libff" "$SRC_PATH/third_party/include/libff/algebra/curves/alt_bn128/alt_bn128_g1.hpp"
 reset_incomplete_install_dir "$SRC_PATH/third_party/include/cpppbc" "$SRC_PATH/third_party/include/cpppbc/PBC.h"
 
 ensure_evmc_checkout() {
@@ -293,11 +294,13 @@ if [ ! -d "$SRC_PATH/third_party/include/libbls" ]; then
     cd build_release && make -j8 && make install
     mkdir -p $SRC_PATH/third_party/include/libbls && cp -rnf ../third_party ../tools ../dkg ../bls $SRC_PATH/third_party/include/libbls
     require_installed_file "$SRC_PATH/third_party/libbls/deps/deps_inst/x86_or_x64/include/boost"
+    cp -rnf ../deps/deps_inst/x86_or_x64/include/* $SRC_PATH/third_party/include/
     mkdir -p $SRC_PATH/third_party/include/boost
     cp -rnf ../deps/deps_inst/x86_or_x64/include/boost/* $SRC_PATH/third_party/include/boost/
     cp -rnf ./libbls.a $SRC_PATH/third_party/lib/libdkgbls.a
 fi
 require_installed_file "$SRC_PATH/third_party/include/libbls/tools/utils.h"
+require_installed_file "$SRC_PATH/third_party/include/libff/algebra/curves/alt_bn128/alt_bn128_g1.hpp"
 
 if [ ! -d "$SRC_PATH/third_party/include/protobuf" ]; then
     cd $SRC_PATH
