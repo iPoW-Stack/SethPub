@@ -228,27 +228,56 @@ jobs:
 
       - name: Run remote SethTests
         env:
-          REMOTE_TEST_HOST: ${{ secrets.REMOTE_TEST_HOST }}
-          REMOTE_TEST_PORT: ${{ secrets.REMOTE_TEST_PORT }}
-          REMOTE_TEST_USER: ${{ secrets.REMOTE_TEST_USER }}
-          REMOTE_TEST_PASSWORD: ${{ secrets.REMOTE_TEST_PASSWORD }}
-          REMOTE_TEST_WORKDIR: ${{ secrets.REMOTE_TEST_WORKDIR }}
-          REMOTE_TEST_NODE_HOST: ${{ secrets.REMOTE_TEST_NODE_HOST }}
-          REMOTE_SETH_TESTS_DIR: ${{ secrets.REMOTE_SETH_TESTS_DIR }}
-          REMOTE_TEST_PYTHON: ${{ secrets.REMOTE_TEST_PYTHON }}
+          XL_CICD_REMOTE_SERVER: ${{ secrets.XL_CICD_REMOTE_SERVER }}
         run: |
           set -euo pipefail
 
-          : "${REMOTE_TEST_HOST:?Set REMOTE_TEST_HOST secret}"
-          : "${REMOTE_TEST_PASSWORD:?Set REMOTE_TEST_PASSWORD secret}"
+          : "${XL_CICD_REMOTE_SERVER:?Set XL_CICD_REMOTE_SERVER secret}"
 
-          REMOTE_TEST_PORT="${REMOTE_TEST_PORT:-2221}"
-          REMOTE_TEST_USER="${REMOTE_TEST_USER:-root}"
-          REMOTE_TEST_WORKDIR="${REMOTE_TEST_WORKDIR:-/root/seth}"
-          REMOTE_TEST_NODE_HOST="${REMOTE_TEST_NODE_HOST:-10.152.0.12}"
-          REMOTE_SETH_TESTS_DIR="${REMOTE_SETH_TESTS_DIR:-/root/SethTests}"
-          REMOTE_TEST_PYTHON="${REMOTE_TEST_PYTHON:-/root/tools/python3.10/bin/python3}"
+          eval "$(
+            python3 - <<'PY'
+          import json
+          import os
+          import shlex
+          import sys
 
+          raw = os.environ["XL_CICD_REMOTE_SERVER"].strip()
+          try:
+              config = json.loads(raw)
+          except json.JSONDecodeError as exc:
+              print(f"XL_CICD_REMOTE_SERVER must be JSON: {exc}", file=sys.stderr)
+              sys.exit(1)
+
+          defaults = {
+              "port": "2221",
+              "user": "root",
+              "workdir": "/root/seth",
+              "node_host": "10.152.0.12",
+              "tests_dir": "/root/SethTests",
+              "python": "/root/tools/python3.10/bin/python3",
+          }
+          values = {**defaults, **config}
+          for key in ("host", "password"):
+              if not values.get(key):
+                  print(f"XL_CICD_REMOTE_SERVER missing required field: {key}", file=sys.stderr)
+                  sys.exit(1)
+
+          names = {
+              "host": "REMOTE_TEST_HOST",
+              "port": "REMOTE_TEST_PORT",
+              "user": "REMOTE_TEST_USER",
+              "password": "REMOTE_TEST_PASSWORD",
+              "workdir": "REMOTE_TEST_WORKDIR",
+              "node_host": "REMOTE_TEST_NODE_HOST",
+              "tests_dir": "REMOTE_SETH_TESTS_DIR",
+              "python": "REMOTE_TEST_PYTHON",
+          }
+          for key, name in names.items():
+              print(f"export {name}={shlex.quote(str(values[key]))}")
+          PY
+          )"
+
+          echo "::add-mask::$REMOTE_TEST_PASSWORD"
           export SSHPASS="$REMOTE_TEST_PASSWORD"
           SSH_OPTS=(
             -p "$REMOTE_TEST_PORT"
