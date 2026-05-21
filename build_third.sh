@@ -145,13 +145,18 @@ reset_invalid_cmake_submodule() {
             ;;
     esac
 
-    if [ -f "$cmake_file" ] && ! grep -q "cmake_minimum_required" "$cmake_file"; then
+    if [ -f "$cmake_file" ] && ! cmake_submodule_file_is_valid "$cmake_file"; then
         echo "Cleaning invalid CMake submodule checkout: $path"
         rm -rf "$path"
     fi
 }
 
 git submodule sync --recursive
+
+cmake_submodule_file_is_valid() {
+    local cmake_file="$1"
+    grep -Eiq '^[[:space:]]*(cmake_minimum_required|project)[[:space:]]*\(' "$cmake_file"
+}
 
 refresh_submodule() {
     local path="$1"
@@ -196,13 +201,13 @@ ensure_submodule_file() {
 ensure_cmake_submodule() {
     local path="$1"
     ensure_submodule_file "$path" CMakeLists.txt
-    if ! grep -q "cmake_minimum_required" "$path/CMakeLists.txt"; then
+    if ! cmake_submodule_file_is_valid "$path/CMakeLists.txt"; then
         echo "Invalid CMakeLists.txt in submodule: $path"
         echo "Refreshing submodule checkout: $path"
         rm -rf "$path"
         refresh_submodule "$path"
     fi
-    if ! grep -q "cmake_minimum_required" "$path/CMakeLists.txt"; then
+    if ! cmake_submodule_file_is_valid "$path/CMakeLists.txt"; then
         echo "Invalid CMakeLists.txt remains after refresh: $path/CMakeLists.txt"
         exit 1
     fi
