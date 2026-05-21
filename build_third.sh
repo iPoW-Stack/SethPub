@@ -280,7 +280,8 @@ patch_libbls_argtable2() {
     fi
 }
 
-if [ ! -d "$SRC_PATH/third_party/include/libbls" ]; then
+if [ ! -d "$SRC_PATH/third_party/include/libbls" ] || \
+        [ ! -f "$SRC_PATH/third_party/include/libff/algebra/curves/alt_bn128/alt_bn128_g1.hpp" ]; then
     cd $SRC_PATH
     patch_libbls_argtable2
     cd third_party/libbls/deps

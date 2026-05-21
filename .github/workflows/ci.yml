@@ -71,8 +71,33 @@ jobs:
           restore-keys: |
             third-party-v2-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-
 
+      - name: Validate third-party cache
+        id: third-party-cache-state
+        run: |
+          REQUIRED_FILES=(
+            third_party/include/evmc/evmc.hpp
+            third_party/include/libbls/tools/utils.h
+            third_party/include/libff/algebra/curves/alt_bn128/alt_bn128_g1.hpp
+            third_party/include/pbc/pbc.h
+            third_party/include/cpppbc/PBC.h
+            third_party/include/libusockets.h
+            third_party/lib/libdkgbls.a
+          )
+
+          complete=true
+          for file in "${REQUIRED_FILES[@]}"; do
+            if [[ ! -e "$file" ]]; then
+              echo "Cache missing required file: $file"
+              complete=false
+            fi
+          done
+          if [[ "$complete" == "true" ]]; then
+            echo "Third-party cache is complete; skipping rebuild."
+          fi
+          echo "complete=$complete" >> "$GITHUB_OUTPUT"
+
       - name: Build third-party libraries
-        if: steps.cache-third-party.outputs.cache-hit != 'true'
+        if: steps.third-party-cache-state.outputs.complete != 'true'
         run: |
           bash build_third.sh
         timeout-minutes: 90
