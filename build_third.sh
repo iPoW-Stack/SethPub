@@ -299,9 +299,7 @@ fi
 
 patch_libbls_argtable2() {
     local arg_int="$SRC_PATH/third_party/libbls/deps/argtable2/src/arg_int.c"
-    if [ -f "$arg_int" ]; then
-        bash "$SRC_PATH/scripts/patch_argtable2_arg_int.sh" "$arg_int"
-    fi
+    bash "$SRC_PATH/scripts/patch_argtable2_arg_int.sh" "$arg_int"
 }
 
 if [ ! -d "$SRC_PATH/third_party/include/libbls" ] || \
@@ -309,6 +307,14 @@ if [ ! -d "$SRC_PATH/third_party/include/libbls" ] || \
     cd $SRC_PATH
     patch_libbls_argtable2
     cd third_party/libbls/deps
+    if ! grep -q 'patch_libbls_argtable2_arg_int' build.sh; then
+        sed -i '/echo "configuring it..."/i\
+if [ -f "argtable2/src/arg_int.c" ] && grep -q "static bool isspace" "argtable2/src/arg_int.c"; then\
+    sed -i "s/#include <limits.h>/#include <limits.h>\\n#include <stdbool.h>/" "argtable2/src/arg_int.c"\
+    sed -i "s/static bool isspace/static bool argtable_isspace_local/g; s/static char toupper/static char argtable_toupper_local/g; s/isspace(/argtable_isspace_local(/g; s/toupper(/argtable_toupper_local(/g" "argtable2/src/arg_int.c"\
+fi\
+# patch_libbls_argtable2_arg_int' build.sh
+    fi
     PARALLEL_COUNT=1 bash build.sh
     mkdir -p deps_inst/x86_or_x64/lib
     if compgen -G "deps_inst/x86_or_x64/lib64/lib*" >/dev/null; then
