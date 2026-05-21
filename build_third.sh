@@ -20,6 +20,7 @@ required_installed_files=(
     "$SRC_PATH/third_party/include/libusockets.h"
     "$SRC_PATH/third_party/lib/libdkgbls.a"
     "$SRC_PATH/third_party/lib/libff.a"
+    "$SRC_PATH/third_party/lib/libuSockets.a"
 )
 
 all_required_installed=true
@@ -478,7 +479,8 @@ if [ ! -f "$SRC_PATH/third_party/include/httplib.h" ]; then
 fi
 
 # Build uWebSockets and uSockets
-if [ ! -f "$SRC_PATH/third_party/include/libusockets.h" ]; then
+if [ ! -f "$SRC_PATH/third_party/include/libusockets.h" ] || \
+        [ ! -f "$SRC_PATH/third_party/lib/libuSockets.a" ]; then
     echo "Building uWebSockets and uSockets..."
     cd $SRC_PATH
 
@@ -523,6 +525,8 @@ if [ ! -f "$SRC_PATH/third_party/include/libusockets.h" ]; then
     cd $SRC_PATH
     echo "uWebSockets and uSockets installation completed!"
 fi
+require_installed_file "$SRC_PATH/third_party/include/libusockets.h"
+require_installed_file "$SRC_PATH/third_party/lib/libuSockets.a"
 
 cd $SRC_PATH
 rm -rf third_party/lib/lib*.so* third_party/lib64/lib*.so*
