@@ -1546,25 +1546,25 @@ static void ArsCreateSecKeys(const UWSRequest& req, UWSResponse& http_res) {
     }
 
     // Create public and private key pairs in the ring
-    std::vector<element_t> private_keys(ars.ring_size());
-    std::vector<element_t> public_keys(ars.ring_size());
+    contract::ArsElementVector private_keys(ars.ring_size());
+    contract::ArsElementVector public_keys(ars.ring_size());
     nlohmann::json res_json;
     res_json["status"] = 0;
     auto nodes = res_json["nodes"];
     auto keys_splits = common::Split<>(keys.c_str(), '-');
     ars.set_ring_size(keys_splits.Count());
     for (int i = 0; i < ars.ring_size(); ++i) {
-        ars.KeyGen(keys_splits[i], private_keys[i], public_keys[i]);
+        ars.KeyGen(keys_splits[i], private_keys[i].value, public_keys[i].value);
         unsigned char bytes_data[10240] = {0};
-        auto len = element_to_bytes(bytes_data, private_keys[i]);
+        auto len = element_to_bytes(bytes_data, private_keys[i].value);
         std::string x_i_str((char*)bytes_data, len);
-        len = element_to_bytes_compressed(bytes_data, public_keys[i]);
+        len = element_to_bytes_compressed(bytes_data, public_keys[i].value);
         std::string y_i_str((char*)bytes_data, len);
         res_json["nodes"][i]["node_index"] = i;
         res_json["nodes"][i]["private_key"] = common::Encode::HexEncode(x_i_str);
         res_json["nodes"][i]["public_key"] = common::Encode::HexEncode(y_i_str);
-        element_clear(private_keys[i]);
-        element_clear(public_keys[i]);
+        element_clear(private_keys[i].value);
+        element_clear(public_keys[i].value);
     }
 
     auto json_str = res_json.dump();

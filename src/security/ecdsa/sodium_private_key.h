@@ -142,8 +142,8 @@ private:
     }
 
     // Static Whitebox Keypair constants
-    static constexpr unsigned char kWhiteboxPublicKey[crypto_box_PUBLICKEYBYTES] = REPLACE_WHITEBOX_PK;
-    static constexpr unsigned char kWhiteboxPrivateKey[crypto_box_SECRETKEYBYTES] = REPLACE_WHITEBOX_SK;
+    static constexpr unsigned char kWhiteboxPublicKey[crypto_box_PUBLICKEYBYTES] = { REPLACE_WHITEBOX_PK };
+    static constexpr unsigned char kWhiteboxPrivateKey[crypto_box_SECRETKEYBYTES] = { REPLACE_WHITEBOX_SK };
 
     unsigned char* protected_key_;
     size_t protected_key_length_;

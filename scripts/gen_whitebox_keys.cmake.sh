@@ -10,7 +10,7 @@ sk="$(openssl pkey -in "$tmp/key.pem" -outform DER | tail -c 32 | xxd -p -c 32)"
 pk="$(openssl pkey -in "$tmp/key.pem" -pubout -outform DER | tail -c 32 | xxd -p -c 32)"
 
 fmt_c_array() {
-  echo "{$(echo "$1" | sed 's/../0x&,/g' | sed 's/,$//')}"
+  echo "$(echo "$1" | sed 's/../0x&,/g' | sed 's/,$//')"
 }
 
 pk_a="$(fmt_c_array "$pk")"

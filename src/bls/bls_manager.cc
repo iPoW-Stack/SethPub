@@ -72,7 +72,7 @@ void BlsManager::PoolTimerMessage() {
 }
 
 void BlsManager::TimerMessage() {
-    auto tmp_bls = waiting_bls_.load();
+    auto tmp_bls = LoadWaitingBls();
     auto now_tm_ms = common::TimeUtils::TimestampMs();
     // SETH_WARN("BlsManager handle message begin.");
     if (tmp_bls != nullptr) {
@@ -154,13 +154,13 @@ void BlsManager::OnNewElectBlock(
         dkg_cache_,
         ck_client_);
 //     SETH_WARN("call OnNewElectionBlock success add new bls dkg, elect_height: %lu", elect_height);
-    auto tmp_tm_block_info = latest_timeblock_info_.load();
+    auto tmp_tm_block_info = LoadLatestTimeblockInfo();
     waiting_bls->OnNewElectionBlock(
         elect_height,
         prev_elect_height,
         members,
         tmp_tm_block_info);
-    waiting_bls_.store(waiting_bls);
+    StoreWaitingBls(waiting_bls);
     SETH_DEBUG("success add new bls dkg, elect_height: %lu, prev valid elect height: %lu",
         elect_height, prev_elect_height);
 }
@@ -173,7 +173,7 @@ int BlsManager::FirewallCheckMessage(transport::MessagePtr& msg_ptr) try {
             return transport::kFirewallCheckError;
         }
     } else {
-        auto waiting_bls = waiting_bls_.load();
+        auto waiting_bls = LoadWaitingBls();
         if (waiting_bls != nullptr) {
             if (!waiting_bls->CheckBlsMessageValid(msg_ptr)) {
                 BLS_ERROR("check firewall failed!");
@@ -278,7 +278,7 @@ void BlsManager::OnTimeBlock(
         uint64_t lastest_time_block_tm,
         uint64_t latest_time_block_height,
         uint64_t vss_random) {
-    auto tmp_latest_tm = latest_timeblock_info_.load();
+    auto tmp_latest_tm = LoadLatestTimeblockInfo();
     if (tmp_latest_tm != nullptr) {
         if (latest_time_block_height <= tmp_latest_tm->latest_time_block_height) {
             return;
@@ -289,7 +289,7 @@ void BlsManager::OnTimeBlock(
     timeblock_info->lastest_time_block_tm = lastest_time_block_tm / 1000lu;
     timeblock_info->latest_time_block_height = latest_time_block_height;
     timeblock_info->vss_random = vss_random;
-    latest_timeblock_info_.store(timeblock_info);
+    StoreLatestTimeblockInfo(timeblock_info);
 }
 
 void BlsManager::SetUsedElectionBlock(
@@ -450,7 +450,7 @@ void BlsManager::HandleMessage(const transport::MessagePtr& msg_ptr) {
         return;
     }
 
-    auto waiting_bls = waiting_bls_.load();
+    auto waiting_bls = LoadWaitingBls();
     if (waiting_bls != nullptr) {
         waiting_bls->HandleMessage(msg_ptr);
     }
@@ -668,7 +668,7 @@ void BlsManager::HandleFinishSyncRequest(const transport::MessagePtr& msg_ptr) {
     uint32_t n = static_cast<uint32_t>(members->size());
 
     // Check if we are in the finish period
-    auto waiting_bls = waiting_bls_.load();
+    auto waiting_bls = LoadWaitingBls();
     if (!waiting_bls) {
         BLS_DEBUG("[HandleSyncReq] network %u: waiting_bls_ is null", network_id);
         return;
@@ -811,7 +811,7 @@ void BlsManager::BatchVerifyFinishItems() {
 
         // Determine verification interval based on DKG elapsed time
         uint64_t verify_interval_ms = kBatchVerifyIntervalMs;
-        auto tmp_bls = waiting_bls_.load();
+        auto tmp_bls = LoadWaitingBls();
         if (tmp_bls != nullptr && tmp_bls->elect_hegiht() > 0) {
             // Speed up verification to 3 seconds when DKG passes the 9-period mark
             if (now_us > (tmp_bls->begin_time_us() + tmp_bls->dkg_period_us() * 9)) {
@@ -1486,7 +1486,7 @@ void BlsManager::SyncFinishMessageToNeighbors(uint32_t network_id) {
     uint32_t t = (n + 1) / 2;  // 1/2 threshold for sync
 
     // Check if we are in the finish period
-    auto waiting_bls = waiting_bls_.load();
+    auto waiting_bls = LoadWaitingBls();
     if (!waiting_bls) {
         return;
     }

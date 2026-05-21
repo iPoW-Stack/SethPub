@@ -367,7 +367,7 @@ void TxPoolManager::FlushHeightTree() {
 //     SETH_DEBUG("success call FlushHeightTree");
     auto st = db_->Put(db_batch);
     if (!st.ok()) {
-        SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString());
+        SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
     }
 }
 

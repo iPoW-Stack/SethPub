@@ -1,6 +1,10 @@
 #pragma once
 
+#include <atomic>
 #include <limits>
+#if defined(__APPLE__)
+#include <mutex>
+#endif
 #include <queue>
 
 #include "block/account_manager.h"
@@ -148,7 +152,12 @@ public:
     }
 
     inline std::shared_ptr<ViewBlock> LatestCommittedBlock() const {
+#if defined(__APPLE__)
+        std::lock_guard<std::mutex> lock(latest_committed_block_mutex_);
+        return latest_committed_block_;
+#else
         return latest_committed_block_.load();
+#endif
     }
     // Set the latest committed block
     inline void SetLatestCommittedBlock(const std::shared_ptr<ViewBlockInfo>& view_block_info) {
@@ -170,7 +179,14 @@ public:
             view_block->qc().view(),
             common::Encode::HexEncode(view_block->qc().sign_x()).c_str());
         //assert(!view_block->qc().sign_x().empty());
-        latest_committed_block_.store(view_block);
+        {
+#if defined(__APPLE__)
+            std::lock_guard<std::mutex> lock(latest_committed_block_mutex_);
+            latest_committed_block_ = view_block;
+#else
+            latest_committed_block_.store(view_block);
+#endif
+        }
     }
 
     inline ViewBlockStatus GetViewBlockStatus(const std::shared_ptr<ViewBlock>& view_block) const {
@@ -300,7 +316,12 @@ private:
     std::atomic<View> high_view_block_view_ = 0llu;
     std::shared_ptr<ViewBlock> start_block_;
     std::unordered_map<HashStr, std::shared_ptr<ViewBlockInfo>> view_blocks_info_;
+#if defined(__APPLE__)
+    std::shared_ptr<ViewBlock> latest_committed_block_; // latest committed block
+    mutable std::mutex latest_committed_block_mutex_;
+#else
     std::atomic<std::shared_ptr<ViewBlock>> latest_committed_block_; // latest committed block
+#endif
     std::shared_ptr<db::Db> db_ = nullptr;
     std::shared_ptr<protos::PrefixDb> prefix_db_ = nullptr;
     uint32_t pool_index_ = common::kInvalidPoolIndex;

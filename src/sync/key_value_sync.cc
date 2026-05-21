@@ -194,13 +194,13 @@ void KeyValueSync::AddSyncViewHash(
         uint32_t priority) {
     // return;
     //assert(!view_hash.empty());
-    char key[2 + view_hash.size()] = {0};
-    uint16_t* pools = (uint16_t*)(key);
+    std::string key(2 + view_hash.size(), '\0');
+    uint16_t* pools = reinterpret_cast<uint16_t*>(&key[0]);
     pools[0] = pool_idx;
-    memcpy(key + 2, view_hash.c_str(), view_hash.size());
+    memcpy(&key[2], view_hash.c_str(), view_hash.size());
     //assert(priority <= kSyncHighest);
     auto item = std::make_shared<SyncItem>(
-        network_id, std::string(key, sizeof(key)), priority);
+        network_id, key, priority);
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     item_queues_[thread_idx].push(item);
     SETH_DEBUG("block height add new sync item key: %s, priority: %u, item size: %u",

@@ -61,7 +61,7 @@ RAW_SK=$(openssl pkey -in private_key.pem -outform DER | tail -c 32 | xxd -p -c 
 RAW_PK=$(openssl pkey -in private_key.pem -pubout -outform DER | tail -c 32 | xxd -p -c 32)
 
 format_to_c_array() {
-    echo "{$(echo "$1" | sed 's/../0x&,/g' | sed 's/,$//')}"
+    echo "$(echo "$1" | sed 's/../0x&,/g' | sed 's/,$//')"
 }
 
 PK_ARRAY=$(format_to_c_array "$RAW_PK")

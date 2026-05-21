@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <condition_variable>
 #include <deque>
 #include <memory>
@@ -170,14 +171,60 @@ private:
     int32_t leader_create_to_heights_index_ = 0;
     int32_t leader_create_statistic_heights_index_ = 0;
     common::ThreadSafeQueue<std::shared_ptr<StatisticMap>> shard_statistics_map_ptr_queue_;
+#if defined(__APPLE__)
+    std::shared_ptr<StatisticMap> LoadLatestStatisticMap(uint32_t index) const {
+        std::lock_guard<std::mutex> lock(got_latest_statistic_map_mutex_[index]);
+        return got_latest_statistic_map_ptr_[index];
+    }
+
+    void StoreLatestStatisticMap(uint32_t index, const std::shared_ptr<StatisticMap>& statistic_map) {
+        std::lock_guard<std::mutex> lock(got_latest_statistic_map_mutex_[index]);
+        got_latest_statistic_map_ptr_[index] = statistic_map;
+    }
+
+    std::shared_ptr<view_block::protobuf::ViewBlockItem> LoadLatestToBlock(uint32_t index) const {
+        std::lock_guard<std::mutex> lock(latest_to_block_mutex_[index]);
+        return latest_to_block_ptr_[index];
+    }
+
+    void StoreLatestToBlock(uint32_t index, const std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block) {
+        std::lock_guard<std::mutex> lock(latest_to_block_mutex_[index]);
+        latest_to_block_ptr_[index] = view_block;
+    }
+
+    std::shared_ptr<StatisticMap> got_latest_statistic_map_ptr_[2] = { nullptr };
+    mutable std::mutex got_latest_statistic_map_mutex_[2];
+#else
+    std::shared_ptr<StatisticMap> LoadLatestStatisticMap(uint32_t index) const {
+        return got_latest_statistic_map_ptr_[index].load();
+    }
+
+    void StoreLatestStatisticMap(uint32_t index, const std::shared_ptr<StatisticMap>& statistic_map) {
+        got_latest_statistic_map_ptr_[index].store(statistic_map);
+    }
+
+    std::shared_ptr<view_block::protobuf::ViewBlockItem> LoadLatestToBlock(uint32_t index) const {
+        return latest_to_block_ptr_[index].load();
+    }
+
+    void StoreLatestToBlock(uint32_t index, const std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block) {
+        latest_to_block_ptr_[index].store(view_block);
+    }
+
     std::atomic<std::shared_ptr<StatisticMap>> got_latest_statistic_map_ptr_[2] = { nullptr };
+#endif
     uint32_t valid_got_latest_statistic_map_ptr_index_ = 0;
     std::shared_ptr<contract::ContractManager> contract_mgr_ = nullptr;
     std::shared_ptr<consensus::HotstuffManager> hotstuff_mgr_ = nullptr;
     uint64_t prev_create_statistic_tx_tm_us_ = 0;
     uint64_t prev_timer_ms_ = 0;
     common::Tick pop_tx_tick_;
+#if defined(__APPLE__)
+    std::shared_ptr<view_block::protobuf::ViewBlockItem> latest_to_block_ptr_[2] = { nullptr };
+    mutable std::mutex latest_to_block_mutex_[2];
+#else
     std::atomic<std::shared_ptr<view_block::protobuf::ViewBlockItem>> latest_to_block_ptr_[2] = { nullptr };
+#endif
     uint32_t latest_to_block_ptr_index_ = 0;
     std::map<std::string, pools::TxItemPtr> heights_str_map_;
     uint32_t leader_prev_get_to_tx_tm_ = 0;
@@ -194,4 +241,3 @@ private:
 }  // namespace block
 
 }  // namespace seth
-

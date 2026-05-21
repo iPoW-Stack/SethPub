@@ -67,7 +67,7 @@ int ContractCreate2::call(
     // 返回 32 字节地址（左边 12 字节为 0，右边 20 字节为地址）—— 符合多数预计算场景预期
     res->output_data = new uint8_t[32];
     memset((void*)res->output_data, 0, 32);
-    memcpy((void*)res->output_data + 12, new_address.data(), 20);
+    memcpy(static_cast<uint8_t*>(const_cast<uint8_t*>(res->output_data)) + 12, new_address.data(), 20);
     res->output_size = 32;
 
     // 设置 create_address（如果上层需要记录实际创建的地址）

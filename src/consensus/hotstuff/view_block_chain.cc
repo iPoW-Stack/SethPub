@@ -157,7 +157,7 @@ Status ViewBlockChain::Store(
         // The parent block must exist
         auto it = view_blocks_info_.find(view_block->parent_hash());
         if (it == view_blocks_info_.end() || it->second->view_block == nullptr) {
-            auto tmp_latest_committed_block = latest_committed_block_.load();
+            auto tmp_latest_committed_block = LatestCommittedBlock();
             if (tmp_latest_committed_block == nullptr ||
                     tmp_latest_committed_block->qc().view_block_hash() != view_block->parent_hash()) {
                 SETH_ERROR("lack of parent view block, hash: %s, parent hash: %s, cur view: %lu, pool: %u",

@@ -92,7 +92,7 @@ void ToTxsPools::ThreadToStatistic(
 
     if (block.has_normal_to()) {
         SETH_DEBUG("success update to heights: %s", ProtobufToJson(block.normal_to()).c_str());
-        leader_to_heights_.store(nullptr);
+        StoreLeaderToHeights(nullptr);
         common::AutoSpinLock lock(prev_to_heights_mutex_);
         prev_to_heights_ = std::make_shared<pools::protobuf::ShardToTxItem>(
             block.normal_to().to_heights());
@@ -291,7 +291,7 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
     }
 
     bool valid = false;
-    auto leader_to_heights_ptr = leader_to_heights_.load();
+    auto leader_to_heights_ptr = LoadLeaderToHeights();
     if (leader_to_heights_ptr != nullptr) {
         // Heights already computed and tx creation in progress.
         // Check if the in-flight tx has been stuck too long (proposal may have failed).
@@ -305,7 +305,7 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
         // Timeout expired, clear stale cache and recompute
         SETH_DEBUG("LeaderCreateToHeights: in-flight tx timed out after %lu ms, recomputing",
             now_ms - leader_to_heights_set_tm_);
-        leader_to_heights_.store(nullptr);
+        StoreLeaderToHeights(nullptr);
     }
     
     {
@@ -402,7 +402,7 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
     }
 
     leader_to_heights_ptr = std::make_shared<pools::protobuf::ShardToTxItem>(to_heights);
-    leader_to_heights_.store(leader_to_heights_ptr);
+    StoreLeaderToHeights(leader_to_heights_ptr);
     leader_to_heights_set_tm_ = common::TimeUtils::TimestampMs();
     for (uint32_t i = 0; i < (uint32_t)to_heights.heights_size(); ++i) {
         if (prev_to_heights->heights(i) > to_heights.heights(i)) {
@@ -423,7 +423,7 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
     }
 
     SETH_DEBUG("final leader get to heights error, pool: %u, height: %lu", 0, 0);
-    leader_to_heights_.store(nullptr);
+    StoreLeaderToHeights(nullptr);
     return kPoolsError;
 }
 

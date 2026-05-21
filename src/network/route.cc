@@ -166,8 +166,8 @@ bool Route::CheckPoolsMessage(const transport::MessagePtr& header_ptr, dht::Base
         return false;
     }
 
-    auto members = all_shard_members_[common::GlobalInfo::Instance()->network_id()].load(
-        std::memory_order_acquire);
+    auto network_id = common::GlobalInfo::Instance()->network_id();
+    auto members = GetShardMembers(network_id);
     if (members == nullptr) {
         dht_ptr->SendToClosestNode(header_ptr);
         // SETH_DEBUG("pools message check route coming no members.");
@@ -199,7 +199,25 @@ void Route::OnNewElectBlock(
     }
 
     latest_elect_height_[sharding_id] = elect_height;
-    all_shard_members_[sharding_id].store(members);
+    SetShardMembers(sharding_id, members);
+}
+
+common::MembersPtr Route::GetShardMembers(uint32_t network_id) const {
+#if defined(__APPLE__)
+    std::lock_guard<std::mutex> lock(all_shard_members_mutex_[network_id]);
+    return all_shard_members_[network_id];
+#else
+    return all_shard_members_[network_id].load();
+#endif
+}
+
+void Route::SetShardMembers(uint32_t network_id, const common::MembersPtr& members) {
+#if defined(__APPLE__)
+    std::lock_guard<std::mutex> lock(all_shard_members_mutex_[network_id]);
+    all_shard_members_[network_id] = members;
+#else
+    all_shard_members_[network_id].store(members);
+#endif
 }
 
 void Route::Broadcasting() {

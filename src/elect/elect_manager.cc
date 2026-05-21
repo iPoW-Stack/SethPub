@@ -107,7 +107,7 @@ common::MembersPtr ElectManager::OnNewElectBlock(
     }
 
     ElectedToConsensusShard(elect_block, elected);
-    return members_ptr_[elect_block.shard_network_id()].load();
+    return LoadMembers(elect_block.shard_network_id());
 }
 
 void ElectManager::ElectedToConsensusShard(
@@ -269,7 +269,7 @@ bool ElectManager::ProcessPrevElectMembers(
         }
     }
 
-    members_ptr_[prev_elect_block.shard_network_id()].store(shard_members_ptr);
+    StoreMembers(prev_elect_block.shard_network_id(), shard_members_ptr);
     height_with_block_->AddNewHeightBlock(
         elect_block.prev_members().prev_elect_height(),
         prev_elect_block.shard_network_id(),
@@ -327,7 +327,7 @@ void ElectManager::ProcessNewElectBlock(
             elect_block.elect_height());
     }
 
-    waiting_members_ptr_[elect_block.shard_network_id()].store(shard_members_ptr);
+    StoreWaitingMembers(elect_block.shard_network_id(), shard_members_ptr);
 }
 
 void ElectManager::UpdatePrevElectMembers(
@@ -434,7 +434,7 @@ bool ElectManager::NodeHasElected(uint32_t network_id, const std::string& node_i
         return false;
     }
 
-    auto valid_members = members_ptr_[network_id].load();
+    auto valid_members = LoadMembers(network_id);
     if (valid_members != nullptr) {
         for (auto iter = valid_members->begin(); iter != valid_members->end(); ++iter) {
             if ((*iter)->id == node_id) {
@@ -445,7 +445,7 @@ bool ElectManager::NodeHasElected(uint32_t network_id, const std::string& node_i
         }
     }
 
-    auto waiting_members = waiting_members_ptr_[network_id].load();
+    auto waiting_members = LoadWaitingMembers(network_id);
     if (waiting_members != nullptr) {
         for (auto iter = waiting_members->begin(); iter != waiting_members->end(); ++iter) {
             if ((*iter)->id == node_id) {

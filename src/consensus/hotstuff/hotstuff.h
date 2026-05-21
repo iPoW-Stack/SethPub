@@ -1,5 +1,8 @@
 #pragma once
 
+#if defined(__APPLE__)
+#include <mutex>
+#endif
 #include <cstdlib>
 #include <consensus/hotstuff/crypto.h>
 #include "consensus/consensus_utils.h"
@@ -226,7 +229,7 @@ public:
     common::BftMemberPtr is_other_leader() {
         auto local_idx = GetLocalMemberIdx();
         View out_view = 0;
-        auto leader = pool_tx_leader_.load();
+        auto leader = LoadPoolTxLeader();
         if (leader && leader->index != local_idx) {
             return leader;
         }
@@ -235,7 +238,7 @@ public:
     }
 
     common::BftMemberPtr GetLeader() {
-        auto leader = pool_tx_leader_.load();
+        auto leader = LoadPoolTxLeader();
         if (leader ) {
             auto dht_ptr = network::DhtManager::Instance()->GetDht(
                 common::GlobalInfo::Instance()->network_id());
@@ -428,7 +431,7 @@ private:
                 last_stable_leader_member_index_.load(),
                 new_leader_idx,
                 leader_latest_qc.leader_idx());
-            pool_tx_leader_.store((*members)[last_stable_leader_member_index_ % members->size()]);
+            StorePoolTxLeader((*members)[last_stable_leader_member_index_ % members->size()]);
             return (*members)[last_stable_leader_member_index_ % members->size()];
         }
 
@@ -462,7 +465,7 @@ private:
                     last_stable_leader_member_index_.load(),
                     new_leader_idx,
                     leader_latest_qc.leader_idx());
-                pool_tx_leader_.store((*members)[new_leader_idx % members->size()]);
+                StorePoolTxLeader((*members)[new_leader_idx % members->size()]);
                 return (*members)[new_leader_idx % members->size()];
             } while (0);
         }
@@ -553,7 +556,7 @@ private:
             prev_qc_timestamp_sec,
             high_view_block->block_info().timestamp(),
             *out_view);
-        pool_tx_leader_.store((*members)[leader_idx % members->size()]);
+        StorePoolTxLeader((*members)[leader_idx % members->size()]);
         return (*members)[leader_idx % members->size()];
     }
 
@@ -635,6 +638,23 @@ private:
         common::BftMemberPtr leader, 
         bool has_system_tx);
     void ResendLeaderLatestProposeMessage();
+    common::BftMemberPtr LoadPoolTxLeader() const {
+#if defined(__APPLE__)
+        std::lock_guard<std::mutex> lock(pool_tx_leader_mutex_);
+        return pool_tx_leader_;
+#else
+        return pool_tx_leader_.load();
+#endif
+    }
+
+    void StorePoolTxLeader(const common::BftMemberPtr& leader) {
+#if defined(__APPLE__)
+        std::lock_guard<std::mutex> lock(pool_tx_leader_mutex_);
+        pool_tx_leader_ = leader;
+#else
+        pool_tx_leader_.store(leader);
+#endif
+    }
 
     static const uint64_t kLatestPoposeSendTxToLeaderPeriodMs = 10000lu;
 
@@ -675,7 +695,12 @@ private:
     uint64_t latest_elect_height_ = 0llu;
     common::LRUMap<uint64_t, uint64_t> view_with_block_tm_map_{16};
     common::LRUMap<uint64_t, uint64_t> laste_vote_prev_view_tm_{16};
+#if defined(__APPLE__)
+    common::BftMemberPtr pool_tx_leader_ = nullptr;
+    mutable std::mutex pool_tx_leader_mutex_;
+#else
     std::atomic<common::BftMemberPtr> pool_tx_leader_;
+#endif
     std::atomic<bool> update_latest_view_tm_ = false;
     uint64_t prev_recover_check_tm_ms_ = 0;
     // Backoff for empty propose cycles: when consecutive proposes yield 0 txs,

@@ -177,7 +177,7 @@ public:
             local_member_idx, common::Encode::HexEncode(id).c_str(), peer_idx);
         auto st = db_->Put(key, seckey);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString());
+            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
     }
 
@@ -564,7 +564,7 @@ public:
         std::string key = kTemporaryKeyPrefix + tmp_key;
         auto st = db_->Put(key, val);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString());
+            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
     }
 
@@ -741,7 +741,7 @@ public:
         std::string val = verfy_req.SerializeAsString();
         auto st = db_->Put(key, val);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString());
+            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
 
         SETH_DEBUG("%s add bls verify g2: %s", 
@@ -782,7 +782,7 @@ public:
         key.append(node_addr);
         auto st = db_->Put(key, bls_prikey);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString());
+            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
         
         SETH_DEBUG("save bls success: %lu, %u, %s, bls_prikey: %s", elect_height,
@@ -845,7 +845,7 @@ public:
         std::string val = verify_val.SerializeAsString();
         auto st = db_->Put(key, val);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString());
+            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
     }
 
@@ -945,7 +945,7 @@ public:
         std::string val(data, sizeof(data));
         auto st = db_->Put(key, val);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString());
+            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
     }
 
@@ -1112,7 +1112,7 @@ public:
 
         auto st = db_->Put(key, enc_data);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString());
+            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
     }
 
@@ -1220,7 +1220,7 @@ public:
         std::string val = verfy_final_vals.SerializeAsString();
         auto st = db_->Put(key, val);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString());
+            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
 
         SETH_DEBUG("%s save verified g2s: local_member_idx: %u, valid_t: %u, id: %s, val: %s",
@@ -1313,7 +1313,7 @@ public:
         std::string val(data, sizeof(data));
         auto st = db_->Put(key, val);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString());
+            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
     }
 
@@ -1397,7 +1397,7 @@ public:
         item.set_timestamp(day);
         st = db_->Put(key, item.SerializeAsString());
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString());
+            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
 
         return true;
@@ -1412,7 +1412,7 @@ public:
         key.append(id);
         auto st = db_->Put(key, sell_info.SerializeAsString());
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString());
+            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
     }
 
@@ -1458,7 +1458,7 @@ public:
         key.append(id);
         auto st = db_->Put(key, sell_info.SerializeAsString());
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString());
+            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
     }
 
@@ -1545,7 +1545,7 @@ public:
         key.append((char*)&network_id, sizeof(network_id));
         auto st = db_->Put(key, statistic_info.SerializeAsString());
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString());
+            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
         
         SETH_DEBUG("success SaveLatestPoolStatisticTag network: %u, message: %s",
@@ -1607,7 +1607,7 @@ public:
         
         auto st = db_->Put(key, enc_data);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString());
+            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
     }
 

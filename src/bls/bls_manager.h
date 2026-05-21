@@ -1,6 +1,10 @@
 #pragma once
 
+#include <atomic>
 #include <memory>
+#if defined(__APPLE__)
+#include <mutex>
+#endif
 #include <unordered_map>
 
 #include "common/bitmap.h"
@@ -144,13 +148,59 @@ private:
     int CheckFinishMessageValid(const transport::MessagePtr& msg_ptr);
     void TimerMessage();
 
+    std::shared_ptr<bls::BlsDkg> LoadWaitingBls() const {
+#if defined(__APPLE__)
+        std::lock_guard<std::mutex> lock(waiting_bls_mutex_);
+        return waiting_bls_;
+#else
+        return waiting_bls_.load();
+#endif
+    }
+
+    void StoreWaitingBls(const std::shared_ptr<bls::BlsDkg>& waiting_bls) {
+#if defined(__APPLE__)
+        std::lock_guard<std::mutex> lock(waiting_bls_mutex_);
+        waiting_bls_ = waiting_bls;
+#else
+        waiting_bls_.store(waiting_bls);
+#endif
+    }
+
+    std::shared_ptr<TimeBlockItem> LoadLatestTimeblockInfo() const {
+#if defined(__APPLE__)
+        std::lock_guard<std::mutex> lock(latest_timeblock_info_mutex_);
+        return latest_timeblock_info_;
+#else
+        return latest_timeblock_info_.load();
+#endif
+    }
+
+    void StoreLatestTimeblockInfo(const std::shared_ptr<TimeBlockItem>& timeblock_info) {
+#if defined(__APPLE__)
+        std::lock_guard<std::mutex> lock(latest_timeblock_info_mutex_);
+        latest_timeblock_info_ = timeblock_info;
+#else
+        latest_timeblock_info_.store(timeblock_info);
+#endif
+    }
+
+#if defined(__APPLE__)
+    std::shared_ptr<bls::BlsDkg> waiting_bls_{ nullptr };
+    mutable std::mutex waiting_bls_mutex_;
+#else
     std::atomic<std::shared_ptr<bls::BlsDkg>> waiting_bls_{ nullptr };
+#endif
     uint64_t max_height_{ common::kInvalidUint64 };
     std::unordered_map<uint32_t, BlsFinishItemPtr> finish_networks_map_;
     std::shared_ptr<security::Security> security_ = nullptr;
     std::shared_ptr<db::Db> db_ = nullptr;
     std::shared_ptr<protos::PrefixDb> prefix_db_ = nullptr;
+#if defined(__APPLE__)
+    std::shared_ptr<TimeBlockItem> latest_timeblock_info_ = nullptr;
+    mutable std::mutex latest_timeblock_info_mutex_;
+#else
     std::atomic<std::shared_ptr<TimeBlockItem>> latest_timeblock_info_ = nullptr;
+#endif
     uint64_t latest_elect_height_ = 0;
     std::unordered_map<uint32_t, std::shared_ptr<ElectItem>> elect_members_;
     common::Tick bls_tick_;

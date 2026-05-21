@@ -64,7 +64,7 @@ private:
         const std::string& id,
         const CallParameters& param, 
         ContractArs& ars, 
-        std::vector<element_t>& ring);
+        ArsElementVector& ring);
     int AggSignAndVerify(
         const CallParameters& param, 
         const std::string& key, 

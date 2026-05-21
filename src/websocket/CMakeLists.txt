@@ -34,7 +34,10 @@ set_target_properties(websocket PROPERTIES
 )
 
 target_include_directories(websocket PUBLIC "${_WEBSOCKETPP_INCLUDE_DIR}")
-target_link_libraries(websocket PRIVATE common boost_system boost_thread boost_atomic ssl crypto pthread dl)
+target_link_libraries(websocket PRIVATE common boost_system boost_thread boost_atomic ssl crypto pthread)
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    target_link_libraries(websocket PRIVATE dl)
+endif()
 if(WIN32)
     target_link_libraries(websocket PRIVATE ws2_32)
 endif()

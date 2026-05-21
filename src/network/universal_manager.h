@@ -1,5 +1,10 @@
 #pragma once
 
+#if defined(__APPLE__)
+#include <mutex>
+#else
+#include <atomic>
+#endif
 #include <memory>
 #include <vector>
 
@@ -45,10 +50,17 @@ private:
     void DhtBootstrapResponseCallback(
         dht::BaseDht* dht_ptr,
         const dht::protobuf::DhtMessage& dht_msg);
+    dht::BaseDhtPtr LoadDht(uint32_t network_id) const;
+    void StoreDht(uint32_t network_id, const dht::BaseDhtPtr& dht);
 
     static const uint32_t kUniversalNetworkCount = 2;
 
+#if defined(__APPLE__)
+    dht::BaseDhtPtr dhts_[kUniversalNetworkCount];  // just universal and node network
+    mutable std::mutex dhts_mutex_[kUniversalNetworkCount];
+#else
     std::atomic<dht::BaseDhtPtr> dhts_[kUniversalNetworkCount];  // just universal and node network
+#endif
     std::shared_ptr<security::Security> security_ = nullptr;
     std::shared_ptr<db::Db> db_ = nullptr;
     std::shared_ptr<block::AccountManager> acc_mgr_ = nullptr;

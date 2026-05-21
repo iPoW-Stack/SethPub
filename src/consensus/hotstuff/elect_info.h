@@ -16,6 +16,12 @@
 #include <network/universal_manager.h>
 #include <security/security.h>
 
+#if defined(__APPLE__)
+#include <mutex>
+#else
+#include <atomic>
+#endif
+
 namespace seth {
 
 namespace hotstuff {
@@ -183,7 +189,7 @@ public:
             return;
         }
 
-        auto elect_items_ptr = elect_items_[sharding_id].load();
+        auto elect_items_ptr = LoadElectItem(sharding_id);
         if (elect_items_ptr != nullptr &&
                 elect_items_ptr->ElectHeight() >= elect_height) {
             return;
@@ -191,8 +197,8 @@ public:
 
         auto elect_item = std::make_shared<ElectItem>(security_ptr_,
             sharding_id, elect_height, members, common_pk, sk);
-        prev_elect_items_[sharding_id].store(elect_items_ptr);
-        elect_items_[sharding_id].store(elect_item);
+        StorePrevElectItem(sharding_id, elect_items_ptr);
+        StoreElectItem(sharding_id, elect_item);
         RefreshMemberAddrs(sharding_id);
     #ifndef NDEBUG
         auto val = libBLS::ThresholdUtils::fieldElementToString(
@@ -205,8 +211,8 @@ public:
     std::shared_ptr<ElectItem> GetElectItem(uint32_t sharding_id, const uint64_t elect_height) const {
         std::shared_ptr<ElectItem> res_ptr = nullptr;
         do {
-            auto prev_elect_items_ptr = prev_elect_items_[sharding_id].load();
-            auto elect_items_ptr = elect_items_[sharding_id].load();
+            auto prev_elect_items_ptr = LoadPrevElectItem(sharding_id);
+            auto elect_items_ptr = LoadElectItem(sharding_id);
             if (elect_items_ptr &&
                     elect_height == elect_items_ptr->ElectHeight()) {
                 res_ptr = elect_items_ptr;
@@ -273,14 +279,14 @@ public:
             return nullptr;
         }
 
-        auto prev_elect_items_ptr = prev_elect_items_[sharding_id].load();
-        auto elect_items_ptr = elect_items_[sharding_id].load();
+        auto prev_elect_items_ptr = LoadPrevElectItem(sharding_id);
+        auto elect_items_ptr = LoadElectItem(sharding_id);
         return elect_items_ptr != nullptr ? elect_items_ptr : prev_elect_items_ptr;
     }
 
     // 更新 elect_item members 的 addr
     void RefreshMemberAddrs(uint32_t sharding_id) {
-        auto elect_items_ptr = elect_items_[sharding_id].load();
+        auto elect_items_ptr = LoadElectItem(sharding_id);
         if (!elect_items_ptr) {
             SETH_DEBUG("Leader pool elect item null");
             return;
@@ -315,8 +321,50 @@ public:
     }
     
 private:
+#if defined(__APPLE__)
+    std::shared_ptr<ElectItem> LoadPrevElectItem(uint32_t sharding_id) const {
+        std::lock_guard<std::mutex> lock(elect_items_mutex_[sharding_id]);
+        return prev_elect_items_[sharding_id];
+    }
+
+    std::shared_ptr<ElectItem> LoadElectItem(uint32_t sharding_id) const {
+        std::lock_guard<std::mutex> lock(elect_items_mutex_[sharding_id]);
+        return elect_items_[sharding_id];
+    }
+
+    void StorePrevElectItem(uint32_t sharding_id, const std::shared_ptr<ElectItem>& elect_item) {
+        std::lock_guard<std::mutex> lock(elect_items_mutex_[sharding_id]);
+        prev_elect_items_[sharding_id] = elect_item;
+    }
+
+    void StoreElectItem(uint32_t sharding_id, const std::shared_ptr<ElectItem>& elect_item) {
+        std::lock_guard<std::mutex> lock(elect_items_mutex_[sharding_id]);
+        elect_items_[sharding_id] = elect_item;
+    }
+
+    std::shared_ptr<ElectItem> prev_elect_items_[network::kConsensusShardEndNetworkId + 1] = { nullptr };
+    std::shared_ptr<ElectItem> elect_items_[network::kConsensusShardEndNetworkId + 1] = { nullptr };
+    mutable std::mutex elect_items_mutex_[network::kConsensusShardEndNetworkId + 1];
+#else
+    std::shared_ptr<ElectItem> LoadPrevElectItem(uint32_t sharding_id) const {
+        return prev_elect_items_[sharding_id].load();
+    }
+
+    std::shared_ptr<ElectItem> LoadElectItem(uint32_t sharding_id) const {
+        return elect_items_[sharding_id].load();
+    }
+
+    void StorePrevElectItem(uint32_t sharding_id, const std::shared_ptr<ElectItem>& elect_item) {
+        prev_elect_items_[sharding_id].store(elect_item);
+    }
+
+    void StoreElectItem(uint32_t sharding_id, const std::shared_ptr<ElectItem>& elect_item) {
+        elect_items_[sharding_id].store(elect_item);
+    }
+
     std::atomic<std::shared_ptr<ElectItem>> prev_elect_items_[network::kConsensusShardEndNetworkId + 1] = { nullptr };
     std::atomic<std::shared_ptr<ElectItem>> elect_items_[network::kConsensusShardEndNetworkId + 1] = { nullptr };
+#endif
     std::shared_ptr<security::Security> security_ptr_ = nullptr;
     std::shared_ptr<elect::ElectManager> elect_mgr_ = nullptr;
     uint32_t max_consensus_sharding_id_ = 3;
@@ -325,5 +373,4 @@ private:
 } // namespace consensus
 
 } // namespace seth
-
 

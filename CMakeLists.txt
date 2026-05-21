@@ -117,16 +117,25 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
     set(LINK_ANDROID_LOG log)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     add_compile_options(-Wno-c++11-narrowing)
+    add_compile_definitions(SETH_USE_UV)
     set(LINK_RT )
+    set(LINK_DL )
     if(NOT DEFINED IOS_PLATFORM)
-        set(LIB_DIR ${DEP_DIR}/libs/mac)
+        set(LIB_DIR
+            ${DEP_DIR}/libs/mac
+            ${DEP_DIR}/lib
+            ${DEP_DIR}/lib64)
     else() # iOS
         message(STATUS "IOS_PLATFORM=${IOS_PLATFORM}")
         set(LIB_DIR ${DEP_DIR}/libs/ios)
     endif()
+    if(DEFINED HOMEBREW_PREFIX AND NOT HOMEBREW_PREFIX STREQUAL "")
+        list(APPEND LIB_DIR ${HOMEBREW_PREFIX}/lib)
+    endif()
     find_package(OpenSSL REQUIRED)
     include_directories(${OPENSSL_INCLUDE_DIR})
     find_library(CFLIB CoreFoundation)
+    find_library(SECURITYLIB Security)
     add_definitions(-DGUID_CFUUID)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(LINK_RT )
@@ -232,7 +241,9 @@ else()
         endif()
     endif()
 
-    set(LINK_DL dl)
+    if(NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        set(LINK_DL dl)
+    endif()
 endif()
 
 # link definitions
@@ -292,6 +303,10 @@ set(LINK_ARGS
     #-static-libstdc++
     #-static
 )
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    list(APPEND LINK_ARGS ${SECURITYLIB} ${DEP_DIR}/pbc/libpbc.a)
+endif()
 
 # tcmalloc conflicts with AddressSanitizer, only link when ASAN is off
 if(NOT ENABLE_ASAN)
@@ -358,7 +373,9 @@ add_subdirectory(${SRC_DIR}/sync/tests sync_test)
 add_subdirectory(${SRC_DIR}/protos/tests protos_test)
 add_subdirectory(${SRC_DIR}/block/tests block_test)
 add_subdirectory(${SRC_DIR}/timeblock/tests tmblock_test)
-add_subdirectory(${SRC_DIR}/tnet/tests tnet_test)
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    add_subdirectory(${SRC_DIR}/tnet/tests tnet_test)
+endif()
 
 add_subdirectory(${SRC_DIR}/init/tests init_test)
 add_subdirectory(${SRC_DIR}/websocket/tests websocket_test)
