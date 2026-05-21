@@ -327,13 +327,14 @@ jobs:
               "user": "root",
               "workdir": "/root/seth",
               "node_host": "10.152.0.12",
-              "node_ssh_port": "",
+              "node_ssh_port": "22",
               "tests_dir": "/root/SethTests",
               "python": "/root/tools/python3.10/bin/python3",
           }
           values = {**defaults, **config}
           if not values.get("node_ssh_port"):
               values["node_ssh_port"] = values["port"]
+          values["node_ssh_port"] = "22"
           for key in ("host", "password"):
               if not values.get(key):
                   print(f"XL_CICD_REMOTE_SERVER missing required field: {key}", file=sys.stderr)
@@ -346,7 +347,7 @@ jobs:
               "password": "REMOTE_TEST_PASSWORD",
               "workdir": "REMOTE_TEST_WORKDIR",
               "node_host": "REMOTE_TEST_NODE_HOST",
-              "node_ssh_port": "REMOTE_TEST_NODE_SSH_PORT",
+              "node_ssh_port": "22",
               "tests_dir": "REMOTE_SETH_TESTS_DIR",
               "python": "REMOTE_TEST_PYTHON",
           }
