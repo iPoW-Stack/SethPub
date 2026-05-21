@@ -357,7 +357,7 @@ TEST_F(TestUtils, GetTxDbKeyEmptyGid) {
 // --- TimestampToDatetime Tests ---
 
 TEST_F(TestUtils, TimestampToDatetimeFormat) {
-    auto result = TimestampToDatetime(1577836800);
+    auto result = TimestampToDatetime(1577880000);
     ASSERT_NE(result.find("2020"), std::string::npos);
 }
 
