@@ -87,11 +87,17 @@ TEST_F(ShardStatisticInitTest, InitWithNullPointers) {
     common::GlobalInfo::Instance()->set_network_id(network::kConsensusShardBeginNetworkId);
 
     // Test with null database
-    ShardStatistic stat_null_db(elect_mgr, nullptr, sec, pools_mgr, contract_mgr);
+    std::shared_ptr<db::Db> null_db;
+    ShardStatistic stat_null_db(elect_mgr, null_db, sec, pools_mgr, contract_mgr);
     // Should handle null db gracefully
     
     // Test with all null pointers
-    ShardStatistic stat_all_null(nullptr, nullptr, nullptr, nullptr, nullptr);
+    std::shared_ptr<elect::ElectManager> null_elect_mgr;
+    std::shared_ptr<security::Security> null_sec;
+    std::shared_ptr<TxPoolManager> null_pools_mgr;
+    std::shared_ptr<contract::ContractManager> null_contract_mgr;
+    ShardStatistic stat_all_null(
+        null_elect_mgr, null_db, null_sec, null_pools_mgr, null_contract_mgr);
     // Should handle all null pointers gracefully
 
     common::GlobalInfo::Instance()->set_network_id(prev);

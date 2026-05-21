@@ -9,6 +9,8 @@
 #include "pools/unique_hash_lru_set.h"
 #include "pools/account_qps_lru_map.h"
 
+namespace seth {
+
 TEST(TestPoolsSmoke, BuildOnly) {
     SUCCEED();
 }
@@ -161,3 +163,5 @@ TEST(TestPoolsSmoke, ConcurrentLikeOperations) {
         EXPECT_GT(qps_map.GetQps(account), 0u);
     }
 }
+
+}  // namespace seth
