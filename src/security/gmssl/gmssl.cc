@@ -1,6 +1,7 @@
 #include "security/ecdsa/ecdsa.h"
 
-#include <gmssl/sm2_recover.h>
+#include <gmssl/sm2.h>
+#include <cstring>
 #include <stdexcept>
 
 #include "common/encode.h"
@@ -35,23 +36,21 @@ int GmSsl::Sign(const std::string &hash, std::string *sign) {
 }
 
 int GmSsl::Verify(const std::string& hash, const std::string& str_pk, const std::string& sign) {
-    //assert(sign.size() == 64);
-    //assert(hash.size() == 32);
-	SM2_SIGNATURE sig;
-    memcpy(sig.r, sign.c_str(), 32);
-    memcpy(sig.s, sign.c_str() + 32, 32);
-	SM2_POINT points[4];
-	size_t points_cnt;
-	sm2_signature_to_public_key_points(&sig, (uint8_t*)hash.c_str(), points, &points_cnt);
-    auto tmp_pk0 = std::string((char*)points[0].x, 32) + std::string((char*)points[0].y, 32);
-    auto tmp_pk = std::string((char*)points[1].x, 32) + std::string((char*)points[1].y, 32);
-    if (memcmp(tmp_pk.c_str(), str_pk.c_str(), tmp_pk.size()) != 0 && 
-            memcmp(tmp_pk0.c_str(), str_pk.c_str(), tmp_pk0.size()) != 0) {
-        SETH_DEBUG("sign get pk: %s, pk1: %s, src pk: %s, points_cnt: %d", 
-            common::Encode::HexEncode(tmp_pk0).c_str(), 
-            common::Encode::HexEncode(tmp_pk).c_str(), 
-            common::Encode::HexEncode(str_pk).c_str(),
-            points_cnt);
+    if (hash.size() != 32 || str_pk.size() != 64 || sign.size() != 64) {
+        return kSecurityError;
+    }
+
+    SM2_SIGNATURE sig;
+    memcpy(sig.r, sign.data(), sizeof(sig.r));
+    memcpy(sig.s, sign.data() + sizeof(sig.r), sizeof(sig.s));
+
+    SM2_POINT public_key;
+    memcpy(public_key.x, str_pk.data(), sizeof(public_key.x));
+    memcpy(public_key.y, str_pk.data() + sizeof(public_key.x), sizeof(public_key.y));
+
+    SM2_KEY key;
+    if (sm2_key_set_public_key(&key, &public_key) != 1 ||
+            sm2_do_verify(&key, reinterpret_cast<const uint8_t*>(hash.data()), &sig) != 1) {
         return kSecurityError;
     }
 
