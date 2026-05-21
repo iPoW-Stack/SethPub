@@ -2,9 +2,7 @@
 
 #include <atomic>
 #include <condition_variable>
-#if defined(__APPLE__)
 #include <mutex>
-#endif
 
 #include "common/node_members.h"
 #include "common/thread_safe_queue.h"
@@ -70,12 +68,8 @@ private:
     common::MembersPtr GetShardMembers(uint32_t network_id) const;
     void SetShardMembers(uint32_t network_id, const common::MembersPtr& members);
 
-#if defined(__APPLE__)
     common::MembersPtr all_shard_members_[network::kConsensusShardEndNetworkId + 1] = {nullptr};
     mutable std::mutex all_shard_members_mutex_[network::kConsensusShardEndNetworkId + 1];
-#else
-    std::atomic<common::MembersPtr> all_shard_members_[network::kConsensusShardEndNetworkId + 1] = {nullptr};
-#endif
 
     DISALLOW_COPY_AND_ASSIGN(Route);
 };

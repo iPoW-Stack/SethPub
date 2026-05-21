@@ -347,31 +347,19 @@ private:
     static const uint32_t kMaxKeepElectBlockCount = 3u;
     static const uint32_t kMaxCacheElectBlockCount = 7u;
     HeightMembersItemPtr LoadMembersItem(uint32_t network_id, uint32_t index) const {
-#if defined(__APPLE__)
         std::lock_guard<std::mutex> lock(members_ptrs_mutex_[network_id][index]);
         return members_ptrs_[network_id][index];
-#else
-        return members_ptrs_[network_id][index].load();
-#endif
     }
 
     void StoreMembersItem(uint32_t network_id, uint32_t index, const HeightMembersItemPtr& item) {
-#if defined(__APPLE__)
         std::lock_guard<std::mutex> lock(members_ptrs_mutex_[network_id][index]);
         members_ptrs_[network_id][index] = item;
-#else
-        members_ptrs_[network_id][index].store(item);
-#endif
     }
 
     std::map<uint64_t, std::shared_ptr<HeightMembersItem>, std::less<uint64_t>> height_with_members_[network::kConsensusShardEndNetworkId];
     std::mutex height_with_members_mutex_;
-#if defined(__APPLE__)
     HeightMembersItemPtr members_ptrs_[network::kConsensusShardEndNetworkId][kMaxKeepElectBlockCount] = {};
     mutable std::mutex members_ptrs_mutex_[network::kConsensusShardEndNetworkId][kMaxKeepElectBlockCount];
-#else
-    std::atomic<HeightMembersItemPtr> members_ptrs_[network::kConsensusShardEndNetworkId][kMaxKeepElectBlockCount];
-#endif
     std::shared_ptr<security::Security> security_ptr_ = nullptr;
     std::shared_ptr<db::Db> db_ = nullptr;
     std::shared_ptr<protos::PrefixDb> prefix_db_ = nullptr;

@@ -203,21 +203,13 @@ void Route::OnNewElectBlock(
 }
 
 common::MembersPtr Route::GetShardMembers(uint32_t network_id) const {
-#if defined(__APPLE__)
     std::lock_guard<std::mutex> lock(all_shard_members_mutex_[network_id]);
     return all_shard_members_[network_id];
-#else
-    return all_shard_members_[network_id].load();
-#endif
 }
 
 void Route::SetShardMembers(uint32_t network_id, const common::MembersPtr& members) {
-#if defined(__APPLE__)
     std::lock_guard<std::mutex> lock(all_shard_members_mutex_[network_id]);
     all_shard_members_[network_id] = members;
-#else
-    all_shard_members_[network_id].store(members);
-#endif
 }
 
 void Route::Broadcasting() {

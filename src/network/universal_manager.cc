@@ -228,21 +228,13 @@ void UniversalManager::Join(const dht::NodePtr& node) {
 }
 
 dht::BaseDhtPtr UniversalManager::LoadDht(uint32_t network_id) const {
-#if defined(__APPLE__)
     std::lock_guard<std::mutex> lock(dhts_mutex_[network_id]);
     return dhts_[network_id];
-#else
-    return dhts_[network_id].load();
-#endif
 }
 
 void UniversalManager::StoreDht(uint32_t network_id, const dht::BaseDhtPtr& dht) {
-#if defined(__APPLE__)
     std::lock_guard<std::mutex> lock(dhts_mutex_[network_id]);
     dhts_[network_id] = dht;
-#else
-    dhts_[network_id].store(dht);
-#endif
 }
 
 }  // namespace network

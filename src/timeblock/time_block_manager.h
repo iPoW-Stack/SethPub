@@ -104,29 +104,17 @@ private:
     std::shared_ptr<db::Db> db_ = nullptr;
     std::shared_ptr<protos::PrefixDb> prefix_db_ = nullptr;
     pools::TxItemPtr LoadTimeblockTx() const {
-#if defined(__APPLE__)
         std::lock_guard<std::mutex> lock(tmblock_tx_ptr_mutex_);
         return tmblock_tx_ptr_;
-#else
-        return tmblock_tx_ptr_.load();
-#endif
     }
 
     void StoreTimeblockTx(const pools::TxItemPtr& tx_ptr) {
-#if defined(__APPLE__)
         std::lock_guard<std::mutex> lock(tmblock_tx_ptr_mutex_);
         tmblock_tx_ptr_ = tx_ptr;
-#else
-        tmblock_tx_ptr_.store(tx_ptr);
-#endif
     }
 
-#if defined(__APPLE__)
     pools::TxItemPtr tmblock_tx_ptr_ = nullptr;
     mutable std::mutex tmblock_tx_ptr_mutex_;
-#else
-    std::atomic<pools::TxItemPtr> tmblock_tx_ptr_ = nullptr;
-#endif
     pools::CreateConsensusItemFunction create_tm_tx_cb_ = nullptr;
     std::shared_ptr<vss::VssManager> vss_mgr_ = nullptr;
     std::shared_ptr<block::AccountManager> account_mgr_ = nullptr;
