@@ -289,7 +289,7 @@ jobs:
   integration-tests:
     name: Remote Integration Tests (SethTests)
     runs-on: ubuntu-22.04
-    needs: build-seth
+    needs: []
     timeout-minutes: 120
     # Remote tests require repository secrets, so only run them on trusted pushes.
     if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/xl')) }}
