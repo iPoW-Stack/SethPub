@@ -9,6 +9,30 @@ if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
     SUDO="sudo"
 fi
 
+required_installed_files=(
+    "$SRC_PATH/third_party/include/evmc/evmc.hpp"
+    "$SRC_PATH/third_party/include/maxmind/maxminddb.h"
+    "$SRC_PATH/third_party/include/pbc/pbc.h"
+    "$SRC_PATH/third_party/include/libbls/tools/utils.h"
+    "$SRC_PATH/third_party/include/libff/algebra/curves/alt_bn128/alt_bn128_g1.hpp"
+    "$SRC_PATH/third_party/include/cpppbc/PBC.h"
+    "$SRC_PATH/third_party/include/libusockets.h"
+    "$SRC_PATH/third_party/lib/libdkgbls.a"
+)
+
+all_required_installed=true
+for required_file in "${required_installed_files[@]}"; do
+    if [ ! -e "$required_file" ]; then
+        all_required_installed=false
+        break
+    fi
+done
+
+if [ "$all_required_installed" = true ]; then
+    echo "Third-party install outputs are complete; skipping source submodule refresh."
+    exit 0
+fi
+
 reset_invalid_submodule() {
     local path="$1"
     local marker="$2"
