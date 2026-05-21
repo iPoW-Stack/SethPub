@@ -43,21 +43,31 @@ jobs:
       - name: Generate third-party cache key
         id: third-party-key
         run: |
-          {
-            git ls-files -s third_party clipy/liboqs
-            sha256sum build_third.sh .gitmodules
-          } | sha256sum | awk '{print "key="$1}' >> "$GITHUB_OUTPUT"
+          DEPS_KEY=$(
+            {
+              git ls-files -s third_party clipy/liboqs
+              sha256sum .gitmodules
+            } | sha256sum | awk '{print $1}'
+          )
+          BUILD_KEY=$(
+            sha256sum build_third.sh .github/workflows/unit-tests-fast.yml | sha256sum | awk '{print $1}'
+          )
+          echo "deps-key=$DEPS_KEY" >> "$GITHUB_OUTPUT"
+          echo "key=$DEPS_KEY-$BUILD_KEY" >> "$GITHUB_OUTPUT"
 
       - name: Cache third-party build
         id: cache-tp
         uses: actions/cache@v4
         with:
           path: |
+            third_party/bin
             third_party/lib
             third_party/lib64
             third_party/include
             third_party/depends
-          key: third-party-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}
+          key: third-party-v2-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}
+          restore-keys: |
+            third-party-v2-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-
 
       - name: Build third-party (if not cached)
         if: steps.cache-tp.outputs.cache-hit != 'true'
