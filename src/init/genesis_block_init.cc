@@ -1821,10 +1821,12 @@ void GenesisBlockInit::InitShardGenesisAccount() {
                 net_id < network::kConsensusShardEndNetworkId; net_id++) {
             load_addrs_func(
                 net_id, 
-                (std::string("/root/seth/init_accounts") + std::to_string(net_id)).c_str());
+                common::GlobalInfo::Instance()->RootPathFile(
+                    std::string("init_accounts") + std::to_string(net_id)).c_str());
             if (!load_addrs_func(
                     net_id, 
-                    (std::string("/root/seth/shards") + std::to_string(net_id)).c_str())) {
+                    common::GlobalInfo::Instance()->RootPathFile(
+                        std::string("shards") + std::to_string(net_id)).c_str())) {
                 SETH_DEBUG("failed load init shards%u", net_id);
                 break;
             }

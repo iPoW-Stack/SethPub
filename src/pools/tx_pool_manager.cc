@@ -1465,7 +1465,7 @@ void TxPoolManager::BftCheckInvalidGids(
 // static std::unordered_map<std::string, std::shared_ptr<address::protobuf::AddressInfo>> address_map;
 
 // static void LoadAllAccounts(int32_t shardnum=3) {
-//     FILE* fd = fopen((std::string("/root/seth/init_accounts") + std::to_string(shardnum)).c_str(), "r");
+//     FILE* fd = fopen((common::GlobalInfo::Instance()->RootPathFile("init_accounts") + std::to_string(shardnum)).c_str(), "r");
 //     if (fd == nullptr) {
 //         std::cout << "invalid init acc file." << std::endl;
 //         exit(1);

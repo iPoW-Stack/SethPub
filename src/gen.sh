@@ -1,3 +1,4 @@
 # protobuf version: 3.6.1
-../third_party/bin/protoc --proto_path=/root/seth/src protos/*.proto --cpp_out=./
-../third_party/bin/protoc --proto_path=/root/seth/src --python_out=./ protos/*.proto
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+"${SCRIPT_DIR}/../third_party/bin/protoc" --proto_path="${SCRIPT_DIR}" "${SCRIPT_DIR}"/protos/*.proto --cpp_out="${SCRIPT_DIR}"
+"${SCRIPT_DIR}/../third_party/bin/protoc" --proto_path="${SCRIPT_DIR}" --python_out="${SCRIPT_DIR}" "${SCRIPT_DIR}"/protos/*.proto

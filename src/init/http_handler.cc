@@ -10,6 +10,7 @@
 #include <nlohmann/json.hpp>
 
 #include "common/encode.h"
+#include "common/global_info.h"
 #include "common/string_utils.h"
 #include "consensus/hotstuff/view_block_chain.h"
 #include "consensus/hotstuff/hotstuff_manager.h"
@@ -2847,17 +2848,17 @@ void HttpHandler::Init(
     // Set certificate and key file paths
     // Try multiple locations for certificate files
     std::vector<std::string> cert_paths = {
+        common::GlobalInfo::Instance()->server_cert_path(),
         "server-cert.pem",           // Current directory
         "../server-cert.pem",        // Parent directory
-        "../../server-cert.pem",     // Grandparent directory
-        "/root/seth/server-cert.pem" // Absolute path
+        "../../server-cert.pem"      // Grandparent directory
     };
     
     std::vector<std::string> key_paths = {
+        common::GlobalInfo::Instance()->server_key_path(),
         "server-key.pem",
         "../server-key.pem",
-        "../../server-key.pem",
-        "/root/seth/server-key.pem"
+        "../../server-key.pem"
     };
     
     // Find certificate file

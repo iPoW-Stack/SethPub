@@ -1139,7 +1139,8 @@ int NetworkInit::ParseParams(int argc, char** argv, common::ParserArgs& parser_a
 }
 
 void NetworkInit::CreateInitAddress(uint32_t net_id) {
-    auto file_name = std::string("/root/seth/init_accounts") + std::to_string(net_id);
+    auto file_name = common::GlobalInfo::Instance()->RootPathFile(
+        std::string("init_accounts") + std::to_string(net_id));
     if (common::isFileExist(file_name)) {
         return;
     }
@@ -1378,8 +1379,8 @@ void NetworkInit::GetNetworkNodesFromConf(
     };
         
     uint32_t n = cons_shard_node_count;
-    // bool reuse_root = common::isFileExist("/root/seth/shards2");
-    // auto rfd = fopen("/root/seth/shards2", (reuse_root ? "r" : "w"));
+    // bool reuse_root = common::isFileExist(common::GlobalInfo::Instance()->RootPathFile("shards2"));
+    // auto rfd = fopen(common::GlobalInfo::Instance()->RootPathFile("shards2").c_str(), (reuse_root ? "r" : "w"));
     // //assert(rfd != nullptr);
     // std::vector<std::string> root_sks;
     // get_sks_func(rfd, root_sks, n, reuse_root);
@@ -1400,7 +1401,8 @@ void NetworkInit::GetNetworkNodesFromConf(
     // fclose(rfd);
     uint32_t t = common::GetSignerCount(n);
     for (uint32_t net_i = network::kRootCongressNetworkId; net_i < end_shard_id; net_i++) {
-        auto filename = std::string("/root/seth/shards") + std::to_string(net_i);
+        auto filename = common::GlobalInfo::Instance()->RootPathFile(
+            std::string("shards") + std::to_string(net_i));
         bool reuse_shard = common::isFileExist(filename);
         std::cout << filename << ", reuse: " << reuse_shard << std::endl;
         auto sfd = fopen(filename.c_str(), (reuse_shard ? "r" : "w"));

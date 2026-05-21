@@ -121,6 +121,20 @@ public:
         return ip_db_path_;
     }
 
+    const std::string& root_path() const {
+        return root_path_;
+    }
+
+    std::string RootPathFile(const std::string& file_name) const;
+
+    const std::string& server_cert_path() const {
+        return server_cert_path_;
+    }
+
+    const std::string& server_key_path() const {
+        return server_key_path_;
+    }
+
     uint8_t message_handler_thread_count() const {
         return message_handler_thread_count_;
     }
@@ -272,6 +286,9 @@ private:
     bool missing_node_{ false };
     int32_t tcp_server_thread_count_ = 4;
     std::string ip_db_path_;
+    std::string root_path_ = ".";
+    std::string server_cert_path_;
+    std::string server_key_path_;
     std::unordered_map<uint64_t, uint16_t> thread_with_index_;
     uint8_t message_handler_thread_count_ = 8;
     bool for_ck_server_ = false;

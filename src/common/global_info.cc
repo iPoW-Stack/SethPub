@@ -8,11 +8,24 @@
 #include "common/time_utils.h"
 #include "transport/transport_utils.h"
 
+#include <cstdlib>
+
 namespace seth {
 
 namespace common {
 
 static const std::string kAccountAddress("");
+
+namespace {
+
+std::string NormalizePath(std::string path) {
+    while (path.size() > 1 && (path.back() == '/' || path.back() == '\\')) {
+        path.pop_back();
+    }
+    return path.empty() ? "." : path;
+}
+
+}  // namespace
 
 GlobalInfo* GlobalInfo::Instance() {
     static GlobalInfo ins;
@@ -79,6 +92,16 @@ int GlobalInfo::Init(const common::Config& config) {
     config.Get("seth", "node_tag", node_tag_);
     ip_db_path_ = "./conf/GeoLite2-City.mmdb";
     config.Get("seth", "ip_db_path", ip_db_path_);
+    const char* env_root_path = std::getenv("SETH_ROOT");
+    if (env_root_path != nullptr && env_root_path[0] != '\0') {
+        root_path_ = env_root_path;
+    }
+    config.Get("seth", "root_path", root_path_);
+    root_path_ = NormalizePath(root_path_);
+    server_cert_path_ = RootPathFile("server-cert.pem");
+    server_key_path_ = RootPathFile("server-key.pem");
+    config.Get("seth", "server_cert_path", server_cert_path_);
+    config.Get("seth", "server_key_path", server_key_path_);
     config.Get("seth", "missing_node", missing_node_);
     config.Get("seth", "ck_port", ck_port_);
     config.Get("seth", "ck_host", ck_host_);
@@ -96,6 +119,16 @@ int GlobalInfo::Init(const common::Config& config) {
     }
   
     return kCommonSuccess;
+}
+
+std::string GlobalInfo::RootPathFile(const std::string& file_name) const {
+    if (file_name.empty()) {
+        return root_path_;
+    }
+    if (file_name.front() == '/' || file_name.front() == '\\') {
+        return file_name;
+    }
+    return root_path_ + "/" + file_name;
 }
 
 uint8_t GlobalInfo::get_thread_index() {
