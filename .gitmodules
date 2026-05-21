@@ -33,7 +33,7 @@
 	url = https://github.com/bitcoin-core/secp256k1.git
 [submodule "third_party/boost/multiprecision"]
 	path = third_party/boost/multiprecision
-	url = git@github.com:boostorg/multiprecision.git
+	url = https://github.com/boostorg/multiprecision.git
 [submodule "third_party/oqs"]
 	path = third_party/oqs
 	url = https://github.com/open-quantum-safe/liboqs.git
@@ -51,7 +51,7 @@
 	url = https://github.com/yhirose/cpp-httplib.git
 [submodule "third_party/evmone"]
 	path = third_party/evmone
-	url = https://github.com/ipsilon/evmone.git
+	url = https://github.com/ethereum/evmone.git
 [submodule "third_party/clickhouse"]
 	path = third_party/clickhouse
 	url = https://github.com/ClickHouse/clickhouse-cpp.git
@@ -63,7 +63,7 @@
 	url = https://github.com/nlohmann/json.git
 [submodule "third_party/pbc"]
 	path = third_party/pbc
-	url = git@github.com:blynn/pbc.git
+	url = https://github.com/blynn/pbc.git
 [submodule "third_party/fmt"]
 	path = third_party/fmt
 	url = https://github.com/fmtlib/fmt.git
@@ -85,3 +85,9 @@
 [submodule "third_party/uWebSockets"]
 	path = third_party/uWebSockets
 	url = https://github.com/uNetworking/uWebSockets.git
+[submodule "third_party/uSockets"]
+	path = third_party/uSockets
+	url = https://github.com/uNetworking/uSockets.git
+[submodule "clipy/liboqs"]
+	path = clipy/liboqs
+	url = https://github.com/open-quantum-safe/liboqs.git

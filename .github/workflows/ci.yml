@@ -11,6 +11,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # ─────────────────────────────────────────────────────────────────
   # Job 1: Build third-party dependencies (cached)
@@ -24,7 +27,7 @@ jobs:
       - name: Checkout SethPub
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
           fetch-depth: 1
 
       - name: Install system packages
@@ -34,10 +37,18 @@ jobs:
             build-essential cmake ninja-build \
             libssl-dev libgmp-dev uuid-dev \
             python3 python3-pip xxd \
-            pkg-config git curl wget \
-            libgmssl-dev || true
+            pkg-config git curl wget unzip
+          sudo apt-get install -y --no-install-recommends libgmssl-dev || true
           # GmSSL may not be in apt; build from submodule if needed
           echo "System packages installed"
+
+      - name: Generate third-party cache key
+        id: third-party-key
+        run: |
+          {
+            git ls-files -s third_party clipy/liboqs
+            sha256sum build_third.sh .gitmodules
+          } | sha256sum | awk '{print "key="$1}' >> "$GITHUB_OUTPUT"
 
       - name: Cache third-party build
         id: cache-third-party
@@ -48,9 +59,7 @@ jobs:
             third_party/lib64
             third_party/include
             third_party/depends
-          key: third-party-${{ runner.os }}-${{ hashFiles('build_third.sh', '.gitmodules') }}
-          restore-keys: |
-            third-party-${{ runner.os }}-
+          key: third-party-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}
 
       - name: Build third-party libraries
         if: steps.cache-third-party.outputs.cache-hit != 'true'
@@ -67,6 +76,7 @@ jobs:
             third_party/lib64
             third_party/include
             third_party/depends
+          if-no-files-found: error
           retention-days: 1
 
   # ─────────────────────────────────────────────────────────────────
@@ -87,7 +97,7 @@ jobs:
       - name: Checkout SethPub
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
           fetch-depth: 1
 
       - name: Install system packages
@@ -132,7 +142,7 @@ jobs:
       - name: Checkout SethPub
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
           fetch-depth: 1
 
       - name: Install system packages
@@ -158,6 +168,7 @@ jobs:
         with:
           name: seth-binary
           path: cbuild_Release/seth
+          if-no-files-found: error
           retention-days: 1
 
   # ─────────────────────────────────────────────────────────────────
@@ -178,7 +189,7 @@ jobs:
       - name: Checkout SethPub
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
           fetch-depth: 1
 
       - name: Checkout SethTests
@@ -263,21 +274,31 @@ jobs:
   summary:
     name: CI Summary
     runs-on: ubuntu-22.04
-    needs: [unit-tests, integration-tests]
+    needs: [build-deps, unit-tests, build-seth, integration-tests]
     if: always()
 
     steps:
       - name: Check results
         run: |
+          echo "Third-party deps:  ${{ needs.build-deps.result }}"
           echo "Unit tests:        ${{ needs.unit-tests.result }}"
+          echo "seth binary:       ${{ needs.build-seth.result }}"
           echo "Integration tests: ${{ needs.integration-tests.result }}"
 
-          if [[ "${{ needs.unit-tests.result }}" == "failure" ]]; then
-            echo "❌ Unit tests failed"
+          if [[ "${{ needs.build-deps.result }}" == "failure" || "${{ needs.build-deps.result }}" == "cancelled" ]]; then
+            echo "Third-party dependency build failed"
             exit 1
           fi
-          if [[ "${{ needs.integration-tests.result }}" == "failure" ]]; then
-            echo "❌ Integration tests failed"
+          if [[ "${{ needs.unit-tests.result }}" == "failure" || "${{ needs.unit-tests.result }}" == "cancelled" ]]; then
+            echo "Unit tests failed"
             exit 1
           fi
-          echo "✅ All tests passed"
+          if [[ "${{ needs.build-seth.result }}" == "failure" || "${{ needs.build-seth.result }}" == "cancelled" ]]; then
+            echo "seth binary build failed"
+            exit 1
+          fi
+          if [[ "${{ needs.integration-tests.result }}" == "failure" || "${{ needs.integration-tests.result }}" == "cancelled" ]]; then
+            echo "Integration tests failed"
+            exit 1
+          fi
+          echo "CI completed"
