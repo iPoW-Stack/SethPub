@@ -323,7 +323,7 @@ jobs:
               sys.exit(1)
 
           defaults = {
-              "port": "2221",
+              "port": "22",
               "user": "root",
               "workdir": "/root/seth",
               "node_host": "10.152.0.12",
