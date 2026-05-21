@@ -19,6 +19,7 @@ required_installed_files=(
     "$SRC_PATH/third_party/include/nlohmann/json.hpp"
     "$SRC_PATH/third_party/include/libusockets.h"
     "$SRC_PATH/third_party/lib/libdkgbls.a"
+    "$SRC_PATH/third_party/lib/libff.a"
 )
 
 all_required_installed=true
@@ -304,7 +305,8 @@ patch_libbls_argtable2() {
 }
 
 if [ ! -d "$SRC_PATH/third_party/include/libbls" ] || \
-        [ ! -f "$SRC_PATH/third_party/include/libff/algebra/curves/alt_bn128/alt_bn128_g1.hpp" ]; then
+        [ ! -f "$SRC_PATH/third_party/include/libff/algebra/curves/alt_bn128/alt_bn128_g1.hpp" ] || \
+        [ ! -f "$SRC_PATH/third_party/lib/libff.a" ]; then
     cd $SRC_PATH
     patch_libbls_argtable2
     cd third_party/libbls/deps
@@ -329,10 +331,13 @@ fi\
     cp -rnf ../deps/deps_inst/x86_or_x64/include/* $SRC_PATH/third_party/include/
     mkdir -p $SRC_PATH/third_party/include/boost
     cp -rnf ../deps/deps_inst/x86_or_x64/include/boost/* $SRC_PATH/third_party/include/boost/
+    mkdir -p $SRC_PATH/third_party/lib
     cp -rnf ./libbls.a $SRC_PATH/third_party/lib/libdkgbls.a
+    cp -rnf ../deps/deps_inst/x86_or_x64/lib/libff.a $SRC_PATH/third_party/lib/libff.a
 fi
 require_installed_file "$SRC_PATH/third_party/include/libbls/tools/utils.h"
 require_installed_file "$SRC_PATH/third_party/include/libff/algebra/curves/alt_bn128/alt_bn128_g1.hpp"
+require_installed_file "$SRC_PATH/third_party/lib/libff.a"
 
 if [ ! -d "$SRC_PATH/third_party/include/protobuf" ]; then
     cd $SRC_PATH

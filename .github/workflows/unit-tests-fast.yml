@@ -65,9 +65,9 @@ jobs:
             third_party/lib64
             third_party/include
             third_party/depends
-          key: third-party-v4-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}
+          key: third-party-v5-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}
           restore-keys: |
-            third-party-v4-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-
+            third-party-v5-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-
 
       - name: Validate third-party cache
         id: third-party-cache-state
@@ -81,6 +81,7 @@ jobs:
             third_party/include/nlohmann/json.hpp
             third_party/include/libusockets.h
             third_party/lib/libdkgbls.a
+            third_party/lib/libff.a
           )
 
           complete=true
