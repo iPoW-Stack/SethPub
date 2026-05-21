@@ -213,98 +213,92 @@ jobs:
   # Job 4: Integration Tests (SethTests)
   # ─────────────────────────────────────────────────────────────────
   integration-tests:
-    name: Integration Tests (SethTests)
+    name: Remote Integration Tests (SethTests)
     runs-on: ubuntu-22.04
     needs: build-seth
-    timeout-minutes: 30
-    # Only run on main/xl* branches and PRs targeting them
-    if: |
-      github.ref == 'refs/heads/main' ||
-      startsWith(github.ref, 'refs/heads/xl') ||
-      github.event_name == 'pull_request'
+    timeout-minutes: 120
+    # Remote tests require repository secrets, so only run them on trusted pushes.
+    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/xl')) }}
 
     steps:
-      - name: Checkout SethPub
-        uses: actions/checkout@v4
-        with:
-          submodules: false
-          fetch-depth: 1
-
-      - name: Checkout SethTests
-        uses: actions/checkout@v4
-        with:
-          repository: iPoW-Stack/SethTests
-          path: SethTests
-          token: ${{ secrets.PAT_TOKEN }}
-
-      - name: Install Python dependencies
+      - name: Install SSH tools
         run: |
-          python3 -m pip install --upgrade pip
-          # Install SethTests requirements if present
-          if [ -f SethTests/requirements.txt ]; then
-            pip3 install -r SethTests/requirements.txt
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends openssh-client sshpass
+
+      - name: Run remote SethTests
+        env:
+          REMOTE_TEST_HOST: ${{ secrets.REMOTE_TEST_HOST }}
+          REMOTE_TEST_PORT: ${{ secrets.REMOTE_TEST_PORT }}
+          REMOTE_TEST_USER: ${{ secrets.REMOTE_TEST_USER }}
+          REMOTE_TEST_PASSWORD: ${{ secrets.REMOTE_TEST_PASSWORD }}
+          REMOTE_TEST_WORKDIR: ${{ secrets.REMOTE_TEST_WORKDIR }}
+          REMOTE_TEST_NODE_HOST: ${{ secrets.REMOTE_TEST_NODE_HOST }}
+          REMOTE_SETH_TESTS_DIR: ${{ secrets.REMOTE_SETH_TESTS_DIR }}
+          REMOTE_TEST_PYTHON: ${{ secrets.REMOTE_TEST_PYTHON }}
+        run: |
+          set -euo pipefail
+
+          : "${REMOTE_TEST_HOST:?Set REMOTE_TEST_HOST secret}"
+          : "${REMOTE_TEST_PASSWORD:?Set REMOTE_TEST_PASSWORD secret}"
+
+          REMOTE_TEST_PORT="${REMOTE_TEST_PORT:-2221}"
+          REMOTE_TEST_USER="${REMOTE_TEST_USER:-root}"
+          REMOTE_TEST_WORKDIR="${REMOTE_TEST_WORKDIR:-/root/seth}"
+          REMOTE_TEST_NODE_HOST="${REMOTE_TEST_NODE_HOST:-10.152.0.12}"
+          REMOTE_SETH_TESTS_DIR="${REMOTE_SETH_TESTS_DIR:-/root/SethTests}"
+          REMOTE_TEST_PYTHON="${REMOTE_TEST_PYTHON:-/root/tools/python3.10/bin/python3}"
+
+          export SSHPASS="$REMOTE_TEST_PASSWORD"
+          SSH_OPTS=(
+            -p "$REMOTE_TEST_PORT"
+            -o StrictHostKeyChecking=no
+            -o UserKnownHostsFile=/dev/null
+            -o ServerAliveInterval=30
+            -o ServerAliveCountMax=20
+          )
+          REMOTE="$REMOTE_TEST_USER@$REMOTE_TEST_HOST"
+
+          sshpass -e ssh "${SSH_OPTS[@]}" "$REMOTE" 'bash -s' -- \
+            "$REMOTE_TEST_WORKDIR" \
+            "$GITHUB_REF_NAME" \
+            "$GITHUB_SHA" \
+            "$REMOTE_TEST_NODE_HOST" \
+            "$REMOTE_SETH_TESTS_DIR" \
+            "$REMOTE_TEST_PYTHON" <<'REMOTE_SCRIPT'
+          set -euo pipefail
+
+          WORKDIR="$1"
+          REF_NAME="$2"
+          COMMIT_SHA="$3"
+          NODE_HOST="$4"
+          TESTS_DIR="$5"
+          PYTHON_BIN="$6"
+
+          echo "::group::Update SethPub"
+          cd "$WORKDIR"
+          git fetch origin "$REF_NAME"
+          git checkout --detach "$COMMIT_SHA"
+          git submodule sync --recursive || true
+          git submodule update --init --recursive || true
+          git log -1 --oneline
+          echo "::endgroup::"
+
+          echo "::group::Start remote seth network"
+          bash simple_remote.sh 4 "$NODE_HOST"
+          echo "::endgroup::"
+
+          echo "::group::Update SethTests"
+          cd "$TESTS_DIR"
+          if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+            git pull --ff-only
           fi
-          # Install clipy dependencies
-          pip3 install \
-            requests eth-account ecdsa py-solc-x \
-            websocket-client gmssl || true
+          echo "::endgroup::"
 
-      - name: Download seth binary
-        uses: actions/download-artifact@v4
-        with:
-          name: seth-binary
-          path: cbuild_Release
-
-      - name: Make seth executable
-        run: chmod +x cbuild_Release/seth
-
-      - name: Start local seth network
-        run: |
-          # Generate node configs for a minimal local network
-          python3 gen_nodes_conf.py 3 127.0.0.1 2>/dev/null || \
-          python3 xl_gen_nodes_conf.py 3 127.0.0.1 2>/dev/null || \
-          echo "Config generation skipped"
-
-          # Start seth nodes in background (if config exists)
-          if ls seths_local/*/conf/sethhain.conf 2>/dev/null | head -1; then
-            bash xl_local.sh start 2>/dev/null || \
-            echo "Local network start skipped (no xl_local.sh)"
-          fi
-          sleep 5
-
-      - name: Run SethTests test suite
-        run: |
-          cd SethTests
-          # Run all test files found in the repo
-          if [ -f run_tests.sh ]; then
-            bash run_tests.sh
-          elif [ -f pytest.ini ] || [ -f setup.cfg ] || ls test_*.py 2>/dev/null; then
-            python3 -m pytest -v --tb=short --timeout=120 2>&1 | tee test_output.txt
-          elif ls *.py 2>/dev/null | grep -q test; then
-            for f in test_*.py; do
-              echo "=== Running $f ==="
-              python3 "$f" || echo "FAILED: $f"
-            done
-          else
-            echo "No test runner found in SethTests, listing contents:"
-            ls -la
-          fi
-
-      - name: Stop local seth network
-        if: always()
-        run: |
-          pkill -f "seth " 2>/dev/null || true
-          echo "Network stopped"
-
-      - name: Upload integration test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-test-results
-          path: |
-            SethTests/test_output.txt
-            SethTests/*.log
-          retention-days: 7
+          echo "::group::Run SethTests"
+          "$PYTHON_BIN" seth_test_runner.py --host "$NODE_HOST"
+          echo "::endgroup::"
+          REMOTE_SCRIPT
 
   # ─────────────────────────────────────────────────────────────────
   # Job 5: Summary
