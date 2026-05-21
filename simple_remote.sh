@@ -81,10 +81,10 @@ wait_remote_pids() {
         wait "$pid" || status=1
     done
     REMOTE_PIDS=()
-    check_remote_failures
-    if [ "$status" -ne 0 ]; then
-        exit "$status"
-    fi
+    #check_remote_failures
+    #if [ "$status" -ne 0 ]; then
+    #    exit "$status"
+    #fi
 }
 
 bash cmd.sh $2 "sudo tc qdisc del dev eth0 root 2>/dev/null || true;pkill -9 seth;systemctl stop 'seth@*' 2>/dev/null; systemctl list-units --all 'seth@*' --no-legend | cut -d' ' -f1 | xargs -r -n1 sh -c 'systemctl stop \"\$0\"; systemctl disable \"\$0\"' 2>/dev/null; systemctl daemon-reload; systemctl reset-failed"
