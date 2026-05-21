@@ -86,7 +86,7 @@ init() {
     killall -9 seth
     killall -9 txcli
 
-    bash build.sh a $TARGET
+    bash build.sh seth $TARGET
     sudo rm -rf /root/nodes
     sudo cp -rf ./nodes_local /root/nodes
     rm -rf /root/nodes/*/seth /root/nodes/*/core* /root/nodes/*/log/* /root/nodes/*/*db*
@@ -163,7 +163,7 @@ make_package() {
     mkdir -p /root/seth/pkgs
     rm -rf /root/nodes/seth/pkg
     if [ -d "/root/seth/pkgs/$node_hash" ]; then
-        cd /root/seth/ && bash build.sh a $TARGET
+        cd /root/seth/ && bash build.sh seth $TARGET
         cd /root/seth/cbuild_$TARGET && make txcli
         cp -rf /root/seth/cbuild_$TARGET/seth /root/seth/pkgs/$node_hash/seth
         cp -rf /root/seth/pkgs/$node_hash /root/nodes/seth/pkg
