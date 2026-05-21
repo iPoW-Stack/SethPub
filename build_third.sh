@@ -292,6 +292,8 @@ if [ ! -d "$SRC_PATH/third_party/include/libbls" ]; then
     cmake -S . -B build_release  -DUSE_ASM=False  -DWITH_PROCPS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DLIBBLS_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/
     cd build_release && make -j8 && make install
     mkdir -p $SRC_PATH/third_party/include/libbls && cp -rnf ../third_party ../tools ../dkg ../bls $SRC_PATH/third_party/include/libbls
+    require_installed_file "$SRC_PATH/third_party/libbls/deps/deps_inst/x86_or_x64/include/boost"
+    mkdir -p $SRC_PATH/third_party/include/boost
     cp -rnf ../deps/deps_inst/x86_or_x64/include/boost/* $SRC_PATH/third_party/include/boost/
     cp -rnf ./libbls.a $SRC_PATH/third_party/lib/libdkgbls.a
 fi
