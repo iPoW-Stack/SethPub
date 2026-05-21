@@ -347,7 +347,7 @@ jobs:
               "password": "REMOTE_TEST_PASSWORD",
               "workdir": "REMOTE_TEST_WORKDIR",
               "node_host": "REMOTE_TEST_NODE_HOST",
-              "node_ssh_port": "22",
+              "node_ssh_port": "REMOTE_TEST_NODE_SSH_PORT",
               "tests_dir": "REMOTE_SETH_TESTS_DIR",
               "python": "REMOTE_TEST_PYTHON",
           }
