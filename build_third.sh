@@ -38,7 +38,7 @@ required_installed_files=(
     "$SRC_PATH/third_party/include/pbc/pbc.h"
     "$SRC_PATH/third_party/include/libbls/tools/utils.h"
     "$SRC_PATH/third_party/include/libff/algebra/curves/alt_bn128/alt_bn128_g1.hpp"
-    "$SRC_PATH/third_party/include/protobuf/message.h"
+    "$SRC_PATH/third_party/include/google/protobuf/message.h"
     "$SRC_PATH/third_party/include/spdlog/spdlog.h"
     "$SRC_PATH/third_party/include/rocksdb/db.h"
     "$SRC_PATH/third_party/include/gmssl/sm2.h"
@@ -252,7 +252,7 @@ reset_incomplete_component "$SRC_PATH/third_party/include/evmc" "$SRC_PATH/third
 reset_incomplete_component "$SRC_PATH/third_party/include/sodium" "$SRC_PATH/third_party/include/sodium.h" "$SRC_PATH/third_party/lib/libsodium.a"
 reset_incomplete_component "$SRC_PATH/third_party/include/maxmind" "$SRC_PATH/third_party/include/maxmind/maxminddb.h" "$SRC_PATH/third_party/lib/libmaxminddb.a"
 reset_incomplete_component "$SRC_PATH/third_party/include/libuv" "$SRC_PATH/third_party/include/uv.h" "$SRC_PATH/third_party/lib/libuv.a"
-reset_incomplete_component "$SRC_PATH/third_party/include/protobuf" "$SRC_PATH/third_party/include/protobuf/message.h" "$SRC_PATH/third_party/lib/libprotobuf.a"
+reset_incomplete_component "$SRC_PATH/third_party/include/google/protobuf" "$SRC_PATH/third_party/include/google/protobuf/message.h" "$SRC_PATH/third_party/lib/libprotobuf.a"
 reset_incomplete_component "$SRC_PATH/third_party/include/spdlog" "$SRC_PATH/third_party/include/spdlog/spdlog.h" "$SRC_PATH/third_party/lib/libspdlog.a"
 reset_incomplete_component "$SRC_PATH/third_party/include/rocksdb" "$SRC_PATH/third_party/include/rocksdb/db.h" "$SRC_PATH/third_party/lib/librocksdb.a"
 reset_incomplete_component "$SRC_PATH/third_party/include/gmssl" "$SRC_PATH/third_party/include/gmssl/sm2.h" "$SRC_PATH/third_party/lib/libgmssl.a"
@@ -490,12 +490,13 @@ require_installed_file "$SRC_PATH/third_party/lib/libboost_system.a"
 require_installed_file "$SRC_PATH/third_party/lib/libboost_thread.a"
 require_installed_file "$SRC_PATH/third_party/lib/libboost_atomic.a"
 
-if [ ! -d "$SRC_PATH/third_party/include/protobuf" ]; then
+if [ ! -f "$SRC_PATH/third_party/include/google/protobuf/message.h" ] || \
+        ! installed_file_exists "$SRC_PATH/third_party/lib/libprotobuf.a"; then
     cd $SRC_PATH
     ensure_submodule_file third_party/protobuf autogen.sh
     cd third_party/protobuf/ && checkout_if_available 48cb18e && ./autogen.sh && ./configure --disable-shared --enable-static CXXFLAGS="-fPIC -O3" CFLAGS="-fPIC -O3" --prefix=$SRC_PATH/third_party/ && make -j${nproc} && make install
 fi
-require_installed_file "$SRC_PATH/third_party/include/protobuf/message.h"
+require_installed_file "$SRC_PATH/third_party/include/google/protobuf/message.h"
 require_installed_file "$SRC_PATH/third_party/lib/libprotobuf.a"
 
 if [ ! -d "$SRC_PATH/third_party/include/spdlog" ]; then
