@@ -170,6 +170,7 @@ set(REQUIRED_THIRD_PARTY_HEADERS
     ${DEP_DIR}/include/cpppbc/PBC.h
     ${DEP_DIR}/include/GeoLite2PP.hpp
     ${DEP_DIR}/include/libbls/tools/utils.h
+    ${DEP_DIR}/include/nlohmann/json.hpp
     ${DEP_DIR}/include/evmc/evmc.hpp)
 foreach(required_header IN LISTS REQUIRED_THIRD_PARTY_HEADERS)
     if(NOT EXISTS "${required_header}")

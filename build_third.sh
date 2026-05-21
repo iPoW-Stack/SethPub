@@ -16,6 +16,7 @@ required_installed_files=(
     "$SRC_PATH/third_party/include/libbls/tools/utils.h"
     "$SRC_PATH/third_party/include/libff/algebra/curves/alt_bn128/alt_bn128_g1.hpp"
     "$SRC_PATH/third_party/include/cpppbc/PBC.h"
+    "$SRC_PATH/third_party/include/nlohmann/json.hpp"
     "$SRC_PATH/third_party/include/libusockets.h"
     "$SRC_PATH/third_party/lib/libdkgbls.a"
 )
@@ -398,10 +399,11 @@ require_installed_file "$SRC_PATH/third_party/include/pbc/pbcxx.h"
 sed -i 's/private/public/g' "$SRC_PATH/third_party/include/pbc/pbcxx.h"
 sed -i 's/protected/public/g' "$SRC_PATH/third_party/include/pbc/pbcxx.h"
 
-if [ ! -d "$SRC_PATH/third_party/include/json" ]; then
+if [ ! -f "$SRC_PATH/third_party/include/nlohmann/json.hpp" ]; then
     cd $SRC_PATH
     cd third_party/json &&  git submodule update --init && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DJSON_BuildTests=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j${nproc} && make install
 fi
+require_installed_file "$SRC_PATH/third_party/include/nlohmann/json.hpp"
 
 if [ ! -d "$SRC_PATH/third_party/include/cpppbc" ]; then
     cd $SRC_PATH
