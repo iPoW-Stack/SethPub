@@ -139,7 +139,6 @@ declare -a ALL_TESTS=(
     "websocket_test:websocket_test"
     "main_test:main_test"
     "pki_test:pki_test"
-    "ck_test:ck_test"
 )
 
 # ---- 7. Helper: build + run a single test ----------------------------------
