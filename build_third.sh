@@ -356,7 +356,6 @@ if [ ! -d "$SRC_PATH/third_party/include/evmone" ]; then
     cd third_party/evmone
     git submodule update --init --recursive
 
-    rm -rf build_release
     cmake -S . -B build_release \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
         -DCMAKE_CXX_FLAGS="-O2 -g" \
@@ -372,7 +371,6 @@ if [ ! -d "$SRC_PATH/third_party/include/evmc" ]; then
     cd $SRC_PATH
     ensure_evmc_checkout
     cd "$SRC_PATH/third_party/evmone/evmc"
-    rm -rf build_release
     cmake -S . -B build_release \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_CXX_FLAGS="-O2" \
@@ -405,7 +403,7 @@ require_installed_file "$SRC_PATH/third_party/lib/libmaxminddb.a"
 if [ ! -d "$SRC_PATH/third_party/include/libuv" ]; then
     cd $SRC_PATH
     ensure_cmake_submodule third_party/libuv
-    cd third_party/libuv && rm -rf build_release && checkout_if_available 5152db2 && git submodule init && git submodule update && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=$TARGET -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j8 && make install
+    cd third_party/libuv && checkout_if_available 5152db2 && git submodule init && git submodule update && cmake -S . -B build_release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=$TARGET -DCMAKE_INSTALL_PREFIX=$SRC_PATH/third_party/ && cd build_release && make -j8 && make install
     rm -rf $SRC_PATH/third_party/include/libuv
     mv $SRC_PATH/third_party/include/uv $SRC_PATH/third_party/include/libuv
     sed -i 's/"uv\//"libuv\//g' $SRC_PATH/third_party/include/uv.h

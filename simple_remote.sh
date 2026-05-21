@@ -1,10 +1,16 @@
-each_nodes_count=$1
-node_ips=$2
+each_nodes_count=${1:-}
+node_ips=${2:-}
 bootstrap=""
-end_shard=$3
-PASSWORD=$4
-TARGET=$5
-FIRST_NODE_COUNT=$1
+end_shard=${3:-}
+PASSWORD=${4:-}
+TARGET=${5:-}
+FIRST_NODE_COUNT="$each_nodes_count"
+NODE_SSH_PORT="${SETH_REMOTE_NODE_SSH_PORT:-${SETH_REMOTE_SSH_PORT:-22}}"
+REMOTE_FAIL_FILE="/tmp/seth_remote_fail.$$"
+export SETH_REMOTE_SSH_PORT="$NODE_SSH_PORT"
+export SETH_REMOTE_PASSWORD="${PASSWORD:-${SETH_REMOTE_PASSWORD:-}}"
+export REMOTE_FAIL_FILE
+REMOTE_PIDS=()
 
 CODE_PATH=`pwd`
 node_ips_array=(${node_ips//,/ })
@@ -13,6 +19,73 @@ for ip in "${node_ips_array[@]}"; do
     nodes_count=$(($nodes_count + $each_nodes_count))
 done
 node_hash=$(printf "%d%d" "$nodes_count" "$each_nodes_count" | md5sum | cut -d ' ' -f1)
+
+record_remote_failure() {
+    echo "$1" >> "$REMOTE_FAIL_FILE"
+}
+
+check_remote_failures() {
+    if [ -s "$REMOTE_FAIL_FILE" ]; then
+        cat "$REMOTE_FAIL_FILE" >&2
+        rm -f "$REMOTE_FAIL_FILE"
+        exit 1
+    fi
+}
+
+is_local_ip() {
+    local ip="$1"
+    if [ "$ip" = "localhost" ] || [ "$ip" = "127.0.0.1" ]; then
+        return 0
+    fi
+    hostname -I 2>/dev/null | tr ' ' '\n' | grep -Fxq "$ip"
+}
+
+all_nodes_local() {
+    local current_node_ips_array=(${node_ips//,/ })
+    local ip
+    for ip in "${current_node_ips_array[@]}"; do
+        if ! is_local_ip "$ip"; then
+            return 1
+        fi
+    done
+    return 0
+}
+
+run_on_node() {
+    local ip="$1"
+    local command="$2"
+    if is_local_ip "$ip"; then
+        bash -lc "$command"
+    else
+        sshpass -p "$PASSWORD" ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5 \
+            root@$ip -p "$NODE_SSH_PORT" "$command"
+    fi
+}
+
+copy_to_node() {
+    local ip="$1"
+    local src="$2"
+    local dest="$3"
+    if is_local_ip "$ip"; then
+        cp -f "$src" "$dest"
+    else
+        sshpass -p "$PASSWORD" scp -P "$NODE_SSH_PORT" -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
+            "$src" root@$ip:"$dest"
+    fi
+}
+
+wait_remote_pids() {
+    local status=0
+    local pid
+    for pid in "${REMOTE_PIDS[@]}"; do
+        wait "$pid" || status=1
+    done
+    REMOTE_PIDS=()
+    check_remote_failures
+    if [ "$status" -ne 0 ]; then
+        exit "$status"
+    fi
+}
 
 bash cmd.sh $2 "sudo tc qdisc del dev eth0 root 2>/dev/null || true;pkill -9 seth;systemctl stop 'seth@*' 2>/dev/null; systemctl list-units --all 'seth@*' --no-legend | cut -d' ' -f1 | xargs -r -n1 sh -c 'systemctl stop \"\$0\"; systemctl disable \"\$0\"' 2>/dev/null; systemctl daemon-reload; systemctl reset-failed"
 init() {
@@ -75,9 +148,11 @@ init() {
         end_shard=3
     fi
 
-    if [ "$PASSWORD" == "" ]; then
-        PASSWORD="Xf4aGbTaf&"
+    if [ "$PASSWORD" == "" ] && ! all_nodes_local; then
+        echo "remote node password is required when node_host is not local" >&2
+        exit 1
     fi
+    export SETH_REMOTE_PASSWORD="$PASSWORD"
 
     if [ "$TARGET" == "" ]; then
         TARGET=Debug
@@ -205,18 +280,7 @@ make_package() {
 
 check_cmd_finished() {
     echo "waiting..."
-    sleep 1
-    ps -ef | grep sshpass
-    while true
-    do
-        sshpass_count=`ps -ef | grep sshpass | grep ConnectTimeout | wc -l`
-        if [ "$sshpass_count" == "0" ]; then
-            break
-        fi
-        sleep 1
-    done
-
-    ps -ef | grep sshpass
+    wait_remote_pids
     echo "waiting ok"
 }
 
@@ -227,7 +291,11 @@ clear_command() {
     run_cmd_count=0
     start_pos=1
     for ip in "${node_ips_array[@]}"; do
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 22 "cd /root && rm -rf pkg*; killall -9 seth" &
+        (
+            run_on_node "$ip" "cd /root && rm -rf pkg*; killall -9 seth" ||
+                record_remote_failure "clear command failed on $ip:$NODE_SSH_PORT"
+        ) &
+        REMOTE_PIDS+=($!)
         run_cmd_count=$((run_cmd_count + 1))
         if ((start_pos==1)); then
             sleep 3
@@ -249,7 +317,11 @@ scp_package() {
     node_ips_array=(${node_ips//,/ })
     run_cmd_count=0
     for ip in "${node_ips_array[@]}"; do
-        sshpass -p $PASSWORD scp -P 22 -o ConnectTimeout=10  -o StrictHostKeyChecking=no /root/nodes/seth/pkg.tar.gz root@$ip:/root &
+        (
+            copy_to_node "$ip" "/root/nodes/seth/pkg.tar.gz" "/root/pkg.tar.gz" ||
+                record_remote_failure "scp package failed on $ip:$NODE_SSH_PORT"
+        ) &
+        REMOTE_PIDS+=($!)
         run_cmd_count=$((run_cmd_count + 1))
         if (($run_cmd_count >= 100)); then
             check_cmd_finished
@@ -274,7 +346,11 @@ run_command() {
         fi
 
         leader_init_tm=$(date -u -d "+240 days" +%s)
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 22 "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count 0 2 $end_shard $leader_init_tm "  > /dev/null 2>&1 &
+        (
+            run_on_node "$ip" "cd /root && tar -zxvf pkg.tar.gz && cd ./pkg && bash temp_cmd.sh $ip $start_pos $start_nodes_count 0 2 $end_shard $leader_init_tm " ||
+                record_remote_failure "temp command failed on $ip:$NODE_SSH_PORT"
+        ) &
+        REMOTE_PIDS+=($!)
         if ((start_pos==1)); then
             sleep 3
         fi
@@ -302,7 +378,11 @@ start_all_nodes() {
             start_nodes_count=$FIRST_NODE_COUNT
         fi
 
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip -p 22 "cd /root/pkg && bash start_cmd.sh $ip $start_pos $start_nodes_count 0 2 $end_shard "  &
+        (
+            run_on_node "$ip" "cd /root/pkg && bash start_cmd.sh $ip $start_pos $start_nodes_count 0 2 $end_shard " ||
+                record_remote_failure "start command failed on $ip:$NODE_SSH_PORT"
+        ) &
+        REMOTE_PIDS+=($!)
         if ((start_pos==1)); then
             sleep 3
         fi

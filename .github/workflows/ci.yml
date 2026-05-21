@@ -52,9 +52,10 @@ jobs:
             } | sha256sum | awk '{print $1}'
           )
           BUILD_KEY=$(
-            sha256sum build_third.sh .github/workflows/ci.yml | sha256sum | awk '{print $1}'
+            sha256sum build_third.sh | sha256sum | awk '{print $1}'
           )
           echo "deps-key=$DEPS_KEY" >> "$GITHUB_OUTPUT"
+          echo "build-key=$BUILD_KEY" >> "$GITHUB_OUTPUT"
           echo "key=$DEPS_KEY-$BUILD_KEY" >> "$GITHUB_OUTPUT"
 
       - name: Restore third-party cache
@@ -73,17 +74,45 @@ jobs:
             third-party-v7-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}-
             third-party-v7-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-
 
+      - name: Validate complete third-party cache
+        id: complete-third-party-cache-state
+        run: |
+          complete=false
+          if [[ -f third_party/.build_third_complete ]]; then
+            complete=true
+          else
+            echo "Complete third-party cache is missing; trying resumable build cache."
+          fi
+          if [[ "$complete" == "true" ]]; then
+            echo "Third-party cache is complete; skipping rebuild."
+          fi
+          echo "complete=$complete" >> "$GITHUB_OUTPUT"
+
+      - name: Restore resumable third-party cache
+        id: cache-third-party-resumable
+        if: steps.complete-third-party-cache-state.outputs.complete != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          # Resumable caches intentionally keep submodule source/build trees
+          # plus .git/modules, so interrupted builds can continue from object
+          # files and generated build directories on the next run.
+          path: |
+            third_party
+            clipy/liboqs
+            .git/modules/third_party
+            .git/modules/clipy
+          key: third-party-v7-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-resumable-${{ steps.third-party-key.outputs.build-key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            third-party-v7-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-resumable-
+
       - name: Validate third-party cache
         id: third-party-cache-state
         run: |
           complete=false
-          if [[ "${{ steps.cache-third-party.outputs.cache-hit }}" == "true" && -f third_party/.build_third_complete ]]; then
+          if [[ -f third_party/.build_third_complete ]]; then
             complete=true
           else
             echo "Cache is partial, stale, or missing completion marker; build_third.sh will validate and resume missing outputs."
-          fi
-          if [[ "$complete" == "true" ]]; then
-            echo "Third-party cache is complete; skipping rebuild."
           fi
           echo "complete=$complete" >> "$GITHUB_OUTPUT"
 
@@ -127,17 +156,16 @@ jobs:
       - name: Save resumable third-party cache
         if: |
           always() &&
+          steps.third-party-cache-state.outputs.complete != 'true' &&
           steps.third-party-final-state.outputs.complete != 'true'
         uses: actions/cache/save@v4
         with:
           path: |
-            third_party/bin
-            third_party/lib
-            third_party/lib64
-            third_party/include
-            third_party/depends
-            third_party/.build_third_complete
-          key: third-party-v7-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+            third_party
+            clipy/liboqs
+            .git/modules/third_party
+            .git/modules/clipy
+          key: third-party-v7-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-resumable-${{ steps.third-party-key.outputs.build-key }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Fail if third-party build failed
         if: |
@@ -299,10 +327,13 @@ jobs:
               "user": "root",
               "workdir": "/root/seth",
               "node_host": "10.152.0.12",
+              "node_ssh_port": "",
               "tests_dir": "/root/SethTests",
               "python": "/root/tools/python3.10/bin/python3",
           }
           values = {**defaults, **config}
+          if not values.get("node_ssh_port"):
+              values["node_ssh_port"] = values["port"]
           for key in ("host", "password"):
               if not values.get(key):
                   print(f"XL_CICD_REMOTE_SERVER missing required field: {key}", file=sys.stderr)
@@ -315,6 +346,7 @@ jobs:
               "password": "REMOTE_TEST_PASSWORD",
               "workdir": "REMOTE_TEST_WORKDIR",
               "node_host": "REMOTE_TEST_NODE_HOST",
+              "node_ssh_port": "REMOTE_TEST_NODE_SSH_PORT",
               "tests_dir": "REMOTE_SETH_TESTS_DIR",
               "python": "REMOTE_TEST_PYTHON",
           }
@@ -339,6 +371,8 @@ jobs:
             "$GITHUB_REF_NAME" \
             "$GITHUB_SHA" \
             "$REMOTE_TEST_NODE_HOST" \
+            "$REMOTE_TEST_NODE_SSH_PORT" \
+            "$REMOTE_TEST_PASSWORD" \
             "$REMOTE_SETH_TESTS_DIR" \
             "$REMOTE_TEST_PYTHON" <<'REMOTE_SCRIPT'
           set -euo pipefail
@@ -347,8 +381,10 @@ jobs:
           REF_NAME="$2"
           COMMIT_SHA="$3"
           NODE_HOST="$4"
-          TESTS_DIR="$5"
-          PYTHON_BIN="$6"
+          NODE_SSH_PORT="$5"
+          NODE_PASSWORD="$6"
+          TESTS_DIR="$7"
+          PYTHON_BIN="$8"
 
           echo "::group::Update SethPub"
           cd "$WORKDIR"
@@ -363,7 +399,48 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Start remote seth network"
-          bash simple_remote.sh 4 "$NODE_HOST"
+          SETH_REMOTE_NODE_SSH_PORT="$NODE_SSH_PORT" bash simple_remote.sh 4 "$NODE_HOST" "" "$NODE_PASSWORD"
+          echo "::endgroup::"
+
+          echo "::group::Wait for remote HTTP"
+          for attempt in $(seq 1 60); do
+            if "$PYTHON_BIN" - "$NODE_HOST" <<'PY'
+          import socket
+          import sys
+          host = sys.argv[1]
+          try:
+              with socket.create_connection((host, 23001), timeout=2):
+                  sys.exit(0)
+          except OSError:
+              sys.exit(1)
+          PY
+            then
+              echo "Remote HTTP port is ready: ${NODE_HOST}:23001"
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              echo "Remote HTTP port did not become ready: ${NODE_HOST}:23001" >&2
+              if hostname -I 2>/dev/null | tr ' ' '\n' | grep -Fxq "$NODE_HOST"; then
+                echo "--- seth processes ---" >&2
+                pgrep -af seth || true
+                echo "--- listening ports ---" >&2
+                ss -ltnp | grep -E '(:23001|:24009|:1200|:1300)' || true
+                echo "--- recent logs ---" >&2
+                find /root/seths -maxdepth 3 -type f \( -name '*.log' -o -name 'seth.log' \) -print -exec tail -n 80 {} \; 2>/dev/null || true
+              else
+                SSHPASS="$NODE_PASSWORD" sshpass -e ssh \
+                  -p "$NODE_SSH_PORT" \
+                  -o StrictHostKeyChecking=no \
+                  -o UserKnownHostsFile=/dev/null \
+                  -o ServerAliveInterval=30 \
+                  -o ServerAliveCountMax=20 \
+                  "root@$NODE_HOST" \
+                  "pgrep -af seth || true; ss -ltnp | grep -E '(:23001|:24009|:1200|:1300)' || true; find /root/seths -maxdepth 3 -type f \\( -name '*.log' -o -name 'seth.log' \\) -print -exec tail -n 80 {} \\; 2>/dev/null || true" >&2 || true
+              fi
+              exit 1
+            fi
+            sleep 5
+          done
           echo "::endgroup::"
 
           echo "::group::Update SethTests"
