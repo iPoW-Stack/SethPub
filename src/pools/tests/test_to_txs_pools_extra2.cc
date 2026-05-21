@@ -88,8 +88,7 @@ TEST_F(TestToTxsPoolsExtra2, LeaderCreateToHeights_InFlightExpired_Recomputes) {
     pool.prev_to_heights_ = ZeroHeights();
 
     // In-flight tx set 40 seconds ago (> 30 s timeout)
-    pool.leader_to_heights_.store(
-        std::make_shared<pools::protobuf::ShardToTxItem>());
+    pool.StoreLeaderToHeights(std::make_shared<pools::protobuf::ShardToTxItem>());
     pool.leader_to_heights_set_tm_ =
         common::TimeUtils::TimestampMs() - 40000lu;
 
@@ -167,7 +166,7 @@ TEST_F(TestToTxsPoolsExtra2, LeaderCreateToHeights_PrevHigherAfterLoop_Error) {
         prev_higher->add_heights(i == 0 ? 5 : 0);
     }
     pool.prev_to_heights_ = prev_higher;
-    pool.leader_to_heights_.store(nullptr);  // clear in-flight
+    pool.StoreLeaderToHeights(nullptr);  // clear in-flight
 
     pools::protobuf::ShardToTxItem out2;
     // cons_height=1 < floor=5 → cons_height becomes 5

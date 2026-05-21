@@ -1,9 +1,7 @@
 #pragma once
 
 #include <atomic>
-#if defined(__APPLE__)
 #include <mutex>
-#endif
 #include <unordered_map>
 
 #include "common/node_members.h"
@@ -108,29 +106,17 @@ private:
     std::shared_ptr<pools::TxPoolManager> pools_mgr_ = nullptr;
     std::shared_ptr<pools::protobuf::ShardToTxItem> prev_to_heights_ = nullptr;
     std::shared_ptr<pools::protobuf::ShardToTxItem> LoadLeaderToHeights() const {
-#if defined(__APPLE__)
         std::lock_guard<std::mutex> lock(leader_to_heights_mutex_);
         return leader_to_heights_;
-#else
-        return leader_to_heights_.load();
-#endif
     }
 
     void StoreLeaderToHeights(const std::shared_ptr<pools::protobuf::ShardToTxItem>& leader_to_heights) {
-#if defined(__APPLE__)
         std::lock_guard<std::mutex> lock(leader_to_heights_mutex_);
         leader_to_heights_ = leader_to_heights;
-#else
-        leader_to_heights_.store(leader_to_heights);
-#endif
     }
 
-#if defined(__APPLE__)
     std::shared_ptr<pools::protobuf::ShardToTxItem> leader_to_heights_ = nullptr;
     mutable std::mutex leader_to_heights_mutex_;
-#else
-    std::atomic<std::shared_ptr<pools::protobuf::ShardToTxItem>> leader_to_heights_ = nullptr;
-#endif
     uint64_t leader_to_heights_set_tm_ = 0;
     common::SpinMutex prev_to_heights_mutex_;
     uint64_t has_statistic_height_[common::kInvalidPoolIndex] = { 1 };

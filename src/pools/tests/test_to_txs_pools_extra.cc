@@ -244,13 +244,13 @@ TEST_F(TestToTxsPoolsExtra, CreateToTxWithHeights_EmptyAccAmountMap_Error) {
         kPoolsError);
 }
 
-// ToTxsPools::ClearLeaderToHeights (inline in to_txs_pools.h) — clears atomic leader snapshot.
-TEST_F(TestToTxsPoolsExtra, ClearLeaderToHeights_ClearsAtomicStore) {
+// ToTxsPools::ClearLeaderToHeights (inline in to_txs_pools.h) clears leader snapshot.
+TEST_F(TestToTxsPoolsExtra, ClearLeaderToHeights_ClearsStore) {
     auto pool = MakePool();
     auto dummy = std::make_shared<pools::protobuf::ShardToTxItem>();
-    pool.leader_to_heights_.store(dummy);
+    pool.StoreLeaderToHeights(dummy);
     pool.ClearLeaderToHeights();
-    EXPECT_EQ(pool.leader_to_heights_.load(), nullptr);
+    EXPECT_EQ(pool.LoadLeaderToHeights(), nullptr);
 }
 
 }  // namespace test

@@ -101,8 +101,7 @@ TEST_F(TestToTxsPools, LeaderCreateToHeights_InFlightWithinTimeout_ReturnsError)
     }
     pool.prev_to_heights_ = prev;
     // Simulate a recent in-flight leader_to_heights_ (set just now)
-    pool.leader_to_heights_.store(
-        std::make_shared<pools::protobuf::ShardToTxItem>());
+    pool.StoreLeaderToHeights(std::make_shared<pools::protobuf::ShardToTxItem>());
     pool.leader_to_heights_set_tm_ = common::TimeUtils::TimestampMs();
 
     pools::protobuf::ShardToTxItem out;

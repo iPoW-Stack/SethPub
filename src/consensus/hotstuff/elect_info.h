@@ -11,16 +11,11 @@
 #include <elect/elect_manager.h>
 #include <libff/algebra/curves/alt_bn128/alt_bn128_g2.hpp>
 #include <memory>
+#include <mutex>
 #include <network/dht_manager.h>
 #include <network/network_utils.h>
 #include <network/universal_manager.h>
 #include <security/security.h>
-
-#if defined(__APPLE__)
-#include <mutex>
-#else
-#include <atomic>
-#endif
 
 namespace seth {
 
@@ -321,7 +316,6 @@ public:
     }
     
 private:
-#if defined(__APPLE__)
     std::shared_ptr<ElectItem> LoadPrevElectItem(uint32_t sharding_id) const {
         std::lock_guard<std::mutex> lock(elect_items_mutex_[sharding_id]);
         return prev_elect_items_[sharding_id];
@@ -345,26 +339,6 @@ private:
     std::shared_ptr<ElectItem> prev_elect_items_[network::kConsensusShardEndNetworkId + 1] = { nullptr };
     std::shared_ptr<ElectItem> elect_items_[network::kConsensusShardEndNetworkId + 1] = { nullptr };
     mutable std::mutex elect_items_mutex_[network::kConsensusShardEndNetworkId + 1];
-#else
-    std::shared_ptr<ElectItem> LoadPrevElectItem(uint32_t sharding_id) const {
-        return prev_elect_items_[sharding_id].load();
-    }
-
-    std::shared_ptr<ElectItem> LoadElectItem(uint32_t sharding_id) const {
-        return elect_items_[sharding_id].load();
-    }
-
-    void StorePrevElectItem(uint32_t sharding_id, const std::shared_ptr<ElectItem>& elect_item) {
-        prev_elect_items_[sharding_id].store(elect_item);
-    }
-
-    void StoreElectItem(uint32_t sharding_id, const std::shared_ptr<ElectItem>& elect_item) {
-        elect_items_[sharding_id].store(elect_item);
-    }
-
-    std::atomic<std::shared_ptr<ElectItem>> prev_elect_items_[network::kConsensusShardEndNetworkId + 1] = { nullptr };
-    std::atomic<std::shared_ptr<ElectItem>> elect_items_[network::kConsensusShardEndNetworkId + 1] = { nullptr };
-#endif
     std::shared_ptr<security::Security> security_ptr_ = nullptr;
     std::shared_ptr<elect::ElectManager> elect_mgr_ = nullptr;
     uint32_t max_consensus_sharding_id_ = 3;
