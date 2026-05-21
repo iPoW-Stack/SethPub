@@ -6,10 +6,10 @@ on:
   pull_request:
     branches: [ "**" ]
 
-# Cancel in-progress runs for the same branch/PR to save runner minutes
+# Keep the current run alive so third-party partial caches can be saved.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -57,9 +57,9 @@ jobs:
           echo "deps-key=$DEPS_KEY" >> "$GITHUB_OUTPUT"
           echo "key=$DEPS_KEY-$BUILD_KEY" >> "$GITHUB_OUTPUT"
 
-      - name: Cache third-party build
+      - name: Restore third-party cache
         id: cache-third-party
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: |
             third_party/bin
@@ -67,45 +67,89 @@ jobs:
             third_party/lib64
             third_party/include
             third_party/depends
-          key: third-party-v6-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}
+            third_party/.build_third_complete
+          key: third-party-v7-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}-complete
           restore-keys: |
-            third-party-v6-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-
+            third-party-v7-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}-
+            third-party-v7-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-
 
       - name: Validate third-party cache
         id: third-party-cache-state
         run: |
-          REQUIRED_FILES=(
-            third_party/include/evmc/evmc.hpp
-            third_party/include/libbls/tools/utils.h
-            third_party/include/libff/algebra/curves/alt_bn128/alt_bn128_g1.hpp
-            third_party/include/pbc/pbc.h
-            third_party/include/cpppbc/PBC.h
-            third_party/include/nlohmann/json.hpp
-            third_party/include/libusockets.h
-            third_party/lib/libdkgbls.a
-            third_party/lib/libff.a
-            third_party/lib/libuSockets.a
-          )
-
-          complete=true
-          for file in "${REQUIRED_FILES[@]}"; do
-            if [[ ! -e "$file" ]]; then
-              echo "Cache missing required file: $file"
-              complete=false
-            fi
-          done
+          complete=false
+          if [[ "${{ steps.cache-third-party.outputs.cache-hit }}" == "true" && -f third_party/.build_third_complete ]]; then
+            complete=true
+          else
+            echo "Cache is partial, stale, or missing completion marker; build_third.sh will validate and resume missing outputs."
+          fi
           if [[ "$complete" == "true" ]]; then
             echo "Third-party cache is complete; skipping rebuild."
           fi
           echo "complete=$complete" >> "$GITHUB_OUTPUT"
 
       - name: Build third-party libraries
+        id: build-third-party
         if: steps.third-party-cache-state.outputs.complete != 'true'
+        continue-on-error: true
         run: |
           bash build_third.sh
         timeout-minutes: 90
 
+      - name: Validate final third-party outputs
+        id: third-party-final-state
+        if: always()
+        run: |
+          mkdir -p third_party/bin third_party/lib third_party/lib64 third_party/include third_party/depends
+          complete=false
+          if [[ -f third_party/.build_third_complete ]]; then
+            complete=true
+          else
+            echo "Third-party build did not write completion marker; saving partial outputs for a resumable retry."
+          fi
+          echo "complete=$complete" >> "$GITHUB_OUTPUT"
+
+      - name: Save complete third-party cache
+        if: |
+          always() &&
+          steps.third-party-final-state.outputs.complete == 'true' &&
+          steps.cache-third-party.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            third_party/bin
+            third_party/lib
+            third_party/lib64
+            third_party/include
+            third_party/depends
+            third_party/.build_third_complete
+          key: third-party-v7-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}-complete
+
+      - name: Save resumable third-party cache
+        if: |
+          always() &&
+          steps.third-party-final-state.outputs.complete != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            third_party/bin
+            third_party/lib
+            third_party/lib64
+            third_party/include
+            third_party/depends
+            third_party/.build_third_complete
+          key: third-party-v7-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Fail if third-party build failed
+        if: |
+          always() &&
+          steps.third-party-cache-state.outputs.complete != 'true' &&
+          (steps.build-third-party.outcome == 'failure' || steps.third-party-final-state.outputs.complete != 'true')
+        run: |
+          echo "Third-party build did not complete. Partial outputs were saved for the next run when possible."
+          exit 1
+
       - name: Upload third-party artifacts
+        if: steps.third-party-final-state.outputs.complete == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: third-party-libs
@@ -115,6 +159,7 @@ jobs:
             third_party/lib64
             third_party/include
             third_party/depends
+            third_party/.build_third_complete
           if-no-files-found: error
           retention-days: 1
 
