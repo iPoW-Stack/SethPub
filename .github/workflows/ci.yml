@@ -356,6 +356,8 @@ jobs:
           )"
 
           echo "::add-mask::$REMOTE_TEST_PASSWORD"
+          REMOTE_TEST_PASSWORD_B64="$(printf '%s' "$REMOTE_TEST_PASSWORD" | base64 -w0)"
+          echo "::add-mask::$REMOTE_TEST_PASSWORD_B64"
           export SSHPASS="$REMOTE_TEST_PASSWORD"
           SSH_OPTS=(
             -p "$REMOTE_TEST_PORT"
@@ -372,7 +374,7 @@ jobs:
             "$GITHUB_SHA" \
             "$REMOTE_TEST_NODE_HOST" \
             "$REMOTE_TEST_NODE_SSH_PORT" \
-            "$REMOTE_TEST_PASSWORD" \
+            "$REMOTE_TEST_PASSWORD_B64" \
             "$REMOTE_SETH_TESTS_DIR" \
             "$REMOTE_TEST_PYTHON" <<'REMOTE_SCRIPT'
           set -euo pipefail
@@ -382,7 +384,7 @@ jobs:
           COMMIT_SHA="$3"
           NODE_HOST="$4"
           NODE_SSH_PORT="$5"
-          NODE_PASSWORD="$6"
+          NODE_PASSWORD="$(printf '%s' "$6" | base64 -d)"
           TESTS_DIR="$7"
           PYTHON_BIN="$8"
 
