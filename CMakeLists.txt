@@ -94,6 +94,10 @@ message(STATUS "Build Info: ${PROJECT_NAME} | System: ${CMAKE_SYSTEM_NAME} | Typ
 set(DEP_DIR ${PROJECT_SOURCE_DIR}/third_party)
 set(SRC_DIR ${PROJECT_SOURCE_DIR}/src)
 set(MAIN_DIR ${PROJECT_SOURCE_DIR}/src/main)
+set(UWEBSOCKETS_LIB "${DEP_DIR}/lib/libuSockets.a")
+if(NOT EXISTS "${UWEBSOCKETS_LIB}" AND EXISTS "${DEP_DIR}/lib64/libuSockets.a")
+    set(UWEBSOCKETS_LIB "${DEP_DIR}/lib64/libuSockets.a")
+endif()
 
 set(LINK_RT rt)
 set(LINK_PTHREAD pthread)
@@ -176,6 +180,16 @@ foreach(required_header IN LISTS REQUIRED_THIRD_PARTY_HEADERS)
     if(NOT EXISTS "${required_header}")
         message(FATAL_ERROR
             "Required third-party header is missing: ${required_header}. "
+            "Run bash build_third.sh and reconfigure from a clean build directory.")
+    endif()
+endforeach()
+
+set(REQUIRED_THIRD_PARTY_LIBRARIES
+    ${UWEBSOCKETS_LIB})
+foreach(required_library IN LISTS REQUIRED_THIRD_PARTY_LIBRARIES)
+    if(NOT EXISTS "${required_library}")
+        message(FATAL_ERROR
+            "Required third-party library is missing: ${required_library}. "
             "Run bash build_third.sh and reconfigure from a clean build directory.")
     endif()
 endforeach()
@@ -311,7 +325,7 @@ set(LINK_ARGS
     ${LINK_YAML}
     pthread
     gmp # Big number library, performance critical
-    uSockets # uWebSockets dependency
+    ${UWEBSOCKETS_LIB} # uWebSockets dependency
     z # zlib for uWebSockets
     ssl # OpenSSL for HTTPS
     crypto # OpenSSL crypto

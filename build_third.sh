@@ -5,6 +5,7 @@ export nproc=${nproc:-8}
 export TARGET=${TARGET:-Release}
 SRC_PATH=`pwd`
 COMPLETE_MARKER="$SRC_PATH/third_party/.build_third_complete"
+USOCKETS_BUILD_MARKER="$SRC_PATH/third_party/lib/libuSockets.no_lto.openssl.stamp"
 SUDO=""
 if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
     SUDO="sudo"
@@ -96,6 +97,7 @@ required_installed_files=(
     "$SRC_PATH/third_party/lib/liboqs.a"
     "$SRC_PATH/third_party/lib/libleveldb.a"
     "$SRC_PATH/third_party/lib/libuSockets.a"
+    "$USOCKETS_BUILD_MARKER"
 )
 
 all_required_installed=true
@@ -694,7 +696,8 @@ require_installed_file "$SRC_PATH/third_party/include/httplib.h"
 # Build uWebSockets and uSockets
 if [ ! -f "$SRC_PATH/third_party/include/libusockets.h" ] || \
         [ ! -f "$SRC_PATH/third_party/include/uWebSockets/App.h" ] || \
-        [ ! -f "$SRC_PATH/third_party/lib/libuSockets.a" ]; then
+        [ ! -f "$SRC_PATH/third_party/lib/libuSockets.a" ] || \
+        [ ! -f "$USOCKETS_BUILD_MARKER" ]; then
     echo "Building uWebSockets and uSockets..."
     cd $SRC_PATH
 
@@ -731,10 +734,13 @@ if [ ! -f "$SRC_PATH/third_party/include/libusockets.h" ] || \
     # Build uSockets library (no LTO: must match seth link when SETH_ENABLE_LTO is off)
     echo "Building uSockets library..."
     cd uSockets
-    make clean || true
-    WITH_OPENSSL=1 make -j${nproc} CFLAGS="-O3 -fPIC -fno-lto" CXXFLAGS="-fno-lto" LDFLAGS="-fno-lto"
+    rm -f ./*.o ./*.a
+    "${CC:-cc}" -O3 -fPIC -fno-lto -DLIBUS_USE_OPENSSL -std=c11 -Isrc -c src/*.c src/eventing/*.c src/crypto/*.c src/io_uring/*.c
+    "${CXX:-c++}" -O3 -fPIC -fno-lto -DLIBUS_USE_OPENSSL -std=c++17 -Isrc -c src/crypto/*.cpp
+    "${AR:-ar}" rvs uSockets.a ./*.o
     mkdir -p $SRC_PATH/third_party/lib
     cp uSockets.a $SRC_PATH/third_party/lib/libuSockets.a
+    printf 'no-lto openssl\n' > "$USOCKETS_BUILD_MARKER"
 
     cd $SRC_PATH
     echo "uWebSockets and uSockets installation completed!"
@@ -742,6 +748,7 @@ fi
 require_installed_file "$SRC_PATH/third_party/include/libusockets.h"
 require_installed_file "$SRC_PATH/third_party/include/uWebSockets/App.h"
 require_installed_file "$SRC_PATH/third_party/lib/libuSockets.a"
+require_installed_file "$USOCKETS_BUILD_MARKER"
 
 cd $SRC_PATH
 rm -rf third_party/lib/lib*.so* third_party/lib64/lib*.so*
