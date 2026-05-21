@@ -65,10 +65,9 @@ jobs:
             third_party/lib64
             third_party/include
             third_party/depends
-            third_party/libbls/deps/deps_inst
-          key: third-party-v3-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}
+          key: third-party-v4-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}
           restore-keys: |
-            third-party-v3-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-
+            third-party-v4-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-
 
       - name: Validate third-party cache
         id: third-party-cache-state
