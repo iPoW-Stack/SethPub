@@ -31,6 +31,7 @@
 #include "consensus/zbft/root_to_tx_item.h"
 #include "consensus/zbft/root_cross_tx_item.h"
 #include "consensus/zbft/join_elect_tx_item.h"
+#include "network/network_utils.h"
 #include "protos/pools.pb.h"
 #include "protos/zbft.pb.h"
 #include "security/ecdsa/ecdsa.h"
@@ -152,6 +153,134 @@ private:
 GlobalTxVerifyPool& GlobalPool() {
     static GlobalTxVerifyPool pool;
     return pool;
+}
+
+using NormalToItemMap = std::unordered_map<std::string, pools::protobuf::ToTxMessageItem>;
+
+NormalToItemMap FlattenNormalToItems(const pools::protobuf::AllToTxMessage& all_to_txs) {
+    NormalToItemMap items;
+    for (int i = 0; i < all_to_txs.to_tx_arr_size(); ++i) {
+        const auto& to_tx = all_to_txs.to_tx_arr(i);
+        for (int j = 0; j < to_tx.tos_size(); ++j) {
+            const auto& item = to_tx.tos(j);
+            if (!item.has_des() || item.des().empty()) {
+                continue;
+            }
+            items[item.des()] = item;
+        }
+    }
+    return items;
+}
+
+// Backup follower: compare local ToTxMessageItem with leader proposal. When leader marks
+// des_sharding_id as root shard, that field is authoritative on the leader side; for
+// non-root shards local des_sharding_id must match leader. All other fields must match.
+bool ToTxMessageItemFieldsMatchForBackup(
+        const pools::protobuf::ToTxMessageItem& leader,
+        const pools::protobuf::ToTxMessageItem& local) {
+    if (leader.des() != local.des()) {
+        return false;
+    }
+    if (leader.amount() != local.amount()) {
+        return false;
+    }
+    if (leader.pool_index() != local.pool_index()) {
+        return false;
+    }
+    if (leader.sharding_id() != local.sharding_id()) {
+        return false;
+    }
+    if (leader.from() != local.from()) {
+        return false;
+    }
+    if (leader.prefund() != local.prefund()) {
+        return false;
+    }
+    if (leader.elect_join_g2_value() != local.elect_join_g2_value()) {
+        return false;
+    }
+    if (leader.library_bytes() != local.library_bytes()) {
+        return false;
+    }
+
+    const bool leader_des_is_root =
+        leader.has_des_sharding_id() &&
+        leader.des_sharding_id() == network::kRootCongressNetworkId;
+    if (!leader_des_is_root && leader.des_sharding_id() != local.des_sharding_id()) {
+        return false;
+    }
+    return true;
+}
+
+bool ValidateBackupNormalToAgainstLeader(
+        const pools::protobuf::AllToTxMessage& leader_all,
+        const pools::protobuf::AllToTxMessage& local_all,
+        uint32_t pool_index) {
+    if (leader_all.to_heights().SerializeAsString() !=
+            local_all.to_heights().SerializeAsString()) {
+        SETH_WARN("kNormalTo backup: to_heights mismatch pool=%u", pool_index);
+        return false;
+    }
+
+    if (leader_all.to_tx_arr_size() != local_all.to_tx_arr_size()) {
+        SETH_WARN("kNormalTo backup: to_tx_arr_size mismatch pool=%u leader=%d local=%d",
+            pool_index,
+            leader_all.to_tx_arr_size(),
+            local_all.to_tx_arr_size());
+        return false;
+    }
+
+    for (int i = 0; i < leader_all.to_tx_arr_size(); ++i) {
+        const auto& leader_shard = leader_all.to_tx_arr(i);
+        const auto& local_shard = local_all.to_tx_arr(i);
+        if (leader_shard.des_shard() != local_shard.des_shard()) {
+            SETH_WARN("kNormalTo backup: des_shard mismatch idx=%d pool=%u leader=%u local=%u",
+                i,
+                pool_index,
+                leader_shard.des_shard(),
+                local_shard.des_shard());
+            return false;
+        }
+        if (leader_shard.tos_size() != local_shard.tos_size()) {
+            SETH_WARN("kNormalTo backup: tos_size mismatch idx=%d pool=%u leader=%d local=%d",
+                i,
+                pool_index,
+                leader_shard.tos_size(),
+                local_shard.tos_size());
+            return false;
+        }
+    }
+
+    const auto leader_items = FlattenNormalToItems(leader_all);
+    const auto local_items = FlattenNormalToItems(local_all);
+    if (leader_items.size() != local_items.size()) {
+        SETH_WARN("kNormalTo backup: tos item count mismatch pool=%u leader=%zu local=%zu",
+            pool_index,
+            leader_items.size(),
+            local_items.size());
+        return false;
+    }
+
+    for (const auto& kv : leader_items) {
+        const auto lit = local_items.find(kv.first);
+        if (lit == local_items.end()) {
+            SETH_WARN("kNormalTo backup: missing local ToTxMessageItem des=%s pool=%u",
+                common::Encode::HexEncode(kv.first).c_str(),
+                pool_index);
+            return false;
+        }
+        if (!ToTxMessageItemFieldsMatchForBackup(kv.second, lit->second)) {
+            SETH_WARN("kNormalTo backup: ToTxMessageItem mismatch des=%s pool=%u "
+                "leader_des_sharding_id=%u local_des_sharding_id=%u",
+                common::Encode::HexEncode(kv.first).c_str(),
+                pool_index,
+                kv.second.des_sharding_id(),
+                lit->second.des_sharding_id());
+            return false;
+        }
+    }
+
+    return true;
 }
 
 } // namespace
@@ -995,11 +1124,12 @@ Status BlockAcceptor::addTxsToPool(
                 create_success = false;
                 break;
             }
-            if (directly_user_leader_txs) {
+            // Leader (or explicit leader-tx mode) builds ToTxItem directly from the proposal.
+            if (is_leader || directly_user_leader_txs) {
                 tx_ptr = std::make_shared<consensus::ToTxItem>(
                     msg_ptr, i, account_mgr_, security_ptr_, address_info);
             } else {
-                // Backup node: verify local tx matches leader's proposal, then defer to leader.
+                // Backup: cross-shard NormalTo must match local pool tx and leader ToTxMessageItem set.
                 auto tx_item = tx_pools_->GetToTxs(
                     pool_idx(), all_to_txs.to_heights().SerializeAsString());
                 if (tx_item == nullptr || tx_item->txs.empty()) {
@@ -1009,15 +1139,25 @@ Status BlockAcceptor::addTxsToPool(
                     break;
                 }
                 auto local_tx = *(tx_item->txs.begin());
-                if (local_tx->tx_info->key() != tx->key() ||
-                        local_tx->tx_info->value() != tx->value()) {
-                    SETH_WARN("kNormalTo backup: local tx mismatch, discarding propose. "
-                        "local_key=%s leader_key=%s key_match=%d value_match=%d pool=%u",
+                if (local_tx->tx_info->key() != tx->key()) {
+                    SETH_WARN("kNormalTo backup: tx key mismatch, discarding propose. "
+                        "local_key=%s leader_key=%s pool=%u",
                         common::Encode::HexEncode(local_tx->tx_info->key()).c_str(),
                         common::Encode::HexEncode(tx->key()).c_str(),
-                        (local_tx->tx_info->key() == tx->key()),
-                        (local_tx->tx_info->value() == tx->value()),
                         pool_idx());
+                    create_success = false;
+                    break;
+                }
+                pools::protobuf::AllToTxMessage local_all_to_txs;
+                if (!local_all_to_txs.ParseFromString(local_tx->tx_info->value()) ||
+                        local_all_to_txs.to_tx_arr_size() == 0) {
+                    SETH_WARN("kNormalTo backup: invalid local AllToTxMessage pool=%u key=%s",
+                        pool_idx(), common::Encode::HexEncode(tx->key()).c_str());
+                    create_success = false;
+                    break;
+                }
+                if (!ValidateBackupNormalToAgainstLeader(
+                        all_to_txs, local_all_to_txs, pool_idx())) {
                     create_success = false;
                     break;
                 }
