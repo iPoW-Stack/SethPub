@@ -11,7 +11,16 @@
 #include <psapi.h>
 #else
 #include <sys/sysinfo.h>
+#ifdef __has_include
+#if __has_include(<numa.h>)
 #include <numa.h>
+#define HAVE_NUMA 1
+#endif
+#else
+// Try to include numa.h, but don't fail if it's not available
+#include <numa.h>
+#define HAVE_NUMA 1
+#endif
 #endif
 
 namespace seth {
@@ -41,11 +50,15 @@ bool CpuAffinityManager::InitializeCpuTopology() {
     cpu_count_ = sysconf(_SC_NPROCESSORS_ONLN);
     
     // Check for NUMA support
+#ifdef HAVE_NUMA
     if (numa_available() >= 0) {
         numa_node_count_ = numa_max_node() + 1;
     } else {
         numa_node_count_ = 1;
     }
+#else
+    numa_node_count_ = 1;
+#endif
 #endif
 
     // Configure optimal core assignments for different thread types
