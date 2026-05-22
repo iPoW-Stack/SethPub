@@ -16,6 +16,16 @@ namespace seth {
 
 namespace sethvm {
 
+namespace {
+
+evmc::VM& ThreadLocalEvm() {
+    // evmone::VM reuses ExecutionState by call depth, so keep one VM per execution thread.
+    thread_local evmc::VM evm{ evmc_create_evmone() };
+    return evm;
+}
+
+}  // namespace
+
 Execution::Execution() {}
 
 Execution::~Execution() {
@@ -29,7 +39,7 @@ Execution* Execution::Instance() {
 void Execution::Init(std::shared_ptr<db::Db>& db) {
     db_ = db;
     prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
-    evm_ = evmc::VM{ evmc_create_evmone()};
+    (void)ThreadLocalEvm();
 
 // 	evmc_loader_error_code ec = EVMC_LOADER_UNSPECIFIED_ERROR;
 //     evm_ = evmc::VM{ evmc_load_and_configure("./third_party/evmone/build/lib64/libevmone.so", &ec)};
@@ -144,6 +154,8 @@ int Execution::execute(
     auto rev = EVMC_LATEST_STABLE_REVISION;
     auto create_gas = gas_limit;
     evmc_message msg{};
+    msg.kind = EVMC_CALL;
+    msg.depth = static_cast<int32_t>(depth);
     msg.gas = gas;
     msg.input_data = (uint8_t*)str_input.c_str();
     msg.input_size = str_input.size();
@@ -174,7 +186,7 @@ int Execution::execute(
             msg.kind = EVMC_CREATE2;
         }
 
-        *out_res = evm_.execute(
+        *out_res = ThreadLocalEvm().execute(
             host,
             rev,
             msg,
@@ -212,7 +224,7 @@ int Execution::execute(
     }
 
     auto src_gas_left = out_res->gas_left;
-    *out_res = evm_.execute(host, rev, msg, exec_code_data, exec_code_size);
+    *out_res = ThreadLocalEvm().execute(host, rev, msg, exec_code_data, exec_code_size);
     auto etime = common::TimeUtils::TimestampMs();
     SETH_DEBUG("execute res: %d, from: %s, to: %s, gas_limit: %lu, "
         "src_gas_left: %lu, gas_left: %lu, gas_refund: %lu, use time: %lu, output: %s",

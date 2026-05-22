@@ -222,7 +222,6 @@ public:
     std::string my_address_;
     uint64_t gas_price_{ 0 };
     std::string origin_address_;
-    uint32_t depth_{ 0 };
     uint64_t gas_more_ = 0lu;
     std::string create_bytes_code_;
     uint64_t view_ = 0;

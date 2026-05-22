@@ -345,7 +345,7 @@ evmc::Result SethhainHost::call(const evmc_message& msg) noexcept {
                 origin_address_,
                 params2.apparent_value,
                 params2.gas,
-                depth_,
+                static_cast<uint32_t>(msg.depth),
                 sethvm::kCreate2,
                 *this,
                 &evmc_res2);
@@ -385,7 +385,6 @@ evmc::Result SethhainHost::call(const evmc_message& msg) noexcept {
                     common::Encode::HexEncode(id).c_str(),
                     protos::kFieldBytesCode.c_str(),
                     common::Encode::HexEncode(acc_info->bytes_code()).c_str());
-                ++depth_;
                 contract_to_call_dirty_ = false;
                 int res_status = sethvm::Execution::Instance()->execute(
                     acc_info->bytes_code(),
@@ -395,7 +394,7 @@ evmc::Result SethhainHost::call(const evmc_message& msg) noexcept {
                     origin_address_,
                     params.apparent_value,
                     params.gas,
-                    depth_,
+                    static_cast<uint32_t>(msg.depth),
                     sethvm::kJustCall,
                     *this,
                     &evmc_res);
