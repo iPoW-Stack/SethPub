@@ -6,6 +6,9 @@
 #include <unordered_map>
 #include <memory>
 #include <mutex>
+#include <queue>
+#include <functional>
+#include <condition_variable>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -119,7 +122,7 @@ private:
     ThreadPoolConfig config_;
     std::vector<std::unique_ptr<std::thread>> threads_;
     std::queue<std::function<void()>> task_queue_;
-    std::mutex queue_mutex_;
+    mutable std::mutex queue_mutex_;
     std::condition_variable condition_;
     std::atomic<bool> shutdown_{false};
     
