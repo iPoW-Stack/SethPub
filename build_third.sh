@@ -442,7 +442,13 @@ install_libbls_deps_outputs() {
     require_installed_file "$deps_root/include/boost"
     require_installed_file "$deps_root/lib/libff.a"
     mkdir -p "$SRC_PATH/third_party/include/boost" "$SRC_PATH/third_party/lib"
-    cp -rnf "$deps_root/include"/* "$SRC_PATH/third_party/include/"
+    for item in "$deps_root/include"/*; do
+        # libbls bundles openssl headers only; main openssl build installs libs to third_party/lib.
+        if [ "$(basename "$item")" = "openssl" ]; then
+            continue
+        fi
+        cp -rnf "$item" "$SRC_PATH/third_party/include/"
+    done
     cp -rnf "$deps_root/include/boost"/* "$SRC_PATH/third_party/include/boost/"
     cp -rnf "$deps_root/lib/libff.a" "$SRC_PATH/third_party/lib/libff.a"
     if compgen -G "$deps_root/lib/libboost_*.a" >/dev/null; then
@@ -650,7 +656,10 @@ require_installed_file "$SRC_PATH/third_party/lib/libethash.a"
 require_installed_file "$SRC_PATH/third_party/lib/libkeccak.a"
 
 
-if [ ! -d "$SRC_PATH/third_party/include/openssl" ]; then
+if ! installed_file_exists "$SRC_PATH/third_party/include/openssl/ssl.h" || \
+        ! installed_file_exists "$SRC_PATH/third_party/lib/libssl.a" || \
+        ! installed_file_exists "$SRC_PATH/third_party/lib/libcrypto.a"; then
+    rm -rf "$SRC_PATH/third_party/include/openssl"
     cd $SRC_PATH
     ensure_submodule_file third_party/openssl Configure
     cd third_party/openssl/ && checkout_if_available 7b371d8 && ./Configure --prefix=$SRC_PATH/third_party/ && make -j${nproc} && make install

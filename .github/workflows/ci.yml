@@ -27,7 +27,8 @@ jobs:
       - name: Checkout SethPub
         uses: actions/checkout@v4
         with:
-          submodules: false
+          # Submodule sources are required for build_third.sh; shallow tree is enough.
+          submodules: recursive
           fetch-depth: 1
 
       - name: Install system packages
@@ -37,7 +38,8 @@ jobs:
             build-essential cmake ninja-build \
             libssl-dev libgmp-dev uuid-dev \
             python3 python3-pip xxd \
-            pkg-config git curl wget unzip
+            pkg-config git curl wget unzip \
+            perl zlib1g-dev
           sudo apt-get install -y --no-install-recommends libgmssl-dev || true
           # GmSSL may not be in apt; build from submodule if needed
           echo "System packages installed"
@@ -119,10 +121,9 @@ jobs:
       - name: Build third-party libraries
         id: build-third-party
         if: steps.third-party-cache-state.outputs.complete != 'true'
-        continue-on-error: true
         run: |
           bash build_third.sh
-        timeout-minutes: 90
+        timeout-minutes: 120
 
       - name: Validate final third-party outputs
         id: third-party-final-state
