@@ -161,6 +161,20 @@ void BlockManager::HandleAllConsensusBlocks() {
                 }
             }
 
+            uint32_t pending_queues = 0;
+            size_t pending_blocks = 0;
+            for (int32_t i = 0; i < common::kMaxThreadCount; ++i) {
+                auto queue_size = consensus_block_queues_[i].size();
+                if (queue_size > 0) {
+                    ++pending_queues;
+                    pending_blocks += queue_size;
+                }
+            }
+            if (pending_blocks > 0) {
+                SETH_DEBUG("consensus block backlog: queues: %u, blocks: %lu",
+                    pending_queues, pending_blocks);
+            }
+
             // auto btime = common::TimeUtils::TimestampMs();
             // auto st = db_->Put(db_batch);
             // if (!st.ok()) {

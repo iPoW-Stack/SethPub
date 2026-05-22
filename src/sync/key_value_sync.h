@@ -8,6 +8,8 @@
 #include <thread>
 #include <atomic>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 #include "block/block_utils.h"
 #include "common/utils.h"
@@ -135,6 +137,26 @@ public:
     }
 
 private:
+    struct VerifyBlockItem {
+        ViewBlockPtr pb_vblock;
+        std::string key;
+        uint32_t tag{ 0 };
+        bool is_broadcast{ false };
+        uint64_t msg_hash{ 0 };
+        uint64_t enqueue_tm_ms{ 0 };
+    };
+
+    struct VerifyBlockResult {
+        ViewBlockPtr pb_vblock;
+        std::string key;
+        uint32_t tag{ 0 };
+        bool is_broadcast{ false };
+        uint64_t msg_hash{ 0 };
+        int verify_res{ -1 };
+        uint64_t enqueue_tm_ms{ 0 };
+        uint64_t verify_cost_ms{ 0 };
+    };
+
     void CheckSyncTimeout();
     uint64_t SendSyncRequest(
         uint32_t network_id,
@@ -161,6 +183,16 @@ private:
         uint32_t network_id,
         uint32_t pool_idx,
         uint64_t height);
+    void VerifyConsumerLoop();
+    void EnqueueVerifyBlock(
+        const ViewBlockPtr& pb_vblock,
+        const std::string& key,
+        uint32_t tag,
+        bool is_broadcast,
+        uint64_t msg_hash);
+    void DrainVerifiedBlocks();
+    void ApplyVerifiedBlockResult(const VerifyBlockResult& result);
+    void EnqueueVerifiedBlock(const ViewBlockPtr& pb_vblock);
 
     static const uint64_t kSyncPeriodUs = 300000lu;
     static const uint64_t kSyncSendIntervalUs = 50000lu;
@@ -182,7 +214,11 @@ private:
     // [SYNC_OPT] Increased from 1024 to 4096: consumer thread relays more
     // messages per wakeup to keep up with higher sync throughput.
     static const uint32_t kConsumerBatchSize = 4096u;
+    static const uint32_t kVerifyThreadCount = 4u;
+    static const uint32_t kMaxVerifiedDrainCount = 4096u;
+    static const uint32_t kLatestSyncPeerFanout = 2u;
 
+    std::shared_ptr<block::BlockManager> block_mgr_ = nullptr;
     std::shared_ptr<pools::TxPoolManager> tx_pool_mgr_ = nullptr;
     common::ThreadSafeQueue<SyncItemPtr> item_queues_[common::kMaxThreadCount];
     common::ThreadSafeQueue<ViewBlockPtr> broadcast_global_blocks_queues_[common::kMaxThreadCount];
@@ -191,8 +227,11 @@ private:
     uint32_t not_root_synced_res_map_count_ = 0;
     common::Tick kv_tick_;
     std::queue<transport::MessagePtr> kv_msg_queue_;
-    // Messages relayed by consumer thread, processed by timer thread
-    common::ThreadSafeQueue<std::shared_ptr<transport::TransportMessage>> kv_ready_queue_;
+    // Messages relayed by consumer thread, processed by timer thread.
+    // Responses are prioritized so received blocks do not sit behind a large
+    // batch of sync requests.
+    common::ThreadSafeQueue<std::shared_ptr<transport::TransportMessage>> kv_ready_res_queue_;
+    common::ThreadSafeQueue<std::shared_ptr<transport::TransportMessage>> kv_ready_req_queue_;
     uint64_t elect_net_heights_map_[network::kConsensusShardEndNetworkId] = { 0 };
     common::UniqueSet<std::string, kCacheSyncKeyValueCount> responsed_keys_;
     uint32_t max_sharding_id_ = network::kConsensusShardBeginNetworkId;
@@ -202,6 +241,13 @@ private:
     std::mutex kv_msg_mutex_;
     std::condition_variable wait_con_;
     std::shared_ptr<std::thread> kv_consumer_thread_ = nullptr;
+    std::queue<VerifyBlockItem> verify_block_queue_;
+    std::queue<VerifyBlockResult> verified_block_queue_;
+    std::unordered_set<std::string> verifying_keys_;
+    std::mutex verify_mutex_;
+    std::condition_variable verify_con_;
+    std::vector<std::shared_ptr<std::thread>> verify_threads_;
+    std::atomic<uint32_t> verifying_count_{0};
     std::atomic<bool> destroy_{false};
     uint64_t prev_sync_tm_ms_ = 0;
     uint64_t prev_sent_sync_tm_ms_ = 0;

@@ -8,6 +8,7 @@
 #include "bls/bls_utils.h"
 #include "bls/bls_manager.h"
 #include "bls/bls_sign.h"
+#include "common/defer.h"
 #include "common/encode.h"
 #include "common/hash.h"
 #include "common/log.h"
@@ -143,6 +144,17 @@ int HotstuffManager::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
 }
 
 int HotstuffManager::VerifySyncedViewBlock(const view_block::protobuf::ViewBlockItem& pb_vblock) {
+    auto begin_ms = common::TimeUtils::TimestampMs();
+    defer({
+        auto cost_ms = common::TimeUtils::TimestampMs() - begin_ms;
+        SETH_DEBUG("VerifySyncedViewBlock cost: %lu ms, block: %u_%u_%lu_%lu",
+            cost_ms,
+            pb_vblock.has_qc() ? pb_vblock.qc().network_id() : 0,
+            pb_vblock.has_qc() ? pb_vblock.qc().pool_index() : 0,
+            pb_vblock.has_block_info() ? pb_vblock.block_info().height() : 0,
+            pb_vblock.has_qc() ? pb_vblock.qc().view() : 0);
+    });
+
     if (!pb_vblock.has_qc()) {
         return -1;
     }

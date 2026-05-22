@@ -30,8 +30,15 @@ KeyValueSync::KeyValueSync() {}
 KeyValueSync::~KeyValueSync() {
     destroy_ = true;
     wait_con_.notify_all();
+    verify_con_.notify_all();
     if (kv_consumer_thread_ && kv_consumer_thread_->joinable()) {
         kv_consumer_thread_->join();
+    }
+
+    for (auto& thread : verify_threads_) {
+        if (thread && thread->joinable()) {
+            thread->join();
+        }
     }
 }
 
@@ -49,6 +56,9 @@ const uint32_t KeyValueSync::kMaxSyncLatestNotRootCount;
 const uint32_t KeyValueSync::kFollowupSyncHeightCount;
 const uint32_t KeyValueSync::kLatestSyncBlocksPerPool;
 const uint32_t KeyValueSync::kConsumerBatchSize;
+const uint32_t KeyValueSync::kVerifyThreadCount;
+const uint32_t KeyValueSync::kMaxVerifiedDrainCount;
+const uint32_t KeyValueSync::kLatestSyncPeerFanout;
 
 void KeyValueSync::Init(
         const std::shared_ptr<block::BlockManager>& block_mgr,
@@ -76,7 +86,11 @@ void KeyValueSync::Init(
     SETH_DEBUG("init key value sync 5");
     // Start dedicated consumer thread for kv_msg_queue_ to avoid backlog
     kv_consumer_thread_ = std::make_shared<std::thread>(&KeyValueSync::KvConsumerLoop, this);
-    SETH_DEBUG("init key value sync 6: consumer thread started");
+    for (uint32_t i = 0; i < kVerifyThreadCount; ++i) {
+        verify_threads_.push_back(std::make_shared<std::thread>(
+            &KeyValueSync::VerifyConsumerLoop, this));
+    }
+    SETH_DEBUG("init key value sync 6: consumer and verify threads started");
 }
 
 int KeyValueSync::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
@@ -115,6 +129,7 @@ void KeyValueSync::HotstuffConsensusTimerMessage(const transport::MessagePtr& ms
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     std::shared_ptr<view_block::protobuf::ViewBlockItem> pb_vblock = nullptr;
     // SETH_DEBUG("now call ConsensusTimerMessage thread_idx: %d", thread_idx);
+    uint32_t handled = 0;
     while (vblock_queues_[thread_idx].pop(&pb_vblock)) {
         if (pb_vblock) {
             // SETH_DEBUG("hotstuff consensus timer message handle view block: %u_%u_%lu_%lu, timeblock_height: %lu",
@@ -133,7 +148,16 @@ void KeyValueSync::HotstuffConsensusTimerMessage(const transport::MessagePtr& ms
                 hotstuff_mgr_->hotstuff(pb_vblock->qc().pool_index())->HandleSyncedViewBlock(
                     pb_vblock);
             }
+            ++handled;
         }
+    }
+
+    if (handled > 0) {
+        SETH_DEBUG("HotstuffConsensusTimerMessage handled synced blocks: %u, "
+            "thread_idx: %u, remaining queue: %lu",
+            handled,
+            thread_idx,
+            vblock_queues_[thread_idx].size());
     }
 
     BroadcastGlobalBlock();
@@ -215,15 +239,24 @@ void KeyValueSync::AddSyncViewHash(
 void KeyValueSync::ConsensusTimerMessage() {
     auto now_tm_us = common::TimeUtils::TimestampUs();
     auto now_tm_ms = common::TimeUtils::TimestampMs();
-    // Drain messages relayed by the consumer thread. All processing
-    // (request handling + response handling) runs here on the single
-    // timer thread to avoid SPSC queue and shared-state races.
+    DrainVerifiedBlocks();
+    // Drain messages relayed by the consumer thread. Responses are drained
+    // first so block data is not delayed by request backlog. All processing
+    // still runs here on the single timer thread to avoid shared-state races.
     {
         uint32_t processed = 0;
         transport::MessagePtr msg_ptr = nullptr;
         while (processed < kMaxBatchDrainCount) {
             msg_ptr = nullptr;
-            if (!kv_ready_queue_.pop(&msg_ptr) || msg_ptr == nullptr) {
+            if (!kv_ready_res_queue_.pop(&msg_ptr) || msg_ptr == nullptr) {
+                break;
+            }
+            HandleKvMessage(msg_ptr);
+            ++processed;
+        }
+        while (processed < kMaxBatchDrainCount) {
+            msg_ptr = nullptr;
+            if (!kv_ready_req_queue_.pop(&msg_ptr) || msg_ptr == nullptr) {
                 break;
             }
             HandleKvMessage(msg_ptr);
@@ -231,6 +264,7 @@ void KeyValueSync::ConsensusTimerMessage() {
         }
     }
     auto now_tm_ms1 = common::TimeUtils::TimestampMs();
+    DrainVerifiedBlocks();
     PopItems();
     auto now_tm_ms2 = common::TimeUtils::TimestampMs();
     // Note: Do NOT call GetViewBlockWithHash("", true) here.
@@ -262,10 +296,29 @@ void KeyValueSync::ConsensusTimerMessage() {
     // Adaptive timer: when there's a backlog of sync items or ready messages,
     // poll much faster (50µs) to drain them quickly. Otherwise use 1ms.
     uint64_t next_interval = 1000lu;
-    if (kv_ready_queue_.size() > 32) {
+    uint32_t verify_pending = 0;
+    uint32_t verified_pending = 0;
+    {
+        std::lock_guard<std::mutex> lock(verify_mutex_);
+        verify_pending = static_cast<uint32_t>(verify_block_queue_.size());
+        verified_pending = static_cast<uint32_t>(verified_block_queue_.size());
+    }
+    const uint32_t ready_res_size = static_cast<uint32_t>(kv_ready_res_queue_.size());
+    const uint32_t ready_req_size = static_cast<uint32_t>(kv_ready_req_queue_.size());
+    const uint32_t ready_size = ready_res_size + ready_req_size;
+    if (ready_size > 32 || verify_pending > 0 || verified_pending > 0) {
         next_interval = 50lu;
-    } else if (kv_ready_queue_.size() > 0) {
+    } else if (ready_size > 0) {
         next_interval = 200lu;
+    }
+    if (ready_size > 0 || verify_pending > 0 || verified_pending > 0) {
+        SETH_DEBUG("kv sync backlog ready_res: %u, ready_req: %u, verify_pending: %u, "
+            "verified_pending: %u, next interval: %lu",
+            ready_res_size,
+            ready_req_size,
+            verify_pending,
+            verified_pending,
+            next_interval);
     }
     kv_tick_.CutOff(
         next_interval,
@@ -486,14 +539,14 @@ void KeyValueSync::HandleMessage(const transport::MessagePtr& msg_ptr) {
 
 uint32_t KeyValueSync::PopKvMessage() {
     // Legacy fallback — no longer used. All kv_msg_queue_ consumption is
-    // handled by KvConsumerLoop which relays to kv_ready_queue_.
-    // ConsensusTimerMessage drains kv_ready_queue_ directly.
+    // handled by KvConsumerLoop which relays to ready queues.
+    // ConsensusTimerMessage drains those queues directly.
     return 0;
 }
 
 void KeyValueSync::KvConsumerLoop() {
     // This thread's sole job is to relay messages from kv_msg_queue_ (fed by
-    // network threads) into kv_ready_queue_ as fast as possible.
+    // network threads) into ready queues as fast as possible.
     //
     // ALL actual processing (ProcessSyncValueRequest, ProcessSyncValueResponse)
     // must happen on the timer thread because:
@@ -522,9 +575,19 @@ void KeyValueSync::KvConsumerLoop() {
             if (msg_ptr == nullptr) {
                 continue;
             }
-            kv_ready_queue_.push(msg_ptr);
-            SETH_DEBUG("KvConsumerLoop relayed message hash: %lu, kv_msg_queue_ size: %u, kv_ready_queue_ size: %u",
-                msg_ptr->header.hash64(), kv_msg_size, (uint32_t)kv_ready_queue_.size());
+            const bool is_res = msg_ptr->header.sync_proto().has_sync_value_res();
+            if (is_res) {
+                kv_ready_res_queue_.push(msg_ptr);
+            } else {
+                kv_ready_req_queue_.push(msg_ptr);
+            }
+            SETH_DEBUG("KvConsumerLoop relayed message hash: %lu, kv_msg_queue_ size: %u, "
+                "ready_res size: %u, ready_req size: %u, is_res: %d",
+                msg_ptr->header.hash64(),
+                kv_msg_size,
+                (uint32_t)kv_ready_res_queue_.size(),
+                (uint32_t)kv_ready_req_queue_.size(),
+                is_res);
             ++drained;
         }
 
@@ -534,8 +597,12 @@ void KeyValueSync::KvConsumerLoop() {
                 std::lock_guard<std::mutex> lock(kv_msg_mutex_);
                 kv_msg_size = static_cast<uint32_t>(kv_msg_queue_.size());
             }
-            SETH_DEBUG("KvConsumerLoop relayed %u messages, kv_msg remaining: %u, ready: %u",
-                drained, kv_msg_size, (uint32_t)kv_ready_queue_.size());
+            SETH_DEBUG("KvConsumerLoop relayed %u messages, kv_msg remaining: %u, "
+                "ready_res: %u, ready_req: %u",
+                drained,
+                kv_msg_size,
+                (uint32_t)kv_ready_res_queue_.size(),
+                (uint32_t)kv_ready_req_queue_.size());
             if (drained >= kConsumerBatchSize) {
                 continue;
             }
@@ -561,6 +628,245 @@ void KeyValueSync::HandleKvMessage(const transport::MessagePtr& msg_ptr) {
     if (header.sync_proto().has_sync_value_res()) {
         ProcessSyncValueResponse(msg_ptr);
     }
+}
+
+void KeyValueSync::EnqueueVerifyBlock(
+        const ViewBlockPtr& pb_vblock,
+        const std::string& key,
+        uint32_t tag,
+        bool is_broadcast,
+        uint64_t msg_hash) {
+    if (!pb_vblock) {
+        return;
+    }
+
+    VerifyBlockItem item;
+    item.pb_vblock = pb_vblock;
+    item.key = key;
+    item.tag = tag;
+    item.is_broadcast = is_broadcast;
+    item.msg_hash = msg_hash;
+    item.enqueue_tm_ms = common::TimeUtils::TimestampMs();
+    uint32_t verify_queue_size = 0;
+    {
+        std::lock_guard<std::mutex> lock(verify_mutex_);
+        if (!item.key.empty() && verifying_keys_.find(item.key) != verifying_keys_.end()) {
+            return;
+        }
+        if (!item.key.empty()) {
+            verifying_keys_.insert(item.key);
+        }
+        verify_block_queue_.push(item);
+        verify_queue_size = static_cast<uint32_t>(verify_block_queue_.size());
+    }
+
+    SETH_DEBUG("enqueue verify block: %u_%u_%lu, height: %lu, key: %s, "
+        "hash64: %lu, verify queue: %u, verifying: %u",
+        pb_vblock->qc().network_id(),
+        pb_vblock->qc().pool_index(),
+        pb_vblock->qc().view(),
+        pb_vblock->block_info().height(),
+        (tag == kBlockHeight ? key.c_str() : common::Encode::HexEncode(key).c_str()),
+        msg_hash,
+        verify_queue_size,
+        verifying_count_.load());
+    verify_con_.notify_one();
+}
+
+void KeyValueSync::VerifyConsumerLoop() {
+    common::GlobalInfo::Instance()->get_thread_index();
+    while (!destroy_) {
+        VerifyBlockItem item;
+        {
+            std::unique_lock<std::mutex> lock(verify_mutex_);
+            verify_con_.wait_for(lock, std::chrono::milliseconds(5), [this]() {
+                return destroy_ || !verify_block_queue_.empty();
+            });
+            if (destroy_) {
+                break;
+            }
+            if (verify_block_queue_.empty()) {
+                continue;
+            }
+
+            item = verify_block_queue_.front();
+            verify_block_queue_.pop();
+        }
+
+        VerifyBlockResult result;
+        result.pb_vblock = item.pb_vblock;
+        result.key = item.key;
+        result.tag = item.tag;
+        result.is_broadcast = item.is_broadcast;
+        result.msg_hash = item.msg_hash;
+        result.enqueue_tm_ms = item.enqueue_tm_ms;
+        result.verify_res = -1;
+
+        auto verify_begin_ms = common::TimeUtils::TimestampMs();
+        verifying_count_.fetch_add(1);
+        if (view_block_synced_callback_ && item.pb_vblock) {
+            result.verify_res = view_block_synced_callback_(*item.pb_vblock);
+        }
+        verifying_count_.fetch_sub(1);
+        result.verify_cost_ms = common::TimeUtils::TimestampMs() - verify_begin_ms;
+
+        uint32_t verified_queue_size = 0;
+        {
+            std::lock_guard<std::mutex> lock(verify_mutex_);
+            verified_block_queue_.push(result);
+            verified_queue_size = static_cast<uint32_t>(verified_block_queue_.size());
+        }
+
+        auto wait_cost_ms = verify_begin_ms >= item.enqueue_tm_ms ?
+            verify_begin_ms - item.enqueue_tm_ms : 0;
+        if (item.pb_vblock) {
+            SETH_DEBUG("verify synced view block done: %u_%u_%lu, height: %lu, "
+                "res: %d, wait: %lu ms, verify: %lu ms, hash64: %lu, verified queue: %u",
+                item.pb_vblock->qc().network_id(),
+                item.pb_vblock->qc().pool_index(),
+                item.pb_vblock->qc().view(),
+                item.pb_vblock->block_info().height(),
+                result.verify_res,
+                wait_cost_ms,
+                result.verify_cost_ms,
+                item.msg_hash,
+                verified_queue_size);
+        }
+    }
+}
+
+void KeyValueSync::DrainVerifiedBlocks() {
+    uint32_t drained = 0;
+    while (drained < kMaxVerifiedDrainCount) {
+        VerifyBlockResult result;
+        {
+            std::lock_guard<std::mutex> lock(verify_mutex_);
+            if (verified_block_queue_.empty()) {
+                break;
+            }
+            result = verified_block_queue_.front();
+            verified_block_queue_.pop();
+        }
+
+        ApplyVerifiedBlockResult(result);
+        ++drained;
+    }
+
+    if (drained > 0) {
+        uint32_t verify_queue_size = 0;
+        uint32_t verified_queue_size = 0;
+        {
+            std::lock_guard<std::mutex> lock(verify_mutex_);
+            verify_queue_size = static_cast<uint32_t>(verify_block_queue_.size());
+            verified_queue_size = static_cast<uint32_t>(verified_block_queue_.size());
+        }
+        SETH_DEBUG("DrainVerifiedBlocks drained: %u, verify queue: %u, "
+            "verified queue: %u, verifying: %u",
+            drained,
+            verify_queue_size,
+            verified_queue_size,
+            verifying_count_.load());
+    }
+}
+
+void KeyValueSync::ApplyVerifiedBlockResult(const VerifyBlockResult& result) {
+    auto& pb_vblock = result.pb_vblock;
+    if (!pb_vblock) {
+        return;
+    }
+    {
+        std::lock_guard<std::mutex> lock(verify_mutex_);
+        verifying_keys_.erase(result.key);
+    }
+
+    if (result.verify_res == -1) {
+        SETH_DEBUG("failed verify synced view block: %u_%u_%lu, height: %lu, "
+            "key: %s, is broadcast: %d, verify: %lu ms, hash64: %lu",
+            pb_vblock->qc().network_id(),
+            pb_vblock->qc().pool_index(),
+            pb_vblock->qc().view(),
+            pb_vblock->block_info().height(),
+            (result.tag == kBlockHeight ? result.key.c_str() : common::Encode::HexEncode(result.key).c_str()),
+            result.is_broadcast,
+            result.verify_cost_ms,
+            result.msg_hash);
+        return;
+    }
+
+    if (result.verify_res == 2) {
+        responsed_keys_.add(result.key);
+        synced_map_.erase(result.key);
+        return;
+    }
+
+    {
+        auto& height_map = synced_res_map_[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()];
+        bool is_new_entry = (height_map.find(pb_vblock->block_info().height()) == height_map.end());
+        height_map[pb_vblock->block_info().height()] = std::make_pair((result.verify_res == 0), pb_vblock);
+        if (pb_vblock->qc().network_id() != network::kRootCongressNetworkId && is_new_entry) {
+            ++not_root_synced_res_map_count_;
+        }
+    }
+
+    if (result.verify_res != 0) {
+        SETH_DEBUG("failed check viewblock handle network new view "
+            "block: %u_%u_%lu, height: %lu key: %s, is broadcast: %d, "
+            "verify: %lu ms, hash64: %lu",
+            pb_vblock->qc().network_id(),
+            pb_vblock->qc().pool_index(),
+            pb_vblock->qc().view(),
+            pb_vblock->block_info().height(),
+            (result.tag == kBlockHeight ? result.key.c_str() : common::Encode::HexEncode(result.key).c_str()),
+            result.is_broadcast,
+            result.verify_cost_ms,
+            result.msg_hash);
+        return;
+    }
+
+    SETH_DEBUG("0 success handle network new view block: %u_%u_%lu, height: %lu key: %s, "
+        "is broadcast: %d, not_root_synced_res_map_count_: %lu, verify: %lu ms, hash64: %lu",
+        pb_vblock->qc().network_id(),
+        pb_vblock->qc().pool_index(),
+        pb_vblock->qc().view(),
+        pb_vblock->block_info().height(),
+        (result.tag == kBlockHeight ? result.key.c_str() : common::Encode::HexEncode(result.key).c_str()),
+        result.is_broadcast,
+        not_root_synced_res_map_count_,
+        result.verify_cost_ms,
+        result.msg_hash);
+    EnqueueVerifiedBlock(pb_vblock);
+    QueueFollowupBlockSync(
+        pb_vblock->qc().network_id(),
+        pb_vblock->qc().pool_index(),
+        pb_vblock->block_info().height());
+    responsed_keys_.add(result.key);
+    synced_map_.erase(result.key);
+}
+
+void KeyValueSync::EnqueueVerifiedBlock(const ViewBlockPtr& pb_vblock) {
+    if (!pb_vblock) {
+        return;
+    }
+
+    auto network_id = pb_vblock->qc().network_id();
+    auto thread_idx = transport::TcpTransport::Instance()->GetThreadIndexWithPool(
+        pb_vblock->qc().pool_index());
+    if (!network::IsSameShardOrSameWaitingPool(
+            network::kRootCongressNetworkId, network_id) &&
+            !network::IsSameToLocalShard(network_id)) {
+        thread_idx = transport::TcpTransport::Instance()->GetThreadIndexWithPool(network_id);
+    }
+
+    vblock_queues_[thread_idx].push(pb_vblock);
+    auto queue_size = vblock_queues_[thread_idx].size();
+    SETH_DEBUG("enqueue verified block to hotstuff: %u_%u_%lu, height: %lu, "
+        "thread_idx: %u, vblock queue: %lu",
+        pb_vblock->qc().network_id(),
+        pb_vblock->qc().pool_index(),
+        pb_vblock->qc().view(),
+        pb_vblock->block_info().height(),
+        thread_idx,
+        queue_size);
 }
 
 void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr) {
@@ -817,9 +1123,7 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
     auto& sync_msg = msg_ptr->header.sync_proto();
     //assert(sync_msg.has_sync_value_res());
     auto& res_arr = sync_msg.sync_value_res().res();
-    auto now_tm_us = common::TimeUtils::TimestampUs();
     SETH_DEBUG("now handle kv response hash64: %lu", msg_ptr->header.hash64());
-    std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>> res_map;
     for (auto iter = res_arr.begin(); iter != res_arr.end(); ++iter) {
         std::string key = iter->key();
         if (iter->tag() == kBlockHeight || iter->tag() == kBlockView) {
@@ -853,71 +1157,17 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                 break;
             }
 
-            //assert(!pb_vblock->qc().sign_x().empty());
-            if (!view_block_synced_callback_) {
-                break;
-            }
-
-            int verify_res = view_block_synced_callback_(*pb_vblock);
-            if (verify_res == -1) {
-                break;
-            }
-
-            if (verify_res == 2) {
-                responsed_keys_.add(key);
-                synced_map_.erase(key);
-                break;
-            }
-
-            {
-                // Only increment the counter for genuinely new entries.
-                // If the same [network][pool][height] already exists in the map
-                // (duplicate sync response from multiple peers), the assignment
-                // overwrites the value but must NOT increment the counter again,
-                // otherwise not_root_synced_res_map_count_ grows unboundedly.
-                auto& height_map = synced_res_map_[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()];
-                bool is_new_entry = (height_map.find(pb_vblock->block_info().height()) == height_map.end());
-                height_map[pb_vblock->block_info().height()] = std::make_pair((verify_res == 0), pb_vblock);
-                if (pb_vblock->qc().network_id() != network::kRootCongressNetworkId && is_new_entry) {
-                    ++not_root_synced_res_map_count_;
-                }
-            }
-
-            if (verify_res != 0) {
-                SETH_DEBUG("failed check viewblock handle network new view "
-                    "block: %u_%u_%lu, height: %lu key: %s, is broadcast: %d", 
-                    pb_vblock->qc().network_id(),
-                    pb_vblock->qc().pool_index(),
-                    pb_vblock->qc().view(),
-                    pb_vblock->block_info().height(),
-                    (iter->tag() == kBlockHeight ? key.c_str() : common::Encode::HexEncode(key).c_str()),
-                    iter->key().empty());
-                break;
-            }
-
-            SETH_DEBUG("0 success handle network new view block: %u_%u_%lu, height: %lu key: %s, "
-                "is broadcast: %d, not_root_synced_res_map_count_: %lu", 
-                pb_vblock->qc().network_id(),
-                pb_vblock->qc().pool_index(),
-                pb_vblock->qc().view(),
-                pb_vblock->block_info().height(),
-                (iter->tag() == kBlockHeight ? key.c_str() : common::Encode::HexEncode(key).c_str()),
+            EnqueueVerifyBlock(
+                pb_vblock,
+                key,
+                iter->tag(),
                 iter->key().empty(),
-                not_root_synced_res_map_count_);
-            res_map[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->qc().view()] = pb_vblock;
-            QueueFollowupBlockSync(
-                pb_vblock->qc().network_id(),
-                pb_vblock->qc().pool_index(),
-                pb_vblock->block_info().height());
-            responsed_keys_.add(key);
-            synced_map_.erase(key);
+                msg_ptr->header.hash64());
         } while (0);
 
         SETH_DEBUG("block response coming: %s, sync map size: %u, hash64: %lu",
             key.c_str(), synced_map_.size(), msg_ptr->header.hash64());
     }
-
-    HandlerVerifiedBlock(res_map);
 
     {
         uint32_t drained = 0;
@@ -943,38 +1193,21 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                     if (height_iter->second.first) {
                         // Already verified, push to consensus
                         auto& pb_vblock = height_iter->second.second;
-                        auto thread_idx = transport::TcpTransport::Instance()->GetThreadIndexWithPool(
-                            pb_vblock->qc().pool_index());
-                        if (!network::IsSameShardOrSameWaitingPool(
-                                network::kRootCongressNetworkId, network_id) && 
-                                !network::IsSameToLocalShard(network_id)) {
-                            thread_idx = transport::TcpTransport::Instance()->GetThreadIndexWithPool(network_id);
-                        }
-                        vblock_queues_[thread_idx].push(pb_vblock);
+                        EnqueueVerifiedBlock(pb_vblock);
                         ++drained;
                         ++latest_height;
                         height_iter = pool_iter->second.find(latest_height + 1);
                         continue;
                     }
-                    // Not yet verified, try now
+                    // Not yet verified, retry on verification workers instead
+                    // of blocking the kv timer thread on BLS checks.
                     auto& pb_vblock = height_iter->second.second;
-                    int verify_res = view_block_synced_callback_(*pb_vblock);
-                    if (verify_res == 0) {
-                        height_iter->second.first = true;
-                        auto thread_idx = transport::TcpTransport::Instance()->GetThreadIndexWithPool(
-                            pb_vblock->qc().pool_index());
-                        if (!network::IsSameShardOrSameWaitingPool(
-                                network::kRootCongressNetworkId, network_id) && 
-                                !network::IsSameToLocalShard(network_id)) {
-                            thread_idx = transport::TcpTransport::Instance()->GetThreadIndexWithPool(network_id);
-                        }
-                        vblock_queues_[thread_idx].push(pb_vblock);
-                        ++drained;
-                        ++latest_height;
-                        height_iter = pool_iter->second.find(latest_height + 1);
-                    } else {
-                        break; // Can't verify this height yet, stop for this pool
-                    }
+                    std::string key = std::to_string(network_id) + "_" +
+                        std::to_string(pool_idx) + "_" +
+                        std::to_string(pb_vblock->block_info().height()) + "_" +
+                        std::to_string(kBlockHeight);
+                    EnqueueVerifyBlock(pb_vblock, key, kBlockHeight, false, 0);
+                    break; // Can't push this pool until this height verifies.
                 }
             }
         }
@@ -990,22 +1223,12 @@ void KeyValueSync::HandlerVerifiedBlock(const std::map<uint32_t, std::map<uint32
         for (auto pool_iter = iter->second.begin(); pool_iter != iter->second.end(); ++pool_iter) {
             for (auto iter2 = pool_iter->second.begin(); iter2 != pool_iter->second.end(); ++iter2) {
                 auto pb_vblock = iter2->second;
-                auto thread_idx = transport::TcpTransport::Instance()->GetThreadIndexWithPool(
-                    pb_vblock->qc().pool_index());
-                if (!network::IsSameShardOrSameWaitingPool(
-                        network::kRootCongressNetworkId, 
-                        network_id) && !network::IsSameToLocalShard(network_id)) {
-                    thread_idx = transport::TcpTransport::Instance()->GetThreadIndexWithPool(network_id);
-                }
-                
-                vblock_queues_[thread_idx].push(pb_vblock);
-                SETH_DEBUG("1 success handle network new view block: %u_%u_%lu, height: %lu, now size: %lu, thread_idx: %d", 
+                EnqueueVerifiedBlock(pb_vblock);
+                SETH_DEBUG("1 success handle network new view block: %u_%u_%lu, height: %lu",
                     pb_vblock->qc().network_id(),
                     pb_vblock->qc().pool_index(),
                     pb_vblock->qc().view(),
-                    pb_vblock->block_info().height(),
-                    vblock_queues_[thread_idx].size(),
-                    thread_idx);
+                    pb_vblock->block_info().height());
             }
         }
     }
@@ -1179,17 +1402,11 @@ void KeyValueSync::SyncAllLatestBlocks() {
             while (height_iter != pool_iter->second.end()) {
                 if (!height_iter->second.first) {
                     auto& pb_vblock = height_iter->second.second;
-                    int verify_res = view_block_synced_callback_(*pb_vblock);
-                    if (verify_res == 0) {
-                        height_iter->second.first = true;
-                        res_map[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->qc().view()] = pb_vblock;
-                        SETH_DEBUG("success check viewblock handle network new view "
-                            "block: %u_%u_%lu, height: %lu ", 
-                            pb_vblock->qc().network_id(),
-                            pb_vblock->qc().pool_index(),
-                            pb_vblock->qc().view(),
-                            pb_vblock->block_info().height());
-                    }
+                    std::string key = std::to_string(network_id) + "_" +
+                        std::to_string(i) + "_" +
+                        std::to_string(pb_vblock->block_info().height()) + "_" +
+                        std::to_string(kBlockHeight);
+                    EnqueueVerifyBlock(pb_vblock, key, kBlockHeight, false, 0);
                 }
                 height_iter = pool_iter->second.find(++latest_height);
             }
@@ -1264,17 +1481,11 @@ void KeyValueSync::SyncAllLatestBlocks() {
             while (height_iter != pool_iter->second.end()) {
                 if (!height_iter->second.first) {
                     auto& pb_vblock = height_iter->second.second;
-                    int verify_res = view_block_synced_callback_(*pb_vblock);
-                    if (verify_res == 0) {
-                        height_iter->second.first = true;
-                        res_map[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->qc().view()] = pb_vblock;
-                        SETH_DEBUG("success check viewblock handle network new view "
-                            "block: %u_%u_%lu, height: %lu ",
-                            pb_vblock->qc().network_id(),
-                            pb_vblock->qc().pool_index(),
-                            pb_vblock->qc().view(),
-                            pb_vblock->block_info().height());
-                    }
+                    std::string key = std::to_string(network_id) + "_" +
+                        std::to_string(pool_key) + "_" +
+                        std::to_string(pb_vblock->block_info().height()) + "_" +
+                        std::to_string(kBlockHeight);
+                    EnqueueVerifyBlock(pb_vblock, key, kBlockHeight, false, 0);
                 }
 
                 height_iter = pool_iter->second.find(++latest_height);
@@ -1297,23 +1508,27 @@ void KeyValueSync::SyncAllLatestBlocks() {
     std::set<uint64_t> sended_neigbors;
     uint32_t sent_count = 0;
     for (auto iter = sync_dht_map.begin(); iter != sync_dht_map.end(); ++iter) {
-        // Send to 1 peer per network. For root/shard2 this can cover pools 0..32;
-        // for other remote shards it only requests the global transaction pool.
-        // Sending the same request to multiple peers wastes bandwidth since they
-        // all return the same block range.
-        // SyncAllLatestBlocks runs every 1s, so throughput = 768KB/s per network.
-        uint64_t choose_node = SendSyncRequest(
-            iter->first,
-            iter->second,
-            sended_neigbors);
-        if (choose_node != 0) {
+        uint32_t fanout = 1;
+        if (not_root_synced_res_map_count_ < kMaxSyncLatestNotRootCount / 2) {
+            fanout = kLatestSyncPeerFanout;
+        }
+
+        for (uint32_t i = 0; i < fanout; ++i) {
+            uint64_t choose_node = SendSyncRequest(
+                iter->first,
+                iter->second,
+                sended_neigbors);
+            if (choose_node == 0) {
+                break;
+            }
+
             sended_neigbors.insert(choose_node);
             ++sent_count;
         }
     }
     SETH_DEBUG("SyncAllLatestBlocks done: sync_dht_map size=%lu, sent=%u, "
-        "res_map size=%lu",
-        sync_dht_map.size(), sent_count, res_map.size());
+        "res_map size=%lu, fanout max=%u",
+        sync_dht_map.size(), sent_count, res_map.size(), kLatestSyncPeerFanout);
 }
 
 }  // namespace sync
