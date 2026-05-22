@@ -472,9 +472,14 @@ void KeyValueSync::HandleMessage(const transport::MessagePtr& msg_ptr) {
 //     SETH_DEBUG("key value sync message coming req: %d, res: %d",
 //         header.sync_proto().has_sync_value_req(),
 //         header.sync_proto().has_sync_value_res());
-    kv_msg_queue_.push(msg_ptr);
+    uint32_t queue_size = 0;
+    {
+        std::lock_guard<std::mutex> lock(kv_msg_mutex_);
+        kv_msg_queue_.push(msg_ptr);
+        queue_size = static_cast<uint32_t>(kv_msg_queue_.size());
+    }
     SETH_DEBUG("queue size kv_msg_queue_: %d, hash: %lu",
-        kv_msg_queue_.size(), msg_ptr->header.hash64());
+        queue_size, msg_ptr->header.hash64());
     wait_con_.notify_one();
     ADD_DEBUG_PROCESS_TIMESTAMP();
 }
@@ -503,29 +508,52 @@ void KeyValueSync::KvConsumerLoop() {
         uint32_t drained = 0;
         while (drained < kConsumerBatchSize) {
             transport::MessagePtr msg_ptr = nullptr;
-            if (!kv_msg_queue_.pop(&msg_ptr) || msg_ptr == nullptr) {
-                break;
+            uint32_t kv_msg_size = 0;
+            {
+                std::lock_guard<std::mutex> lock(kv_msg_mutex_);
+                if (kv_msg_queue_.empty()) {
+                    break;
+                }
+                msg_ptr = kv_msg_queue_.front();
+                kv_msg_queue_.pop();
+                kv_msg_size = static_cast<uint32_t>(kv_msg_queue_.size());
             }
 
+            if (msg_ptr == nullptr) {
+                continue;
+            }
             kv_ready_queue_.push(msg_ptr);
+            SETH_DEBUG("KvConsumerLoop relayed message hash: %lu, kv_msg_queue_ size: %u, kv_ready_queue_ size: %u",
+                msg_ptr->header.hash64(), kv_msg_size, (uint32_t)kv_ready_queue_.size());
             ++drained;
         }
 
         if (drained > 0) {
+            uint32_t kv_msg_size = 0;
+            {
+                std::lock_guard<std::mutex> lock(kv_msg_mutex_);
+                kv_msg_size = static_cast<uint32_t>(kv_msg_queue_.size());
+            }
             SETH_DEBUG("KvConsumerLoop relayed %u messages, kv_msg remaining: %u, ready: %u",
-                drained, (uint32_t)kv_msg_queue_.size(), (uint32_t)kv_ready_queue_.size());
+                drained, kv_msg_size, (uint32_t)kv_ready_queue_.size());
             if (drained >= kConsumerBatchSize) {
                 continue;
             }
         }
 
-        std::unique_lock<std::mutex> lock(wait_mutex_);
-        wait_con_.wait_for(lock, std::chrono::milliseconds(5));
+        std::unique_lock<std::mutex> lock(kv_msg_mutex_);
+        wait_con_.wait_for(lock, std::chrono::milliseconds(5), [this]() {
+            return destroy_ || !kv_msg_queue_.empty();
+        });
     }
 }
 
 void KeyValueSync::HandleKvMessage(const transport::MessagePtr& msg_ptr) {
     auto& header = msg_ptr->header;
+    SETH_DEBUG("handle kv message hash: %lu, sync_req: %d, sync_res: %d",
+        header.hash64(),
+        header.sync_proto().has_sync_value_req(),
+        header.sync_proto().has_sync_value_res());
     if (header.sync_proto().has_sync_value_req()) {
         ProcessSyncValueRequest(msg_ptr);
     }

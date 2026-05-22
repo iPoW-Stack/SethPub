@@ -190,7 +190,7 @@ private:
     std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::pair<bool, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>>> synced_res_map_;
     uint32_t not_root_synced_res_map_count_ = 0;
     common::Tick kv_tick_;
-    common::ThreadSafeQueue<std::shared_ptr<transport::TransportMessage>> kv_msg_queue_;
+    std::queue<transport::MessagePtr> kv_msg_queue_;
     // Messages relayed by consumer thread, processed by timer thread
     common::ThreadSafeQueue<std::shared_ptr<transport::TransportMessage>> kv_ready_queue_;
     uint64_t elect_net_heights_map_[network::kConsensusShardEndNetworkId] = { 0 };
@@ -199,7 +199,7 @@ private:
     ViewBlockSyncedCallback view_block_synced_callback_ = nullptr;
     common::ThreadSafeQueue<ViewBlockPtr> vblock_queues_[common::kMaxThreadCount];
     std::shared_ptr<consensus::HotstuffManager> hotstuff_mgr_ = nullptr;
-    std::mutex wait_mutex_;
+    std::mutex kv_msg_mutex_;
     std::condition_variable wait_con_;
     std::shared_ptr<std::thread> kv_consumer_thread_ = nullptr;
     std::atomic<bool> destroy_{false};
