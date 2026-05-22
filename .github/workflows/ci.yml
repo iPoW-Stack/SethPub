@@ -356,6 +356,9 @@ jobs:
           echo "::group::Update SethTests"
           cd "$TESTS_DIR"
           if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+            if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+              git stash push --include-untracked -m "ci-sethtests-autostash-${GITHUB_SHA}" || true
+            fi
             git pull --ff-only
           fi
           echo "::endgroup::"
@@ -520,6 +523,9 @@ jobs:
           echo "::group::Update SethTests"
           cd "$TESTS_DIR"
           if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+            if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+              git stash push --include-untracked -m "ci-sethtests-autostash-${GITHUB_SHA}" || true
+            fi
             git pull --ff-only
           fi
           echo "::endgroup::"
