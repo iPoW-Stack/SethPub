@@ -289,19 +289,87 @@ jobs:
   # ─────────────────────────────────────────────────────────────────
   integration-tests:
     name: Remote Integration Tests (SethTests)
-    runs-on: ubuntu-22.04
+    runs-on: [self-hosted, linux, x64, seth-local-vm]
     needs: []
     timeout-minutes: 120
-    # Remote tests require repository secrets, so only run them on trusted pushes.
+    # The self-hosted runner executes code on the local test server; keep it on trusted pushes only.
     if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/xl')) }}
 
     steps:
+      - name: Run local SethTests
+        run: |
+          set -euo pipefail
+
+          WORKDIR="/root/seth"
+          NODE_HOST="172.18.221.158"
+          TESTS_DIR="/root/SethTests"
+          PYTHON_BIN="/root/tools/python3.10/bin/python3"
+
+          echo "::group::Update SethPub"
+          cd "$WORKDIR"
+          git fetch origin "$GITHUB_REF_NAME"
+          if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+            git stash push --include-untracked -m "ci-autostash-${GITHUB_SHA}" || true
+          fi
+          git checkout --detach "$GITHUB_SHA"
+          git submodule sync --recursive || true
+          git submodule update --init --recursive || true
+          git log -1 --oneline
+          echo "::endgroup::"
+
+          echo "::group::Start local seth network"
+          bash simple_remote.sh 4 "$NODE_HOST"
+          echo "::endgroup::"
+
+          echo "::group::Wait for local HTTP"
+          for attempt in $(seq 1 60); do
+            if "$PYTHON_BIN" - "$NODE_HOST" <<'PY'
+          import socket
+          import sys
+          host = sys.argv[1]
+          try:
+              with socket.create_connection((host, 23001), timeout=2):
+                  sys.exit(0)
+          except OSError:
+              sys.exit(1)
+          PY
+            then
+              echo "Local HTTP port is ready: ${NODE_HOST}:23001"
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              echo "Local HTTP port did not become ready: ${NODE_HOST}:23001" >&2
+              echo "--- seth processes ---" >&2
+              pgrep -af seth || true
+              echo "--- listening ports ---" >&2
+              ss -ltnp | grep -E '(:23001|:24009|:1200|:1300)' || true
+              echo "--- recent logs ---" >&2
+              find /root/seths -maxdepth 3 -type f \( -name '*.log' -o -name 'seth.log' \) -print -exec tail -n 80 {} \; 2>/dev/null || true
+              exit 1
+            fi
+            sleep 5
+          done
+          echo "::endgroup::"
+
+          echo "::group::Update SethTests"
+          cd "$TESTS_DIR"
+          if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+            git pull --ff-only
+          fi
+          echo "::endgroup::"
+
+          echo "::group::Run SethTests"
+          "$PYTHON_BIN" seth_test_runner.py --host "$NODE_HOST"
+          echo "::endgroup::"
+
       - name: Install SSH tools
+        if: ${{ false }}
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends openssh-client sshpass
 
       - name: Run remote SethTests
+        if: ${{ false }}
         env:
           XL_CICD_REMOTE_SERVER: ${{ secrets.XL_CICD_REMOTE_SERVER }}
         run: |
