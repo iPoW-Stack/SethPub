@@ -155,7 +155,7 @@ init() {
     export SETH_REMOTE_PASSWORD="$PASSWORD"
 
     if [ "$TARGET" == "" ]; then
-        TARGET=Debug
+        TARGET=Release
     fi
 
     killall -9 seth
