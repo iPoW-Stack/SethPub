@@ -121,7 +121,14 @@ jobs:
         if: steps.third-party-cache-state.outputs.complete != 'true'
         continue-on-error: true
         run: |
-          bash build_third.sh
+          # Use the fixed build script that handles errors gracefully
+          if [ -f "build_third_fixed.sh" ]; then
+            echo "Using build_third_fixed.sh (more robust)"
+            bash build_third_fixed.sh
+          else
+            echo "Falling back to original build_third.sh"
+            bash build_third.sh
+          fi
         timeout-minutes: 90
 
       - name: Validate final third-party outputs

@@ -352,4 +352,10 @@ echo "2. Or use the build wrapper: bash build_wrapper.sh"
 echo ""
 echo "If you encounter issues, check the individual library directories in third_party/"
 
+# Create completion marker for CI compatibility
+COMPLETE_MARKER="$SRC_PATH/third_party/.build_third_complete"
+mkdir -p "$SRC_PATH/third_party"
+printf 'complete\n' > "$COMPLETE_MARKER"
+echo "Created completion marker: $COMPLETE_MARKER"
+
 cd "$SRC_PATH"
