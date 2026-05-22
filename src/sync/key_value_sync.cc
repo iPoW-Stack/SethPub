@@ -901,8 +901,10 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                     pool_iter != net_iter->second.end() && drained < kMaxInlineDrain; ++pool_iter) {
                 auto pool_idx = pool_iter->first;
                 uint64_t latest_height;
-                if (network_id == network::kRootCongressNetworkId || 
-                        network::IsSameToLocalShard(network_id)) {
+                if (network_id == network::kRootCongressNetworkId &&
+                        !network::IsSameToLocalShard(network_id)) {
+                    latest_height = tx_pool_mgr_->root_latest_height(pool_idx);
+                } else if (network::IsSameToLocalShard(network_id)) {
                     latest_height = tx_pool_mgr_->latest_height(pool_idx);
                 } else {
                     latest_height = tx_pool_mgr_->cross_latest_height(network_id);
@@ -1082,7 +1084,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
         SETH_DEBUG("add sync item: %u_%u_%u", network, pool_index, height);
     };
 
-    for (uint32_t i = 0; i < common::kImmutablePoolSize; ++i) {
+    for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
         for (uint32_t network_id = network::kRootCongressNetworkId;
                 network_id <= common::GlobalInfo::Instance()->now_valid_end_shard(); ++network_id) {
             auto latest_height = tx_pool_mgr_->latest_height(i);
@@ -1116,13 +1118,13 @@ void KeyValueSync::SyncAllLatestBlocks() {
 
             auto iter = synced_res_map_.find(network_id);
             if (iter == synced_res_map_.end()) {
-                add_sync_item(network_id, i, latest_height + 1, false);
+                add_sync_item(network_id, i, latest_height + 1, i == common::kGlobalPoolIndex);
                 continue;
             }
 
             auto pool_iter = iter->second.find(i);
             if (pool_iter == iter->second.end()) {
-                add_sync_item(network_id, i, latest_height + 1, false);
+                add_sync_item(network_id, i, latest_height + 1, i == common::kGlobalPoolIndex);
                 continue;
             }
 
@@ -1178,7 +1180,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
                 }
             }
 
-            add_sync_item(network_id, i, latest_height, false);
+            add_sync_item(network_id, i, latest_height, i == common::kGlobalPoolIndex);
         }
     }
 
@@ -1267,10 +1269,10 @@ void KeyValueSync::SyncAllLatestBlocks() {
     std::set<uint64_t> sended_neigbors;
     uint32_t sent_count = 0;
     for (auto iter = sync_dht_map.begin(); iter != sync_dht_map.end(); ++iter) {
-        // Send to 1 peer per network. The latest_sync_item already covers all 33 pools
-        // in a single request, and the peer returns up to 256 blocks per pool (capped
-        // by 768KB packet size). Sending the same request to multiple peers wastes
-        // bandwidth since they all return the same block range.
+        // Send to 1 peer per network. For root/shard2 this can cover pools 0..32;
+        // for other remote shards it only requests the global transaction pool.
+        // Sending the same request to multiple peers wastes bandwidth since they
+        // all return the same block range.
         // SyncAllLatestBlocks runs every 1s, so throughput = 768KB/s per network.
         uint64_t choose_node = SendSyncRequest(
             iter->first,

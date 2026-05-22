@@ -320,30 +320,32 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
 
 void TxPoolManager::SyncCrossPool() {
     auto now_tm_ms = common::TimeUtils::TimestampMs();
-    for (uint32_t i = network::kConsensusShardBeginNetworkId;
-            i <= common::GlobalInfo::Instance()->now_valid_end_shard(); ++i) {
+    for (uint32_t shard_id = network::kConsensusShardBeginNetworkId;
+            shard_id <= common::GlobalInfo::Instance()->now_valid_end_shard(); ++shard_id) {
         //assert(i < network::kServiceShardEndNetworkId);
-        auto sync_count = cross_pools_[i].SyncMissingBlocks(now_tm_ms);
+        auto sync_count = cross_pools_[shard_id].SyncMissingBlocks(now_tm_ms);
         uint64_t ex_height = common::kInvalidUint64;
-        if (cross_pools_[i].latest_height() == common::kInvalidUint64) {
+        if (cross_pools_[shard_id].latest_height() == common::kInvalidUint64) {
             ex_height = 1;
         } else {
-            if (cross_pools_[i].latest_height() < cross_synced_max_heights_[i]) {
-                ex_height = cross_pools_[i].latest_height() + 1;
+            if (cross_pools_[shard_id].latest_height() < cross_synced_max_heights_[shard_id]) {
+                ex_height = cross_pools_[shard_id].latest_height() + 1;
             }
         }
 
         if (ex_height != common::kInvalidUint64) {
             uint32_t count = 0;
-            for (uint64_t i = ex_height; i < cross_synced_max_heights_[i] && count < 64; ++i, ++count) {
-                SETH_DEBUG("now add sync height 1, %u_%u_%lu", 
-                    network::kRootCongressNetworkId,
-                    common::kImmutablePoolSize,
-                    i);
+            for (uint64_t height = ex_height;
+                    height <= cross_synced_max_heights_[shard_id] && count < 64;
+                    ++height, ++count) {
+                SETH_DEBUG("now add sync height 1, %u_%u_%lu",
+                    shard_id,
+                    common::kGlobalPoolIndex,
+                    height);
                 kv_sync_->AddSyncHeight(
-                    network::kRootCongressNetworkId,
-                    common::kImmutablePoolSize,
-                    i,
+                    shard_id,
+                    common::kGlobalPoolIndex,
+                    height,
                     sync::kSyncHigh);
             }
         }

@@ -264,13 +264,14 @@ TEST_F(TestTxPoolManager, NewTxValid_EmptyPool_ReturnsTrue) {
 // OnNewCrossBlock (header lines 92-111)
 // ---------------------------------------------------------------------------
 
-// Non-root network, pool_index != kImmutablePoolSize → early return
-TEST_F(TestTxPoolManager, OnNewCrossBlock_NonRoot_WrongPool_EarlyReturn) {
+// Non-root cross-shard sync only tracks the global transaction pool.
+TEST_F(TestTxPoolManager, OnNewCrossBlock_NonRoot_NormalPool_Ignored) {
     auto vb = std::make_shared<view_block::protobuf::ViewBlockItem>();
     vb->mutable_qc()->set_network_id(network::kConsensusShardBeginNetworkId);
-    vb->mutable_qc()->set_pool_index(0);  // not kImmutablePoolSize
+    vb->mutable_qc()->set_pool_index(0);
     vb->mutable_block_info()->set_height(100);
-    mgr_->OnNewCrossBlock(vb);  // should not crash
+    mgr_->OnNewCrossBlock(vb);
+    EXPECT_NE(mgr_->cross_pools_[network::kConsensusShardBeginNetworkId].latest_height(), 100u);
 }
 
 // Root congress network → updates root_cross_pools_[pool_index]
@@ -286,11 +287,11 @@ TEST_F(TestTxPoolManager, OnNewCrossBlock_RootNetwork_UpdatesRootCross) {
     EXPECT_EQ(mgr_->root_cross_pools_[1].latest_height(), 77u);
 }
 
-// Non-root, pool_index == kImmutablePoolSize → updates cross_pools_[network_id]
-TEST_F(TestTxPoolManager, OnNewCrossBlock_NonRoot_ImmutablePool_UpdatesCross) {
+// Non-root, pool_index == kGlobalPoolIndex → updates cross_pools_[network_id]
+TEST_F(TestTxPoolManager, OnNewCrossBlock_NonRoot_GlobalPool_UpdatesCross) {
     auto vb = std::make_shared<view_block::protobuf::ViewBlockItem>();
     vb->mutable_qc()->set_network_id(network::kConsensusShardBeginNetworkId);
-    vb->mutable_qc()->set_pool_index(common::kImmutablePoolSize);
+    vb->mutable_qc()->set_pool_index(common::kGlobalPoolIndex);
     vb->mutable_block_info()->set_height(55);
     mgr_->OnNewCrossBlock(vb);
     EXPECT_EQ(mgr_->cross_pools_[network::kConsensusShardBeginNetworkId].latest_height(), 55u);
@@ -407,14 +408,14 @@ TEST_F(TestTxPoolManager, UpdateLatestInfo_Valid_UpdatesMaxHeight) {
 // UpdateCrossLatestInfo (header lines 216-242)
 // ---------------------------------------------------------------------------
 
-// Non-root network, pool_index != kGlobalPoolIndex → early return
-TEST_F(TestTxPoolManager, UpdateCrossLatestInfo_NonRoot_WrongPool_EarlyReturn) {
+// Non-root cross-shard latest info ignores normal pools.
+TEST_F(TestTxPoolManager, UpdateCrossLatestInfo_NonRoot_NormalPool_Ignored) {
     auto vb = std::make_shared<view_block::protobuf::ViewBlockItem>();
     vb->mutable_qc()->set_network_id(network::kConsensusShardBeginNetworkId);
-    vb->mutable_qc()->set_pool_index(0);  // not kGlobalPoolIndex
+    vb->mutable_qc()->set_pool_index(0);
     vb->mutable_block_info()->set_height(50);
     db::DbWriteBatch batch;
-    mgr_->UpdateCrossLatestInfo(vb, batch);  // should not crash
+    mgr_->UpdateCrossLatestInfo(vb, batch);
 }
 
 // Root congress network: root_cross_pools_ updated + PoolLatestInfo saved
@@ -438,7 +439,7 @@ TEST_F(TestTxPoolManager, UpdateCrossLatestInfo_NonRoot_GlobalPool_Updates) {
     vb->mutable_qc()->set_pool_index(common::kGlobalPoolIndex);
     vb->mutable_block_info()->set_height(42);
     db::DbWriteBatch batch;
-    mgr_->UpdateCrossLatestInfo(vb, batch);  // should not crash
+    mgr_->UpdateCrossLatestInfo(vb, batch);
 }
 
 // ---------------------------------------------------------------------------

@@ -113,7 +113,8 @@ public:
             return;
         }
 
-        if (view_block->qc().pool_index() != common::kImmutablePoolSize) {
+        if (view_block->qc().network_id() >= network::kConsensusShardEndNetworkId ||
+                view_block->qc().pool_index() != common::kGlobalPoolIndex) {
             return;
         }
 
@@ -231,7 +232,8 @@ public:
         auto* block = &view_block->block_info();
         uint32_t pool_index = view_block->qc().pool_index();
         if (view_block->qc().network_id() != network::kRootCongressNetworkId) {
-            if (pool_index != common::kGlobalPoolIndex) {
+            if (view_block->qc().network_id() >= network::kConsensusShardEndNetworkId ||
+                    pool_index != common::kGlobalPoolIndex) {
                 return;
             }
 
