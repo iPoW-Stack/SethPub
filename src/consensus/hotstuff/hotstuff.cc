@@ -2502,8 +2502,8 @@ void Hotstuff::TryRecoverFromStuck(
         if (empty_propose_count_ > 0) {
             empty_propose_count_ = 0;
             empty_propose_backoff_until_ms_ = 0;
-            SETH_DEBUG("pool: %u, backoff reset by %s tx",
-                pool_idx_, has_user_tx ? "user" : "system");
+            // SETH_DEBUG("pool: %u, backoff reset by %s tx",
+            //     pool_idx_, has_user_tx ? "user" : "system");
         }
     }
 
@@ -2551,18 +2551,18 @@ void Hotstuff::TryRecoverFromStuck(
     View out_view = 0;
     auto leader_block_tm = GetLeaderBlockTimestamp();
     if (!latest_qc_item_ptr_) {
-        if (pool_idx_ == common::kImmutablePoolSize) {
-            SETH_DEBUG("pool %u: latest_qc_item_ptr_ is null, cannot get leader", pool_idx_);
-        }
+        // if (pool_idx_ == common::kImmutablePoolSize) {
+        //     SETH_DEBUG("pool %u: latest_qc_item_ptr_ is null, cannot get leader", pool_idx_);
+        // }
         return;
     }
     auto leader = GetLeader(local_idx, *latest_qc_item_ptr_, &out_view, leader_block_tm, false);
     if (!leader) {
-        SETH_DEBUG("pool index: %d, no leader", pool_idx_);
+        // SETH_DEBUG("pool index: %d, no leader", pool_idx_);
         return;
     }
 
-    SETH_DEBUG("pool: %u, get leader index: %u, local index: %u", pool_idx_, leader->index, local_idx);
+    // SETH_DEBUG("pool: %u, get leader index: %u, local index: %u", pool_idx_, leader->index, local_idx);
     if (leader->index != local_idx) {
         SyncLocalTxToLeader(msg_ptr, leader, has_system_tx);
         if (latest_leader_propose_message_) {
@@ -2580,8 +2580,8 @@ void Hotstuff::TryRecoverFromStuck(
         return;
     }
 
-    SETH_DEBUG("pool index: %d, GetLeader return leader: %d, out_view: %lu, local_idx: %d",
-        pool_idx_, leader ? leader->index : -1, out_view, local_idx);
+    // SETH_DEBUG("pool index: %d, GetLeader return leader: %d, out_view: %lu, local_idx: %d",
+    //     pool_idx_, leader ? leader->index : -1, out_view, local_idx);
     // if (prev_recover_check_tm_ms_ + 3000lu > now_tm_ms) {
     //     return;
     // }
@@ -2594,8 +2594,8 @@ void Hotstuff::TryRecoverFromStuck(
     //     }
     //     return;
     // }
-    SETH_DEBUG("pool index: %d, found leader: %d, local_index: %d",
-        pool_idx_, leader->index, local_idx);
+    // SETH_DEBUG("pool index: %d, found leader: %d, local_index: %d",
+    //     pool_idx_, leader->index, local_idx);
     if (leader && leader->index == local_idx) {
         if (leader->pubkey != crypto_->security()->GetPublicKey()) {
             SETH_ERROR("leader pubkey: %s != local pubkey: %s, pool index: %d",
@@ -2606,13 +2606,13 @@ void Hotstuff::TryRecoverFromStuck(
         }
 
         ADD_DEBUG_PROCESS_TIMESTAMP();
-        SETH_DEBUG("leader try recover from stuck, pool: %u, out_view: %lu, last_vote_view_: %lu",
-            pool_idx_, out_view, last_vote_view_);
+        // SETH_DEBUG("leader try recover from stuck, pool: %u, out_view: %lu, last_vote_view_: %lu",
+        //     pool_idx_, out_view, last_vote_view_);
         if (last_vote_view_ < out_view) {
             // Backoff: if previous proposes yielded 0 txs, delay retries
             if (empty_propose_count_ > 0 && now_tm_ms < empty_propose_backoff_until_ms_) {
-                SETH_DEBUG("pool: %u, empty propose backoff: count=%u, wait until %lu, now %lu",
-                    pool_idx_, empty_propose_count_, empty_propose_backoff_until_ms_, now_tm_ms);
+                // SETH_DEBUG("pool: %u, empty propose backoff: count=%u, wait until %lu, now %lu",
+                //     pool_idx_, empty_propose_count_, empty_propose_backoff_until_ms_, now_tm_ms);
                 return;
             }
 
@@ -2624,8 +2624,8 @@ void Hotstuff::TryRecoverFromStuck(
                     kEmptyProposeBackoffBaseMs * (1u << std::min(empty_propose_count_, 7u)),
                     kEmptyProposeBackoffMaxMs);
                 empty_propose_backoff_until_ms_ = now_tm_ms + backoff_ms;
-                SETH_DEBUG("pool: %u, propose failed, empty_propose_count: %u, backoff: %u ms",
-                    pool_idx_, empty_propose_count_, backoff_ms);
+                // SETH_DEBUG("pool: %u, propose failed, empty_propose_count: %u, backoff: %u ms",
+                //     pool_idx_, empty_propose_count_, backoff_ms);
             } else {
                 // Propose succeeded, reset backoff
                 empty_propose_count_ = 0;
@@ -2633,17 +2633,17 @@ void Hotstuff::TryRecoverFromStuck(
             }
         }
         ADD_DEBUG_PROCESS_TIMESTAMP();
-        if (latest_qc_item_ptr_) {
-            SETH_DEBUG("leader do propose message: %d, pool index: %u, %u_%u_%lu, "
-                "sec pk: %s, leader pk: %s", 
-                local_idx,
-                pool_idx_,
-                latest_qc_item_ptr_->network_id(), 
-                latest_qc_item_ptr_->pool_index(), 
-                latest_qc_item_ptr_->view(),
-                common::Encode::HexEncode(crypto_->security()->GetPublicKey()).c_str(),
-                common::Encode::HexEncode(leader->pubkey).c_str());
-        }
+        // if (latest_qc_item_ptr_) {
+        //     SETH_DEBUG("leader do propose message: %d, pool index: %u, %u_%u_%lu, "
+        //         "sec pk: %s, leader pk: %s", 
+        //         local_idx,
+        //         pool_idx_,
+        //         latest_qc_item_ptr_->network_id(), 
+        //         latest_qc_item_ptr_->pool_index(), 
+        //         latest_qc_item_ptr_->view(),
+        //         common::Encode::HexEncode(crypto_->security()->GetPublicKey()).c_str(),
+        //         common::Encode::HexEncode(leader->pubkey).c_str());
+        // }
 
         if (latest_propose_msg_tm_ms_ > prev_sync_latest_view_tm_ms_) {
             prev_sync_latest_view_tm_ms_ = latest_propose_msg_tm_ms_;

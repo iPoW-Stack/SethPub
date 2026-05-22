@@ -421,6 +421,7 @@ private:
             
             // *out_view += 1;
             
+            if (debug)
             SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is equal with high view block qc view: %lu, "
                 "high_view_block->qc().elect_height(): %lu, latest_elect_height_: %lu, out view: %lu, "
                 "last_stable_leader_member_index_: %u, new_leader_idx: %u, leader_latest_qc.leader_idx(): %u",
