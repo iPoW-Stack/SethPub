@@ -157,8 +157,13 @@ private:
     void BroadcastGlobalBlock();
     void SyncAllLatestBlocks();
     void HandlerVerifiedBlock(const std::map<uint32_t, std::map<uint32_t, std::map<uint64_t, std::shared_ptr<view_block::protobuf::ViewBlockItem>>>>& res_map);
+    void QueueFollowupBlockSync(
+        uint32_t network_id,
+        uint32_t pool_idx,
+        uint64_t height);
 
     static const uint64_t kSyncPeriodUs = 300000lu;
+    static const uint64_t kSyncSendIntervalUs = 50000lu;
     // [SYNC_OPT] Reduced from 3,000,000µs (3s) to 800,000µs (800ms).
     // This is the deduplication window: if a sync request hasn't been answered
     // within this time, it can be re-sent. 3s was far too long — a block sync
@@ -172,6 +177,8 @@ private:
     static const uint32_t kCacheSyncKeyValueCount = 1024000u;
     static const uint32_t kSyncCount = 5u;
     static const uint32_t kMaxSyncLatestNotRootCount = 1024u;
+    static const uint32_t kFollowupSyncHeightCount = 32u;
+    static const uint32_t kLatestSyncBlocksPerPool = 32u;
     // [SYNC_OPT] Increased from 1024 to 4096: consumer thread relays more
     // messages per wakeup to keep up with higher sync throughput.
     static const uint32_t kConsumerBatchSize = 4096u;

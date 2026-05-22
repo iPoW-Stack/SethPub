@@ -39,12 +39,15 @@ KeyValueSync::~KeyValueSync() {
 // before C++17; gtest (EXPECT_GT, etc.) passes them by const-ref and odr-uses
 // them, so the linker needs one definition per symbol.
 const uint64_t KeyValueSync::kSyncPeriodUs;
+const uint64_t KeyValueSync::kSyncSendIntervalUs;
 const uint64_t KeyValueSync::kSyncTimeoutPeriodUs;
 const uint32_t KeyValueSync::kEachTimerHandleCount;
 const uint32_t KeyValueSync::kMaxBatchDrainCount;
 const uint32_t KeyValueSync::kCacheSyncKeyValueCount;
 const uint32_t KeyValueSync::kSyncCount;
 const uint32_t KeyValueSync::kMaxSyncLatestNotRootCount;
+const uint32_t KeyValueSync::kFollowupSyncHeightCount;
+const uint32_t KeyValueSync::kLatestSyncBlocksPerPool;
 const uint32_t KeyValueSync::kConsumerBatchSize;
 
 void KeyValueSync::Init(
@@ -275,7 +278,7 @@ void KeyValueSync::PopItems() {
     std::map<uint32_t, sync::protobuf::SyncMessage> sync_dht_map;
     bool stop = false;
     auto now_tm = common::TimeUtils::TimestampUs();
-    if (prev_sent_sync_tm_ms_ + kSyncTimeoutPeriodUs > now_tm) {
+    if (prev_sent_sync_tm_ms_ + kSyncSendIntervalUs > now_tm) {
         return;
     }
 
@@ -695,19 +698,38 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
             }
 
             if (latest_sync_item.pool_latest_heights_size() == (int)common::kImmutablePoolSize) {
-                for (int32_t i = 0; i < latest_sync_item.pool_latest_heights_size() && add_size < kSyncPacketMaxSize; ++i) {
-                    if (latest_sync_item.pool_latest_heights(i) == common::kInvalidUint64) {
-                        continue;
+                uint64_t next_heights[common::kImmutablePoolSize] = { 0 };
+                bool active_pools[common::kImmutablePoolSize] = { false };
+                for (int32_t i = 0; i < latest_sync_item.pool_latest_heights_size(); ++i) {
+                    auto start_height = latest_sync_item.pool_latest_heights(i);
+                    if (start_height != common::kInvalidUint64) {
+                        next_heights[i] = start_height;
+                        active_pools[i] = true;
                     }
+                }
 
-                    // Increased from 64 to 256: serve more blocks per pool per request
-                    // to accelerate catch-up. 256 blocks × ~500B = ~128KB per pool,
-                    // well within the 768KB packet limit.
-                    for (uint64_t height = latest_sync_item.pool_latest_heights(i); 
-                            height < latest_sync_item.pool_latest_heights(i) + 256  && add_size < kSyncPacketMaxSize; ++height) {
+                for (uint32_t round = 0;
+                        round < kLatestSyncBlocksPerPool && add_size < kSyncPacketMaxSize;
+                        ++round) {
+                    bool added_in_round = false;
+                    for (int32_t i = 0;
+                            i < latest_sync_item.pool_latest_heights_size() &&
+                            add_size < kSyncPacketMaxSize;
+                            ++i) {
+                        if (!active_pools[i]) {
+                            continue;
+                        }
+
+                        auto height = next_heights[i];
                         view_block_ptr = hotstuff_mgr_->chain(i)->GetViewBlockWithHeight(
                             network_id, height);
                         if (!view_block_ptr || view_block_ptr->qc().sign_x().empty()) {
+                            active_pools[i] = false;
+                            continue;
+                        }
+
+                        auto value = SerializeDeterministic(*view_block_ptr);
+                        if (add_size + 16 + value.size() > kSyncPacketMaxSize) {
                             break;
                         }
 
@@ -715,9 +737,15 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
                         res->set_network_id(network_id);
                         res->set_pool_idx(i);
                         res->set_height(height);
-                        res->set_value(SerializeDeterministic(*view_block_ptr));
+                        res->set_value(value);
                         res->set_tag(kBlockHeight);
                         add_size += 16 + res->value().size();
+                        ++next_heights[i];
+                        added_in_round = true;
+                    }
+
+                    if (!added_in_round) {
+                        break;
                     }
                 }
             }
@@ -849,6 +877,10 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                 iter->key().empty(),
                 not_root_synced_res_map_count_);
             res_map[pb_vblock->qc().network_id()][pb_vblock->qc().pool_index()][pb_vblock->qc().view()] = pb_vblock;
+            QueueFollowupBlockSync(
+                pb_vblock->qc().network_id(),
+                pb_vblock->qc().pool_index(),
+                pb_vblock->block_info().height());
             responsed_keys_.add(key);
             synced_map_.erase(key);
         } while (0);
@@ -946,6 +978,54 @@ void KeyValueSync::HandlerVerifiedBlock(const std::map<uint32_t, std::map<uint32
                     thread_idx);
             }
         }
+    }
+}
+
+void KeyValueSync::QueueFollowupBlockSync(
+        uint32_t network_id,
+        uint32_t pool_idx,
+        uint64_t height) {
+    if (height == common::kInvalidUint64) {
+        return;
+    }
+
+    if (network_id != network::kRootCongressNetworkId &&
+            not_root_synced_res_map_count_ >= kMaxSyncLatestNotRootCount) {
+        return;
+    }
+
+    for (uint32_t i = 1; i <= kFollowupSyncHeightCount; ++i) {
+        auto next_height = height + i;
+        std::string key = std::to_string(network_id) + "_" +
+            std::to_string(pool_idx) + "_" +
+            std::to_string(next_height) + "_" +
+            std::to_string(kBlockHeight);
+
+        if (responsed_keys_.exists(key)) {
+            continue;
+        }
+
+        if (synced_map_.exists(key)) {
+            continue;
+        }
+
+        auto net_iter = synced_res_map_.find(network_id);
+        if (net_iter != synced_res_map_.end()) {
+            auto pool_iter = net_iter->second.find(pool_idx);
+            if (pool_iter != net_iter->second.end() &&
+                    pool_iter->second.find(next_height) != pool_iter->second.end()) {
+                continue;
+            }
+        }
+
+        auto item = std::make_shared<SyncItem>(
+            network_id,
+            pool_idx,
+            next_height,
+            kSyncHighest,
+            kBlockHeight);
+        auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
+        item_queues_[thread_idx].push(item);
     }
 }
 

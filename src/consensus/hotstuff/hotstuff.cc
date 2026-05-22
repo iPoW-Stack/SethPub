@@ -1917,7 +1917,8 @@ void Hotstuff::SyncLaterBlocks(
         uint32_t pool_index, 
         View view) {
     auto call_sync_later_func = [this, view_block_chain, network_id, pool_index, view]() {
-        for (View i = view + 1; i <= view + 2; ++i) {
+        static const uint32_t kSyncLaterViewCount = 16u;
+        for (View i = view + 1; i <= view + kSyncLaterViewCount; ++i) {
             SETH_DEBUG("now sync later block %u_%u_%lu",
                 network_id, pool_index, i);
             if (view_block_chain->HighView() >= i) {
@@ -1934,11 +1935,7 @@ void Hotstuff::SyncLaterBlocks(
         }
     };
 
-#ifdef TEST_LOCAL_NETWORK
-    layter_sync_tick_.CutOff(10000000llu, call_sync_later_func);
-#else
-    layter_sync_tick_.CutOff(10000000llu, call_sync_later_func);
-#endif
+    layter_sync_tick_.CutOff(200000llu, call_sync_later_func);
 }
 
 Status Hotstuff::VerifyQC(const QC& qc) {
