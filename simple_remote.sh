@@ -158,6 +158,10 @@ init() {
         TARGET=Release
     fi
 
+    if [ "$TARGET" == "Release" ]; then
+        rm -rf ./pkgs
+    fi
+
     killall -9 seth
     killall -9 txcli
 
