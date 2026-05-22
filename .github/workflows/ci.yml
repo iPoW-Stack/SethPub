@@ -69,10 +69,10 @@ jobs:
             third_party/include
             third_party/depends
             third_party/.build_third_complete
-          key: third-party-v7-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}-complete
+          key: third-party-v8-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}-complete
           restore-keys: |
-            third-party-v7-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}-
-            third-party-v7-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-
+            third-party-v8-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}-
+            third-party-v8-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-
 
       - name: Validate complete third-party cache
         id: complete-third-party-cache-state
@@ -101,9 +101,9 @@ jobs:
             clipy/liboqs
             .git/modules/third_party
             .git/modules/clipy
-          key: third-party-v7-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-resumable-${{ steps.third-party-key.outputs.build-key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: third-party-v8-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-resumable-${{ steps.third-party-key.outputs.build-key }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            third-party-v7-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-resumable-
+            third-party-v8-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-resumable-
 
       - name: Validate third-party cache
         id: third-party-cache-state
@@ -151,7 +151,7 @@ jobs:
             third_party/include
             third_party/depends
             third_party/.build_third_complete
-          key: third-party-v7-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}-complete
+          key: third-party-v8-${{ runner.os }}-${{ steps.third-party-key.outputs.key }}-complete
 
       - name: Save resumable third-party cache
         if: |
@@ -165,7 +165,7 @@ jobs:
             clipy/liboqs
             .git/modules/third_party
             .git/modules/clipy
-          key: third-party-v7-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-resumable-${{ steps.third-party-key.outputs.build-key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: third-party-v8-${{ runner.os }}-${{ steps.third-party-key.outputs.deps-key }}-resumable-${{ steps.third-party-key.outputs.build-key }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Fail if third-party build failed
         if: |
