@@ -304,6 +304,7 @@ jobs:
           NODE_HOST="172.18.221.158"
           TESTS_DIR="/root/SethTests"
           PYTHON_BIN="/root/tools/python3.10/bin/python3"
+          export LD_LIBRARY_PATH="/root/tools/python3.10/lib:${LD_LIBRARY_PATH:-}"
 
           echo "::group::Update SethPub"
           cd "$WORKDIR"
