@@ -128,10 +128,6 @@ int32_t DhtProto::CreateConnectRequest(
     msg.set_type(common::kDhtMessage);
     auto* dht_msg = msg.mutable_dht_proto();
     auto connect_req = dht_msg->mutable_connect_req();
-    if (common::IsVlanIp(local_node->public_ip)) {
-        return kDhtError;
-    }
-
     connect_req->set_is_response(response);
     connect_req->set_pubkey(local_node->pubkey_str);
     connect_req->set_public_ip(common::GlobalInfo::Instance()->config_public_ip());
