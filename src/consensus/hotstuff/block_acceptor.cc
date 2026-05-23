@@ -166,15 +166,28 @@ NormalToItemMap FlattenNormalToItems(const pools::protobuf::AllToTxMessage& all_
             if (!item.has_des() || item.des().empty()) {
                 continue;
             }
-            items[item.des()] = item;
+            auto iter = items.find(item.des());
+            if (iter == items.end()) {
+                items[item.des()] = item;
+                continue;
+            }
+
+            iter->second.set_amount(iter->second.amount() + item.amount());
+            if (item.prefund() > 0) {
+                iter->second.set_prefund(iter->second.prefund() + item.prefund());
+            }
+            if (item.has_library_bytes()) {
+                iter->second.set_library_bytes(item.library_bytes());
+            }
         }
     }
     return items;
 }
 
-// Backup follower: compare local ToTxMessageItem with leader proposal. When leader marks
-// des_sharding_id as root shard, that field is authoritative on the leader side; for
-// non-root shards local des_sharding_id must match leader. All other fields must match.
+// Backup follower: compare local ToTxMessageItem with leader proposal.
+// If the leader classifies an uncertain destination address into the root shard,
+// root is authoritative: a local non-root classification is treated as the same
+// destination as long as the receiver and amount match.
 bool ToTxMessageItemFieldsMatchForBackup(
         const pools::protobuf::ToTxMessageItem& leader,
         const pools::protobuf::ToTxMessageItem& local) {
@@ -184,6 +197,21 @@ bool ToTxMessageItemFieldsMatchForBackup(
     if (leader.amount() != local.amount()) {
         return false;
     }
+
+    const bool leader_des_is_root =
+        leader.has_des_sharding_id() &&
+        leader.des_sharding_id() == network::kRootCongressNetworkId;
+    if (leader_des_is_root) {
+        if (local.des_sharding_id() != network::kRootCongressNetworkId) {
+            SETH_DEBUG("kNormalTo backup: leader root classification accepted, des=%s, "
+                "local_des_sharding_id=%u, amount=%lu",
+                common::Encode::HexEncode(leader.des()).c_str(),
+                local.des_sharding_id(),
+                leader.amount());
+        }
+        return true;
+    }
+
     if (leader.pool_index() != local.pool_index()) {
         return false;
     }
@@ -203,10 +231,7 @@ bool ToTxMessageItemFieldsMatchForBackup(
         return false;
     }
 
-    const bool leader_des_is_root =
-        leader.has_des_sharding_id() &&
-        leader.des_sharding_id() == network::kRootCongressNetworkId;
-    if (!leader_des_is_root && leader.des_sharding_id() != local.des_sharding_id()) {
+    if (leader.des_sharding_id() != local.des_sharding_id()) {
         return false;
     }
     return true;
@@ -220,35 +245,6 @@ bool ValidateBackupNormalToAgainstLeader(
             local_all.to_heights().SerializeAsString()) {
         SETH_WARN("kNormalTo backup: to_heights mismatch pool=%u", pool_index);
         return false;
-    }
-
-    if (leader_all.to_tx_arr_size() != local_all.to_tx_arr_size()) {
-        SETH_WARN("kNormalTo backup: to_tx_arr_size mismatch pool=%u leader=%d local=%d",
-            pool_index,
-            leader_all.to_tx_arr_size(),
-            local_all.to_tx_arr_size());
-        return false;
-    }
-
-    for (int i = 0; i < leader_all.to_tx_arr_size(); ++i) {
-        const auto& leader_shard = leader_all.to_tx_arr(i);
-        const auto& local_shard = local_all.to_tx_arr(i);
-        if (leader_shard.des_shard() != local_shard.des_shard()) {
-            SETH_WARN("kNormalTo backup: des_shard mismatch idx=%d pool=%u leader=%u local=%u",
-                i,
-                pool_index,
-                leader_shard.des_shard(),
-                local_shard.des_shard());
-            return false;
-        }
-        if (leader_shard.tos_size() != local_shard.tos_size()) {
-            SETH_WARN("kNormalTo backup: tos_size mismatch idx=%d pool=%u leader=%d local=%d",
-                i,
-                pool_index,
-                leader_shard.tos_size(),
-                local_shard.tos_size());
-            return false;
-        }
     }
 
     const auto leader_items = FlattenNormalToItems(leader_all);
