@@ -303,8 +303,6 @@ jobs:
           WORKDIR="/root/seth"
           NODE_HOST="172.18.221.158"
           TESTS_DIR="/root/SethTests"
-          PYTHON_BIN="/root/tools/python3.10/bin/python3"
-          PRIVATE_KEYS_FILE="/root/seth/init_accounts3"
           export LD_LIBRARY_PATH="/root/tools/python3.10/lib:${LD_LIBRARY_PATH:-}"
 
           echo "::group::Update SethPub"
@@ -325,7 +323,7 @@ jobs:
 
           echo "::group::Wait for local HTTP"
           for attempt in $(seq 1 60); do
-            if "$PYTHON_BIN" - "$NODE_HOST" <<'PY'
+            if /root/tools/python3.10/bin/python3 - "$NODE_HOST" <<'PY'
           import socket
           import sys
           host = sys.argv[1]
@@ -364,7 +362,8 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Run SethTests"
-          "$PYTHON_BIN" seth_test_runner.py --host "$NODE_HOST" --private-keys "$PRIVATE_KEYS_FILE" --concurrent --max-workers 16
+          ip="$NODE_HOST"
+          /root/tools/python3.10/bin/python3 seth_test_runner.py --host "$ip" --private-keys /root/seth/init_accounts3 --concurrent --max-workers 16
           echo "::endgroup::"
 
       - name: Install SSH tools
@@ -531,7 +530,8 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Run SethTests"
-          "$PYTHON_BIN" seth_test_runner.py --host "$NODE_HOST" --private-keys /root/seth/init_accounts3 --concurrent --max-workers 16
+          ip="$NODE_HOST"
+          /root/tools/python3.10/bin/python3 seth_test_runner.py --host "$ip" --private-keys /root/seth/init_accounts3 --concurrent --max-workers 16
           echo "::endgroup::"
           REMOTE_SCRIPT
 
