@@ -1337,7 +1337,7 @@ int32_t TxPoolManager::HandleNormalFromTx(const transport::MessagePtr& msg_ptr) 
 
 int32_t TxPoolManager::HandleCreateContractTx(const transport::MessagePtr& msg_ptr) {
     auto& tx_msg = msg_ptr->header.tx_proto();
-    if (!tx_msg.has_contract_code() || tx_msg.contract_code().size() <= 128u) {
+    if (!tx_msg.has_contract_code() || tx_msg.contract_code().empty()) {
         SETH_DEBUG("create contract not has valid contract code: %s",
             common::Encode::HexEncode(tx_msg.contract_code()).c_str());
         return transport::kRequestInvalid;

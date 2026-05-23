@@ -339,54 +339,16 @@ uint32_t Hash32(const int32_t& key) {
     return key;
 }
 
-/**
- * Validates raw binary bytecode stored in a std::string.
- * Each character in the string is treated as a 1-byte opcode or data.
- */
 ValidationStatus IsContractBytescodeValid(const std::string& bytecode) {
-    // 1. Check if the input buffer is empty
     if (bytecode.empty()) {
         return ValidationStatus::EMPTY_BYTECODE;
     }
 
-    size_t length = bytecode.length();
-
-    // 2. Iterate through the bytecode stream
-    for (size_t i = 0; i < length; ++i) {
-        unsigned char op = static_cast<unsigned char>(bytecode[i]);
-        
-        // Detect PUSH family instructions (PUSH1 0x60 to PUSH32 0x7f)
-        if (op >= 0x60 && op <= 0x7f) {
-            // Determine the number of immediate data bytes required by the PUSH opcode
-            size_t push_size = op - 0x5f; 
-            
-            // Check if the required immediate data exceeds the remaining buffer length
-            if (i + push_size >= length) {
-                /*
-                 * Logic Note: If the pointer is near the end of the buffer and within 
-                 * the Metadata section, the EVM would typically halt execution.
-                 * - Return an error if your goal is strict execution-flow validation.
-                 * - Truncate or allow if the goal is to pass deployment-level pre-validation.
-                 */
-                return ValidationStatus::INCOMPLETE_PUSH;
-            }
-            
-            // Skip the immediate data bytes associated with this PUSH instruction
-            i += push_size;
-        }
-        
-        /* * Optimization: Terminate validation early upon identifying the Metadata header.
-         * Solidity metadata usually starts with the CBOR encoding for "ipfs":
-         * 0xa2 0x64 0x69 0x70 0x66 0x73 ("a26469706673" in hex)
-         */
-        if (i + 6 < length && 
-            static_cast<unsigned char>(bytecode[i]) == 0xa2 && 
-            static_cast<unsigned char>(bytecode[i+1]) == 0x64) {
-            // Assume the remaining bytes are non-executable metadata and stop parsing
-            break; 
-        }
-    }
-
+    // Creation bytecode contains constructor data, runtime bytecode and compiler
+    // metadata. Static opcode walking rejects valid contracts whenever a new EVM
+    // revision adds opcodes or when metadata happens to look like an incomplete
+    // PUSH. Keep pre-validation version-neutral and let the configured EVM
+    // revision decide execution validity.
     return ValidationStatus::SUCCESS;
 }
 
