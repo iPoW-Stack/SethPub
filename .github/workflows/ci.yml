@@ -288,56 +288,52 @@ jobs:
   # Job 4: Integration Tests (SethTests)
   # ─────────────────────────────────────────────────────────────────
   integration-tests:
-    name: GitHub-hosted Integration Tests (SethTests)
+    name: Remote Integration Tests (SethTests)
     runs-on: ubuntu-22.04
-    needs: build-deps
+    needs: []
     timeout-minutes: 120
     if: ${{ github.event_name == 'push' }}
 
     steps:
-      - name: Checkout SethPub
-        uses: actions/checkout@v4
-        with:
-          submodules: false
-          fetch-depth: 1
-
-      - name: Install system packages
+      - name: Install SSH tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build \
-            libssl-dev libgmp-dev uuid-dev \
-            python3 python3-pip python3-venv xxd pkg-config git curl \
-            psmisc iproute2
-          sudo apt-get install -y --no-install-recommends libgmssl-dev || true
-          sudo mkdir -p /root/tools/python3.10/bin /root/tools/python3.10/lib
-          sudo ln -sf "$(command -v python3)" /root/tools/python3.10/bin/python3
+          sudo apt-get install -y --no-install-recommends openssh-client sshpass
 
-      - name: Download third-party artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: third-party-libs
-          path: third_party
-
-      - name: Prepare root workspace
+      - name: Run SethTests on remote host
+        env:
+          REMOTE_HOST: 35.197.170.240
+          REMOTE_PORT: 2221
+          REMOTE_USER: root
+          REMOTE_SSH_PRIVATE_KEY: ${{ secrets.XL_CICD_REMOTE_SSH_PRIVATE_KEY }}
+          REMOTE_SSH_PASSWORD: ${{ secrets.XL_CICD_REMOTE_PASSWORD }}
         run: |
           set -euo pipefail
-          sudo rm -rf /root/seth /root/SethTests /root/nodes /root/pkg /root/pkg.tar.gz /root/seths
-          sudo mkdir -p /root
-          sudo cp -a "$GITHUB_WORKSPACE" /root/seth
-          sudo git config --global --add safe.directory /root/seth
 
-      - name: Checkout SethTests
-        run: |
-          set -euo pipefail
-          sudo git clone --depth 1 https://github.com/iPoW-Stack/SethTests.git /root/SethTests
+          SSH_OPTS=(
+            -p "$REMOTE_PORT"
+            -o StrictHostKeyChecking=no
+            -o UserKnownHostsFile=/dev/null
+            -o ServerAliveInterval=30
+            -o ServerAliveCountMax=20
+          )
 
-      - name: Run SethTests
-        run: |
-          set -euo pipefail
-          sudo -E bash <<'BASH'
+          if [[ -n "${REMOTE_SSH_PRIVATE_KEY:-}" ]]; then
+            mkdir -p ~/.ssh
+            printf '%s\n' "$REMOTE_SSH_PRIVATE_KEY" > ~/.ssh/seth_ci_key
+            chmod 600 ~/.ssh/seth_ci_key
+            SSH_CMD=(ssh "${SSH_OPTS[@]}" -i ~/.ssh/seth_ci_key "$REMOTE_USER@$REMOTE_HOST")
+          else
+            : "${REMOTE_SSH_PASSWORD:?Set XL_CICD_REMOTE_SSH_PRIVATE_KEY or XL_CICD_REMOTE_PASSWORD secret}"
+            export SSHPASS="$REMOTE_SSH_PASSWORD"
+            SSH_CMD=(sshpass -e ssh "${SSH_OPTS[@]}" "$REMOTE_USER@$REMOTE_HOST")
+          fi
+
+          "${SSH_CMD[@]}" 'bash -s' -- "$GITHUB_REF_NAME" "$GITHUB_SHA" <<'REMOTE_SCRIPT'
           set -euo pipefail
 
+          REF_NAME="$1"
+          COMMIT_SHA="$2"
           WORKDIR="/root/seth"
           NODE_HOST="127.0.0.1"
           TESTS_DIR="/root/SethTests"
@@ -345,22 +341,31 @@ jobs:
           export LD_LIBRARY_PATH="/root/tools/python3.10/lib:${LD_LIBRARY_PATH:-}"
 
           echo "::group::Update SethPub"
+          if [[ ! -d "$WORKDIR/.git" ]]; then
+            rm -rf "$WORKDIR"
+            git clone https://github.com/iPoW-Stack/SethPub.git "$WORKDIR"
+          fi
           cd "$WORKDIR"
-          git checkout --force --detach "$GITHUB_SHA"
+          git fetch --force origin "$REF_NAME"
+          if ! git diff --quiet || ! git diff --cached --quiet || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
+            git stash push --include-untracked -m "ci-autostash-${COMMIT_SHA}" || true
+          fi
+          git checkout --force --detach "$COMMIT_SHA"
+          git reset --hard "$COMMIT_SHA"
           git submodule sync --recursive || true
           git submodule update --init --recursive --force || true
           git log -1 --oneline
           echo "::endgroup::"
 
           echo "::group::Clear stale deployment package"
-          sudo rm -rf /root/seth/pkgs /root/nodes /root/pkg /root/pkg.tar.gz /root/seths
+          rm -rf /root/seth/pkgs /root/nodes /root/pkg /root/pkg.tar.gz /root/seths
           echo "::endgroup::"
 
-          echo "::group::Start local seth network"
+          echo "::group::Start remote seth network"
           bash simple_remote.sh 4 "$NODE_HOST"
           echo "::endgroup::"
 
-          echo "::group::Wait for local HTTP"
+          echo "::group::Wait for remote HTTP"
           for attempt in $(seq 1 60); do
             if /root/tools/python3.10/bin/python3 - "$NODE_HOST" <<'PY'
           import socket
@@ -373,11 +378,11 @@ jobs:
               sys.exit(1)
           PY
             then
-              echo "Local HTTP port is ready: ${NODE_HOST}:23001"
+              echo "Remote HTTP port is ready: ${NODE_HOST}:23001"
               break
             fi
-            if [ "$attempt" -eq 60 ]; then
-              echo "Local HTTP port did not become ready: ${NODE_HOST}:23001" >&2
+            if [[ "$attempt" -eq 60 ]]; then
+              echo "Remote HTTP port did not become ready: ${NODE_HOST}:23001" >&2
               echo "--- seth processes ---" >&2
               pgrep -af seth || true
               echo "--- listening ports ---" >&2
@@ -391,17 +396,22 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Update SethTests"
-          cd "$TESTS_DIR"
-          if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-            git pull --ff-only || true
+          if [[ ! -d "$TESTS_DIR/.git" ]]; then
+            rm -rf "$TESTS_DIR"
+            git clone https://github.com/iPoW-Stack/SethTests.git "$TESTS_DIR"
           fi
+          cd "$TESTS_DIR"
+          if ! git diff --quiet || ! git diff --cached --quiet || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
+            git stash push --include-untracked -m "ci-sethtests-autostash-${COMMIT_SHA}" || true
+          fi
+          git pull --ff-only || true
           echo "::endgroup::"
 
           echo "::group::Run SethTests"
           ip="$NODE_HOST"
           /root/tools/python3.10/bin/python3 seth_test_runner.py --host "$ip" --private-keys /root/seth/init_accounts3 --concurrent --max-workers 16
           echo "::endgroup::"
-          BASH
+          REMOTE_SCRIPT
 
   # ─────────────────────────────────────────────────────────────────
   # Job 5: Summary
