@@ -307,14 +307,19 @@ jobs:
 
           echo "::group::Update SethPub"
           cd "$WORKDIR"
-          git fetch origin "$GITHUB_REF_NAME"
+          git fetch --force origin "$GITHUB_REF_NAME"
           if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
             git stash push --include-untracked -m "ci-autostash-${GITHUB_SHA}" || true
           fi
-          git checkout --detach "$GITHUB_SHA"
+          git checkout --force --detach "$GITHUB_SHA"
+          git reset --hard "$GITHUB_SHA"
           git submodule sync --recursive || true
-          git submodule update --init --recursive || true
+          git submodule update --init --recursive --force || true
           git log -1 --oneline
+          echo "::endgroup::"
+
+          echo "::group::Clear stale deployment package"
+          sudo rm -rf /root/seth/pkgs /root/nodes /root/pkg /root/pkg.tar.gz /root/seths
           echo "::endgroup::"
 
           echo "::group::Start local seth network"
@@ -464,14 +469,19 @@ jobs:
 
           echo "::group::Update SethPub"
           cd "$WORKDIR"
-          git fetch origin "$REF_NAME"
+          git fetch --force origin "$REF_NAME"
           if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
             git stash push --include-untracked -m "ci-autostash-${COMMIT_SHA}" || true
           fi
-          git checkout --detach "$COMMIT_SHA"
+          git checkout --force --detach "$COMMIT_SHA"
+          git reset --hard "$COMMIT_SHA"
           git submodule sync --recursive || true
-          git submodule update --init --recursive || true
+          git submodule update --init --recursive --force || true
           git log -1 --oneline
+          echo "::endgroup::"
+
+          echo "::group::Clear stale deployment package"
+          sudo rm -rf /root/seth/pkgs /root/nodes /root/pkg /root/pkg.tar.gz /root/seths
           echo "::endgroup::"
 
           echo "::group::Start remote seth network"
