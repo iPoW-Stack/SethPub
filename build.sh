@@ -50,6 +50,12 @@ if [[ "$CMD" == "coverage" || "${3:-}" == "coverage" ]]; then
     ENABLE_COVERAGE=1
 fi
 
+EXTRA_CMAKE_ARGS=()
+if [[ -n "${SETH_EXTRA_CMAKE_ARGS:-}" ]]; then
+    # shellcheck disable=SC2206
+    EXTRA_CMAKE_ARGS=(${SETH_EXTRA_CMAKE_ARGS})
+fi
+
 # Repo root (directory containing this build.sh); build dir is always under it.
 SETH_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export SETH_ROOT
@@ -88,7 +94,8 @@ if [[ "$ENABLE_COVERAGE" -eq 1 ]]; then
         -DCMAKE_C_FLAGS="--coverage -O0" \
         -DCMAKE_CXX_FLAGS="--coverage -O0" \
         -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
-        -DCMAKE_SHARED_LINKER_FLAGS="--coverage"
+        -DCMAKE_SHARED_LINKER_FLAGS="--coverage" \
+        "${EXTRA_CMAKE_ARGS[@]}"
 else
     cmake .. \
         -DCMAKE_BUILD_TYPE="$TARGET" \
@@ -99,7 +106,8 @@ else
         -DREPLACE_WHITEBOX_SK="$SK_ARRAY" \
         -DENABLE_ASAN=OFF \
         -DSETH_ENABLE_LTO=OFF \
-        -DCMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE=OFF
+        -DCMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE=OFF \
+        "${EXTRA_CMAKE_ARGS[@]}"
 fi
 
 # ---- 5. Determine parallelism ----------------------------------------------

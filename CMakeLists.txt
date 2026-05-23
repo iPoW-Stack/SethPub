@@ -1,6 +1,8 @@
 # option
 option(BUILD_SHARED_LIBS "build shared library(.so/.a)" OFF)
 option(BUILD_CLIENT "build seth client" OFF)
+option(SETH_MOCK_VERIFY "Enable mocked signature verification" OFF)
+option(SETH_MOCK_SIGN "Enable mocked signing" OFF)
 
 # version required
 cmake_minimum_required(VERSION 3.22.0)
@@ -219,6 +221,14 @@ add_definitions(
     #-DUSE_AGG_BLS
 
 )
+
+if(SETH_MOCK_VERIFY)
+    add_definitions(-DMOCK_VERIFY)
+endif()
+
+if(SETH_MOCK_SIGN)
+    add_definitions(-DMOCK_SIGN)
+endif()
 
 # =========================================================
 # 3. Compiler Performance Optimizations
