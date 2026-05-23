@@ -345,10 +345,23 @@ ValidationStatus IsContractBytescodeValid(const std::string& bytecode) {
     }
 
     // Creation bytecode contains constructor data, runtime bytecode and compiler
-    // metadata. Static opcode walking rejects valid contracts whenever a new EVM
-    // revision adds opcodes or when metadata happens to look like an incomplete
-    // PUSH. Keep pre-validation version-neutral and let the configured EVM
-    // revision decide execution validity.
+    // metadata. Keep pre-validation version-neutral: only reject structurally
+    // truncated PUSH immediates and let the configured EVM revision decide opcode
+    // execution validity.
+    for (size_t i = 0; i < bytecode.size(); ++i) {
+        const auto op = static_cast<unsigned char>(bytecode[i]);
+        if (op < 0x60 || op > 0x7f) {
+            continue;
+        }
+
+        const size_t push_size = static_cast<size_t>(op - 0x5f);
+        if (bytecode.size() - i - 1 < push_size) {
+            return ValidationStatus::INCOMPLETE_PUSH;
+        }
+
+        i += push_size;
+    }
+
     return ValidationStatus::SUCCESS;
 }
 

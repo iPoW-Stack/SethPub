@@ -364,8 +364,9 @@ int ContractCall::HandleTx(
             tx_hash_status.set_status(block_tx.status());
         }
             
-        tx_hash_status.set_output(evmc_res.output_data, evmc_res.output_size);
-        block_tx.set_output(evmc_res.output_data, evmc_res.output_size);
+        const auto evmc_output = SafeEvmcOutput(evmc_res.raw());
+        tx_hash_status.set_output(evmc_output);
+        block_tx.set_output(evmc_output);
     } else {
         tx_hash_status.set_status(block_tx.status());
     }

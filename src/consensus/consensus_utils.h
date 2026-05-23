@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <memory>
+#include <string>
 
 #include "evmc/evmc.h"
 
@@ -149,6 +150,14 @@ inline static uint64_t CalcCalldataGas(const std::string& data) {
         gas += (c == 0) ? kCalldataZeroByteGas : kCalldataNonZeroByteGas;
     }
     return gas;
+}
+
+inline static std::string SafeEvmcOutput(const evmc_result& res) {
+    if (res.output_data == nullptr || res.output_size == 0) {
+        return {};
+    }
+
+    return std::string(reinterpret_cast<const char*>(res.output_data), res.output_size);
 }
 
 inline static int32_t EvmcStatusToZbftStatus(evmc_status_code status_code) {

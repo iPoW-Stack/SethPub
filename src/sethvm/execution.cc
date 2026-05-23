@@ -24,6 +24,14 @@ evmc::VM& ThreadLocalEvm() {
     return evm;
 }
 
+std::string SafeEvmcOutput(const evmc::Result& res) {
+    if (res.output_data == nullptr || res.output_size == 0) {
+        return {};
+    }
+
+    return std::string(reinterpret_cast<const char*>(res.output_data), res.output_size);
+}
+
 }  // namespace
 
 Execution::Execution() {}
@@ -200,7 +208,7 @@ int Execution::execute(
                 "common::Encode::HexEncode(bytes_code).c_str()",
                 common::Encode::HexEncode(from_address).c_str(),
                 common::Encode::HexEncode(to_address).c_str(),
-                common::Encode::HexEncode(std::string((char*)out_res->output_data, out_res->output_size)).c_str());
+                common::Encode::HexEncode(SafeEvmcOutput(*out_res)).c_str());
             return kSethvmSuccess;
         } else {
             const auto gas_used = msg.gas - out_res->gas_left;
@@ -208,14 +216,16 @@ int Execution::execute(
                 (int32_t)out_res->status_code, gas_used, create_gas, "common::Encode::HexEncode(bytes_code).c_str()");
         }
 
-        host.create_bytes_code_ = std::string((char*)out_res->output_data, out_res->output_size);
+        host.create_bytes_code_ = SafeEvmcOutput(*out_res);
         if (call_mode == kJustCreate || call_mode == kCreate2) {
             return kSethvmSuccess;
         }
 
         msg.gas = out_res->gas_left;
         auto& created_account = host.accounts_[msg.recipient];
-        created_account.code = evmc::bytes(out_res->output_data, out_res->output_size);
+        created_account.code.assign(
+            reinterpret_cast<const uint8_t*>(host.create_bytes_code_.data()),
+            reinterpret_cast<const uint8_t*>(host.create_bytes_code_.data()) + host.create_bytes_code_.size());
         exec_code_data = created_account.code.data();
         exec_code_size = created_account.code.size();
     } else {
@@ -236,7 +246,7 @@ int Execution::execute(
         out_res->gas_left,
         out_res->gas_refund,
         (etime - btime),
-        common::Encode::HexEncode(std::string((char*)out_res->output_data, out_res->output_size)).c_str());
+        common::Encode::HexEncode(SafeEvmcOutput(*out_res)).c_str());
     return kSethvmSuccess;
 }
 

@@ -16,6 +16,18 @@ namespace seth {
 
 namespace sethvm {
 
+namespace {
+
+std::string SafeEvmcOutput(const evmc_result& res) {
+    if (res.output_data == nullptr || res.output_size == 0) {
+        return {};
+    }
+
+    return std::string(reinterpret_cast<const char*>(res.output_data), res.output_size);
+}
+
+}  // namespace
+
 bool SethhainHost::account_exists(const evmc::address& addr) const noexcept {
     SETH_DEBUG("called 0");
     std::string addr_str((char*)addr.bytes, sizeof(addr.bytes));
@@ -175,6 +187,12 @@ size_t SethhainHost::get_code_size(const evmc::address& addr) const noexcept {
     }
 
     SETH_DEBUG("now get contract bytes code size: %s", common::Encode::HexEncode(id).c_str());
+    if (!view_block_chain_) {
+        SETH_DEBUG("get_code_size: view_block_chain_ is null, addr: %s",
+            common::Encode::HexEncode(id).c_str());
+        return 0;
+    }
+
     protos::AddressInfoPtr acc_info = view_block_chain_->ChainGetAccountInfo(id);
     if (acc_info == nullptr) {
         auto iter = create2_accounts_.find(addr);
@@ -211,6 +229,12 @@ evmc::bytes32 SethhainHost::get_code_hash(const evmc::address& addr) const noexc
     }
 
     // 2. Look up committed account info via chain
+    if (!view_block_chain_) {
+        SETH_DEBUG("get_code_hash: view_block_chain_ is null, addr: %s",
+            common::Encode::HexEncode(id).c_str());
+        return {};
+    }
+
     protos::AddressInfoPtr acc_info = view_block_chain_->ChainGetAccountInfo(id);
     if (acc_info == nullptr || acc_info->bytes_code().empty()) {
         SETH_DEBUG("get_code_hash: no code for addr: %s", common::Encode::HexEncode(id).c_str());
@@ -249,6 +273,12 @@ size_t SethhainHost::copy_code(
     }
 
     // 2. Look up committed account info via chain
+    if (!view_block_chain_) {
+        SETH_DEBUG("copy_code: view_block_chain_ is null, addr: %s",
+            common::Encode::HexEncode(id).c_str());
+        return 0;
+    }
+
     protos::AddressInfoPtr acc_info = view_block_chain_->ChainGetAccountInfo(id);
     if (acc_info == nullptr) {
         SETH_DEBUG("copy_code: no account for addr: %s", common::Encode::HexEncode(id).c_str());
@@ -327,6 +357,13 @@ evmc::Result SethhainHost::call(const evmc_message& msg) noexcept {
             raw_result);
     if (call_res != contract::kContractNotExists) {
         if (call_res == contract::kContractSuccess && params.code_address == contract::kContractCreate2) {
+            if (raw_result->output_data == nullptr || raw_result->output_size < 32) {
+                evmc_res.status_code = EVMC_FAILURE;
+                SETH_ERROR("create2 precompile returned invalid output, output_size: %zu, status: %d",
+                    raw_result->output_size, (int32_t)raw_result->status_code);
+                return evmc_res;
+            }
+
             std::string id((char*)raw_result->output_data + 12, 20);
             auto params2 = params;
             params2.to = id;
@@ -373,11 +410,18 @@ evmc::Result SethhainHost::call(const evmc_message& msg) noexcept {
                 }
             }
 
-            AddCreate2Contract(id, std::string((char*)evmc_res2.output_data, evmc_res2.output_size), params2.value);
+            AddCreate2Contract(id, SafeEvmcOutput(evmc_res2.raw()), params2.value);
         }
         SETH_DEBUG("call default contract failed: %s", common::Encode::HexEncode(origin_address_).c_str());
     } else {
         std::string id = params.code_address;
+        if (!view_block_chain_) {
+            evmc_res.status_code = EVMC_FAILURE;
+            SETH_ERROR("host call failed: view_block_chain_ is null, code_address: %s",
+                common::Encode::HexEncode(id).c_str());
+            return evmc_res;
+        }
+
         protos::AddressInfoPtr acc_info = view_block_chain_->ChainGetAccountInfo(id);
         if (acc_info != nullptr) {
             if (!acc_info->bytes_code().empty()) {
@@ -457,7 +501,7 @@ evmc::Result SethhainHost::call(const evmc_message& msg) noexcept {
         (int32_t)msg.kind, common::Encode::HexEncode(params.from).c_str(), 
         common::Encode::HexEncode(params.to).c_str(), params.value, params.gas, 
         evmc_res.gas_left, (int32_t)evmc_res.status_code,
-        common::Encode::HexEncode(std::string((char*)evmc_res.output_data, evmc_res.output_size)).c_str(),
+        common::Encode::HexEncode(SafeEvmcOutput(evmc_res.raw())).c_str(),
         common::Encode::HexEncode(params.data).c_str());
     return evmc_res;
 }
@@ -669,7 +713,7 @@ int SethhainHost::GetKeyValue(const std::string& id, const std::string& key_str,
     }
 
     auto str_key = id + key_str;
-    if (view_block_chain_->GetPrevStorageKeyValue(parent_hash_, id, key_str, val)) {
+    if (view_block_chain_ && view_block_chain_->GetPrevStorageKeyValue(parent_hash_, id, key_str, val)) {
         SETH_DEBUG("view: %lu, success sethvm get storage called, id: %s, key: %s, value: %s",
             view_,
             common::Encode::HexEncode(id).c_str(),
