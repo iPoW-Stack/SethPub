@@ -336,7 +336,7 @@ jobs:
           DEPLOY_BRANCH="$1"
           COMMIT_SHA="$2"
           WORKDIR="/root/seth"
-          NODE_HOST="127.0.0.1"
+          NODE_HOST="10.152.0.12"
           TESTS_DIR="/root/SethTests"
           export SETH_EXTRA_CMAKE_ARGS="-DSETH_MOCK_VERIFY=ON -DSETH_MOCK_SIGN=ON"
           export LD_LIBRARY_PATH="/root/tools/python3.10/lib:${LD_LIBRARY_PATH:-}"
@@ -472,8 +472,7 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Run SethTests"
-          ip="$NODE_HOST"
-          /root/tools/python3.10/bin/python3 seth_test_runner.py --host "$ip" --private-keys /root/seth/init_accounts3 --concurrent --max-workers 16
+          /root/tools/python3.10/bin/python3 seth_test_runner.py --host 10.152.0.12 --private-keys /root/seth/init_accounts3 --concurrent --max-workers 16
           echo "::endgroup::"
           REMOTE_SCRIPT
 
