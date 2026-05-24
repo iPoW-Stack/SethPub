@@ -305,6 +305,7 @@ jobs:
           REMOTE_HOST: 35.197.170.240
           REMOTE_PORT: 2221
           REMOTE_USER: root
+          DEPLOY_BRANCH: xl0424
           REMOTE_SSH_PRIVATE_KEY: ${{ secrets.XL_CICD_REMOTE_SSH_PRIVATE_KEY }}
           REMOTE_SSH_PASSWORD: ${{ secrets.XL_CICD_REMOTE_PASSWORD }}
         run: |
@@ -329,10 +330,10 @@ jobs:
             SSH_CMD=(sshpass -e ssh "${SSH_OPTS[@]}" "$REMOTE_USER@$REMOTE_HOST")
           fi
 
-          "${SSH_CMD[@]}" 'bash -s' -- "$GITHUB_REF_NAME" "$GITHUB_SHA" <<'REMOTE_SCRIPT'
+          "${SSH_CMD[@]}" 'bash -s' -- "$DEPLOY_BRANCH" "$GITHUB_SHA" <<'REMOTE_SCRIPT'
           set -euo pipefail
 
-          REF_NAME="$1"
+          DEPLOY_BRANCH="$1"
           COMMIT_SHA="$2"
           WORKDIR="/root/seth"
           NODE_HOST="127.0.0.1"
@@ -346,12 +347,12 @@ jobs:
             git clone https://github.com/iPoW-Stack/SethPub.git "$WORKDIR"
           fi
           cd "$WORKDIR"
-          git fetch --force origin "$REF_NAME"
+          git fetch --force origin "$DEPLOY_BRANCH"
           if ! git diff --quiet || ! git diff --cached --quiet || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
             git stash push --include-untracked -m "ci-autostash-${COMMIT_SHA}" || true
           fi
-          git checkout --force --detach "$COMMIT_SHA"
-          git reset --hard "$COMMIT_SHA"
+          git checkout --force -B "$DEPLOY_BRANCH" "origin/$DEPLOY_BRANCH"
+          git reset --hard "origin/$DEPLOY_BRANCH"
           git submodule sync --recursive || true
           git submodule update --init --recursive --force || true
           git log -1 --oneline
