@@ -88,21 +88,21 @@ static int CreateOqsTransactionWithAttr(
     security::Oqs oqs;
     auto from = oqs.GetAddress(from_pk);
     if (from.empty()) {
-        SETH_DEBUG("failed get address from pk: %s", common::Encode::HexEncode(from_pk).c_str());
+        SETH_INFO("failed get address from pk: %s", common::Encode::HexEncode(from_pk).c_str());
         return kAccountNotExists;
     }
 
     if (from == to) {
-        SETH_DEBUG("failed get address from == to: %s", common::Encode::HexEncode(from).c_str());
+        SETH_INFO("failed get address from == to: %s", common::Encode::HexEncode(from).c_str());
         return kFromEqualToInvalid;
     }
 
     if (from.size() != 20 || to.size() != 20) {
-        SETH_DEBUG("failed get address size error: %lu, %lu", from.size(), to.size());
+        SETH_INFO("failed get address size error: %lu, %lu", from.size(), to.size());
         return kAccountNotExists;
     }
 
-    SETH_DEBUG("OQS transaction from: %s, to: %s, nonce: %lu",
+    SETH_INFO("OQS transaction from: %s, to: %s, nonce: %lu",
         common::Encode::HexEncode(from).c_str(),
         common::Encode::HexEncode(to).c_str(),
         nonce);
@@ -120,6 +120,7 @@ static int CreateOqsTransactionWithAttr(
     auto step = req.get_param_value("type");
     uint32_t step_val = 0;
     if (!step.empty() && !common::StringUtil::ToUint32(step, &step_val)) {
+        SETH_ERROR("invalid step parameter: %s", step.c_str());
         return kHttpError;
     }
 
@@ -129,7 +130,7 @@ static int CreateOqsTransactionWithAttr(
         contract_bytes = common::Encode::HexDecode(contract_bytes_hex);
         if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kCreateContract) {
             if (common::IsContractBytescodeValid(contract_bytes) != common::ValidationStatus::SUCCESS) {
-                SETH_DEBUG("create contract not has valid code: %s", common::Encode::HexEncode(contract_bytes).c_str());
+                SETH_INFO("create contract not has valid code: %s", common::Encode::HexEncode(contract_bytes).c_str());
                 return kHttpError;
             }
         }
@@ -201,7 +202,7 @@ static void OqsHttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
         return;
     }
 
-    SETH_DEBUG("OQS http transaction request received.");
+    SETH_INFO("OQS http transaction request received.");
     
     auto from_pk_hex = req.get_param_value("pubkey");
     auto to_hex = req.get_param_value("to");
@@ -273,7 +274,7 @@ static void OqsHttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
     }
 
     http_res.set_content("ok", "text/plain");
-    SETH_DEBUG("OQS transaction successfully processed and broadcasted.");
+    SETH_INFO("OQS transaction successfully processed and broadcasted.");
 }
 
 static int CreateGmTransactionWithAttr(
@@ -290,7 +291,7 @@ static int CreateGmTransactionWithAttr(
     security::GmSsl gm;
     auto from = gm.GetAddress(from_pk);
     if (from.empty()) {
-        SETH_DEBUG("failed get gm address from pk: %s", common::Encode::HexEncode(from_pk).c_str());
+        SETH_INFO("failed get gm address from pk: %s", common::Encode::HexEncode(from_pk).c_str());
         return kAccountNotExists;
     }
 
@@ -302,7 +303,7 @@ static int CreateGmTransactionWithAttr(
         return kAccountNotExists;
     }
 
-    SETH_DEBUG("GmSSL transaction from: %s, to: %s, nonce: %lu",
+    SETH_INFO("GmSSL transaction from: %s, to: %s, nonce: %lu",
         common::Encode::HexEncode(from).c_str(),
         common::Encode::HexEncode(to).c_str(),
         nonce);
@@ -320,6 +321,7 @@ static int CreateGmTransactionWithAttr(
     auto step = req.get_param_value("type");
     uint32_t step_val = 0;
     if (!step.empty() && !common::StringUtil::ToUint32(step, &step_val)) {
+        SETH_ERROR("invalid step parameter: %s", step.c_str());
         return kHttpError;
     }
 
@@ -329,6 +331,7 @@ static int CreateGmTransactionWithAttr(
         contract_bytes = common::Encode::HexDecode(contract_bytes_hex);
         if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kCreateContract) {
             if (common::IsContractBytescodeValid(contract_bytes) != common::ValidationStatus::SUCCESS) {
+                SETH_ERROR("create contract not has valid code: %s", common::Encode::HexEncode(contract_bytes).c_str());
                 return kHttpError;
             }
         }
@@ -393,7 +396,7 @@ static void GmHttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
         return;
     }
 
-    SETH_DEBUG("GmSSL http transaction request received.");
+    SETH_INFO("GmSSL http transaction request received.");
     
     auto from_pk_hex = req.get_param_value("pubkey");
     auto to_hex = req.get_param_value("to");
@@ -454,7 +457,7 @@ static void GmHttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
     }
 
     http_res.set_content("ok", "text/plain");
-    SETH_DEBUG("GmSSL transaction successfully processed.");
+    SETH_INFO("GmSSL transaction successfully processed.");
 }
 
 static int CreateTransactionWithAttr(
@@ -472,23 +475,23 @@ static int CreateTransactionWithAttr(
         transport::protobuf::Header& msg) {
     auto from = http_handler->security_ptr()->GetAddressWithPublicKey(from_pk);
     if (from.empty()) {
-        SETH_DEBUG("failed get address from pk: %s", common::Encode::HexEncode(from_pk).c_str());
+        SETH_INFO("failed get address from pk: %s", common::Encode::HexEncode(from_pk).c_str());
         return kAccountNotExists;
     }
 
     if (from == to) {
-        SETH_DEBUG("failed get address from == to: %s", common::Encode::HexEncode(from).c_str());
+        SETH_INFO("failed get address from == to: %s", common::Encode::HexEncode(from).c_str());
         return kFromEqualToInvalid;
     }
 
     if (from.size() != 20 || to.size() != 20) {
-        SETH_DEBUG("failed get address size error: %s, %s",
+        SETH_INFO("failed get address size error: %s, %s",
             common::Encode::HexEncode(from).c_str(), 
             common::Encode::HexEncode(to).c_str());
         return kAccountNotExists;
     }
 
-    SETH_DEBUG("from: %s, to: %s, nonce: %lu",
+    SETH_INFO("from: %s, to: %s, nonce: %lu",
         common::Encode::HexEncode(from).c_str(),
         common::Encode::HexEncode(to).c_str(),
         nonce);
@@ -503,6 +506,7 @@ static int CreateTransactionWithAttr(
     auto step = req.get_param_value("type");
     uint32_t step_val = 0;
     if (!common::StringUtil::ToUint32(step, &step_val)) {
+        SETH_ERROR("invalid step parameter: %s", step.c_str());
         return kHttpError;
     }
 
@@ -510,7 +514,7 @@ static int CreateTransactionWithAttr(
     if (step_val == pools::protobuf::kCreateLibrary || step_val == pools::protobuf::kCreateContract) {
         contract_bytes = common::Encode::HexDecode(contract_bytes);
         if (common::IsContractBytescodeValid(contract_bytes) != common::ValidationStatus::SUCCESS) {
-            SETH_DEBUG("create contract not has valid contract code: %s",
+            SETH_INFO("create contract not has valid contract code: %s",
                 common::Encode::HexEncode(contract_bytes).c_str());
             return kHttpError;
         }
@@ -575,10 +579,10 @@ static int CreateTransactionWithAttr(
         return kSignatureInvalid;
     }
     
-    SETH_DEBUG("now call get tx hash: %s", ProtobufToJson(*new_tx).c_str());
+    SETH_INFO("now call get tx hash: %s", ProtobufToJson(*new_tx).c_str());
     try {
         auto tx_hash = pools::GetTxMessageHash(*new_tx);
-        SETH_DEBUG("new tx hash: %s, tx: %s", 
+        SETH_INFO("new tx hash: %s, tx: %s", 
             common::Encode::HexEncode(tx_hash).c_str(), ProtobufToJson(*new_tx).c_str());
         if (http_handler->security_ptr()->Verify(
                 tx_hash, from_pk, sign) != security::kSecuritySuccess) {
@@ -625,7 +629,7 @@ static void HttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
         return;
     }
 
-    SETH_DEBUG("http transaction coming.");
+    SETH_INFO("http transaction coming.");
     auto nonce_str = req.get_param_value("nonce");
     auto frompk = req.get_param_value("pubkey");
     auto to = req.get_param_value("to");
@@ -710,7 +714,7 @@ static void HttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
     }
 
     auto thread_index = -1;
-    SETH_DEBUG("http handler success get http server thread index: %d, address: %s", 
+    SETH_INFO("http handler success get http server thread index: %d, address: %s", 
         thread_index, 
         common::Encode::HexEncode(
             http_handler->security_ptr()->GetAddressWithPublicKey(common::Encode::HexDecode(frompk))).c_str());
@@ -725,7 +729,7 @@ static void HttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
     }
     
     msg_ptr->header.set_hash64(common::Random::RandomUint64());
-    SETH_DEBUG("http handler success get http server thread index: %d, address: %s, hash64: %lu", 
+    SETH_INFO("http handler success get http server thread index: %d, address: %s, hash64: %lu", 
         thread_index, 
         common::Encode::HexEncode(
             http_handler->security_ptr()->GetAddressWithPublicKey(common::Encode::HexDecode(frompk))).c_str(),
@@ -739,7 +743,7 @@ static void HttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
         http_handler->tx_msg_map().Put(msg_ptr->msg_hash, msg_ptr);
     }
 
-    SETH_DEBUG("http transaction success %s, %s, nonce: %lu, txhash: %s", 
+    SETH_INFO("http transaction success %s, %s, nonce: %lu, txhash: %s", 
         common::Encode::HexEncode(
         http_handler->security_ptr()->GetAddressWithPublicKey(common::Encode::HexDecode(frompk))).c_str(), 
         to, nonce,
@@ -747,7 +751,7 @@ static void HttpTransaction(const UWSRequest& req, UWSResponse& http_res) {
 }
 
 static void QueryContract(const UWSRequest& req, UWSResponse& http_res) {
-    SETH_DEBUG("query contract coming.");
+    SETH_INFO("query contract coming.");
     auto tmp_contract_addr = req.get_param_value("address");
     auto tmp_input = req.get_param_value("input");
     auto tmp_from = req.get_param_value("from");
@@ -768,7 +772,7 @@ static void QueryContract(const UWSRequest& req, UWSResponse& http_res) {
 
     // if (!addr_info) {
     //     std::string res = "get from prefund failed: " + std::string(tmp_contract_addr) + ", " + std::string(tmp_from);
-    //     SETH_DEBUG("query contract param error: %s.", res.c_str());
+    //     SETH_INFO("query contract param error: %s.", res.c_str());
     //     http_res.set_content(res, "text/plain");
     //     return;
     // }
@@ -778,7 +782,7 @@ static void QueryContract(const UWSRequest& req, UWSResponse& http_res) {
     if (contract_addr_info == nullptr) {
         std::string res = "get contract addr failed: " + std::string(tmp_contract_addr);
         http_res.set_content(res, "text/plain");
-        SETH_DEBUG("query contract param error: %s.", res.c_str());
+        SETH_INFO("query contract param error: %s.", res.c_str());
         return;
     }
 
@@ -823,12 +827,12 @@ static void QueryContract(const UWSRequest& req, UWSResponse& http_res) {
             std::to_string(result.status_code) + 
             ", exec_res: " + std::to_string(exec_res);
         http_res.set_content(res, "text/plain");
-        SETH_DEBUG("query contract error: %s.", res.c_str());
+        SETH_INFO("query contract error: %s.", res.c_str());
         return;
     }
 	
     std::string qdata((char*)result.output_data, result.output_size);
-    SETH_DEBUG("LLLLLhttp: %s, size %d", common::Encode::HexEncode(qdata).c_str(), result.output_size);
+    SETH_INFO("LLLLLhttp: %s, size %d", common::Encode::HexEncode(qdata).c_str(), result.output_size);
     if (result.output_size < 64) {
         auto res = common::Encode::HexEncode(qdata); 
         http_res.set_content(res, "text/plain");
@@ -839,7 +843,7 @@ static void QueryContract(const UWSRequest& req, UWSResponse& http_res) {
     uint64_t len = sethvm::EvmcBytes32ToUint64(len_bytes);
     std::string http_res_str(qdata.c_str() + 64, len);
     http_res.set_content(http_res_str, "text/plain");
-    SETH_DEBUG("query contract success data: %s", http_res_str.c_str());
+    SETH_INFO("query contract success data: %s", http_res_str.c_str());
 }
 
 /**
@@ -881,7 +885,7 @@ static std::string EncodeEvmError(const std::string& msg) {
 }
 
 static void AbiQueryContract(const UWSRequest& req, UWSResponse& http_res) {
-    SETH_DEBUG("query contract coming.");
+    SETH_INFO("query contract coming.");
     auto tmp_contract_addr = req.get_param_value("address");
     auto tmp_input = req.get_param_value("input");
     auto tmp_from = req.get_param_value("from");
@@ -903,7 +907,7 @@ static void AbiQueryContract(const UWSRequest& req, UWSResponse& http_res) {
     // if (!addr_info) {
     //     std::string res = "get from prefund failed: " + std::string(tmp_contract_addr) + ", " + std::string(tmp_from);
     //     http_res.set_content(res, "text/plain");
-    //     SETH_DEBUG("query contract param error: %s.", res.c_str());
+    //     SETH_INFO("query contract param error: %s.", res.c_str());
     //     return;
     // }
 
@@ -912,14 +916,14 @@ static void AbiQueryContract(const UWSRequest& req, UWSResponse& http_res) {
     if (contract_addr_info == nullptr) {
         std::string res = "get contract addr failed: " + std::string(tmp_contract_addr);
         http_res.set_content(EncodeEvmError(res), "text/plain");
-        SETH_DEBUG("query contract param error: %s.", res.c_str());
+        SETH_INFO("query contract param error: %s.", res.c_str());
         return;
     }
 
     if (contract_addr_info->destructed()) {
         std::string res = "get contract addr destructed!";
         http_res.set_content(EncodeEvmError(res), "text/plain");
-        SETH_DEBUG("query contract param error: %s.", res.c_str());
+        SETH_INFO("query contract param error: %s.", res.c_str());
         return;
     }
 
@@ -964,13 +968,13 @@ static void AbiQueryContract(const UWSRequest& req, UWSResponse& http_res) {
             std::to_string(result.status_code) + 
             ", exec_res: " + std::to_string(exec_res);
         http_res.set_content(EncodeEvmError(res), "text/plain");
-        SETH_DEBUG("query contract error: %s.", res.c_str());
+        SETH_INFO("query contract error: %s.", res.c_str());
         return;
     }
 	
     std::string qdata((char*)result.output_data, result.output_size);
     auto hex_data = common::Encode::HexEncode(qdata);
-    // SETH_DEBUG("LLLLLhttp: %s, size %d", common::Encode::HexEncode(qdata).c_str(), result.output_size);
+    // SETH_INFO("LLLLLhttp: %s, size %d", common::Encode::HexEncode(qdata).c_str(), result.output_size);
     // if (result.output_size < 64) {
     //     auto res = common::Encode::HexEncode(qdata); 
     //     evbuffer_add(req->buffer_out, res.c_str(), res.size());
@@ -982,7 +986,7 @@ static void AbiQueryContract(const UWSRequest& req, UWSResponse& http_res) {
     // uint64_t len = sethvm::EvmcBytes32ToUint64(len_bytes);
     // std::string http_res(qdata.c_str() + 64, len);
     http_res.set_content(hex_data, "text/plain");
-    SETH_DEBUG("query contract success data: %s", hex_data.c_str());
+    SETH_INFO("query contract success data: %s", hex_data.c_str());
 }
 
 // Returns leader routing table: pool_index -> {ip, port} for the local shard.
@@ -1029,16 +1033,16 @@ static void QueryLeaders(const UWSRequest& req, UWSResponse& http_res) {
 
     res_json["pool_count"] = common::kImmutablePoolSize;
     http_res.set_content(res_json.dump(), "application/json");
-    SETH_DEBUG("query_leaders: %s", res_json.dump().c_str());
+    SETH_INFO("query_leaders: %s", res_json.dump().c_str());
 }
 
 static void QueryAccount(const UWSRequest& req, UWSResponse& http_res) {
     auto tmp_addr = req.get_param_value("address");
-    SETH_DEBUG("coming query account: %s", tmp_addr.c_str());
+    SETH_INFO("coming query account: %s", tmp_addr.c_str());
     if (tmp_addr.empty()) {
         std::string res = common::StringUtil::Format("param address is null");
         http_res.set_content(res, "text/plain");
-        SETH_DEBUG("%s", res.c_str());
+        SETH_INFO("%s", res.c_str());
         return;
     }
 
@@ -1052,7 +1056,7 @@ static void QueryAccount(const UWSRequest& req, UWSResponse& http_res) {
     if (addr_info == nullptr) {
         std::string res = "get address failed from cache: " + tmp_addr;
         http_res.set_content(res, "text/plain");
-        SETH_DEBUG("%s", res.c_str());
+        SETH_INFO("%s", res.c_str());
         return;
     }
 
@@ -1061,12 +1065,12 @@ static void QueryAccount(const UWSRequest& req, UWSResponse& http_res) {
     if (!st.ok()) {
         std::string res = "json parse failed: " + addr;
         http_res.set_content(res, "text/plain");
-        SETH_DEBUG("%s", res.c_str());
+        SETH_INFO("%s", res.c_str());
         return;
     }
 
     http_res.set_content(json_str, "text/plain");
-    SETH_DEBUG("%s", json_str.c_str());
+    SETH_INFO("%s", json_str.c_str());
 }
 
 // Batch query multiple accounts at once.
@@ -1123,7 +1127,7 @@ static void BatchQueryAccounts(const UWSRequest& req, UWSResponse& http_res) {
         // For prepayment addresses (40 bytes = contract + user), also try
         // looking up by the first 20 bytes (contract address) pool.
         if (addr_info == nullptr && addr.length() == common::kPreypamentAddressLength) {
-            SETH_DEBUG("batch_query: prepayment addr not found: %s (len=%u)",
+            SETH_INFO("batch_query: prepayment addr not found: %s (len=%u)",
                 hex_addr.c_str(), (uint32_t)addr.length());
         }
 
@@ -1166,7 +1170,7 @@ static void BatchQueryAccounts(const UWSRequest& req, UWSResponse& http_res) {
 }
 
 static void AccountsValid(const UWSRequest& req, UWSResponse& http_res) {
-    SETH_DEBUG("query account.");
+    SETH_INFO("query account.");
     auto balance = req.get_param_value("balance");
     uint64_t balance_val = 0;
     if (!common::StringUtil::ToUint64(balance, &balance_val)) {
@@ -1206,9 +1210,9 @@ static void AccountsValid(const UWSRequest& req, UWSResponse& http_res) {
 
         if (addr_info != nullptr && addr_info->balance() >= balance_val) {
             res_json["addrs"][invalid_addr_index++] = addrs_splits[i];
-            SETH_DEBUG("valid addr: %s, balance: %lu", addrs_splits[i], addr_info->balance());
+            SETH_INFO("valid addr: %s, balance: %lu", addrs_splits[i], addr_info->balance());
         } else {
-            SETH_DEBUG("invalid addr: %s, balance: %lu",
+            SETH_INFO("invalid addr: %s, balance: %lu",
                 addrs_splits[i], 
                 (addr_info ? addr_info->balance() : 0));
         }
@@ -1219,7 +1223,7 @@ static void AccountsValid(const UWSRequest& req, UWSResponse& http_res) {
 }
 
 static void GetBlockWithGid(const UWSRequest& req, UWSResponse& http_res) {
-    SETH_DEBUG("query account.");
+    SETH_INFO("query account.");
     auto addr = req.get_param_value("addr");
     if (addr.empty()) {
         std::string res = std::string("addr not exists.");
@@ -1255,12 +1259,12 @@ static void GetBlockWithGid(const UWSRequest& req, UWSResponse& http_res) {
     }
        
     auto json_str = res_json.dump();
-    SETH_DEBUG("success get addr: %s, nonce: %lu, res: %s", addr, tmp_nonce, json_str.c_str());
+    SETH_INFO("success get addr: %s, nonce: %lu, res: %s", addr, tmp_nonce, json_str.c_str());
     http_res.set_content(res_json, "text/plain");
 }
 
 static void PrefundsValid(const UWSRequest& req, UWSResponse& http_res) {
-    SETH_DEBUG("query account.");
+    SETH_INFO("query account.");
     auto balance = req.get_param_value("balance");
     if (balance.empty()) {
         std::string res = std::string("balance not exists.");
@@ -1313,9 +1317,9 @@ static void PrefundsValid(const UWSRequest& req, UWSResponse& http_res) {
 
         if (addr_info != nullptr && addr_info->balance() >= balance_val) {
             res_json["prefunds"][invalid_addr_index++] = addrs_splits[i];
-            SETH_DEBUG("valid prefund: %s, balance: %lu", addrs_splits[i], addr_info->balance());
+            SETH_INFO("valid prefund: %s, balance: %lu", addrs_splits[i], addr_info->balance());
         } else {
-            SETH_DEBUG("invalid prefund: %s, balance: %lu",
+            SETH_INFO("invalid prefund: %s, balance: %lu",
                 addrs_splits[i], 
                 (addr_info ? addr_info->balance() : 0));
         }
@@ -1345,11 +1349,11 @@ static void GidsValid(const UWSRequest& req, UWSResponse& http_res) {
             continue;
         }
 
-        SETH_DEBUG("now get tx gid: %s", common::Encode::HexEncode(gid).c_str());
+        SETH_INFO("now get tx gid: %s", common::Encode::HexEncode(gid).c_str());
         auto res = false; //prefix_db->JustCheckCommitedGidExists(gid);
         if (res) {
             res_json["gids"][invalid_addr_index++] = addrs_splits[i];
-            SETH_DEBUG("success get tx gid: %s", common::Encode::HexEncode(gid).c_str());
+            SETH_INFO("success get tx gid: %s", common::Encode::HexEncode(gid).c_str());
         }
     }
 
@@ -1418,7 +1422,7 @@ static void GetProxyReencInfo(const UWSRequest& req, UWSResponse& http_res) {
 
 
 static void GetSecAndEncData(const UWSRequest& req, UWSResponse& http_res) {
-    SETH_DEBUG("http transaction coming.");
+    SETH_INFO("http transaction coming.");
     contract::ContractReEncryption prox_renc;
     sethvm::SethhainHost seth_host;
     contract::CallParameters param;
@@ -1578,7 +1582,7 @@ static void QueryInit(const UWSRequest& req, UWSResponse& http_res) {
     auto thread_index = 0;//common::GlobalInfo::Instance()->get_thread_index();
     std::string res = "ok";
     http_res.set_content(res, "text/plain");
-    SETH_DEBUG("sunccess init http ser: %d", thread_index);
+    SETH_INFO("sunccess init http ser: %d", thread_index);
 }
 
 static void GetBlocks(const UWSRequest& req, UWSResponse& http_res) {
@@ -1799,13 +1803,13 @@ static void TransactionReceipt(const UWSRequest& req, UWSResponse& http_res) {
         }
     }
     
-    SETH_DEBUG("transaction receipt query, tx hash: %s, res: %s", 
+    SETH_INFO("transaction receipt query, tx hash: %s, res: %s", 
         req.get_param_value("tx_hash").c_str(), res_json.dump().c_str());
     http_res.set_content(res_json.dump(), "application/json");
 }
 
 static void UpdatePrivateKey(const UWSRequest& req, UWSResponse& http_res) {
-    SETH_DEBUG("Update private key request received.");
+    SETH_INFO("Update private key request received.");
     
     nlohmann::json res_json;
     res_json["status"] = 1;
@@ -1841,7 +1845,7 @@ static void UpdatePrivateKey(const UWSRequest& req, UWSResponse& http_res) {
     if (result == 0) {
         res_json["status"] = 0;
         res_json["msg"] = "success";
-        SETH_DEBUG("Private key updated successfully");
+        SETH_INFO("Private key updated successfully");
     } else {
         res_json["msg"] = "failed to update private key";
         SETH_ERROR("Update private key failed: callback returned error %d", result);
@@ -1916,7 +1920,7 @@ static bool DecodeEthRawTx(
     if (p[0] == 0x02) {
         // EIP-1559 (Type 2) transaction
         // Format: 0x02 || RLP([chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList, v, r, s])
-        SETH_DEBUG("DecodeEthRawTx: EIP-1559 (Type 2) transaction detected");
+        SETH_INFO("DecodeEthRawTx: EIP-1559 (Type 2) transaction detected");
         p++; len--;  // Skip type byte
         
         // Decode outer RLP list
@@ -2021,9 +2025,9 @@ static bool DecodeEthRawTx(
         r = std::string(32 - std::min<size_t>(s_r.size(), 32), '\0') + s_r.substr(s_r.size() > 32 ? s_r.size() - 32 : 0);
         s = std::string(32 - std::min<size_t>(s_s.size(), 32), '\0') + s_s.substr(s_s.size() > 32 ? s_s.size() - 32 : 0);
 
-        SETH_DEBUG("EIP-1559 decoded: nonce=%lu, maxFeePerGas=%lu, gasLimit=%lu, value=%lu, v=%u",
+        SETH_INFO("EIP-1559 decoded: nonce=%lu, maxFeePerGas=%lu, gasLimit=%lu, value=%lu, v=%u",
                   nonce, gas_price, gas_limit, value, v_byte);
-        SETH_DEBUG("EIP-1559 signature: r=%s, s=%s",
+        SETH_INFO("EIP-1559 signature: r=%s, s=%s",
                   common::Encode::HexEncode(r).c_str(),
                   common::Encode::HexEncode(s).c_str());
         return true;
@@ -2035,7 +2039,7 @@ static bool DecodeEthRawTx(
         return false;
     }
     
-    SETH_DEBUG("DecodeEthRawTx: Legacy transaction detected");
+    SETH_INFO("DecodeEthRawTx: Legacy transaction detected");
 
     // Outer list
     size_t list_len = 0;
@@ -2389,7 +2393,7 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             signing_hash = common::Hash::keccak256(type_and_rlp);
             signing_rlp_for_debug = type_and_rlp;  // Store for logging
             
-            SETH_DEBUG("EIP-1559 signing: type_and_rlp_hex=%s, signing_hash=%s",
+            SETH_INFO("EIP-1559 signing: type_and_rlp_hex=%s, signing_hash=%s",
                       common::Encode::HexEncode(type_and_rlp).c_str(),
                       common::Encode::HexEncode(signing_hash).c_str());
         } else {
@@ -2417,7 +2421,7 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             common::Encode::HexEncode(to).c_str(),
             data.size(), kSethChainId, v_byte, is_eip1559 ? 1 : 0);
 
-        SETH_DEBUG("eth_sendRawTransaction: signature for recovery: r=%s, s=%s, v=%u",
+        SETH_INFO("eth_sendRawTransaction: signature for recovery: r=%s, s=%s, v=%u",
                   common::Encode::HexEncode(r).c_str(),
                   common::Encode::HexEncode(s).c_str(),
                   v_byte);
@@ -2467,7 +2471,7 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             return;
         }
         
-        SETH_DEBUG("eth_sendRawTransaction: recovery succeeded, pubkey=%s",
+        SETH_INFO("eth_sendRawTransaction: recovery succeeded, pubkey=%s",
                   common::Encode::HexEncode(pubkey).c_str());
 
         // Prepend 0x04 uncompressed prefix so GetAddressWithPublicKey routes
@@ -2514,7 +2518,7 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
                 // Target is an EOA or unknown address — treat data as memo,
                 // send as plain transfer.
                 step = pools::protobuf::kNormalFrom;  // 0
-                SETH_DEBUG("eth_sendRawTransaction: to=%s has no bytecode, "
+                SETH_INFO("eth_sendRawTransaction: to=%s has no bytecode, "
                     "treating as plain transfer with data (memo)",
                     common::Encode::HexEncode(to).c_str());
             }
@@ -2526,7 +2530,7 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             return;
         }
 
-        SETH_DEBUG("eth_sendRawTransaction: inferred step=%u (%s), to=%s, data_len=%zu",
+        SETH_INFO("eth_sendRawTransaction: inferred step=%u (%s), to=%s, data_len=%zu",
             step,
             step == 6 ? "CreateContract" : step == 8 ? "ContractExcute" : "NormalFrom",
             to.empty() ? "(empty)" : common::Encode::HexEncode(to).c_str(),
@@ -2548,7 +2552,7 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
             }
 
             to = security::GetContractAddress(sender_addr, nonce_str);
-            SETH_DEBUG("eth_sendRawTransaction: contract deploy (CREATE), sender=%s, nonce=%lu, "
+            SETH_INFO("eth_sendRawTransaction: contract deploy (CREATE), sender=%s, nonce=%lu, "
                 "contract_addr=%s",
                 common::Encode::HexEncode(sender_addr).c_str(), nonce,
                 common::Encode::HexEncode(to).c_str());
@@ -2648,7 +2652,7 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
         http_handler->net_handler()->NewHttpServer(msg_ptr);
 
         std::string tx_hash_hex = "0x" + common::Encode::HexEncode(tx_hash);
-        SETH_DEBUG("eth_sendRawTransaction: tx_hash=%s, step=%u, from=%s, to=%s, value=%lu, "
+        SETH_INFO("eth_sendRawTransaction: tx_hash=%s, step=%u, from=%s, to=%s, value=%lu, "
             "handle_status=%d",
             tx_hash_hex.c_str(), step,
             common::Encode::HexEncode(sender_addr).c_str(),
@@ -2731,7 +2735,7 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
     }
 
     // ── Unsupported method ────────────────────────────────────────────────────
-    SETH_DEBUG("eth_rpc: unsupported method: %s", method.c_str());
+    SETH_INFO("eth_rpc: unsupported method: %s", method.c_str());
     http_res.set_content(
         RpcErr(id, -32601, "Method not found: " + method).dump(), "application/json");
 }
@@ -2739,7 +2743,7 @@ static void EthJsonRpc(const UWSRequest& req, UWSResponse& http_res) {
 // ── End MetaMask / Ethereum JSON-RPC ─────────────────────────────────────────
 
 void HttpHandler::Run() {
-    SETH_DEBUG("HTTPS server starting on %s:%d", http_ip_.c_str(), http_port_);
+    SETH_INFO("HTTPS server starting on %s:%d", http_ip_.c_str(), http_port_);
 
     auto safeHandler = [](auto handler, const char* endpoint) {
         return [handler, endpoint](auto *res, auto *req) {
@@ -2807,14 +2811,14 @@ void HttpHandler::Run() {
     ).get("/eth", safeHandler(EthJsonRpc, "/eth")
     ).listen("0.0.0.0", http_port_, [this](auto *listen_socket) {
         if (listen_socket) {
-            SETH_DEBUG("HTTPS server listening on 0.0.0.0:%d", http_port_);
+            SETH_INFO("HTTPS server listening on 0.0.0.0:%d", http_port_);
             running_ = true;
         } else {
             SETH_ERROR("Failed to listen on 0.0.0.0:%d", http_port_);
         }
     }).run();
     
-    SETH_DEBUG("HTTPS server stopped");
+    SETH_INFO("HTTPS server stopped");
 }
 
 void HttpHandler::Init(
@@ -2866,7 +2870,7 @@ void HttpHandler::Init(
         std::ifstream f(path);
         if (f.good()) {
             cert_file_ = path;
-            SETH_DEBUG("Found certificate file: %s", path.c_str());
+            SETH_INFO("Found certificate file: %s", path.c_str());
             break;
         }
     }
@@ -2876,7 +2880,7 @@ void HttpHandler::Init(
         std::ifstream f(path);
         if (f.good()) {
             key_file_ = path;
-            SETH_DEBUG("Found key file: %s", path.c_str());
+            SETH_INFO("Found key file: %s", path.c_str());
             break;
         }
     }

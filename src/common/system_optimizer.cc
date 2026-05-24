@@ -9,7 +9,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <psapi.h>
-#else
+#elif defined(__linux__)
 #include <sys/sysinfo.h>
 #ifdef __has_include
 #if __has_include(<numa.h>)
@@ -21,6 +21,8 @@
 #include <numa.h>
 #define HAVE_NUMA 1
 #endif
+#elif defined(__APPLE__)
+#include <sys/sysctl.h>
 #endif
 
 namespace seth {
@@ -46,6 +48,15 @@ bool CpuAffinityManager::InitializeCpuTopology() {
     GetSystemInfo(&sysinfo);
     cpu_count_ = sysinfo.dwNumberOfProcessors;
     numa_node_count_ = 1; // Simplified for Windows
+#elif defined(__APPLE__)
+    int cpu_count = 0;
+    size_t cpu_count_len = sizeof(cpu_count);
+    if (sysctlbyname("hw.logicalcpu", &cpu_count, &cpu_count_len, nullptr, 0) == 0 && cpu_count > 0) {
+        cpu_count_ = cpu_count;
+    } else {
+        cpu_count_ = static_cast<int>(std::max(1L, sysconf(_SC_NPROCESSORS_ONLN)));
+    }
+    numa_node_count_ = 1;
 #else
     cpu_count_ = sysconf(_SC_NPROCESSORS_ONLN);
     
@@ -109,7 +120,7 @@ bool CpuAffinityManager::SetThreadAffinity(const std::vector<int>& cpu_cores) {
         }
     }
     return SetThreadAffinityMask(GetCurrentThread(), mask) != 0;
-#else
+#elif defined(__linux__)
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     
@@ -120,6 +131,8 @@ bool CpuAffinityManager::SetThreadAffinity(const std::vector<int>& cpu_cores) {
     }
     
     return pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset) == 0;
+#else
+    return true;
 #endif
 }
 
@@ -129,7 +142,7 @@ bool CpuAffinityManager::SetThreadAffinity(std::thread::id thread_id, const std:
 #ifdef _WIN32
     // Windows implementation would need thread handle
     return false; // Not implemented for external threads on Windows
-#else
+#elif defined(__linux__)
     pthread_t native_handle = pthread_self(); // This is a simplification
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
@@ -141,6 +154,8 @@ bool CpuAffinityManager::SetThreadAffinity(std::thread::id thread_id, const std:
     }
     
     return pthread_setaffinity_np(native_handle, sizeof(cpu_set_t), &cpuset) == 0;
+#else
+    return true;
 #endif
 }
 

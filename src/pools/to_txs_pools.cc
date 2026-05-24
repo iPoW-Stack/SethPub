@@ -588,7 +588,8 @@ int ToTxsPools::CreateToTxWithHeights(
         return kPoolsError;
     }
 
-    SETH_DEBUG("success statistic to txs prev_to_heights: %s, leader_to_heights: %s", 
+    SETH_DEBUG("sharding id:%u, success statistic to txs prev_to_heights: %s, leader_to_heights: %s", 
+        sharding_id,
         ProtobufToJson(*prev_to_heights).c_str(), 
         ProtobufToJson(leader_to_heights).c_str());
     for (auto iter = acc_amount_map.begin(); iter != acc_amount_map.end(); ++iter) {

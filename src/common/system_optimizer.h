@@ -13,9 +13,13 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <processthreadsapi.h>
-#else
+#elif defined(__linux__)
 #include <pthread.h>
 #include <sched.h>
+#include <unistd.h>
+#include <sys/resource.h>
+#else
+#include <pthread.h>
 #include <unistd.h>
 #include <sys/resource.h>
 #endif
