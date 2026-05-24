@@ -496,6 +496,33 @@ TEST_F(TestUtils, IsContractBytescodeValidMetadataTermination) {
     ASSERT_EQ(status, ValidationStatus::SUCCESS);
 }
 
+TEST_F(TestUtils, IsContractBytescodeValidSolidityMetadataAfterInvalid) {
+    std::string bytecode;
+    bytecode.push_back(static_cast<char>(0x00));  // STOP
+    bytecode.push_back(static_cast<char>(0xfe));  // INVALID before metadata
+    bytecode.push_back(static_cast<char>(0xa2));  // CBOR map with 2 entries
+    bytecode.push_back(static_cast<char>(0x64));
+    bytecode.append("ipfs");
+    bytecode.push_back(static_cast<char>(0x58));
+    bytecode.push_back(static_cast<char>(0x22));
+    bytecode.append(34, static_cast<char>(0x11));
+    bytecode.push_back(static_cast<char>(0x64));
+    bytecode.append("solc");
+    bytecode.push_back(static_cast<char>(0x43));
+    bytecode.push_back(static_cast<char>(0x00));
+    bytecode.push_back(static_cast<char>(0x08));
+    bytecode.push_back(static_cast<char>(0x1e));
+    bytecode.push_back(static_cast<char>(0x00));
+    bytecode.push_back(static_cast<char>(0x33));
+    bytecode.push_back(static_cast<char>(0x73));  // Would be incomplete if scanned.
+    bytecode.push_back(static_cast<char>(0x6f));
+    bytecode.push_back(static_cast<char>(0x6c));
+    bytecode.push_back(static_cast<char>(0x63));
+
+    auto status = IsContractBytescodeValid(bytecode);
+    ASSERT_EQ(status, ValidationStatus::SUCCESS);
+}
+
 TEST_F(TestUtils, IsContractBytescodeValidPush2) {
     // PUSH2 (0x61) + 2 immediate bytes + STOP
     std::string bytecode;

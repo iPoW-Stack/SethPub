@@ -339,6 +339,51 @@ uint32_t Hash32(const int32_t& key) {
     return key;
 }
 
+namespace {
+
+bool StartsWithBytes(const std::string& bytes, size_t offset, const char* value, size_t value_size) {
+    if (bytes.size() - offset < value_size) {
+        return false;
+    }
+
+    return memcmp(bytes.data() + offset, value, value_size) == 0;
+}
+
+bool IsSolidityMetadataFieldStart(const std::string& bytecode, size_t offset) {
+    static const char kIpfs[] = {static_cast<char>(0x64), 'i', 'p', 'f', 's'};
+    static const char kBzzr0[] = {static_cast<char>(0x65), 'b', 'z', 'z', 'r', '0'};
+    static const char kBzzr1[] = {static_cast<char>(0x65), 'b', 'z', 'z', 'r', '1'};
+    static const char kSolc[] = {static_cast<char>(0x64), 's', 'o', 'l', 'c'};
+
+    return StartsWithBytes(bytecode, offset, kIpfs, sizeof(kIpfs)) ||
+        StartsWithBytes(bytecode, offset, kBzzr0, sizeof(kBzzr0)) ||
+        StartsWithBytes(bytecode, offset, kBzzr1, sizeof(kBzzr1)) ||
+        StartsWithBytes(bytecode, offset, kSolc, sizeof(kSolc));
+}
+
+bool IsSolidityMetadataStart(const std::string& bytecode, size_t offset) {
+    if (bytecode.size() - offset < 2) {
+        return false;
+    }
+
+    const auto first = static_cast<unsigned char>(bytecode[offset]);
+    const auto second = static_cast<unsigned char>(bytecode[offset + 1]);
+
+    if (first == 0xfe && second >= 0xa1 && second <= 0xbf) {
+        return IsSolidityMetadataFieldStart(bytecode, offset + 2);
+    }
+
+    // Keep compatibility with existing callers/tests that pass the CBOR map
+    // directly without the preceding INVALID marker.
+    if (first >= 0xa1 && first <= 0xbf) {
+        return IsSolidityMetadataFieldStart(bytecode, offset + 1);
+    }
+
+    return false;
+}
+
+}  // namespace
+
 ValidationStatus IsContractBytescodeValid(const std::string& bytecode) {
     if (bytecode.empty()) {
         return ValidationStatus::EMPTY_BYTECODE;
@@ -349,6 +394,10 @@ ValidationStatus IsContractBytescodeValid(const std::string& bytecode) {
     // truncated PUSH immediates and let the configured EVM revision decide opcode
     // execution validity.
     for (size_t i = 0; i < bytecode.size(); ++i) {
+        if (IsSolidityMetadataStart(bytecode, i)) {
+            break;
+        }
+
         const auto op = static_cast<unsigned char>(bytecode[i]);
         if (op < 0x60 || op > 0x7f) {
             continue;
