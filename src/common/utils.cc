@@ -382,6 +382,17 @@ bool IsSolidityMetadataStart(const std::string& bytecode, size_t offset) {
     return false;
 }
 
+size_t FindSolidityMetadataStart(const std::string& bytecode) {
+    size_t metadata_start = std::string::npos;
+    for (size_t i = 0; i < bytecode.size(); ++i) {
+        if (IsSolidityMetadataStart(bytecode, i)) {
+            metadata_start = i;
+        }
+    }
+
+    return metadata_start;
+}
+
 }  // namespace
 
 ValidationStatus IsContractBytescodeValid(const std::string& bytecode) {
@@ -393,18 +404,21 @@ ValidationStatus IsContractBytescodeValid(const std::string& bytecode) {
     // metadata. Keep pre-validation version-neutral: only reject structurally
     // truncated PUSH immediates and let the configured EVM revision decide opcode
     // execution validity.
-    for (size_t i = 0; i < bytecode.size(); ++i) {
-        if (IsSolidityMetadataStart(bytecode, i)) {
-            break;
-        }
+    const size_t metadata_start = FindSolidityMetadataStart(bytecode);
+    const size_t scan_limit = metadata_start == std::string::npos ? bytecode.size() : metadata_start;
 
+    for (size_t i = 0; i < scan_limit; ++i) {
         const auto op = static_cast<unsigned char>(bytecode[i]);
         if (op < 0x60 || op > 0x7f) {
             continue;
         }
 
         const size_t push_size = static_cast<size_t>(op - 0x5f);
-        if (bytecode.size() - i - 1 < push_size) {
+        if (scan_limit - i - 1 < push_size) {
+            if (metadata_start != std::string::npos && bytecode.size() - i - 1 >= push_size) {
+                break;
+            }
+
             return ValidationStatus::INCOMPLETE_PUSH;
         }
 
