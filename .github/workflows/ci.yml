@@ -341,6 +341,23 @@ jobs:
           export SETH_EXTRA_CMAKE_ARGS="-DSETH_MOCK_VERIFY=ON -DSETH_MOCK_SIGN=ON"
           export LD_LIBRARY_PATH="/root/tools/python3.10/lib:${LD_LIBRARY_PATH:-}"
 
+          dump_remote_debug() {
+            rc=$?
+            if [[ "$rc" -eq 0 ]]; then
+              return
+            fi
+            echo "::group::Remote debug after failure"
+            echo "--- seth processes ---"
+            pgrep -af seth || true
+            echo "--- listening ports ---"
+            ss -ltnp | grep -E '(:23001|:24009|:1200|:1300)' || true
+            echo "--- recent seth logs ---"
+            find /root/seths -maxdepth 3 -type f \( -name '*.log' -o -name 'seth.log' \) -print -exec tail -n 120 {} \; 2>/dev/null || true
+            echo "::endgroup::"
+            exit "$rc"
+          }
+          trap dump_remote_debug EXIT
+
           echo "::group::Update SethPub"
           if [[ ! -d "$WORKDIR/.git" ]]; then
             rm -rf "$WORKDIR"
@@ -406,6 +423,52 @@ jobs:
             git stash push --include-untracked -m "ci-sethtests-autostash-${COMMIT_SHA}" || true
           fi
           git pull --ff-only || true
+          echo "::endgroup::"
+
+          echo "::group::Wait for chain receipt readiness"
+          /root/tools/python3.10/bin/python3 - "$NODE_HOST" /root/seth/init_accounts3 <<'PY'
+          import sys
+          import time
+
+          host = sys.argv[1]
+          keys_file = sys.argv[2]
+          from seth_sdk import SethClient, StepType
+
+          keys = []
+          with open(keys_file, "r", encoding="utf-8") as fp:
+              for line in fp:
+                  line = line.strip()
+                  if not line or line.startswith("#"):
+                      continue
+                  keys.append(line.split()[0])
+                  if len(keys) >= 2:
+                      break
+
+          if len(keys) < 2:
+              raise SystemExit(f"need at least two private keys in {keys_file}")
+
+          client = SethClient(host, 23001)
+          dst = client.get_address(keys[1])
+          deadline = time.time() + 300
+          attempt = 0
+          while time.time() < deadline:
+              attempt += 1
+              try:
+                  tx_hash = client.send_transaction_auto(keys[0], dst, StepType.kNormalFrom, amount=1)
+                  receipt = client.wait_for_receipt(tx_hash, timeout=180)
+                  if receipt and receipt.get("status") == 0:
+                      print(f"chain receipt ready after attempt {attempt}: {tx_hash}")
+                      sys.exit(0)
+                  print(f"chain receipt not ready on attempt {attempt}: {receipt}")
+              except Exception as exc:
+                  print(f"chain readiness attempt {attempt} failed: {exc}")
+              time.sleep(min(5 + attempt, 15))
+
+          raise SystemExit("chain did not produce a successful smoke-test receipt in time")
+          PY
+          # Give the freshly-started consensus network a short quiet window
+          # before the full concurrent test fan-out.
+          sleep 10
           echo "::endgroup::"
 
           echo "::group::Run SethTests"
