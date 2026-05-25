@@ -47,6 +47,7 @@ Status BlockWrapper::Wrap(
     block->set_version(common::kTransactionVersion);
     block->set_consistency_random(0);
     block->set_chain_id(kGlobalChainId);
+    block->set_all_gas(0);
     block->set_height(prev_block->height()+1);
     SETH_DEBUG("propose block net: %u, pool: %u, set height: %lu, pre height: %lu",
         view_block->qc().network_id(), view_block->qc().pool_index(), 
@@ -102,8 +103,19 @@ Status BlockWrapper::Wrap(
         // Hard limit: stop adding txs once the propose message would exceed the limit.
         // This prevents receivers from dropping the message due to the packet size limit.
         int current_size = view_block->ByteSizeLong();
+        uint64_t proposed_gas = 0;
 
         for (auto it = txs_ptr->txs.begin(); it != txs_ptr->txs.end(); it++) {
+            auto& tx = *((*it)->tx_info);
+            auto tx_gas_limit = tx.gas_limit();
+            if (!consensus::CanAddBlockGas(proposed_gas, tx_gas_limit)) {
+                SETH_WARN("pool: %d, block gas limit reached: current=%lu, tx_gas_limit=%lu, "
+                    "limit=%lu, stopping at %d/%zu txs",
+                    pool_idx_, proposed_gas, tx_gas_limit, consensus::kBlockMaxGasLimit,
+                    tx_propose->txs_size(), txs_ptr->txs.size());
+                break;
+            }
+
             int tx_size = (*it)->tx_info->ByteSizeLong();
             if (current_size + tx_size > common::kMaxProposeMsgBytes) {
                 SETH_WARN("pool: %d, propose msg size limit reached: current=%d bytes, "
@@ -115,6 +127,7 @@ Status BlockWrapper::Wrap(
             auto* tx_info = tx_propose->add_txs();
             *tx_info = *((*it)->tx_info);
             current_size += tx_size;
+            proposed_gas += tx_gas_limit;
             if (tx_info->step() == pools::protobuf::kConsensusRootElectShard) {
                 pools::protobuf::ElectStatistic elect_statistic;
                 if (elect_statistic.ParseFromString(tx_info->value())) {

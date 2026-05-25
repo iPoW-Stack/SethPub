@@ -29,6 +29,14 @@ TEST(TestConsensusUtils, CalcCalldataGasMixedBytes) {
         2u * kCalldataZeroByteGas + 2u * kCalldataNonZeroByteGas);
 }
 
+TEST(TestConsensusUtils, BlockGasLimitMatchesEthereumMainnetAndChecksBoundaries) {
+    ASSERT_EQ(kBlockMaxGasLimit, 60000000llu);
+    EXPECT_TRUE(CanAddBlockGas(0, kBlockMaxGasLimit));
+    EXPECT_TRUE(CanAddBlockGas(kBlockMaxGasLimit - 1, 1));
+    EXPECT_FALSE(CanAddBlockGas(kBlockMaxGasLimit, 1));
+    EXPECT_FALSE(CanAddBlockGas(kBlockMaxGasLimit + 1, 0));
+}
+
 TEST(TestConsensusUtils, EvmcStatusMappingCoversAllKnownCodes) {
     ASSERT_EQ(EvmcStatusToZbftStatus(EVMC_SUCCESS), kConsensusSuccess);
     ASSERT_EQ(EvmcStatusToZbftStatus(EVMC_FAILURE), kConsensusError);

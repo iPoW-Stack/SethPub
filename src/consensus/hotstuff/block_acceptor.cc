@@ -279,6 +279,34 @@ bool ValidateBackupNormalToAgainstLeader(
     return true;
 }
 
+bool ValidateProposeBlockGasLimit(
+        const hotstuff::protobuf::TxPropose& tx_propose,
+        const view_block::protobuf::ViewBlockItem& view_block) {
+    uint64_t proposed_gas_limit = 0;
+    for (int32_t i = 0; i < tx_propose.txs_size(); ++i) {
+        const auto& tx = tx_propose.txs(i);
+        if (!consensus::CanAddBlockGas(proposed_gas_limit, tx.gas_limit())) {
+            SETH_WARN("proposal exceeds block gas limit: %u_%u_%lu, tx_index: %d, "
+                "tx step: %d, nonce: %lu, proposed_gas_limit: %lu, "
+                "tx_gas_limit: %lu, block_gas_limit: %lu",
+                view_block.qc().network_id(),
+                view_block.qc().pool_index(),
+                view_block.qc().view(),
+                i,
+                (int32_t)tx.step(),
+                tx.nonce(),
+                proposed_gas_limit,
+                tx.gas_limit(),
+                consensus::kBlockMaxGasLimit);
+            return false;
+        }
+
+        proposed_gas_limit += tx.gas_limit();
+    }
+
+    return true;
+}
+
 } // namespace
 
 BlockAcceptor::BlockAcceptor() {}
@@ -385,6 +413,11 @@ Status BlockAcceptor::Accept(
     // 1. verify block
     if (!IsBlockValid(view_block)) {
         SETH_WARN("IsBlockValid error!");
+        return Status::kAcceptorBlockInvalid;
+    }
+
+    if (!ValidateProposeBlockGasLimit(propose_msg, view_block)) {
+        view_block.mutable_block_info()->set_all_gas(0);
         return Status::kAcceptorBlockInvalid;
     }
 

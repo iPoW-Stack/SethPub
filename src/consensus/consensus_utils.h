@@ -121,6 +121,8 @@ static const uint64_t kCallContractDefaultUseGas = 21000llu;
 // Library / contract creation intrinsic gas (CREATE opcode base): 53000
 static const uint64_t kCreateLibraryDefaultUseGas = 53000llu;
 static const uint64_t kCreateContractDefaultUseGas = 53000llu;
+// Maximum gas allowed in one packed block, aligned with Ethereum mainnet.
+static const uint64_t kBlockMaxGasLimit = 60000000llu;
 // Calldata gas per byte: non-zero = 16, zero = 4 (EIP-2028)
 static const uint64_t kCalldataNonZeroByteGas = 16llu;
 static const uint64_t kCalldataZeroByteGas = 4llu;
@@ -158,6 +160,11 @@ inline static std::string SafeEvmcOutput(const evmc_result& res) {
     }
 
     return std::string(reinterpret_cast<const char*>(res.output_data), res.output_size);
+}
+
+inline static bool CanAddBlockGas(uint64_t current_gas, uint64_t gas_to_add) {
+    return current_gas <= kBlockMaxGasLimit &&
+           gas_to_add <= kBlockMaxGasLimit - current_gas;
 }
 
 inline static int32_t EvmcStatusToZbftStatus(evmc_status_code status_code) {

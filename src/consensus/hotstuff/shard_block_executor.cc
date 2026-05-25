@@ -1,4 +1,5 @@
 #include <consensus/hotstuff/block_executor.h>
+#include <consensus/consensus_utils.h>
 #include "consensus/hotstuff/hotstuff_utils.h"
 #include <sethvm/sethvm_utils.h>
 
@@ -24,6 +25,8 @@ Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
         seth_host.tx_context_.chain_id,
         chain_id);
     uint32_t tx_index = 0;
+    uint64_t block_gas_used = 0;
+    block.set_all_gas(block_gas_used);
     for (auto iter = tx_map.begin(); iter != tx_map.end(); ++iter) { 
         auto& tx_info = (*iter)->tx_info;
         auto& block_tx = *tx_list->Add();
@@ -80,6 +83,23 @@ Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
             continue;
         }
 
+        if (!consensus::CanAddBlockGas(block_gas_used, block_tx.gas_used())) {
+            tx_list->RemoveLast();
+            SETH_ERROR("block gas used overflow after tx execution: %u_%u_%lu, "
+                "tx step: %d, nonce: %lu, block_gas_used: %lu, tx_gas_used: %lu, "
+                "block_gas_limit: %lu",
+                view_block->qc().network_id(),
+                view_block->qc().pool_index(),
+                view_block->qc().view(),
+                (int32_t)block_tx.step(),
+                block_tx.nonce(),
+                block_gas_used,
+                block_tx.gas_used(),
+                consensus::kBlockMaxGasLimit);
+            block.set_all_gas(block_gas_used);
+            return Status::kError;
+        }
+        block_gas_used += block_tx.gas_used();
         seth_host.recorded_logs_.clear();
         // SETH_DEBUG("handle tx success: %u_%u_%lu, tx step: %d, nonce: %lu",
         //     view_block->qc().network_id(), 
@@ -88,6 +108,8 @@ Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
         //     block_tx.step(), 
         //     block_tx.nonce());
     }
+
+    block.set_all_gas(block_gas_used);
     
     return Status::kSuccess;    
 }

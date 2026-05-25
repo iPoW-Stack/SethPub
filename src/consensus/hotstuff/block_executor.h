@@ -65,17 +65,17 @@ private:
     std::shared_ptr<db::DbWriteBatch> db_batch_ = nullptr;
     std::shared_ptr<security::Security> security_ptr_ = nullptr;
 
-    void RootDefaultTx(
+    Status RootDefaultTx(
             const std::shared_ptr<consensus::WaitingTxsItem> &txs_ptr,
             view_block::protobuf::ViewBlockItem* view_block,
             BalanceAndNonceMap& balance_map,
             sethvm::SethhainHost& seth_host);
-    void RootCreateAccountAddressBlock(
+    Status RootCreateAccountAddressBlock(
             const std::shared_ptr<consensus::WaitingTxsItem> &txs_ptr,
             view_block::protobuf::ViewBlockItem* view_block,
             BalanceAndNonceMap& balance_map,
             sethvm::SethhainHost& seth_host);
-    void RootCreateElectConsensusShardBlock(
+    Status RootCreateElectConsensusShardBlock(
             const std::shared_ptr<consensus::WaitingTxsItem> &txs_ptr,
             view_block::protobuf::ViewBlockItem* view_block,
             BalanceAndNonceMap& balance_map,

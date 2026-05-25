@@ -9,6 +9,7 @@
 #include "common/hash.h"
 #include "common/string_utils.h"
 #include "common/time_utils.h"
+#include "consensus/consensus_utils.h"
 #include "consensus/hotstuff/hotstuff_manager.h"
 #include "dht/dht_key.h"
 #include "network/dht_manager.h"
@@ -32,6 +33,24 @@
 namespace seth {
 
 namespace pools {
+
+namespace {
+
+bool TxGasLimitWithinBlockLimit(const pools::protobuf::TxMessage& tx_msg) {
+    if (tx_msg.gas_limit() <= consensus::kBlockMaxGasLimit) {
+        return true;
+    }
+
+    SETH_WARN("tx gas limit exceeds block gas limit, step: %d, nonce: %lu, "
+        "tx_gas_limit: %lu, block_gas_limit: %lu",
+        (int32_t)tx_msg.step(),
+        tx_msg.nonce(),
+        tx_msg.gas_limit(),
+        consensus::kBlockMaxGasLimit);
+    return false;
+}
+
+}  // namespace
 
 #ifdef SETH_UNITTEST
 namespace {
@@ -723,22 +742,35 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
             (int32_t)tx_msg.step(),
             tx_msg.nonce());
         int32_t handle_status = transport::kMessageHandle;
+        if (IsUserTransaction(tx_msg.step()) && !TxGasLimitWithinBlockLimit(tx_msg)) {
+            handle_status = consensus::kConsensusUserSetGasLimitError;
+        }
         switch (tx_msg.step()) {
         case pools::protobuf::kJoinElect:
-            handle_status = HandleElectTx(msg_ptr);
+            if (handle_status == transport::kMessageHandle) {
+                handle_status = HandleElectTx(msg_ptr);
+            }
             break;
         case pools::protobuf::kNormalFrom:
-            handle_status = HandleNormalFromTx(msg_ptr);
+            if (handle_status == transport::kMessageHandle) {
+                handle_status = HandleNormalFromTx(msg_ptr);
+            }
             break;
         case pools::protobuf::kCreateLibrary:
         case pools::protobuf::kCreateContract:
-            handle_status = HandleCreateContractTx(msg_ptr);
+            if (handle_status == transport::kMessageHandle) {
+                handle_status = HandleCreateContractTx(msg_ptr);
+            }
             break;
         case pools::protobuf::kContractGasPrefund:
-            handle_status = HandleSetContractPrefund(msg_ptr);
+            if (handle_status == transport::kMessageHandle) {
+                handle_status = HandleSetContractPrefund(msg_ptr);
+            }
             break;
         case pools::protobuf::kContractRefund:
-            handle_status = HandleContractRefund(msg_ptr);
+            if (handle_status == transport::kMessageHandle) {
+                handle_status = HandleContractRefund(msg_ptr);
+            }
             break;
         case pools::protobuf::kRootCreateAddress: {
             if (tx_msg.to().size() != common::kUnicastAddressLength &&
@@ -762,7 +794,9 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
             break;
         }
         case pools::protobuf::kContractExcute:
-            handle_status = HandleContractExcute(msg_ptr);
+            if (handle_status == transport::kMessageHandle) {
+                handle_status = HandleContractExcute(msg_ptr);
+            }
             break;
         case pools::protobuf::kConsensusLocalTos: {
             pool_index = common::GetAddressPoolIndex(tx_msg.to());
