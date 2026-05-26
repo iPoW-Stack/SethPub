@@ -362,7 +362,7 @@ contract C2CSellOrder {
 }
 '''
 
-def test_c2c_contract_deployment():
+def test_c2c_contract_deployment(host: str, port: int):
     """Test C2CSellOrder contract deployment following seth3.py patterns"""
     print("C2CSellOrder Contract Test Suite")
     print("=" * 80)
@@ -377,8 +377,7 @@ def test_c2c_contract_deployment():
     buyer2_key = secrets.token_hex(32)
     
     # Initialize Seth connection (following seth3.py pattern)
-    IP, PORT = "127.0.0.1", 9001
-    w3 = SethWeb3Mock(IP, PORT)
+    w3 = SethWeb3Mock(host, port)
     
     # Get addresses from keys
     owner_addr = w3.client.get_address(owner_key)
@@ -398,7 +397,7 @@ def test_c2c_contract_deployment():
     print(f"  Generated buyer2: {buyer2_addr}")
     
     print("C2CSellOrder Contract Test Suite Initialized")
-    print(f"Connected to Seth node: {IP}:{PORT}")
+    print(f"Connected to Seth node: {host}:{port}")
     print("Starting C2CSellOrder Contract Comprehensive Test Suite")
     print("=" * 80)
     
@@ -549,13 +548,9 @@ def main():
     args = parser.parse_args()
     
     try:
-        # Update global connection parameters
-        global IP, PORT
-        IP, PORT = args.host, args.port
-        
         # Run the test
         start_time = time.time()
-        success = test_c2c_contract_deployment()
+        success = test_c2c_contract_deployment(args.host, args.port)
         end_time = time.time()
         
         # Print final results

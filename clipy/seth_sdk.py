@@ -247,7 +247,7 @@ def calc_create_address(sender: str, nonce: int) -> str:
 
 def calc_create2_address(sender: str, salt: str, bytecode: str) -> str:
     sender = sender.lower().replace('0x', '')
-    bytecode = bytecode.lower().replace('0x', '')
+    bytecode = normalize_hex(bytecode)
     
     # Ensure salt is hex; if it's a plain string like 'l1', encode it to hex
     salt_clean = str(salt).lower().replace('0x', '')
@@ -260,6 +260,17 @@ def calc_create2_address(sender: str, salt: str, bytecode: str) -> str:
     code_hash = keccak.new(digest_bits=256).update(bytes.fromhex(bytecode)).digest()
     input_data = bytes.fromhex("ff") + bytes.fromhex(sender) + salt_bytes + code_hash
     return keccak.new(digest_bits=256).update(input_data).digest()[-20:].hex().lower()
+
+def normalize_hex(value: str) -> str:
+    """Return a clean even-length lowercase hex string without 0x."""
+    if value is None:
+        return ''
+    clean = str(value).strip().lower()
+    if clean.startswith('0x'):
+        clean = clean[2:]
+    if len(clean) % 2:
+        clean = '0' + clean
+    return clean
 
 def compile_and_link(source: str, name: str, libs: Dict[str, str] = None):
     """Compiles Solidity and replaces Library linking placeholders."""
@@ -277,7 +288,12 @@ def compile_and_link(source: str, name: str, libs: Dict[str, str] = None):
             solcx.set_solc_version("0.8.34")
         except: pass
 
-    compiled = solcx.compile_source(source, output_values=['bin', 'abi'], optimize=True, evm_version='shanghai')
+    try:
+        compiled = solcx.compile_source(
+            source, output_values=['bin', 'abi'], optimize=True, evm_version='shanghai')
+    except solcx.exceptions.UnknownValue:
+        compiled = solcx.compile_source(
+            source, output_values=['bin', 'abi'], optimize=True, evm_version='paris')
     
     # Flexible lookup to handle solc naming
     contract_data = None
@@ -289,11 +305,11 @@ def compile_and_link(source: str, name: str, libs: Dict[str, str] = None):
     if not contract_data:
         raise KeyError(f"Contract '{name}' not found. Available: {list(compiled.keys())}")
 
-    bytecode = contract_data['bin']
+    bytecode = normalize_hex(contract_data['bin'])
     if libs:
         for lib, addr in libs.items():
             placeholder = keccak.new(digest_bits=256).update(f"<stdin>:{lib}".encode()).hexdigest()[:34]
-            bytecode = bytecode.replace(f"__${placeholder}$__", addr.lower().replace('0x', ''))
+            bytecode = bytecode.replace(f"__${placeholder}$__", normalize_hex(addr))
             
     return bytecode, contract_data['abi']
 
@@ -434,7 +450,11 @@ class SethMethod:
     
 class SethContract:
     def __init__(self, client: SethClient, address: Optional[str], abi: list, bytecode: str = None, sender_address: str = ""):
-        self.client, self.address, self.abi, self.bytecode, self.sender_address = client, address, abi, bytecode, sender_address
+        self.client = client
+        self.address = address
+        self.abi = abi
+        self.bytecode = normalize_hex(bytecode)
+        self.sender_address = sender_address
         self.functions = type('Functions', (), {})()
         self.deploy_receipt = None
         if abi:
@@ -695,6 +715,8 @@ class SethClient:
 
     def send_transaction_auto(self, pk_hex, to, step, amount=0, contract_code='', input_hex='', prefund=0):
         my_addr = self.get_address(pk_hex)
+        contract_code = normalize_hex(contract_code)
+        input_hex = normalize_hex(input_hex)
         nonce_addr = to + my_addr if (step == StepType.kContractExcute or step == StepType.kContractRefund) else my_addr
         try:
             r = requests.post(self.query_url, data={"address": nonce_addr}, verify=self.verify_ssl).json()
@@ -852,6 +874,8 @@ class SethClient:
         """Send post-quantum transaction - perfectly adapted for 0.15.0/0.14.0 mixed environments"""
         if not oqs:
             raise ImportError("liboqs-python is required")
+        contract_code = normalize_hex(contract_code)
+        input_hex = normalize_hex(input_hex)
             
         # sigalg = "ML-DSA-44"
         # oqs_signer = oqs.Signature(sigalg)
@@ -1004,6 +1028,8 @@ class SethClient:
         """
         Send GmSSL transaction: build message -> SM3 digest -> SM2 sign -> send
         """
+        contract_code = normalize_hex(contract_code)
+        input_hex = normalize_hex(input_hex)
         my_addr = self.get_gmssl_address(pub_key_hex)
         nonce_addr = to + my_addr if (step in [StepType.kContractExcute, StepType.kContractRefund]) else my_addr
         
