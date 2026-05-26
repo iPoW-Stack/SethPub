@@ -999,20 +999,24 @@ class SethClient:
         return requests.post(self.query_contract_url, data={"from": f, "address": a, "input": i}, verify=self.verify_ssl).text
     
     def get_balance(self, a):
+        response = None
         try:
             response = requests.post(self.query_url, data={"address": a}, timeout=5, verify=self.verify_ssl)
             # Check if the response is actually JSON
             return int(response.json().get("balance", 0))
         except Exception as e:
-            print(f"DEBUG: Balance query failed for {a}. Response text: '{response.text}'")
+            response_text = response.text if response is not None else str(e)
+            print(f"DEBUG: Balance query failed for {a}. Response text: '{response_text}'")
             return 0
 
     def get_nonce(self, a):
+        response = None
         try:
             response = requests.post(self.query_url, data={"address": a}, timeout=5, verify=self.verify_ssl)
             return int(response.json().get("nonce", 0))
         except Exception as e:
-            print(f"DEBUG: Nonce query failed for {a}. Response text: '{response.text}'")
+            response_text = response.text if response is not None else str(e)
+            print(f"DEBUG: Nonce query failed for {a}. Response text: '{response_text}'")
             return 0
 
     def get_gmssl_address(self, pubkey_hex: str) -> str:

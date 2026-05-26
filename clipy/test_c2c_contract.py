@@ -18,6 +18,43 @@ from typing import Dict, Any, Optional
 # Import Seth SDK components (following seth3.py pattern)
 from seth_sdk import SethWeb3Mock, StepType, compile_and_link
 
+TEST_ACCOUNT_BALANCE = 100_000_000
+
+
+def ensure_status_ok(receipt: Dict[str, Any], label: str) -> None:
+    status = receipt.get("status")
+    if status != 0:
+        raise RuntimeError(f"{label} failed with status={status}, msg={receipt.get('msg', '')}")
+
+
+def fund_test_account(w3: SethWeb3Mock, funder_key: str, address: str,
+                      amount: int = TEST_ACCOUNT_BALANCE, timeout: int = 120) -> None:
+    current_balance = w3.client.get_balance(address)
+    if current_balance >= amount:
+        print(f"  Account {address[:16]}... already funded: {current_balance}")
+        return
+
+    print(f"  Funding account {address[:16]}... with {amount}")
+    tx_hash = w3.client.send_transaction_auto(
+        funder_key,
+        address,
+        StepType.kNormalFrom,
+        amount=amount - current_balance
+    )
+    receipt = w3.client.wait_for_receipt(tx_hash)
+    ensure_status_ok(receipt, f"fund account {address[:16]}...")
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        balance = w3.client.get_balance(address)
+        if balance >= amount:
+            print(f"    funded balance: {balance}")
+            return
+        time.sleep(2)
+
+    raise RuntimeError(f"account {address} balance did not reach {amount}")
+
+
 # C2CSellOrder Contract Source Code (from c2c.sol)
 C2C_CONTRACT_SOURCE = '''
 // SPDX-License-Identifier: GPL-3.0
@@ -371,6 +408,7 @@ def test_c2c_contract_deployment(host: str, port: int):
     owner_key = "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
     manager1_key = secrets.token_hex(32)
     manager2_key = secrets.token_hex(32)
+    manager3_key = secrets.token_hex(32)
     seller1_key = secrets.token_hex(32)
     seller2_key = secrets.token_hex(32)
     buyer1_key = secrets.token_hex(32)
@@ -383,6 +421,7 @@ def test_c2c_contract_deployment(host: str, port: int):
     owner_addr = w3.client.get_address(owner_key)
     manager1_addr = w3.client.get_address(manager1_key)
     manager2_addr = w3.client.get_address(manager2_key)
+    manager3_addr = w3.client.get_address(manager3_key)
     seller1_addr = w3.client.get_address(seller1_key)
     seller2_addr = w3.client.get_address(seller2_key)
     buyer1_addr = w3.client.get_address(buyer1_key)
@@ -391,10 +430,15 @@ def test_c2c_contract_deployment(host: str, port: int):
     print(f"  Generated owner: {owner_addr}")
     print(f"  Generated manager1: {manager1_addr}")
     print(f"  Generated manager2: {manager2_addr}")
+    print(f"  Generated manager3: {manager3_addr}")
     print(f"  Generated seller1: {seller1_addr}")
     print(f"  Generated seller2: {seller2_addr}")
     print(f"  Generated buyer1: {buyer1_addr}")
     print(f"  Generated buyer2: {buyer2_addr}")
+
+    print("  Preparing funded test accounts...")
+    for account_addr in [manager1_addr, manager2_addr, manager3_addr, seller1_addr, seller2_addr, buyer1_addr, buyer2_addr]:
+        fund_test_account(w3, owner_key, account_addr)
     
     print("C2CSellOrder Contract Test Suite Initialized")
     print(f"Connected to Seth node: {host}:{port}")
@@ -482,9 +526,9 @@ def test_c2c_contract_deployment(host: str, port: int):
         
         # Test 3: SetManager function
         print("  [3] Testing SetManager function...")
-        new_managers = [seller1_addr]  # Add seller1 as manager for testing
+        new_managers = [manager3_addr]
         receipt = c2c_contract.functions.SetManager(new_managers).transact(owner_key)
-        print(f"    SetManager([seller1]) status: {receipt.get('status')}")
+        print(f"    SetManager([manager3]) status: {receipt.get('status')}")
         
         # Test 4: NewSellOrder function
         print("  [4] Testing NewSellOrder function...")
