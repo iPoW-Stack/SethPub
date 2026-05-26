@@ -19,6 +19,7 @@ from typing import Dict, Any, Optional
 from seth_sdk import SethWeb3Mock, StepType, compile_and_link
 
 TEST_ACCOUNT_BALANCE = 100_000_000
+TEST_CONTRACT_PREFUND = 10_000_000
 
 
 def ensure_status_ok(receipt: Dict[str, Any], label: str) -> None:
@@ -53,6 +54,29 @@ def fund_test_account(w3: SethWeb3Mock, funder_key: str, address: str,
         time.sleep(2)
 
     raise RuntimeError(f"account {address} balance did not reach {amount}")
+
+
+def ensure_contract_prefund(contract: Any, user_key: str,
+                            amount: int = TEST_CONTRACT_PREFUND, timeout: int = 120) -> None:
+    user_address = contract.client.get_address(user_key)
+    current_prefund = contract.get_prefund(user_address)
+    if current_prefund >= amount:
+        print(f"  Contract prefund {user_address[:16]}... already set: {current_prefund}")
+        return
+
+    print(f"  Setting contract prefund for {user_address[:16]}... with {amount}")
+    receipt = contract.prefund(amount - current_prefund, user_key)
+    ensure_status_ok(receipt, f"prefund contract for {user_address[:16]}...")
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        prefund_balance = contract.get_prefund(user_address)
+        if prefund_balance >= amount:
+            print(f"    contract prefund: {prefund_balance}")
+            return
+        time.sleep(2)
+
+    raise RuntimeError(f"contract prefund for {user_address} did not reach {amount}")
 
 
 # C2CSellOrder Contract Source Code (from c2c.sol)
@@ -509,6 +533,10 @@ def test_c2c_contract_deployment(host: str, port: int):
         }, owner_key)
         
         print(f"  Contract deployed at: {c2c_contract.address}")
+
+        print("  Preparing contract prefund accounts...")
+        for account_key in [manager1_key, manager2_key, manager3_key, seller1_key, seller2_key, buyer1_key, buyer2_key]:
+            ensure_contract_prefund(c2c_contract, account_key)
         
         # Test basic contract functions
         print("\n  Testing basic contract functions...")
@@ -517,18 +545,21 @@ def test_c2c_contract_deployment(host: str, port: int):
         print("  [1] Testing TestContract function...")
         receipt = c2c_contract.functions.TestContract(12345).transact(owner_key)
         print(f"    TestContract(12345) status: {receipt.get('status')}")
+        ensure_status_ok(receipt, "TestContract(12345)")
         
         # Test 2: callAbe function (RIPEMD160)
         print("  [2] Testing callAbe function...")
         test_data = b"Hello, C2C Contract!"
         receipt = c2c_contract.functions.callAbe(test_data).transact(owner_key)
         print(f"    callAbe(test_data) status: {receipt.get('status')}")
+        ensure_status_ok(receipt, "callAbe(test_data)")
         
         # Test 3: SetManager function
         print("  [3] Testing SetManager function...")
         new_managers = [manager3_addr]
         receipt = c2c_contract.functions.SetManager(new_managers).transact(owner_key)
         print(f"    SetManager([manager3]) status: {receipt.get('status')}")
+        ensure_status_ok(receipt, "SetManager([manager3])")
         
         # Test 4: NewSellOrder function
         print("  [4] Testing NewSellOrder function...")
@@ -539,22 +570,26 @@ def test_c2c_contract_deployment(host: str, port: int):
             seller1_key, value=pledge_amount
         )
         print(f"    NewSellOrder(receivable, {price}) status: {receipt.get('status')}")
+        ensure_status_ok(receipt, f"NewSellOrder(receivable, {price})")
         
         # Test 5: Confirm function
         print("  [5] Testing Confirm function...")
         confirm_amount = 500000  # 500K wei
         receipt = c2c_contract.functions.Confirm(buyer1_addr, confirm_amount).transact(seller1_key)
         print(f"    Confirm(buyer1, {confirm_amount}) status: {receipt.get('status')}")
+        ensure_status_ok(receipt, f"Confirm(buyer1, {confirm_amount})")
         
         # Test 6: ManagerRelease function
         print("  [6] Testing ManagerRelease function...")
         receipt = c2c_contract.functions.ManagerRelease(seller1_addr).transact(manager1_key)
         print(f"    ManagerRelease(seller1) status: {receipt.get('status')}")
+        ensure_status_ok(receipt, "ManagerRelease(seller1)")
         
         # Test 7: SellerRelease function
         print("  [7] Testing SellerRelease function...")
         receipt = c2c_contract.functions.SellerRelease().transact(seller1_key)
         print(f"    SellerRelease() status: {receipt.get('status')}")
+        ensure_status_ok(receipt, "SellerRelease()")
         
         # Test 8: Report function
         print("  [8] Testing Report function...")
@@ -563,10 +598,12 @@ def test_c2c_contract_deployment(host: str, port: int):
             seller2_key, value=1500000
         )
         print(f"    NewSellOrder by seller2 status: {receipt.get('status')}")
+        ensure_status_ok(receipt, "NewSellOrder by seller2")
         
         # Report the seller
         receipt = c2c_contract.functions.Report(seller2_addr).transact(buyer1_key)
         print(f"    Report(seller2) status: {receipt.get('status')}")
+        ensure_status_ok(receipt, "Report(seller2)")
         
         # Test 9: GetOrdersJson function (view function)
         print("  [9] Testing GetOrdersJson function...")
