@@ -1043,6 +1043,7 @@ void ViewBlockChain::AddNewBlock(
         (view_block_item->block_info().tx_list_size() > 0 ? view_block_item->block_info().tx_list(0).status() : -1));
     //assert(view_block_item->qc().elect_height() >= 1);
     prefix_db_->SaveBlock(*view_block_item, db_batch);
+    prefix_db_->SaveBlockUserTxs(*view_block_item, db_batch);
     prefix_db_->SaveValidViewBlockParentHash(
         view_block_item->parent_hash(), 
         view_block_item->qc().network_id(),

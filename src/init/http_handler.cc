@@ -1,6 +1,8 @@
 #include "init/http_handler.h"
 #include "init/uws_adapter.h"
 
+#include <algorithm>
+#include <cctype>
 #include <functional>
 #include <fstream>
 #include <vector>
@@ -72,6 +74,29 @@ static const char* GetStatus(int status) {
     }
 
     return "unknown";
+}
+
+static bool NormalizeHexAddress(const std::string& input, std::string* output) {
+    std::string address = input;
+    if (address.size() >= 2 && address[0] == '0' &&
+            (address[1] == 'x' || address[1] == 'X')) {
+        address = address.substr(2);
+    }
+
+    if (address.size() != common::kUnicastAddressLength * 2) {
+        return false;
+    }
+
+    for (char c : address) {
+        if (!std::isxdigit(static_cast<unsigned char>(c))) {
+            return false;
+        }
+    }
+
+    std::transform(address.begin(), address.end(), address.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    *output = address;
+    return true;
 }
 
 static int CreateOqsTransactionWithAttr(
@@ -1167,6 +1192,82 @@ static void BatchQueryAccounts(const UWSRequest& req, UWSResponse& http_res) {
         }
         SETH_WARN("batch_query not_found addrs: [%s]", nf_list.c_str());
     }
+}
+
+static void QueryAccountTxs(const UWSRequest& req, UWSResponse& http_res) {
+    nlohmann::json res_json;
+    auto tmp_addr = req.get_param_value("address");
+    std::string hex_addr;
+    if (!NormalizeHexAddress(tmp_addr, &hex_addr)) {
+        res_json["status"] = 1;
+        res_json["msg"] = "param address is invalid";
+        http_res.set_content(res_json.dump(), "application/json");
+        return;
+    }
+
+    uint32_t limit = 20;
+    uint32_t offset = 0;
+    auto limit_str = req.get_param_value("limit");
+    if (!limit_str.empty() && !common::StringUtil::ToUint32(limit_str, &limit)) {
+        res_json["status"] = 1;
+        res_json["msg"] = "param limit is invalid";
+        http_res.set_content(res_json.dump(), "application/json");
+        return;
+    }
+
+    auto offset_str = req.get_param_value("offset");
+    if (!offset_str.empty() && !common::StringUtil::ToUint32(offset_str, &offset)) {
+        res_json["status"] = 1;
+        res_json["msg"] = "param offset is invalid";
+        http_res.set_content(res_json.dump(), "application/json");
+        return;
+    }
+
+    if (limit == 0) {
+        limit = 20;
+    } else if (limit > 200) {
+        limit = 200;
+    }
+
+    std::vector<protos::PrefixDb::UserTxItem> txs;
+    if (!prefix_db->GetUserTxs(common::Encode::HexDecode(hex_addr), limit, offset, &txs)) {
+        res_json["status"] = 1;
+        res_json["msg"] = "query account transactions failed";
+        http_res.set_content(res_json.dump(), "application/json");
+        return;
+    }
+
+    nlohmann::json txs_json = nlohmann::json::array();
+    for (const auto& item : txs) {
+        const auto& tx = item.tx;
+        nlohmann::json tx_json;
+        tx_json["height"] = std::to_string(item.height);
+        tx_json["txIndex"] = item.tx_index;
+        tx_json["nonce"] = std::to_string(tx.nonce());
+        tx_json["from"] = common::Encode::HexEncode(tx.from());
+        tx_json["to"] = common::Encode::HexEncode(tx.to());
+        tx_json["amount"] = std::to_string(tx.amount());
+        tx_json["gasLimit"] = std::to_string(tx.gas_limit());
+        tx_json["gasUsed"] = std::to_string(tx.gas_used());
+        tx_json["gasPrice"] = std::to_string(tx.gas_price());
+        tx_json["balance"] = std::to_string(tx.balance());
+        tx_json["step"] = tx.step();
+        tx_json["status"] = tx.status();
+        tx_json["contractPrefund"] = std::to_string(tx.contract_prefund());
+        tx_json["txHash"] = common::Encode::HexEncode(tx.tx_hash());
+        tx_json["uniqueHash"] = common::Encode::HexEncode(tx.unique_hash());
+        txs_json.push_back(tx_json);
+    }
+
+    res_json["status"] = 0;
+    res_json["msg"] = "ok";
+    res_json["address"] = hex_addr;
+    res_json["limit"] = limit;
+    res_json["offset"] = offset;
+    res_json["transactions"] = txs_json;
+    http_res.set_content(res_json.dump(), "application/json");
+    SETH_INFO("query_account_txs: address=%s, limit=%u, offset=%u, count=%u",
+        hex_addr.c_str(), limit, offset, static_cast<uint32_t>(txs.size()));
 }
 
 static void AccountsValid(const UWSRequest& req, UWSResponse& http_res) {
@@ -2794,6 +2895,7 @@ void HttpHandler::Run() {
     ).post("/abi_query_contract", safeHandler(AbiQueryContract, "/abi_query_contract")
     ).post("/query_account", safeHandler(QueryAccount, "/query_account")
     ).post("/batch_query_accounts", safeHandler(BatchQueryAccounts, "/batch_query_accounts")
+    ).post("/query_account_txs", safeHandler(QueryAccountTxs, "/query_account_txs")
     ).post("/query_leaders", safeHandler(QueryLeaders, "/query_leaders")
     ).post("/query_init", safeHandler(QueryInit, "/query_init")
     ).post("/get_proxy_reenc_info", safeHandler(GetProxyReencInfo, "/get_proxy_reenc_info")

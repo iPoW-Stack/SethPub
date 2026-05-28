@@ -93,6 +93,12 @@ static const std::string kLeaderLatestProposeMessage = "bf\x02";
 
 class PrefixDb {
 public:
+    struct UserTxItem {
+        uint64_t height = 0;
+        uint32_t tx_index = 0;
+        block::protobuf::BlockTx tx;
+    };
+
     PrefixDb(const std::shared_ptr<db::Db>& db_ptr) : db_(db_ptr) {
     }
 
@@ -553,6 +559,106 @@ public:
 
         if (!to_heights->ParseFromString(val)) {
             return false;
+        }
+
+        return true;
+    }
+
+    void SaveUserTx(
+            const std::string& address,
+            uint64_t height,
+            uint32_t tx_index,
+            const block::protobuf::BlockTx& tx,
+            db::DbWriteBatch& db_batch) {
+        if (address.size() != common::kUnicastAddressLength) {
+            return;
+        }
+
+        std::string key;
+        key.reserve(kUserTxPrefix.size() + address.size() + sizeof(height) + sizeof(tx_index));
+        key.append(kUserTxPrefix);
+        key.append(address);
+        AppendUint64ForKey(height, &key);
+        AppendUint32ForKey(tx_index, &key);
+        db_batch.Put(key, tx.SerializeAsString());
+    }
+
+    void SaveBlockUserTxs(
+            const view_block::protobuf::ViewBlockItem& view_block,
+            db::DbWriteBatch& db_batch) {
+        const auto& block = view_block.block_info();
+        for (int32_t i = 0; i < block.tx_list_size(); ++i) {
+            const auto& tx = block.tx_list(i);
+            if (tx.from().size() == common::kUnicastAddressLength) {
+                SaveUserTx(tx.from(), block.height(), static_cast<uint32_t>(i), tx, db_batch);
+            }
+
+            if (tx.to().size() == common::kUnicastAddressLength && tx.to() != tx.from()) {
+                SaveUserTx(tx.to(), block.height(), static_cast<uint32_t>(i), tx, db_batch);
+            }
+        }
+
+        if (block.has_local_to()) {
+            const auto& local_to = block.local_to();
+            const uint32_t base_index = static_cast<uint32_t>(block.tx_list_size());
+            for (int32_t i = 0; i < local_to.tos_size(); ++i) {
+                const auto& to_item = local_to.tos(i);
+                if (to_item.to().size() != common::kUnicastAddressLength) {
+                    continue;
+                }
+
+                block::protobuf::BlockTx tx;
+                tx.set_to(to_item.to());
+                tx.set_balance(to_item.balance());
+                tx.set_step(pools::protobuf::kConsensusLocalTos);
+                tx.set_status(0);
+                tx.set_nonce(to_item.nonce());
+                SaveUserTx(
+                    to_item.to(),
+                    block.height(),
+                    base_index + static_cast<uint32_t>(i),
+                    tx,
+                    db_batch);
+            }
+        }
+    }
+
+    bool GetUserTxs(
+            const std::string& address,
+            uint32_t limit,
+            uint32_t offset,
+            std::vector<UserTxItem>* txs) {
+        if (address.size() != common::kUnicastAddressLength || txs == nullptr) {
+            return false;
+        }
+
+        std::map<std::string, std::string> res_map;
+        db_->GetAllPrefix(kUserTxPrefix + address, res_map);
+        if (res_map.empty() || offset >= res_map.size()) {
+            return true;
+        }
+
+        uint32_t skipped = 0;
+        for (auto iter = res_map.rbegin(); iter != res_map.rend(); ++iter) {
+            if (skipped++ < offset) {
+                continue;
+            }
+
+            if (iter->first.size() < kUserTxPrefix.size() + address.size() + sizeof(uint64_t) + sizeof(uint32_t)) {
+                continue;
+            }
+
+            UserTxItem item;
+            const size_t height_pos = kUserTxPrefix.size() + address.size();
+            item.height = ReadUint64FromKey(iter->first.data() + height_pos);
+            item.tx_index = ReadUint32FromKey(iter->first.data() + height_pos + sizeof(uint64_t));
+            if (item.tx.ParseFromString(iter->second)) {
+                txs->push_back(item);
+            }
+
+            if (txs->size() >= limit) {
+                break;
+            }
         }
 
         return true;
@@ -1763,6 +1869,34 @@ private:
     uint64_t prev_gid_tm_us_ = 0;
     common::Tick db_batch_tick_;
     std::atomic<bool> dumped_gid_ = false;
+
+    static void AppendUint64ForKey(uint64_t value, std::string* key) {
+        for (int32_t i = 7; i >= 0; --i) {
+            key->push_back(static_cast<char>((value >> (i * 8)) & 0xff));
+        }
+    }
+
+    static void AppendUint32ForKey(uint32_t value, std::string* key) {
+        for (int32_t i = 3; i >= 0; --i) {
+            key->push_back(static_cast<char>((value >> (i * 8)) & 0xff));
+        }
+    }
+
+    static uint64_t ReadUint64FromKey(const char* data) {
+        uint64_t value = 0;
+        for (uint32_t i = 0; i < sizeof(uint64_t); ++i) {
+            value = (value << 8) | static_cast<unsigned char>(data[i]);
+        }
+        return value;
+    }
+
+    static uint32_t ReadUint32FromKey(const char* data) {
+        uint32_t value = 0;
+        for (uint32_t i = 0; i < sizeof(uint32_t); ++i) {
+            value = (value << 8) | static_cast<unsigned char>(data[i]);
+        }
+        return value;
+    }
 
     DISALLOW_COPY_AND_ASSIGN(PrefixDb);
 };
