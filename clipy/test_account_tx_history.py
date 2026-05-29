@@ -3,14 +3,16 @@
 Account transaction history API test.
 
 Usage:
+  python3 test_account_tx_history.py --host <ip> --port <port> --key <funder_key> [--recipient-key <key>]
   python3 test_account_tx_history.py <ip> <port> <funder_key> [recipient_key]
 
 Example:
-  python3 test_account_tx_history.py 127.0.0.1 23001 7c5b4ec6...66
+  python3 test_account_tx_history.py --host 127.0.0.1 --port 23001 --key 7c5b4ec6...66
 """
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import os
 import secrets
@@ -169,15 +171,54 @@ def wait_history_contains(
 
 
 def main() -> int:
-    if len(sys.argv) < 4:
-        print(__doc__)
-        return 1
+    parser = argparse.ArgumentParser(
+        description="Test /query_account_txs by sending one transfer and querying both account histories.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
+    parser.add_argument(
+        "positional",
+        nargs="*",
+        help="Backward-compatible form: <host> <port> <funder_key> [recipient_key]",
+    )
+    parser.add_argument("--host", help="Seth node HTTP host")
+    parser.add_argument("--port", type=int, help="Seth node HTTP port")
+    parser.add_argument(
+        "--key",
+        "--funder-key",
+        dest="funder_key",
+        help="Private key of the funded sender account",
+    )
+    parser.add_argument(
+        "--recipient-key",
+        help="Optional recipient private key; a random recipient is generated if omitted",
+    )
+    args = parser.parse_args()
 
-    host = sys.argv[1]
-    port = int(sys.argv[2])
-    funder_key = normalize_hex(sys.argv[3])
-    if len(sys.argv) >= 5:
-        recipient_key = normalize_hex(sys.argv[4])
+    host = args.host
+    port = args.port
+    funder_key = args.funder_key
+    recipient_key = args.recipient_key
+
+    if args.positional:
+        if len(args.positional) < 3:
+            parser.error("positional usage requires: <host> <port> <funder_key> [recipient_key]")
+        host = host or args.positional[0]
+        if port is None:
+            try:
+                port = int(args.positional[1])
+            except ValueError:
+                parser.error(f"invalid port: {args.positional[1]}")
+        funder_key = funder_key or args.positional[2]
+        if recipient_key is None and len(args.positional) >= 4:
+            recipient_key = args.positional[3]
+
+    if not host or port is None or not funder_key:
+        parser.error("--host, --port, and --key are required")
+
+    funder_key = normalize_hex(funder_key)
+    if recipient_key:
+        recipient_key = normalize_hex(recipient_key)
         recipient_addr = get_address(recipient_key)
     else:
         recipient_key, recipient_addr = make_keypair()
