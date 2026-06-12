@@ -765,8 +765,7 @@ void TcpTransport::Run() {
             std::this_thread::sleep_for(std::chrono::microseconds(10000ull));
         }
     }
-
-    uv_loop_close(loop);
+    // uv_loop_close is called by Stop() after joining this thread.
 }
 
 ex_uv_tcp_t* TcpTransport::GetConnection(const std::string& ip, uint16_t port) {
