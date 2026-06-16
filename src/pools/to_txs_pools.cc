@@ -297,10 +297,12 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
         // Check if the in-flight tx has been stuck too long (proposal may have failed).
         auto now_ms = common::TimeUtils::TimestampMs();
         if (leader_to_heights_set_tm_ + 30000lu > now_ms) {
-            // Still within timeout, don't create duplicate
-            SETH_DEBUG("LeaderCreateToHeights: tx in-flight, age: %lu ms, waiting for commit",
+            // Reuse cached heights so GetToTx can retry after a failed propose
+            // (e.g. empty block not allowed) without waiting for commit/timeout.
+            SETH_DEBUG("LeaderCreateToHeights: reusing in-flight heights, age: %lu ms",
                 now_ms - leader_to_heights_set_tm_);
-            return kPoolsError;
+            to_heights = *leader_to_heights_ptr;
+            return kPoolsSuccess;
         }
         // Timeout expired, clear stale cache and recompute
         SETH_DEBUG("LeaderCreateToHeights: in-flight tx timed out after %lu ms, recomputing",

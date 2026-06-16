@@ -90,7 +90,7 @@ TEST_F(TestToTxsPools, LeaderCreateToHeights_NullPrevHeights_ReturnsError) {
     EXPECT_EQ(pool.LeaderCreateToHeights(out), kPoolsError);
 }
 
-// ---- LeaderCreateToHeights: in-flight tx still within 30 s timeout → kPoolsError ----
+// ---- LeaderCreateToHeights: in-flight tx still within 30 s timeout → reuse cached heights ----
 
 TEST_F(TestToTxsPools, LeaderCreateToHeights_InFlightWithinTimeout_ReturnsError) {
     auto pool = MakePool();
@@ -101,11 +101,14 @@ TEST_F(TestToTxsPools, LeaderCreateToHeights_InFlightWithinTimeout_ReturnsError)
     }
     pool.prev_to_heights_ = prev;
     // Simulate a recent in-flight leader_to_heights_ (set just now)
-    pool.StoreLeaderToHeights(std::make_shared<pools::protobuf::ShardToTxItem>());
+    auto cached = std::make_shared<pools::protobuf::ShardToTxItem>();
+    cached->add_heights(5);
+    pool.StoreLeaderToHeights(cached);
     pool.leader_to_heights_set_tm_ = common::TimeUtils::TimestampMs();
 
     pools::protobuf::ShardToTxItem out;
-    EXPECT_EQ(pool.LeaderCreateToHeights(out), kPoolsError);
+    EXPECT_EQ(pool.LeaderCreateToHeights(out), kPoolsSuccess);
+    EXPECT_EQ(out.heights(0), 5u);
 }
 
 // ---- LeaderCreateToHeights: no valid heights → kPoolsError (valid=false) ----
