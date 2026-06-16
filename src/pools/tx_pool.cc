@@ -223,7 +223,7 @@ void TxPool::DrainOverAddrNonceUpdates() {
 
 uint64_t TxPool::GetEffectiveAddrNonce(const std::string& addr, uint64_t fallback_nonce) const {
     uint64_t over_nonce = 0lu;
-    if (add_addr_nonce_map_.Get(addr, over_nonce)) {
+    if (add_addr_nonce_map_.Peek(addr, over_nonce)) {
         return std::max(fallback_nonce, over_nonce);
     }
 
