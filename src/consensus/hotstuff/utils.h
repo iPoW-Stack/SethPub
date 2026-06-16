@@ -2,12 +2,13 @@
 
 #include <memory>
 #include <tuple>
+#include <unordered_map>
 
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
 #include "common/hash.h"
-#include "consensus/hotstuff/hotstuff_utils.h"
+#include "protos/address.pb.h"
 #include "protos/block.pb.h"
 #include "protos/view_block.pb.h"
 
@@ -24,6 +25,8 @@ namespace pools {
 namespace hotstuff {
 
 class ViewBlockChain;
+// Keep in sync with hotstuff_utils.h; defined here to avoid include cycle (types.h -> utils.h -> hotstuff_utils.h -> types.h).
+using BalanceAndNonceMap = std::unordered_map<std::string, std::shared_ptr<address::protobuf::AddressInfo>>;
 enum ChainType : int32_t {
     kInvalidChain = -1,
     kLocalChain = 0,
