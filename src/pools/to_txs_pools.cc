@@ -422,9 +422,10 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
         }
     }
 
-    SETH_DEBUG("final leader get to heights error, pool: %u, height: %lu", 0, 0);
-    StoreLeaderToHeights(nullptr);
-    return kPoolsError;
+    // Heights unchanged across all pools — still allow a GBP heartbeat ToTx
+    // (empty cross-shard transfers) so pool 32 can advance after an empty block.
+    SETH_DEBUG("leader get to heights unchanged, allow heartbeat to_tx");
+    return kPoolsSuccess;
 }
 
 int ToTxsPools::CreateToTxWithHeights(
@@ -473,9 +474,11 @@ int ToTxsPools::CreateToTxWithHeights(
         ProtobufToJson(*prev_to_heights).c_str(), 
         ProtobufToJson(leader_to_heights).c_str());
     if (!heights_valid) {
-        SETH_DEBUG("CreateToTxWithHeights: heights not valid (prev == leader for all pools), shard: %u",
+        SETH_DEBUG("CreateToTxWithHeights: heights unchanged, empty heartbeat to_tx, shard: %u",
             sharding_id);
-        return kPoolsError;
+        to_tx.set_elect_height(elect_height);
+        to_tx.set_des_shard(sharding_id);
+        return kPoolsSuccess;
     }
 
     for (uint32_t pool_idx = 0; pool_idx < (uint32_t)leader_to_heights.heights_size(); ++pool_idx) {

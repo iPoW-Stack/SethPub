@@ -46,6 +46,8 @@ WorkingDirectory=/root/seths/%i
 ExecStart=/root/seths/%i/seth -f 0 -g 0 %i
 Restart=always
 RestartSec=5
+TimeoutStopSec=15
+KillMode=control-group
 LimitNOFILE=1000000
 LimitCORE=infinity
 Environment=ASAN_OPTIONS=log_path=/tmp/asan.log:abort_on_error=1:detect_leaks=0:disable_coredump=0
@@ -56,20 +58,36 @@ EOF
     systemctl daemon-reload
 fi
 
+# core 文件落在 WorkingDirectory（/root/seths/<instance>/）
+if [ -w /proc/sys/kernel/core_pattern ] 2>/dev/null; then
+    cat > /etc/sysctl.d/99-seth-coredump.conf <<'EOF'
+fs.suid_dumpable = 1
+kernel.core_pattern = core.%e.%p
+EOF
+    sysctl -p /etc/sysctl.d/99-seth-coredump.conf >/dev/null 2>&1 || true
+fi
+
 # ==========================================
 # 3. 停止服务逻辑 (兼容模式)
 # ==========================================
 stop_services() {
     echo ">>> Cleaning up ALL existing seth services and processes..."
-    
+
+    # 先强杀进程，避免 systemctl stop 在 SIGTERM 上 hang 90s
+    pkill -9 seth 2>/dev/null || true
+
     if [ "$USE_SYSTEMD" = true ]; then
-        systemctl stop "seth@*" 2>/dev/null
-        systemctl disable "seth@*" 2>/dev/null
-        systemctl reset-failed 2>/dev/null
+        # 禁止 systemctl stop 'seth@*'：systemd 会把 * 当成实例名导致 unit 解析失败
+        systemctl list-units --type=service --all 'seth@*' --no-legend 2>/dev/null \
+            | awk '{print $1}' | while read -r unit; do
+                [ -z "$unit" ] && continue
+                systemctl stop "$unit" 2>/dev/null || true
+                systemctl disable "$unit" 2>/dev/null || true
+            done
+        systemctl daemon-reload 2>/dev/null || true
+        systemctl reset-failed 2>/dev/null || true
     fi
-    
-    # 按进程名杀死 seth；勿用 -f seth，否则会匹配 bash …/seth/… 路径误杀脚本
-    pkill -9 seth 2>/dev/null
+
     echo ">>> All seth-related daemons and processes cleared."
 }
 
@@ -144,6 +162,9 @@ start_nodes() {
             
             # 确保工作目录存在
             mkdir -p "$work_dir"
+            if [ -x /root/pkg/seth ]; then
+                ln -sf /root/pkg/seth "${work_dir}/seth"
+            fi
 
             if [ "$USE_SYSTEMD" = true ]; then
                 echo "Starting via Systemd: seth@${instance_name}"

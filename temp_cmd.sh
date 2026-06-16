@@ -46,17 +46,11 @@ deploy_nodes() {
             fi
 
             cp -rf /root/pkg/temp /root/seths/s$shard_id'_'$i
-            sed -i 's/PRIVATE_KEY/'$prikey'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
-            sed -i 's/PUBLIC_IP/'$public_ip'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
-            sed -i 's/LOCAL_IP/'$local_ip'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
-            sed -i 's/LEADER_CHANGE_INIT_TM/'$leader_init_tm'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
-            if ((i<=TEST_TX_MAX_POOL_INDEX)); then
-                sed -i 's/TEST_POOL_INDEX/'$(($i-1))'/g' /root/seths/s3_$i/conf/seth.conf
-            else
-                sed -i 's/TEST_POOL_INDEX/-1/g' /root/seths/s3_$i/conf/seth.conf
-            fi
-
-            sed -i 's/TEST_TX_TPS/'$TEST_TX_TPS'/g' /root/seths/s3_$i/conf/seth.conf
+            conf=/root/seths/s$shard_id'_'$i/conf/seth.conf
+            sed -i 's/PRIVATE_KEY/'$prikey'/g' "$conf"
+            sed -i 's/PUBLIC_IP/'$public_ip'/g' "$conf"
+            sed -i 's/LOCAL_IP/'$local_ip'/g' "$conf"
+            sed -i 's/LEADER_CHANGE_INIT_TM/'$leader_init_tm'/g' "$conf"
 
             port0=''
             port1=''
@@ -87,9 +81,22 @@ deploy_nodes() {
                 (( port2 = (port2 % 60000) + 1024 ))
             fi
 
-            sed -i 's/HTTP_PORT/'$port1'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
-            sed -i 's/LOCAL_PORT/'$port0'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
-            sed -i 's/TX_WS_PORT/'$port2'/g' /root/seths/s$shard_id'_'$i/conf/seth.conf
+            sed -i 's/HTTP_PORT/'$port1'/g' "$conf"
+            sed -i 's/LOCAL_PORT/'$port0'/g' "$conf"
+            sed -i 's/TX_WS_PORT/'$port2'/g' "$conf"
+            if ((shard_id==3)); then
+                if ((i<=TEST_TX_MAX_POOL_INDEX)); then
+                    sed -i 's/TEST_POOL_INDEX/'$(($i-1))'/g' "$conf"
+                else
+                    sed -i 's/TEST_POOL_INDEX/-1/g' "$conf"
+                fi
+                sed -i 's/TEST_TX_TPS/'$TEST_TX_TPS'/g' "$conf"
+            fi
+            sed -i 's/FOR_CK_CLIENT/false/g' "$conf"
+            if grep -qE 'BOOTSTRAP|FOR_CK_CLIENT|PRIVATE_KEY|LOCAL_IP|PUBLIC_IP|HTTP_PORT|LOCAL_PORT|TX_WS_PORT' "$conf"; then
+                echo "FATAL: unset placeholders remain in $conf" >&2
+                exit 1
+            fi
 
             echo /root/seths/s$shard_id'_'$i/seth
 
@@ -137,9 +144,14 @@ deploy_nodes() {
 killall -9 seth
 
 rm -rf /tmp/asan*
-# 设置 core dump 文件名包含进程号
-# 格式: core.<可执行文件名>.<进程号>
-echo "core.%e.%p" > /proc/sys/kernel/core_pattern
+# core 文件落在实例工作目录（/root/seths/<instance>/）
+if [ -w /proc/sys/kernel/core_pattern ] 2>/dev/null; then
+    cat > /etc/sysctl.d/99-seth-coredump.conf <<'EOF'
+fs.suid_dumpable = 1
+kernel.core_pattern = core.%e.%p
+EOF
+    sysctl -p /etc/sysctl.d/99-seth-coredump.conf 2>/dev/null || true
+fi
 ulimit -c unlimited
 
 deploy_nodes

@@ -47,11 +47,14 @@ bool Command::Init(bool first_node, bool show_cmd, bool period_tick) {
 }
 
 int clear_icanon(void) {
+    if (!isatty(STDIN_FILENO)) {
+        return 1;
+    }
+
     struct termios settings;
     int result;
     result = tcgetattr(STDIN_FILENO, &settings);
     if (result < 0) {
-        perror("error in tcgetattr");
         return 0;
     }
 
@@ -65,14 +68,16 @@ int clear_icanon(void) {
 }
 
 void Command::Run() {
+    if (!show_cmd_) {
+        while (!destroy_) {
+            std::this_thread::sleep_for(std::chrono::microseconds(200000ll));
+        }
+        return;
+    }
+
     Help();
     clear_icanon();
     while (!destroy_) {
-        if (!show_cmd_) {
-            std::this_thread::sleep_for(std::chrono::microseconds(200000ll));
-            continue;
-        }
-
         std::cout << std::endl << std::endl << "cmd > ";
         std::string cmdline;
         std::getline(std::cin, cmdline);

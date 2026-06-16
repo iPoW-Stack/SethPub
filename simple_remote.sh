@@ -87,7 +87,7 @@ wait_remote_pids() {
     #fi
 }
 
-bash cmd.sh $2 "sudo tc qdisc del dev eth0 root 2>/dev/null || true;pkill -9 seth;systemctl stop 'seth@*' 2>/dev/null; systemctl list-units --all 'seth@*' --no-legend | cut -d' ' -f1 | xargs -r -n1 sh -c 'systemctl stop \"\$0\"; systemctl disable \"\$0\"' 2>/dev/null; systemctl daemon-reload; systemctl reset-failed"
+bash cmd.sh $2 "sudo tc qdisc del dev eth0 root 2>/dev/null || true; pkill -9 seth 2>/dev/null || true; systemctl list-units --type=service --all 'seth@*' --no-legend 2>/dev/null | awk '{print \$1}' | while read -r u; do [ -n \"\$u\" ] && systemctl stop \"\$u\" 2>/dev/null; [ -n \"\$u\" ] && systemctl disable \"\$u\" 2>/dev/null; done; systemctl daemon-reload; systemctl reset-failed"
 init() {
     tmp_ips=(${node_ips//-/ })
     tmp_ips_len=(${#tmp_ips[*]})
@@ -186,19 +186,124 @@ init() {
     if [ "$shard3_node_count" != "$nodes_count" ]; then
         echo "new shard nodes file will create."
         rm -rf /root/seth/shards*
+        rm -rf /root/seth/init_accounts*
     fi
 
     echo "node count: " $nodes_count
     rm -rf /root/nodes/seth/latest_blocks
 }
 
+apply_pkg_conf_placeholders() {
+    local conf_path='/root/nodes/seth/pkg/temp/conf/seth.conf'
+    if [ ! -f "$conf_path" ]; then
+        echo "ERROR: missing $conf_path" >&2
+        exit 1
+    fi
+
+    printf '%s' "$bootstrap" > /tmp/bootstrap_data.tmp
+    local pybin=''
+    for candidate in python3 /root/tools/python3.10/bin/python3 python3.10; do
+        if command -v "$candidate" >/dev/null 2>&1; then
+            pybin="$candidate"
+            break
+        fi
+    done
+    if [ -z "$pybin" ]; then
+        echo "ERROR: python3 not found, cannot substitute BOOTSTRAP" >&2
+        exit 1
+    fi
+
+    BOOTSTRAP_FILE=/tmp/bootstrap_data.tmp FOR_CK_VALUE=false "$pybin" - <<'PY'
+import os
+conf_path = '/root/nodes/seth/pkg/temp/conf/seth.conf'
+with open(os.environ['BOOTSTRAP_FILE'], 'r', encoding='utf-8') as f:
+    bootstrap_val = f.read()
+with open(conf_path, 'r', encoding='utf-8') as f:
+    content = f.read()
+content = content.replace('BOOTSTRAP', bootstrap_val)
+content = content.replace('FOR_CK_CLIENT', os.environ.get('FOR_CK_VALUE', 'false'))
+with open(conf_path, 'w', encoding='utf-8') as f:
+    f.write(content)
+PY
+
+    rm -f /tmp/bootstrap_data.tmp
+    if grep -q 'BOOTSTRAP' "$conf_path" || grep -q 'FOR_CK_CLIENT' "$conf_path"; then
+        echo "ERROR: placeholder substitution failed in $conf_path" >&2
+        exit 1
+    fi
+}
+
+sync_shards_for_genesis() {
+    for ((shard_id=2; shard_id<=end_shard; shard_id++)); do
+        if [ -f "/root/seth/shards${shard_id}" ]; then
+            cp -f "/root/seth/shards${shard_id}" "/root/nodes/seth/shards${shard_id}"
+        fi
+    done
+}
+
+# tx_cli reads plain 64-hex-char private keys; genesis funds both init_accounts
+# and shards. Keep them identical and never ship encrypted init_accounts to pkg.
+sync_init_accounts_from_shards() {
+    for ((shard_id=2; shard_id<=end_shard; shard_id++)); do
+        if [ -f "/root/seth/shards${shard_id}" ]; then
+            cp -f "/root/seth/shards${shard_id}" "/root/seth/init_accounts${shard_id}"
+            if [ -d "/root/nodes/seth" ]; then
+                cp -f "/root/seth/shards${shard_id}" "/root/nodes/seth/init_accounts${shard_id}"
+            fi
+        fi
+    done
+}
+
+copy_pkg_account_files() {
+    local seth_bin="/root/seth/cbuild_${TARGET}/seth"
+    for ((shard_id=2; shard_id<=end_shard; shard_id++)); do
+        if [ ! -f "/root/seth/shards${shard_id}" ]; then
+            echo "ERROR: missing /root/seth/shards${shard_id}" >&2
+            exit 1
+        fi
+        "$seth_bin" -A "/root/seth/shards${shard_id}" -D "/root/nodes/seth/pkg/shards${shard_id}"
+        cp -f "/root/seth/shards${shard_id}" "/root/nodes/seth/pkg/init_accounts${shard_id}"
+    done
+}
+
+refresh_genesis_databases() {
+    local genesis_bin="/root/nodes/seth/seth"
+    if [ ! -x "$genesis_bin" ]; then
+        genesis_bin="/root/seth/cbuild_${TARGET}/seth"
+    fi
+    if [ ! -x "$genesis_bin" ]; then
+        echo "ERROR: seth binary not found for genesis refresh" >&2
+        exit 1
+    fi
+    sync_shards_for_genesis
+    sync_init_accounts_from_shards
+    echo "refresh genesis db: nodes=$nodes_count shards=2..$end_shard"
+    cd /root/nodes/seth && "$genesis_bin" -U -N "$nodes_count" -E 4
+    cd /root/nodes/seth && "$genesis_bin" -S 3 -N "$nodes_count" -E 4
+    for ((shard_id=2; shard_id<=end_shard; shard_id++)); do
+        if [ -f "/root/nodes/seth/shards${shard_id}" ]; then
+            cp -f "/root/nodes/seth/shards${shard_id}" "/root/seth/shards${shard_id}"
+            cp -f "/root/seth/shards${shard_id}" "/root/seth/init_accounts${shard_id}"
+        fi
+    done
+}
+
 get_bootstrap() {
+    bootstrap=""
     node_ips_array=(${node_ips//,/ })
     for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
         i=1
         for ip in "${node_ips_array[@]}"; do
             for ((j=0; j<$each_nodes_count;j++)); do
-                tmppubkey=`sed -n "$i""p" /root/nodes/seth/pkg/shards${shard_id} | awk -F'\t' '{print $2}'`
+                local shard_file="/root/seth/shards${shard_id}"
+                if [ ! -f "$shard_file" ]; then
+                    shard_file="/root/nodes/seth/pkg/shards${shard_id}"
+                fi
+                tmppubkey=`sed -n "$i""p" "$shard_file" | awk -F'\t' '{print $2}'`
+                if [ -z "$tmppubkey" ]; then
+                    echo "ERROR: empty pubkey at line $i in $shard_file" >&2
+                    exit 1
+                fi
                 port=''
                 if ((i>=100)); then
                     port='1'$shard_id''$i
@@ -213,29 +318,23 @@ get_bootstrap() {
                 fi
 
                 node_info=$tmppubkey":"$ip":"$port":"$shard_id
-                bootstrap=$bootstrap","$node_info
+                if [ -z "$bootstrap" ]; then
+                    bootstrap="$node_info"
+                else
+                    bootstrap="$bootstrap,$node_info"
+                fi
                 i=$((i+1))
             done
         done
     done
-# 1. 先把超长的 bootstrap 变量写入一个临时文件
-printf "%s" "$bootstrap" > /tmp/bootstrap_data.tmp
 
-# 2. 让 Python 读取文件进行替换
-/root/tools/python3.10/bin/python3 -c "
-import os
-conf_path = '/root/nodes/seth/pkg/temp/conf/seth.conf'
-with open('/tmp/bootstrap_data.tmp', 'r') as f:
-    new_val = f.read()
-with open(conf_path, 'r') as f:
-    content = f.read()
-with open(conf_path, 'w') as f:
-    f.write(content.replace('BOOTSTRAP', new_val))
-"
+    if [ -z "$bootstrap" ]; then
+        echo "ERROR: empty bootstrap list" >&2
+        exit 1
+    fi
 
-# 3. 删除临时文件
-rm /tmp/bootstrap_data.tmp
-echo $bootstrap
+    apply_pkg_conf_placeholders
+    echo "$bootstrap"
 }
 
 make_package() {
@@ -251,13 +350,12 @@ make_package() {
         # Always refresh scripts so latest placeholder substitutions take effect.
         cp /root/seth/temp_cmd.sh /root/nodes/seth/pkg
         cp /root/seth/start_cmd.sh /root/nodes/seth/pkg
-        for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
-            /root/seth/cbuild_$TARGET/seth -A /root/seth/shards${shard_id} -D /root/nodes/seth/pkg/shards${shard_id}
-            /root/seth/cbuild_$TARGET/seth -A  /root/seth/init_accounts${shard_id} -D /root/nodes/seth/pkg/init_accounts${shard_id}
-        done
+        copy_pkg_account_files
+        refresh_genesis_databases
+        cp -rf /root/nodes/seth/shard_db_2 /root/nodes/seth/pkg/shard_db_2
+        cp -rf /root/nodes/seth/shard_db_3 /root/nodes/seth/pkg/
     else
-        cd /root/nodes/seth && ./seth -U -N $nodes_count -E 4
-        cd /root/nodes/seth && ./seth -S 3 -N $nodes_count -E 4
+        refresh_genesis_databases
         cd /root/nodes/seth && ./seth -C
         cd /root/seth/cbuild_$TARGET && make txcli
 
@@ -265,10 +363,7 @@ make_package() {
         cp /root/nodes/seth/seth /root/nodes/seth/pkg
         cp /root/nodes/seth/conf/GeoLite2-City.mmdb /root/nodes/seth/pkg
         cp /root/nodes/seth/conf/log4cpp.properties /root/nodes/seth/pkg
-        for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
-            /root/seth/cbuild_$TARGET/seth -A /root/seth/shards${shard_id} -D /root/nodes/seth/pkg/shards${shard_id}
-            /root/seth/cbuild_$TARGET/seth -A  /root/seth/init_accounts${shard_id} -D /root/nodes/seth/pkg/init_accounts${shard_id}
-        done
+        copy_pkg_account_files
         cp /root/seth/temp_cmd.sh /root/nodes/seth/pkg
         cp /root/seth/start_cmd.sh /root/nodes/seth/pkg
         cp -rf /root/nodes/seth/shard_db_2 /root/nodes/seth/pkg/shard_db_2

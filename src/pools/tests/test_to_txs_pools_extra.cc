@@ -190,8 +190,8 @@ TEST_F(TestToTxsPoolsExtra, CreateToTxWithHeights_PrevHigherThanLeader_Error) {
         kPoolsError);
 }
 
-// Branch: all prev == leader → heights_valid=false → kPoolsError
-TEST_F(TestToTxsPoolsExtra, CreateToTxWithHeights_AllEqualHeights_Error) {
+// Branch: all prev == leader → heights_valid=false → empty heartbeat ToTx
+TEST_F(TestToTxsPoolsExtra, CreateToTxWithHeights_AllEqualHeights_Success) {
     auto pool = MakePool();
     pool.prev_to_heights_ = std::make_shared<pools::protobuf::ShardToTxItem>(MakeHeights(0));
 
@@ -200,7 +200,7 @@ TEST_F(TestToTxsPoolsExtra, CreateToTxWithHeights_AllEqualHeights_Error) {
     pools::protobuf::ToTxMessage to_tx;
     EXPECT_EQ(pool.CreateToTxWithHeights(
         network::kConsensusShardBeginNetworkId, 0, &prev_arg, leader, to_tx),
-        kPoolsError);
+        kPoolsSuccess);
 }
 
 // Branch: max_height > pool_consensus_heihgts_[0] → kPoolsError
