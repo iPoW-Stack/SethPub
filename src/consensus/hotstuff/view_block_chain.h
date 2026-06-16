@@ -88,7 +88,8 @@ public:
         const std::string& addr, 
         uint64_t nonce, 
         const std::string& parent_hash,
-        uint64_t* now_nonce);
+        uint64_t* now_nonce,
+        const BalanceAndNonceMap* merged_balance_map = nullptr);
     // If a chain is valid
     bool IsValid();
     std::string String() const;

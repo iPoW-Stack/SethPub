@@ -64,7 +64,7 @@ struct GlobalTxVerifyPool {
         if (cores <= 0) {
             cores = 4;
         }
-        const int nthreads = std::max(2, 2 * cores);
+        const int nthreads = std::max(2, 8 * cores);
         threads_.reserve(nthreads);
         for (int i = 0; i < nthreads; ++i) {
             threads_.emplace_back([this] { WorkerLoop(); });

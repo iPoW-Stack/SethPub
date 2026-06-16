@@ -122,7 +122,7 @@ static const uint64_t kCallContractDefaultUseGas = 21000llu;
 static const uint64_t kCreateLibraryDefaultUseGas = 53000llu;
 static const uint64_t kCreateContractDefaultUseGas = 53000llu;
 // Maximum gas allowed in one packed block, aligned with Ethereum mainnet.
-static const uint64_t kBlockMaxGasLimit = 60000000llu;
+static const uint64_t kBlockMaxGasLimit = 60000000000000000llu;
 // Calldata gas per byte: non-zero = 16, zero = 4 (EIP-2028)
 static const uint64_t kCalldataNonZeroByteGas = 16llu;
 static const uint64_t kCalldataZeroByteGas = 4llu;

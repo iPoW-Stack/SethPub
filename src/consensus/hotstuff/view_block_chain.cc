@@ -15,6 +15,45 @@ namespace seth {
 
 namespace hotstuff {
 
+namespace {
+
+int CompareTxNonceResult(
+        uint64_t tx_nonce,
+        uint64_t account_nonce,
+        uint64_t* now_nonce,
+        const std::string& addr,
+        const std::string& parent_hash) {
+    *now_nonce = account_nonce;
+    if (account_nonce + 1 != tx_nonce) {
+        if (account_nonce >= tx_nonce) {
+            SETH_DEBUG("discard failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s",
+                common::Encode::HexEncode(addr).c_str(),
+                tx_nonce,
+                account_nonce,
+                common::Encode::HexEncode(parent_hash).c_str());
+            return 3;
+        }
+
+        SETH_INFO("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s",
+            common::Encode::HexEncode(addr).c_str(),
+            tx_nonce,
+            account_nonce,
+            common::Encode::HexEncode(parent_hash).c_str());
+        return account_nonce + 1 > tx_nonce ? 1 : -1;
+    }
+
+#ifndef NDEBUG
+    SETH_DEBUG("success check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s",
+        common::Encode::HexEncode(addr).c_str(),
+        tx_nonce,
+        account_nonce,
+        common::Encode::HexEncode(parent_hash).c_str());
+#endif
+    return 0;
+}
+
+}  // namespace
+
 ViewBlockChain::ViewBlockChain() {}
 
 void ViewBlockChain::Init(
@@ -733,6 +772,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
                     (acc_ptr->latest_height() == new_addr_info->latest_height() &&
                      acc_ptr->tx_index() < new_addr_info->tx_index())) {
                 account_lru_map_.insert(new_addr_info);
+#ifndef NDEBUG
                 SETH_DEBUG("success update address: %s,balance: %lu, nonce: %lu, new balance: %lu, new nonce: %lu, "
                     "latest height: %lu, tx index: %u, new latest height: %lu, new tx index: %u",
                     common::Encode::HexEncode(new_addr_info->addr()).c_str(),
@@ -744,12 +784,11 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
                     acc_ptr != nullptr ? acc_ptr->tx_index() : 0,
                     new_addr_info->latest_height(),
                     new_addr_info->tx_index());
+#endif
             }
         }
 
         for (int32_t i = 0; i < tmp_block->block_info().unique_hashs_size(); ++i) {
-            SETH_DEBUG("success add unique hash: %s", 
-                common::Encode::HexEncode(tmp_block->block_info().unique_hashs(i)).c_str());
             prefix_db_->SaveOverUniqueHash(tmp_block->block_info().unique_hashs(i), db_batch);
         }
 
@@ -757,6 +796,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
         // FIX: Only erase parent block from view_blocks_info_ if the parent's height is also
         // committed. Previously we unconditionally erased the parent, which could remove blocks
         // still needed by pending sync operations or MergeAllPrevBalanceMap() chain walks.
+        auto b_tm = common::TimeUtils::TimestampMs();
         {
             auto parent_info = Get(tmp_block->parent_hash());
             if (parent_info && parent_info->view_block) {
@@ -794,6 +834,11 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
         // Previously, SaveLatestPoolInfo was only called during genesis/initial sync,
         // so after restart pool_latest_info.view() was 0 or very old, causing
         // "propose view not match leader view" errors on all pools.
+        SETH_DEBUG("persist pool_latest_info for %u_%u_%lu, use time: %lu ms", 
+            tmp_block->qc().network_id(),
+            tmp_block->qc().pool_index(),
+            tmp_block->qc().view(),
+            common::TimeUtils::TimestampMs() - b_tm);
         {
             pools::protobuf::PoolLatestInfo pool_info;
             pool_info.set_height(tmp_block->block_info().height());
@@ -814,6 +859,12 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
             }
         }
 
+        SETH_DEBUG("success SaveLatestPoolInfo %u_%u_%lu_%lu, use time: %lu ms",
+            tmp_block->qc().network_id(), 
+            tmp_block->qc().pool_index(), 
+            tmp_block->qc().view(), 
+            tmp_block->block_info().height(),
+            (common::TimeUtils::TimestampMs() - b_tm));
 // #ifndef NDEBUG
 //         for (auto iter = db_batch.data_map_.begin(); iter != db_batch.data_map_.end(); ++iter) {
 //             if (memcmp(iter->first.c_str(), protos::kAddressPrefix.c_str(), protos::kAddressPrefix.size()) == 0) {
@@ -832,15 +883,49 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
 //             }
 //         }
 // #endif
+        const auto db_batch_bytes = db_batch.ApproximateSize();
+        const auto db_put_begin_ms = common::TimeUtils::TimestampMs();
         if (!db_->Put(db_batch).ok()) {
             SETH_FATAL("write to db failed!");
         }
 
+        SETH_DEBUG("commit block to db success %u_%u_%lu_%lu, batch_bytes: %lu, "
+            "db_put_ms: %lu, use time: %lu ms",
+            tmp_block->qc().network_id(),
+            tmp_block->qc().pool_index(),
+            tmp_block->qc().view(),
+            tmp_block->block_info().height(),
+            db_batch_bytes,
+            common::TimeUtils::TimestampMs() - db_put_begin_ms,
+            common::TimeUtils::TimestampMs() - b_tm);
         if (pools_mgr_) {
+            const auto txover_begin_ms = common::TimeUtils::TimestampMs();
             pools_mgr_->TxOver(pool_index_, *tmp_block);
+            const auto txover_ms = common::TimeUtils::TimestampMs() - txover_begin_ms;
+            if (txover_ms >= 100lu ||
+                    tmp_block->block_info().tx_list_size() >= 128) {
+                SETH_DEBUG("commit TxOver %u_%u_%lu, txs: %d, txover_ms: %lu",
+                    tmp_block->qc().network_id(),
+                    tmp_block->qc().pool_index(),
+                    tmp_block->block_info().height(),
+                    tmp_block->block_info().tx_list_size(),
+                    txover_ms);
+            }
         }
 
+        SETH_DEBUG("add block to block manager %u_%u_%lu_%lu, use time: %lu ms", 
+            tmp_block->qc().network_id(), 
+            tmp_block->qc().pool_index(), 
+            tmp_block->qc().view(), 
+            tmp_block->block_info().height(),
+            (common::TimeUtils::TimestampMs() - b_tm));
         block_mgr_->ConsensusAddBlock(*iter);
+        SETH_DEBUG("success commit view block %u_%u_%lu_%lu, use time: %lu ms", 
+            tmp_block->qc().network_id(), 
+            tmp_block->qc().pool_index(), 
+            tmp_block->qc().view(), 
+            tmp_block->block_info().height(),
+            common::TimeUtils::TimestampMs() - b_tm);
         stored_to_db_view_ = tmp_block->qc().view();
         latest_commited_block = *iter;
     }
@@ -1318,7 +1403,28 @@ int ViewBlockChain::CheckTxNonceValid(
         const std::string& addr, 
         uint64_t nonce, 
         const std::string& parent_hash,
-        uint64_t* now_nonce) {
+        uint64_t* now_nonce,
+        const BalanceAndNonceMap* merged_balance_map) {
+    if (merged_balance_map != nullptr) {
+        auto iter = merged_balance_map->find(addr);
+        if (iter != merged_balance_map->end()) {
+            return CompareTxNonceResult(
+                nonce, iter->second->nonce(), now_nonce, addr, parent_hash);
+        }
+
+        auto addr_info = ChainGetAccountInfo(addr);
+        if (addr_info == nullptr) {
+            SETH_DEBUG("failed check tx nonce not exists in db: %s, %lu, phash: %s",
+                common::Encode::HexEncode(addr).c_str(),
+                nonce,
+                common::Encode::HexEncode(parent_hash).c_str());
+            return -1;
+        }
+
+        return CompareTxNonceResult(
+            nonce, addr_info->nonce(), now_nonce, addr, parent_hash);
+    }
+
     // CheckThreadIdValid();
     std::string phash = parent_hash;
     while (true) {
@@ -1339,26 +1445,8 @@ int ViewBlockChain::CheckTxNonceValid(
             auto& tmp_map = *it->second->acc_balance_map_ptr;
             auto iter = tmp_map.find(addr);
             if (iter != tmp_map.end()) {
-                *now_nonce = iter->second->nonce();
-                if (iter->second->nonce() + 1 != nonce) {
-                    if (iter->second->nonce() >= nonce) {
-                        SETH_DEBUG("discard failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
-                            common::Encode::HexEncode(addr).c_str(), 
-                            nonce,
-                            iter->second->nonce(),
-                            common::Encode::HexEncode(parent_hash).c_str());
-                        return 3;
-                    }
-
-                    SETH_INFO("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
-                        common::Encode::HexEncode(addr).c_str(), 
-                        nonce,
-                        iter->second->nonce(),
-                        common::Encode::HexEncode(parent_hash).c_str());
-                    return iter->second->nonce() + 1 > nonce ? 1 : -1;
-                }
-
-                return 0;
+                return CompareTxNonceResult(
+                    nonce, iter->second->nonce(), now_nonce, addr, parent_hash);
             }
         }
 
@@ -1378,31 +1466,8 @@ int ViewBlockChain::CheckTxNonceValid(
         return -1;
     }
 
-    if (addr_info->nonce() + 1 != nonce) {
-        *now_nonce = addr_info->nonce();
-        if (addr_info->nonce() >= nonce) {
-            SETH_DEBUG("discard failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
-                common::Encode::HexEncode(addr).c_str(), 
-                nonce,
-                addr_info->nonce(),
-                common::Encode::HexEncode(parent_hash).c_str());
-            return 3;
-        }
-
-        SETH_INFO("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
-            common::Encode::HexEncode(addr).c_str(), 
-            nonce,
-            addr_info->nonce(),
-            common::Encode::HexEncode(parent_hash).c_str());
-        return addr_info->nonce() + 1 > nonce ? 1 : -1;
-    }
-
-    SETH_DEBUG("success check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s", 
-        common::Encode::HexEncode(addr).c_str(), 
-        nonce,
-        addr_info->nonce(),
-        common::Encode::HexEncode(parent_hash).c_str());
-    return 0;
+    return CompareTxNonceResult(
+        nonce, addr_info->nonce(), now_nonce, addr, parent_hash);
 }
 
 void ViewBlockChain::RecoverHighViewBlock() {

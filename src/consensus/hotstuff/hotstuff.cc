@@ -1106,8 +1106,13 @@ Status Hotstuff::HandleTC(std::shared_ptr<ProposeMsgWrapper>& pro_msg_wrap) {
             UpdateLatestQcItemPtr(tc_ptr);
         }
 
-        SETH_DEBUG("commit use time: %lu, verify_qc_use_ms: %lu",
-            (common::TimeUtils::TimestampMs() - btime), (verify_qc_end_ms - btime));
+        SETH_DEBUG("commit use time: %lu, verify_qc_use_ms: %lu, src hash64: %lu, "
+            "leader propose hash64: %lu, propose_debug: %s",
+            (common::TimeUtils::TimestampMs() - btime), 
+            (verify_qc_end_ms - btime), 
+            pro_msg_wrap->msg_ptr->header.hash64(),
+            latest_leader_propose_message_ ? latest_leader_propose_message_->header.hash64() : 0,
+            pro_msg_wrap->msg_ptr->header.debug().c_str());
     }
 
     return Status::kSuccess;
@@ -1575,8 +1580,10 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     qc_item.set_leader_idx(vote_msg.leader_idx());
     qc_item.set_tm_height(tm_height);
     auto qc_hash = GetQCMsgHash(qc_item);
-    SETH_DEBUG("success set view block hash: %s, qc_hash: %s, "
-        "sign x: %s, replica: %d, elect_height: %lu, %u_%u_%lu, vote_msg.leader_idx: %d",
+    if (latest_leader_propose_message_)
+    SETH_INFO("success set view block hash: %s, qc_hash: %s, "
+        "sign x: %s, replica: %d, elect_height: %lu, %u_%u_%lu, "
+        "vote_msg.leader_idx: %d, use time: %lu, hash64: %lu",
         common::Encode::HexEncode(qc_item.view_block_hash()).c_str(),
         common::Encode::HexEncode(qc_hash).c_str(),
         vote_msg.sign_x().c_str(),
@@ -1585,7 +1592,9 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
         qc_item.network_id(),
         qc_item.pool_index(),
         qc_item.view(),
-        vote_msg.leader_idx());
+        vote_msg.leader_idx(),
+        (common::TimeUtils::TimestampMs() - view_block_info_ptr->b_tm_ms),
+        latest_leader_propose_message_->header.hash64());
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (latest_leader_propose_message_ && 
             latest_leader_propose_message_->header.hotstuff().pro_msg().view_item().qc().leader_idx() != vote_msg.leader_idx()) {
@@ -1676,13 +1685,16 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     view_block_chain()->UpdateHighViewBlock(qc_item);
     BroadcastGlobalPoolBlock(view_block_info_ptr->view_block);
     pacemaker()->NewQcView(qc_item.view());
-    SETH_DEBUG("NewView propose newview called %u_%u_%lu, tc_view: %lu, "
-        "propose_debug: %s, use time: %lu, latest_leader_propose_message_ = nullptr",
+    SETH_INFO("NewView propose newview called %u_%u_%lu, tc_view: %lu, "
+        "propose_debug: %s, use time: %lu, latest_leader_propose_message_ = nullptr, "
+        "hash64: %lu, tx size: %lu",
         qc_item.network_id(),
         pool_idx_, view_block_chain()->HighViewBlock()->qc().view(), 
         pacemaker()->HighTC()->view(),
         msg_ptr->header.debug().c_str(),
-        (common::TimeUtils::TimestampMs() - view_block_info_ptr->b_tm_ms));
+        (common::TimeUtils::TimestampMs() - view_block_info_ptr->b_tm_ms),
+        latest_leader_propose_message_->header.hash64(),
+        latest_leader_propose_message_->header.hotstuff().pro_msg().tx_propose().txs_size());
     ADD_DEBUG_PROCESS_TIMESTAMP();
     latest_leader_propose_message_ = nullptr;
     last_leader_propose_view_ = 0llu;

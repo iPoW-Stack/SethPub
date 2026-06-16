@@ -208,57 +208,41 @@ Status Crypto::VerifyThresSign(
         SETH_WARN("reconstructed_sign == nullptr");
         //assert(false);
         return Status::kBlsVerifyFailed;
-    }    
-    std::string verify_hash_a;
-    Status s = GetVerifyHashA(sharding_id, elect_height, msg_hash, &verify_hash_a);
-    if (s != Status::kSuccess) {
-        SETH_WARN("GetVerifyHashA faile net: %u, pool: %u, height: %lu, hash: %s",
-            sharding_id, sharding_id, elect_height,
-            common::Encode::HexEncode(msg_hash).c_str());
-        // //assert(false);
-        return s;
     }
 
-    std::string verify_hash_b;
-    s = GetVerifyHashB(sharding_id, elect_height, reconstructed_sign, &verify_hash_b);
-    if (s != Status::kSuccess) {
-        SETH_WARN("GetVerifyHashB failed!");
-        //assert(false);
-        return s;
+    auto elect_item = GetElectItem(sharding_id, elect_height);
+    if (!elect_item || elect_item->common_pk() == libff::alt_bn128_G2::zero()) {
+        SETH_ERROR("elect_item not found, elect_height: %lu", elect_height);
+        return Status::kElectItemNotFound;
     }
 
-    if (verify_hash_a != verify_hash_b) {
-        auto elect_item = GetElectItem(sharding_id, elect_height);
+    libff::alt_bn128_G1 g1_hash;
+    GetG1Hash(msg_hash, &g1_hash);
+    if (bls_mgr_->VerifyFast(reconstructed_sign, g1_hash, elect_item->common_pk()) != bls::kBlsSuccess) {
         auto val = libBLS::ThresholdUtils::fieldElementToString(
             elect_item->common_pk().X.c0);
         auto agg_sign_str = libBLS::ThresholdUtils::fieldElementToString(
             reconstructed_sign.X);
-        SETH_WARN("verify_hash_a != verify_hash_b %s, %s, msg_hash: %s, "
-            "net: %u, pool: %u, elect height: %lu, common PK: %s, agg sign: %s", 
-            common::Encode::HexEncode(verify_hash_a).c_str(),
-            common::Encode::HexEncode(verify_hash_b).c_str(),
+        SETH_WARN("verify thresh sign failed, msg_hash: %s, "
+            "net: %u, pool: %u, elect height: %lu, common PK: %s, agg sign: %s",
             common::Encode::HexEncode(msg_hash).c_str(),
-            sharding_id, 
+            sharding_id,
             pool_idx_,
             elect_height,
             val.c_str(),
             agg_sign_str.c_str());
-        //assert(false);
         return Status::kBlsVerifyFailed;
     }
 
 #ifndef NDEBUG
-    auto elect_item = GetElectItem(sharding_id, elect_height);
     auto val = libBLS::ThresholdUtils::fieldElementToString(
         elect_item->common_pk().X.c0);
     auto agg_sign_str = libBLS::ThresholdUtils::fieldElementToString(
         reconstructed_sign.X);
-    SETH_DEBUG("success verify agg sign %s, %s, msg_hash: %s, net: %u, pool: %u, "
-            "elect height: %lu, common PK: %s, agg sign: %s", 
-            common::Encode::HexEncode(verify_hash_a).c_str(),
-            common::Encode::HexEncode(verify_hash_b).c_str(),
+    SETH_DEBUG("success verify agg sign msg_hash: %s, net: %u, pool: %u, "
+            "elect height: %lu, common PK: %s, agg sign: %s",
             common::Encode::HexEncode(msg_hash).c_str(),
-            sharding_id, 
+            sharding_id,
             pool_idx_,
             elect_height,
             val.c_str(),

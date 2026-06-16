@@ -403,6 +403,20 @@ int BlsManager::Verify(
     return kBlsError;
 }
 
+int BlsManager::VerifyFast(
+        const libff::alt_bn128_G1& sign,
+        const libff::alt_bn128_G1& g1_hash,
+        const libff::alt_bn128_G2& pkey) try {
+    if (pkey == libff::alt_bn128_G2::zero()) {
+        return kBlsError;
+    }
+
+    return BlsSign::VerifyFast(sign, g1_hash, pkey);
+} catch (std::exception& e) {
+    BLS_ERROR("catch error: %s", e.what());
+    return kBlsError;
+}
+
 int BlsManager::GetVerifyHash(
             uint32_t t,
             uint32_t n,
@@ -1139,7 +1153,6 @@ bool BlsManager::VerifyAggSignValid(
             all_signs,
             lagrange_coeffs));
 #endif
-        std::string verify_hash;
         libff::alt_bn128_G1 g1_hash;
         GetLibffHash(finish_item->max_finish_hash, &g1_hash);
         auto bn_sign = *bls_agg_sign;
@@ -1147,13 +1160,7 @@ bool BlsManager::VerifyAggSignValid(
         auto sign_x = libBLS::ThresholdUtils::fieldElementToString(bn_sign.X);
         auto sign_y = libBLS::ThresholdUtils::fieldElementToString(bn_sign.Y);
 
-        if (Verify(
-                t,
-                n,
-                common_pk,
-                *bls_agg_sign,
-                g1_hash,
-                &verify_hash) != bls::kBlsSuccess) {
+        if (VerifyFast(*bls_agg_sign, g1_hash, common_pk) != bls::kBlsSuccess) {
             SETH_ERROR("verify agg sign failed t: %d, n: %d, hash: %s, g1 hash: %s, agg sign: %s, %s, %s!",
                 t, n,
                 common::Encode::HexEncode(finish_item->max_finish_hash).c_str(),

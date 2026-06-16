@@ -51,7 +51,8 @@ int CheckTransactionValid(
         std::shared_ptr<pools::TxPoolManager> pool_mgr,
         const address::protobuf::AddressInfo& addr_info, 
         const pools::protobuf::TxMessage& tx_info,
-        uint64_t* now_nonce) {
+        uint64_t* now_nonce,
+        const BalanceAndNonceMap* merged_balance_map) {
     if (pools::IsUserTransaction(tx_info.step())) {
         if (tx_info.step() == pools::protobuf::kContractExcute) {
             auto contract_address_info = view_block_chain->ChainGetAccountInfo(tx_info.to());
@@ -64,7 +65,8 @@ int CheckTransactionValid(
             addr_info.addr(), 
             tx_info.nonce(), 
             parent_hash,
-            now_nonce);
+            now_nonce,
+            merged_balance_map);
     }
     
     if (tx_info.step() == pools::protobuf::kPoolStatisticTag ||
@@ -74,7 +76,8 @@ int CheckTransactionValid(
             addr_info.addr(), 
             tx_info.nonce(), 
             parent_hash,
-            now_nonce);
+            now_nonce,
+            merged_balance_map);
         if (check_nonce != 0) {
             return check_nonce;
         }

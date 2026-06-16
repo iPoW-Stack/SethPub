@@ -62,22 +62,37 @@ Status BlockWrapper::Wrap(
     // Package transactions
     ADD_DEBUG_PROCESS_TIMESTAMP();
     std::shared_ptr<consensus::WaitingTxsItem> txs_ptr = nullptr;
-    // SETH_DEBUG("pool: %d, txs count, all: %lu, valid: %lu, leader: %lu",
-    //     pool_idx_, pools_mgr_->all_tx_size(pool_idx_), pools_mgr_->tx_size(pool_idx_), leader_idx);
+    const auto& parent_hash = prev_view_block->qc().view_block_hash();
+    BalanceAndNonceMap merged_balance_map;
+    view_block_chain->MergeAllPrevBalanceMap(parent_hash, merged_balance_map);
     auto tx_valid_func = [&](
             const address::protobuf::AddressInfo& addr_info, 
             const pools::protobuf::TxMessage& tx_info,
             uint64_t* now_nonce) -> int {
         return CheckTransactionValid(
-            prev_view_block->qc().view_block_hash(), 
+            parent_hash,
             view_block_chain, 
             pools_mgr_,
             addr_info, 
             tx_info,
-            now_nonce);
+            now_nonce,
+            &merged_balance_map);
     };
 
+    auto get_txs_begin_ms = common::TimeUtils::TimestampMs();
     Status s = LeaderGetTxsIdempotently(msg_ptr, txs_ptr, tx_valid_func);
+    auto get_txs_end_ms = common::TimeUtils::TimestampMs();
+    if (get_txs_end_ms - get_txs_begin_ms >= 100lu) {
+        SETH_DEBUG("pool: %d, leader get txs use time: %lu ms, merged accounts: %zu, "
+            "selected: %zu, %u_%u_%lu",
+            pool_idx_,
+            (get_txs_end_ms - get_txs_begin_ms),
+            merged_balance_map.size(),
+            (txs_ptr != nullptr ? txs_ptr->txs.size() : 0),
+            view_block->qc().network_id(),
+            view_block->qc().pool_index(),
+            view_block->qc().view());
+    }
     if (s != Status::kSuccess && !no_tx_allowed) {
         // Allow 3 consecutive empty transaction blocks
         SETH_DEBUG("leader get txs failed check is empty block allowd: %d, "
@@ -102,7 +117,7 @@ Status BlockWrapper::Wrap(
     if (txs_ptr) {
         // Hard limit: stop adding txs once the propose message would exceed the limit.
         // This prevents receivers from dropping the message due to the packet size limit.
-        int current_size = view_block->ByteSizeLong();
+        int current_size = 0;
         uint64_t proposed_gas = 0;
 
         for (auto it = txs_ptr->txs.begin(); it != txs_ptr->txs.end(); it++) {
@@ -155,7 +170,7 @@ Status BlockWrapper::Wrap(
     {
         auto wrap_end_ms = common::TimeUtils::TimestampMs();
     }
-    // Log each successfully packed transaction for nonce tracking and debugging.
+#ifndef NDEBUG
     for (int32_t ti = 0; ti < tx_propose->txs_size(); ++ti) {
         auto& packed_tx = tx_propose->txs(ti);
         SETH_DEBUG("[TX_PACKED] pool: %d, tx[%d/%d]: to=%s, nonce=%lu, "
@@ -166,6 +181,11 @@ Status BlockWrapper::Wrap(
             (int)packed_tx.step(),
             packed_tx.amount(),
             view_block->qc().view());
+    }
+#endif
+    if (tx_propose->txs_size() > 0) {
+        SETH_DEBUG("[TX_PACKED] pool: %d, packed tx count: %d, view: %lu",
+            pool_idx_, tx_propose->txs_size(), view_block->qc().view());
     }
     SETH_DEBUG("====3 success propose block net: %u, pool: %u, set height: %lu, pre height: %lu, "
         "elect height: %lu, timeblock height: %lu, hash: %s, parent hash: %s, %u_%u_%lu",

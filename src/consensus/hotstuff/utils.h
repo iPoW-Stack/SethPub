@@ -7,6 +7,7 @@
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
 #include "common/hash.h"
+#include "consensus/hotstuff/hotstuff_utils.h"
 #include "protos/block.pb.h"
 #include "protos/view_block.pb.h"
 
@@ -66,7 +67,8 @@ int CheckTransactionValid(
     std::shared_ptr<pools::TxPoolManager> pool_mgr,
     const address::protobuf::AddressInfo& addr_info, 
     const pools::protobuf::TxMessage& tx_info,
-    uint64_t* now_nonce);
+    uint64_t* now_nonce,
+    const BalanceAndNonceMap* merged_balance_map = nullptr);
 bool BlockHeightCommited(
     std::shared_ptr<protos::PrefixDb> prefix_db, 
     uint32_t network_id,

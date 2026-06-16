@@ -2032,6 +2032,24 @@ contract AMMPool {
             return {ip, (uint16_t)(tcp_port + 10000)};
         };
 
+        auto fetch_nonce_retry = [&](const std::string& contract_addr_hex,
+                                     const std::string& prepay_addr_hex,
+                                     int retries = 3) -> int64_t {
+            auto [lip, lhttp] = get_leader_http(contract_addr_hex);
+            for (int i = 0; i < retries; ++i) {
+                SethSDK leader_sdk(lip, lhttp);
+                int64_t n = leader_sdk.fetchNonce(prepay_addr_hex);
+                if (n >= 0) {
+                    return n;
+                }
+                if (i + 1 < retries) {
+                    usleep(100000);
+                }
+            }
+            SethSDK fallback_sdk(global_chain_node_ip, global_chain_node_http_port);
+            return fallback_sdk.fetchNonce(prepay_addr_hex);
+        };
+
         // Helper: enqueue a message for the sender thread (with routing)
         auto tcp_enqueue = [&](transport::MessagePtr msg, const std::string& dest_ip, uint16_t dest_port) -> bool {
             if (!msg) return false;
@@ -3232,11 +3250,13 @@ contract AMMPool {
                   << " (" << std::fixed << std::setprecision(1) << swap_tps << " tx/s)" << std::endl;
 
         // ── Phase 10b: Verify swap results ─────────────────────────────────
-        // Wait for consensus — batch query nonces in parallel
+        // Wait for consensus — batch query nonces via per-pool leaders
         {
-            const int kMaxWaitSec = 120;
+            // ~1.5k–3k contract executes/s cluster-wide; scale timeout with load.
+            const int kMaxWaitSec = std::min(900, std::max(120,
+                (int)(total_swaps / 1500) + 120));
             const int kPollIntervalMs = 2000;
-            const uint32_t kBatchSize = 300;
+            const uint32_t kBatchSize = 100;
             std::cout << "\n  Waiting for swap consensus (timeout " << kMaxWaitSec << "s for "
                       << total_swaps << " txs)..." << std::endl;
             uint32_t total_groups = swap_groups.size();
@@ -3259,31 +3279,62 @@ contract AMMPool {
                 }
                 if (pending.empty()) break;
 
-                for (uint32_t off = 0; off < pending.size() && !global_stop; off += kBatchSize) {
-                    uint32_t end = std::min(off + kBatchSize, (uint32_t)pending.size());
+                // Group pending by pool leader (contract pool_index)
+                std::unordered_map<uint32_t, std::vector<uint32_t>> pool_pending;
+                for (auto gi : pending) {
+                    uint32_t pidx = common::GetAddressPoolIndex(
+                        common::Encode::HexDecode(swap_groups[gi].contract_addr));
+                    pool_pending[pidx].push_back(gi);
+                }
+
+                for (auto& [pidx, indices] : pool_pending) {
+                    if (global_stop) break;
+                    std::string ldr_ip = global_chain_node_ip;
+                    uint16_t ldr_http = global_chain_node_http_port;
+                    if (amm_has_leaders) {
+                        std::lock_guard<std::mutex> lk(amm_leader_mutex);
+                        auto it = amm_leader_map.find(pidx);
+                        if (it != amm_leader_map.end()) {
+                            ldr_ip = it->second.ip;
+                            ldr_http = (uint16_t)(it->second.port + 10000);
+                        }
+                    }
+                    SethSDK leader_sdk(ldr_ip, ldr_http);
+
                     std::vector<std::string> batch;
-                    for (uint32_t j = off; j < end; ++j) batch.push_back(prepay_addrs[pending[j]]);
-                    auto r = sdk.batchQueryAccounts(batch);
-                    if (r.contains("status") && r["status"] == 0 && r.contains("accounts")) {
-                        for (uint32_t j = off; j < end; ++j) {
-                            uint32_t gi = pending[j];
-                            if (r["accounts"].contains(batch[j - off])) {
-                                auto& acc = r["accounts"][batch[j - off]];
-                                int64_t n = 0;
-                                if (acc.contains("nonce")) {
-                                    try {
-                                        auto ns = acc["nonce"].get<std::string>();
-                                        std::from_chars(ns.data(), ns.data() + ns.size(), n);
-                                    } catch (...) {}
-                                }
-                                if (n >= expected_nonces[gi]) {
-                                    grp_confirmed[gi] = true;
-                                    ++confirmed;
+                    std::vector<uint32_t> batch_gi;
+                    for (uint32_t j = 0; j < indices.size() && !global_stop; ++j) {
+                        uint32_t gi = indices[j];
+                        batch.push_back(prepay_addrs[gi]);
+                        batch_gi.push_back(gi);
+                        if (batch.size() >= kBatchSize || j == indices.size() - 1) {
+                            auto r = leader_sdk.batchQueryAccounts(batch);
+                            if (r.contains("status") && r["status"] == 0 && r.contains("accounts")) {
+                                for (uint32_t k = 0; k < batch_gi.size(); ++k) {
+                                    uint32_t gi2 = batch_gi[k];
+                                    if (r["accounts"].contains(batch[k])) {
+                                        auto& acc = r["accounts"][batch[k]];
+                                        int64_t n = 0;
+                                        if (acc.contains("nonce")) {
+                                            try {
+                                                auto ns = acc["nonce"].get<std::string>();
+                                                std::from_chars(ns.data(), ns.data() + ns.size(), n);
+                                            } catch (...) {}
+                                        }
+                                        if (n >= expected_nonces[gi2]) {
+                                            grp_confirmed[gi2] = true;
+                                        }
+                                    }
                                 }
                             }
+                            batch.clear();
+                            batch_gi.clear();
                         }
                     }
                 }
+
+                confirmed = 0;
+                for (auto c : grp_confirmed) if (c) ++confirmed;
 
                 elapsed = (int)std::chrono::duration_cast<std::chrono::seconds>(
                     std::chrono::steady_clock::now() - wait_start).count();
@@ -3350,7 +3401,8 @@ contract AMMPool {
 
         // 2. Verify prepayment nonces: poll until all reach expected value or timeout
         //    This confirms all swap transactions were actually processed on-chain
-        std::cout << "  [2] Verifying swap nonces (prepayment accounts, polling up to 180s)..." << std::endl;
+        std::cout << "  [2] Verifying swap nonces (prepayment accounts, polling up to "
+                  << std::min(600, std::max(180, (int)kStressRounds * 15)) << "s)..." << std::endl;
         uint32_t nonce_ok = 0, nonce_fail = 0, nonce_skip = 0;
         uint32_t nonce_check_count = std::min((uint32_t)trade_pairs.size(), (uint32_t)50);
 
@@ -3373,20 +3425,16 @@ contract AMMPool {
             }
         }
 
-        // Poll in rounds until all confirmed or timeout
-        // Query via the leader node for each pool for accurate nonce
+        // Poll in rounds until all confirmed or timeout (scale with stress rounds)
+        const int kNoncePollMaxSec = std::min(600, std::max(180, (int)kStressRounds * 15));
         std::vector<bool> nonce_confirmed(nonce_checks.size(), false);
         auto nonce_start = std::chrono::steady_clock::now();
-        for (uint32_t round = 0; round < 30 && !global_stop; ++round) {
+        for (uint32_t round = 0; round < 60 && !global_stop; ++round) {
             uint32_t round_ok = 0, still_pending = 0;
             for (uint32_t i = 0; i < nonce_checks.size(); ++i) {
                 if (nonce_confirmed[i]) continue;
-                // Use leader routing for the query
-                auto [lip, lport] = get_dest(nonce_checks[i].pool_addr);
-                // fetchNonce via leader's HTTP port (TCP port + 10000)
-                uint16_t http_port = lport + 10000;
-                SethSDK leader_sdk(lip, http_port);
-                int64_t n = leader_sdk.fetchNonce(nonce_checks[i].prepay_addr);
+                int64_t n = fetch_nonce_retry(
+                    nonce_checks[i].pool_addr, nonce_checks[i].prepay_addr);
                 if (n >= nonce_checks[i].expected_min) {
                     nonce_confirmed[i] = true;
                     ++round_ok;
@@ -3401,9 +3449,17 @@ contract AMMPool {
             std::cout << "    [Round " << (round+1) << ", " << es << "s] " << nonce_ok
                       << "/" << nonce_checks.size() << " confirmed" << std::endl;
             if (still_pending == 0) break;
-            if (es > 180) break;
-            // Wait longer if many pending
+            if (es > kNoncePollMaxSec) break;
             for (int w = 0; w < ((round_ok > 0) ? 30 : 60) && !global_stop; ++w) usleep(100000);
+        }
+        // Final pass: reconcile transient query failures
+        for (uint32_t i = 0; i < nonce_checks.size(); ++i) {
+            if (nonce_confirmed[i]) continue;
+            int64_t n = fetch_nonce_retry(
+                nonce_checks[i].pool_addr, nonce_checks[i].prepay_addr, 5);
+            if (n >= nonce_checks[i].expected_min) {
+                nonce_confirmed[i] = true;
+            }
         }
         nonce_ok = 0; nonce_fail = 0;
         for (uint32_t i = 0; i < nonce_checks.size(); ++i) {
@@ -3413,9 +3469,15 @@ contract AMMPool {
             uint32_t printed = 0;
             for (uint32_t i = 0; i < nonce_checks.size() && printed < 10; ++i) {
                 if (!nonce_confirmed[i]) {
-                    auto [lip, lport] = get_dest(nonce_checks[i].pool_addr);
-                    SethSDK leader_sdk(lip, lport + 10000);
-                    int64_t n = leader_sdk.fetchNonce(nonce_checks[i].prepay_addr);
+                    int64_t n = fetch_nonce_retry(
+                        nonce_checks[i].pool_addr, nonce_checks[i].prepay_addr, 5);
+                    if (n >= nonce_checks[i].expected_min) {
+                        nonce_confirmed[i] = true;
+                        ++nonce_ok;
+                        --nonce_fail;
+                        continue;
+                    }
+                    auto [lip, lport] = get_leader_http(nonce_checks[i].pool_addr);
                     std::string pool_hex = nonce_checks[i].pool_addr;
                     std::string user_hex = nonce_checks[i].prepay_addr.substr(pool_hex.size());
                     uint32_t pool_idx = common::GetAddressPoolIndex(common::Encode::HexDecode(pool_hex));
@@ -3423,7 +3485,7 @@ contract AMMPool {
                               << " pool=" << pool_hex.substr(0,12) << "..."
                               << " user=" << user_hex.substr(0,12) << "..."
                               << " pool_idx=" << pool_idx
-                              << " leader=" << lip << ":" << (lport+10000)
+                              << " leader=" << lip << ":" << lport
                               << " nonce=" << n
                               << " expected>=" << nonce_checks[i].expected_min
                               << " ✗" << std::endl;

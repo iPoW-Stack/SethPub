@@ -589,6 +589,14 @@ public:
         const auto& block = view_block.block_info();
         for (int32_t i = 0; i < block.tx_list_size(); ++i) {
             const auto& tx = block.tx_list(i);
+            // Contract execute/refund txs are already stored in the full block
+            // (SaveBlock). Indexing each one per address duplicates megabytes of
+            // writes on large contract blocks and is not read by any in-node path.
+            if (tx.step() == pools::protobuf::kContractExcute ||
+                    tx.step() == pools::protobuf::kContractRefund) {
+                continue;
+            }
+
             if (tx.from().size() == common::kUnicastAddressLength) {
                 SaveUserTx(tx.from(), block.height(), static_cast<uint32_t>(i), tx, db_batch);
             }

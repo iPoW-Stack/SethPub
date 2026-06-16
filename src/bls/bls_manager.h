@@ -35,6 +35,10 @@ public:
         const libff::alt_bn128_G1& sign,
         const libff::alt_bn128_G1& g1_hash,
         std::string* verify_hash) = 0;
+    virtual int VerifyFast(
+        const libff::alt_bn128_G1& sign,
+        const libff::alt_bn128_G1& g1_hash,
+        const libff::alt_bn128_G2& pkey) = 0;
     virtual int GetVerifyHash(
             uint32_t t,
             uint32_t n,
@@ -93,6 +97,10 @@ public:
         const libff::alt_bn128_G1& sign,
         const libff::alt_bn128_G1& g1_hash,
         std::string* verify_hash);
+    int VerifyFast(
+        const libff::alt_bn128_G1& sign,
+        const libff::alt_bn128_G1& g1_hash,
+        const libff::alt_bn128_G2& pkey);
     int GetVerifyHash(
         uint32_t t,
         uint32_t n,
