@@ -223,9 +223,9 @@ TEST_F(TestToTxsPoolsExtra, CreateToTxWithHeights_MaxAboveConsensus_Error) {
         kPoolsError);
 }
 
-// Branch: acc_amount_map empty → kPoolsError
+// Branch: acc_amount_map empty but heights valid → kPoolsSuccess (empty ToTx)
 // leader.heights(0)=1 but network_txs_pools_[0] has no entry → map stays empty
-TEST_F(TestToTxsPoolsExtra, CreateToTxWithHeights_EmptyAccAmountMap_Error) {
+TEST_F(TestToTxsPoolsExtra, CreateToTxWithHeights_EmptyAccAmountMap_Success) {
     auto pool = MakePool();
     pool.prev_to_heights_ = std::make_shared<pools::protobuf::ShardToTxItem>(MakeHeights(0));
 
@@ -236,12 +236,13 @@ TEST_F(TestToTxsPoolsExtra, CreateToTxWithHeights_EmptyAccAmountMap_Error) {
     // Ensure pool_consensus_heihgts_[0] >= leader.heights(0)
     pool.pool_consensus_heihgts_[0] = 5;
 
-    // network_txs_pools_[0] is empty → acc_amount_map stays empty → kPoolsError
+    // network_txs_pools_[0] is empty → acc_amount_map stays empty → empty ToTx OK
     pools::protobuf::ShardToTxItem prev_arg;
     pools::protobuf::ToTxMessage to_tx;
     EXPECT_EQ(pool.CreateToTxWithHeights(
         network::kConsensusShardBeginNetworkId, 0, &prev_arg, leader, to_tx),
-        kPoolsError);
+        kPoolsSuccess);
+    EXPECT_EQ(to_tx.tos_size(), 0);
 }
 
 // ToTxsPools::ClearLeaderToHeights (inline in to_txs_pools.h) clears leader snapshot.

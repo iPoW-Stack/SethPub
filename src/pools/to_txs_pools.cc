@@ -581,11 +581,13 @@ int ToTxsPools::CreateToTxWithHeights(
         }
     }
 
-    // if (acc_amount_map.empty() && cross_set.empty()) {
     if (acc_amount_map.empty()) {
-//         //assert(false);
-        SETH_DEBUG("acc amount map empty.");
-        return kPoolsError;
+        // No cross-shard transfers in this height range — still advance GBP heights
+        // via an empty ToTxMessage (heights_valid was already verified above).
+        SETH_DEBUG("acc amount map empty, success with empty to tx for shard: %u", sharding_id);
+        to_tx.set_elect_height(elect_height);
+        to_tx.set_des_shard(sharding_id);
+        return kPoolsSuccess;
     }
 
     SETH_DEBUG("sharding id:%u, success statistic to txs prev_to_heights: %s, leader_to_heights: %s", 
