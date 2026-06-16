@@ -70,9 +70,6 @@ public:
     void SyncBlock();
     void TxOver(view_block::protobuf::ViewBlockItem& view_block);
 
-    void DrainOverAddrNonceUpdates();
-    uint64_t GetEffectiveAddrNonce(const std::string& addr, uint64_t fallback_nonce) const;
-
     void OnNewElectBlock(uint32_t sharding_id, uint64_t elect_height) {
         if (!network::IsSameToLocalShard(sharding_id)) {
             return;
@@ -133,7 +130,12 @@ public:
     }
 
     bool NewTxValid(const std::string& addr, uint64_t nonce) {
-        DrainOverAddrNonceUpdates();
+        std::shared_ptr<std::unordered_map<std::string, uint64_t>> over_map_ptr;
+        while (over_addr_map_queue_.pop(&over_map_ptr) && over_map_ptr != nullptr) {
+            for (auto iter = over_map_ptr->begin(); iter != over_map_ptr->end(); ++iter) {
+                add_addr_nonce_map_.Put(iter->first, iter->second);
+            }
+        }
 
         uint64_t over_nonce = 0lu;
         if (add_addr_nonce_map_.Get(addr, over_nonce)) {
