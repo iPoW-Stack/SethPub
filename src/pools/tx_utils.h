@@ -15,6 +15,7 @@
 #include "common/utils.h"
 #include "consensus/hotstuff/hotstuff_utils.h"
 #include "db/db.h"
+#include "protos/block.pb.h"
 #include "protos/pools.pb.h"
 #include "protos/prefix_db.h"
 #include "network/network_utils.h"
@@ -309,17 +310,17 @@ static inline bool IsRootNode() {
 }
 
 static inline bool IsUserTransaction(uint32_t step) {
-    if (step != pools::protobuf::kNormalFrom && 
-            step != pools::protobuf::kCreateContract && 
-            step != pools::protobuf::kContractExcute && 
-            step != pools::protobuf::kContractGasPrefund && 
-            step != pools::protobuf::kContractRefund && 
-            step != pools::protobuf::kJoinElect && 
+    if (step != pools::protobuf::kNormalFrom &&
+            step != pools::protobuf::kCreateContract &&
+            step != pools::protobuf::kContractExcute &&
+            step != pools::protobuf::kContractGasPrefund &&
+            step != pools::protobuf::kContractRefund &&
+            step != pools::protobuf::kJoinElect &&
             step != pools::protobuf::kCreateLibrary) {
         return false;
     }
 
-    return true;   
+    return true;
 }
 
 static inline bool IsTxUseFromAddress(uint32_t step) {
@@ -345,6 +346,20 @@ static inline bool IsTxUseFromAddress(uint32_t step) {
             //assert(false);
             return false;
     }
+}
+
+// Must match tx_map_ key used in TxPool (address_info->addr()).
+static inline std::string GetBlockTxPoolAddr(const block::protobuf::BlockTx& tx_info) {
+    if (tx_info.step() == pools::protobuf::kContractExcute ||
+            tx_info.step() == pools::protobuf::kContractRefund) {
+        return tx_info.to() + tx_info.from();
+    }
+
+    if (IsTxUseFromAddress(tx_info.step())) {
+        return tx_info.from();
+    }
+
+    return tx_info.to();
 }
 
 class TxItem {

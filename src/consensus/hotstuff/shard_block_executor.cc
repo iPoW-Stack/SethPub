@@ -50,6 +50,10 @@ Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
             block_tx.set_from((*iter)->address_info->addr());
         }
 
+        if (!(*iter)->tx_info->key().empty()) {
+            block_tx.set_unique_hash((*iter)->tx_info->key());
+        }
+
         // auto iter = acc_balance_map.find(block_tx.from());
         // if (iter == acc_balance_map.end()) {
         //     if (iter->second.nonce + 1 != block_tx.nonce()) {

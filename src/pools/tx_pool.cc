@@ -212,7 +212,26 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
     return kPoolsSuccess;
 }
 
+void TxPool::DrainOverAddrNonceUpdates() {
+    std::shared_ptr<std::unordered_map<std::string, uint64_t>> over_map_ptr;
+    while (over_addr_map_queue_.pop(&over_map_ptr) && over_map_ptr != nullptr) {
+        for (auto iter = over_map_ptr->begin(); iter != over_map_ptr->end(); ++iter) {
+            add_addr_nonce_map_.Put(iter->first, iter->second);
+        }
+    }
+}
+
+uint64_t TxPool::GetEffectiveAddrNonce(const std::string& addr, uint64_t fallback_nonce) const {
+    uint64_t over_nonce = 0lu;
+    if (add_addr_nonce_map_.Get(addr, over_nonce)) {
+        return std::max(fallback_nonce, over_nonce);
+    }
+
+    return fallback_nonce;
+}
+
 void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
+    DrainOverAddrNonceUpdates();
     const auto now_tm_us = common::TimeUtils::TimestampUs();
     const uint32_t tx_count = static_cast<uint32_t>(view_block.block_info().tx_list_size());
     const uint64_t block_height = view_block.has_block_info() ?
@@ -225,82 +244,99 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
         over_addr_nonce_ptr->reserve(tx_count);
     }
 
-    const bool maps_empty = tx_map_.empty() && consensus_tx_map_.empty();
     uint32_t removed_from_tx_map = 0;
     uint32_t removed_from_consensus_map = 0;
 
-    for (uint32_t i = 0; i < tx_count; ++i) {
-        const auto& tx_info = view_block.block_info().tx_list(i);
-        auto addr = IsTxUseFromAddress(tx_info.step()) ?
-            tx_info.from() :
-            tx_info.to();
-        if (tx_info.step() == pools::protobuf::kContractExcute ||
-                tx_info.step() == pools::protobuf::kContractRefund) {
-            addr = tx_info.to() + tx_info.from();
+    auto remove_tx_func = [&](
+            std::map<std::string, std::map<uint64_t, TxItemPtr>>& tx_map,
+            const char* map_name,
+            const std::string& addr,
+            const block::protobuf::BlockTx& block_tx,
+            uint32_t& removed_total) -> uint32_t {
+        uint32_t removed_this_tx = 0;
+        auto tx_iter = tx_map.find(addr);
+        if (tx_iter == tx_map.end()) {
+            return removed_this_tx;
         }
 
+        const bool block_is_user_tx = IsUserTransaction(block_tx.step());
+        for (auto nonce_iter = tx_iter->second.begin();
+                nonce_iter != tx_iter->second.end(); ) {
+            if (!block_is_user_tx) {
+                if (nonce_iter->second->tx_info->key() != block_tx.unique_hash()) {
+                    ++nonce_iter;
+                    continue;
+                }
+            } else {
+                if (!IsUserTransaction(nonce_iter->second->tx_info->step())) {
+                    ++nonce_iter;
+                    continue;
+                }
+
+                if (nonce_iter->first > block_tx.nonce()) {
+                    break;
+                }
+            }
+
+            if (IsUserTransaction(nonce_iter->second->tx_info->step())) {
+                ++all_delay_tx_count_;
+                all_delay_tm_us_ += now_tm_us - nonce_iter->second->receive_tm_us;
+            }
+
+            SETH_DEBUG("pool: %d, TxOver done tx: height: %lu, view: %lu, map: %s, "
+                "addr: %s, mempool_nonce: %lu, step: %u, unique_hash: %s, "
+                "block_nonce: %lu, block_step: %u, block_hash: %s",
+                pool_index_,
+                block_height,
+                block_view,
+                map_name,
+                common::Encode::HexEncode(addr).c_str(),
+                nonce_iter->first,
+                (uint32_t)nonce_iter->second->tx_info->step(),
+                common::Encode::HexEncode(nonce_iter->second->tx_info->key()).c_str(),
+                block_tx.nonce(),
+                (uint32_t)block_tx.step(),
+                block_hash_hex.c_str());
+            ++removed_total;
+            ++removed_this_tx;
+            nonce_iter = tx_iter->second.erase(nonce_iter);
+        }
+
+        if (tx_iter->second.empty()) {
+            tx_map.erase(tx_iter);
+        }
+
+        return removed_this_tx;
+    };
+
+    for (uint32_t i = 0; i < tx_count; ++i) {
+        const auto& tx_info = view_block.block_info().tx_list(i);
+        const auto addr = GetBlockTxPoolAddr(tx_info);
+
         if (addr.empty()) {
+            if (IsUserTransaction(tx_info.step())) {
+                SETH_WARN("pool: %d, TxOver skip user tx with empty pool addr: height: %lu, "
+                    "view: %lu, nonce: %lu, step: %u, block_hash: %s",
+                    pool_index_,
+                    block_height,
+                    block_view,
+                    tx_info.nonce(),
+                    (uint32_t)tx_info.step(),
+                    block_hash_hex.c_str());
+            }
 #ifndef NDEBUG
-            SETH_DEBUG("pool: %d, addr is empty: %s",
-                pool_index_, ProtobufToJson(tx_info).c_str());
+            else {
+                SETH_DEBUG("pool: %d, addr is empty: %s",
+                    pool_index_, ProtobufToJson(tx_info).c_str());
+            }
 #endif
             continue;
         }
 
         uint32_t removed_this_tx = 0;
-        if (!maps_empty) {
-            auto remove_tx_func = [&](
-                    std::map<std::string, std::map<uint64_t, TxItemPtr>>& tx_map,
-                    const char* map_name,
-                    uint32_t& removed_total) {
-                auto tx_iter = tx_map.find(addr);
-                if (tx_iter == tx_map.end()) {
-                    return;
-                }
-
-                for (auto nonce_iter = tx_iter->second.begin();
-                        nonce_iter != tx_iter->second.end(); ) {
-                    if (!IsUserTransaction(tx_info.step())) {
-                        if (nonce_iter->second->tx_info->key() != tx_info.unique_hash()) {
-                            ++nonce_iter;
-                            continue;
-                        }
-                    } else if (nonce_iter->first > tx_info.nonce()) {
-                        break;
-                    }
-
-                    if (IsUserTransaction(nonce_iter->second->tx_info->step())) {
-                        ++all_delay_tx_count_;
-                        all_delay_tm_us_ += now_tm_us - nonce_iter->second->receive_tm_us;
-                    }
-
-                    SETH_DEBUG("pool: %d, TxOver done tx: height: %lu, view: %lu, map: %s, "
-                        "addr: %s, mempool_nonce: %lu, step: %u, unique_hash: %s, "
-                        "block_nonce: %lu, block_step: %u, block_hash: %s",
-                        pool_index_,
-                        block_height,
-                        block_view,
-                        map_name,
-                        common::Encode::HexEncode(addr).c_str(),
-                        nonce_iter->first,
-                        (uint32_t)nonce_iter->second->tx_info->step(),
-                        common::Encode::HexEncode(nonce_iter->second->tx_info->key()).c_str(),
-                        tx_info.nonce(),
-                        (uint32_t)tx_info.step(),
-                        block_hash_hex.c_str());
-                    ++removed_total;
-                    ++removed_this_tx;
-                    nonce_iter = tx_iter->second.erase(nonce_iter);
-                }
-
-                if (tx_iter->second.empty()) {
-                    tx_map.erase(tx_iter);
-                }
-            };
-
-            remove_tx_func(tx_map_, "tx_map", removed_from_tx_map);
-            remove_tx_func(consensus_tx_map_, "consensus_tx_map", removed_from_consensus_map);
-        }
+        removed_this_tx += remove_tx_func(tx_map_, "tx_map", addr, tx_info, removed_from_tx_map);
+        removed_this_tx += remove_tx_func(
+            consensus_tx_map_, "consensus_tx_map", addr, tx_info, removed_from_consensus_map);
 
         if (removed_this_tx == 0) {
             SETH_DEBUG("pool: %d, TxOver committed tx (not in mempool): height: %lu, view: %lu, "
@@ -315,7 +351,15 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
                 block_hash_hex.c_str());
         }
 
-        (*over_addr_nonce_ptr)[addr] = tx_info.nonce();
+        auto over_iter = over_addr_nonce_ptr->find(addr);
+        if (over_iter == over_addr_nonce_ptr->end() || over_iter->second < tx_info.nonce()) {
+            (*over_addr_nonce_ptr)[addr] = tx_info.nonce();
+        }
+    }
+
+    for (auto over_iter = over_addr_nonce_ptr->begin();
+            over_iter != over_addr_nonce_ptr->end(); ++over_iter) {
+        add_addr_nonce_map_.Put(over_iter->first, over_iter->second);
     }
 
     const auto elapsed_us = common::TimeUtils::TimestampUs() - now_tm_us;
@@ -626,8 +670,10 @@ void TxPool::TempGetTxIdempotently(
         uint32_t count,
         pools::CheckAddrNonceValidFunction tx_valid_func) {
     // CheckThreadIdValid();
+    DrainOverAddrNonceUpdates();
     TxItemPtr tx_ptr;
-    while (added_txs_.pop(&tx_ptr)) {
+    uint32_t pending_pop_count = added_txs_.size();
+    while (pending_pop_count-- > 0 && added_txs_.pop(&tx_ptr)) {
         SETH_DEBUG("pool: %d, pop success add system tx nonce addr: %s, "
                 "addr nonce: %lu, tx nonce: %lu, unique hash: %s",
                 pool_index_,
@@ -674,6 +720,24 @@ void TxPool::TempGetTxIdempotently(
             continue;
         }
 
+        const auto& addr = tx_ptr->address_info->addr();
+        const uint64_t effective_nonce = GetEffectiveAddrNonce(addr, tx_ptr->address_info->nonce());
+        if (effective_nonce > tx_ptr->address_info->nonce()) {
+            tx_ptr->address_info->set_nonce(effective_nonce);
+        }
+
+        if (tx_ptr->tx_info->nonce() > effective_nonce + 1) {
+            added_txs_.push(tx_ptr);
+            SETH_DEBUG("pool: %d, defer tx_map staging gap addr: %s, effective_nonce: %lu, "
+                "tx nonce: %lu, step: %d",
+                pool_index_,
+                common::Encode::HexEncode(addr).c_str(),
+                effective_nonce,
+                tx_ptr->tx_info->nonce(),
+                (int32_t)tx_ptr->tx_info->step());
+            continue;
+        }
+
         auto iter = consensus_tx_map_.find(tx_ptr->address_info->addr());
         if (iter != consensus_tx_map_.end()) {
             auto nonce_iter = iter->second.find(tx_ptr->tx_info->nonce());
@@ -690,12 +754,12 @@ void TxPool::TempGetTxIdempotently(
             }
         }
 
-        tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
-        // consensus_tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
+        tx_map_[addr][tx_ptr->tx_info->nonce()] = tx_ptr;
+        // consensus_tx_map_[addr][tx_ptr->tx_info->nonce()] = tx_ptr;
         SETH_DEBUG("pool: %d, success add tx nonce addr: %s, addr nonce: %lu, tx nonce: %lu, step: %d",
             pool_index_,
-            common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
-            tx_ptr->address_info->nonce(), 
+            common::Encode::HexEncode(addr).c_str(),
+            effective_nonce,
             tx_ptr->tx_info->nonce(),
             (int32_t)tx_ptr->tx_info->step());
     }
