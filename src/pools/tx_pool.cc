@@ -697,7 +697,7 @@ void TxPool::TempGetTxIdempotently(
             common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
             tx_ptr->address_info->nonce(), 
             tx_ptr->tx_info->nonce(),
-            tx_ptr->tx_info->step());
+            (int32_t)tx_ptr->tx_info->step());
     }
 
     while (consensus_added_txs_.pop(&tx_ptr)) {
