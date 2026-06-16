@@ -692,11 +692,12 @@ void TxPool::TempGetTxIdempotently(
 
         tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
         // consensus_tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
-        SETH_DEBUG("pool: %d, success add tx nonce addr: %s, addr nonce: %lu, tx nonce: %lu",
+        SETH_DEBUG("pool: %d, success add tx nonce addr: %s, addr nonce: %lu, tx nonce: %lu, step: %d",
             pool_index_,
             common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
             tx_ptr->address_info->nonce(), 
-            tx_ptr->tx_info->nonce());
+            tx_ptr->tx_info->nonce(),
+            tx_ptr->tx_info->step());
     }
 
     while (consensus_added_txs_.pop(&tx_ptr)) {
