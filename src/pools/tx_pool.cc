@@ -269,7 +269,7 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
                         break;
                     }
 
-                    if (IsUserTransaction(tx_info.step())) {
+                    if (IsUserTransaction(nonce_iter->second->tx_info->step())) {
                         ++all_delay_tx_count_;
                         all_delay_tm_us_ += now_tm_us - nonce_iter->second->receive_tm_us;
                     }
