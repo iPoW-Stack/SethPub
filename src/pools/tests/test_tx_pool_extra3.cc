@@ -89,7 +89,7 @@ public:
 std::shared_ptr<db::Db> TestTxPoolExtra3::db_ = nullptr;
 
 // ---------------------------------------------------------------------------
-// GetTxSyncToLeader — tx_valid_func returns res==3 → break (line 491-503)
+// GetTxSyncToLeader — tx_valid_func returns res==3 → evict stale tx and continue
 // ---------------------------------------------------------------------------
 
 TEST_F(TestTxPoolExtra3, GetTxSyncToLeader_ValidFunc_ResIs3_Break) {
@@ -101,11 +101,14 @@ TEST_F(TestTxPoolExtra3, GetTxSyncToLeader_ValidFunc_ResIs3_Break) {
     pool.AddTx(tx);
 
     ::google::protobuf::RepeatedPtrField<pools::protobuf::TxMessage> out;
-    // tx_valid_func returns 3 → break at the res==3 branch
     auto res3_valid = [](const address::protobuf::AddressInfo&,
                           const pools::protobuf::TxMessage&,
                           uint64_t*) -> int { return 3; };
     const std::unordered_map<std::string, uint64_t> empty_nonces;
+    pool.GetTxSyncToLeader(0, 10, &out, res3_valid, empty_nonces);
+    EXPECT_EQ(out.size(), 0);
+
+    out.Clear();
     pool.GetTxSyncToLeader(0, 10, &out, res3_valid, empty_nonces);
     EXPECT_EQ(out.size(), 0);
 }

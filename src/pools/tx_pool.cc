@@ -489,7 +489,6 @@ void TxPool::GetTxSyncToLeader(
                         &now_nonce);
                 if (res != 0) {
                     if (res == 3) {
-                        // SetTxStatus(pools_mgr_, nonce_iter->second->msg_ptr, transport::kTxUserNonceInvalid);
                         SETH_DEBUG("trace tx invalid tx, pool: %d, tx_key invalid: %s, res: %d, from: %s, to: %s, nonce: %lu, step: %u",
                             pool_index_,
                             common::Encode::HexEncode(tx_ptr->tx_key).c_str(),
@@ -499,8 +498,11 @@ void TxPool::GetTxSyncToLeader(
                             common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
                             tx_ptr->tx_info->nonce(),
                             (int32_t)tx_ptr->tx_info->step());
-                        // iter->second.erase(nonce_iter);
-                        break;
+                        if (tx_ptr->msg_ptr) {
+                            SetTxStatus(pools_mgr_, tx_ptr->msg_ptr, transport::kTxUserNonceInvalid);
+                        }
+                        nonce_iter = iter->second.erase(nonce_iter);
+                        continue;
                     }
 
                     if (res > 0) {
@@ -747,8 +749,6 @@ void TxPool::TempGetTxIdempotently(
                         res);
                     if (res != 0) {
                         if (res == 3) {
-                            // SetTxStatus(pools_mgr_, tx_ptr->msg_ptr, transport::kTxUserNonceInvalid);
-                            // nonce_iter was already incremented; erase the previous element (tx_ptr's entry)
                             SETH_DEBUG("trace tx invalid tx, pool: %d, tx_key invalid: %s, res: %d, from: %s, to: %s, nonce: %lu, step: %u",
                                 pool_index_,
                                 common::Encode::HexEncode(tx_ptr->tx_key).c_str(),
@@ -757,11 +757,14 @@ void TxPool::TempGetTxIdempotently(
                                 common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
                                 tx_ptr->tx_info->nonce(),
                                 (int32_t)tx_ptr->tx_info->step());
-                            // auto erase_iter = iter->second.find(tx_ptr->tx_info->nonce());
-                            // if (erase_iter != iter->second.end()) {
-                            //     iter->second.erase(erase_iter);
-                            // }
-                            break;
+                            if (tx_ptr->msg_ptr) {
+                                SetTxStatus(pools_mgr_, tx_ptr->msg_ptr, transport::kTxUserNonceInvalid);
+                            }
+                            auto erase_iter = iter->second.find(tx_ptr->tx_info->nonce());
+                            if (erase_iter != iter->second.end()) {
+                                nonce_iter = iter->second.erase(erase_iter);
+                            }
+                            continue;
                         }
                         
                         if (!IsUserTransaction(tx_ptr->tx_info->step())) {
