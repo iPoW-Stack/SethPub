@@ -90,25 +90,25 @@ TEST_F(TestToTxsPools, LeaderCreateToHeights_NullPrevHeights_ReturnsError) {
     EXPECT_EQ(pool.LeaderCreateToHeights(out), kPoolsError);
 }
 
-// ---- LeaderCreateToHeights: in-flight tx still within 30 s timeout → reuse cached heights ----
+// ---- LeaderCreateToHeights: in-flight tx still within 30 s timeout → recompute fresh heights ----
 
 TEST_F(TestToTxsPools, LeaderCreateToHeights_InFlightWithinTimeout_ReturnsError) {
     auto pool = MakePool();
-    // Set prev_to_heights_ so we pass the null check
     auto prev = std::make_shared<pools::protobuf::ShardToTxItem>();
     for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
         prev->add_heights(0);
     }
     pool.prev_to_heights_ = prev;
-    // Simulate a recent in-flight leader_to_heights_ (set just now)
     auto cached = std::make_shared<pools::protobuf::ShardToTxItem>();
-    cached->add_heights(5);
+    cached->add_heights(99);
     pool.StoreLeaderToHeights(cached);
     pool.leader_to_heights_set_tm_ = common::TimeUtils::TimestampMs();
+    pool.pool_consensus_heihgts_[0] = 1;
+    pool.valided_heights_[0].insert(1);
 
     pools::protobuf::ShardToTxItem out;
     EXPECT_EQ(pool.LeaderCreateToHeights(out), kPoolsSuccess);
-    EXPECT_EQ(out.heights(0), 5u);
+    EXPECT_EQ(out.heights(0), 1u);
 }
 
 // ---- LeaderCreateToHeights: no valid heights → kPoolsError (valid=false) ----

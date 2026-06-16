@@ -277,6 +277,9 @@ refresh_genesis_databases() {
     fi
     sync_shards_for_genesis
     sync_init_accounts_from_shards
+    # Wipe stale genesis dbs so init_accounts/shards changes are written back.
+    rm -rf /root/nodes/seth/shard_db_* /root/nodes/seth/root_db
+    rm -f /root/nodes/seth/root_blocks /root/nodes/seth/latest_blocks
     echo "refresh genesis db: nodes=$nodes_count shards=2..$end_shard"
     cd /root/nodes/seth && "$genesis_bin" -U -N "$nodes_count" -E 4
     cd /root/nodes/seth && "$genesis_bin" -S 3 -N "$nodes_count" -E 4
