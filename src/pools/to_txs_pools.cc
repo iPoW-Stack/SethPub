@@ -421,10 +421,8 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
         }
     }
 
-    // Heights unchanged across all pools — still allow a GBP heartbeat ToTx
-    // (empty cross-shard transfers) so pool 32 can advance after an empty block.
-    SETH_DEBUG("leader get to heights unchanged, allow heartbeat to_tx");
-    return kPoolsSuccess;
+    SETH_DEBUG("leader get to heights unchanged, no cross-shard to txs to include");
+    return kPoolsError;
 }
 
 int ToTxsPools::CreateToTxWithHeights(
@@ -473,11 +471,9 @@ int ToTxsPools::CreateToTxWithHeights(
         ProtobufToJson(*prev_to_heights).c_str(), 
         ProtobufToJson(leader_to_heights).c_str());
     if (!heights_valid) {
-        SETH_DEBUG("CreateToTxWithHeights: heights unchanged, empty heartbeat to_tx, shard: %u",
+        SETH_DEBUG("CreateToTxWithHeights: heights unchanged, skip empty to_tx, shard: %u",
             sharding_id);
-        to_tx.set_elect_height(elect_height);
-        to_tx.set_des_shard(sharding_id);
-        return kPoolsSuccess;
+        return kPoolsError;
     }
 
     for (uint32_t pool_idx = 0; pool_idx < (uint32_t)leader_to_heights.heights_size(); ++pool_idx) {
@@ -584,12 +580,8 @@ int ToTxsPools::CreateToTxWithHeights(
     }
 
     if (acc_amount_map.empty()) {
-        // No cross-shard transfers in this height range — still advance GBP heights
-        // via an empty ToTxMessage (heights_valid was already verified above).
-        SETH_DEBUG("acc amount map empty, success with empty to tx for shard: %u", sharding_id);
-        to_tx.set_elect_height(elect_height);
-        to_tx.set_des_shard(sharding_id);
-        return kPoolsSuccess;
+        SETH_DEBUG("acc amount map empty, no cross-shard to txs for shard: %u", sharding_id);
+        return kPoolsError;
     }
 
     SETH_DEBUG("sharding id:%u, success statistic to txs prev_to_heights: %s, leader_to_heights: %s", 

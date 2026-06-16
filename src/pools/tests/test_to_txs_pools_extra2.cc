@@ -3,7 +3,7 @@
 //   - LeaderCreateToHeights: cons_height in added_heights_ but timestamp too fresh
 //   - LeaderCreateToHeights: valided_heights_ missing cons_height but == floor → valid
 //   - LeaderCreateToHeights: prev_heights(i) > to_heights(i) → kPoolsError (lines 407-412)
-//   - LeaderCreateToHeights: prev == leader for all heights → kPoolsSuccess (heartbeat)
+//   - LeaderCreateToHeights: prev == leader for all heights → kPoolsError (no to txs)
 //   - CreateToTxWithHeights: success path → kPoolsSuccess (via network_txs_pools_ with
 //     des_sharding_id == kRootCongressNetworkId and acc_mgr_ returning nullptr)
 //   - CreateToTxWithHeights: height sizes mismatch → kPoolsError

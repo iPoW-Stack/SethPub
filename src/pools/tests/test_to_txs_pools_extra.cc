@@ -190,7 +190,7 @@ TEST_F(TestToTxsPoolsExtra, CreateToTxWithHeights_PrevHigherThanLeader_Error) {
         kPoolsError);
 }
 
-// Branch: all prev == leader → heights_valid=false → empty heartbeat ToTx
+// Branch: all prev == leader → heights_valid=false → no empty to_tx
 TEST_F(TestToTxsPoolsExtra, CreateToTxWithHeights_AllEqualHeights_Success) {
     auto pool = MakePool();
     pool.prev_to_heights_ = std::make_shared<pools::protobuf::ShardToTxItem>(MakeHeights(0));
@@ -200,7 +200,7 @@ TEST_F(TestToTxsPoolsExtra, CreateToTxWithHeights_AllEqualHeights_Success) {
     pools::protobuf::ToTxMessage to_tx;
     EXPECT_EQ(pool.CreateToTxWithHeights(
         network::kConsensusShardBeginNetworkId, 0, &prev_arg, leader, to_tx),
-        kPoolsSuccess);
+        kPoolsError);
 }
 
 // Branch: max_height > pool_consensus_heihgts_[0] → kPoolsError
@@ -223,7 +223,7 @@ TEST_F(TestToTxsPoolsExtra, CreateToTxWithHeights_MaxAboveConsensus_Error) {
         kPoolsError);
 }
 
-// Branch: acc_amount_map empty but heights valid → kPoolsSuccess (empty ToTx)
+// Branch: acc_amount_map empty but heights advanced → kPoolsError (no to_tx)
 // leader.heights(0)=1 but network_txs_pools_[0] has no entry → map stays empty
 TEST_F(TestToTxsPoolsExtra, CreateToTxWithHeights_EmptyAccAmountMap_Success) {
     auto pool = MakePool();
@@ -241,8 +241,7 @@ TEST_F(TestToTxsPoolsExtra, CreateToTxWithHeights_EmptyAccAmountMap_Success) {
     pools::protobuf::ToTxMessage to_tx;
     EXPECT_EQ(pool.CreateToTxWithHeights(
         network::kConsensusShardBeginNetworkId, 0, &prev_arg, leader, to_tx),
-        kPoolsSuccess);
-    EXPECT_EQ(to_tx.tos_size(), 0);
+        kPoolsError);
 }
 
 // ToTxsPools::ClearLeaderToHeights (inline in to_txs_pools.h) clears leader snapshot.
