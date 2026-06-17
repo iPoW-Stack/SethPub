@@ -239,29 +239,29 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
             auto tx_iter = tx_map.find(addr);
             if (tx_iter != tx_map.end()) {
                 for (auto nonce_iter = tx_iter->second.begin(); nonce_iter != tx_iter->second.end(); ) {
-                    SETH_DEBUG("pool: %d, find tx addr success: %s, unique hash: %s, "
-                        "step: %lu, nonce: %lu, consensus nonce: %lu, key: %s", 
-                        pool_index_,
-                        common::Encode::HexEncode(addr).c_str(),
-                        common::Encode::HexEncode(tx_info.unique_hash()).c_str(),
-                        (int32_t)tx_info.step(),
-                        tx_info.nonce(),
-                        nonce_iter->second->tx_info->nonce(),
-                        common::Encode::HexEncode(nonce_iter->second->tx_info->key()).c_str());
+                    // SETH_DEBUG("pool: %d, find tx addr success: %s, unique hash: %s, "
+                    //     "step: %lu, nonce: %lu, consensus nonce: %lu, key: %s", 
+                    //     pool_index_,
+                    //     common::Encode::HexEncode(addr).c_str(),
+                    //     common::Encode::HexEncode(tx_info.unique_hash()).c_str(),
+                    //     (int32_t)tx_info.step(),
+                    //     tx_info.nonce(),
+                    //     nonce_iter->second->tx_info->nonce(),
+                    //     common::Encode::HexEncode(nonce_iter->second->tx_info->key()).c_str());
                     if (!IsUserTransaction(tx_info.step())) {
                         if (nonce_iter->second->tx_info->key() != tx_info.unique_hash()) {
                             ++nonce_iter;
                             continue;
                         }
 
-                        SETH_DEBUG("trace tx pool: %d, success add unique tx %s, key: %s, "
-                            "nonce: %lu, step: %d, unique hash exists: %s", 
-                            pool_index_,
-                            common::Encode::HexEncode(tx_info.to()).c_str(), 
-                            common::Encode::HexEncode(tx_info.unique_hash()).c_str(), 
-                            tx_info.nonce(),
-                            (int32_t)tx_info.step(),
-                            common::Encode::HexEncode(addr).c_str());
+                        // SETH_DEBUG("trace tx pool: %d, success add unique tx %s, key: %s, "
+                        //     "nonce: %lu, step: %d, unique hash exists: %s", 
+                        //     pool_index_,
+                        //     common::Encode::HexEncode(tx_info.to()).c_str(), 
+                        //     common::Encode::HexEncode(tx_info.unique_hash()).c_str(), 
+                        //     tx_info.nonce(),
+                        //     (int32_t)tx_info.step(),
+                        //     common::Encode::HexEncode(addr).c_str());
                     } else {
                         if (nonce_iter->first > tx_info.nonce()) {
                             break;
@@ -273,19 +273,19 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
                         all_delay_tm_us_ += now_tm_us - nonce_iter->second->receive_tm_us;
                     }
 
-                    SETH_DEBUG("trace tx pool: %d, over tx addr: %s, nonce: %lu", 
-                        pool_index_,
-                        common::Encode::HexEncode(addr).c_str(), 
-                        nonce_iter->first);
+                    // SETH_DEBUG("trace tx pool: %d, over tx addr: %s, nonce: %lu", 
+                    //     pool_index_,
+                    //     common::Encode::HexEncode(addr).c_str(), 
+                    //     nonce_iter->first);
                     auto tx_ptr = nonce_iter->second;
-                    SETH_DEBUG("pool: %d, over pop success add system tx nonce addr: %s, "
-                        "addr nonce: %lu, tx nonce: %lu, unique hash: %s, step: %d",
-                        pool_index_,
-                        common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
-                        tx_ptr->address_info->nonce(), 
-                        tx_ptr->tx_info->nonce(),
-                        common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(),
-                        (int32_t)tx_ptr->tx_info->step());
+                    // SETH_DEBUG("pool: %d, over pop success add system tx nonce addr: %s, "
+                    //     "addr nonce: %lu, tx nonce: %lu, unique hash: %s, step: %d",
+                    //     pool_index_,
+                    //     common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
+                    //     tx_ptr->address_info->nonce(), 
+                    //     tx_ptr->tx_info->nonce(),
+                    //     common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str(),
+                    //     (int32_t)tx_ptr->tx_info->step());
                     nonce_iter = tx_iter->second.erase(nonce_iter);
                 }
 
