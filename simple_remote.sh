@@ -11,7 +11,7 @@ REMOTE_FAIL_FILE="/tmp/seth_remote_fail.$$"
 export SETH_REMOTE_PASSWORD="${PASSWORD:-${SETH_REMOTE_PASSWORD:-}}"
 export REMOTE_FAIL_FILE
 REMOTE_PIDS=()
-
+export SETH_ROOT=/root/seth
 CODE_PATH=`pwd`
 node_ips_array=(${node_ips//,/ })
 nodes_count=0
