@@ -3346,6 +3346,82 @@ contract AMMPool {
                   << ", total swap ops: " << total_swaps
                   << " (" << swap_groups.size() << " groups)" << std::endl;
 
+        std::unordered_map<std::string, const PoolInfo*> pool_by_addr;
+        for (const auto& p : pools) pool_by_addr[p.pool] = &p;
+
+        auto decode_swap_selector = [](const std::string& input) -> std::string {
+            return input.size() >= 8 ? input.substr(0, 8) : "";
+        };
+
+        auto print_swap_group_diagnostics = [&](const char* label, uint32_t gi,
+                const NoncedCallGroup& grp) {
+            const int64_t expected_nonce = (int64_t)grp.inputs.size();
+            const std::string prepay = grp.contract_addr + grp.caller_addr;
+            const uint32_t pool_idx = get_contract_pool_idx(grp.contract_addr);
+            auto [ldr_ip, ldr_http] = get_leader_http(grp.contract_addr);
+            SethSDK leader_sdk(ldr_ip, ldr_http);
+            SethSDK default_sdk(global_chain_node_ip, global_chain_node_http_port);
+
+            const int64_t nonce_leader = leader_sdk.fetchNonce(prepay);
+            const int64_t nonce_default = default_sdk.fetchNonce(prepay);
+            const int64_t prefund_bal = leader_sdk.fetchBalance(prepay);
+
+            std::cout << "\n    ══ " << label << " grp=" << gi << " ══" << std::endl;
+            std::cout << "    contract(pool)  = " << grp.contract_addr << std::endl;
+            std::cout << "    caller(user)    = " << grp.caller_addr << std::endl;
+            std::cout << "    prepay_addr     = " << prepay << std::endl;
+            std::cout << "    contract_pool   = " << pool_idx << std::endl;
+            std::cout << "    leader_node     = " << ldr_ip << ":" << ldr_http << std::endl;
+            std::cout << "    expected_nonce  = " << expected_nonce << std::endl;
+            std::cout << "    nonce(leader)   = " << nonce_leader
+                      << (nonce_leader < 0 ? " (query failed)" : "") << std::endl;
+            std::cout << "    nonce(default)  = " << nonce_default
+                      << (nonce_default < 0 ? " (query failed)" : "") << std::endl;
+            if (nonce_leader >= 0 && nonce_leader < expected_nonce) {
+                std::cout << "    nonce_gap       = missing "
+                          << (expected_nonce - nonce_leader) << " swap tx(s)" << std::endl;
+            }
+            std::cout << "    prefund_balance = " << prefund_bal << std::endl;
+            std::cout << "    ops_sent        = " << grp.inputs.size() << std::endl;
+            if (!grp.inputs.empty()) {
+                const std::string& first = grp.inputs[0];
+                std::cout << "    first_input     = " << first.substr(0, std::min<size_t>(72, first.size()));
+                if (first.size() > 72) std::cout << "...";
+                std::cout << std::endl;
+                const std::string selector = decode_swap_selector(first);
+                const char* direction = "?";
+                if (selector == "553a1db7") direction = "A→B (token0→token1)";
+                else if (selector == "5938c86b") direction = "B→A (token1→token0)";
+                std::cout << "    swap_selector   = 0x" << selector << " (" << direction << ")" << std::endl;
+
+                const PoolInfo* pinfo = nullptr;
+                auto pit = pool_by_addr.find(grp.contract_addr);
+                if (pit != pool_by_addr.end()) pinfo = pit->second;
+
+                if (pinfo) {
+                    const std::string& token_addr = (selector == "5938c86b")
+                        ? pinfo->token_b : pinfo->token_a;
+                    auto allowance = leader_sdk.queryFunctionSolidity(
+                        grp.prikey_hex, token_addr,
+                        "allowance", {"address", "address"},
+                        {grp.caller_addr, grp.contract_addr}, {"uint256"});
+                    std::cout << "    allowance(leader)= "
+                              << (allowance["status"] == 0
+                                  ? allowance.value("return_value", "?")
+                                  : allowance.dump())
+                              << " (need>=" << kSwapAmount << ")" << std::endl;
+                    auto bal = leader_sdk.queryFunctionSolidity(
+                        grp.prikey_hex, token_addr,
+                        "balanceOf", {"address"}, {grp.caller_addr}, {"uint256"});
+                    std::cout << "    balanceOf(user) = "
+                              << (bal["status"] == 0 ? bal.value("return_value", "?") : bal.dump())
+                              << std::endl;
+                } else {
+                    std::cout << "    (pool token lookup failed)" << std::endl;
+                }
+            }
+        };
+
         std::atomic<uint64_t> swap_ok{0}, swap_fail{0};
         auto swap_start = std::chrono::steady_clock::now();
         send_grouped_calls(swap_groups, swap_ok, swap_fail, total_swaps, "swap", swap_start);
@@ -3456,9 +3532,25 @@ contract AMMPool {
                 for (int w = 0; w < kPollIntervalMs / 100 && !global_stop; ++w) usleep(100000);
             }
 
-            if (confirmed < total_groups) {
-                std::cout << "  ⚠ WARNING: " << (total_groups - confirmed) << "/" << total_groups
+            std::vector<uint32_t> swap_unconfirmed_groups;
+            for (uint32_t gi = 0; gi < total_groups; ++gi) {
+                if (!grp_confirmed[gi]) swap_unconfirmed_groups.push_back(gi);
+            }
+
+            if (!swap_unconfirmed_groups.empty()) {
+                std::cout << "  ⚠ WARNING: " << swap_unconfirmed_groups.size() << "/" << total_groups
                           << " swap groups NOT confirmed after " << kMaxWaitSec << "s" << std::endl;
+                std::cout << "  Unconfirmed group indices: ";
+                for (uint32_t i = 0; i < swap_unconfirmed_groups.size(); ++i) {
+                    if (i > 0) std::cout << ", ";
+                    std::cout << swap_unconfirmed_groups[i];
+                }
+                std::cout << std::endl;
+                std::cout << "  ── Unconfirmed swap diagnostics (" << swap_unconfirmed_groups.size()
+                          << " groups) ──" << std::endl;
+                for (auto gi : swap_unconfirmed_groups) {
+                    print_swap_group_diagnostics("SWAP UNCONFIRMED", gi, swap_groups[gi]);
+                }
             }
         }
 
