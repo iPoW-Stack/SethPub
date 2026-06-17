@@ -1133,6 +1133,8 @@ static void BatchQueryAccounts(const UWSRequest& req, UWSResponse& http_res) {
     res_json["msg"] = "ok";
     nlohmann::json accounts_json = nlohmann::json::object();
     nlohmann::json not_found_json = nlohmann::json::array();
+    uint32_t from_prefix_db = 0;
+    uint32_t from_acc_mgr = 0;
 
     for (uint32_t i = 0; i < addrs_splits.Count(); ++i) {
         std::string hex_addr(addrs_splits[i]);
@@ -1147,6 +1149,11 @@ static void BatchQueryAccounts(const UWSRequest& req, UWSResponse& http_res) {
         auto addr_info = prefix_db->GetAddressInfo(addr);
         if (addr_info == nullptr) {
             addr_info = http_handler->acc_mgr()->GetAccountInfo(addr);
+            if (addr_info != nullptr) {
+                ++from_acc_mgr;
+            }
+        } else {
+            ++from_prefix_db;
         }
 
         // For prepayment addresses (40 bytes = contract + user), also try
@@ -1178,9 +1185,32 @@ static void BatchQueryAccounts(const UWSRequest& req, UWSResponse& http_res) {
     res_json["not_found"] = not_found_json;
     auto json_str = res_json.dump();
     http_res.set_content(json_str, "application/json");
-    SETH_WARN("batch_query_accounts: %u found, %u not_found, first_addr_len=%u",
-        (uint32_t)accounts_json.size(), (uint32_t)not_found_json.size(),
-        addrs_splits.Count() > 0 ? (uint32_t)std::string(addrs_splits[0]).size() : 0u);
+
+    std::string details;
+    uint32_t detail_idx = 0;
+    for (auto it = accounts_json.begin(); it != accounts_json.end() && detail_idx < 20; ++it, ++detail_idx) {
+        if (!details.empty()) {
+            details += " | ";
+        }
+        details += it.key();
+        details += "{len=" + std::to_string(it.key().size());
+        details += ",nonce=" + it.value()["nonce"].get<std::string>();
+        details += ",balance=" + it.value()["balance"].get<std::string>();
+        details += ",pool=" + std::to_string(it.value()["pool_index"].get<uint32_t>()) + "}";
+    }
+    if (accounts_json.size() > 20) {
+        details += " | ... +" + std::to_string(accounts_json.size() - 20) + " more";
+    }
+
+    SETH_WARN("batch_query_accounts: requested=%u found=%u not_found=%u "
+        "prefix_db=%u acc_mgr=%u resp_bytes=%zu details=[%s]",
+        addrs_splits.Count(),
+        (uint32_t)accounts_json.size(),
+        (uint32_t)not_found_json.size(),
+        from_prefix_db,
+        from_acc_mgr,
+        json_str.size(),
+        details.empty() ? "-" : details.c_str());
     if (!not_found_json.empty()) {
         std::string nf_list;
         for (uint32_t i = 0; i < not_found_json.size() && i < 5; ++i) {
