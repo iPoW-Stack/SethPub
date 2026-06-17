@@ -450,7 +450,7 @@ void TxPool::GetTxSyncToLeader(
             }
         }
 
-        for (; nonce_iter != iter->second.end(); ++nonce_iter) {
+        while (nonce_iter != iter->second.end()) {
             auto tx_ptr = nonce_iter->second;
             if (!IsUserTransaction(tx_ptr->tx_info->step())) {
                 break;
@@ -458,6 +458,7 @@ void TxPool::GetTxSyncToLeader(
 
             // Skip nonces the leader already has
             if (leader_known_nonce > 0 && tx_ptr->tx_info->nonce() < leader_known_nonce) {
+                ++nonce_iter;
                 continue;
             }
 
@@ -506,6 +507,7 @@ void TxPool::GetTxSyncToLeader(
                     }
 
                     if (res > 0) {
+                        ++nonce_iter;
                         continue;
                     }
                     
@@ -555,6 +557,7 @@ void TxPool::GetTxSyncToLeader(
             *tx = *tx_ptr->tx_info;
             accumulated_bytes += tx_bytes;
             ++addr_tx_count;
+            ++nonce_iter;
             if ((uint32_t)txs->size() >= count) {
                 break;
             }
