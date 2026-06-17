@@ -130,7 +130,8 @@ void KeyValueSync::HotstuffConsensusTimerMessage(const transport::MessagePtr& ms
     std::shared_ptr<view_block::protobuf::ViewBlockItem> pb_vblock = nullptr;
     // SETH_DEBUG("now call ConsensusTimerMessage thread_idx: %d", thread_idx);
     uint32_t handled = 0;
-    while (vblock_queues_[thread_idx].pop(&pb_vblock)) {
+    static const uint32_t kMaxSyncBlocksPerTick = 32u;
+    while (handled < kMaxSyncBlocksPerTick && vblock_queues_[thread_idx].pop(&pb_vblock)) {
         if (pb_vblock) {
             // SETH_DEBUG("hotstuff consensus timer message handle view block: %u_%u_%lu_%lu, timeblock_height: %lu",
             //     pb_vblock->qc().network_id(), 
