@@ -109,12 +109,20 @@ int GenesisBlockInit::CreateGenesisBlocks(
 
     // db_->CompactRange("", "");
     if (network_id == network::kRootCongressNetworkId) {
-        FILE* fd = fopen("./bls_pk", "w");
         auto str = bls_pk_json_.dump();
-        auto w_size = fwrite(str.c_str(), 1, str.size(), fd);
-        fclose(fd);
-        if (w_size != str.size()) {
-            return kInitError;
+        const char* bls_pk_paths[] = { "./bls_pk", "./conf/bls_pk" };
+        for (const char* path : bls_pk_paths) {
+            FILE* fd = fopen(path, "w");
+            if (fd == nullptr) {
+                SETH_WARN("failed to write genesis bls_pk: %s", path);
+                continue;
+            }
+
+            auto w_size = fwrite(str.c_str(), 1, str.size(), fd);
+            fclose(fd);
+            if (w_size != str.size()) {
+                return kInitError;
+            }
         }
     }
 

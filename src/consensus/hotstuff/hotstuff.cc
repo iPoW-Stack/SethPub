@@ -1963,8 +1963,13 @@ Status Hotstuff::VerifyQC(const QC& qc) {
         return Status::kError;
     }
 
-    if (crypto()->VerifyQC(common::GlobalInfo::Instance()->network_id(), qc) != Status::kSuccess) {
-        SETH_ERROR("pool: %d verify qc failed: %lu", pool_idx_, qc.view());
+    // QC/TC BLS signatures are keyed by qc.network_id() (e.g. root congress pools use
+    // root BLS keys). Using the local shard id here breaks genesis TC verification on
+    // consensus shard nodes.
+    if (crypto()->VerifyQC(qc.network_id(), qc) != Status::kSuccess) {
+        SETH_ERROR("pool: %d verify qc failed: %lu, qc network: %u, local network: %u",
+            pool_idx_, qc.view(), qc.network_id(),
+            common::GlobalInfo::Instance()->network_id());
         // //assert(false);
         return Status::kError; 
     }
