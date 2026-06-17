@@ -1153,9 +1153,26 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
             }
          
             if (pb_vblock->block_info().chain_id() != hotstuff::kGlobalChainId) {
-                SETH_ERROR("pb vblock parse failed chain id invalid: %lu, %lu", 
+                SETH_ERROR("pb vblock parse failed chain id invalid: %lu, %lu",
                     pb_vblock->block_info().chain_id(), hotstuff::kGlobalChainId);
                 break;
+            }
+
+            // Skip re-verification if this height is already in synced_res_map_.
+            // This prevents the verify queue from flooding when latest_height stalls
+            // (e.g. vblock_queue backlog) and sync keeps re-requesting the same blocks.
+            {
+                auto net_iter = synced_res_map_.find(pb_vblock->qc().network_id());
+                if (net_iter != synced_res_map_.end()) {
+                    auto pool_iter = net_iter->second.find(pb_vblock->qc().pool_index());
+                    if (pool_iter != net_iter->second.end() &&
+                            pool_iter->second.find(pb_vblock->block_info().height()) != pool_iter->second.end()) {
+                        SETH_DEBUG("skip re-verify already synced block: %u_%u_%lu height: %lu",
+                            pb_vblock->qc().network_id(), pb_vblock->qc().pool_index(),
+                            pb_vblock->qc().view(), pb_vblock->block_info().height());
+                        break;
+                    }
+                }
             }
 
             EnqueueVerifyBlock(
