@@ -230,12 +230,26 @@ public:
                 sharding_id,
                 &common_pk,
                 &sec_key);
-            if (members == nullptr || common_pk == libff::alt_bn128_G2::zero()) {
-                SETH_ERROR("failed get elect members or common pk: %u, %lu, %d",
+            if (members == nullptr) {
+                SETH_ERROR("failed get elect members: %u, %lu",
+                    sharding_id, elect_height);
+                break;
+            }
+
+            if (common_pk == libff::alt_bn128_G2::zero()) {
+                // members found but common_pk unavailable — return an item with zero pk so
+                // VerifyThresSign returns kElectItemNotFound instead of falling back to the
+                // (potentially stale) genesis common_pk and producing a spurious verify failure.
+                SETH_WARN("elect members found but common_pk is zero: shard %u, elect_height %lu; "
+                    "returning ElectItem with zero pk to block incorrect genesis fallback",
+                    sharding_id, elect_height);
+                res_ptr = std::make_shared<ElectItem>(
+                    security_ptr_,
                     sharding_id,
                     elect_height,
-                    (common_pk == libff::alt_bn128_G2::zero()));
-                // //assert(false);      
+                    members,
+                    common_pk,
+                    sec_key);
                 break;
             }
             

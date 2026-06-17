@@ -66,8 +66,11 @@ public:
             return item;
         }
 
-        if (genesis_elect_items_[sharding_id] != nullptr && 
+        if (genesis_elect_items_[sharding_id] != nullptr &&
                 genesis_elect_items_[sharding_id]->ElectHeight() == elect_height) {
+            SETH_WARN("using genesis fallback pk for shard %u, elect_height %lu — "
+                "verify will fail if conf/bls_pk does not match the actual genesis common_pk",
+                sharding_id, elect_height);
             return genesis_elect_items_[sharding_id];
         }
 
