@@ -3365,19 +3365,28 @@ contract AMMPool {
             const int64_t nonce_leader = leader_sdk.fetchNonce(prepay);
             const int64_t nonce_default = default_sdk.fetchNonce(prepay);
             const int64_t prefund_bal = leader_sdk.fetchBalance(prepay);
+            const uint32_t pool_idx_addr = common::GetAddressPoolIndex(
+                common::Encode::HexDecode(grp.contract_addr));
 
             std::cout << "\n    ══ " << label << " grp=" << gi << " ══" << std::endl;
             std::cout << "    contract(pool)  = " << grp.contract_addr << std::endl;
             std::cout << "    caller(user)    = " << grp.caller_addr << std::endl;
             std::cout << "    prepay_addr     = " << prepay << std::endl;
             std::cout << "    contract_pool   = " << pool_idx << std::endl;
+            if (pool_idx != pool_idx_addr) {
+                std::cout << "    pool_idx(addr)  = " << pool_idx_addr
+                          << " (MISMATCH — batch confirm on wrong leader if used)" << std::endl;
+            }
             std::cout << "    leader_node     = " << ldr_ip << ":" << ldr_http << std::endl;
             std::cout << "    expected_nonce  = " << expected_nonce << std::endl;
             std::cout << "    nonce(leader)   = " << nonce_leader
                       << (nonce_leader < 0 ? " (query failed)" : "") << std::endl;
             std::cout << "    nonce(default)  = " << nonce_default
                       << (nonce_default < 0 ? " (query failed)" : "") << std::endl;
-            if (nonce_leader >= 0 && nonce_leader < expected_nonce) {
+            if (nonce_leader >= expected_nonce) {
+                std::cout << "    confirm_status  = nonce OK on leader — likely false unconfirmed"
+                          << " (wrong leader in batch poll or batch miss)" << std::endl;
+            } else if (nonce_leader >= 0 && nonce_leader < expected_nonce) {
                 std::cout << "    nonce_gap       = missing "
                           << (expected_nonce - nonce_leader) << " swap tx(s)" << std::endl;
             }
@@ -3462,12 +3471,11 @@ contract AMMPool {
                 }
                 if (pending.empty()) break;
 
-                // Group pending by pool leader (contract pool_index)
+                // Group pending by contract pool leader — use on-chain pool_index (same as
+                // approve wait and send_grouped_calls), NOT GetAddressPoolIndex(contract).
                 std::unordered_map<uint32_t, std::vector<uint32_t>> pool_pending;
                 for (auto gi : pending) {
-                    uint32_t pidx = common::GetAddressPoolIndex(
-                        common::Encode::HexDecode(swap_groups[gi].contract_addr));
-                    pool_pending[pidx].push_back(gi);
+                    pool_pending[get_contract_pool_idx(swap_groups[gi].contract_addr)].push_back(gi);
                 }
 
                 for (auto& [pidx, indices] : pool_pending) {
@@ -3535,6 +3543,24 @@ contract AMMPool {
             std::vector<uint32_t> swap_unconfirmed_groups;
             for (uint32_t gi = 0; gi < total_groups; ++gi) {
                 if (!grp_confirmed[gi]) swap_unconfirmed_groups.push_back(gi);
+            }
+
+            // Reconcile: single-account nonce on correct leader beats batch miss / wrong routing
+            if (!swap_unconfirmed_groups.empty()) {
+                std::vector<uint32_t> still_unconfirmed;
+                for (auto gi : swap_unconfirmed_groups) {
+                    auto& grp = swap_groups[gi];
+                    const std::string prepay = grp.contract_addr + grp.caller_addr;
+                    auto [ldr_ip, ldr_http] = get_leader_http(grp.contract_addr);
+                    SethSDK leader_sdk(ldr_ip, ldr_http);
+                    const int64_t n = leader_sdk.fetchNonce(prepay);
+                    if (n >= expected_nonces[gi]) {
+                        grp_confirmed[gi] = true;
+                    } else {
+                        still_unconfirmed.push_back(gi);
+                    }
+                }
+                swap_unconfirmed_groups = std::move(still_unconfirmed);
             }
 
             if (!swap_unconfirmed_groups.empty()) {
