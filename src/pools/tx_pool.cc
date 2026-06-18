@@ -218,6 +218,32 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
     return kPoolsSuccess;
 }
 
+void TxPool::RecordNormalToDelay(uint64_t now_tm_us, const TxItemPtr& tx_ptr) {
+    if (tx_ptr == nullptr || tx_ptr->tx_info == nullptr ||
+            tx_ptr->tx_info->step() != pools::protobuf::kNormalTo) {
+        return;
+    }
+
+    ++normal_to_delay_tx_count_;
+    normal_to_delay_tm_us_ += now_tm_us - tx_ptr->receive_tm_us;
+}
+
+void TxPool::MaybeReportNormalToDelay(uint64_t now_tm_us) {
+    if (prev_normal_to_delay_tm_timeout_ + 3000lu > (now_tm_us / 1000lu)) {
+        return;
+    }
+
+    const uint64_t avg = normal_to_delay_tx_count_ > 0 ?
+        normal_to_delay_tm_us_ / normal_to_delay_tx_count_ : 0;
+    SETH_WARN("[NormalToLatency] pool: %d, normal_to avg=%lu us, count=%lu",
+        pool_index_,
+        avg,
+        normal_to_delay_tx_count_);
+    normal_to_delay_tm_us_ = 0;
+    normal_to_delay_tx_count_ = 0;
+    prev_normal_to_delay_tm_timeout_ = now_tm_us / 1000lu;
+}
+
 void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
     // CheckThreadIdValid();
     auto now_tm_us = common::TimeUtils::TimestampUs();
@@ -277,6 +303,8 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
                     if (IsUserTransaction(tx_info.step())) {
                         ++all_delay_tx_count_;
                         all_delay_tm_us_ += now_tm_us - nonce_iter->second->receive_tm_us;
+                    } else if (tx_info.step() == pools::protobuf::kNormalTo) {
+                        RecordNormalToDelay(now_tm_us, nonce_iter->second);
                     }
 
                     // SETH_DEBUG("trace tx pool: %d, over tx addr: %s, nonce: %lu", 
@@ -326,6 +354,7 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
         all_delay_tx_count_ = 0;
         prev_delay_tm_timeout_ = now_tm_us / 1000lu;
     }
+    MaybeReportNormalToDelay(now_tm_us);
 
     over_addr_map_queue_.push(over_addr_nonce_ptr);
     tx_pool_dirty_ = true;  // nonces advanced, previously stuck txs may now be valid
@@ -741,6 +770,7 @@ void TxPool::TempGetTxIdempotently(
                             tx_ptr->tx_info->nonce(), 
                             (int32_t)tx_ptr->tx_info->step(),
                             common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
+                        RecordNormalToDelay(common::TimeUtils::TimestampUs(), tx_ptr);
                         nonce_iter = iter->second.erase(nonce_iter);
                         continue;
                     }
@@ -929,6 +959,7 @@ void TxPool::TempGetTxIdempotently(
     if (res_map.empty()) {
         tx_pool_dirty_ = false;
     }
+    MaybeReportNormalToDelay(common::TimeUtils::TimestampUs());
 }
 
 void TxPool::InitLatestInfo() {

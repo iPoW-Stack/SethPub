@@ -222,6 +222,8 @@ private:
         std::vector<pools::TxItemPtr>& res_map, 
         uint32_t count, 
         pools::CheckAddrNonceValidFunction tx_valid_func);
+    void RecordNormalToDelay(uint64_t now_tm_us, const TxItemPtr& tx_ptr);
+    void MaybeReportNormalToDelay(uint64_t now_tm_us);
 
     static const uint64_t kSyncBlockPeriodMs = 1000lu;
     static const uint64_t kUserPopedTxTimeoutSec = 10lu;
@@ -270,6 +272,9 @@ private:
     uint64_t all_delay_tm_us_ = 0;
     uint64_t all_delay_tx_count_ = 0;
     uint64_t prev_delay_tm_timeout_ = 0;
+    uint64_t normal_to_delay_tm_us_ = 0;
+    uint64_t normal_to_delay_tx_count_ = 0;
+    uint64_t prev_normal_to_delay_tm_timeout_ = 0;
 
     DISALLOW_COPY_AND_ASSIGN(TxPool);
 };
