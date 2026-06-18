@@ -2755,6 +2755,95 @@ contract AMMPool {
             return groups;
         };
 
+        auto parse_account_nonce = [](const nlohmann::json& acc) -> int64_t {
+            if (!acc.contains("nonce")) {
+                return -1;
+            }
+            try {
+                auto ns = acc["nonce"].get<std::string>();
+                int64_t n = 0;
+                std::from_chars(ns.data(), ns.data() + ns.size(), n);
+                return n;
+            } catch (...) {
+                return -1;
+            }
+        };
+
+        auto try_confirm_from_batch = [&](const nlohmann::json& r,
+                const std::vector<std::string>& batch,
+                const std::vector<uint32_t>& batch_gi,
+                std::vector<bool>& grp_confirmed,
+                const std::vector<int64_t>& expected_nonces) {
+            if (!r.contains("accounts")) {
+                return;
+            }
+            for (uint32_t k = 0; k < batch_gi.size(); ++k) {
+                uint32_t gi2 = batch_gi[k];
+                if (grp_confirmed[gi2]) {
+                    continue;
+                }
+                if (!r["accounts"].contains(batch[k])) {
+                    continue;
+                }
+                int64_t n = parse_account_nonce(r["accounts"][batch[k]]);
+                if (n >= expected_nonces[gi2]) {
+                    grp_confirmed[gi2] = true;
+                }
+            }
+        };
+
+        auto fetch_nonce_confirm_groups = [&](const std::vector<uint32_t>& indices,
+                const std::vector<NoncedCallGroup>& groups,
+                std::vector<bool>& grp_confirmed,
+                const std::vector<int64_t>& expected_nonces) {
+            for (auto gi : indices) {
+                if (grp_confirmed[gi]) {
+                    continue;
+                }
+                const auto& grp = groups[gi];
+                const std::string prepay = grp.contract_addr + grp.caller_addr;
+                int64_t n = fetch_nonce_retry(grp.contract_addr, prepay, 2);
+                if (n >= expected_nonces[gi]) {
+                    grp_confirmed[gi] = true;
+                }
+            }
+        };
+
+        auto reconcile_unconfirmed_groups = [&](
+                std::vector<uint32_t> unconfirmed,
+                const std::vector<NoncedCallGroup>& groups,
+                std::vector<bool>& grp_confirmed,
+                const std::vector<int64_t>& expected_nonces,
+                int retries = 8,
+                int retry_sleep_ms = 500) -> std::vector<uint32_t> {
+            for (int attempt = 0; attempt < retries && !unconfirmed.empty() && !global_stop; ++attempt) {
+                std::vector<uint32_t> still;
+                for (auto gi : unconfirmed) {
+                    if (grp_confirmed[gi]) {
+                        continue;
+                    }
+                    const auto& grp = groups[gi];
+                    const std::string prepay = grp.contract_addr + grp.caller_addr;
+                    int64_t n = fetch_nonce_retry(grp.contract_addr, prepay, 3);
+                    if (n >= expected_nonces[gi]) {
+                        grp_confirmed[gi] = true;
+                    } else {
+                        still.push_back(gi);
+                    }
+                }
+                unconfirmed = std::move(still);
+                if (unconfirmed.empty()) {
+                    break;
+                }
+                if (attempt + 1 < retries) {
+                    for (int w = 0; w < retry_sleep_ms / 100 && !global_stop; ++w) {
+                        usleep(100000);
+                    }
+                }
+            }
+            return unconfirmed;
+        };
+
         auto xfer_groups = group_by_prepay(xfer_ops);
         std::cout << "  Unique (contract,caller) groups: " << xfer_groups.size() << std::endl;
 
@@ -3071,23 +3160,20 @@ contract AMMPool {
                         batch_gi.push_back(gi);
                         if (batch.size() >= kBatchSize || j == indices.size() - 1) {
                             auto r = leader_sdk.batchQueryAccounts(batch);
-                            if (r.contains("status") && r["status"] == 0 && r.contains("accounts")) {
-                                for (uint32_t k = 0; k < batch_gi.size(); ++k) {
-                                    uint32_t gi2 = batch_gi[k];
-                                    if (r["accounts"].contains(batch[k])) {
-                                        auto& acc = r["accounts"][batch[k]];
-                                        int64_t n = 0;
-                                        if (acc.contains("nonce")) {
-                                            try {
-                                                auto ns = acc["nonce"].get<std::string>();
-                                                std::from_chars(ns.data(), ns.data() + ns.size(), n);
-                                            } catch (...) {}
-                                        }
-                                        if (n >= expected_nonces[gi2]) {
-                                            grp_confirmed[gi2] = true;
-                                        }
-                                    }
+                            if (r.contains("status") && r["status"] == 0) {
+                                try_confirm_from_batch(
+                                    r, batch, batch_gi, grp_confirmed, expected_nonces);
+                            }
+                            std::vector<uint32_t> batch_miss;
+                            batch_miss.reserve(batch_gi.size());
+                            for (uint32_t k = 0; k < batch_gi.size(); ++k) {
+                                if (!grp_confirmed[batch_gi[k]]) {
+                                    batch_miss.push_back(batch_gi[k]);
                                 }
+                            }
+                            if (!batch_miss.empty()) {
+                                fetch_nonce_confirm_groups(
+                                    batch_miss, appr_groups, grp_confirmed, expected_nonces);
                             }
                             batch.clear();
                             batch_gi.clear();
@@ -3115,9 +3201,17 @@ contract AMMPool {
                 if (!grp_confirmed[gi]) appr_unconfirmed_groups.push_back(gi);
             }
 
+            appr_unconfirmed_groups = reconcile_unconfirmed_groups(
+                std::move(appr_unconfirmed_groups),
+                appr_groups,
+                grp_confirmed,
+                expected_nonces);
+
             if (!appr_unconfirmed_groups.empty()) {
+                const int appr_elapsed_sec = (int)std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::steady_clock::now() - wait_start).count();
                 std::cout << "  ⚠ WARNING: " << appr_unconfirmed_groups.size() << "/" << total_groups
-                          << " approve groups NOT confirmed after " << kMaxWaitSec << "s" << std::endl;
+                          << " approve groups NOT confirmed after " << appr_elapsed_sec << "s" << std::endl;
                 std::cout << "  Unconfirmed group indices: ";
                 for (uint32_t i = 0; i < appr_unconfirmed_groups.size(); ++i) {
                     if (i > 0) std::cout << ", ";
@@ -3500,23 +3594,20 @@ contract AMMPool {
                         batch_gi.push_back(gi);
                         if (batch.size() >= kBatchSize || j == indices.size() - 1) {
                             auto r = leader_sdk.batchQueryAccounts(batch);
-                            if (r.contains("status") && r["status"] == 0 && r.contains("accounts")) {
-                                for (uint32_t k = 0; k < batch_gi.size(); ++k) {
-                                    uint32_t gi2 = batch_gi[k];
-                                    if (r["accounts"].contains(batch[k])) {
-                                        auto& acc = r["accounts"][batch[k]];
-                                        int64_t n = 0;
-                                        if (acc.contains("nonce")) {
-                                            try {
-                                                auto ns = acc["nonce"].get<std::string>();
-                                                std::from_chars(ns.data(), ns.data() + ns.size(), n);
-                                            } catch (...) {}
-                                        }
-                                        if (n >= expected_nonces[gi2]) {
-                                            grp_confirmed[gi2] = true;
-                                        }
-                                    }
+                            if (r.contains("status") && r["status"] == 0) {
+                                try_confirm_from_batch(
+                                    r, batch, batch_gi, grp_confirmed, expected_nonces);
+                            }
+                            std::vector<uint32_t> batch_miss;
+                            batch_miss.reserve(batch_gi.size());
+                            for (uint32_t k = 0; k < batch_gi.size(); ++k) {
+                                if (!grp_confirmed[batch_gi[k]]) {
+                                    batch_miss.push_back(batch_gi[k]);
                                 }
+                            }
+                            if (!batch_miss.empty()) {
+                                fetch_nonce_confirm_groups(
+                                    batch_miss, swap_groups, grp_confirmed, expected_nonces);
                             }
                             batch.clear();
                             batch_gi.clear();
@@ -3545,27 +3636,17 @@ contract AMMPool {
                 if (!grp_confirmed[gi]) swap_unconfirmed_groups.push_back(gi);
             }
 
-            // Reconcile: single-account nonce on correct leader beats batch miss / wrong routing
-            if (!swap_unconfirmed_groups.empty()) {
-                std::vector<uint32_t> still_unconfirmed;
-                for (auto gi : swap_unconfirmed_groups) {
-                    auto& grp = swap_groups[gi];
-                    const std::string prepay = grp.contract_addr + grp.caller_addr;
-                    auto [ldr_ip, ldr_http] = get_leader_http(grp.contract_addr);
-                    SethSDK leader_sdk(ldr_ip, ldr_http);
-                    const int64_t n = leader_sdk.fetchNonce(prepay);
-                    if (n >= expected_nonces[gi]) {
-                        grp_confirmed[gi] = true;
-                    } else {
-                        still_unconfirmed.push_back(gi);
-                    }
-                }
-                swap_unconfirmed_groups = std::move(still_unconfirmed);
-            }
+            swap_unconfirmed_groups = reconcile_unconfirmed_groups(
+                std::move(swap_unconfirmed_groups),
+                swap_groups,
+                grp_confirmed,
+                expected_nonces);
 
             if (!swap_unconfirmed_groups.empty()) {
+                const int swap_wait_elapsed_sec = (int)std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::steady_clock::now() - wait_start).count();
                 std::cout << "  ⚠ WARNING: " << swap_unconfirmed_groups.size() << "/" << total_groups
-                          << " swap groups NOT confirmed after " << kMaxWaitSec << "s" << std::endl;
+                          << " swap groups NOT confirmed after " << swap_wait_elapsed_sec << "s" << std::endl;
                 std::cout << "  Unconfirmed group indices: ";
                 for (uint32_t i = 0; i < swap_unconfirmed_groups.size(); ++i) {
                     if (i > 0) std::cout << ", ";

@@ -502,6 +502,10 @@ public:
         merged["msg"] = "ok";
         merged["accounts"] = json::object();
         merged["not_found"] = json::array();
+        merged["partial"] = false;
+        uint32_t batch_ok = 0;
+        uint32_t batch_fail = 0;
+        json batch_errors = json::array();
 
         for (size_t offset = 0; offset < addresses.size(); offset += kBatchSize) {
             size_t end = std::min(offset + kBatchSize, addresses.size());
@@ -519,18 +523,25 @@ public:
             params.emplace("addresses", addr_list);
             auto res = cli.Post("/batch_query_accounts", params);
             if (!res) {
-                return {{"status", 1}, {"msg", "batch query connection failed (no response)"}};
+                ++batch_fail;
+                batch_errors.push_back("connection failed (no response) offset=" + std::to_string(offset));
+                continue;
             }
             if (res->status != 200) {
-                return {{"status", 1}, {"msg", "batch query HTTP " + std::to_string(res->status)}};
+                ++batch_fail;
+                batch_errors.push_back("HTTP " + std::to_string(res->status) + " offset=" + std::to_string(offset));
+                continue;
             }
 
             try {
                 json batch_res = json::parse(res->body);
                 if (!batch_res.contains("status") || batch_res["status"] != 0) {
-                    return {{"status", 1}, {"msg", batch_res.value("msg", "unknown error")}};
+                    ++batch_fail;
+                    batch_errors.push_back(batch_res.value("msg", "unknown error"));
+                    continue;
                 }
 
+                ++batch_ok;
                 if (batch_res.contains("accounts")) {
                     for (auto& [k, v] : batch_res["accounts"].items()) {
                         merged["accounts"][k] = v;
@@ -542,10 +553,21 @@ public:
                     }
                 }
             } catch (std::exception& e) {
-                return {{"status", 1}, {"msg", std::string("parse error: ") + e.what()}};
+                ++batch_fail;
+                batch_errors.push_back(std::string("parse error: ") + e.what());
             }
         }
 
+        if (batch_ok == 0) {
+            merged["status"] = 1;
+            merged["msg"] = batch_errors.empty() ? "batch query failed" : batch_errors[0].get<std::string>();
+            return merged;
+        }
+
+        if (batch_fail > 0) {
+            merged["partial"] = true;
+            merged["batch_errors"] = batch_errors;
+        }
         return merged;
     }
 
