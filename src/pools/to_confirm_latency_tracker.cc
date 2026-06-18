@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstring>
 
+#include "common/encode.h"
 #include "common/log.h"
 #include "common/time_utils.h"
 #include "protos/pools.pb.h"
@@ -10,6 +11,18 @@
 namespace seth {
 
 namespace pools {
+
+std::string ToConfirmLatencyTracker::NormalizeToKey(const std::string& address) {
+    if (address.empty()) {
+        return {};
+    }
+
+    if (address.size() >= common::kUnicastAddressLength) {
+        return address.substr(0, common::kUnicastAddressLength);
+    }
+
+    return address;
+}
 
 void ToLatencyEvent::SetTo(const std::string& address) {
     to_len = static_cast<uint8_t>(
@@ -23,22 +36,18 @@ std::string ToLatencyEvent::ToString() const {
     return std::string(to, to_len);
 }
 
-void ToConfirmLatencyTracker::OnAddTx(int32_t step, const std::string& to) {
-    if (to.empty()) {
+void ToConfirmLatencyTracker::EnqueueEvent(
+        ToLatencyEvent::Type type,
+        const std::string& key,
+        uint64_t timestamp_us) {
+    if (key.empty()) {
         return;
     }
 
     ToLatencyEvent event;
-    event.timestamp_us = common::TimeUtils::TimestampUs();
-    event.SetTo(to);
-
-    if (step == pools::protobuf::kNormalFrom) {
-        event.type = ToLatencyEvent::Type::kStart;
-    } else if (step == pools::protobuf::kConsensusLocalTos) {
-        event.type = ToLatencyEvent::Type::kConfirm;
-    } else {
-        return;
-    }
+    event.type = type;
+    event.timestamp_us = timestamp_us > 0 ? timestamp_us : common::TimeUtils::TimestampUs();
+    event.SetTo(key);
 
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     if (thread_idx >= common::kMaxThreadCount) {
@@ -46,6 +55,39 @@ void ToConfirmLatencyTracker::OnAddTx(int32_t step, const std::string& to) {
     }
 
     event_queues_[thread_idx].push(event);
+}
+
+void ToConfirmLatencyTracker::OnStart(const std::string& des, uint64_t timestamp_us) {
+    EnqueueEvent(ToLatencyEvent::Type::kStart, NormalizeToKey(des), timestamp_us);
+}
+
+void ToConfirmLatencyTracker::OnConfirmFromLocalToTx(
+        const std::string& to,
+        const std::string& tx_value) {
+    std::string key = NormalizeToKey(to);
+    if (!tx_value.empty()) {
+        pools::protobuf::ToTxMessageItem item;
+        if (item.ParseFromString(tx_value) && !item.des().empty()) {
+            key = NormalizeToKey(item.des());
+        }
+    }
+
+    EnqueueEvent(ToLatencyEvent::Type::kConfirm, key, 0);
+}
+
+void ToConfirmLatencyTracker::OnAddTx(
+        int32_t step,
+        const std::string& to,
+        const std::string& tx_value) {
+    if (to.empty()) {
+        return;
+    }
+
+    if (step == pools::protobuf::kNormalFrom) {
+        OnStart(to);
+    } else if (step == pools::protobuf::kConsensusLocalTos) {
+        OnConfirmFromLocalToTx(to, tx_value);
+    }
 }
 
 void ToConfirmLatencyTracker::ProcessEvents() {
@@ -69,7 +111,11 @@ void ToConfirmLatencyTracker::HandleEvent(const ToLatencyEvent& event) {
     }
 
     if (event.type == ToLatencyEvent::Type::kStart) {
-        pending_starts_[to].push_back(event.timestamp_us);
+        auto& starts = pending_starts_[to];
+        if (starts.size() >= kMaxPendingStartsPerKey) {
+            starts.pop_front();
+        }
+        starts.push_back(event.timestamp_us);
         return;
     }
 
@@ -88,8 +134,12 @@ void ToConfirmLatencyTracker::HandleEvent(const ToLatencyEvent& event) {
         return;
     }
 
-    latency_sum_us_ += (event.timestamp_us - start_us);
+    const uint64_t latency_us = event.timestamp_us - start_us;
+    latency_sum_us_ += latency_us;
     ++latency_count_;
+    SETH_DEBUG("[ToConfirmLatency] des=%s latency=%lu us",
+        common::Encode::HexEncode(to).c_str(),
+        latency_us);
 }
 
 void ToConfirmLatencyTracker::MaybeReportAverage() {

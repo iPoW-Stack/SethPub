@@ -585,8 +585,51 @@ void TxPoolManager::PoolTimerMessage() {
     to_confirm_latency_tracker_.ProcessEvents();
 }
 
-void TxPoolManager::OnTxPoolAddTx(int32_t step, const std::string& to) {
-    to_confirm_latency_tracker_.OnAddTx(step, to);
+void TxPoolManager::OnTxPoolAddTx(
+        int32_t step,
+        const std::string& to,
+        const std::string& tx_value) {
+    if (step == pools::protobuf::kNormalFrom) {
+        if (ShouldRecordToConfirmStart(to)) {
+            to_confirm_latency_tracker_.OnStart(
+                ToConfirmLatencyTracker::NormalizeToKey(to));
+        }
+        return;
+    }
+
+    if (step == pools::protobuf::kConsensusLocalTos) {
+        to_confirm_latency_tracker_.OnConfirmFromLocalToTx(to, tx_value);
+    }
+}
+
+void TxPoolManager::OnCrossShardToStart(
+        const std::string& des,
+        uint64_t start_timestamp_us) {
+    const std::string key = ToConfirmLatencyTracker::NormalizeToKey(des);
+    if (key.empty()) {
+        return;
+    }
+
+    to_confirm_latency_tracker_.OnStart(key, start_timestamp_us);
+}
+
+bool TxPoolManager::ShouldRecordToConfirmStart(const std::string& to) const {
+    const std::string key = ToConfirmLatencyTracker::NormalizeToKey(to);
+    if (key.empty()) {
+        return false;
+    }
+
+    auto acc_mgr = acc_mgr_.lock();
+    if (!acc_mgr) {
+        return true;
+    }
+
+    auto to_info = acc_mgr->GetAccountInfo(key);
+    if (to_info == nullptr) {
+        return true;
+    }
+
+    return network::IsSameToLocalShard(to_info->sharding_id());
 }
 
 void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {

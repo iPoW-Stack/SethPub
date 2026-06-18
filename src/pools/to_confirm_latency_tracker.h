@@ -35,18 +35,24 @@ public:
     ToConfirmLatencyTracker() = default;
     ~ToConfirmLatencyTracker() = default;
 
-    void OnAddTx(int32_t step, const std::string& to);
+    static std::string NormalizeToKey(const std::string& address);
+
+    void OnStart(const std::string& des, uint64_t timestamp_us = 0);
+    void OnConfirmFromLocalToTx(const std::string& to, const std::string& tx_value);
+    void OnAddTx(int32_t step, const std::string& to, const std::string& tx_value = "");
     void ProcessEvents();
 
     uint64_t avg_latency_us() const { return avg_latency_us_.load(std::memory_order_relaxed); }
     uint64_t last_report_count() const { return last_report_count_.load(std::memory_order_relaxed); }
 
 private:
+    void EnqueueEvent(ToLatencyEvent::Type type, const std::string& key, uint64_t timestamp_us);
     void DrainQueues();
     void HandleEvent(const ToLatencyEvent& event);
     void MaybeReportAverage();
 
     static const uint64_t kReportIntervalUs = 3000000llu;
+    static const size_t kMaxPendingStartsPerKey = 1024;
 
     common::ThreadSafeQueue<ToLatencyEvent> event_queues_[common::kMaxThreadCount];
 

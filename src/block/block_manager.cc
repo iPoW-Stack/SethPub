@@ -478,13 +478,14 @@ void BlockManager::HandleRootCrossShardTx(const view_block::protobuf::ViewBlockI
             continue;
         }
 
-        CreateLocalToTx(view_block, to_tx);
+        CreateLocalToTx(view_block, to_tx, true);
     }
 }
 
 void BlockManager::CreateLocalToTx(
-        const view_block::protobuf::ViewBlockItem& view_block, 
-        const pools::protobuf::ToTxMessageItem& to_tx_item) {
+        const view_block::protobuf::ViewBlockItem& view_block,
+        const pools::protobuf::ToTxMessageItem& to_tx_item,
+        bool record_cross_shard_start) {
     if (to_tx_item.des().size() != common::kUnicastAddressLength && 
             to_tx_item.des().size() != common::kPreypamentAddressLength) {
         SETH_ERROR("invalid to tx item: %s", ProtobufToJson(to_tx_item).c_str());
@@ -520,6 +521,15 @@ void BlockManager::CreateLocalToTx(
     tx->set_amount(0); // Specific amount is in kv
     tx->set_gas_price(common::kBuildinTransactionGasPrice);
     tx->set_nonce(++step_with_nonce_[pool_index][tx->step()]);
+    if (record_cross_shard_start) {
+        uint64_t start_us = view_block.block_info().timestamp();
+        if (start_us > 0) {
+            start_us *= 1000;
+        } else {
+            start_us = common::TimeUtils::TimestampUs();
+        }
+        pools_mgr_->OnCrossShardToStart(to_tx_item.des(), start_us);
+    }
     pools_mgr_->AddPoolMessage(msg_ptr);
     SETH_DEBUG("pool_index: %d, to pool addr: %s, success add local transfer tx %s, %lu "
         "tos hash: %s, nonce: %lu, src to tx nonce: %lu, val: %s",

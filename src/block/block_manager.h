@@ -120,8 +120,9 @@ private:
     void CreateStatisticTx();
     void PopTxTicker();
     void CreateLocalToTx(
-        const view_block::protobuf::ViewBlockItem& view_block, 
-        const pools::protobuf::ToTxMessageItem& to_tx);
+        const view_block::protobuf::ViewBlockItem& view_block,
+        const pools::protobuf::ToTxMessageItem& to_tx,
+        bool record_cross_shard_start = false);
 
     inline bool IsTimeblockHeightStatisticDone(uint64_t timeblock_height) {
         if (latest_statistic_timeblock_height_ == common::kInvalidUint64) {

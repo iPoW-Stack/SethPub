@@ -201,7 +201,8 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
     if (pools_mgr_ != nullptr) {
         pools_mgr_->OnTxPoolAddTx(
             tx_ptr->tx_info->step(),
-            tx_ptr->tx_info->to());
+            tx_ptr->tx_info->to(),
+            tx_ptr->tx_info->value());
     }
     SETH_DEBUG("trace tx pool: %d, success add tx %s, key: %s, nonce: %lu, step: %d", 
         pool_index_,

@@ -77,7 +77,11 @@ public:
         const pools::TxItemPtr& valid_tx);
     std::shared_ptr<address::protobuf::AddressInfo> GetAddressInfo(const std::string& address);
     void PoolTimerMessage();
-    void OnTxPoolAddTx(int32_t step, const std::string& to);
+    void OnTxPoolAddTx(
+        int32_t step,
+        const std::string& to,
+        const std::string& tx_value = "");
+    void OnCrossShardToStart(const std::string& des, uint64_t start_timestamp_us);
 
     uint64_t ToConfirmAvgLatencyUs() const {
         return to_confirm_latency_tracker_.avg_latency_us();
@@ -297,6 +301,7 @@ private:
     void SyncCrossPool();
     void FlushHeightTree();
     void HandlePoolsMessage(const transport::MessagePtr& msg_ptr);
+    bool ShouldRecordToConfirmStart(const std::string& to) const;
     void GetMinValidTxCount();
     void SendTxToOtherNodes(const transport::MessagePtr& msg_ptr);
 
