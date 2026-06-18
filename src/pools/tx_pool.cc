@@ -245,15 +245,15 @@ void TxPool::TxOver(view_block::protobuf::ViewBlockItem& view_block) {
             auto tx_iter = tx_map.find(addr);
             if (tx_iter != tx_map.end()) {
                 for (auto nonce_iter = tx_iter->second.begin(); nonce_iter != tx_iter->second.end(); ) {
-                    // SETH_DEBUG("pool: %d, find tx addr success: %s, unique hash: %s, "
-                    //     "step: %lu, nonce: %lu, consensus nonce: %lu, key: %s", 
-                    //     pool_index_,
-                    //     common::Encode::HexEncode(addr).c_str(),
-                    //     common::Encode::HexEncode(tx_info.unique_hash()).c_str(),
-                    //     (int32_t)tx_info.step(),
-                    //     tx_info.nonce(),
-                    //     nonce_iter->second->tx_info->nonce(),
-                    //     common::Encode::HexEncode(nonce_iter->second->tx_info->key()).c_str());
+                    SETH_DEBUG("pool: %d, find tx addr success: %s, unique hash: %s, "
+                        "step: %lu, nonce: %lu, consensus nonce: %lu, key: %s", 
+                        pool_index_,
+                        common::Encode::HexEncode(addr).c_str(),
+                        common::Encode::HexEncode(tx_info.unique_hash()).c_str(),
+                        (int32_t)tx_info.step(),
+                        tx_info.nonce(),
+                        nonce_iter->second->tx_info->nonce(),
+                        common::Encode::HexEncode(nonce_iter->second->tx_info->key()).c_str());
                     if (!IsUserTransaction(tx_info.step())) {
                         if (nonce_iter->second->tx_info->key() != tx_info.unique_hash()) {
                             ++nonce_iter;
@@ -505,6 +505,11 @@ void TxPool::GetTxSyncToLeader(
                             common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
                             tx_ptr->tx_info->nonce(),
                             (int32_t)tx_ptr->tx_info->step());
+                        {
+                            const auto now_tm_us = common::TimeUtils::TimestampUs();
+                            ++all_delay_tx_count_;
+                            all_delay_tm_us_ += now_tm_us - tx_ptr->receive_tm_us;
+                        }
                         if (tx_ptr->msg_ptr) {
                             SetTxStatus(pools_mgr_, tx_ptr->msg_ptr, transport::kTxUserNonceInvalid);
                         }
@@ -666,11 +671,12 @@ void TxPool::TempGetTxIdempotently(
 
         tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
         // consensus_tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
-        SETH_DEBUG("pool: %d, success add tx nonce addr: %s, addr nonce: %lu, tx nonce: %lu",
+        SETH_DEBUG("pool: %d, success add tx nonce addr: %s, addr nonce: %lu, tx nonce: %lu, step: %d",
             pool_index_,
             common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
             tx_ptr->address_info->nonce(), 
-            tx_ptr->tx_info->nonce());
+            tx_ptr->tx_info->nonce(),
+            (int32_t)tx_ptr->tx_info->step());
     }
 
     while (consensus_added_txs_.pop(&tx_ptr)) {
@@ -696,11 +702,12 @@ void TxPool::TempGetTxIdempotently(
 
         consensus_tx_map_[tx_ptr->address_info->addr()][tx_ptr->tx_info->nonce()] = tx_ptr;
         SETH_DEBUG("pool: %d, consensus_added_txs_ success add tx nonce addr: %s, "
-            "addr nonce: %lu, tx nonce: %lu",
+            "addr nonce: %lu, tx nonce: %lu, step: %d",
             pool_index_,
             common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(),
             tx_ptr->address_info->nonce(), 
-            tx_ptr->tx_info->nonce());
+            tx_ptr->tx_info->nonce(),
+            (int32_t)tx_ptr->tx_info->step());
     }
 
     // Optimization: if no new txs arrived (both queues were empty) and the pool
@@ -766,6 +773,11 @@ void TxPool::TempGetTxIdempotently(
                                 common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
                                 tx_ptr->tx_info->nonce(),
                                 (int32_t)tx_ptr->tx_info->step());
+                            if (IsUserTransaction(tx_ptr->tx_info->step())) {
+                                const auto now_tm_us = common::TimeUtils::TimestampUs();
+                                ++all_delay_tx_count_;
+                                all_delay_tm_us_ += now_tm_us - tx_ptr->receive_tm_us;
+                            }
                             if (tx_ptr->msg_ptr) {
                                 SetTxStatus(pools_mgr_, tx_ptr->msg_ptr, transport::kTxUserNonceInvalid);
                             }

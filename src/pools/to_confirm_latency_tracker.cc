@@ -148,15 +148,13 @@ void ToConfirmLatencyTracker::MaybeReportAverage() {
         return;
     }
 
-    if (latency_count_ > 0) {
-        const uint64_t avg = latency_sum_us_ / latency_count_;
-        avg_latency_us_.store(avg, std::memory_order_relaxed);
-        last_report_count_.store(latency_count_, std::memory_order_relaxed);
-        SETH_INFO("[ToConfirmLatency] avg=%lu us, count=%lu, interval=%lu us",
-            avg,
-            latency_count_,
-            last_report_us_ == 0 ? 0llu : (now_us - last_report_us_));
-    }
+    const uint64_t avg = latency_count_ > 0 ? latency_sum_us_ / latency_count_ : 0;
+    avg_latency_us_.store(avg, std::memory_order_relaxed);
+    last_report_count_.store(latency_count_, std::memory_order_relaxed);
+    SETH_WARN("[ToConfirmLatency] to_tx avg=%lu us, count=%lu, interval=%lu us",
+        avg,
+        latency_count_,
+        last_report_us_ == 0 ? 0llu : (now_us - last_report_us_));
 
     latency_sum_us_ = 0;
     latency_count_ = 0;
