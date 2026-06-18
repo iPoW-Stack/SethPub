@@ -41,6 +41,7 @@ set(pools_test_src
     test_cross_pool_enhanced.cc
     test_pools_coverage_enhancement.cc
     test_pools_boundary_conditions.cc
+    test_to_confirm_latency_tracker.cc
     pools_test_ck_link_stub.cc)
 add_executable(pools_test ${pools_test_src})
 

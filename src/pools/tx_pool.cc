@@ -198,6 +198,11 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
     tx_ptr->elect_height = latest_elect_height_;
     added_txs_.push(tx_ptr);
     tx_pool_dirty_ = true;
+    if (pools_mgr_ != nullptr) {
+        pools_mgr_->OnTxPoolAddTx(
+            tx_ptr->tx_info->step(),
+            tx_ptr->tx_info->to());
+    }
     SETH_DEBUG("trace tx pool: %d, success add tx %s, key: %s, nonce: %lu, step: %d", 
         pool_index_,
         common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str(), 

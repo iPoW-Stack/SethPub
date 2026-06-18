@@ -20,6 +20,7 @@
 #include "pools/cross_block_manager.h"
 #include "pools/cross_pool.h"
 #include "pools/root_cross_pool.h"
+#include "pools/to_confirm_latency_tracker.h"
 #include "pools/tx_pool.h"
 #include "protos/address.pb.h"
 #include "protos/pools.pb.h"
@@ -76,6 +77,11 @@ public:
         const pools::TxItemPtr& valid_tx);
     std::shared_ptr<address::protobuf::AddressInfo> GetAddressInfo(const std::string& address);
     void PoolTimerMessage();
+    void OnTxPoolAddTx(int32_t step, const std::string& to);
+
+    uint64_t ToConfirmAvgLatencyUs() const {
+        return to_confirm_latency_tracker_.avg_latency_us();
+    }
 
     // Callback invoked whenever a tx reaches a terminal status
     // (anything other than kMessageHandle / kTxAccept).
@@ -344,6 +350,7 @@ private:
     uint64_t prev_elect_height_ = common::kInvalidUint64;
     std::atomic<bool> destroy_ = false;
     common::ThreadSafeQueue<std::shared_ptr<InvalidGidItem>> invalid_gid_queues_[common::kInvalidPoolIndex];
+    ToConfirmLatencyTracker to_confirm_latency_tracker_;
     uint32_t min_valid_tx_count_ = 1;
     uint64_t min_valid_timestamp_ = 0;
     uint64_t min_timestamp_ = common::kInvalidUint64;

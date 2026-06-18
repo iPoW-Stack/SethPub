@@ -581,6 +581,12 @@ void TxPoolManager::PoolTimerMessage() {
             TxPoolHandleMessage(msg_ptr);
         }
     }
+
+    to_confirm_latency_tracker_.ProcessEvents();
+}
+
+void TxPoolManager::OnTxPoolAddTx(int32_t step, const std::string& to) {
+    to_confirm_latency_tracker_.OnAddTx(step, to);
 }
 
 void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
