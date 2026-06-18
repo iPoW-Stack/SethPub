@@ -66,10 +66,8 @@ public:
             return item;
         }
 
-        // Genesis elect item covers all early epochs signed before the first dynamic
-        // elect block. prev_height in bls_pk may exceed QC elect_height (always 1).
         if (genesis_elect_items_[sharding_id] != nullptr &&
-                elect_height <= genesis_elect_items_[sharding_id]->ElectHeight()) {
+                genesis_elect_items_[sharding_id]->ElectHeight() == elect_height) {
             SETH_WARN("using genesis fallback pk for shard %u, elect_height %lu — "
                 "verify will fail if conf/bls_pk does not match the actual genesis common_pk",
                 sharding_id, elect_height);
@@ -183,16 +181,8 @@ private:
     }
 
     void LoadInitGenesisCommonPk() {
-        const char* bls_pk_paths[] = { "./conf/bls_pk", "./bls_pk" };
-        FILE* fd = nullptr;
-        for (const char* path : bls_pk_paths) {
-            fd = fopen(path, "r");
-            if (fd != nullptr) {
-                break;
-            }
-        }
-
-        if (fd == nullptr) {
+        FILE* fd = fopen("./conf/bls_pk", "r");
+        if (fd == NULL) {
             return;
         }
 

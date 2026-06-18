@@ -120,7 +120,7 @@ Status ViewBlockChain::Store(
         seth_host_ptr = std::make_shared<sethvm::SethhainHost>();
     }
 
-    if (balane_map_ptr == nullptr) {
+    if (chain_type_ == kLocalChain && balane_map_ptr == nullptr) {
         balane_map_ptr = std::make_shared<BalanceAndNonceMap>();
         for (int32_t i = 0; i < view_block->block_info().address_array_size(); ++i) {
             auto new_addr_info = std::make_shared<address::protobuf::AddressInfo>(
@@ -753,23 +753,6 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
         //assert((*iter)->seth_host_ptr);
         auto& db_batch = (*iter)->seth_host_ptr->db_batch_;
         new_block_cache_callback_(tmp_block, db_batch);
-
-        // Index account/contract state from block body on every commit. Consensus
-        // leaders already wrote these via Accept, but synced blocks (especially on
-        // kCrossRootChian / kCrossShardingChain) only carried data inside the block
-        // protobuf until now — /query_account and EVM storage reads would miss them.
-        for (int32_t ai = 0; ai < tmp_block->block_info().address_array_size(); ++ai) {
-            const auto& addr_info = tmp_block->block_info().address_array(ai);
-            prefix_db_->AddAddressInfo(addr_info.addr(), addr_info, db_batch);
-        }
-        for (int32_t ki = 0; ki < tmp_block->block_info().key_value_array_size(); ++ki) {
-            const auto& kv = tmp_block->block_info().key_value_array(ki);
-            prefix_db_->SaveTemporaryKv(
-                kv.addr() + kv.key(),
-                kv.SerializeAsString(),
-                db_batch);
-        }
-
         if (tmp_block->qc().view() > commited_max_view_) {
             commited_max_view_ = tmp_block->qc().view();
         }
