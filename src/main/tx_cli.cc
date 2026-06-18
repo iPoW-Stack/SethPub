@@ -219,12 +219,13 @@ static void LoadAllAccounts(int32_t shardnum=3) {
 }
 
 int tx_main(int argc, char** argv) {
-    // ./txcli 0 $net_id $pool_id $ip $port $delay_us $multi_pool [$tps]
+    // ./txcli 0 $net_id $pool_id $ip $port $delay_us $multi_pool [$tps] [$max_tx_count]
     auto ip = kBroadcastIp;
     auto port = kBroadcastPort;
     auto delayus_a = delayus;
     auto multi = multi_pool;
     uint32_t target_tps = 0;  // 0 = unlimited
+    uint64_t max_tx_count = 0;  // 0 = run until Ctrl+C
 
     if (argc >= 4) {
         shardnum = std::stoi(argv[2]);
@@ -250,11 +251,18 @@ int tx_main(int argc, char** argv) {
         target_tps = std::stoi(argv[8]);
     }
 
+    if (argc >= 10) {
+        max_tx_count = std::stoull(argv[9]);
+    }
+
     std::cout << "send tcp client ip_port" << ip << ": " << port << ", pool_id: " << global_pool_idx << std::endl;
     if (target_tps > 0) {
         std::cout << "Target TPS: " << target_tps << std::endl;
     } else {
         std::cout << "Target TPS: unlimited" << std::endl;
+    }
+    if (max_tx_count > 0) {
+        std::cout << "Max tx count: " << max_tx_count << " (stop when reached)" << std::endl;
     }
 
     LoadAllAccounts(shardnum);
@@ -289,6 +297,7 @@ int tx_main(int argc, char** argv) {
 
     UpdateAddressNonce();
     std::atomic<uint32_t> all_count = 0;
+    std::atomic<uint64_t> sent_total = 0;
     prikey_with_nonce  = src_prikey_with_nonce;
     auto update_nonce_thread = [&]() {
         UpdateAddressNonceThread();
@@ -337,6 +346,10 @@ int tx_main(int argc, char** argv) {
         uint32_t batch_count = 256;
         auto addr = thread_security->GetAddress();
         while (!global_stop) {
+            if (max_tx_count > 0 && sent_total.load(std::memory_order_relaxed) >= max_tx_count) {
+                break;
+            }
+
             if (count % batch_count == 0 && count > 0) {
                 if (global_pool_idx == -1) {
                     ++prikey_pos;
@@ -421,6 +434,12 @@ int tx_main(int argc, char** argv) {
 
             count++;
             ++all_count;
+            if (max_tx_count > 0) {
+                const uint64_t n = sent_total.fetch_add(1, std::memory_order_relaxed) + 1;
+                if (n >= max_tx_count) {
+                    global_stop = true;
+                }
+            }
             if (tps_interval_us > 0) {
                 usleep(tps_interval_us);
             }
@@ -522,9 +541,13 @@ int tx_main(int argc, char** argv) {
         thread_vec[i].join();
     }
 
-    // All worker threads have exited �?safe to stop the transport now.
+    // All worker threads have exited — safe to stop the transport now.
     transport::TcpTransport::Instance()->Stop();
     usleep(200000);
+    if (max_tx_count > 0) {
+        std::cout << "Stress test finished: sent " << sent_total.load()
+                  << " / " << max_tx_count << std::endl;
+    }
     return 0;
 }
 
@@ -621,11 +644,12 @@ int main(int argc, char** argv) {
     }
 
     // ── Mode 4: 10,000 Account Stress Test ────────────────────────────────
-    // Usage: txcli 4 <shard> <pool> <ip> <port> [threads] [tps]
+    // Usage: txcli 4 <shard> <pool> <ip> <port> [threads] [tps] [max_tx_count]
     if (argv[1][0] == '4') {
         const uint32_t kAccountCount = 10000;
         uint32_t num_threads = (argc >= 7) ? std::stoi(argv[6]) : 16;
         uint32_t target_tps  = (argc >= 8) ? std::stoi(argv[7]) : 0;  // 0 = unlimited
+        uint64_t max_tx_count = (argc >= 9) ? std::stoull(argv[8]) : 0;  // 0 = run until Ctrl+C
         
         if (argc >= 4) {
             shardnum = std::stoi(argv[2]);
@@ -653,6 +677,9 @@ int main(int argc, char** argv) {
             std::cout << "Target TPS: " << target_tps << " (interval=" << tps_interval_us << "us/thread)" << std::endl;
         } else {
             std::cout << "Target TPS: unlimited (interval=5000us/thread)" << std::endl;
+        }
+        if (max_tx_count > 0) {
+            std::cout << "Max tx count: " << max_tx_count << " (stop when reached)" << std::endl;
         }
 
         LoadAllAccounts(shardnum);
@@ -951,7 +978,11 @@ int main(int argc, char** argv) {
 
         // Phase 4: Stress test - random transfers
         std::cout << "\n[Phase 4] Starting stress test - random transfers..." << std::endl;
-        std::cout << "  Press Ctrl+C to stop" << std::endl;
+        if (max_tx_count > 0) {
+            std::cout << "  Will stop after " << max_tx_count << " successful sends" << std::endl;
+        } else {
+            std::cout << "  Press Ctrl+C to stop" << std::endl;
+        }
 
         // Shared leader routing: pool_idx -> {ip, port}, updated by leader sync thread
         std::unordered_map<uint32_t, SethSDK::LeaderInfo> leader_map;
@@ -1006,6 +1037,11 @@ int main(int argc, char** argv) {
             static const uint32_t kFailureThreshold = 10;  // After 10 consecutive failures, assume node is down
             uint32_t pos = 0;
             while (!global_stop) {
+                if (max_tx_count > 0 && tx_count.load(std::memory_order_relaxed) >= max_tx_count) {
+                    global_stop = true;
+                    break;
+                }
+
                 uint32_t from_idx = my_account_indices[pos % my_account_indices.size()];
                 ++pos;
 
@@ -1068,6 +1104,9 @@ int main(int argc, char** argv) {
                     ++tx_count;
                     ++(pool_stats[pool].tx_sent);
                     consecutive_failures = 0;
+                    if (max_tx_count > 0 && tx_count.load(std::memory_order_relaxed) >= max_tx_count) {
+                        global_stop = true;
+                    }
                 } else {
                     // Roll back nonce to avoid permanent gap
                     --prikey_with_nonce[from_addr];
