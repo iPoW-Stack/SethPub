@@ -235,7 +235,7 @@ void TxPool::MaybeReportNormalToDelay(uint64_t now_tm_us) {
 
     const uint64_t avg = normal_to_delay_tx_count_ > 0 ?
         normal_to_delay_tm_us_ / normal_to_delay_tx_count_ : 0;
-    SETH_DEBUG("[NormalToLatency] average delay pool: %d, normal_to avg=%lu us, count=%lu",
+    SETH_WARN("[NormalToLatency] average delay pool: %d, normal_to avg=%lu us, count=%lu",
         pool_index_,
         avg,
         normal_to_delay_tx_count_);
