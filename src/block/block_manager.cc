@@ -834,6 +834,7 @@ pools::TxItemPtr BlockManager::GetToTx(
         return nullptr;
     }
 
+    static const uint64_t kGetToTxCooldownMs = 10000lu;
     pools::protobuf::ShardToTxItem heights;
     if (heights_str.empty()) {
         auto cur_time = common::TimeUtils::TimestampMs();
@@ -844,10 +845,10 @@ pools::TxItemPtr BlockManager::GetToTx(
         }
 
         SETH_DEBUG("now leader get to to tx.");
-        leader_prev_get_to_tx_tm_ = cur_time + 3000lu;
+        leader_prev_get_to_tx_tm_ = cur_time + kGetToTxCooldownMs;
         auto latest_to_block_ptr = LoadLatestToBlock(latest_to_block_ptr_index_);
         if (latest_to_block_ptr != nullptr &&
-                latest_to_block_ptr->block_info().timestamp() + 3000lu >= cur_time) {
+                latest_to_block_ptr->block_info().timestamp() + kGetToTxCooldownMs >= cur_time) {
             SETH_DEBUG("now leader get to to tx timestamp error, block_tm: %lu, cur: %lu, diff: %ld",
                 latest_to_block_ptr->block_info().timestamp(), cur_time,
                 (int64_t)(cur_time - latest_to_block_ptr->block_info().timestamp()));
