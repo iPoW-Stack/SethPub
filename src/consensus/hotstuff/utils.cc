@@ -40,7 +40,7 @@ std::string GetBlockHash(const view_block::protobuf::ViewBlockItem &view_block) 
         block.height(), 
         block.timeblock_height(), 
         block.timestamp(),
-        ProtobufToJson(view_block).c_str());
+        ProtobufToJson(block).c_str());
 
     return hash;
 }
