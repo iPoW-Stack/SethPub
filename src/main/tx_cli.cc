@@ -5682,7 +5682,6 @@ contract Exchange {
         // Phase 3: Wait and verify on each shard's own node
         std::cout << "\n[Phase 3] Waiting 30s for cross-shard confirmation..." << std::endl;
         std::cout << "Verifying ALL addresses on each shard's node..." << std::endl;
-        uint64_t total_verified = 0;
         uint64_t total_missing = 0;
 
         std::unordered_map<uint32_t, std::unordered_set<std::string>> checked_addrs;
@@ -5730,12 +5729,18 @@ contract Exchange {
                     shard_missing = shard_addrs[s].size() - shard_verified;
                 }
 
-                total_verified += checked_set.size();
                 total_missing += shard_missing;
                 std::cout << "  Shard " << s << " (" << ep.ip << ":" << ep.http_port << "): "
                         << checked_set.size() << "/" << shard_addrs[s].size() << " verified"
                         << (shard_missing > 0 ? " (" + std::to_string(shard_missing) + " missing)" : "")
                         << std::endl;
+            }
+
+            uint64_t total_verified = 0;
+            for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+                auto& checked_set = checked_addrs[s];
+                total_verified += checked_set.size();
+
             }
 
             std::cout << "total_verified: " << total_verified << ", " 
