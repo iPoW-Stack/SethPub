@@ -8,6 +8,8 @@
 #include <vector>
 #include <mutex>
 #include <condition_variable>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "nlohmann/json.hpp"
 #include "common/defer.h"
@@ -16,6 +18,7 @@
 #include "common/string_utils.h"
 #include "db/db.h"
 #include "dht/dht_key.h"
+#include "network/network_utils.h"
 #include "pools/tx_utils.h"
 #include "protos/address.pb.h"
 #include "security/ecdsa/ecdsa.h"
@@ -5598,7 +5601,10 @@ contract Exchange {
 
                 // Use same routing as chain: shard = 6 - GetAddressPoolIndex(addr)/8
                 uint32_t pool = common::GetAddressPoolIndex(addr);
-                uint32_t routed_shard = 6 - pool / 8;
+                uint64_t hash_value = common::Hash::Hash64(addr);
+                uint32_t routed_shard = (hash_value % (kMaxShardId - network::kConsensusShardBeginNetworkId + 1)) +
+                    network::kConsensusShardBeginNetworkId;
+                // uint32_t routed_shard = 6 - pool / 8;
                 if (routed_shard == target_shard) {
                     shard_addrs[target_shard].push_back(addr);
                     ++count;
@@ -5675,51 +5681,68 @@ contract Exchange {
 
         // Phase 3: Wait and verify on each shard's own node
         std::cout << "\n[Phase 3] Waiting 30s for cross-shard confirmation..." << std::endl;
-        sleep(30);
-
         std::cout << "Verifying ALL addresses on each shard's node..." << std::endl;
         uint64_t total_verified = 0;
         uint64_t total_missing = 0;
 
-        for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
-            auto& ep = shard_endpoints[s];
-            SethSDK shard_sdk(ep.ip, ep.http_port);
-            // Use batchQueryAccounts for efficiency
-            std::vector<std::string> hex_addrs;
-            hex_addrs.reserve(shard_addrs[s].size());
-            for (auto& addr : shard_addrs[s]) {
-                hex_addrs.push_back(common::Encode::HexEncode(addr));
-            }
+        std::unordered_map<uint32_t, std::unordered_set<std::string>> checked_addrs;
+        for (uint32_t try_times = 0; try_times < 60; ++try_times) {
+            for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+                auto& ep = shard_endpoints[s];
+                SethSDK shard_sdk(ep.ip, ep.http_port);
+                // Use batchQueryAccounts for efficiency
+                std::vector<std::string> hex_addrs;
+                hex_addrs.reserve(shard_addrs[s].size());
+                auto& checked_set = checked_addrs[s];
+                for (auto& addr : shard_addrs[s]) {
+                    if (checked_set.find(addr) != checked_set.end()) {
+                        continue;
+                    }
 
-            auto result = shard_sdk.batchQueryAccounts(hex_addrs);
-            uint32_t shard_verified = 0;
-            uint32_t shard_missing = 0;
-            if (result.contains("accounts")) {
-                shard_verified = result["accounts"].size();
-            }
-            if (result.contains("not_found")) {
-                shard_missing = result["not_found"].size();
-            }
-            // Fallback: count by checking presence
-            if (shard_verified == 0 && result.contains("status") && result["status"] != 0) {
-                // batch query might have failed, try individual
-                std::cout << "  Shard " << s << ": batch query failed, trying individual..." << std::endl;
-                for (auto& hex_addr : hex_addrs) {
-                    int64_t bal = shard_sdk.fetchBalance(hex_addr);
-                    if (bal >= 0) ++shard_verified;
-                    else ++shard_missing;
-                    if (global_stop) break;
+                    hex_addrs.push_back(common::Encode::HexEncode(addr));
                 }
-            } else {
-                shard_missing = shard_addrs[s].size() - shard_verified;
+
+                auto result = shard_sdk.batchQueryAccounts(hex_addrs);
+                uint32_t shard_verified = 0;
+                uint32_t shard_missing = 0;
+                if (result.contains("accounts")) {
+                    for (auto& [hex_addr, _] : result["accounts"].items()) {
+                        checked_set.insert(common::Encode::HexDecode(hex_addr));
+                    }
+                    shard_verified = result["accounts"].size();
+                }
+                if (result.contains("not_found")) {
+                    shard_missing = result["not_found"].size();
+                }
+                // Fallback: count by checking presence
+                if (shard_verified == 0 && result.contains("status") && result["status"] != 0) {
+                    // batch query might have failed, try individual
+                    std::cout << "  Shard " << s << ": batch query failed, trying individual..." << std::endl;
+                    for (auto& hex_addr : hex_addrs) {
+                        int64_t bal = shard_sdk.fetchBalance(hex_addr);
+                        if (bal >= 0) {
+                            ++shard_verified;
+                            checked_set.insert(common::Encode::HexDecode(hex_addr));
+                        } else ++shard_missing;
+                        if (global_stop) break;
+                    }
+                } else {
+                    shard_missing = shard_addrs[s].size() - shard_verified;
+                }
+
+                total_verified += checked_set.size();
+                total_missing += shard_missing;
+                std::cout << "  Shard " << s << " (" << ep.ip << ":" << ep.http_port << "): "
+                        << checked_set.size() << "/" << shard_addrs[s].size() << " verified"
+                        << (shard_missing > 0 ? " (" + std::to_string(shard_missing) + " missing)" : "")
+                        << std::endl;
             }
 
-            total_verified += shard_verified;
-            total_missing += shard_missing;
-            std::cout << "  Shard " << s << " (" << ep.ip << ":" << ep.http_port << "): "
-                      << shard_verified << "/" << shard_addrs[s].size() << " verified"
-                      << (shard_missing > 0 ? " (" + std::to_string(shard_missing) + " missing)" : "")
-                      << std::endl;
+            if (total_verified == accounts_per_shard * (kMaxShardId - kConsensusBegin + 1)) {
+                break;
+            }
+
+            usleep(10000000);
         }
 
         std::cout << "\n[Result] Total verified: " << total_verified << "/" << total_targets << std::endl;

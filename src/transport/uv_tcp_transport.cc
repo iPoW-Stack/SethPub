@@ -281,9 +281,8 @@ void on_connect(uv_connect_t* connection, int status) {
     int new_send_size = 20 * 1024 * 1024;  // 20MB (from 10MB)
     uv_send_buffer_size((uv_handle_t*)stream, &new_send_size);
     
-    // Enable TCP keepalive: detect dead peers within ~120s (increased from 60s)
-    // Longer interval reduces false disconnections during network stress
-    uv_tcp_keepalive(&ex_uv_tcp->uv_tcp, 1, 120);
+    // Enable TCP keepalive: start probing after 5s idle, detect dead peers within ~15s
+    uv_tcp_keepalive(&ex_uv_tcp->uv_tcp, 1, 5);
     // Disable Nagle's algorithm for lower latency
     uv_tcp_nodelay(&ex_uv_tcp->uv_tcp, 1);
 
