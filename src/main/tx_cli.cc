@@ -5730,7 +5730,6 @@ contract Exchange {
                     shard_missing = shard_addrs[s].size() - shard_verified;
                 }
 
-                total_missing += shard_missing;
                 std::cout << "  Shard " << s << " (" << ep.ip << ":" << ep.http_port << "): "
                         << checked_set.size() << "/" << shard_addrs[s].size() << " verified"
                         << (shard_missing > 0 ? " (" + std::to_string(shard_missing) + " missing)" : "")
@@ -5738,10 +5737,11 @@ contract Exchange {
             }
 
             total_verified = 0;
+            total_missing = 0;
             for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
                 auto& checked_set = checked_addrs[s];
                 total_verified += checked_set.size();
-
+                total_missing += (accounts_per_shard - checked_set.size());
             }
 
             std::cout << "total_verified: " << total_verified << ", " 
