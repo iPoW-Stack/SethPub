@@ -2150,7 +2150,7 @@ contract AMMPool {
                         auto r2=sdk_b.setGasPrefund(deployers[i].prikey_hex, deployers[i].token_b_addr, kDeployerPrefund);
                         auto r3=sdk_p.setGasPrefund(deployers[i].prikey_hex, deployers[i].pool_addr, kDeployerPrefund);
                         if(r1["status"]==0&&r2["status"]==0&&r3["status"]==0) dpf_ok+=3; else dpf_fail++;
-                        usleep(50000);
+                        usleep(100);
                     }
                 });
             }
@@ -2183,7 +2183,7 @@ contract AMMPool {
                         auto rb = sdk_b.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].token_b_addr, 0,
                             "approve", {"address","uint256"}, {deployers[i].pool_addr, approve_str});
                         if (ra["status"]==0 && rb["status"]==0) appr5_ok+=2; else ++appr5_fail;
-                        usleep(50000);
+                        usleep(100);
                     }
                 });
             }
@@ -2212,7 +2212,7 @@ contract AMMPool {
                         auto r = sdk_pool.callFunctionSolidity(deployers[i].prikey_hex, deployers[i].pool_addr, 0,
                             "addLiquidity", {"uint256","uint256"}, {liq_str, liq_str});
                         if(r["status"]==0) ++liq_ok; else ++liq_fail;
-                        usleep(50000);
+                        usleep(100);
                     }
                 });
             }
@@ -2920,7 +2920,7 @@ contract AMMPool {
                     auto get_cached_sec = [&](const std::string& prikey_hex) -> std::shared_ptr<security::Security> {
                         auto it = sec_cache.find(prikey_hex);
                         if (it == sec_cache.end()) {
-                            auto sec = std::make_shared<security::Ecdsa>();
+                            std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
                             sec->SetPrivateKey(common::Encode::HexDecode(prikey_hex));
                             it = sec_cache.emplace(prikey_hex, sec).first;
                         }
@@ -4036,6 +4036,1720 @@ contract AMMPool {
         tcp_send_cv.notify_one();
         tcp_sender_thread.join();
 
+        transport::TcpTransport::Instance()->Stop();
+        return 0;
+    }
+
+    // ── Mode 6: Exchange Contract Multi-Shard Stress Test ─────────────────
+        setvbuf(stdout, NULL, _IONBF, 0);  // disable stdout buffering for live log
+    // Usage: txcli 6 <shard> <pool> <ip> <port> [users_per_shard] [contracts_per_shard] [call_rounds] [tps]
+    //
+    // Shards 3/4/5/6:
+    //   1. Generate 100000 user accounts per shard (address hash → correct shard)
+    //   2. Cross-shard fund all users from shard-3 funder via 3-shard transfer
+    //   3. Generate 10000 deployer accounts per shard, deploy Exchange contracts
+    //   4. Set prefund for all users on all contracts (mode-5 pattern)
+    //   5. Stress test: CreateNewItem × 1000000, PurchaseItem × 1000000 per shard (concurrent)
+    if (argv[1][0] == '6') {
+        const uint32_t kUsersPerShard     = (argc >= 7)  ? std::stoul(argv[6])  : 10000u;
+        const uint32_t kContractsPerShard = (argc >= 8)  ? std::stoul(argv[7])  : 256u;
+        const uint64_t kCallRounds        = (argc >= 9)  ? std::stoull(argv[8]) : 10000ULL;
+        const uint32_t kTargetTps         = (argc >= 10) ? std::stoul(argv[9])  : 0u;
+        // Per-shard node IPs: argv[10..13] = ip3 ip4 ip5 ip6 (optional, default = argv[4])
+        std::string shard_ips[4];   // index 0=shard3, 1=shard4, 2=shard5, 3=shard6
+
+        if (argc >= 4) {
+            shardnum = std::stoi(argv[2]);
+            global_pool_idx = std::stoi(argv[3]);
+        }
+        if (argc >= 6) {
+            global_chain_node_ip = argv[4];
+            uint16_t input_port = (uint16_t)std::stoi(argv[5]);
+            global_chain_node_http_port = (input_port < 20000) ? input_port + 10000 : input_port;
+        }
+        // Fill per-shard IPs; default to shard3 IP if not specified
+        for (int _i = 0; _i < 4; ++_i)
+            shard_ips[_i] = (argc >= 11 + _i) ? argv[10 + _i] : global_chain_node_ip;
+
+        const std::vector<int> kShards = {3, 4, 5, 6};
+
+        std::cout << "\n" << std::string(70, '=') << "\n";
+        std::cout << "  Exchange Contract Multi-Shard Stress Test (Mode 6)\n";
+        std::cout << "  Shards: 3/4/5/6\n";
+        std::cout << "  Users/shard:     " << kUsersPerShard     << "\n";
+        std::cout << "  Contracts/shard: " << kContractsPerShard << "\n";
+        std::cout << "  Call rounds:     " << kCallRounds        << " (CreateNewItem + PurchaseItem)\n";
+        std::cout << "  Target TPS:      " << (kTargetTps > 0 ? std::to_string(kTargetTps) : "unlimited") << "\n";
+        std::cout << "  Node: " << global_chain_node_ip << ":" << (global_chain_node_http_port - 10000) << "\n";
+        std::cout << "  Shard IPs: s3=" << shard_ips[0] << " s4=" << shard_ips[1]
+                  << " s5=" << shard_ips[2] << " s6=" << shard_ips[3] << "\n";
+        std::cout << std::string(70, '=') << "\n";
+
+        LoadAllAccounts(shardnum);
+        SignalRegister();
+        WriteDefaultLogConf();
+
+        // ── TCP transport setup ──────────────────────────────────────────
+        transport::MultiThreadHandler net_handler6;
+        std::shared_ptr<security::Security> sec6 = std::make_shared<security::Ecdsa>();
+        auto db_ptr6 = std::make_shared<db::Db>();
+        // Remove stale db from previous runs to prevent lock conflicts
+        std::string db6_path = db_path + "_exchange_stress";
+        { std::string cmd = "rm -rf '" + db6_path + "' 2>/dev/null"; system(cmd.c_str()); }
+        if (!db_ptr6->Init(db6_path)) {
+            std::cerr << "init db failed\n"; return 1;
+        }
+        if (net_handler6.Init(db_ptr6, sec6) != 0) {
+            std::cerr << "init net handler failed\n"; return 1;
+        }
+        if (transport::TcpTransport::Instance()->Init("127.0.0.1:13795", 128, false, &net_handler6) != 0) {
+            std::cerr << "init tcp failed\n"; return 1;
+        }
+        if (transport::TcpTransport::Instance()->Start(false) != 0) {
+            std::cerr << "start tcp failed\n"; return 1;
+        }
+
+        SethSDK sdk6(global_chain_node_ip, global_chain_node_http_port);
+
+        // Connectivity check
+        {
+            std::shared_ptr<security::Security> ts = std::make_shared<security::Ecdsa>();
+            ts->SetPrivateKey(g_prikeys[0]);
+            int64_t tn = sdk6.fetchNonce(common::Encode::HexEncode(ts->GetAddress()));
+            if (tn < 0) {
+                std::cerr << "  ERROR: Cannot reach " << global_chain_node_ip
+                          << ":" << global_chain_node_http_port << "\n";
+                transport::TcpTransport::Instance()->Stop();
+                return 1;
+            }
+            std::cout << "  HTTP OK (nonce=" << tn << ")\n";
+        }
+
+        // ── Compile Exchange contract ────────────────────────────────────
+        std::cout << "\n[Phase 1] Compile Exchange contract...\n";
+
+        // Exchange contract Solidity source
+        const std::string EXCHANGE_SOL = R"(
+// SPDX-License-Identifier: GPL-3.0
+pragma solidity >=0.8.17 <0.9.0;
+contract Exchange {
+    bytes32 test_ripdmd_;
+    bytes32 enc_init_param_;
+    uint256 global_id;
+    struct BuyerInfo {
+        address payable buyer;
+        uint256 price;
+        uint256 time;
+    }
+    struct ItemInfo {
+        uint256 id;
+        bytes32 hash;
+        address payable owner;
+        bytes info;
+        uint256 price;
+        uint256 start_time_ms;
+        uint256 end_time_ms;
+        address payable buyer;
+        uint256 selled_price;
+        uint256 selled;
+        BuyerInfo[] buyers;
+        bool exists;
+    }
+    mapping(bytes32 => ItemInfo) public item_map;
+    mapping(uint256 => bytes32) public id_with_hash_map;
+    mapping(bytes => bool) public purchase_map;
+    mapping(address => bytes32[]) public owner_with_hash_map;
+    bytes32[] all_hashes;
+    function CreateNewItem(bytes32 hash, bytes memory info, uint256 price, uint256 start, uint256 end) public payable {
+        require(!item_map[hash].exists);
+        ItemInfo storage item = item_map[hash];
+        item.id = global_id++;
+        item.hash = hash;
+        item.owner = payable(msg.sender);
+        item.info = info;
+        item.price = price;
+        item.start_time_ms = start;
+        item.end_time_ms = end;
+        item.selled = 0;
+        item.selled_price = 0;
+        item.buyer = payable(0x0000000000000000000000000000000000000000);
+        item.buyers.push(BuyerInfo(payable(0x0000000000000000000000000000000000000000), 0, 0));
+        item.exists = true;
+        all_hashes.push(hash);
+        id_with_hash_map[item.id] = hash;
+        owner_with_hash_map[msg.sender].push(hash);
+    }
+    function PurchaseItem(bytes32 hash, uint256 time) public payable {
+        require(item_map[hash].exists);
+        require(item_map[hash].owner != msg.sender);
+        bytes[] memory all_bytes = new bytes[](2);
+        all_bytes[0] = abi.encodePacked(hash);
+        all_bytes[1] = abi.encodePacked(msg.sender);
+        bytes memory key = abi.encodePacked(all_bytes[0], all_bytes[1]);
+        require(!purchase_map[key]);
+        require(item_map[hash].price <= msg.value);
+        ItemInfo storage item = item_map[hash];
+        item.buyers.push(BuyerInfo(payable(msg.sender), msg.value, time));
+        purchase_map[key] = true;
+    }
+    function TotalItems() public view returns (uint256) {
+        return all_hashes.length;
+    }
+}
+)";
+
+        auto compiled = sdk6.compileSolidity(EXCHANGE_SOL);
+        if (compiled["status"] != 0) {
+            std::cerr << "  Exchange compile failed: " << compiled["msg"] << "\n";
+            transport::TcpTransport::Instance()->Stop();
+            return 1;
+        }
+        std::string exchange_bytecode = compiled["bytecode"];
+        std::cout << "  Exchange bytecode: " << exchange_bytecode.size() << " chars\n";
+
+        // Pre-compute ABI selectors (keccak256 of signature, first 4 bytes)
+        // CreateNewItem(bytes32,bytes,uint256,uint256,uint256)
+        // PurchaseItem(bytes32,uint256)
+        const std::string sel_create = utils::keccak256Str(
+            "CreateNewItem(bytes32,bytes,uint256,uint256,uint256)").substr(0, 8);
+        const std::string sel_purchase = utils::keccak256Str(
+            "PurchaseItem(bytes32,uint256)").substr(0, 8);
+        std::cout << "  CreateNewItem selector: 0x" << sel_create << "\n";
+        std::cout << "  PurchaseItem selector:  0x" << sel_purchase << "\n";
+
+
+        // ── Phase 2: Generate accounts per shard ────────────────────────
+        // For each shard S, we need accounts whose address maps to shard S.
+        // Seth shards are identified by GetAddressPoolIndex() % num_shards,
+        // but the simpler rule used throughout the codebase is:
+        //   addr[0] >> ? — actually the chain uses net_id / shard_id embedded in
+        //   the DHT key, not the address. For cross-shard, we just send with
+        //   des_net_id = target_shard. Accounts generated here are used to CALL
+        //   contracts deployed on each specific shard, so we need the accounts
+        //   to reside on the correct shard.
+        //
+        // Address-to-shard mapping in Seth:
+        //   The first byte of the address (big-endian) determines the shard.
+        //   shard_id = addr[0] * num_active_shards / 256
+        //   With 4 shards (3,4,5,6), indices 0-3:
+        //     addr[0] in [0,63]   → shard index 0 → shard 3
+        //     addr[0] in [64,127] → shard index 1 → shard 4
+        //     addr[0] in [128,191]→ shard index 2 → shard 5
+        //     addr[0] in [192,255]→ shard index 3 → shard 6
+        // We generate random keys and keep those whose address falls in the
+        // right range — retry until we have enough.
+        std::cout << "\n[Phase 2] Generate " << kUsersPerShard
+                  << " users + " << kContractsPerShard << " deployers per shard...\n";
+
+        struct ShardAccounts {
+            int shard_id;
+            // per-shard node endpoints
+            std::string node_ip;
+            uint16_t    node_http{0};
+            uint16_t    node_tcp{0};
+            // user accounts
+            std::vector<std::string> user_prikeys;  // raw bytes
+            std::vector<std::string> user_addrs;    // raw bytes
+            // deployer accounts (one per contract)
+            std::vector<std::string> deployer_prikeys;
+            std::vector<std::string> deployer_addrs;
+            // contract addresses (populated after deployment)
+            std::vector<std::string> contract_addrs;
+            // confirmed flags
+            std::vector<bool> users_confirmed;
+            std::vector<bool> deployers_confirmed;
+            std::vector<bool> contracts_confirmed;
+        };
+
+        // Determine shard membership via Seth's actual pool routing:
+        //   pool = XXH32(addr_bytes[0:20], seed=623453345) % 32
+        //   shard = 6 - pool/8  =>  pool 24-31→shard3, 16-23→shard4, 8-15→shard5, 0-7→shard6
+        const int kNumShards = 4;
+        auto addr_pool_index = [](const std::string& addr_raw) -> uint32_t {
+            return common::GetAddressPoolIndex(addr_raw);
+        };
+        auto addr_shard_id = [&](const std::string& addr_raw) -> int {
+            return 6 - (int)(addr_pool_index(addr_raw) / 8);
+        };
+
+        std::vector<ShardAccounts> shard_data(kNumShards);
+        for (int i = 0; i < kNumShards; ++i) {
+            shard_data[i].shard_id  = kShards[i];
+            shard_data[i].node_ip   = shard_ips[i];
+            // HTTP port = 2{shard}001, TCP = HTTP - 10000
+            shard_data[i].node_http = (uint16_t)(20000 + kShards[i] * 1000 + 1);
+            shard_data[i].node_tcp  = shard_data[i].node_http - 10000;
+        }
+
+        // Phase 2: Generate exactly kUsersPerShard users + kContractsPerShard deployers per shard.
+        // Uses Seth shard routing (addr_shard_id) to filter — same approach as mode 7.
+        auto shard_to_idx = [](int shard_id) -> int { return shard_id - 3; };
+        for (int i = 0; i < kNumShards; ++i) {
+            shard_data[i].contract_addrs.clear();
+            shard_data[i].users_confirmed.clear();
+            shard_data[i].deployers_confirmed.clear();
+            shard_data[i].contracts_confirmed.clear();
+        }
+        {
+            std::mutex gen_mu;
+            std::vector<std::thread> gen_threads;
+            for (int si = 0; si < kNumShards && !global_stop; ++si) {
+                gen_threads.emplace_back([&, si]() {
+                    int target_shard = kShards[si];
+                    std::vector<std::string> lpk, laddr, dpk, daddr;
+                    lpk.reserve(kUsersPerShard);
+                    dpk.reserve(kContractsPerShard);
+                    while ((uint32_t)lpk.size() < kUsersPerShard && !global_stop) {
+                        std::string pk(32, '\0');
+                        for (int j = 0; j < 32; ++j)
+                            pk[j] = static_cast<char>(common::Random::RandomUint32() % 256);
+                        auto s = std::make_shared<security::Ecdsa>();
+                        s->SetPrivateKey(pk);
+                        std::string addr = s->GetAddress();
+                        if (addr_shard_id(addr) == target_shard) {
+                            lpk.push_back(pk);
+                            laddr.push_back(addr);
+                        }
+                    }
+                    while ((uint32_t)dpk.size() < kContractsPerShard && !global_stop) {
+                        std::string pk(32, '\0');
+                        for (int j = 0; j < 32; ++j)
+                            pk[j] = static_cast<char>(common::Random::RandomUint32() % 256);
+                        auto s = std::make_shared<security::Ecdsa>();
+                        s->SetPrivateKey(pk);
+                        std::string addr = s->GetAddress();
+                        if (addr_shard_id(addr) == target_shard) {
+                            dpk.push_back(pk);
+                            daddr.push_back(addr);
+                        }
+                    }
+                    std::lock_guard<std::mutex> lk(gen_mu);
+                    int idx = shard_to_idx(target_shard);
+                    shard_data[idx].user_prikeys     = std::move(lpk);
+                    shard_data[idx].user_addrs       = std::move(laddr);
+                    shard_data[idx].deployer_prikeys = std::move(dpk);
+                    shard_data[idx].deployer_addrs   = std::move(daddr);
+                });
+            }
+            for (auto& t : gen_threads) t.join();
+        }
+        for (int i = 0; i < kNumShards; ++i) {
+            uint32_t nu = shard_data[i].user_addrs.size();
+            uint32_t nd = shard_data[i].deployer_addrs.size();
+            shard_data[i].users_confirmed.assign(nu, false);
+            shard_data[i].deployers_confirmed.assign(nd, false);
+            shard_data[i].contract_addrs.resize(nd);
+            shard_data[i].contracts_confirmed.assign(nd, false);
+            std::cout << "  Shard " << kShards[i] << ": " << nu << " users, " << nd << " deployers\n";
+        }
+        std::cout << "  Account generation complete\n";
+
+
+        // ── TCP send queue (shared across all phases) ────────────────────
+        struct TcpSendItem6 {
+            transport::MessagePtr msg;
+            std::string dest_ip;
+            uint16_t dest_port;
+        };
+        std::queue<TcpSendItem6> tcp_q6;
+        std::mutex tcp_mtx6;
+        std::condition_variable tcp_cv6;
+        std::atomic<bool> tcp_stop6{false};
+        std::atomic<uint64_t> tcp_sent6{0};
+
+        std::thread tcp_sender6([&]() {
+            std::vector<TcpSendItem6> batch;
+            batch.reserve(4096);
+            while (!tcp_stop6.load()) {
+                {
+                    std::unique_lock<std::mutex> lk(tcp_mtx6);
+                    tcp_cv6.wait_for(lk, std::chrono::milliseconds(1),
+                        [&]{ return !tcp_q6.empty() || tcp_stop6.load(); });
+                    while (!tcp_q6.empty()) { batch.push_back(std::move(tcp_q6.front())); tcp_q6.pop(); }
+                }
+                for (auto& item : batch) {
+                    transport::TcpTransport::Instance()->Send(item.dest_ip, item.dest_port, item.msg->header);
+                    ++tcp_sent6;
+                }
+                batch.clear();
+            }
+            std::lock_guard<std::mutex> lk(tcp_mtx6);
+            while (!tcp_q6.empty()) {
+                auto item = std::move(tcp_q6.front()); tcp_q6.pop();
+                transport::TcpTransport::Instance()->Send(item.dest_ip, item.dest_port, item.msg->header);
+                ++tcp_sent6;
+            }
+        });
+
+        auto tcp_enq6 = [&](transport::MessagePtr msg, const std::string& ip, uint16_t port) -> bool {
+            if (!msg) return false;
+            { std::lock_guard<std::mutex> lk(tcp_mtx6); tcp_q6.push({std::move(msg), ip, port}); }
+            tcp_cv6.notify_one();
+            return true;
+        };
+
+        const std::string node_ip  = global_chain_node_ip;
+        const uint16_t   node_tcp  = (uint16_t)(global_chain_node_http_port - 10000);
+        const uint16_t   node_http = global_chain_node_http_port;
+
+
+        // ── Phase 3: Fund all accounts (users + deployers) via cross-shard txs ──
+        // Funders may live on different shards; route each funder's TX via its home shard node.
+        std::cout << "\n[Phase 3] Fund accounts on shards 3/4/5/6 (cross-shard from shard "
+                  << shardnum << " funder)...\n";
+
+        // All genesis funders live on shard3 — always use shard3 node IP for nonce/send
+        auto funder_shard_ip = [&](const std::string&) -> std::pair<std::string, uint16_t> {
+            return {shard_data[0].node_ip, shard_data[0].node_http};  // shard_data[0] = shard3
+        };
+
+        // Deduplicate funded accounts
+        std::vector<std::string> unique_funders6;
+        { std::set<std::string> seen;
+          for (auto& pk : g_prikeys)
+              if (seen.insert(pk).second) unique_funders6.push_back(pk); }
+        std::cout << "  Unique funders: " << unique_funders6.size() << "\n";
+
+        const uint64_t kFundAmt6 = 8000000000ULL;
+        std::atomic<uint32_t> fund_ok6{0}, fund_fail6{0};
+
+        // Build flat list: (addr_hex, target_shard)
+        std::vector<std::pair<std::string, int>> all_to_fund;
+        for (int si = 0; si < kNumShards; ++si) {
+            auto& sd = shard_data[si];
+            for (auto& a : sd.user_addrs)
+                all_to_fund.push_back({common::Encode::HexEncode(a), sd.shard_id});
+            for (auto& a : sd.deployer_addrs)
+                all_to_fund.push_back({common::Encode::HexEncode(a), sd.shard_id});
+        }
+        uint32_t total_to_fund = all_to_fund.size();
+        std::cout << "  Total accounts to fund: " << total_to_fund << "\n";
+
+        // ── Fund send: 4 funder threads, each 100us interval = ~10000 tx/s total ──
+        // Each thread owns its funder exclusively (no nonce conflict).
+        // Rate: 4 threads * (1 tx / 100us) = 40000 tx/s ceiling; chain limits actual rate.
+        struct FunderState {
+            std::string prikey;
+            std::shared_ptr<security::Security> sec;
+            std::string addr_hex;
+            int64_t nonce_start{0};
+            int64_t nonce_sent{0};
+            std::atomic<uint32_t> sent{0};
+            FunderState() = default;
+            FunderState(FunderState&& o) noexcept
+                : prikey(std::move(o.prikey)), sec(std::move(o.sec)),
+                  addr_hex(std::move(o.addr_hex)),
+                  nonce_start(o.nonce_start), nonce_sent(o.nonce_sent),
+                  sent(o.sent.load()) {}
+            FunderState& operator=(FunderState&&) = delete;
+        };
+        std::vector<FunderState> funders;
+        {
+            auto [f_ip, f_http] = funder_shard_ip("");
+            SethSDK fqsdk(f_ip, f_http);
+            for (auto& pk : unique_funders6) {
+                FunderState fs;
+                fs.prikey = pk;
+                fs.sec = std::make_shared<security::Ecdsa>();
+                fs.sec->SetPrivateKey(pk);
+                fs.addr_hex = common::Encode::HexEncode(fs.sec->GetAddress());
+                int64_t n = fqsdk.fetchNonce(fs.addr_hex);
+                fs.nonce_start = (n >= 0) ? n : 0;
+                fs.nonce_sent  = fs.nonce_start;
+                std::cout << "  Funder " << fs.addr_hex.substr(0,16)
+                          << "... chain_nonce=" << fs.nonce_start << "\n";
+                funders.push_back(std::move(fs));
+            }
+        }
+        auto [f_ip, f_http] = funder_shard_ip("");
+        uint16_t f_tcp = f_http - 10000;
+        uint32_t nf2 = (uint32_t)funders.size(); if (!nf2) nf2 = 1;
+
+        // ── Inline raw-TCP send: each funder thread owns its own socket ──────────
+        // Wire format: [PacketHeader(4B): length(24b)|type(8b)] [protobuf payload]
+        // type=0 (kProtobuff). Bypasses TcpTransport single-Output-thread bottleneck.
+        auto raw_tcp_send = [](const std::string& ip, uint16_t port,
+                               const std::string& payload) -> bool {
+            int fd = ::socket(AF_INET, SOCK_STREAM, 0);
+            if (fd < 0) return false;
+            // disable Nagle for low-latency bulk sends
+            int one = 1;
+            ::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
+            sockaddr_in sa{}; sa.sin_family = AF_INET; sa.sin_port = htons(port);
+            ::inet_pton(AF_INET, ip.c_str(), &sa.sin_addr);
+            if (::connect(fd, (sockaddr*)&sa, sizeof(sa)) != 0) { ::close(fd); return false; }
+            // reuse fd across many sends — return it as a persistent connection
+            // (we wrap into a lambda-captured int below)
+            ::close(fd);
+            return true; // placeholder — real logic below uses persistent fd
+        };
+        (void)raw_tcp_send;
+
+        {
+            std::vector<std::thread> fund_threads;
+            for (uint32_t fi = 0; fi < nf2; ++fi) {
+                fund_threads.emplace_back([&, fi, f_ip, f_tcp]() {
+                    // Open a persistent TCP connection for this thread
+                    int fd = ::socket(AF_INET, SOCK_STREAM, 0);
+                    if (fd < 0) {
+                        // fallback: count all as fail
+                        for (uint32_t i = fi; i < total_to_fund; i += nf2) ++fund_fail6;
+                        return;
+                    }
+                    int one = 1;
+                    ::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
+                    sockaddr_in sa{}; sa.sin_family = AF_INET; sa.sin_port = htons(f_tcp);
+                    ::inet_pton(AF_INET, f_ip.c_str(), &sa.sin_addr);
+                    if (::connect(fd, (sockaddr*)&sa, sizeof(sa)) != 0) {
+                        ::close(fd);
+                        for (uint32_t i = fi; i < total_to_fund; i += nf2) ++fund_fail6;
+                        return;
+                    }
+                    auto& fs = funders[fi];
+                    int64_t nonce = fs.nonce_sent;
+                    for (uint32_t i = fi; i < total_to_fund && !global_stop; i += nf2) {
+                        auto& [addr_hex, tgt] = all_to_fund[i];
+                        auto tx = CreateTransactionWithAttr(fs.sec, ++nonce,
+                            fs.prikey,
+                            common::Encode::HexDecode(addr_hex),
+                            "", "", kFundAmt6, 210000, 1, kShards[0]);
+                        if (!tx) { ++fund_fail6; --nonce; continue; }
+                        // Set required fields (same as TcpTransport::Send does)
+                        tx->header.set_from_public_port(
+                            common::GlobalInfo::Instance()->config_public_port());
+                        if (!tx->header.has_hash64() || tx->header.hash64() == 0) {
+                            std::string hs = tx->header.SerializeAsString();
+                            tx->header.set_hash64(common::Hash::Hash64(hs));
+                        }
+                        std::string payload = tx->header.SerializeAsString();
+                        // PacketHeader: 4 bytes (length[23:0] | type[31:24]), LE
+                        uint32_t plen = (uint32_t)payload.size();
+                        uint8_t hdr[4];
+                        hdr[0] = plen & 0xFF;
+                        hdr[1] = (plen >> 8) & 0xFF;
+                        hdr[2] = (plen >> 16) & 0xFF;
+                        hdr[3] = 0; // type = kProtobuff = 0
+                        bool ok = true;
+                        if (::send(fd, hdr, 4, MSG_NOSIGNAL) != 4) ok = false;
+                        if (ok) {
+                            uint32_t off = 0;
+                            while (off < plen) {
+                                ssize_t n = ::send(fd, payload.data()+off, plen-off, MSG_NOSIGNAL);
+                                if (n <= 0) { ok = false; break; }
+                                off += n;
+                            }
+                        }
+                        if (ok) {
+                            ++fund_ok6; ++fs.sent;
+                        } else {
+                            ++fund_fail6; --nonce;
+                            // reconnect
+                            ::close(fd);
+                            fd = ::socket(AF_INET, SOCK_STREAM, 0);
+                            ::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
+                            if (::connect(fd, (sockaddr*)&sa, sizeof(sa)) != 0) {
+                                ::close(fd); fd = -1; break;
+                            }
+                        }
+                    }
+                    if (fd >= 0) ::close(fd);
+                    fs.nonce_sent = nonce;
+                });
+            }
+            std::thread fund_prog([&]() {
+                uint32_t last = 0;
+                while (fund_ok6.load() + fund_fail6.load() < total_to_fund && !global_stop) {
+                    usleep(1000000);
+                    uint32_t ok = fund_ok6.load(), fail = fund_fail6.load();
+                    uint32_t total_sent = ok + fail;
+                    uint32_t tps = total_sent - last;
+                    last = total_sent;
+                    std::cout << "  Fund: " << ok << " ok, " << fail
+                              << " fail / " << total_to_fund
+                              << "  tps=" << tps << "\n";
+                }
+            });
+            for (auto& t : fund_threads) t.join();
+            fund_prog.join();
+        }
+        std::cout << "  Fund sends: " << fund_ok6.load() << " ok, "
+                  << fund_fail6.load() << " fail\n";
+
+        // ── Verify funder nonces on-chain ──────────────────────────────────────
+        // Each funder's on-chain nonce must equal nonce_start + sent_count.
+        std::cout << "\n[Phase 3a] Verify funder nonces on-chain...\n";
+        {
+            SethSDK verify_sdk(shard_data[0].node_ip, shard_data[0].node_http);
+            std::vector<std::string> funder_addrs;
+            for (auto& fs : funders) funder_addrs.push_back(fs.addr_hex);
+            auto t0 = std::chrono::steady_clock::now();
+            bool nonce_ok = false;
+            for (int rd = 0; rd < 120 && !global_stop; ++rd) {
+                auto r = verify_sdk.batchQueryAccounts(funder_addrs);
+                bool all_match = true;
+                if (r.contains("accounts")) {
+                    for (auto& fs : funders) {
+                        int64_t expected = fs.nonce_sent;
+                        int64_t actual = -1;
+                        if (r["accounts"].contains(fs.addr_hex)) {
+                            auto& acc = r["accounts"][fs.addr_hex];
+                            if (acc.contains("nonce")) {
+                                try {
+                                    auto ns = acc["nonce"].get<std::string>();
+                                    std::from_chars(ns.data(), ns.data()+ns.size(), actual);
+                                } catch (...) {}
+                            }
+                        }
+                        std::cout << "  Funder " << fs.addr_hex.substr(0,16)
+                                  << "... expected_nonce=" << expected
+                                  << " chain_nonce=" << actual
+                                  << (actual >= expected ? " OK" : " PENDING") << "\n";
+                        if (actual < expected) all_match = false;
+                    }
+                } else { all_match = false; }
+                if (all_match) { nonce_ok = true; break; }
+                auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::steady_clock::now() - t0).count();
+                std::cout << "  Nonce verify round " << (rd+1) << " (" << elapsed << "s), retrying...\n";
+                usleep(5000000);
+            }
+            if (!nonce_ok) {
+                std::cerr << "  FATAL: Funder nonce verify failed after 600s. Aborting.\n";
+                transport::TcpTransport::Instance()->Stop();
+                return 1;
+            }
+            std::cout << "  All funder nonces confirmed on-chain.\n";
+        }
+
+        // ── Verify funded accounts per shard (each shard queries its OWN node) ──
+        std::cout << "\n[Phase 3b] Verify funded accounts per shard (own-node query)...\n";
+
+        for (int si = 0; si < kNumShards && !global_stop; ++si) {
+            auto& sd = shard_data[si];
+            uint32_t nu = (uint32_t)sd.user_addrs.size();
+            uint32_t nd = (uint32_t)sd.deployer_addrs.size();
+            std::vector<std::string> all_hex;
+            all_hex.reserve(nu + nd);
+            for (auto& a : sd.user_addrs)     all_hex.push_back(common::Encode::HexEncode(a));
+            for (auto& a : sd.deployer_addrs) all_hex.push_back(common::Encode::HexEncode(a));
+
+            std::vector<bool> confirmed(all_hex.size(), false);
+            std::vector<uint32_t> pending;
+            for (uint32_t i = 0; i < (uint32_t)all_hex.size(); ++i) pending.push_back(i);
+
+            uint32_t total_confirmed = 0;
+            auto t0 = std::chrono::steady_clock::now();
+            const uint32_t kVBatch = 300;
+
+            // Query ONLY this shard's own node (sd.node_ip:sd.node_http)
+            SethSDK own_sdk(sd.node_ip, sd.node_http);
+
+            for (uint32_t rd = 0; !pending.empty() && !global_stop; ++rd) {
+                auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::steady_clock::now() - t0).count();
+                if (elapsed >= 600) {
+                    std::cerr << "  FATAL: Shard " << sd.shard_id << ": fund verify timeout after 600s, "
+                              << total_confirmed << "/" << all_hex.size() << " funded. Aborting.\n";
+                    transport::TcpTransport::Instance()->Stop();
+                    return 1;
+                }
+                uint32_t rok = 0;
+                std::vector<uint32_t> next_pending;
+                std::vector<std::string> ba; std::vector<uint32_t> bi;
+                for (uint32_t p = 0; p < (uint32_t)pending.size() && !global_stop; ++p) {
+                    ba.push_back(all_hex[pending[p]]); bi.push_back(pending[p]);
+                    if (ba.size() >= kVBatch || p == (uint32_t)pending.size() - 1) {
+                        auto r = own_sdk.batchQueryAccounts(ba);
+                        if (r.contains("status") && r["status"] == 0 && r.contains("accounts")) {
+                            for (uint32_t k = 0; k < (uint32_t)bi.size(); ++k) {
+                                if (!confirmed[bi[k]] && r["accounts"].contains(ba[k])) {
+                                    confirmed[bi[k]] = true; ++total_confirmed; ++rok;
+                                } else if (!confirmed[bi[k]]) {
+                                    next_pending.push_back(bi[k]);
+                                }
+                            }
+                        } else {
+                            for (auto idx : bi) next_pending.push_back(idx);
+                        }
+                        ba.clear(); bi.clear();
+                    }
+                }
+                pending = std::move(next_pending);
+                elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::steady_clock::now() - t0).count();
+                std::cout << "  [shard" << sd.shard_id << "@" << sd.node_ip
+                          << " round " << (rd+1) << ", " << elapsed << "s] +"
+                          << rok << " = " << total_confirmed << "/" << all_hex.size()
+                          << " (" << pending.size() << " pending)\n";
+                if (pending.empty()) break;
+                uint32_t wt = (rok > 0) ? 2000 : 5000;
+                for (uint32_t w = 0; w < wt/100 && !global_stop; ++w) usleep(100000);
+            }
+
+            // Strict: require 100%
+            uint32_t uc = 0, dc = 0;
+            for (uint32_t i = 0; i < nu; ++i) {
+                sd.users_confirmed[i] = confirmed[i];
+                if (confirmed[i]) ++uc;
+            }
+            for (uint32_t i = 0; i < nd; ++i) {
+                sd.deployers_confirmed[i] = confirmed[nu + i];
+                if (confirmed[nu + i]) ++dc;
+            }
+            std::cout << "  Shard " << sd.shard_id << " (" << sd.node_ip << "): "
+                      << uc << "/" << nu << " users funded, "
+                      << dc << "/" << nd << " deployers funded\n";
+            if (uc < nu || dc < nd) {
+                std::cerr << "  FATAL: Shard " << sd.shard_id
+                          << " fund incomplete (" << uc << "/" << nu << " users, "
+                          << dc << "/" << nd << " deployers). Aborting.\n";
+                transport::TcpTransport::Instance()->Stop();
+                return 1;
+            }
+        }
+
+
+        // ── Phase 4: Deploy Exchange contracts (one per deployer) ────────
+        std::cout << "\n[Phase 4] Deploy Exchange contracts...\n";
+        const uint64_t kDeployPrefund6 = 800000000lu;
+        std::atomic<uint32_t> deploy_ok6{0}, deploy_fail6{0};
+
+        for (int si = 0; si < kNumShards && !global_stop; ++si) {
+            auto& sd = shard_data[si];
+            uint32_t nd4 = (uint32_t)sd.deployer_addrs.size();
+            if (!nd4) { std::cout << "  Shard " << sd.shard_id << ": 0 deployers, skip\n"; continue; }
+            uint32_t nt = std::min(32u, nd4); if (!nt) nt = 1;
+            uint32_t pp = nd4 / nt;
+            std::vector<std::thread> dth;
+            for (uint32_t t = 0; t < nt; ++t) {
+                uint32_t s2 = t * pp;
+                uint32_t e2 = (t == nt-1) ? nd4 : (s2 + pp);
+                dth.emplace_back([&, si, s2, e2]() {
+                    SethSDK tsdk(shard_data[si].node_ip, shard_data[si].node_http);
+                    for (uint32_t i = s2; i < e2 && !global_stop; ++i) {
+                        if (!sd.deployers_confirmed[i]) { ++deploy_fail6; continue; }
+                        std::string pk_hex = common::Encode::HexEncode(sd.deployer_prikeys[i]);
+                        int target_shard = shard_data[si].shard_id;
+                        // Try salts until contract address lands on target shard
+                        static std::atomic<uint64_t> deploy_counter6{0};
+                        std::string to_address;
+                        for (int attempt = 0; attempt < 10000 && !global_stop; ++attempt) {
+                            uint64_t cnt = deploy_counter6.fetch_add(1);
+                            std::string salt = sd.deployer_prikeys[i] + std::to_string(cnt) +
+                                std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+                            std::string candidate = utils::keccak256Str(exchange_bytecode + salt).substr(24);
+                            std::string candidate_raw = common::Encode::HexDecode(candidate);
+                            if (addr_shard_id(candidate_raw) == target_shard) {
+                                to_address = candidate;
+                                break;
+                            }
+                        }
+                        if (to_address.empty()) { ++deploy_fail6; continue; }
+                        auto r = tsdk.deployToAddress(pk_hex, exchange_bytecode, to_address, kDeployPrefund6);
+                        if (r["status"] == 0) {
+                            sd.contract_addrs[i] = to_address;
+                            ++deploy_ok6;
+                        } else {
+                            ++deploy_fail6;
+                        }
+                        usleep(100);
+                    }
+                });
+            }
+            for (auto& t : dth) t.join();
+            std::cout << "  Shard " << sd.shard_id << ": " << deploy_ok6.load()
+                      << " deployed so far\n";
+        }
+        std::cout << "  Deploy sends: " << deploy_ok6.load() << " ok, "
+                  << deploy_fail6.load() << " fail\n";
+
+        std::cout << "  Waiting 15s for deploy consensus...\n";
+        for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
+
+        // Verify contract addresses on-chain per shard (up to 300s per shard)
+        std::cout << "  Verifying contract addresses on-chain (up to 300s per shard)...\n";
+        for (int si = 0; si < kNumShards && !global_stop; ++si) {
+            auto& sd = shard_data[si];
+            uint32_t nd4v = (uint32_t)sd.deployer_addrs.size();
+            SethSDK shard_sdk(sd.node_ip, sd.node_http);
+            std::vector<uint32_t> pending;
+            for (uint32_t i = 0; i < nd4v; ++i)
+                if (!sd.contract_addrs[i].empty()) pending.push_back(i);
+
+            uint32_t total_confirmed = 0;
+            auto t0 = std::chrono::steady_clock::now();
+            const uint32_t kVBatch = 200;
+
+            for (uint32_t rd = 0; !pending.empty() && !global_stop; ++rd) {
+                auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::steady_clock::now() - t0).count();
+                if (elapsed >= 600) {
+                    std::cerr << "  FATAL: Shard " << sd.shard_id << ": contract verify timeout after 600s, "
+                              << total_confirmed << "/" << nd4v << " confirmed. Aborting.\n";
+                    transport::TcpTransport::Instance()->Stop();
+                    return 1;
+                }
+                uint32_t rok = 0;
+                std::vector<uint32_t> next_pending;
+                std::vector<std::string> ba; std::vector<uint32_t> bi;
+                for (uint32_t p = 0; p < pending.size() && !global_stop; ++p) {
+                    ba.push_back(sd.contract_addrs[pending[p]]); bi.push_back(pending[p]);
+                    if (ba.size() >= kVBatch || p == pending.size() - 1) {
+                        // Query ALL shard nodes - contract addr may land on any shard
+                        std::vector<bool> ba_found(bi.size(), false);
+                        for (int qsi = 0; qsi < kNumShards && !global_stop; ++qsi) {
+                            SethSDK qsdk(shard_data[qsi].node_ip, shard_data[qsi].node_http);
+                            auto r = qsdk.batchQueryAccounts(ba);
+                            if (!r.contains("status") || r["status"] != 0 || !r.contains("accounts")) continue;
+                            for (uint32_t k = 0; k < bi.size(); ++k)
+                                if (!ba_found[k] && r["accounts"].contains(ba[k]))
+                                    ba_found[k] = true;
+                        }
+                        for (uint32_t k = 0; k < bi.size(); ++k) {
+                            if (ba_found[k]) {
+                                sd.contracts_confirmed[bi[k]] = true; ++total_confirmed; ++rok;
+                            } else { next_pending.push_back(bi[k]); }
+                        }
+                        ba.clear(); bi.clear();
+                    }
+                }
+                pending = std::move(next_pending);
+                elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::steady_clock::now() - t0).count();
+                std::cout << "  [shard" << sd.shard_id << " contract round " << (rd+1)
+                          << ", " << elapsed << "s] +" << rok
+                          << " = " << total_confirmed << "/" << nd4v
+                          << " (" << pending.size() << " pending)\n";
+                if (pending.empty()) break;
+                uint32_t wt = (rok > 0) ? 3000 : 8000;
+                if (rd == 0 && rok == 0) wt = 15000;
+                for (uint32_t w = 0; w < wt/100 && !global_stop; ++w) usleep(100000);
+            }
+            std::cout << "  Shard " << sd.shard_id << ": " << total_confirmed
+                      << "/" << nd4v << " contracts confirmed\n";
+            if (total_confirmed < nd4v) {
+                std::cerr << "  FATAL: Shard " << sd.shard_id
+                          << " contract deploy incomplete (" << total_confirmed << "/" << nd4v
+                          << "). Aborting.\n";
+                transport::TcpTransport::Instance()->Stop();
+                return 1;
+            }
+        }
+
+        // ── Phase 5: Prefund users on contracts (mode-5 pattern) ────────
+        // Each user on shard S prefunds on every contract on shard S.
+        // To keep ops manageable: pair each user with 1 contract (round-robin).
+        // For 100000 users and 10000 contracts → 10 users per contract.
+        std::cout << "\n[Phase 5] Set prefund for users on contracts...\n";
+        const uint64_t kUserPrefund6 = 500000000lu;
+        std::atomic<uint64_t> pf_ok6{0}, pf_fail6{0};
+
+        // Build prefund op list per shard
+        struct PfOp6 {
+            std::string user_prikey_hex;
+            std::string contract_addr;
+        };
+
+        for (int si = 0; si < kNumShards && !global_stop; ++si) {
+            auto& sd = shard_data[si];
+            uint32_t nd5 = (uint32_t)sd.deployer_addrs.size();
+            uint32_t nu5 = (uint32_t)sd.user_addrs.size();
+            SethSDK shard_sdk5(sd.node_ip, sd.node_http);
+            // Build list of valid (confirmed) contracts
+            std::vector<uint32_t> valid_contracts;
+            for (uint32_t i = 0; i < nd5; ++i)
+                if (sd.contracts_confirmed[i] && !sd.contract_addrs[i].empty())
+                    valid_contracts.push_back(i);
+            if (valid_contracts.empty()) {
+                std::cout << "  Shard " << sd.shard_id << ": no valid contracts, skip prefund\n";
+                continue;
+            }
+            std::vector<PfOp6> pf_ops;
+            for (uint32_t ui = 0; ui < nu5; ++ui) {
+                if (!sd.users_confirmed[ui]) continue;
+                std::string pk_hex = common::Encode::HexEncode(sd.user_prikeys[ui]);
+                // Each user gets prefunded on one contract (round-robin)
+                uint32_t ci = valid_contracts[ui % valid_contracts.size()];
+                pf_ops.push_back({pk_hex, sd.contract_addrs[ci]});
+            }
+            uint32_t total_pf = pf_ops.size();
+            std::cout << "  Shard " << sd.shard_id << ": " << total_pf << " prefund ops\n";
+
+            // Nonce init for users
+            std::unordered_map<std::string, uint64_t> user_nonces6;
+            {
+                const uint32_t kBatch = 300;
+                std::vector<std::string> addrs;
+                for (auto& op : pf_ops) {
+                    security::Ecdsa e;
+                    e.SetPrivateKey(common::Encode::HexDecode(op.user_prikey_hex));
+                    addrs.push_back(common::Encode::HexEncode(e.GetAddress()));
+                }
+                for (uint32_t off = 0; off < addrs.size(); off += kBatch) {
+                    uint32_t end = std::min(off + kBatch, (uint32_t)addrs.size());
+                    std::vector<std::string> batch(addrs.begin() + off, addrs.begin() + end);
+                    auto r = shard_sdk5.batchQueryAccounts(batch);
+                    for (uint32_t k = 0; k < batch.size(); ++k) {
+                        int64_t n = 0;
+                        if (r.contains("accounts") && r["accounts"].contains(batch[k])) {
+                            auto& acc = r["accounts"][batch[k]];
+                            if (acc.contains("nonce")) {
+                                try {
+                                    auto ns = acc["nonce"].get<std::string>();
+                                    std::from_chars(ns.data(), ns.data()+ns.size(), n);
+                                } catch (...) {}
+                            }
+                        }
+                        user_nonces6[common::Encode::HexDecode(addrs[off + k])] = (uint64_t)n;
+                    }
+                }
+            }
+
+            // Send prefund txs via TCP
+            uint32_t pf_threads = std::min(32u, total_pf); if (!pf_threads) pf_threads = 1;
+            uint32_t pf_per = total_pf / pf_threads;
+            std::vector<std::thread> pfv;
+            for (uint32_t t = 0; t < pf_threads; ++t) {
+                uint32_t ps = t * pf_per;
+                uint32_t pe = (t == pf_threads - 1) ? total_pf : (ps + pf_per);
+                pfv.emplace_back([&, ps, pe, si]() {
+                    auto& sd2 = shard_data[si];
+                    for (uint32_t i = ps; i < pe && !global_stop; ++i) {
+                        auto& op = pf_ops[i];
+                        std::string pk_raw = common::Encode::HexDecode(op.user_prikey_hex);
+                        std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
+                        sec->SetPrivateKey(pk_raw);
+                        std::string addr = sec->GetAddress();
+                        uint64_t& nonce = user_nonces6[addr];
+                        // Send via shard3 node (same as fund sends — cross-shard routing)
+                        auto tx = CreateTransactionWithAttr(sec, ++nonce,
+                            op.user_prikey_hex,
+                            common::Encode::HexDecode(op.contract_addr),
+                            "prefund", "", 0, 210000, 1, kShards[0]);
+                        if (tcp_enq6(tx, shard_data[0].node_ip, shard_data[0].node_tcp)) ++pf_ok6; else ++pf_fail6;
+                        usleep(2000);
+                    }
+                });
+            }
+            for (auto& t : pfv) t.join();
+        }
+        // Drain TCP queue
+        for (int w = 0; w < 100 && !global_stop; ++w) {
+            bool empty = false;
+            { std::lock_guard<std::mutex> lk(tcp_mtx6); empty = tcp_q6.empty(); }
+            if (empty) break;
+            usleep(100000);
+        }
+        std::cout << "  Prefund: " << pf_ok6.load() << " ok, " << pf_fail6.load() << " fail\n";
+
+        std::cout << "  Waiting 15s for prefund consensus...\n";
+        for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
+
+        // Verify prefund on-chain: query prepay accounts (key = contract_addr + user_addr, 80 hex)
+        // Mirrors Mode 5 Phase 7 logic. Re-sends failed ops up to 3 times.
+        std::cout << "  Verifying prefund on-chain (prepay key = contract+user, up to 300s per shard)...\n";
+        for (int si = 0; si < kNumShards && !global_stop; ++si) {
+            auto& sd = shard_data[si];
+            uint32_t nd5v = (uint32_t)sd.deployer_addrs.size();
+            uint32_t nu5v = (uint32_t)sd.user_addrs.size();
+            SethSDK shard_sdk_pf(sd.node_ip, sd.node_http);
+            // Rebuild pf_ops list for this shard (same as sent above)
+            std::vector<uint32_t> valid_contracts2;
+            for (uint32_t i = 0; i < nd5v; ++i)
+                if (sd.contracts_confirmed[i] && !sd.contract_addrs[i].empty())
+                    valid_contracts2.push_back(i);
+            if (valid_contracts2.empty()) continue;
+
+            // Build (prepay_key_hex → {user_prikey_hex, contract_addr, nonce_ref}) map
+            struct PfVerOp {
+                std::string prepay_key;   // 80-char hex: contract(40) + user(40)
+                std::string user_pk_hex;
+                std::string contract_addr;
+            };
+            std::vector<PfVerOp> pf_ver;
+            pf_ver.reserve(nu5v);
+            {
+                std::unordered_map<std::string, uint64_t> resend_nonces;
+                for (uint32_t ui = 0; ui < nu5v; ++ui) {
+                    if (!sd.users_confirmed[ui]) continue;
+                    security::Ecdsa e;
+                    e.SetPrivateKey(sd.user_prikeys[ui]);
+                    std::string user_addr_hex = common::Encode::HexEncode(e.GetAddress());
+                    uint32_t ci = valid_contracts2[ui % valid_contracts2.size()];
+                    std::string prepay = sd.contract_addrs[ci] + user_addr_hex;
+                    pf_ver.push_back({prepay, common::Encode::HexEncode(sd.user_prikeys[ui]),
+                                      sd.contract_addrs[ci]});
+                }
+            }
+
+            std::vector<bool> pf_confirmed(pf_ver.size(), false);
+            std::vector<uint32_t> pf_pending;
+            pf_pending.reserve(pf_ver.size());
+            for (uint32_t i = 0; i < pf_ver.size(); ++i) pf_pending.push_back(i);
+            uint32_t pf_total_ok = 0;
+            uint32_t pf_resend_round = 0;
+            auto pf_t0 = std::chrono::steady_clock::now();
+            const uint32_t kPfBatch = 50;
+
+            for (uint32_t rd = 0; !pf_pending.empty() && !global_stop; ++rd) {
+                auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::steady_clock::now() - pf_t0).count();
+                if (elapsed >= 600) {
+                    std::cerr << "  FATAL: Shard " << sd.shard_id << ": prefund verify timeout after 600s, "
+                              << pf_total_ok << "/" << pf_ver.size() << " confirmed. Aborting.\n";
+                    transport::TcpTransport::Instance()->Stop();
+                    return 1;
+                }
+                uint32_t rok = 0;
+                std::vector<uint32_t> next_pending;
+                std::vector<std::string> ba; std::vector<uint32_t> bi;
+                for (uint32_t p = 0; p < pf_pending.size() && !global_stop; ++p) {
+                    ba.push_back(pf_ver[pf_pending[p]].prepay_key); bi.push_back(pf_pending[p]);
+                    if (ba.size() >= kPfBatch || p == pf_pending.size() - 1) {
+                        auto r = shard_sdk_pf.batchQueryAccounts(ba);
+                        if (r.contains("status") && r["status"] == 0 && r.contains("accounts")) {
+                            for (uint32_t k = 0; k < bi.size(); ++k) {
+                                if (r["accounts"].contains(ba[k])) {
+                                    pf_confirmed[bi[k]] = true; ++pf_total_ok; ++rok;
+                                } else { next_pending.push_back(bi[k]); }
+                            }
+                        } else { for (auto idx : bi) next_pending.push_back(idx); }
+                        ba.clear(); bi.clear();
+                    }
+                }
+                pf_pending = std::move(next_pending);
+                elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::steady_clock::now() - pf_t0).count();
+                std::cout << "  [shard" << sd.shard_id << " prefund round " << (rd+1)
+                          << ", " << elapsed << "s] +" << rok
+                          << " = " << pf_total_ok << "/" << pf_ver.size()
+                          << " (" << pf_pending.size() << " pending)\n";
+                if (pf_pending.empty()) break;
+
+                // Re-send unconfirmed prefund TXs (up to 3 resend rounds)
+                if (rok == 0 && !pf_pending.empty() && pf_resend_round < 3) {
+                    ++pf_resend_round;
+                    std::cout << "  Resending " << pf_pending.size()
+                              << " unconfirmed prefunds (resend round " << pf_resend_round << ")...\n";
+                    std::unordered_map<std::string, uint64_t> rs_nonces;
+                    for (auto idx : pf_pending) {
+                        auto& op = pf_ver[idx];
+                        std::string pk_raw = common::Encode::HexDecode(op.user_pk_hex);
+                        std::shared_ptr<security::Security> sec2 = std::make_shared<security::Ecdsa>();
+                        sec2->SetPrivateKey(pk_raw);
+                        std::string addr_raw = sec2->GetAddress();
+                        if (rs_nonces.find(addr_raw) == rs_nonces.end()) {
+                            SethSDK tsdk2(sd.node_ip, sd.node_http);
+                            int64_t n2 = tsdk2.fetchNonce(common::Encode::HexEncode(addr_raw));
+                            rs_nonces[addr_raw] = (n2 >= 0) ? (uint64_t)n2 : 0;
+                        }
+                        uint64_t& nn = rs_nonces[addr_raw];
+                        auto tx2 = CreateTransactionWithAttr(sec2, ++nn,
+                            op.user_pk_hex,
+                            common::Encode::HexDecode(op.contract_addr),
+                            "prefund", "", 0, 210000, 1, kShards[0]);
+                        tcp_enq6(tx2, shard_data[0].node_ip, shard_data[0].node_tcp);
+                        usleep(1000);
+                    }
+                    for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
+                    continue;
+                }
+                uint32_t wt = (rok > 0) ? 2000 : 5000;
+                for (uint32_t w = 0; w < wt/100 && !global_stop; ++w) usleep(100000);
+            }
+            std::cout << "  Shard " << sd.shard_id << ": " << pf_total_ok
+                      << "/" << pf_ver.size() << " prefunds confirmed on-chain\n";
+            if (pf_total_ok < pf_ver.size()) {
+                std::cerr << "  FATAL: Shard " << sd.shard_id
+                          << " prefund incomplete (" << pf_total_ok << "/" << pf_ver.size()
+                          << "). Aborting.\n";
+                transport::TcpTransport::Instance()->Stop();
+                return 1;
+            }
+        }
+
+
+        // ── Phase 6: Stress test – CreateNewItem × kCallRounds per shard ──
+        // Each user calls CreateNewItem on their assigned contract.
+        // Since each user has a unique prefund account (contract+user), they can run independently.
+        // We use the same grouped-call / TCP fast-path as mode 5.
+        //
+        // ABI encoding helpers for Exchange calls:
+        //
+        // CreateNewItem(bytes32 hash, bytes info, uint256 price, uint256 start, uint256 end)
+        //   - hash: 32 bytes, padded (we use a unique per-call hash = keccak256(user_addr + nonce))
+        //   - info: dynamic bytes (offset + length + data)
+        //   - price: uint256
+        //   - start, end: uint256
+        //
+        // PurchaseItem(bytes32 hash, uint256 time)
+        //   - hash: same as used in CreateNewItem
+        //   - time: current timestamp ms
+        //   - value: must be >= price (send via amount field)
+        //
+        // For stress test simplicity:
+        //   - CreateNewItem: hash = sha256(shard||user_idx||round), info = "test", price = 1, start=0, end=2^64-1
+        //   - PurchaseItem:  hash = same hash, called by a DIFFERENT user on the same contract
+
+        // ABI encoder helpers
+        auto pad32_hex = [](const std::string& hex) -> std::string {
+            if (hex.size() >= 64) return hex.substr(hex.size() - 64);
+            return std::string(64 - hex.size(), '0') + hex;
+        };
+        auto uint256_hex = [&](uint64_t v) -> std::string {
+            std::stringstream ss; ss << std::hex << v;
+            return pad32_hex(ss.str());
+        };
+        auto bytes32_hex = [](const std::string& raw32) -> std::string {
+            return common::Encode::HexEncode(raw32);  // 64 hex chars
+        };
+
+        // Encode CreateNewItem call
+        // Signature: CreateNewItem(bytes32,bytes,uint256,uint256,uint256)
+        // ABI layout: [selector 4B][hash 32B][offset_info 32B][price 32B][start 32B][end 32B][len_info 32B][info_data padded]
+        auto encode_create_new_item = [&](const std::string& hash_raw32,
+                                           uint64_t price, uint64_t start_ms, uint64_t end_ms) -> std::string {
+            // Dynamic bytes "info" = fixed ascii bytes "info" = 0x696e666f
+            // offset of "bytes info" = 5 * 32 = 160 = 0xa0 (after: hash, offset, price, start, end)
+            std::string info_data = "696e666f";  // "info" as hex
+            uint64_t info_len = 4;
+            uint64_t info_padded_len = ((info_len + 31) / 32) * 32;
+            std::string info_padding((info_padded_len - info_len) * 2, '0');
+
+            std::string enc;
+            enc += sel_create;                        // 4B selector
+            enc += bytes32_hex(hash_raw32);           // bytes32 hash
+            enc += uint256_hex(5 * 32);               // offset of bytes arg (= 5 params * 32)
+            enc += uint256_hex(price);                // uint256 price
+            enc += uint256_hex(start_ms);             // uint256 start
+            enc += uint256_hex(end_ms);               // uint256 end
+            enc += uint256_hex(info_len);             // length of bytes
+            enc += info_data + info_padding;          // bytes data padded to 32
+            return enc;
+        };
+
+        // Encode PurchaseItem call
+        // Signature: PurchaseItem(bytes32,uint256)
+        // ABI layout: [selector 4B][hash 32B][time 32B]
+        auto encode_purchase_item = [&](const std::string& hash_raw32, uint64_t time_ms) -> std::string {
+            return sel_purchase + bytes32_hex(hash_raw32) + uint256_hex(time_ms);
+        };
+
+        // Generate a deterministic hash for round r, user ui, shard si
+        auto make_item_hash = [&](int si, uint32_t ui, uint64_t round) -> std::string {
+            // 32-byte hash: sha256(shard_id || user_idx || round)
+            std::string seed(12, '\0');
+            seed[0]  = (char)((si * 64 + ui) >> 24 & 0xFF);
+            seed[1]  = (char)((si * 64 + ui) >> 16 & 0xFF);
+            seed[2]  = (char)((si * 64 + ui) >>  8 & 0xFF);
+            seed[3]  = (char)((si * 64 + ui)       & 0xFF);
+            seed[4]  = (char)(round >> 24 & 0xFF);
+            seed[5]  = (char)(round >> 16 & 0xFF);
+            seed[6]  = (char)(round >>  8 & 0xFF);
+            seed[7]  = (char)(round       & 0xFF);
+            seed[8]  = (char)(kCallRounds >> 24 & 0xFF);
+            seed[9]  = (char)(kCallRounds >> 16 & 0xFF);
+            seed[10] = (char)(kCallRounds >>  8 & 0xFF);
+            seed[11] = (char)(kCallRounds       & 0xFF);
+            // Use keccak256 of seed for uniqueness
+            std::string h = common::Encode::HexDecode(utils::keccak256Str(common::Encode::HexEncode(seed)));
+            h.resize(32);
+            return h;
+        };
+
+        std::cout << "\n[Phase 6] Stress test: CreateNewItem x" << kCallRounds
+                  << " then PurchaseItem x" << kCallRounds << " per shard (concurrent)\n";
+
+        // Per-shard: collect (user, contract, prefund_nonce) tuples
+        // For CreateNewItem: caller = user (who creates the item, owns it)
+        // For PurchaseItem:  caller = DIFFERENT user (buyer ≠ owner)
+        //   Since each user creates items on their contract, we pair users:
+        //   user[ui] creates → user[ui+1 % N] purchases (different user on same contract)
+
+        struct StressUser6 {
+            std::string prikey_raw;
+            std::string addr_raw;
+            std::string addr_hex;
+            std::string contract_addr;   // assigned contract
+            uint32_t    contract_idx;
+        };
+
+        std::atomic<uint64_t> create_ok6{0}, create_fail6{0};
+        std::atomic<uint64_t> purchase_ok6{0}, purchase_fail6{0};
+
+        // Run shards concurrently
+        std::vector<std::thread> shard_stress_threads;
+
+        for (int si = 0; si < kNumShards && !global_stop; ++si) {
+            shard_stress_threads.emplace_back([&, si]() {
+                auto& sd = shard_data[si];
+
+                // Build stress user list
+                uint32_t nd6 = (uint32_t)sd.deployer_addrs.size();
+                uint32_t nu6 = (uint32_t)sd.user_addrs.size();
+                std::vector<uint32_t> valid_contracts;
+                for (uint32_t i = 0; i < nd6; ++i)
+                    if (sd.contracts_confirmed[i] && !sd.contract_addrs[i].empty())
+                        valid_contracts.push_back(i);
+                if (valid_contracts.empty()) {
+                    std::cout << "  Shard " << sd.shard_id << ": no contracts, skip stress\n";
+                    return;
+                }
+
+                std::vector<StressUser6> stress_users;
+                for (uint32_t ui = 0; ui < nu6; ++ui) {
+                    if (!sd.users_confirmed[ui]) continue;
+                    uint32_t ci = valid_contracts[ui % valid_contracts.size()];
+                    StressUser6 su;
+                    su.prikey_raw = sd.user_prikeys[ui];
+                    su.addr_raw   = sd.user_addrs[ui];
+                    su.addr_hex   = common::Encode::HexEncode(su.addr_raw);
+                    su.contract_addr = sd.contract_addrs[ci];
+                    su.contract_idx  = ci;
+                    stress_users.push_back(std::move(su));
+                }
+                if (stress_users.empty()) {
+                    std::cout << "  Shard " << sd.shard_id << ": no confirmed users, skip\n";
+                    return;
+                }
+
+                uint32_t N = stress_users.size();
+                std::cout << "  Shard " << sd.shard_id << ": " << N << " stress users, "
+                          << valid_contracts.size() << " contracts\n";
+
+                // Fetch initial prepay nonces for CreateNewItem
+                // Prepay key = contract_addr + user_addr (for step 8 calls)
+                std::unordered_map<std::string, int64_t> prepay_nonce;
+                {
+                    const uint32_t kBN = 50;
+                    std::vector<std::string> pkeys;
+                    for (auto& su : stress_users)
+                        pkeys.push_back(su.contract_addr + su.addr_hex);
+                    SethSDK stress_sdk(sd.node_ip, sd.node_http);
+                    for (uint32_t off = 0; off < pkeys.size(); off += kBN) {
+                        uint32_t end = std::min(off + kBN, (uint32_t)pkeys.size());
+                        std::vector<std::string> batch(pkeys.begin() + off, pkeys.begin() + end);
+                        auto r = stress_sdk.batchQueryAccounts(batch);
+                        for (uint32_t k = 0; k < batch.size(); ++k) {
+                            int64_t n = 0;
+                            if (r.contains("accounts") && r["accounts"].contains(batch[k])) {
+                                auto& acc = r["accounts"][batch[k]];
+                                if (acc.contains("nonce")) {
+                                    try {
+                                        auto ns = acc["nonce"].get<std::string>();
+                                        std::from_chars(ns.data(), ns.data()+ns.size(), n);
+                                    } catch (...) {}
+                                }
+                            }
+                            prepay_nonce[pkeys[off + k]] = n;
+                        }
+                    }
+                    std::cout << "  Shard " << sd.shard_id << ": nonces fetched for "
+                              << pkeys.size() << " prepay accounts\n";
+                }
+
+                // ── CreateNewItem stress ─────────────────────────────────
+                // kCallRounds = total sends per shard; distribute evenly across N users
+                std::cout << "  Shard " << sd.shard_id << ": launching CreateNewItem x"
+                          << kCallRounds << "...\n";
+                {
+                    uint32_t nthreads = std::min(32u, N); if (!nthreads) nthreads = 1;
+                    uint32_t per_t = N / nthreads;
+                    // rounds per user = kCallRounds / N (last user gets remainder)
+                    uint64_t rounds_per_user = (N > 0) ? kCallRounds / N : kCallRounds;
+                    uint64_t rounds_last     = (N > 0) ? kCallRounds - rounds_per_user * (N - 1) : kCallRounds;
+                    uint64_t interval_us = (kTargetTps > 0)
+                        ? (uint64_t)nthreads * 1000000ULL / kTargetTps : 0;
+                    std::vector<std::thread> tv;
+                    for (uint32_t t = 0; t < nthreads; ++t) {
+                        uint32_t us = t * per_t;
+                        uint32_t ue = (t == nthreads-1) ? N : (us + per_t);
+                        tv.emplace_back([&, si, us, ue, interval_us, rounds_per_user, rounds_last, N]() {
+                            auto& sd2 = shard_data[si];
+                            for (uint32_t ui = us; ui < ue && !global_stop; ++ui) {
+                                auto& su = stress_users[ui];
+                                std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
+                                sec->SetPrivateKey(su.prikey_raw);
+                                std::string prepay_key = su.contract_addr + su.addr_hex;
+                                int64_t& n = prepay_nonce[prepay_key];
+                                uint64_t my_rounds = (ui == N - 1) ? rounds_last : rounds_per_user;
+
+                                for (uint64_t r = 0; r < my_rounds && !global_stop; ++r) {
+                                    std::string hash_raw = make_item_hash(si, ui, r);
+                                    std::string input = encode_create_new_item(hash_raw, 1, 0, UINT64_MAX);
+                                    auto tx = CreateTransactionWithAttr(sec, ++n,
+                                        common::Encode::HexEncode(su.prikey_raw),
+                                        common::Encode::HexDecode(su.contract_addr),
+                                        "call", input, 0, 5000000, 1, kShards[0]);
+                                    if (tcp_enq6(tx, shard_data[0].node_ip, shard_data[0].node_tcp)) ++create_ok6;
+                                    else { ++create_fail6; --n; }
+                                    if (interval_us > 0) usleep(interval_us);
+                                }
+                            }
+                        });
+                    }
+                    uint64_t shard_creates = kCallRounds;
+                    std::thread prog([&, si, shard_creates]() {
+                        uint64_t prev = 0;
+                        while (create_ok6.load() + create_fail6.load() < shard_creates && !global_stop) {
+                            for (int i = 0; i < 30 && !global_stop; ++i) usleep(100000);
+                            uint64_t cur = create_ok6.load();
+                            std::cout << "  [Shard " << kShards[si] << " CreateNewItem] "
+                                      << cur << "/" << shard_creates
+                                      << " sent (" << (cur - prev)/3 << " tx/s)\n";
+                            prev = cur;
+                        }
+                    });
+                    for (auto& t : tv) t.join();
+                    prog.join();
+                }
+                std::cout << "  Shard " << sd.shard_id << ": CreateNewItem done: "
+                          << create_ok6.load() << " ok, " << create_fail6.load() << " fail\n";
+
+                // Wait for CreateNewItem consensus before PurchaseItem
+                std::cout << "  Shard " << sd.shard_id << ": waiting 10s for CreateNewItem consensus...\n";
+                for (int w = 0; w < 100 && !global_stop; ++w) usleep(100000);
+
+                // ── PurchaseItem stress ──────────────────────────────────
+                // Buyer = user[ui+1 % N] purchases item created by user[ui]
+                // Buyer's prepay key = contract_addr + buyer_addr
+                std::cout << "  Shard " << sd.shard_id << ": fetching PurchaseItem prepay nonces...\n";
+                std::unordered_map<std::string, int64_t> buy_prepay_nonce;
+                {
+                    const uint32_t kBN = 50;
+                    std::vector<std::string> pkeys;
+                    for (uint32_t ui = 0; ui < N; ++ui) {
+                        uint32_t buyer_ui = (ui + 1) % N;
+                        auto& buyer = stress_users[buyer_ui];
+                        // Use seller's contract (buyer pays on seller's contract)
+                        auto& seller = stress_users[ui];
+                        std::string pk = seller.contract_addr + buyer.addr_hex;
+                        pkeys.push_back(pk);
+                    }
+                    // dedup
+                    std::sort(pkeys.begin(), pkeys.end());
+                    pkeys.erase(std::unique(pkeys.begin(), pkeys.end()), pkeys.end());
+                    SethSDK stress_sdk2(sd.node_ip, sd.node_http);
+                    for (uint32_t off = 0; off < pkeys.size(); off += kBN) {
+                        uint32_t end = std::min(off + kBN, (uint32_t)pkeys.size());
+                        std::vector<std::string> batch(pkeys.begin() + off, pkeys.begin() + end);
+                        auto r = stress_sdk2.batchQueryAccounts(batch);
+                        for (uint32_t k = 0; k < batch.size(); ++k) {
+                            int64_t n = 0;
+                            if (r.contains("accounts") && r["accounts"].contains(batch[k])) {
+                                auto& acc = r["accounts"][batch[k]];
+                                if (acc.contains("nonce")) {
+                                    try {
+                                        auto ns = acc["nonce"].get<std::string>();
+                                        std::from_chars(ns.data(), ns.data()+ns.size(), n);
+                                    } catch (...) {}
+                                }
+                            }
+                            buy_prepay_nonce[pkeys[off + k]] = n;
+                        }
+                    }
+                }
+
+                std::cout << "  Shard " << sd.shard_id << ": launching PurchaseItem x"
+                          << kCallRounds << "...\n";
+                {
+                    uint32_t nthreads = std::min(32u, N); if (!nthreads) nthreads = 1;
+                    uint32_t per_t = N / nthreads;
+                    uint64_t rounds_per_user = (N > 0) ? kCallRounds / N : kCallRounds;
+                    uint64_t rounds_last     = (N > 0) ? kCallRounds - rounds_per_user * (N - 1) : kCallRounds;
+                    uint64_t interval_us = (kTargetTps > 0)
+                        ? (uint64_t)nthreads * 1000000ULL / kTargetTps : 0;
+                    std::vector<std::thread> tv;
+                    uint64_t now_ms = (uint64_t)(std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::system_clock::now().time_since_epoch()).count());
+                    for (uint32_t t = 0; t < nthreads; ++t) {
+                        uint32_t us = t * per_t;
+                        uint32_t ue = (t == nthreads-1) ? N : (us + per_t);
+                        tv.emplace_back([&, si, us, ue, interval_us, now_ms, rounds_per_user, rounds_last, N]() {
+                            auto& sd2 = shard_data[si];
+                            for (uint32_t ui = us; ui < ue && !global_stop; ++ui) {
+                                uint32_t buyer_ui = (ui + 1) % N;
+                                auto& seller = stress_users[ui];
+                                auto& buyer  = stress_users[buyer_ui];
+                                std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
+                                sec->SetPrivateKey(buyer.prikey_raw);
+                                std::string prepay_key = seller.contract_addr + buyer.addr_hex;
+                                int64_t& n = buy_prepay_nonce[prepay_key];
+                                uint64_t my_rounds = (ui == N - 1) ? rounds_last : rounds_per_user;
+
+                                for (uint64_t r = 0; r < my_rounds && !global_stop; ++r) {
+                                    std::string hash_raw = make_item_hash(si, ui, r);
+                                    std::string input = encode_purchase_item(hash_raw, now_ms + r);
+                                    // amount = price (1 wei) to satisfy require(price <= msg.value)
+                                    auto tx = CreateTransactionWithAttr(sec, ++n,
+                                        common::Encode::HexEncode(buyer.prikey_raw),
+                                        common::Encode::HexDecode(seller.contract_addr),
+                                        "call", input, 1, 5000000, 1, kShards[0]);
+                                    if (tcp_enq6(tx, shard_data[0].node_ip, shard_data[0].node_tcp)) ++purchase_ok6;
+                                    else { ++purchase_fail6; --n; }
+                                    if (interval_us > 0) usleep(interval_us);
+                                }
+                            }
+                        });
+                    }
+                    uint64_t shard_purchases = kCallRounds;
+                    std::thread prog([&, si, shard_purchases]() {
+                        uint64_t prev = 0;
+                        while (purchase_ok6.load() + purchase_fail6.load() < shard_purchases && !global_stop) {
+                            for (int i = 0; i < 30 && !global_stop; ++i) usleep(100000);
+                            uint64_t cur = purchase_ok6.load();
+                            std::cout << "  [Shard " << kShards[si] << " PurchaseItem] "
+                                      << cur << "/" << shard_purchases
+                                      << " sent (" << (cur - prev)/3 << " tx/s)\n";
+                            prev = cur;
+                        }
+                    });
+                    for (auto& t : tv) t.join();
+                    prog.join();
+                }
+                std::cout << "  Shard " << sd.shard_id << ": PurchaseItem done: "
+                          << purchase_ok6.load() << " ok, " << purchase_fail6.load() << " fail\n";
+            }); // end shard_stress_threads[si]
+        }
+
+        for (auto& t : shard_stress_threads) t.join();
+
+        // Drain TCP queue
+        std::cout << "  Draining TCP send queue...\n";
+        for (int w = 0; w < 300 && !global_stop; ++w) {
+            bool empty = false;
+            { std::lock_guard<std::mutex> lk(tcp_mtx6); empty = tcp_q6.empty(); }
+            if (empty) break;
+            usleep(100000);
+        }
+
+        // ── Summary ──────────────────────────────────────────────────────
+        std::cout << "\n" << std::string(70, '=') << "\n";
+        // ── Final verification: query on-chain state for all shards ──
+        {
+            std::cout << "\n[Final Verify] Querying on-chain state...\n";
+            // Write addresses to file for external verification
+            std::ofstream addr_out("/tmp/mode6_addrs.txt");
+            for (int i = 0; i < kNumShards; ++i) {
+                auto& sd = shard_data[i];
+                addr_out << "# shard " << sd.shard_id << " users " << sd.user_addrs.size() << "\n";
+                for (auto& a : sd.user_addrs)
+                    addr_out << sd.shard_id << " user " << common::Encode::HexEncode(a) << "\n";
+                addr_out << "# shard " << sd.shard_id << " contracts " << sd.contract_addrs.size() << "\n";
+                for (auto& a : sd.contract_addrs)
+                    addr_out << sd.shard_id << " contract " << a << "\n";
+            }
+            addr_out.close();
+            std::cout << "  Addresses written to /tmp/mode6_addrs.txt\n";
+
+            // Batch-query each shard via HTTP
+            for (int i = 0; i < kNumShards; ++i) {
+                auto& sd = shard_data[i];
+                SethSDK vsdk(sd.node_ip, sd.node_http);
+                // Query sample of user addrs (first 300)
+                std::vector<std::string> sample_users;
+                for (size_t j = 0; j < sd.user_addrs.size() && j < 300; ++j)
+                    sample_users.push_back(common::Encode::HexEncode(sd.user_addrs[j]));
+                int user_found = 0;
+                if (!sample_users.empty()) {
+                    auto res = vsdk.batchQueryAccounts(sample_users);
+                    if (res["status"] == 0)
+                        user_found = (int)res["accounts"].size();
+                }
+                // Query all contract addrs
+                int contract_found = 0;
+                if (!sd.contract_addrs.empty()) {
+                    std::vector<std::string> caddrs(sd.contract_addrs.begin(), sd.contract_addrs.end());
+                    for (size_t j = 0; j < caddrs.size(); j += 300) {
+                        auto batch = std::vector<std::string>(
+                            caddrs.begin() + j,
+                            caddrs.begin() + std::min(j + 300, caddrs.size()));
+                        auto res = vsdk.batchQueryAccounts(batch);
+                        if (res["status"] == 0)
+                            contract_found += (int)res["accounts"].size();
+                    }
+                }
+                std::cout << "  Shard " << sd.shard_id
+                          << ": users_onchain=" << user_found << "/" << (int)std::min(sd.user_addrs.size(), (size_t)300)
+                          << "  contracts_onchain=" << contract_found << "/" << sd.contract_addrs.size()
+                          << "\n";
+            }
+        }
+
+        std::cout << "  EXCHANGE STRESS TEST COMPLETE\n";
+        std::cout << std::string(70, '=') << "\n";
+        std::cout << "  Fund:        " << fund_ok6.load() << " ok, " << fund_fail6.load() << " fail\n";
+        std::cout << "  Deploy:      " << deploy_ok6.load() << " ok, " << deploy_fail6.load() << " fail\n";
+        std::cout << "  Prefund:     " << pf_ok6.load() << " ok, " << pf_fail6.load() << " fail\n";
+        std::cout << "  CreateNew:   " << create_ok6.load() << " ok, " << create_fail6.load() << " fail\n";
+        std::cout << "  Purchase:    " << purchase_ok6.load() << " ok, " << purchase_fail6.load() << " fail\n";
+        std::cout << "  TCP sent:    " << tcp_sent6.load() << " total\n";
+
+        // Stop TCP sender
+        tcp_stop6.store(true);
+        tcp_cv6.notify_one();
+        tcp_sender6.join();
+
+        transport::TcpTransport::Instance()->Stop();
+        return 0;
+    }
+
+
+    // ── Mode 7: Multi-Shard Account Creation with Per-Shard Verification ──
+    // Creates N accounts on EACH consensus shard (3,4,5,6) via XXH64 routing.
+    // Sends all txs from funder shard. Saves addresses to file. Verifies on each shard's node.
+    // Usage: txcli 7 <funder_shard> <ip> <port> [accounts_per_shard] [threads]
+    //   Per-shard verification nodes: argv[7..10] = ip3:port3 ip4:port4 ip5:port5 ip6:port6
+    if (argv[1][0] == '7') {
+        setvbuf(stdout, NULL, _IONBF, 0);
+        setvbuf(stderr, NULL, _IONBF, 0);
+        uint32_t funder_shard = (argc >= 3) ? std::stoi(argv[2]) : 3;
+        std::string node_ip = (argc >= 4) ? argv[3] : "192.168.26.168";
+        uint16_t node_port = (argc >= 5) ? std::stoi(argv[4]) : 13001;
+        uint32_t accounts_per_shard = (argc >= 6) ? std::stoi(argv[5]) : 10000;
+        uint32_t num_threads = (argc >= 7) ? std::stoi(argv[6]) : 8;
+
+        // Per-shard verification endpoints (ip:http_port)
+        struct ShardEndpoint { std::string ip; uint16_t http_port; };
+        std::map<uint32_t, ShardEndpoint> shard_endpoints = {
+    {3, {"192.168.26.143", 23001}},  // shard 3 查询端口
+    {4, {"192.168.26.144", 24001}},  // shard 4 查询端口
+    {5, {"192.168.26.170", 25001}},  // shard 5 查询端口
+    {6, {"192.168.26.146", 26001}},  // shard 6 查询端口
+	};
+        // Override from argv[7..10] if provided: format "ip:port"
+        for (int i = 7; i < std::min(argc, 11); ++i) {
+            uint32_t shard_id = 3 + (i - 7);
+            std::string arg(argv[i]);
+            auto colon = arg.find(':');
+            if (colon != std::string::npos) {
+                shard_endpoints[shard_id] = {arg.substr(0, colon), (uint16_t)std::stoi(arg.substr(colon+1))};
+            }
+        }
+
+        global_chain_node_ip = node_ip;
+        global_chain_node_http_port = node_port + 10000;
+        shardnum = funder_shard;
+
+        const uint32_t kConsensusBegin = network::kConsensusShardBeginNetworkId;  // 3
+        const uint32_t kMaxShardId = 6;
+        const uint32_t kNumConsensusShards = kMaxShardId - kConsensusBegin + 1;  // 4
+
+        std::cout << "\n=== Mode 7: Multi-Shard Account Creation ===" << std::endl;
+        std::cout << "Funder shard: " << funder_shard << std::endl;
+        std::cout << "Send node: " << node_ip << ":" << node_port << " (TCP)" << std::endl;
+        std::cout << "Accounts per shard: " << accounts_per_shard << std::endl;
+        std::cout << "Target shards: " << kConsensusBegin << "-" << kMaxShardId << std::endl;
+        std::cout << "Verification endpoints:" << std::endl;
+        for (auto& [sid, ep] : shard_endpoints) {
+            std::cout << "  Shard " << sid << ": " << ep.ip << ":" << ep.http_port << std::endl;
+        }
+
+        LoadAllAccounts(funder_shard);
+        if (g_prikeys.empty()) {
+            std::cerr << "No funded accounts loaded!" << std::endl;
+            return 1;
+        }
+        std::cout << "Loaded " << g_prikeys.size() << " funder accounts" << std::endl;
+
+        SignalRegister();
+        WriteDefaultLogConf();
+
+        // Setup transport
+        transport::MultiThreadHandler net_handler;
+        std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
+        auto db_ptr = std::make_shared<db::Db>();
+        if (!db_ptr->Init(db_path + "_mode7")) {
+            std::cerr << "init db failed" << std::endl;
+            return 1;
+        }
+        if (net_handler.Init(db_ptr, sec) != 0) {
+            std::cerr << "init net handler failed" << std::endl;
+            return 1;
+        }
+        if (transport::TcpTransport::Instance()->Init("127.0.0.1:13899", 128, false, &net_handler) != 0) {
+            std::cerr << "init tcp failed" << std::endl;
+            return 1;
+        }
+        if (transport::TcpTransport::Instance()->Start(false) != 0) {
+            std::cerr << "start tcp failed" << std::endl;
+            return 1;
+        }
+
+        // Phase 1: Generate addresses routed to each shard
+        std::cout << "\n[Phase 1] Generating " << accounts_per_shard << " addresses per shard..." << std::endl;
+        std::map<uint32_t, std::vector<std::string>> shard_addrs;
+        for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+            shard_addrs[s].reserve(accounts_per_shard);
+        }
+
+        auto gen_start = std::chrono::steady_clock::now();
+        for (uint32_t target_shard = kConsensusBegin; target_shard <= kMaxShardId; ++target_shard) {
+            uint32_t count = 0;
+            while (count < accounts_per_shard && !global_stop) {
+                std::string prikey;
+                prikey.resize(32);
+                for (uint32_t j = 0; j < 32; ++j) {
+                    prikey[j] = static_cast<char>(common::Random::RandomUint32() % 256);
+                }
+                std::shared_ptr<security::Security> tmp_sec = std::make_shared<security::Ecdsa>();
+                tmp_sec->SetPrivateKey(prikey);
+                std::string addr = tmp_sec->GetAddress();
+
+                // Use same routing as chain: shard = 6 - GetAddressPoolIndex(addr)/8
+                uint32_t pool = common::GetAddressPoolIndex(addr);
+                uint32_t routed_shard = 6 - pool / 8;
+                if (routed_shard == target_shard) {
+                    shard_addrs[target_shard].push_back(addr);
+                    ++count;
+                }
+                if (count % 5000 == 0 && count > 0) {
+                    std::cout << "  Shard " << target_shard << ": " << count << "/" << accounts_per_shard << std::endl;
+                }
+            }
+            std::cout << "  Shard " << target_shard << ": " << count << " done" << std::endl;
+        }
+        auto gen_secs = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::steady_clock::now() - gen_start).count();
+        std::cout << "Generation: " << gen_secs << "s" << std::endl;
+
+        // Save addresses to file (hex encoded, one per line, grouped by shard)
+        std::string addr_file = "/tmp/mode7_addrs.txt";
+        {
+            std::ofstream ofs(addr_file);
+            for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+                ofs << "# shard " << s << " (" << shard_addrs[s].size() << " addresses)" << std::endl;
+                for (auto& addr : shard_addrs[s]) {
+                    ofs << s << " " << common::Encode::HexEncode(addr) << std::endl;
+                }
+            }
+            ofs.close();
+            std::cout << "Addresses saved to " << addr_file << std::endl;
+        }
+
+        // Phase 2: Send transactions
+        std::cout << "\n[Phase 2] Sending transactions..." << std::endl;
+        SethSDK sdk(global_chain_node_ip, global_chain_node_http_port);
+
+        std::string funder_prikey = g_prikeys[0];
+        std::shared_ptr<security::Security> funder_sec = std::make_shared<security::Ecdsa>();
+        funder_sec->SetPrivateKey(funder_prikey);
+        std::string funder_addr = funder_sec->GetAddress();
+
+        int64_t nonce = sdk.fetchNonce(common::Encode::HexEncode(funder_addr));
+        if (nonce < 0) nonce = 0;
+        std::cout << "Funder: " << common::Encode::HexEncode(funder_addr) << std::endl;
+        std::cout << "Starting nonce: " << nonce << std::endl;
+
+        std::atomic<uint64_t> sent_ok{0};
+        std::atomic<uint64_t> sent_fail{0};
+        auto send_start = std::chrono::steady_clock::now();
+
+        uint64_t total_targets = 0;
+        for (auto& [s, addrs] : shard_addrs) total_targets += addrs.size();
+        std::cout << "Total targets: " << total_targets << std::endl;
+
+        for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+            for (size_t i = 0; i < shard_addrs[s].size() && !global_stop; ++i) {
+                auto tx_msg_ptr = CreateTransactionWithAttr(
+                    funder_sec, ++nonce, funder_prikey,
+                    shard_addrs[s][i], "", "",
+                    1000000000ULL, 210000, 1, funder_shard);
+
+                if (tx_msg_ptr && transport::TcpTransport::Instance()->Send(
+                        global_chain_node_ip, node_port, tx_msg_ptr->header) == 0) {
+                    ++sent_ok;
+                } else {
+                    ++sent_fail;
+                }
+                usleep(100);
+            }
+            std::cout << "  Shard " << s << ": " << shard_addrs[s].size() << " sent (total ok="
+                      << sent_ok.load() << " fail=" << sent_fail.load() << ")" << std::endl;
+        }
+
+        auto send_secs = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::steady_clock::now() - send_start).count();
+        std::cout << "Sending: " << send_secs << "s, OK=" << sent_ok.load()
+                  << " Failed=" << sent_fail.load() << std::endl;
+
+        // Phase 3: Wait and verify on each shard's own node
+        std::cout << "\n[Phase 3] Waiting 30s for cross-shard confirmation..." << std::endl;
+        sleep(30);
+
+        std::cout << "Verifying ALL addresses on each shard's node..." << std::endl;
+        uint64_t total_verified = 0;
+        uint64_t total_missing = 0;
+
+        for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+            auto& ep = shard_endpoints[s];
+            SethSDK shard_sdk(ep.ip, ep.http_port);
+            // Use batchQueryAccounts for efficiency
+            std::vector<std::string> hex_addrs;
+            hex_addrs.reserve(shard_addrs[s].size());
+            for (auto& addr : shard_addrs[s]) {
+                hex_addrs.push_back(common::Encode::HexEncode(addr));
+            }
+
+            auto result = shard_sdk.batchQueryAccounts(hex_addrs);
+            uint32_t shard_verified = 0;
+            uint32_t shard_missing = 0;
+            if (result.contains("accounts")) {
+                shard_verified = result["accounts"].size();
+            }
+            if (result.contains("not_found")) {
+                shard_missing = result["not_found"].size();
+            }
+            // Fallback: count by checking presence
+            if (shard_verified == 0 && result.contains("status") && result["status"] != 0) {
+                // batch query might have failed, try individual
+                std::cout << "  Shard " << s << ": batch query failed, trying individual..." << std::endl;
+                for (auto& hex_addr : hex_addrs) {
+                    int64_t bal = shard_sdk.fetchBalance(hex_addr);
+                    if (bal >= 0) ++shard_verified;
+                    else ++shard_missing;
+                    if (global_stop) break;
+                }
+            } else {
+                shard_missing = shard_addrs[s].size() - shard_verified;
+            }
+
+            total_verified += shard_verified;
+            total_missing += shard_missing;
+            std::cout << "  Shard " << s << " (" << ep.ip << ":" << ep.http_port << "): "
+                      << shard_verified << "/" << shard_addrs[s].size() << " verified"
+                      << (shard_missing > 0 ? " (" + std::to_string(shard_missing) + " missing)" : "")
+                      << std::endl;
+        }
+
+        std::cout << "\n[Result] Total verified: " << total_verified << "/" << total_targets << std::endl;
+        if (total_missing > 0) {
+            std::cout << "  Missing: " << total_missing << " (may need more time for cross-shard propagation)" << std::endl;
+            // Retry once after 30s more
+            std::cout << "  Retrying after 30s..." << std::endl;
+            sleep(30);
+            total_verified = 0;
+            total_missing = 0;
+            for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+                auto& ep = shard_endpoints[s];
+                SethSDK shard_sdk(ep.ip, ep.http_port);
+                std::vector<std::string> hex_addrs;
+                for (auto& addr : shard_addrs[s]) {
+                    hex_addrs.push_back(common::Encode::HexEncode(addr));
+                }
+                auto result = shard_sdk.batchQueryAccounts(hex_addrs);
+                uint32_t shard_verified = 0;
+                if (result.contains("accounts")) {
+                    shard_verified = result["accounts"].size();
+                }
+                total_verified += shard_verified;
+                total_missing += (shard_addrs[s].size() - shard_verified);
+                std::cout << "  Shard " << s << ": " << shard_verified << "/" << shard_addrs[s].size() << std::endl;
+            }
+            std::cout << "\n[Final] Total verified: " << total_verified << "/" << total_targets << std::endl;
+        }
+
+        std::cout << "\n=== Mode 7 Complete ===" << std::endl;
         transport::TcpTransport::Instance()->Stop();
         return 0;
     }

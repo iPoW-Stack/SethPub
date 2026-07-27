@@ -670,6 +670,17 @@ public:
         } catch (const std::exception& e) { return {{"status", 1}, {"msg", e.what()}}; }
     }
 
+    // Deploy with a pre-computed contract address (caller ensures address lands on correct shard)
+    json deployToAddress(const std::string& private_key, const std::string& bytecode,
+                         const std::string& to_address, uint64_t prefund) {
+        try {
+            if (client.transfer(private_key, to_address, 0, -1, 6, bytecode, "", "", "", prefund, true)) {
+                return {{"status", 0}, {"msg", "ok"}, {"id", to_address}};
+            }
+            return {{"status", 1}, {"msg", "create contract failed"}};
+        } catch (const std::exception& e) { return {{"status", 1}, {"msg", e.what()}}; }
+    }
+
     json queryFunctionSolidity(const std::string& private_key, const std::string& address, const std::string& func_name,
                                 const std::vector<std::string>& fn_types, const std::vector<std::string>& fn_args,
                                 const std::vector<std::string>& return_types = {}) {
