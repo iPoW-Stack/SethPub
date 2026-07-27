@@ -27,6 +27,7 @@ struct ex_uv_tcp_t {
     char ip[64];
     uint16_t port;
     uint64_t timeout;
+    uint64_t last_recv_ts;  // epoch seconds of last successful on_read; 0 = never received
 };
 
 class TcpTransport {
