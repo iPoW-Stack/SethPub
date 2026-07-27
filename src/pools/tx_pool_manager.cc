@@ -647,7 +647,6 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
     if (header.has_sync_heights()) {
         SETH_DEBUG("header.has_sync_heights()");
         HandleSyncPoolsMaxHeight(msg_ptr);
-        msg_ptr->set_status(transport::kRequestInvalid);
         return;
     }
 

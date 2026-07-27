@@ -5582,8 +5582,10 @@ contract Exchange {
         // Phase 1: Generate addresses routed to each shard
         std::cout << "\n[Phase 1] Generating " << accounts_per_shard << " addresses per shard..." << std::endl;
         std::map<uint32_t, std::vector<std::string>> shard_addrs;
+        std::map<uint32_t, std::vector<std::string>> shard_prikeys;  // raw prikey per address
         for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
             shard_addrs[s].reserve(accounts_per_shard);
+            shard_prikeys[s].reserve(accounts_per_shard);
         }
 
         auto gen_start = std::chrono::steady_clock::now();
@@ -5607,6 +5609,7 @@ contract Exchange {
                 // uint32_t routed_shard = 6 - pool / 8;
                 if (routed_shard == target_shard) {
                     shard_addrs[target_shard].push_back(addr);
+                    shard_prikeys[target_shard].push_back(prikey);
                     ++count;
                 }
                 if (count % 5000 == 0 && count > 0) {
@@ -5778,6 +5781,219 @@ contract Exchange {
                 std::cout << "  Shard " << s << ": " << shard_verified << "/" << shard_addrs[s].size() << std::endl;
             }
             std::cout << "\n[Final] Total verified: " << total_verified << "/" << total_targets << std::endl;
+        }
+
+        // ── Phase 4: Deploy 256 Exchange contracts per shard using verified shard addresses ──
+        std::cout << "\n[Phase 4] Deploying Exchange contracts per shard..." << std::endl;
+
+        // Compile Exchange contract
+        const std::string EXCHANGE_SOL_7 = R"(
+// SPDX-License-Identifier: GPL-3.0
+pragma solidity >=0.8.17 <0.9.0;
+contract Exchange {
+    bytes32 test_ripdmd_;
+    bytes32 enc_init_param_;
+    uint256 global_id;
+    struct BuyerInfo { address payable buyer; uint256 price; uint256 time; }
+    struct ItemInfo {
+        uint256 id; bytes32 hash; address payable owner;
+        bytes info; uint256 price; uint256 start_time_ms; uint256 end_time_ms;
+        address payable buyer; uint256 selled_price; uint256 selled;
+        BuyerInfo[] buyers; bool exists;
+    }
+    mapping(bytes32 => ItemInfo) public item_map;
+    mapping(uint256 => bytes32) public id_with_hash_map;
+    mapping(bytes => bool) public purchase_map;
+    mapping(address => bytes32[]) public owner_with_hash_map;
+    bytes32[] all_hashes;
+    function CreateNewItem(bytes32 hash, bytes memory info, uint256 price,
+                           uint256 start, uint256 end) public payable {
+        require(!item_map[hash].exists, "item exists");
+        ItemInfo storage it = item_map[hash];
+        it.id = ++global_id; it.hash = hash; it.owner = payable(msg.sender);
+        it.info = info; it.price = price; it.start_time_ms = start;
+        it.end_time_ms = end; it.exists = true;
+        id_with_hash_map[it.id] = hash;
+        owner_with_hash_map[msg.sender].push(hash);
+        all_hashes.push(hash);
+    }
+    function PurchaseItem(bytes32 hash, uint256 time) public payable {
+        ItemInfo storage it = item_map[hash];
+        require(it.exists, "not exists");
+        require(msg.value >= it.price, "insufficient");
+        bytes memory k = abi.encode(msg.sender, hash, time);
+        require(!purchase_map[k], "already bought");
+        purchase_map[k] = true;
+        it.buyers.push(BuyerInfo(payable(msg.sender), msg.value, time));
+        if (it.selled == 0) {
+            it.buyer = payable(msg.sender);
+            it.selled_price = msg.value;
+            it.selled = 1;
+            it.owner.transfer(msg.value);
+        }
+    }
+    function TotalItems() public view returns (uint256) { return all_hashes.length; }
+}
+)";
+
+        SethSDK compile_sdk(global_chain_node_ip, global_chain_node_http_port);
+        auto compiled7 = compile_sdk.compileSolidity(EXCHANGE_SOL_7);
+        if (!compiled7.contains("bytecode") || compiled7["bytecode"].get<std::string>().empty()) {
+            std::cerr << "[Phase 4] Contract compilation failed, skipping deploy phase." << std::endl;
+        } else {
+            std::string exchange_bytecode7 = compiled7["bytecode"].get<std::string>();
+            std::cout << "  Exchange bytecode: " << exchange_bytecode7.size() << " chars" << std::endl;
+
+            const uint32_t kContractsPerShard7 = 256;
+            const uint64_t kDeployPrefund7 = 800000000ULL;
+
+            // per-shard: contract_addrs[shard] = list of deployed hex contract addresses
+            std::map<uint32_t, std::vector<std::string>> contract_addrs7;
+            std::map<uint32_t, std::vector<bool>> contracts_confirmed7;
+            for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+                contract_addrs7[s].resize(kContractsPerShard7);
+                contracts_confirmed7[s].resize(kContractsPerShard7, false);
+            }
+
+            std::atomic<uint32_t> deploy_ok7{0}, deploy_fail7{0};
+            static std::atomic<uint64_t> deploy_ctr7{0};
+
+            // shard routing consistent with mode 7 address generation
+            auto shard_of_addr7 = [&](const std::string& addr_raw) -> uint32_t {
+                uint64_t hv = common::Hash::Hash64(addr_raw);
+                return (uint32_t)(hv % (kMaxShardId - kConsensusBegin + 1)) + kConsensusBegin;
+            };
+
+            for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+                if (checked_addrs[s].size() == 0) {
+                    std::cout << "  Shard " << s << ": no verified addresses, skip deploy" << std::endl;
+                    continue;
+                }
+                auto& ep = shard_endpoints[s];
+
+                // pick up to kContractsPerShard7 deployer addresses from the verified set,
+                // and retrieve their corresponding private keys from shard_prikeys
+                std::vector<std::string> deployers;
+                std::vector<std::string> deployer_prikeys;
+                deployers.reserve(kContractsPerShard7);
+                deployer_prikeys.reserve(kContractsPerShard7);
+                for (uint32_t idx = 0; idx < shard_addrs[s].size() && deployers.size() < kContractsPerShard7; ++idx) {
+                    if (checked_addrs[s].count(shard_addrs[s][idx])) {
+                        deployers.push_back(shard_addrs[s][idx]);
+                        deployer_prikeys.push_back(shard_prikeys[s][idx]);
+                    }
+                }
+
+                uint32_t nd = (uint32_t)deployers.size();
+                uint32_t nt = std::min(32u, nd);
+                uint32_t pp = nd / nt;
+                std::vector<std::thread> dth7;
+
+                for (uint32_t t = 0; t < nt; ++t) {
+                    uint32_t s2 = t * pp;
+                    uint32_t e2 = (t == nt - 1) ? nd : s2 + pp;
+                    dth7.emplace_back([&, s, s2, e2, ep]() {
+                        SethSDK tsdk7(ep.ip, ep.http_port);
+                        for (uint32_t i = s2; i < e2 && !global_stop; ++i) {
+                            // find a contract address that routes to this shard
+                            std::string to_address;
+                            for (int attempt = 0; attempt < 20000 && !global_stop; ++attempt) {
+                                uint64_t cnt = deploy_ctr7.fetch_add(1);
+                                std::string salt = deployers[i] + std::to_string(cnt) +
+                                    std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+                                std::string candidate = utils::keccak256Str(exchange_bytecode7 + salt).substr(24);
+                                if (shard_of_addr7(common::Encode::HexDecode(candidate)) == s) {
+                                    to_address = candidate;
+                                    break;
+                                }
+                            }
+                            if (to_address.empty()) { ++deploy_fail7; continue; }
+
+                            std::string pk_hex = common::Encode::HexEncode(deployer_prikeys[i]);
+                            auto r = tsdk7.deployToAddress(pk_hex, exchange_bytecode7, to_address, kDeployPrefund7);
+                            if (r.contains("status") && r["status"] == 0) {
+                                contract_addrs7[s][i] = to_address;
+                                ++deploy_ok7;
+                            } else {
+                                ++deploy_fail7;
+                            }
+                            usleep(200);
+                        }
+                    });
+                }
+                for (auto& t : dth7) t.join();
+                std::cout << "  Shard " << s << ": " << deploy_ok7.load() << " deployed so far" << std::endl;
+            }
+            std::cout << "  Deploy sends: " << deploy_ok7.load() << " ok, "
+                      << deploy_fail7.load() << " fail" << std::endl;
+
+            std::cout << "  Waiting 15s for deploy consensus..." << std::endl;
+            for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
+
+            // Verify contracts on-chain per shard (up to 300s)
+            std::cout << "  Verifying deployed contracts on-chain..." << std::endl;
+            uint32_t total_contracts_confirmed = 0;
+            for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+                auto& ep = shard_endpoints[s];
+                std::vector<std::string> pending_addrs;
+                std::vector<uint32_t>   pending_idx;
+                for (uint32_t i = 0; i < kContractsPerShard7; ++i) {
+                    if (!contract_addrs7[s][i].empty())  {
+                        pending_addrs.push_back(contract_addrs7[s][i]);
+                        pending_idx.push_back(i);
+                    }
+                }
+                if (pending_addrs.empty()) continue;
+
+                uint32_t shard_confirmed = 0;
+                auto t0 = std::chrono::steady_clock::now();
+                for (uint32_t rd = 0; !pending_addrs.empty() && !global_stop; ++rd) {
+                    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                        std::chrono::steady_clock::now() - t0).count();
+                    if (elapsed >= 300) {
+                        std::cerr << "  Shard " << s << ": contract verify timeout, "
+                                  << shard_confirmed << "/" << pending_addrs.size() + shard_confirmed
+                                  << " confirmed" << std::endl;
+                        break;
+                    }
+                    // query all shards for each batch (contract addr may land on any shard)
+                    std::vector<bool> found(pending_addrs.size(), false);
+                    for (uint32_t qs = kConsensusBegin; qs <= kMaxShardId && !global_stop; ++qs) {
+                        SethSDK qsdk(shard_endpoints[qs].ip, shard_endpoints[qs].http_port);
+                        auto r = qsdk.batchQueryAccounts(pending_addrs);
+                        if (!r.contains("accounts")) continue;
+                        for (uint32_t k = 0; k < pending_addrs.size(); ++k)
+                            if (!found[k] && r["accounts"].contains(pending_addrs[k]))
+                                found[k] = true;
+                    }
+                    std::vector<std::string> next_pending_addrs;
+                    std::vector<uint32_t>   next_pending_idx;
+                    for (uint32_t k = 0; k < pending_addrs.size(); ++k) {
+                        if (found[k]) {
+                            contracts_confirmed7[s][pending_idx[k]] = true;
+                            ++shard_confirmed;
+                        } else {
+                            next_pending_addrs.push_back(pending_addrs[k]);
+                            next_pending_idx.push_back(pending_idx[k]);
+                        }
+                    }
+                    pending_addrs = std::move(next_pending_addrs);
+                    pending_idx   = std::move(next_pending_idx);
+                    std::cout << "  [shard" << s << " contract round " << (rd+1)
+                              << ", " << elapsed << "s] +" << (shard_confirmed - (shard_confirmed - (uint32_t)found.size() + (uint32_t)pending_addrs.size()))
+                              << " = " << shard_confirmed
+                              << " (" << pending_addrs.size() << " pending)" << std::endl;
+                    if (!pending_addrs.empty()) {
+                        for (int w = 0; w < 80 && !global_stop; ++w) usleep(100000);
+                    }
+                }
+                total_contracts_confirmed += shard_confirmed;
+                std::cout << "  Shard " << s << ": " << shard_confirmed
+                          << "/" << kContractsPerShard7 << " contracts confirmed" << std::endl;
+            }
+            std::cout << "\n[Phase 4 Result] Total contracts confirmed: "
+                      << total_contracts_confirmed << "/"
+                      << (kContractsPerShard7 * kNumConsensusShards) << std::endl;
         }
 
         std::cout << "\n=== Mode 7 Complete ===" << std::endl;
