@@ -5887,6 +5887,40 @@ contract Exchange {
                 uint32_t nd = (uint32_t)deployers.size();
                 uint32_t nt = std::min(32u, nd);
                 uint32_t pp = nd / nt;
+
+                // Pre-fetch nonces for all deployers on this shard before spawning threads.
+                // deployToAddress() calls fetchNonce() internally but can see stale nonce=0
+                // when the deployer account already has committed txs (e.g. from Phase 2 fund).
+                // Fetching here and passing explicitly avoids the double-increment bug.
+                SethSDK nonce_sdk7(ep.ip, ep.http_port);
+                std::vector<int64_t> deployer_nonces(nd, 0);
+                {
+                    const uint32_t kNBatch = 300;
+                    std::vector<std::string> addr_hexes;
+                    addr_hexes.reserve(nd);
+                    for (uint32_t i = 0; i < nd; ++i)
+                        addr_hexes.push_back(common::Encode::HexEncode(deployers[i]));
+                    for (uint32_t off = 0; off < nd; off += kNBatch) {
+                        uint32_t bend = std::min(off + kNBatch, nd);
+                        std::vector<std::string> batch(addr_hexes.begin() + off, addr_hexes.begin() + bend);
+                        auto r = nonce_sdk7.batchQueryAccounts(batch);
+                        for (uint32_t k = 0; k < batch.size(); ++k) {
+                            int64_t n = 0;
+                            if (r.contains("accounts") && r["accounts"].contains(batch[k])) {
+                                auto& acc = r["accounts"][batch[k]];
+                                if (acc.contains("nonce")) {
+                                    try {
+                                        auto ns = acc["nonce"].get<std::string>();
+                                        std::from_chars(ns.data(), ns.data() + ns.size(), n);
+                                    } catch (...) {}
+                                }
+                            }
+                            deployer_nonces[off + k] = n;
+                        }
+                    }
+                    std::cout << "  Shard " << s << ": fetched nonces for " << nd << " deployers" << std::endl;
+                }
+
                 std::vector<std::thread> dth7;
 
                 for (uint32_t t = 0; t < nt; ++t) {
@@ -5910,7 +5944,9 @@ contract Exchange {
                             if (to_address.empty()) { ++deploy_fail7; continue; }
 
                             std::string pk_hex = common::Encode::HexEncode(deployer_prikeys[i]);
-                            auto r = tsdk7.deployToAddress(pk_hex, exchange_bytecode7, to_address, kDeployPrefund7);
+                            // Use pre-fetched nonce so we don't hit stale nonce=0 from fetchNonce.
+                            auto r = tsdk7.deployToAddressWithNonce(
+                                pk_hex, exchange_bytecode7, to_address, kDeployPrefund7, deployer_nonces[i]);
                             if (r.contains("status") && r["status"] == 0) {
                                 contract_addrs7[s][i] = to_address;
                                 ++deploy_ok7;

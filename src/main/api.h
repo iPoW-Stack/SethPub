@@ -681,6 +681,19 @@ public:
         } catch (const std::exception& e) { return {{"status", 1}, {"msg", e.what()}}; }
     }
 
+    // Same as deployToAddress but with a caller-supplied current db_nonce (avoids fetchNonce
+    // seeing stale data when the deployer already has on-chain history).
+    // Pass the last confirmed nonce from the chain; transfer() will use nonce+1 internally.
+    json deployToAddressWithNonce(const std::string& private_key, const std::string& bytecode,
+                                  const std::string& to_address, uint64_t prefund, int64_t current_nonce) {
+        try {
+            if (client.transfer(private_key, to_address, 0, current_nonce, 6, bytecode, "", "", "", prefund, true)) {
+                return {{"status", 0}, {"msg", "ok"}, {"id", to_address}};
+            }
+            return {{"status", 1}, {"msg", "create contract failed"}};
+        } catch (const std::exception& e) { return {{"status", 1}, {"msg", e.what()}}; }
+    }
+
     json queryFunctionSolidity(const std::string& private_key, const std::string& address, const std::string& func_name,
                                 const std::vector<std::string>& fn_types, const std::vector<std::string>& fn_args,
                                 const std::vector<std::string>& return_types = {}) {
