@@ -5738,6 +5738,8 @@ contract Exchange {
                         << std::endl;
             }
 
+            std::cout << "total_verified: " << total_verified << ", " 
+                << ", need: " << (accounts_per_shard * (kMaxShardId - kConsensusBegin + 1)) << std::endl;
             if (total_verified == accounts_per_shard * (kMaxShardId - kConsensusBegin + 1)) {
                 break;
             }
