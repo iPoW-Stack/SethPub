@@ -540,7 +540,7 @@ void TxPool::GetTxSyncToLeader(
                             all_delay_tm_us_ += now_tm_us - tx_ptr->receive_tm_us;
                         }
                         if (tx_ptr->msg_ptr && tx_ptr->msg_ptr->status_notify_cb) {
-                            SetTxStatus(pools_mgr_, tx_ptr->msg_ptr, transport::kTxUserNonceInvalid);
+                            SetTxStatus(pools_mgr_, tx_ptr->msg_ptr, transport::kConsensusSuccess);
                         }
                         nonce_iter = iter->second.erase(nonce_iter);
                         continue;
