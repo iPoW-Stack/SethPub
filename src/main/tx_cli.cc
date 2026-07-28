@@ -98,7 +98,7 @@ static void WriteDefaultLogConf() {
         sink->set_pattern("%Y-%m-%d %H:%M:%S.%e [thread %t] %-5l [%n] %v%$");
     }
 
-    spdlog::set_level(spdlog::level::debug);
+    spdlog::set_level(spdlog::level::warn);
     spdlog::flush_on(spdlog::level::err);
 
     spdlog::debug("init spdlog success: %d", 1);
