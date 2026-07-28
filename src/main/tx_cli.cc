@@ -5628,9 +5628,19 @@ contract Exchange {
 
         auto tcp_enq7 = [&](transport::MessagePtr msg, const std::string& ip, uint16_t port) -> bool {
             if (!msg) return false;
-            { std::lock_guard<std::mutex> lk(tcp_mtx7); tcp_q7.push({std::move(msg), ip, port}); }
-            tcp_cv7.notify_one();
-            return true;
+            // Back-pressure: block if queue exceeds 8192 items to prevent OOM on 10M+ ops.
+            while (!global_stop) {
+                {
+                    std::lock_guard<std::mutex> lk(tcp_mtx7);
+                    if (tcp_q7.size() < 8192) {
+                        tcp_q7.push({std::move(msg), ip, port});
+                        tcp_cv7.notify_one();
+                        return true;
+                    }
+                }
+                usleep(200);
+            }
+            return false;
         };
 
         auto tcp_drain7 = [&]() {
