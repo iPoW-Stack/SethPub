@@ -5629,7 +5629,6 @@ contract Exchange {
         auto tcp_enq7 = [&](transport::MessagePtr msg, const std::string& ip, uint16_t port) -> bool {
             if (!msg) return false;
             // Back-pressure: block if queue exceeds 8192 items to prevent OOM on 10M+ ops.
-            uint32_t wait_ms = 0;
             while (!global_stop) {
                 {
                     std::lock_guard<std::mutex> lk(tcp_mtx7);
@@ -5640,14 +5639,6 @@ contract Exchange {
                     }
                 }
                 usleep(200);
-                wait_ms += 200 / 1000;
-                // Timeout after 30s: queue stuck means no receiver or network failure
-                if (wait_ms > 30000) {
-                    std::lock_guard<std::mutex> lk(pf_log_mtx7);
-                    std::cerr << "ERROR: tcp_q7 stuck at 8192 for >30s, no receiver listening?" << std::endl;
-                    global_stop = true;
-                    return false;
-                }
             }
             return false;
         };
@@ -6274,7 +6265,7 @@ contract Exchange {
                     }
 
                     shard_pf_active7.fetch_add(1);
-                    uint32_t pf_threads7 = std::min(16u, nu7);
+                    uint32_t pf_threads7 = std::min(2u, nu7);
                     if (pf_threads7 == 0) pf_threads7 = 1;
                     uint32_t pf_per7 = nu7 / pf_threads7;
                     auto pf_t0 = std::chrono::steady_clock::now();
