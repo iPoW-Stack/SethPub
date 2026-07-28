@@ -5579,6 +5579,69 @@ contract Exchange {
             return 1;
         }
 
+        // Dedicated TCP sender thread (same pattern as mode 5/6).
+        // Worker threads must NOT call TcpTransport::Send directly — get_thread_index()
+        // only allows the fixed system-thread pool; overflow causes SETH_FATAL/SIGSEGV.
+        struct TcpSendItem7 {
+            transport::MessagePtr msg;
+            std::string dest_ip;
+            uint16_t dest_port;
+        };
+        std::queue<TcpSendItem7> tcp_q7;
+        std::mutex tcp_mtx7;
+        std::condition_variable tcp_cv7;
+        std::atomic<bool> tcp_stop7{false};
+        std::atomic<uint64_t> tcp_sent7{0};
+
+        std::thread tcp_sender7([&]() {
+            // Register thread index immediately while Init/Start window still allows it.
+            // Otherwise the first Send() at Phase 5 (minutes later) hits SETH_FATAL.
+            (void)common::GlobalInfo::Instance()->get_thread_index();
+            std::vector<TcpSendItem7> batch;
+            batch.reserve(4096);
+            while (!tcp_stop7.load()) {
+                {
+                    std::unique_lock<std::mutex> lk(tcp_mtx7);
+                    tcp_cv7.wait_for(lk, std::chrono::milliseconds(1),
+                        [&]{ return !tcp_q7.empty() || tcp_stop7.load(); });
+                    while (!tcp_q7.empty()) {
+                        batch.push_back(std::move(tcp_q7.front()));
+                        tcp_q7.pop();
+                    }
+                }
+                for (auto& item : batch) {
+                    transport::TcpTransport::Instance()->Send(
+                        item.dest_ip, item.dest_port, item.msg->header);
+                    ++tcp_sent7;
+                }
+                batch.clear();
+            }
+            std::lock_guard<std::mutex> lk(tcp_mtx7);
+            while (!tcp_q7.empty()) {
+                auto item = std::move(tcp_q7.front());
+                tcp_q7.pop();
+                transport::TcpTransport::Instance()->Send(
+                    item.dest_ip, item.dest_port, item.msg->header);
+                ++tcp_sent7;
+            }
+        });
+
+        auto tcp_enq7 = [&](transport::MessagePtr msg, const std::string& ip, uint16_t port) -> bool {
+            if (!msg) return false;
+            { std::lock_guard<std::mutex> lk(tcp_mtx7); tcp_q7.push({std::move(msg), ip, port}); }
+            tcp_cv7.notify_one();
+            return true;
+        };
+
+        auto tcp_drain7 = [&]() {
+            for (int w = 0; w < 200 && !global_stop; ++w) {
+                bool empty = false;
+                { std::lock_guard<std::mutex> lk(tcp_mtx7); empty = tcp_q7.empty(); }
+                if (empty) break;
+                usleep(100000);
+            }
+        };
+
         // Phase 1: Generate addresses routed to each shard
         std::cout << "\n[Phase 1] Generating " << accounts_per_shard << " addresses per shard..." << std::endl;
         std::map<uint32_t, std::vector<std::string>> shard_addrs;
@@ -6079,6 +6142,7 @@ contract Exchange {
                     addr_hex_list.reserve(nu7);
                     for (auto& u : users7)
                         addr_hex_list.push_back(common::Encode::HexEncode(u.addr_raw));
+                    auto nonce_t0 = std::chrono::steady_clock::now();
                     for (uint32_t off = 0; off < addr_hex_list.size(); off += kNonceBatch) {
                         uint32_t end = std::min(off + kNonceBatch, (uint32_t)addr_hex_list.size());
                         std::vector<std::string> batch(addr_hex_list.begin() + off, addr_hex_list.begin() + end);
@@ -6096,39 +6160,83 @@ contract Exchange {
                             }
                             user_nonces7[users7[off + k].addr_raw] = (uint64_t)n;
                         }
+                        if ((off / kNonceBatch) % 10 == 0 || end == addr_hex_list.size()) {
+                            auto el = std::chrono::duration_cast<std::chrono::seconds>(
+                                std::chrono::steady_clock::now() - nonce_t0).count();
+                            std::cout << "  Shard " << s << ": nonce fetch "
+                                      << end << "/" << addr_hex_list.size()
+                                      << " (" << el << "s)" << std::endl;
+                        }
                     }
-                    std::cout << "  Shard " << s << ": fetched nonces for " << user_nonces7.size() << " users" << std::endl;
+                    std::cout << "  Shard " << s << ": fetched nonces for "
+                              << user_nonces7.size() << " users" << std::endl;
                 }
 
-                // Send prefund txs via HTTP (not TCP — TcpTransport::Send uses a per-thread
-                // SPSC queue indexed by get_thread_index(), which only supports the fixed pool
-                // of pre-registered system threads; spawning 32 new threads overflows the 32-slot
-                // output_queues_ array and causes SIGSEGV).
-                std::mutex nonce_mtx7;
+                // Build+enqueue prefund txs via dedicated TCP sender (not HTTP).
+                // 10000×256 HTTP calls look "stuck" with no progress; TCP queue matches mode 5/6.
+                std::string dest_ip7 = ep.ip;
+                uint16_t dest_tcp7 = (uint16_t)(ep.http_port - 10000);
+                std::cout << "  Shard " << s << ": sending prefunds via TCP to "
+                          << dest_ip7 << ":" << dest_tcp7 << " ..." << std::endl;
+
                 uint32_t pf_threads7 = std::min(32u, nu7);
+                if (pf_threads7 == 0) pf_threads7 = 1;
                 uint32_t pf_per7 = nu7 / pf_threads7;
+                std::atomic<uint64_t> pf_done7{0};
+                auto pf_t0 = std::chrono::steady_clock::now();
+                std::atomic<bool> pf_prog_stop{false};
+                std::thread pf_prog([&]() {
+                    while (!pf_prog_stop.load() && !global_stop) {
+                        for (int i = 0; i < 20 && !pf_prog_stop.load() && !global_stop; ++i)
+                            usleep(100000);
+                        auto el = std::chrono::duration_cast<std::chrono::seconds>(
+                            std::chrono::steady_clock::now() - pf_t0).count();
+                        uint64_t done = pf_done7.load();
+                        uint64_t ok = pf_ok7.load(), fail = pf_fail7.load();
+                        size_t qsz = 0;
+                        { std::lock_guard<std::mutex> lk(tcp_mtx7); qsz = tcp_q7.size(); }
+                        std::cout << "  [" << el << "s] shard" << s << " prefund: "
+                                  << done << "/" << total_pf7
+                                  << " built (ok=" << ok << " fail=" << fail
+                                  << "), tcp_q=" << qsz
+                                  << ", tcp_sent=" << tcp_sent7.load() << std::endl;
+                    }
+                });
+
                 std::vector<std::thread> pf_threads_vec7;
                 for (uint32_t t = 0; t < pf_threads7; ++t) {
                     uint32_t us = t * pf_per7;
                     uint32_t ue = (t == pf_threads7 - 1) ? nu7 : us + pf_per7;
-                    pf_threads_vec7.emplace_back([&, s, us, ue, ep]() {
-                        SethSDK http_sdk7(ep.ip, ep.http_port);
+                    pf_threads_vec7.emplace_back([&, s, us, ue, dest_ip7, dest_tcp7]() {
                         for (uint32_t ui = us; ui < ue && !global_stop; ++ui) {
                             auto& u = users7[ui];
+                            std::shared_ptr<security::Security> sec =
+                                std::make_shared<security::Ecdsa>();
+                            sec->SetPrivateKey(u.prikey_raw);
                             std::string pk_hex = common::Encode::HexEncode(u.prikey_raw);
-                            uint64_t nonce7 = user_nonces7[u.addr_raw];
+                            auto nit = user_nonces7.find(u.addr_raw);
+                            uint64_t nonce7 = (nit != user_nonces7.end()) ? nit->second : 0;
                             for (auto& caddr : valid_contracts7) {
-                                bool ok = http_sdk7.setPrefund(pk_hex, caddr, (int64_t)nonce7);
-                                ++nonce7;
-                                if (ok) ++pf_ok7; else ++pf_fail7;
-                                usleep(500);
+                                if (global_stop) break;
+                                uint64_t next_nonce = ++nonce7;
+                                auto tx = CreateTransactionWithAttr(
+                                    sec, next_nonce, pk_hex,
+                                    common::Encode::HexDecode(caddr),
+                                    "prefund", "", 0, 210000, 1, (int32_t)s);
+                                if (tcp_enq7(tx, dest_ip7, dest_tcp7)) ++pf_ok7;
+                                else ++pf_fail7;
+                                ++pf_done7;
                             }
                         }
                     });
                 }
                 for (auto& t : pf_threads_vec7) t.join();
+                pf_prog_stop.store(true);
+                pf_prog.join();
+                tcp_drain7();
                 std::cout << "  Shard " << s << ": prefund sends ok=" << pf_ok7.load()
-                          << " fail=" << pf_fail7.load() << std::endl;
+                          << " fail=" << pf_fail7.load()
+                          << " tcp_sent=" << tcp_sent7.load() << std::endl;
             }
 
             std::cout << "  Waiting 15s for prefund consensus..." << std::endl;
@@ -6206,11 +6314,13 @@ contract Exchange {
                               << " (" << pf_pending7.size() << " pending)" << std::endl;
                     if (pf_pending7.empty()) break;
 
-                    // resend unconfirmed via HTTP (same reason as initial send — no TCP thread index)
+                    // resend unconfirmed via TCP queue (same as initial send)
                     if (rok7 == 0 && pf_resend7 < 3) {
                         ++pf_resend7;
                         std::cout << "  Shard " << s << ": resending " << pf_pending7.size()
                                   << " unconfirmed prefunds (round " << pf_resend7 << ")..." << std::endl;
+                        std::string dest_ip_rs = ep.ip;
+                        uint16_t dest_tcp_rs = (uint16_t)(ep.http_port - 10000);
                         std::unordered_map<std::string, uint64_t> rs_nonces7;
                         for (auto idx7 : pf_pending7) {
                             auto& op7 = pf_ver7[idx7];
@@ -6222,12 +6332,15 @@ contract Exchange {
                                 rs_nonces7[addr_raw7] = (n7 >= 0) ? (uint64_t)n7 : 0;
                             }
                             uint64_t& nn7 = rs_nonces7[addr_raw7];
-                            pf_sdk7.setPrefund(
+                            uint64_t next_n = ++nn7;
+                            auto tx = CreateTransactionWithAttr(
+                                sec7r, next_n,
                                 common::Encode::HexEncode(op7.user_prikey_raw),
-                                op7.contract_addr, (int64_t)nn7);
-                            ++nn7;
-                            usleep(500);
+                                common::Encode::HexDecode(op7.contract_addr),
+                                "prefund", "", 0, 210000, 1, (int32_t)s);
+                            tcp_enq7(tx, dest_ip_rs, dest_tcp_rs);
                         }
+                        tcp_drain7();
                         for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
                         continue;
                     }
@@ -6243,6 +6356,9 @@ contract Exchange {
         }  // end if (compiled7 ok)
 
         std::cout << "\n=== Mode 7 Complete ===" << std::endl;
+        tcp_stop7.store(true);
+        tcp_cv7.notify_all();
+        if (tcp_sender7.joinable()) tcp_sender7.join();
         transport::TcpTransport::Instance()->Stop();
         return 0;
     }
