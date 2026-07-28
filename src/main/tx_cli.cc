@@ -6100,9 +6100,10 @@ contract Exchange {
                     std::cout << "  Shard " << s << ": fetched nonces for " << user_nonces7.size() << " users" << std::endl;
                 }
 
-                // Send prefund txs: each user prefunds on every contract
-                // Parallelise by user (32 threads), each thread handles a slice of users
-                // and iterates over all contracts for each user.
+                // Send prefund txs via HTTP (not TCP — TcpTransport::Send uses a per-thread
+                // SPSC queue indexed by get_thread_index(), which only supports the fixed pool
+                // of pre-registered system threads; spawning 32 new threads overflows the 32-slot
+                // output_queues_ array and causes SIGSEGV).
                 std::mutex nonce_mtx7;
                 uint32_t pf_threads7 = std::min(32u, nu7);
                 uint32_t pf_per7 = nu7 / pf_threads7;
@@ -6110,23 +6111,16 @@ contract Exchange {
                 for (uint32_t t = 0; t < pf_threads7; ++t) {
                     uint32_t us = t * pf_per7;
                     uint32_t ue = (t == pf_threads7 - 1) ? nu7 : us + pf_per7;
-                    pf_threads_vec7.emplace_back([&, s, us, ue]() {
+                    pf_threads_vec7.emplace_back([&, s, us, ue, ep]() {
+                        SethSDK http_sdk7(ep.ip, ep.http_port);
                         for (uint32_t ui = us; ui < ue && !global_stop; ++ui) {
                             auto& u = users7[ui];
-                            std::shared_ptr<security::Security> sec7 = std::make_shared<security::Ecdsa>();
-                            sec7->SetPrivateKey(u.prikey_raw);
+                            std::string pk_hex = common::Encode::HexEncode(u.prikey_raw);
                             uint64_t nonce7 = user_nonces7[u.addr_raw];
                             for (auto& caddr : valid_contracts7) {
-                                auto tx7 = CreateTransactionWithAttr(
-                                    sec7, ++nonce7,
-                                    common::Encode::HexEncode(u.prikey_raw),
-                                    common::Encode::HexDecode(caddr),
-                                    "prefund", "", 0, 210000, 1, funder_shard);
-                                if (tx7 && transport::TcpTransport::Instance()->Send(
-                                        global_chain_node_ip, node_port, tx7->header) == 0)
-                                    ++pf_ok7;
-                                else
-                                    ++pf_fail7;
+                                bool ok = http_sdk7.setPrefund(pk_hex, caddr, (int64_t)nonce7);
+                                ++nonce7;
+                                if (ok) ++pf_ok7; else ++pf_fail7;
                                 usleep(500);
                             }
                         }
@@ -6212,7 +6206,7 @@ contract Exchange {
                               << " (" << pf_pending7.size() << " pending)" << std::endl;
                     if (pf_pending7.empty()) break;
 
-                    // resend unconfirmed (up to 3 rounds)
+                    // resend unconfirmed via HTTP (same reason as initial send — no TCP thread index)
                     if (rok7 == 0 && pf_resend7 < 3) {
                         ++pf_resend7;
                         std::cout << "  Shard " << s << ": resending " << pf_pending7.size()
@@ -6228,13 +6222,10 @@ contract Exchange {
                                 rs_nonces7[addr_raw7] = (n7 >= 0) ? (uint64_t)n7 : 0;
                             }
                             uint64_t& nn7 = rs_nonces7[addr_raw7];
-                            auto tx7r = CreateTransactionWithAttr(
-                                sec7r, ++nn7,
+                            pf_sdk7.setPrefund(
                                 common::Encode::HexEncode(op7.user_prikey_raw),
-                                common::Encode::HexDecode(op7.contract_addr),
-                                "prefund", "", 0, 210000, 1, funder_shard);
-                            if (tx7r) transport::TcpTransport::Instance()->Send(
-                                global_chain_node_ip, node_port, tx7r->header);
+                                op7.contract_addr, (int64_t)nn7);
+                            ++nn7;
                             usleep(500);
                         }
                         for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
