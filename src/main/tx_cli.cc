@@ -6269,12 +6269,13 @@ contract Exchange {
                     if (pf_threads7 == 0) pf_threads7 = 1;
                     uint32_t pf_per7 = nu7 / pf_threads7;
                     auto pf_t0 = std::chrono::steady_clock::now();
+                    const uint32_t kMaxTpsPerShard = 10000;
 
                     std::vector<std::thread> pf_threads_vec7;
                     for (uint32_t t = 0; t < pf_threads7; ++t) {
                         uint32_t us = t * pf_per7;
                         uint32_t ue = (t == pf_threads7 - 1) ? nu7 : us + pf_per7;
-                        pf_threads_vec7.emplace_back([&, s, us, ue, dest_ip7, dest_tcp7]() {
+                        pf_threads_vec7.emplace_back([&, s, us, ue, dest_ip7, dest_tcp7, kMaxTpsPerShard]() {
                             for (uint32_t ui = us; ui < ue && !global_stop; ++ui) {
                                 auto& u = users7[ui];
                                 std::shared_ptr<security::Security> sec =
@@ -6298,6 +6299,15 @@ contract Exchange {
                                         shard_pf_fail7[s].fetch_add(1);
                                     }
                                     shard_pf_done7[s].fetch_add(1);
+                                    uint64_t done_now = shard_pf_done7[s].load();
+                                    if (done_now % 200 == 0) {
+                                        double elapsed = std::chrono::duration<double>(
+                                            std::chrono::steady_clock::now() - pf_t0).count();
+                                        double expected = (double)done_now / kMaxTpsPerShard;
+                                        if (elapsed < expected) {
+                                            usleep((uint32_t)((expected - elapsed) * 1000000));
+                                        }
+                                    }
                                 }
                             }
                         });
@@ -6435,16 +6445,53 @@ contract Exchange {
                                 std::cout << "  Shard " << s << ": resending " << pf_pending7.size()
                                           << " unconfirmed prefunds (round " << pf_resend7 << ")..." << std::endl;
                             }
-                            std::unordered_map<std::string, uint64_t> rs_nonces7;
+                            // Collect unique user addresses for batch nonce query
+                            std::unordered_map<std::string, std::string> raw_to_hex7;
+                            std::unordered_map<std::string, std::string> hex_to_raw7;
+                            std::vector<std::string> unique_hex7;
                             for (auto idx7 : pf_pending7) {
                                 auto& op7 = pf_ver7[idx7];
                                 std::shared_ptr<security::Security> sec7r = std::make_shared<security::Ecdsa>();
                                 sec7r->SetPrivateKey(op7.user_prikey_raw);
                                 std::string addr_raw7 = sec7r->GetAddress();
-                                if (!rs_nonces7.count(addr_raw7)) {
-                                    int64_t n7 = pf_sdk7.fetchNonce(common::Encode::HexEncode(addr_raw7));
-                                    rs_nonces7[addr_raw7] = (n7 >= 0) ? (uint64_t)n7 : 0;
+                                if (!raw_to_hex7.count(addr_raw7)) {
+                                    std::string hex7 = common::Encode::HexEncode(addr_raw7);
+                                    raw_to_hex7[addr_raw7] = hex7;
+                                    hex_to_raw7[hex7] = addr_raw7;
+                                    unique_hex7.push_back(hex7);
                                 }
+                            }
+                            // Batch-fetch nonces instead of individual fetchNonce calls
+                            std::unordered_map<std::string, uint64_t> rs_nonces7;
+                            const uint32_t kResendNonceBatch = 300;
+                            for (uint32_t off = 0; off < unique_hex7.size() && !global_stop; off += kResendNonceBatch) {
+                                uint32_t end = std::min(off + kResendNonceBatch, (uint32_t)unique_hex7.size());
+                                std::vector<std::string> batch(unique_hex7.begin() + off, unique_hex7.begin() + end);
+                                auto r = pf_sdk7.batchQueryAccounts(batch);
+                                for (uint32_t k = 0; k < batch.size(); ++k) {
+                                    int64_t n = 0;
+                                    if (r.contains("accounts") && r["accounts"].contains(batch[k])) {
+                                        auto& acc = r["accounts"][batch[k]];
+                                        if (acc.contains("nonce")) {
+                                            try {
+                                                auto ns = acc["nonce"].get<std::string>();
+                                                std::from_chars(ns.data(), ns.data() + ns.size(), n);
+                                            } catch (...) {}
+                                        }
+                                    }
+                                    auto it = hex_to_raw7.find(batch[k]);
+                                    if (it != hex_to_raw7.end()) {
+                                        rs_nonces7[it->second] = (uint64_t)n;
+                                    }
+                                }
+                            }
+                            // Resend pending prefund txs using batch-fetched nonces
+                            for (auto idx7 : pf_pending7) {
+                                if (global_stop) break;
+                                auto& op7 = pf_ver7[idx7];
+                                std::shared_ptr<security::Security> sec7r = std::make_shared<security::Ecdsa>();
+                                sec7r->SetPrivateKey(op7.user_prikey_raw);
+                                std::string addr_raw7 = sec7r->GetAddress();
                                 uint64_t& nn7 = rs_nonces7[addr_raw7];
                                 uint64_t next_n = ++nn7;
                                 auto tx = CreateTransactionWithAttr(
