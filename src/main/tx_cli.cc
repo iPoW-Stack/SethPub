@@ -6094,265 +6094,304 @@ contract Exchange {
                       << total_contracts_confirmed << "/"
                       << (kContractsPerShard7 * kNumConsensusShards) << std::endl;
 
-            // ── Phase 5: Prefund all 10000 addresses on all 256 contracts per shard ──
-            // Each shard: 10000 verified user addrs × 256 contracts = 2,560,000 prefund ops
-            // Sent in parallel threads; verified via batchQueryAccounts on prepay key.
-            std::cout << "\n[Phase 5] Setting prefund for all users on all contracts per shard..." << std::endl;
+            // ── Phase 5: Prefund all users on all contracts — shards 3/4/5/6 in parallel ──
+            // Each shard is independent (own users/contracts/nodes); run concurrently.
+            std::cout << "\n[Phase 5] Setting prefund for all users on all contracts "
+                      << "(shards " << kConsensusBegin << "-" << kMaxShardId
+                      << " concurrent)..." << std::endl;
             std::atomic<uint64_t> pf_ok7{0}, pf_fail7{0};
+            std::mutex pf_log_mtx7;
 
-            // TCP send queue for prefund (reuse TcpTransport direct send pattern)
-            for (uint32_t s = kConsensusBegin; s <= kMaxShardId && !global_stop; ++s) {
-                auto& ep = shard_endpoints[s];
+            std::vector<std::thread> shard_pf_threads7;
+            for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+                shard_pf_threads7.emplace_back([&, s]() {
+                    if (global_stop) return;
+                    auto& ep = shard_endpoints[s];
 
-                // collect confirmed contracts for this shard
-                std::vector<std::string> valid_contracts7;
-                for (uint32_t i = 0; i < kContractsPerShard7; ++i)
-                    if (contracts_confirmed7[s][i] && !contract_addrs7[s][i].empty())
-                        valid_contracts7.push_back(contract_addrs7[s][i]);
-                if (valid_contracts7.empty()) {
-                    std::cout << "  Shard " << s << ": no confirmed contracts, skip prefund" << std::endl;
-                    continue;
-                }
+                    std::vector<std::string> valid_contracts7;
+                    for (uint32_t i = 0; i < kContractsPerShard7; ++i)
+                        if (contracts_confirmed7[s][i] && !contract_addrs7[s][i].empty())
+                            valid_contracts7.push_back(contract_addrs7[s][i]);
+                    if (valid_contracts7.empty()) {
+                        std::lock_guard<std::mutex> lk(pf_log_mtx7);
+                        std::cout << "  Shard " << s << ": no confirmed contracts, skip prefund" << std::endl;
+                        return;
+                    }
 
-                // collect verified user addresses and their prikeys (in shard_addrs order)
-                struct UserEntry { std::string addr_raw; std::string prikey_raw; };
-                std::vector<UserEntry> users7;
-                users7.reserve(checked_addrs[s].size());
-                for (uint32_t idx = 0; idx < shard_addrs[s].size(); ++idx)
-                    if (checked_addrs[s].count(shard_addrs[s][idx]))
-                        users7.push_back({shard_addrs[s][idx], shard_prikeys[s][idx]});
+                    struct UserEntry { std::string addr_raw; std::string prikey_raw; };
+                    std::vector<UserEntry> users7;
+                    users7.reserve(checked_addrs[s].size());
+                    for (uint32_t idx = 0; idx < shard_addrs[s].size(); ++idx)
+                        if (checked_addrs[s].count(shard_addrs[s][idx]))
+                            users7.push_back({shard_addrs[s][idx], shard_prikeys[s][idx]});
 
-                if (users7.empty()) {
-                    std::cout << "  Shard " << s << ": no verified users, skip prefund" << std::endl;
-                    continue;
-                }
+                    if (users7.empty()) {
+                        std::lock_guard<std::mutex> lk(pf_log_mtx7);
+                        std::cout << "  Shard " << s << ": no verified users, skip prefund" << std::endl;
+                        return;
+                    }
 
-                uint32_t nu7 = (uint32_t)users7.size();
-                uint32_t nc7 = (uint32_t)valid_contracts7.size();
-                uint64_t total_pf7 = (uint64_t)nu7 * nc7;
-                std::cout << "  Shard " << s << ": " << nu7 << " users × " << nc7
-                          << " contracts = " << total_pf7 << " prefund ops" << std::endl;
+                    uint32_t nu7 = (uint32_t)users7.size();
+                    uint32_t nc7 = (uint32_t)valid_contracts7.size();
+                    uint64_t total_pf7 = (uint64_t)nu7 * nc7;
+                    {
+                        std::lock_guard<std::mutex> lk(pf_log_mtx7);
+                        std::cout << "  Shard " << s << ": " << nu7 << " users × " << nc7
+                                  << " contracts = " << total_pf7 << " prefund ops" << std::endl;
+                    }
 
-                // Batch-fetch nonces for all users
-                SethSDK shard_sdk7(ep.ip, ep.http_port);
-                std::unordered_map<std::string, uint64_t> user_nonces7;  // addr_raw → nonce
-                {
-                    const uint32_t kNonceBatch = 300;
-                    std::vector<std::string> addr_hex_list;
-                    addr_hex_list.reserve(nu7);
-                    for (auto& u : users7)
-                        addr_hex_list.push_back(common::Encode::HexEncode(u.addr_raw));
-                    auto nonce_t0 = std::chrono::steady_clock::now();
-                    for (uint32_t off = 0; off < addr_hex_list.size(); off += kNonceBatch) {
-                        uint32_t end = std::min(off + kNonceBatch, (uint32_t)addr_hex_list.size());
-                        std::vector<std::string> batch(addr_hex_list.begin() + off, addr_hex_list.begin() + end);
-                        auto r = shard_sdk7.batchQueryAccounts(batch);
-                        for (uint32_t k = 0; k < batch.size(); ++k) {
-                            int64_t n = 0;
-                            if (r.contains("accounts") && r["accounts"].contains(batch[k])) {
-                                auto& acc = r["accounts"][batch[k]];
-                                if (acc.contains("nonce")) {
-                                    try {
-                                        auto ns = acc["nonce"].get<std::string>();
-                                        std::from_chars(ns.data(), ns.data() + ns.size(), n);
-                                    } catch (...) {}
+                    // Batch-fetch nonces for all users on this shard
+                    SethSDK shard_sdk7(ep.ip, ep.http_port);
+                    std::unordered_map<std::string, uint64_t> user_nonces7;
+                    {
+                        const uint32_t kNonceBatch = 300;
+                        std::vector<std::string> addr_hex_list;
+                        addr_hex_list.reserve(nu7);
+                        for (auto& u : users7)
+                            addr_hex_list.push_back(common::Encode::HexEncode(u.addr_raw));
+                        auto nonce_t0 = std::chrono::steady_clock::now();
+                        for (uint32_t off = 0; off < addr_hex_list.size() && !global_stop; off += kNonceBatch) {
+                            uint32_t end = std::min(off + kNonceBatch, (uint32_t)addr_hex_list.size());
+                            std::vector<std::string> batch(addr_hex_list.begin() + off, addr_hex_list.begin() + end);
+                            auto r = shard_sdk7.batchQueryAccounts(batch);
+                            for (uint32_t k = 0; k < batch.size(); ++k) {
+                                int64_t n = 0;
+                                if (r.contains("accounts") && r["accounts"].contains(batch[k])) {
+                                    auto& acc = r["accounts"][batch[k]];
+                                    if (acc.contains("nonce")) {
+                                        try {
+                                            auto ns = acc["nonce"].get<std::string>();
+                                            std::from_chars(ns.data(), ns.data() + ns.size(), n);
+                                        } catch (...) {}
+                                    }
                                 }
+                                user_nonces7[users7[off + k].addr_raw] = (uint64_t)n;
                             }
-                            user_nonces7[users7[off + k].addr_raw] = (uint64_t)n;
+                            if ((off / kNonceBatch) % 10 == 0 || end == addr_hex_list.size()) {
+                                auto el = std::chrono::duration_cast<std::chrono::seconds>(
+                                    std::chrono::steady_clock::now() - nonce_t0).count();
+                                std::lock_guard<std::mutex> lk(pf_log_mtx7);
+                                std::cout << "  Shard " << s << ": nonce fetch "
+                                          << end << "/" << addr_hex_list.size()
+                                          << " (" << el << "s)" << std::endl;
+                            }
                         }
-                        if ((off / kNonceBatch) % 10 == 0 || end == addr_hex_list.size()) {
+                        std::lock_guard<std::mutex> lk(pf_log_mtx7);
+                        std::cout << "  Shard " << s << ": fetched nonces for "
+                                  << user_nonces7.size() << " users" << std::endl;
+                    }
+
+                    std::string dest_ip7 = ep.ip;
+                    uint16_t dest_tcp7 = (uint16_t)(ep.http_port - 10000);
+                    {
+                        std::lock_guard<std::mutex> lk(pf_log_mtx7);
+                        std::cout << "  Shard " << s << ": sending prefunds via TCP to "
+                                  << dest_ip7 << ":" << dest_tcp7 << " ..." << std::endl;
+                    }
+
+                    // Fewer per-shard workers so 4 shards × N does not thrash CPU
+                    uint32_t pf_threads7 = std::min(16u, nu7);
+                    if (pf_threads7 == 0) pf_threads7 = 1;
+                    uint32_t pf_per7 = nu7 / pf_threads7;
+                    std::atomic<uint64_t> pf_done7{0};
+                    std::atomic<uint64_t> shard_ok7{0}, shard_fail7{0};
+                    auto pf_t0 = std::chrono::steady_clock::now();
+                    std::atomic<bool> pf_prog_stop{false};
+                    std::thread pf_prog([&]() {
+                        while (!pf_prog_stop.load() && !global_stop) {
+                            for (int i = 0; i < 20 && !pf_prog_stop.load() && !global_stop; ++i)
+                                usleep(100000);
                             auto el = std::chrono::duration_cast<std::chrono::seconds>(
-                                std::chrono::steady_clock::now() - nonce_t0).count();
-                            std::cout << "  Shard " << s << ": nonce fetch "
-                                      << end << "/" << addr_hex_list.size()
-                                      << " (" << el << "s)" << std::endl;
-                        }
-                    }
-                    std::cout << "  Shard " << s << ": fetched nonces for "
-                              << user_nonces7.size() << " users" << std::endl;
-                }
-
-                // Build+enqueue prefund txs via dedicated TCP sender (not HTTP).
-                // 10000×256 HTTP calls look "stuck" with no progress; TCP queue matches mode 5/6.
-                std::string dest_ip7 = ep.ip;
-                uint16_t dest_tcp7 = (uint16_t)(ep.http_port - 10000);
-                std::cout << "  Shard " << s << ": sending prefunds via TCP to "
-                          << dest_ip7 << ":" << dest_tcp7 << " ..." << std::endl;
-
-                uint32_t pf_threads7 = std::min(32u, nu7);
-                if (pf_threads7 == 0) pf_threads7 = 1;
-                uint32_t pf_per7 = nu7 / pf_threads7;
-                std::atomic<uint64_t> pf_done7{0};
-                auto pf_t0 = std::chrono::steady_clock::now();
-                std::atomic<bool> pf_prog_stop{false};
-                std::thread pf_prog([&]() {
-                    while (!pf_prog_stop.load() && !global_stop) {
-                        for (int i = 0; i < 20 && !pf_prog_stop.load() && !global_stop; ++i)
-                            usleep(100000);
-                        auto el = std::chrono::duration_cast<std::chrono::seconds>(
-                            std::chrono::steady_clock::now() - pf_t0).count();
-                        uint64_t done = pf_done7.load();
-                        uint64_t ok = pf_ok7.load(), fail = pf_fail7.load();
-                        size_t qsz = 0;
-                        { std::lock_guard<std::mutex> lk(tcp_mtx7); qsz = tcp_q7.size(); }
-                        std::cout << "  [" << el << "s] shard" << s << " prefund: "
-                                  << done << "/" << total_pf7
-                                  << " built (ok=" << ok << " fail=" << fail
-                                  << "), tcp_q=" << qsz
-                                  << ", tcp_sent=" << tcp_sent7.load() << std::endl;
-                    }
-                });
-
-                std::vector<std::thread> pf_threads_vec7;
-                for (uint32_t t = 0; t < pf_threads7; ++t) {
-                    uint32_t us = t * pf_per7;
-                    uint32_t ue = (t == pf_threads7 - 1) ? nu7 : us + pf_per7;
-                    pf_threads_vec7.emplace_back([&, s, us, ue, dest_ip7, dest_tcp7]() {
-                        for (uint32_t ui = us; ui < ue && !global_stop; ++ui) {
-                            auto& u = users7[ui];
-                            std::shared_ptr<security::Security> sec =
-                                std::make_shared<security::Ecdsa>();
-                            sec->SetPrivateKey(u.prikey_raw);
-                            std::string pk_hex = common::Encode::HexEncode(u.prikey_raw);
-                            auto nit = user_nonces7.find(u.addr_raw);
-                            uint64_t nonce7 = (nit != user_nonces7.end()) ? nit->second : 0;
-                            for (auto& caddr : valid_contracts7) {
-                                if (global_stop) break;
-                                uint64_t next_nonce = ++nonce7;
-                                auto tx = CreateTransactionWithAttr(
-                                    sec, next_nonce, pk_hex,
-                                    common::Encode::HexDecode(caddr),
-                                    "prefund", "", 0, 210000, 1, (int32_t)s);
-                                if (tcp_enq7(tx, dest_ip7, dest_tcp7)) ++pf_ok7;
-                                else ++pf_fail7;
-                                ++pf_done7;
-                            }
+                                std::chrono::steady_clock::now() - pf_t0).count();
+                            uint64_t done = pf_done7.load();
+                            size_t qsz = 0;
+                            { std::lock_guard<std::mutex> lk(tcp_mtx7); qsz = tcp_q7.size(); }
+                            std::lock_guard<std::mutex> lk(pf_log_mtx7);
+                            std::cout << "  [" << el << "s] shard" << s << " prefund: "
+                                      << done << "/" << total_pf7
+                                      << " built (ok=" << shard_ok7.load()
+                                      << " fail=" << shard_fail7.load()
+                                      << "), tcp_q=" << qsz
+                                      << ", tcp_sent=" << tcp_sent7.load() << std::endl;
                         }
                     });
-                }
-                for (auto& t : pf_threads_vec7) t.join();
-                pf_prog_stop.store(true);
-                pf_prog.join();
-                tcp_drain7();
-                std::cout << "  Shard " << s << ": prefund sends ok=" << pf_ok7.load()
-                          << " fail=" << pf_fail7.load()
-                          << " tcp_sent=" << tcp_sent7.load() << std::endl;
+
+                    std::vector<std::thread> pf_threads_vec7;
+                    for (uint32_t t = 0; t < pf_threads7; ++t) {
+                        uint32_t us = t * pf_per7;
+                        uint32_t ue = (t == pf_threads7 - 1) ? nu7 : us + pf_per7;
+                        pf_threads_vec7.emplace_back([&, s, us, ue, dest_ip7, dest_tcp7]() {
+                            for (uint32_t ui = us; ui < ue && !global_stop; ++ui) {
+                                auto& u = users7[ui];
+                                std::shared_ptr<security::Security> sec =
+                                    std::make_shared<security::Ecdsa>();
+                                sec->SetPrivateKey(u.prikey_raw);
+                                std::string pk_hex = common::Encode::HexEncode(u.prikey_raw);
+                                auto nit = user_nonces7.find(u.addr_raw);
+                                uint64_t nonce7 = (nit != user_nonces7.end()) ? nit->second : 0;
+                                for (auto& caddr : valid_contracts7) {
+                                    if (global_stop) break;
+                                    uint64_t next_nonce = ++nonce7;
+                                    auto tx = CreateTransactionWithAttr(
+                                        sec, next_nonce, pk_hex,
+                                        common::Encode::HexDecode(caddr),
+                                        "prefund", "", 0, 210000, 1, (int32_t)s);
+                                    if (tcp_enq7(tx, dest_ip7, dest_tcp7)) {
+                                        ++pf_ok7; ++shard_ok7;
+                                    } else {
+                                        ++pf_fail7; ++shard_fail7;
+                                    }
+                                    ++pf_done7;
+                                }
+                            }
+                        });
+                    }
+                    for (auto& t : pf_threads_vec7) t.join();
+                    pf_prog_stop.store(true);
+                    pf_prog.join();
+                    {
+                        std::lock_guard<std::mutex> lk(pf_log_mtx7);
+                        std::cout << "  Shard " << s << ": prefund sends ok=" << shard_ok7.load()
+                                  << " fail=" << shard_fail7.load() << std::endl;
+                    }
+                });
             }
+            for (auto& t : shard_pf_threads7) t.join();
+            tcp_drain7();
+            std::cout << "  Phase 5 send done: ok=" << pf_ok7.load()
+                      << " fail=" << pf_fail7.load()
+                      << " tcp_sent=" << tcp_sent7.load() << std::endl;
 
             std::cout << "  Waiting 15s for prefund consensus..." << std::endl;
             for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
 
-            // Verify prefund on-chain: prepay key = contract_addr_hex(40) + user_addr_hex(40)
-            std::cout << "  Verifying prefund on-chain (prepay key = contract+user)..." << std::endl;
-            uint64_t total_pf_confirmed = 0, total_pf_need = 0;
+            // Verify prefund on-chain — also concurrent across shards
+            std::cout << "  Verifying prefund on-chain (prepay key = contract+user, concurrent)..."
+                      << std::endl;
+            std::atomic<uint64_t> total_pf_confirmed{0}, total_pf_need{0};
 
-            for (uint32_t s = kConsensusBegin; s <= kMaxShardId && !global_stop; ++s) {
-                auto& ep = shard_endpoints[s];
+            std::vector<std::thread> shard_ver_threads7;
+            for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+                shard_ver_threads7.emplace_back([&, s]() {
+                    if (global_stop) return;
+                    auto& ep = shard_endpoints[s];
 
-                std::vector<std::string> valid_contracts7v;
-                for (uint32_t i = 0; i < kContractsPerShard7; ++i)
-                    if (contracts_confirmed7[s][i] && !contract_addrs7[s][i].empty())
-                        valid_contracts7v.push_back(contract_addrs7[s][i]);
-                if (valid_contracts7v.empty()) continue;
+                    std::vector<std::string> valid_contracts7v;
+                    for (uint32_t i = 0; i < kContractsPerShard7; ++i)
+                        if (contracts_confirmed7[s][i] && !contract_addrs7[s][i].empty())
+                            valid_contracts7v.push_back(contract_addrs7[s][i]);
+                    if (valid_contracts7v.empty()) return;
 
-                // build full list of prepay keys for this shard
-                struct PfVerEntry7 { std::string prepay_key; std::string user_prikey_raw; std::string contract_addr; };
-                std::vector<PfVerEntry7> pf_ver7;
-                pf_ver7.reserve(checked_addrs[s].size() * valid_contracts7v.size());
-                for (uint32_t idx = 0; idx < shard_addrs[s].size(); ++idx) {
-                    if (!checked_addrs[s].count(shard_addrs[s][idx])) continue;
-                    std::string user_hex = common::Encode::HexEncode(shard_addrs[s][idx]);
-                    for (auto& caddr : valid_contracts7v)
-                        pf_ver7.push_back({caddr + user_hex, shard_prikeys[s][idx], caddr});
-                }
-                total_pf_need += pf_ver7.size();
-
-                std::vector<bool> pf_conf7(pf_ver7.size(), false);
-                std::vector<uint32_t> pf_pending7;
-                pf_pending7.reserve(pf_ver7.size());
-                for (uint32_t i = 0; i < pf_ver7.size(); ++i) pf_pending7.push_back(i);
-
-                uint32_t pf_ok_shard = 0, pf_resend7 = 0;
-                auto pf_t07 = std::chrono::steady_clock::now();
-                const uint32_t kPfBatch7 = 300;
-                SethSDK pf_sdk7(ep.ip, ep.http_port);
-
-                for (uint32_t rd = 0; !pf_pending7.empty() && !global_stop; ++rd) {
-                    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
-                        std::chrono::steady_clock::now() - pf_t07).count();
-                    if (elapsed >= 600) {
-                        std::cerr << "  Shard " << s << ": prefund verify timeout, "
-                                  << pf_ok_shard << "/" << pf_ver7.size() << " confirmed" << std::endl;
-                        break;
+                    struct PfVerEntry7 {
+                        std::string prepay_key;
+                        std::string user_prikey_raw;
+                        std::string contract_addr;
+                    };
+                    std::vector<PfVerEntry7> pf_ver7;
+                    pf_ver7.reserve(checked_addrs[s].size() * valid_contracts7v.size());
+                    for (uint32_t idx = 0; idx < shard_addrs[s].size(); ++idx) {
+                        if (!checked_addrs[s].count(shard_addrs[s][idx])) continue;
+                        std::string user_hex = common::Encode::HexEncode(shard_addrs[s][idx]);
+                        for (auto& caddr : valid_contracts7v)
+                            pf_ver7.push_back({caddr + user_hex, shard_prikeys[s][idx], caddr});
                     }
+                    total_pf_need.fetch_add(pf_ver7.size());
 
-                    uint32_t rok7 = 0;
-                    std::vector<uint32_t> next_pending7;
-                    std::vector<std::string> ba7; std::vector<uint32_t> bi7;
+                    std::vector<bool> pf_conf7(pf_ver7.size(), false);
+                    std::vector<uint32_t> pf_pending7;
+                    pf_pending7.reserve(pf_ver7.size());
+                    for (uint32_t i = 0; i < pf_ver7.size(); ++i) pf_pending7.push_back(i);
 
-                    for (uint32_t p = 0; p < pf_pending7.size() && !global_stop; ++p) {
-                        ba7.push_back(pf_ver7[pf_pending7[p]].prepay_key);
-                        bi7.push_back(pf_pending7[p]);
-                        if (ba7.size() >= kPfBatch7 || p == pf_pending7.size() - 1) {
-                            auto r7 = pf_sdk7.batchQueryAccounts(ba7);
-                            for (uint32_t k = 0; k < bi7.size(); ++k) {
-                                if (r7.contains("accounts") && r7["accounts"].contains(ba7[k])) {
-                                    pf_conf7[bi7[k]] = true; ++pf_ok_shard; ++rok7;
-                                } else {
-                                    next_pending7.push_back(bi7[k]);
+                    uint32_t pf_ok_shard = 0, pf_resend7 = 0;
+                    auto pf_t07 = std::chrono::steady_clock::now();
+                    const uint32_t kPfBatch7 = 300;
+                    SethSDK pf_sdk7(ep.ip, ep.http_port);
+                    std::string dest_ip_rs = ep.ip;
+                    uint16_t dest_tcp_rs = (uint16_t)(ep.http_port - 10000);
+
+                    for (uint32_t rd = 0; !pf_pending7.empty() && !global_stop; ++rd) {
+                        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                            std::chrono::steady_clock::now() - pf_t07).count();
+                        if (elapsed >= 600) {
+                            std::lock_guard<std::mutex> lk(pf_log_mtx7);
+                            std::cerr << "  Shard " << s << ": prefund verify timeout, "
+                                      << pf_ok_shard << "/" << pf_ver7.size() << " confirmed" << std::endl;
+                            break;
+                        }
+
+                        uint32_t rok7 = 0;
+                        std::vector<uint32_t> next_pending7;
+                        std::vector<std::string> ba7; std::vector<uint32_t> bi7;
+
+                        for (uint32_t p = 0; p < pf_pending7.size() && !global_stop; ++p) {
+                            ba7.push_back(pf_ver7[pf_pending7[p]].prepay_key);
+                            bi7.push_back(pf_pending7[p]);
+                            if (ba7.size() >= kPfBatch7 || p == pf_pending7.size() - 1) {
+                                auto r7 = pf_sdk7.batchQueryAccounts(ba7);
+                                for (uint32_t k = 0; k < bi7.size(); ++k) {
+                                    if (r7.contains("accounts") && r7["accounts"].contains(ba7[k])) {
+                                        pf_conf7[bi7[k]] = true; ++pf_ok_shard; ++rok7;
+                                    } else {
+                                        next_pending7.push_back(bi7[k]);
+                                    }
                                 }
+                                ba7.clear(); bi7.clear();
                             }
-                            ba7.clear(); bi7.clear();
                         }
-                    }
-                    pf_pending7 = std::move(next_pending7);
-                    elapsed = std::chrono::duration_cast<std::chrono::seconds>(
-                        std::chrono::steady_clock::now() - pf_t07).count();
-                    std::cout << "  [shard" << s << " prefund round " << (rd+1)
-                              << ", " << elapsed << "s] +" << rok7
-                              << " = " << pf_ok_shard << "/" << pf_ver7.size()
-                              << " (" << pf_pending7.size() << " pending)" << std::endl;
-                    if (pf_pending7.empty()) break;
+                        pf_pending7 = std::move(next_pending7);
+                        elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                            std::chrono::steady_clock::now() - pf_t07).count();
+                        {
+                            std::lock_guard<std::mutex> lk(pf_log_mtx7);
+                            std::cout << "  [shard" << s << " prefund round " << (rd+1)
+                                      << ", " << elapsed << "s] +" << rok7
+                                      << " = " << pf_ok_shard << "/" << pf_ver7.size()
+                                      << " (" << pf_pending7.size() << " pending)" << std::endl;
+                        }
+                        if (pf_pending7.empty()) break;
 
-                    // resend unconfirmed via TCP queue (same as initial send)
-                    if (rok7 == 0 && pf_resend7 < 3) {
-                        ++pf_resend7;
-                        std::cout << "  Shard " << s << ": resending " << pf_pending7.size()
-                                  << " unconfirmed prefunds (round " << pf_resend7 << ")..." << std::endl;
-                        std::string dest_ip_rs = ep.ip;
-                        uint16_t dest_tcp_rs = (uint16_t)(ep.http_port - 10000);
-                        std::unordered_map<std::string, uint64_t> rs_nonces7;
-                        for (auto idx7 : pf_pending7) {
-                            auto& op7 = pf_ver7[idx7];
-                            std::shared_ptr<security::Security> sec7r = std::make_shared<security::Ecdsa>();
-                            sec7r->SetPrivateKey(op7.user_prikey_raw);
-                            std::string addr_raw7 = sec7r->GetAddress();
-                            if (!rs_nonces7.count(addr_raw7)) {
-                                int64_t n7 = pf_sdk7.fetchNonce(common::Encode::HexEncode(addr_raw7));
-                                rs_nonces7[addr_raw7] = (n7 >= 0) ? (uint64_t)n7 : 0;
+                        if (rok7 == 0 && pf_resend7 < 3) {
+                            ++pf_resend7;
+                            {
+                                std::lock_guard<std::mutex> lk(pf_log_mtx7);
+                                std::cout << "  Shard " << s << ": resending " << pf_pending7.size()
+                                          << " unconfirmed prefunds (round " << pf_resend7 << ")..." << std::endl;
                             }
-                            uint64_t& nn7 = rs_nonces7[addr_raw7];
-                            uint64_t next_n = ++nn7;
-                            auto tx = CreateTransactionWithAttr(
-                                sec7r, next_n,
-                                common::Encode::HexEncode(op7.user_prikey_raw),
-                                common::Encode::HexDecode(op7.contract_addr),
-                                "prefund", "", 0, 210000, 1, (int32_t)s);
-                            tcp_enq7(tx, dest_ip_rs, dest_tcp_rs);
+                            std::unordered_map<std::string, uint64_t> rs_nonces7;
+                            for (auto idx7 : pf_pending7) {
+                                auto& op7 = pf_ver7[idx7];
+                                std::shared_ptr<security::Security> sec7r = std::make_shared<security::Ecdsa>();
+                                sec7r->SetPrivateKey(op7.user_prikey_raw);
+                                std::string addr_raw7 = sec7r->GetAddress();
+                                if (!rs_nonces7.count(addr_raw7)) {
+                                    int64_t n7 = pf_sdk7.fetchNonce(common::Encode::HexEncode(addr_raw7));
+                                    rs_nonces7[addr_raw7] = (n7 >= 0) ? (uint64_t)n7 : 0;
+                                }
+                                uint64_t& nn7 = rs_nonces7[addr_raw7];
+                                uint64_t next_n = ++nn7;
+                                auto tx = CreateTransactionWithAttr(
+                                    sec7r, next_n,
+                                    common::Encode::HexEncode(op7.user_prikey_raw),
+                                    common::Encode::HexDecode(op7.contract_addr),
+                                    "prefund", "", 0, 210000, 1, (int32_t)s);
+                                tcp_enq7(tx, dest_ip_rs, dest_tcp_rs);
+                            }
+                            for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
+                            continue;
                         }
-                        tcp_drain7();
-                        for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
-                        continue;
+                        uint32_t wt7 = (rok7 > 0) ? 2000 : 5000;
+                        for (uint32_t w = 0; w < wt7 / 100 && !global_stop; ++w) usleep(100000);
                     }
-                    uint32_t wt7 = (rok7 > 0) ? 2000 : 5000;
-                    for (uint32_t w = 0; w < wt7 / 100 && !global_stop; ++w) usleep(100000);
-                }
-                total_pf_confirmed += pf_ok_shard;
-                std::cout << "  Shard " << s << ": " << pf_ok_shard << "/" << pf_ver7.size()
-                          << " prefunds confirmed" << std::endl;
+                    total_pf_confirmed.fetch_add(pf_ok_shard);
+                    std::lock_guard<std::mutex> lk(pf_log_mtx7);
+                    std::cout << "  Shard " << s << ": " << pf_ok_shard << "/" << pf_ver7.size()
+                              << " prefunds confirmed" << std::endl;
+                });
             }
+            for (auto& t : shard_ver_threads7) t.join();
+            tcp_drain7();
             std::cout << "\n[Phase 5 Result] Total prefunds confirmed: "
-                      << total_pf_confirmed << "/" << total_pf_need << std::endl;
+                      << total_pf_confirmed.load() << "/" << total_pf_need.load() << std::endl;
         }  // end if (compiled7 ok)
 
         std::cout << "\n=== Mode 7 Complete ===" << std::endl;
