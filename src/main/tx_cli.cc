@@ -6102,6 +6102,70 @@ contract Exchange {
             std::atomic<uint64_t> pf_ok7{0}, pf_fail7{0};
             std::mutex pf_log_mtx7;
 
+            // Per-shard progress counters (index by shard id)
+            std::atomic<uint64_t> shard_pf_done7[8] = {};
+            std::atomic<uint64_t> shard_pf_total7[8] = {};
+            std::atomic<uint64_t> shard_pf_ok7[8] = {};
+            std::atomic<uint64_t> shard_pf_fail7[8] = {};
+            std::atomic<uint64_t> shard_pf_active7{0};
+
+            auto pf_phase_t0 = std::chrono::steady_clock::now();
+            uint64_t tcp_sent_base7 = tcp_sent7.load();
+            std::atomic<bool> pf_global_prog_stop{false};
+            std::thread pf_global_prog([&]() {
+                uint64_t last_built = 0, last_sent = tcp_sent_base7;
+                auto last_t = pf_phase_t0;
+                while (!pf_global_prog_stop.load() && !global_stop) {
+                    for (int i = 0; i < 20 && !pf_global_prog_stop.load() && !global_stop; ++i)
+                        usleep(100000);
+                    auto now = std::chrono::steady_clock::now();
+                    double el = std::chrono::duration<double>(now - pf_phase_t0).count();
+                    double dt = std::chrono::duration<double>(now - last_t).count();
+                    if (dt < 0.001) dt = 0.001;
+
+                    uint64_t built = 0, need = 0;
+                    for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+                        built += shard_pf_done7[s].load();
+                        need += shard_pf_total7[s].load();
+                    }
+                    uint64_t sent = tcp_sent7.load();
+                    uint64_t sent_delta = (sent >= tcp_sent_base7) ? (sent - tcp_sent_base7) : 0;
+                    double build_tps_avg = (el > 0.001) ? (double)built / el : 0;
+                    double send_tps_avg = (el > 0.001) ? (double)sent_delta / el : 0;
+                    double build_tps_inst = (double)(built - last_built) / dt;
+                    double send_tps_inst = (double)(sent - last_sent) / dt;
+                    size_t qsz = 0;
+                    { std::lock_guard<std::mutex> lk(tcp_mtx7); qsz = tcp_q7.size(); }
+
+                    {
+                        std::lock_guard<std::mutex> lk(pf_log_mtx7);
+                        std::cout << "  [Phase5][" << (uint64_t)el << "s]"
+                                  << " built=" << built << "/" << need
+                                  << " build_tps=" << (uint64_t)build_tps_inst
+                                  << " (avg " << (uint64_t)build_tps_avg << ")"
+                                  << " | tcp_sent=" << sent_delta
+                                  << " send_tps=" << (uint64_t)send_tps_inst
+                                  << " (avg " << (uint64_t)send_tps_avg << ")"
+                                  << " tcp_q=" << qsz
+                                  << " |";
+                        for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+                            uint64_t d = shard_pf_done7[s].load();
+                            uint64_t t = shard_pf_total7[s].load();
+                            if (t == 0) continue;
+                            uint64_t pct = d * 100 / t;
+                            std::cout << " s" << s << ":" << d << "/" << t
+                                      << "(" << pct << "%)"
+                                      << " ok=" << shard_pf_ok7[s].load()
+                                      << " fail=" << shard_pf_fail7[s].load();
+                        }
+                        std::cout << std::endl;
+                    }
+                    last_built = built;
+                    last_sent = sent;
+                    last_t = now;
+                }
+            });
+
             std::vector<std::thread> shard_pf_threads7;
             for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
                 shard_pf_threads7.emplace_back([&, s]() {
@@ -6134,6 +6198,7 @@ contract Exchange {
                     uint32_t nu7 = (uint32_t)users7.size();
                     uint32_t nc7 = (uint32_t)valid_contracts7.size();
                     uint64_t total_pf7 = (uint64_t)nu7 * nc7;
+                    shard_pf_total7[s].store(total_pf7);
                     {
                         std::lock_guard<std::mutex> lk(pf_log_mtx7);
                         std::cout << "  Shard " << s << ": " << nu7 << " users × " << nc7
@@ -6189,32 +6254,11 @@ contract Exchange {
                                   << dest_ip7 << ":" << dest_tcp7 << " ..." << std::endl;
                     }
 
-                    // Fewer per-shard workers so 4 shards × N does not thrash CPU
+                    shard_pf_active7.fetch_add(1);
                     uint32_t pf_threads7 = std::min(16u, nu7);
                     if (pf_threads7 == 0) pf_threads7 = 1;
                     uint32_t pf_per7 = nu7 / pf_threads7;
-                    std::atomic<uint64_t> pf_done7{0};
-                    std::atomic<uint64_t> shard_ok7{0}, shard_fail7{0};
                     auto pf_t0 = std::chrono::steady_clock::now();
-                    std::atomic<bool> pf_prog_stop{false};
-                    std::thread pf_prog([&]() {
-                        while (!pf_prog_stop.load() && !global_stop) {
-                            for (int i = 0; i < 20 && !pf_prog_stop.load() && !global_stop; ++i)
-                                usleep(100000);
-                            auto el = std::chrono::duration_cast<std::chrono::seconds>(
-                                std::chrono::steady_clock::now() - pf_t0).count();
-                            uint64_t done = pf_done7.load();
-                            size_t qsz = 0;
-                            { std::lock_guard<std::mutex> lk(tcp_mtx7); qsz = tcp_q7.size(); }
-                            std::lock_guard<std::mutex> lk(pf_log_mtx7);
-                            std::cout << "  [" << el << "s] shard" << s << " prefund: "
-                                      << done << "/" << total_pf7
-                                      << " built (ok=" << shard_ok7.load()
-                                      << " fail=" << shard_fail7.load()
-                                      << "), tcp_q=" << qsz
-                                      << ", tcp_sent=" << tcp_sent7.load() << std::endl;
-                        }
-                    });
 
                     std::vector<std::thread> pf_threads_vec7;
                     for (uint32_t t = 0; t < pf_threads7; ++t) {
@@ -6237,30 +6281,54 @@ contract Exchange {
                                         common::Encode::HexDecode(caddr),
                                         "prefund", "", 0, 210000, 1, (int32_t)s);
                                     if (tcp_enq7(tx, dest_ip7, dest_tcp7)) {
-                                        ++pf_ok7; ++shard_ok7;
+                                        ++pf_ok7;
+                                        shard_pf_ok7[s].fetch_add(1);
                                     } else {
-                                        ++pf_fail7; ++shard_fail7;
+                                        ++pf_fail7;
+                                        shard_pf_fail7[s].fetch_add(1);
                                     }
-                                    ++pf_done7;
+                                    shard_pf_done7[s].fetch_add(1);
                                 }
                             }
                         });
                     }
                     for (auto& t : pf_threads_vec7) t.join();
-                    pf_prog_stop.store(true);
-                    pf_prog.join();
+                    shard_pf_active7.fetch_sub(1);
+
+                    double el = std::chrono::duration<double>(
+                        std::chrono::steady_clock::now() - pf_t0).count();
+                    uint64_t done = shard_pf_done7[s].load();
+                    uint64_t ok = shard_pf_ok7[s].load();
+                    uint64_t fail = shard_pf_fail7[s].load();
+                    double tps = (el > 0.001) ? (double)done / el : 0;
                     {
                         std::lock_guard<std::mutex> lk(pf_log_mtx7);
-                        std::cout << "  Shard " << s << ": prefund sends ok=" << shard_ok7.load()
-                                  << " fail=" << shard_fail7.load() << std::endl;
+                        std::cout << "  Shard " << s << ": prefund done"
+                                  << " ok=" << ok << " fail=" << fail
+                                  << " elapsed=" << (uint64_t)el << "s"
+                                  << " build_tps=" << (uint64_t)tps << std::endl;
                     }
                 });
             }
             for (auto& t : shard_pf_threads7) t.join();
+            pf_global_prog_stop.store(true);
+            pf_global_prog.join();
             tcp_drain7();
-            std::cout << "  Phase 5 send done: ok=" << pf_ok7.load()
-                      << " fail=" << pf_fail7.load()
-                      << " tcp_sent=" << tcp_sent7.load() << std::endl;
+
+            {
+                double el = std::chrono::duration<double>(
+                    std::chrono::steady_clock::now() - pf_phase_t0).count();
+                uint64_t sent_delta = tcp_sent7.load() - tcp_sent_base7;
+                uint64_t built = pf_ok7.load() + pf_fail7.load();
+                double build_tps = (el > 0.001) ? (double)built / el : 0;
+                double send_tps = (el > 0.001) ? (double)sent_delta / el : 0;
+                std::cout << "  Phase 5 send done: ok=" << pf_ok7.load()
+                          << " fail=" << pf_fail7.load()
+                          << " tcp_sent=" << sent_delta
+                          << " elapsed=" << (uint64_t)el << "s"
+                          << " build_tps=" << (uint64_t)build_tps
+                          << " send_tps=" << (uint64_t)send_tps << std::endl;
+            }
 
             std::cout << "  Waiting 15s for prefund consensus..." << std::endl;
             for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
