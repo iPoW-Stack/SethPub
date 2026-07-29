@@ -6424,6 +6424,7 @@ contract Exchange {
                                     }
                                 }
                                 ba7.clear(); bi7.clear();
+                                usleep(10000);
                             }
                         }
                         pf_pending7 = std::move(next_pending7);
@@ -6504,7 +6505,7 @@ contract Exchange {
                             for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
                             continue;
                         }
-                        uint32_t wt7 = (rok7 > 0) ? 2000 : 5000;
+                        uint32_t wt7 = 10000;
                         for (uint32_t w = 0; w < wt7 / 100 && !global_stop; ++w) usleep(100000);
                     }
                     total_pf_confirmed.fetch_add(pf_ok_shard);
