@@ -6559,10 +6559,10 @@ contract Exchange {
             };
             const std::string sel_create7 = utils::keccak256Str(
                 "CreateNewItem(bytes32,bytes,uint256,uint256,uint256)").substr(0, 8);
+            std::cout << "  CreateNewItem selector: 0x" << sel_create7 << std::endl;
             const std::string sel_purchase7 = utils::keccak256Str(
                 "PurchaseItem(bytes32,uint256)").substr(0, 8);
-            std::cout << "  CreateNewItem selector: 0x" << sel_create7 << std::endl;
-            std::cout << "  PurchaseItem  selector: 0x" << sel_purchase7 << std::endl;
+            std::cout << "  PurchaseItem selector: 0x" << sel_purchase7 << std::endl;
 
             auto encode_create7 = [&](const std::string& hash_raw32, uint64_t price,
                                       uint64_t start_ms, uint64_t end_ms) -> std::string {
@@ -6581,8 +6581,12 @@ contract Exchange {
                 enc += info_data + info_padding;
                 return enc;
             };
-            auto encode_purchase7 = [&](const std::string& hash_raw32, uint64_t time_ms) -> std::string {
-                return sel_purchase7 + bytes32_hex7(hash_raw32) + uint256_hex7(time_ms);
+            auto encode_purchase7 = [&](const std::string& hash_raw32, uint64_t timestamp_ms) -> std::string {
+                std::string enc;
+                enc += sel_purchase7;
+                enc += bytes32_hex7(hash_raw32);
+                enc += uint256_hex7(timestamp_ms);
+                return enc;
             };
             auto make_hash7 = [&](uint32_t s, uint32_t ui, uint64_t round) -> std::string {
                 std::string seed(12, '\0');
@@ -6608,7 +6612,6 @@ contract Exchange {
             // Per-shard user lists built from already-verified checked_addrs + user_contract_indices
             // Re-derive same assignment: user i → contracts (i + ci) % nc7 for ci in [0, kContractsPerUser)
             std::atomic<uint64_t> create_ok7{0}, create_fail7{0};
-            std::atomic<uint64_t> purchase_ok7{0}, purchase_fail7{0};
             std::mutex call_log_mtx7;
 
             struct CallUser7 {
@@ -6814,10 +6817,13 @@ contract Exchange {
                           << create_confirmed7.load() << "/" << create_need7.load() << std::endl;
             }
 
-            // ── Phase 6b: PurchaseItem ──────────────────────────────────────
+            // ── Phase 6b: PurchaseItem ────────────────────────────────────────
+            // Each user purchases from their OWN contracts (same contracts they prefunded).
+            // Prepay key = contract + user.addr_hex, matching Phase 5 prefund.
             std::cout << "\n[Phase 6b] PurchaseItem x" << kPurchaseRounds7
                       << " per user per contract..." << std::endl;
             {
+                std::atomic<uint64_t> purchase_ok7{0}, purchase_fail7{0};
                 std::vector<std::thread> pt7;
                 for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
                     pt7.emplace_back([&, s]() {
@@ -6828,21 +6834,14 @@ contract Exchange {
                         uint32_t nu = (uint32_t)users.size();
                         if (nu == 0) return;
 
-                        // Buyer = user[(ui+1)%nu], purchases item created by user[ui]
-                        // Buyer's prepay key = seller_contract + buyer_addr
+                        // Fetch current prepay nonces (contract + user.addr_hex)
                         SethSDK psdk(ep.ip, ep.http_port);
-                        std::unordered_map<std::string, int64_t> buy_nonces;
+                        std::unordered_map<std::string, int64_t> prepay_nonces;
                         {
                             std::vector<std::string> keys;
-                            for (uint32_t ui = 0; ui < nu; ++ui) {
-                                uint32_t buyer_ui = (ui + 1) % nu;
-                                auto& buyer = users[buyer_ui];
-                                for (auto& c : users[ui].contract_addrs)
-                                    keys.push_back(c + buyer.addr_hex);
-                            }
-                            // dedup
-                            std::sort(keys.begin(), keys.end());
-                            keys.erase(std::unique(keys.begin(), keys.end()), keys.end());
+                            for (auto& u : users)
+                                for (auto& c : u.contract_addrs)
+                                    keys.push_back(c + u.addr_hex);
                             const uint32_t kBN = 300;
                             for (uint32_t off = 0; off < keys.size() && !global_stop; off += kBN) {
                                 uint32_t end = std::min(off + kBN, (uint32_t)keys.size());
@@ -6859,7 +6858,7 @@ contract Exchange {
                                             } catch (...) {}
                                         }
                                     }
-                                    buy_nonces[k] = n;
+                                    prepay_nonces[k] = n;
                                 }
                                 usleep(10000);
                             }
@@ -6867,28 +6866,25 @@ contract Exchange {
                         {
                             std::lock_guard<std::mutex> lk(call_log_mtx7);
                             std::cout << "  Shard " << s << ": fetched "
-                                      << buy_nonces.size() << " prepay nonces for PurchaseItem" << std::endl;
+                                      << prepay_nonces.size() << " prepay nonces for PurchaseItem" << std::endl;
                         }
 
                         uint64_t now_ms = (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
                             std::chrono::system_clock::now().time_since_epoch()).count();
 
                         for (uint32_t ui = 0; ui < nu && !global_stop; ++ui) {
-                            uint32_t buyer_ui = (ui + 1) % nu;
-                            auto& seller = users[ui];
-                            auto& buyer  = users[buyer_ui];
+                            auto& u = users[ui];
                             std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
-                            sec->SetPrivateKey(buyer.prikey_raw);
-                            for (uint32_t ci = 0; ci < (uint32_t)seller.contract_addrs.size() && !global_stop; ++ci) {
-                                std::string pkey = seller.contract_addrs[ci] + buyer.addr_hex;
-                                int64_t& n = buy_nonces[pkey];
+                            sec->SetPrivateKey(u.prikey_raw);
+                            for (uint32_t ci = 0; ci < (uint32_t)u.contract_addrs.size() && !global_stop; ++ci) {
+                                std::string pkey = u.contract_addrs[ci] + u.addr_hex;
+                                int64_t& n = prepay_nonces[pkey];
                                 for (uint32_t r = 0; r < kPurchaseRounds7 && !global_stop; ++r) {
-                                    // Purchase item created by seller for round r
-                                    std::string hash_raw = make_hash7(s, ui * (uint32_t)seller.contract_addrs.size() + ci, r % kCallRounds7);
+                                    std::string hash_raw = make_hash7(s, ui * (uint32_t)u.contract_addrs.size() + ci, r % kCallRounds7);
                                     std::string input = encode_purchase7(hash_raw, now_ms + r);
                                     auto tx = CreateTransactionWithAttr(sec, ++n,
-                                        common::Encode::HexEncode(buyer.prikey_raw),
-                                        common::Encode::HexDecode(seller.contract_addrs[ci]),
+                                        common::Encode::HexEncode(u.prikey_raw),
+                                        common::Encode::HexDecode(u.contract_addrs[ci]),
                                         "call", input, 1, 5000000, 1, (int32_t)s);
                                     if (tcp_enq7(tx, dest_ip, dest_tcp)) ++purchase_ok7;
                                     else { ++purchase_fail7; --n; }
@@ -6903,10 +6899,10 @@ contract Exchange {
                     });
                 }
                 for (auto& t : pt7) t.join();
+                tcp_drain7();
+                std::cout << "  PurchaseItem total: ok=" << purchase_ok7.load()
+                          << " fail=" << purchase_fail7.load() << std::endl;
             }
-            tcp_drain7();
-            std::cout << "  PurchaseItem total: ok=" << purchase_ok7.load()
-                      << " fail=" << purchase_fail7.load() << std::endl;
 
             // Verify PurchaseItem on-chain
             std::cout << "  Waiting 15s for PurchaseItem consensus..." << std::endl;
@@ -6920,18 +6916,16 @@ contract Exchange {
                     pvt7.emplace_back([&, s]() {
                         auto& ep = shard_endpoints[s];
                         auto& users = call_users7[s];
-                        uint32_t nu = (uint32_t)users.size();
-                        if (nu == 0) return;
+                        if (users.empty()) return;
                         SethSDK vsdk(ep.ip, ep.http_port);
 
+                        // Prepay key = contract + user.addr_hex (nonce advances by kCallRounds7 + kPurchaseRounds7)
                         struct VerEntry { std::string key; int64_t expected_nonce; };
                         std::vector<VerEntry> ver_list;
-                        for (uint32_t ui = 0; ui < nu; ++ui) {
-                            uint32_t buyer_ui = (ui + 1) % nu;
-                            auto& buyer = users[buyer_ui];
-                            for (auto& c : users[ui].contract_addrs)
-                                ver_list.push_back({c + buyer.addr_hex, (int64_t)kPurchaseRounds7});
-                        }
+                        for (auto& u : users)
+                            for (auto& c : u.contract_addrs)
+                                ver_list.push_back({c + u.addr_hex,
+                                                   (int64_t)(kCallRounds7 + kPurchaseRounds7)});
                         purchase_need7.fetch_add(ver_list.size());
 
                         std::vector<uint32_t> pending;
