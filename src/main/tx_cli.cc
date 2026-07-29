@@ -134,10 +134,10 @@ static transport::MessagePtr CreateTransactionWithAttr(
         if (key == "create_contract") {
             new_tx->set_step(pools::protobuf::kCreateContract);
             new_tx->set_contract_code(val);
-            new_tx->set_contract_prefund(1000000lu);
+            new_tx->set_contract_prefund(600000lu);
         } else if (key == "prefund") {
             new_tx->set_step(pools::protobuf::kContractGasPrefund);
-            new_tx->set_contract_prefund(1000000lu);
+            new_tx->set_contract_prefund(600000lu);
         } else if (key == "call") {
             new_tx->set_step(pools::protobuf::kContractExcute);
             new_tx->set_contract_input(common::Encode::HexDecode(val));
@@ -483,7 +483,7 @@ int tx_main(int argc, char** argv) {
             usleep(100000);  // Sleep 100ms to avoid busy-wait
             auto dur = common::TimeUtils::TimestampUs() - now_tm_us;
             if (dur >= 3000000lu) {
-                auto tps = all_count * 1000000lu / dur;
+                auto tps = all_count * 600000lu / dur;
                 std::cout << "tps: " << tps << std::endl;
                 now_tm_us = common::TimeUtils::TimestampUs();
                 all_count.exchange(0);
@@ -629,7 +629,7 @@ int InitPrefund(const std::string& contract_address) {
         }
         SethSDK client(dest_ip, dest_port);
         auto prikey = common::Encode::HexEncode(*iter);
-        auto res_json = client.setGasPrefund(prikey, contract_address, 1000000lu);
+        auto res_json = client.setGasPrefund(prikey, contract_address, 600000lu);
         if (res_json["status"] != 0) {
             std::cout << "set prefund failed: " << contract_address << ", " << prikey << ", " << res_json.dump() << std::endl;
             return -1;
