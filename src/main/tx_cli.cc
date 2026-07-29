@@ -6481,7 +6481,7 @@ contract Exchange {
                             }
                             // Batch-fetch nonces instead of individual fetchNonce calls
                             std::unordered_map<std::string, uint64_t> rs_nonces7;
-                            const uint32_t kResendNonceBatch = 300;
+                            const uint32_t kResendNonceBatch = 10000;
                             for (uint32_t off = 0; off < unique_hex7.size() && !global_stop; off += kResendNonceBatch) {
                                 uint32_t end = std::min(off + kResendNonceBatch, (uint32_t)unique_hex7.size());
                                 std::vector<std::string> batch(unique_hex7.begin() + off, unique_hex7.begin() + end);
@@ -6502,7 +6502,6 @@ contract Exchange {
                                         rs_nonces7[it->second] = (uint64_t)n;
                                     }
                                 }
-                                usleep(10000);
                             }
                             // Resend pending prefund txs using batch-fetched nonces
                             for (auto idx7 : pf_pending7) {
@@ -6520,11 +6519,12 @@ contract Exchange {
                                     "prefund", "", 0, 210000, 1, (int32_t)s);
                                 tcp_enq7(tx, dest_ip_rs, dest_tcp_rs);
                             }
-                            for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
-                            continue;
+                            // for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
+                            // continue;
                         }
-                        uint32_t wt7 = 10000;
-                        for (uint32_t w = 0; w < wt7 / 100 && !global_stop; ++w) usleep(100000);
+                        // uint32_t wt7 = 10000;
+                        // for (uint32_t w = 0; w < wt7 / 100 && !global_stop; ++w) usleep(100000);
+                        usleep(3000000);
                     }
                     total_pf_confirmed.fetch_add(pf_ok_shard);
                     std::lock_guard<std::mutex> lk(pf_log_mtx7);
