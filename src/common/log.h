@@ -77,11 +77,11 @@
     spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
 #endif
-// #define SETH_INFO(logfmt, ...)
+#define SETH_INFO(logfmt, ...)
 // #define SETH_WARN(logfmt, ...)
-#define SETH_INFO(logfmt, ...)  do {\
-    spdlog::info(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
-} while (0)
+// #define SETH_INFO(logfmt, ...)  do {\
+//     spdlog::info(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+// } while (0)
 
 #define SETH_WARN(logfmt, ...)  do {\
     spdlog::warn(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
