@@ -134,10 +134,10 @@ static transport::MessagePtr CreateTransactionWithAttr(
         if (key == "create_contract") {
             new_tx->set_step(pools::protobuf::kCreateContract);
             new_tx->set_contract_code(val);
-            new_tx->set_contract_prefund(600000lu);
+            new_tx->set_contract_prefund(6000000lu);
         } else if (key == "prefund") {
             new_tx->set_step(pools::protobuf::kContractGasPrefund);
-            new_tx->set_contract_prefund(600000lu);
+            new_tx->set_contract_prefund(6000000lu);
         } else if (key == "call") {
             new_tx->set_step(pools::protobuf::kContractExcute);
             new_tx->set_contract_input(common::Encode::HexDecode(val));
@@ -483,7 +483,7 @@ int tx_main(int argc, char** argv) {
             usleep(100000);  // Sleep 100ms to avoid busy-wait
             auto dur = common::TimeUtils::TimestampUs() - now_tm_us;
             if (dur >= 3000000lu) {
-                auto tps = all_count * 600000lu / dur;
+                auto tps = all_count * 6000000lu / dur;
                 std::cout << "tps: " << tps << std::endl;
                 now_tm_us = common::TimeUtils::TimestampUs();
                 all_count.exchange(0);
@@ -629,7 +629,7 @@ int InitPrefund(const std::string& contract_address) {
         }
         SethSDK client(dest_ip, dest_port);
         auto prikey = common::Encode::HexEncode(*iter);
-        auto res_json = client.setGasPrefund(prikey, contract_address, 600000lu);
+        auto res_json = client.setGasPrefund(prikey, contract_address, 6000000lu);
         if (res_json["status"] != 0) {
             std::cout << "set prefund failed: " << contract_address << ", " << prikey << ", " << res_json.dump() << std::endl;
             return -1;
@@ -5501,8 +5501,8 @@ contract Exchange {
     // ── Mode 7: Multi-Shard Account Creation with Per-Shard Verification ──
     // Creates N accounts on EACH consensus shard (3,4,5,6) via XXH64 routing.
     // Sends all txs from funder shard. Saves addresses to file. Verifies on each shard's node.
-    // Usage: txcli 7 <funder_shard> <ip> <port> [accounts_per_shard] [threads]
-    //   Per-shard verification nodes: argv[7..10] = ip3:port3 ip4:port4 ip5:port5 ip6:port6
+    // Usage: txcli 7 <funder_shard> <ip> <port> [accounts_per_shard] [threads] [call_rounds] [purchase_rounds]
+    //   Per-shard verification nodes: argv[9..12] = ip3:port3 ip4:port4 ip5:port5 ip6:port6
     if (argv[1][0] == '7') {
         setvbuf(stdout, NULL, _IONBF, 0);
         setvbuf(stderr, NULL, _IONBF, 0);
@@ -5511,6 +5511,8 @@ contract Exchange {
         uint16_t node_port = (argc >= 5) ? std::stoi(argv[4]) : 13001;
         uint32_t accounts_per_shard = (argc >= 6) ? std::stoi(argv[5]) : 10000;
         uint32_t num_threads = (argc >= 7) ? std::stoi(argv[6]) : 8;
+        uint32_t kCallRounds7  = (argc >= 8) ? std::stoul(argv[7]) : 10;
+        uint32_t kPurchaseRounds7 = (argc >= 9) ? std::stoul(argv[8]) : 10;
 
         // Per-shard verification endpoints (ip:http_port)
         struct ShardEndpoint { std::string ip; uint16_t http_port; };
@@ -5520,9 +5522,9 @@ contract Exchange {
     {5, {"192.168.26.172", 25001}},  // shard 5 查询端口
     {6, {"192.168.26.170", 26001}},  // shard 6 查询端口
 	};
-        // Override from argv[7..10] if provided: format "ip:port"
-        for (int i = 7; i < std::min(argc, 11); ++i) {
-            uint32_t shard_id = 3 + (i - 7);
+        // Override from argv[9..12] if provided: format "ip:port"
+        for (int i = 9; i < std::min(argc, 13); ++i) {
+            uint32_t shard_id = 3 + (i - 9);
             std::string arg(argv[i]);
             auto colon = arg.find(':');
             if (colon != std::string::npos) {
@@ -5543,6 +5545,8 @@ contract Exchange {
         std::cout << "Send node: " << node_ip << ":" << node_port << " (TCP)" << std::endl;
         std::cout << "Accounts per shard: " << accounts_per_shard << std::endl;
         std::cout << "Target shards: " << kConsensusBegin << "-" << kMaxShardId << std::endl;
+        std::cout << "CreateNewItem rounds: " << kCallRounds7 << std::endl;
+        std::cout << "PurchaseItem rounds:  " << kPurchaseRounds7 << std::endl;
         std::cout << "Verification endpoints:" << std::endl;
         for (auto& [sid, ep] : shard_endpoints) {
             std::cout << "  Shard " << sid << ": " << ep.ip << ":" << ep.http_port << std::endl;
@@ -6536,6 +6540,462 @@ contract Exchange {
             tcp_drain7();
             std::cout << "\n[Phase 5 Result] Total prefunds confirmed: "
                       << total_pf_confirmed.load() << "/" << total_pf_need.load() << std::endl;
+            // ── Phase 6: CreateNewItem + PurchaseItem stress test ─────────────
+            std::cout << "\n[Phase 6] Contract calls: CreateNewItem x" << kCallRounds7
+                      << " then PurchaseItem x" << kPurchaseRounds7
+                      << " (shards " << kConsensusBegin << "-" << kMaxShardId << " concurrent)" << std::endl;
+
+            // ABI selector helpers (same contract as mode 6)
+            auto pad32_hex7 = [](const std::string& hex) -> std::string {
+                if (hex.size() >= 64) return hex.substr(hex.size() - 64);
+                return std::string(64 - hex.size(), '0') + hex;
+            };
+            auto uint256_hex7 = [&](uint64_t v) -> std::string {
+                std::stringstream ss; ss << std::hex << v;
+                return pad32_hex7(ss.str());
+            };
+            auto bytes32_hex7 = [](const std::string& raw32) -> std::string {
+                return common::Encode::HexEncode(raw32);
+            };
+            const std::string sel_create7 = utils::keccak256Str(
+                "CreateNewItem(bytes32,bytes,uint256,uint256,uint256)").substr(0, 8);
+            const std::string sel_purchase7 = utils::keccak256Str(
+                "PurchaseItem(bytes32,uint256)").substr(0, 8);
+            std::cout << "  CreateNewItem selector: 0x" << sel_create7 << std::endl;
+            std::cout << "  PurchaseItem  selector: 0x" << sel_purchase7 << std::endl;
+
+            auto encode_create7 = [&](const std::string& hash_raw32, uint64_t price,
+                                      uint64_t start_ms, uint64_t end_ms) -> std::string {
+                std::string info_data = "696e666f";
+                uint64_t info_len = 4;
+                uint64_t info_padded_len = ((info_len + 31) / 32) * 32;
+                std::string info_padding((info_padded_len - info_len) * 2, '0');
+                std::string enc;
+                enc += sel_create7;
+                enc += bytes32_hex7(hash_raw32);
+                enc += uint256_hex7(5 * 32);
+                enc += uint256_hex7(price);
+                enc += uint256_hex7(start_ms);
+                enc += uint256_hex7(end_ms);
+                enc += uint256_hex7(info_len);
+                enc += info_data + info_padding;
+                return enc;
+            };
+            auto encode_purchase7 = [&](const std::string& hash_raw32, uint64_t time_ms) -> std::string {
+                return sel_purchase7 + bytes32_hex7(hash_raw32) + uint256_hex7(time_ms);
+            };
+            auto make_hash7 = [&](uint32_t s, uint32_t ui, uint64_t round) -> std::string {
+                std::string seed(12, '\0');
+                uint32_t key = s * 10000 + ui;
+                seed[0] = (char)((key >> 24) & 0xFF);
+                seed[1] = (char)((key >> 16) & 0xFF);
+                seed[2] = (char)((key >>  8) & 0xFF);
+                seed[3] = (char)( key        & 0xFF);
+                seed[4] = (char)((round >> 24) & 0xFF);
+                seed[5] = (char)((round >> 16) & 0xFF);
+                seed[6] = (char)((round >>  8) & 0xFF);
+                seed[7] = (char)( round        & 0xFF);
+                seed[8] = (char)((kCallRounds7 >> 24) & 0xFF);
+                seed[9] = (char)((kCallRounds7 >> 16) & 0xFF);
+                seed[10]= (char)((kCallRounds7 >>  8) & 0xFF);
+                seed[11]= (char)( kCallRounds7        & 0xFF);
+                std::string h = common::Encode::HexDecode(
+                    utils::keccak256Str(common::Encode::HexEncode(seed)));
+                h.resize(32);
+                return h;
+            };
+
+            // Per-shard user lists built from already-verified checked_addrs + user_contract_indices
+            // Re-derive same assignment: user i → contracts (i + ci) % nc7 for ci in [0, kContractsPerUser)
+            std::atomic<uint64_t> create_ok7{0}, create_fail7{0};
+            std::atomic<uint64_t> purchase_ok7{0}, purchase_fail7{0};
+            std::mutex call_log_mtx7;
+
+            struct CallUser7 {
+                std::string prikey_raw;
+                std::string addr_raw;
+                std::string addr_hex;
+                std::vector<std::string> contract_addrs;  // assigned contracts (up to 10)
+            };
+
+            // Build per-shard call user lists
+            std::map<uint32_t, std::vector<CallUser7>> call_users7;
+            for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+                std::vector<std::string> valid_c7;
+                for (uint32_t i = 0; i < kContractsPerShard7; ++i)
+                    if (contracts_confirmed7[s][i] && !contract_addrs7[s][i].empty())
+                        valid_c7.push_back(contract_addrs7[s][i]);
+                uint32_t nc = (uint32_t)valid_c7.size();
+                const uint32_t kCPU = std::min(10u, nc);
+                uint32_t uidx = 0;
+                for (uint32_t idx = 0; idx < shard_addrs[s].size(); ++idx) {
+                    if (!checked_addrs[s].count(shard_addrs[s][idx])) continue;
+                    CallUser7 cu;
+                    cu.prikey_raw = shard_prikeys[s][idx];
+                    cu.addr_raw   = shard_addrs[s][idx];
+                    cu.addr_hex   = common::Encode::HexEncode(cu.addr_raw);
+                    cu.contract_addrs.reserve(kCPU);
+                    for (uint32_t ci = 0; ci < kCPU; ++ci)
+                        cu.contract_addrs.push_back(valid_c7[(uidx + ci) % nc]);
+                    call_users7[s].push_back(std::move(cu));
+                    ++uidx;
+                }
+                std::cout << "  Shard " << s << ": " << call_users7[s].size()
+                          << " call users, " << nc << " contracts" << std::endl;
+            }
+
+            // ── Phase 6a: CreateNewItem ──────────────────────────────────────
+            std::cout << "\n[Phase 6a] CreateNewItem x" << kCallRounds7
+                      << " per user per contract..." << std::endl;
+            {
+                std::vector<std::thread> ct7;
+                for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+                    ct7.emplace_back([&, s]() {
+                        auto& ep = shard_endpoints[s];
+                        std::string dest_ip = ep.ip;
+                        uint16_t dest_tcp = (uint16_t)(ep.http_port - 10000);
+                        auto& users = call_users7[s];
+                        uint32_t nu = (uint32_t)users.size();
+                        if (nu == 0) return;
+
+                        // Fetch prepay nonces for each (user, contract) pair
+                        SethSDK csdk(ep.ip, ep.http_port);
+                        std::unordered_map<std::string, int64_t> prepay_nonces;
+                        {
+                            std::vector<std::string> keys;
+                            for (auto& u : users)
+                                for (auto& c : u.contract_addrs)
+                                    keys.push_back(c + u.addr_hex);
+                            const uint32_t kBN = 300;
+                            for (uint32_t off = 0; off < keys.size() && !global_stop; off += kBN) {
+                                uint32_t end = std::min(off + kBN, (uint32_t)keys.size());
+                                std::vector<std::string> batch(keys.begin() + off, keys.begin() + end);
+                                auto r = csdk.batchQueryAccounts(batch);
+                                for (auto& k : batch) {
+                                    int64_t n = 0;
+                                    if (r.contains("accounts") && r["accounts"].contains(k)) {
+                                        auto& acc = r["accounts"][k];
+                                        if (acc.contains("nonce")) {
+                                            try {
+                                                auto ns = acc["nonce"].get<std::string>();
+                                                std::from_chars(ns.data(), ns.data() + ns.size(), n);
+                                            } catch (...) {}
+                                        }
+                                    }
+                                    prepay_nonces[k] = n;
+                                }
+                                usleep(10000);
+                            }
+                        }
+                        {
+                            std::lock_guard<std::mutex> lk(call_log_mtx7);
+                            std::cout << "  Shard " << s << ": fetched "
+                                      << prepay_nonces.size() << " prepay nonces for CreateNewItem" << std::endl;
+                        }
+
+                        uint64_t now_ms = (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::system_clock::now().time_since_epoch()).count();
+
+                        for (uint32_t ui = 0; ui < nu && !global_stop; ++ui) {
+                            auto& u = users[ui];
+                            std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
+                            sec->SetPrivateKey(u.prikey_raw);
+                            for (uint32_t ci = 0; ci < (uint32_t)u.contract_addrs.size() && !global_stop; ++ci) {
+                                std::string pkey = u.contract_addrs[ci] + u.addr_hex;
+                                int64_t& n = prepay_nonces[pkey];
+                                for (uint32_t r = 0; r < kCallRounds7 && !global_stop; ++r) {
+                                    std::string hash_raw = make_hash7(s, ui * (uint32_t)u.contract_addrs.size() + ci, r);
+                                    std::string input = encode_create7(hash_raw, 1, 0, UINT64_MAX);
+                                    auto tx = CreateTransactionWithAttr(sec, ++n,
+                                        common::Encode::HexEncode(u.prikey_raw),
+                                        common::Encode::HexDecode(u.contract_addrs[ci]),
+                                        "call", input, 0, 5000000, 1, (int32_t)s);
+                                    if (tcp_enq7(tx, dest_ip, dest_tcp)) ++create_ok7;
+                                    else { ++create_fail7; --n; }
+                                }
+                            }
+                        }
+                        {
+                            std::lock_guard<std::mutex> lk(call_log_mtx7);
+                            std::cout << "  Shard " << s << ": CreateNewItem sent ok="
+                                      << create_ok7.load() << " fail=" << create_fail7.load() << std::endl;
+                        }
+                    });
+                }
+                for (auto& t : ct7) t.join();
+            }
+            tcp_drain7();
+            std::cout << "  CreateNewItem total: ok=" << create_ok7.load()
+                      << " fail=" << create_fail7.load() << std::endl;
+
+            // Verify CreateNewItem on-chain: query prepay accounts for updated nonces
+            std::cout << "  Waiting 15s for CreateNewItem consensus..." << std::endl;
+            for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
+
+            std::cout << "  Verifying CreateNewItem on-chain..." << std::endl;
+            {
+                std::atomic<uint64_t> create_confirmed7{0}, create_need7{0};
+                std::vector<std::thread> cvt7;
+                for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+                    cvt7.emplace_back([&, s]() {
+                        auto& ep = shard_endpoints[s];
+                        auto& users = call_users7[s];
+                        if (users.empty()) return;
+                        SethSDK vsdk(ep.ip, ep.http_port);
+
+                        // Build expected (prepay_key → expected_nonce) map
+                        struct VerEntry { std::string key; int64_t expected_nonce; };
+                        std::vector<VerEntry> ver_list;
+                        for (auto& u : users)
+                            for (uint32_t ci = 0; ci < (uint32_t)u.contract_addrs.size(); ++ci)
+                                ver_list.push_back({u.contract_addrs[ci] + u.addr_hex,
+                                                   (int64_t)kCallRounds7});
+                        create_need7.fetch_add(ver_list.size());
+
+                        std::vector<uint32_t> pending;
+                        for (uint32_t i = 0; i < ver_list.size(); ++i) pending.push_back(i);
+                        uint32_t confirmed = 0;
+                        auto t0 = std::chrono::steady_clock::now();
+                        const uint32_t kBN = 300;
+
+                        for (uint32_t rd = 0; !pending.empty() && !global_stop; ++rd) {
+                            auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                                std::chrono::steady_clock::now() - t0).count();
+                            if (elapsed >= 600) {
+                                std::lock_guard<std::mutex> lk(call_log_mtx7);
+                                std::cerr << "  Shard " << s << ": CreateNewItem verify timeout "
+                                          << confirmed << "/" << ver_list.size() << std::endl;
+                                break;
+                            }
+                            std::vector<uint32_t> next_pend;
+                            std::vector<std::string> ba; std::vector<uint32_t> bi;
+                            for (uint32_t p = 0; p < pending.size() && !global_stop; ++p) {
+                                ba.push_back(ver_list[pending[p]].key);
+                                bi.push_back(pending[p]);
+                                if (ba.size() >= kBN || p == pending.size() - 1) {
+                                    auto r = vsdk.batchQueryAccounts(ba);
+                                    for (uint32_t k = 0; k < bi.size(); ++k) {
+                                        bool ok = false;
+                                        if (r.contains("accounts") && r["accounts"].contains(ba[k])) {
+                                            auto& acc = r["accounts"][ba[k]];
+                                            if (acc.contains("nonce")) {
+                                                int64_t n = 0;
+                                                try {
+                                                    auto ns = acc["nonce"].get<std::string>();
+                                                    std::from_chars(ns.data(), ns.data() + ns.size(), n);
+                                                } catch (...) {}
+                                                ok = (n >= ver_list[bi[k]].expected_nonce);
+                                            }
+                                        }
+                                        if (ok) ++confirmed;
+                                        else next_pend.push_back(bi[k]);
+                                    }
+                                    ba.clear(); bi.clear();
+                                    usleep(10000);
+                                }
+                            }
+                            pending = std::move(next_pend);
+                            {
+                                std::lock_guard<std::mutex> lk(call_log_mtx7);
+                                std::cout << "  [shard" << s << " create round " << (rd+1)
+                                          << ", " << std::chrono::duration_cast<std::chrono::seconds>(
+                                              std::chrono::steady_clock::now() - t0).count()
+                                          << "s] " << confirmed << "/" << ver_list.size()
+                                          << " (" << pending.size() << " pending)" << std::endl;
+                            }
+                            if (!pending.empty())
+                                for (int w = 0; w < 100 && !global_stop; ++w) usleep(100000);
+                        }
+                        create_confirmed7.fetch_add(confirmed);
+                    });
+                }
+                for (auto& t : cvt7) t.join();
+                std::cout << "[Phase 6a Result] CreateNewItem confirmed: "
+                          << create_confirmed7.load() << "/" << create_need7.load() << std::endl;
+            }
+
+            // ── Phase 6b: PurchaseItem ──────────────────────────────────────
+            std::cout << "\n[Phase 6b] PurchaseItem x" << kPurchaseRounds7
+                      << " per user per contract..." << std::endl;
+            {
+                std::vector<std::thread> pt7;
+                for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+                    pt7.emplace_back([&, s]() {
+                        auto& ep = shard_endpoints[s];
+                        std::string dest_ip = ep.ip;
+                        uint16_t dest_tcp = (uint16_t)(ep.http_port - 10000);
+                        auto& users = call_users7[s];
+                        uint32_t nu = (uint32_t)users.size();
+                        if (nu == 0) return;
+
+                        // Buyer = user[(ui+1)%nu], purchases item created by user[ui]
+                        // Buyer's prepay key = seller_contract + buyer_addr
+                        SethSDK psdk(ep.ip, ep.http_port);
+                        std::unordered_map<std::string, int64_t> buy_nonces;
+                        {
+                            std::vector<std::string> keys;
+                            for (uint32_t ui = 0; ui < nu; ++ui) {
+                                uint32_t buyer_ui = (ui + 1) % nu;
+                                auto& buyer = users[buyer_ui];
+                                for (auto& c : users[ui].contract_addrs)
+                                    keys.push_back(c + buyer.addr_hex);
+                            }
+                            // dedup
+                            std::sort(keys.begin(), keys.end());
+                            keys.erase(std::unique(keys.begin(), keys.end()), keys.end());
+                            const uint32_t kBN = 300;
+                            for (uint32_t off = 0; off < keys.size() && !global_stop; off += kBN) {
+                                uint32_t end = std::min(off + kBN, (uint32_t)keys.size());
+                                std::vector<std::string> batch(keys.begin() + off, keys.begin() + end);
+                                auto r = psdk.batchQueryAccounts(batch);
+                                for (auto& k : batch) {
+                                    int64_t n = 0;
+                                    if (r.contains("accounts") && r["accounts"].contains(k)) {
+                                        auto& acc = r["accounts"][k];
+                                        if (acc.contains("nonce")) {
+                                            try {
+                                                auto ns = acc["nonce"].get<std::string>();
+                                                std::from_chars(ns.data(), ns.data() + ns.size(), n);
+                                            } catch (...) {}
+                                        }
+                                    }
+                                    buy_nonces[k] = n;
+                                }
+                                usleep(10000);
+                            }
+                        }
+                        {
+                            std::lock_guard<std::mutex> lk(call_log_mtx7);
+                            std::cout << "  Shard " << s << ": fetched "
+                                      << buy_nonces.size() << " prepay nonces for PurchaseItem" << std::endl;
+                        }
+
+                        uint64_t now_ms = (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::system_clock::now().time_since_epoch()).count();
+
+                        for (uint32_t ui = 0; ui < nu && !global_stop; ++ui) {
+                            uint32_t buyer_ui = (ui + 1) % nu;
+                            auto& seller = users[ui];
+                            auto& buyer  = users[buyer_ui];
+                            std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
+                            sec->SetPrivateKey(buyer.prikey_raw);
+                            for (uint32_t ci = 0; ci < (uint32_t)seller.contract_addrs.size() && !global_stop; ++ci) {
+                                std::string pkey = seller.contract_addrs[ci] + buyer.addr_hex;
+                                int64_t& n = buy_nonces[pkey];
+                                for (uint32_t r = 0; r < kPurchaseRounds7 && !global_stop; ++r) {
+                                    // Purchase item created by seller for round r
+                                    std::string hash_raw = make_hash7(s, ui * (uint32_t)seller.contract_addrs.size() + ci, r % kCallRounds7);
+                                    std::string input = encode_purchase7(hash_raw, now_ms + r);
+                                    auto tx = CreateTransactionWithAttr(sec, ++n,
+                                        common::Encode::HexEncode(buyer.prikey_raw),
+                                        common::Encode::HexDecode(seller.contract_addrs[ci]),
+                                        "call", input, 1, 5000000, 1, (int32_t)s);
+                                    if (tcp_enq7(tx, dest_ip, dest_tcp)) ++purchase_ok7;
+                                    else { ++purchase_fail7; --n; }
+                                }
+                            }
+                        }
+                        {
+                            std::lock_guard<std::mutex> lk(call_log_mtx7);
+                            std::cout << "  Shard " << s << ": PurchaseItem sent ok="
+                                      << purchase_ok7.load() << " fail=" << purchase_fail7.load() << std::endl;
+                        }
+                    });
+                }
+                for (auto& t : pt7) t.join();
+            }
+            tcp_drain7();
+            std::cout << "  PurchaseItem total: ok=" << purchase_ok7.load()
+                      << " fail=" << purchase_fail7.load() << std::endl;
+
+            // Verify PurchaseItem on-chain
+            std::cout << "  Waiting 15s for PurchaseItem consensus..." << std::endl;
+            for (int w = 0; w < 150 && !global_stop; ++w) usleep(100000);
+
+            std::cout << "  Verifying PurchaseItem on-chain..." << std::endl;
+            {
+                std::atomic<uint64_t> purchase_confirmed7{0}, purchase_need7{0};
+                std::vector<std::thread> pvt7;
+                for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
+                    pvt7.emplace_back([&, s]() {
+                        auto& ep = shard_endpoints[s];
+                        auto& users = call_users7[s];
+                        uint32_t nu = (uint32_t)users.size();
+                        if (nu == 0) return;
+                        SethSDK vsdk(ep.ip, ep.http_port);
+
+                        struct VerEntry { std::string key; int64_t expected_nonce; };
+                        std::vector<VerEntry> ver_list;
+                        for (uint32_t ui = 0; ui < nu; ++ui) {
+                            uint32_t buyer_ui = (ui + 1) % nu;
+                            auto& buyer = users[buyer_ui];
+                            for (auto& c : users[ui].contract_addrs)
+                                ver_list.push_back({c + buyer.addr_hex, (int64_t)kPurchaseRounds7});
+                        }
+                        purchase_need7.fetch_add(ver_list.size());
+
+                        std::vector<uint32_t> pending;
+                        for (uint32_t i = 0; i < ver_list.size(); ++i) pending.push_back(i);
+                        uint32_t confirmed = 0;
+                        auto t0 = std::chrono::steady_clock::now();
+                        const uint32_t kBN = 300;
+
+                        for (uint32_t rd = 0; !pending.empty() && !global_stop; ++rd) {
+                            auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                                std::chrono::steady_clock::now() - t0).count();
+                            if (elapsed >= 600) {
+                                std::lock_guard<std::mutex> lk(call_log_mtx7);
+                                std::cerr << "  Shard " << s << ": PurchaseItem verify timeout "
+                                          << confirmed << "/" << ver_list.size() << std::endl;
+                                break;
+                            }
+                            std::vector<uint32_t> next_pend;
+                            std::vector<std::string> ba; std::vector<uint32_t> bi;
+                            for (uint32_t p = 0; p < pending.size() && !global_stop; ++p) {
+                                ba.push_back(ver_list[pending[p]].key);
+                                bi.push_back(pending[p]);
+                                if (ba.size() >= kBN || p == pending.size() - 1) {
+                                    auto r = vsdk.batchQueryAccounts(ba);
+                                    for (uint32_t k = 0; k < bi.size(); ++k) {
+                                        bool ok = false;
+                                        if (r.contains("accounts") && r["accounts"].contains(ba[k])) {
+                                            auto& acc = r["accounts"][ba[k]];
+                                            if (acc.contains("nonce")) {
+                                                int64_t n = 0;
+                                                try {
+                                                    auto ns = acc["nonce"].get<std::string>();
+                                                    std::from_chars(ns.data(), ns.data() + ns.size(), n);
+                                                } catch (...) {}
+                                                ok = (n >= ver_list[bi[k]].expected_nonce);
+                                            }
+                                        }
+                                        if (ok) ++confirmed;
+                                        else next_pend.push_back(bi[k]);
+                                    }
+                                    ba.clear(); bi.clear();
+                                    usleep(10000);
+                                }
+                            }
+                            pending = std::move(next_pend);
+                            {
+                                std::lock_guard<std::mutex> lk(call_log_mtx7);
+                                std::cout << "  [shard" << s << " purchase round " << (rd+1)
+                                          << ", " << std::chrono::duration_cast<std::chrono::seconds>(
+                                              std::chrono::steady_clock::now() - t0).count()
+                                          << "s] " << confirmed << "/" << ver_list.size()
+                                          << " (" << pending.size() << " pending)" << std::endl;
+                            }
+                            if (!pending.empty())
+                                for (int w = 0; w < 100 && !global_stop; ++w) usleep(100000);
+                        }
+                        purchase_confirmed7.fetch_add(confirmed);
+                    });
+                }
+                for (auto& t : pvt7) t.join();
+                std::cout << "[Phase 6b Result] PurchaseItem confirmed: "
+                          << purchase_confirmed7.load() << "/" << purchase_need7.load() << std::endl;
+            }
+
         }  // end if (compiled7 ok)
 
         std::cout << "\n=== Mode 7 Complete ===" << std::endl;
