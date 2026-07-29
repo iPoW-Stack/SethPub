@@ -834,7 +834,7 @@ pools::TxItemPtr BlockManager::GetToTx(
         return nullptr;
     }
 
-    static const uint64_t kGetToTxCooldownMs = 10000lu;
+    static const uint64_t kGetToTxCooldownMs = 1000lu;
     pools::protobuf::ShardToTxItem heights;
     if (heights_str.empty()) {
         auto cur_time = common::TimeUtils::TimestampMs();
