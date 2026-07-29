@@ -496,7 +496,7 @@ public:
         // Normal (40-char): 500 × 41 = ~20KB → use 300
         // Prepayment (80-char): 50 × 81 = ~4KB → safe
         size_t avg_addr_len = addresses.empty() ? 40 : addresses[0].size();
-        const size_t kBatchSize = (avg_addr_len > 50) ? 100 : 300;
+        const size_t kBatchSize = (avg_addr_len > 50) ? 1000 : 3000;
         json merged;
         merged["status"] = 0;
         merged["msg"] = "ok";
@@ -550,6 +550,10 @@ public:
                 if (batch_res.contains("not_found")) {
                     for (auto& addr : batch_res["not_found"]) {
                         merged["not_found"].push_back(addr);
+                    }
+
+                    if (!batch_res["not_found"].empty()) {
+                        break;
                     }
                 }
             } catch (std::exception& e) {

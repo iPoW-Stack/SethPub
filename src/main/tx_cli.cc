@@ -6400,7 +6400,7 @@ contract Exchange {
                     for (uint32_t rd = 0; !pf_pending7.empty() && !global_stop; ++rd) {
                         auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
                             std::chrono::steady_clock::now() - pf_t07).count();
-                        if (elapsed >= 600) {
+                        if (elapsed >= 6000) {
                             std::lock_guard<std::mutex> lk(pf_log_mtx7);
                             std::cerr << "  Shard " << s << ": prefund verify timeout, "
                                       << pf_ok_shard << "/" << pf_ver7.size() << " confirmed" << std::endl;
@@ -6424,7 +6424,7 @@ contract Exchange {
                                     }
                                 }
                                 ba7.clear(); bi7.clear();
-                                usleep(10000);
+                                usleep(3000000);
                             }
                         }
                         pf_pending7 = std::move(next_pending7);
@@ -6439,7 +6439,7 @@ contract Exchange {
                         }
                         if (pf_pending7.empty()) break;
 
-                        if (rok7 == 0 && pf_resend7 < 3) {
+                        if (rok7 == 0) {
                             ++pf_resend7;
                             {
                                 std::lock_guard<std::mutex> lk(pf_log_mtx7);
