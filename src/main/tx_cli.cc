@@ -5740,7 +5740,7 @@ contract Exchange {
                 auto tx_msg_ptr = CreateTransactionWithAttr(
                     funder_sec, ++nonce, funder_prikey,
                     shard_addrs[s][i], "", "",
-                    1000000000ULL, 210000, 1, funder_shard);
+                    2000000000ULL, 210000, 1, funder_shard);
 
                 if (tx_msg_ptr && transport::TcpTransport::Instance()->Send(
                         global_chain_node_ip, node_port, tx_msg_ptr->header) == 0) {
