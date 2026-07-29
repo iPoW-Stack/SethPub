@@ -6485,6 +6485,7 @@ contract Exchange {
                                         rs_nonces7[it->second] = (uint64_t)n;
                                     }
                                 }
+                                usleep(10000);
                             }
                             // Resend pending prefund txs using batch-fetched nonces
                             for (auto idx7 : pf_pending7) {
