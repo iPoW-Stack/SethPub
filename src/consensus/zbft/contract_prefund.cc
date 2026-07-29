@@ -99,7 +99,7 @@ int ContractPrefund::HandleTx(
         ProtobufToJson(*(acc_balance_map[from])).c_str());
     block_tx.set_balance(from_balance);
     block_tx.set_gas_used(gas_used);
-    SETH_INFO("set contract prefund called: %d, from: %s, to: %s, amount: %lu, balance: %lu",
+    SETH_ERROR("set contract prefund called: %d, from: %s, to: %s, amount: %lu, balance: %lu",
         block_tx.status(),
         common::Encode::HexEncode(block_tx.from()).c_str(),
         common::Encode::HexEncode(block_tx.to()).c_str(),
