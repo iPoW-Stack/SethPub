@@ -6207,12 +6207,22 @@ contract Exchange {
 
                     uint32_t nu7 = (uint32_t)users7.size();
                     uint32_t nc7 = (uint32_t)valid_contracts7.size();
-                    uint64_t total_pf7 = (uint64_t)nu7 * nc7;
+                    const uint32_t kContractsPerUser = std::min(10u, nc7);
+                    uint64_t total_pf7 = (uint64_t)nu7 * kContractsPerUser;
                     shard_pf_total7[s].store(total_pf7);
                     {
                         std::lock_guard<std::mutex> lk(pf_log_mtx7);
-                        std::cout << "  Shard " << s << ": " << nu7 << " users × " << nc7
-                                  << " contracts = " << total_pf7 << " prefund ops" << std::endl;
+                        std::cout << "  Shard " << s << ": " << nu7 << " users × " << kContractsPerUser
+                                  << " contracts (of " << nc7 << ") = " << total_pf7 << " prefund ops" << std::endl;
+                    }
+
+                    // Build per-user contract assignment (round-robin for load balance)
+                    std::vector<std::vector<uint32_t>> user_contract_indices(nu7);
+                    for (uint32_t ui = 0; ui < nu7; ++ui) {
+                        user_contract_indices[ui].reserve(kContractsPerUser);
+                        for (uint32_t ci = 0; ci < kContractsPerUser; ++ci) {
+                            user_contract_indices[ui].push_back((ui + ci) % nc7);
+                        }
                     }
 
                     // Batch-fetch nonces for all users on this shard
@@ -6284,12 +6294,12 @@ contract Exchange {
                                 std::string pk_hex = common::Encode::HexEncode(u.prikey_raw);
                                 auto nit = user_nonces7.find(u.addr_raw);
                                 uint64_t nonce7 = (nit != user_nonces7.end()) ? nit->second : 0;
-                                for (auto& caddr : valid_contracts7) {
+                                for (auto ci : user_contract_indices[ui]) {
                                     if (global_stop) break;
                                     uint64_t next_nonce = ++nonce7;
                                     auto tx = CreateTransactionWithAttr(
                                         sec, next_nonce, pk_hex,
-                                        common::Encode::HexDecode(caddr),
+                                        common::Encode::HexDecode(valid_contracts7[ci]),
                                         "prefund", "", 0, 210000, 1, (int32_t)s);
                                     if (tcp_enq7(tx, dest_ip7, dest_tcp7)) {
                                         ++pf_ok7;
@@ -6370,18 +6380,25 @@ contract Exchange {
                             valid_contracts7v.push_back(contract_addrs7[s][i]);
                     if (valid_contracts7v.empty()) return;
 
+                    uint32_t nc7v = (uint32_t)valid_contracts7v.size();
+                    const uint32_t kVerContractsPerUser = std::min(10u, nc7v);
+
                     struct PfVerEntry7 {
                         std::string prepay_key;
                         std::string user_prikey_raw;
                         std::string contract_addr;
                     };
                     std::vector<PfVerEntry7> pf_ver7;
-                    pf_ver7.reserve(checked_addrs[s].size() * valid_contracts7v.size());
+                    uint32_t ver_user_idx = 0;
                     for (uint32_t idx = 0; idx < shard_addrs[s].size(); ++idx) {
                         if (!checked_addrs[s].count(shard_addrs[s][idx])) continue;
                         std::string user_hex = common::Encode::HexEncode(shard_addrs[s][idx]);
-                        for (auto& caddr : valid_contracts7v)
-                            pf_ver7.push_back({caddr + user_hex, shard_prikeys[s][idx], caddr});
+                        for (uint32_t ci = 0; ci < kVerContractsPerUser; ++ci) {
+                            uint32_t contract_idx = (ver_user_idx + ci) % nc7v;
+                            pf_ver7.push_back({valid_contracts7v[contract_idx] + user_hex,
+                                               shard_prikeys[s][idx], valid_contracts7v[contract_idx]});
+                        }
+                        ++ver_user_idx;
                     }
                     total_pf_need.fetch_add(pf_ver7.size());
 
