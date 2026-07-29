@@ -6441,7 +6441,7 @@ contract Exchange {
                                     }
                                 }
                                 ba7.clear(); bi7.clear();
-                                usleep(3000000);
+                                usleep(100000);
                             }
                         }
                         pf_pending7 = std::move(next_pending7);
