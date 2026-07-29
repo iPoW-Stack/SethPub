@@ -68,7 +68,8 @@ int ContractPrefund::HandleTx(
             } else {
                 from_balance -= gas_used * block_tx.gas_price();
                 block_tx.set_status(consensus::kConsensusAccountBalanceError);
-                SETH_ERROR("leader balance error: %llu, %llu", from_balance, dec_amount);
+                SETH_ERROR("%s leader balance error: %llu, %llu", 
+                    common::Encode::HexEncode(from).c_str(), from_balance, dec_amount);
             }
         } else {
             from_balance = 0;
@@ -98,7 +99,7 @@ int ContractPrefund::HandleTx(
         ProtobufToJson(*(acc_balance_map[from])).c_str());
     block_tx.set_balance(from_balance);
     block_tx.set_gas_used(gas_used);
-    SETH_DEBUG("set contract prefund called: %d, from: %s, to: %s, amount: %lu, balance: %lu",
+    SETH_INFO("set contract prefund called: %d, from: %s, to: %s, amount: %lu, balance: %lu",
         block_tx.status(),
         common::Encode::HexEncode(block_tx.from()).c_str(),
         common::Encode::HexEncode(block_tx.to()).c_str(),
