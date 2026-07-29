@@ -6699,6 +6699,9 @@ contract Exchange {
                         uint64_t now_ms = (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
                             std::chrono::system_clock::now().time_since_epoch()).count();
 
+                        constexpr uint32_t kCreateTps7 = 30000;
+                        uint64_t create_sent7 = 0;
+                        auto create_t0_7 = std::chrono::steady_clock::now();
                         for (uint32_t ui = 0; ui < nu && !global_stop; ++ui) {
                             auto& u = users[ui];
                             std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
@@ -6715,6 +6718,13 @@ contract Exchange {
                                         "call", input, 0, 5000000, 1, (int32_t)s);
                                     if (tcp_enq7(tx, dest_ip, dest_tcp)) ++create_ok7;
                                     else { ++create_fail7; --n; }
+                                    if (++create_sent7 % 200 == 0) {
+                                        double elapsed = std::chrono::duration<double>(
+                                            std::chrono::steady_clock::now() - create_t0_7).count();
+                                        double expected = (double)create_sent7 / kCreateTps7;
+                                        if (elapsed < expected)
+                                            usleep((uint32_t)((expected - elapsed) * 1e6));
+                                    }
                                 }
                             }
                         }
@@ -6872,6 +6882,9 @@ contract Exchange {
                         uint64_t now_ms = (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
                             std::chrono::system_clock::now().time_since_epoch()).count();
 
+                        constexpr uint32_t kPurchaseTps7 = 30000;
+                        uint64_t purchase_sent7 = 0;
+                        auto purchase_t0_7 = std::chrono::steady_clock::now();
                         for (uint32_t ui = 0; ui < nu && !global_stop; ++ui) {
                             auto& u = users[ui];
                             std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
@@ -6888,6 +6901,13 @@ contract Exchange {
                                         "call", input, 1, 5000000, 1, (int32_t)s);
                                     if (tcp_enq7(tx, dest_ip, dest_tcp)) ++purchase_ok7;
                                     else { ++purchase_fail7; --n; }
+                                    if (++purchase_sent7 % 200 == 0) {
+                                        double elapsed = std::chrono::duration<double>(
+                                            std::chrono::steady_clock::now() - purchase_t0_7).count();
+                                        double expected = (double)purchase_sent7 / kPurchaseTps7;
+                                        if (elapsed < expected)
+                                            usleep((uint32_t)((expected - elapsed) * 1e6));
+                                    }
                                 }
                             }
                         }
