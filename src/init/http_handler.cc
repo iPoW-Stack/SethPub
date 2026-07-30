@@ -1202,7 +1202,7 @@ static void BatchQueryAccounts(const UWSRequest& req, UWSResponse& http_res) {
         details += " | ... +" + std::to_string(accounts_json.size() - 20) + " more";
     }
 
-    SETH_DEBUG("batch_query_accounts: requested=%u found=%u not_found=%u "
+    SETH_ERROR("batch_query_accounts: requested=%u found=%u not_found=%u "
         "prefix_db=%u acc_mgr=%u resp_bytes=%zu details=[%s]",
         addrs_splits.Count(),
         (uint32_t)accounts_json.size(),
