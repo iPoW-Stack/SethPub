@@ -6655,8 +6655,8 @@ contract Exchange {
                 for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
                     ct7.emplace_back([&, s]() {
                         auto& ep = shard_endpoints[s];
-                        std::string dest_ip = ep.ip;
-                        uint16_t dest_tcp = (uint16_t)(ep.http_port - 10000);
+                        std::string fallback_ip = ep.ip;
+                        uint16_t fallback_tcp = (uint16_t)(ep.http_port - 10000);
                         auto& users = call_users7[s];
                         uint32_t nu = (uint32_t)users.size();
                         if (nu == 0) return;
@@ -6696,6 +6696,28 @@ contract Exchange {
                                       << prepay_nonces.size() << " prepay nonces for CreateNewItem" << std::endl;
                         }
 
+                        // Fetch leaders and build contract→dest cache
+                        std::unordered_map<uint32_t, SethSDK::LeaderInfo> leader_map7;
+                        uint32_t leader_cnt7 = 0;
+                        csdk.fetchLeaders(leader_map7, leader_cnt7);
+                        std::unordered_map<std::string, std::pair<std::string, uint16_t>> contract_dest7;
+                        for (auto& u : users) {
+                            for (auto& c : u.contract_addrs) {
+                                if (contract_dest7.count(c)) continue;
+                                uint32_t pidx = common::GetAddressPoolIndex(common::Encode::HexDecode(c));
+                                auto lit = leader_map7.find(pidx);
+                                if (lit != leader_map7.end())
+                                    contract_dest7[c] = {lit->second.ip, lit->second.port};
+                                else
+                                    contract_dest7[c] = {fallback_ip, fallback_tcp};
+                            }
+                        }
+                        {
+                            std::lock_guard<std::mutex> lk(call_log_mtx7);
+                            std::cout << "  Shard " << s << ": leader routing " << leader_cnt7
+                                      << " pools for CreateNewItem" << std::endl;
+                        }
+
                         uint64_t now_ms = (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
                             std::chrono::system_clock::now().time_since_epoch()).count();
 
@@ -6710,6 +6732,7 @@ contract Exchange {
                             for (uint32_t ci = 0; ci < (uint32_t)u.contract_addrs.size() && !global_stop; ++ci) {
                                 std::string pkey = u.contract_addrs[ci] + u.addr_hex;
                                 int64_t& n = prepay_nonces[pkey];
+                                auto& dest7 = contract_dest7[u.contract_addrs[ci]];
                                 for (uint32_t r = 0; r < kCallRounds7 && !global_stop; ++r) {
                                     std::string hash_raw = make_hash7(s, ui * (uint32_t)u.contract_addrs.size() + ci, r);
                                     std::string input = encode_create7(hash_raw, 1, 0, UINT64_MAX);
@@ -6717,7 +6740,7 @@ contract Exchange {
                                         common::Encode::HexEncode(u.prikey_raw),
                                         common::Encode::HexDecode(u.contract_addrs[ci]),
                                         "call", input, 0, 5000000, 1, (int32_t)s);
-                                    if (tcp_enq7(tx, dest_ip, dest_tcp)) ++create_ok7;
+                                    if (tcp_enq7(tx, dest7.first, dest7.second)) ++create_ok7;
                                     else { ++create_fail7; --n; }
                                     if (++create_sent7 % 200 == 0) {
                                         auto now7 = std::chrono::steady_clock::now();
@@ -6850,8 +6873,7 @@ contract Exchange {
                 for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
                     pt7.emplace_back([&, s]() {
                         auto& ep = shard_endpoints[s];
-                        std::string dest_ip = ep.ip;
-                        uint16_t dest_tcp = (uint16_t)(ep.http_port - 10000);
+                        uint16_t fallback_tcp_p = (uint16_t)(ep.http_port - 10000);
                         auto& users = call_users7[s];
                         uint32_t nu = (uint32_t)users.size();
                         if (nu == 0) return;
@@ -6891,6 +6913,28 @@ contract Exchange {
                                       << prepay_nonces.size() << " prepay nonces for PurchaseItem" << std::endl;
                         }
 
+                        // Fetch leaders and build contract→dest cache
+                        std::unordered_map<uint32_t, SethSDK::LeaderInfo> pleader_map7;
+                        uint32_t pleader_cnt7 = 0;
+                        psdk.fetchLeaders(pleader_map7, pleader_cnt7);
+                        std::unordered_map<std::string, std::pair<std::string, uint16_t>> pcontract_dest7;
+                        for (auto& u : users) {
+                            for (auto& c : u.contract_addrs) {
+                                if (pcontract_dest7.count(c)) continue;
+                                uint32_t pidx = common::GetAddressPoolIndex(common::Encode::HexDecode(c));
+                                auto lit = pleader_map7.find(pidx);
+                                if (lit != pleader_map7.end())
+                                    pcontract_dest7[c] = {lit->second.ip, lit->second.port};
+                                else
+                                    pcontract_dest7[c] = {ep.ip, fallback_tcp_p};
+                            }
+                        }
+                        {
+                            std::lock_guard<std::mutex> lk(call_log_mtx7);
+                            std::cout << "  Shard " << s << ": leader routing " << pleader_cnt7
+                                      << " pools for PurchaseItem" << std::endl;
+                        }
+
                         uint64_t now_ms = (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
                             std::chrono::system_clock::now().time_since_epoch()).count();
 
@@ -6905,6 +6949,7 @@ contract Exchange {
                             for (uint32_t ci = 0; ci < (uint32_t)u.contract_addrs.size() && !global_stop; ++ci) {
                                 std::string pkey = u.contract_addrs[ci] + u.addr_hex;
                                 int64_t& n = prepay_nonces[pkey];
+                                auto& pdest7 = pcontract_dest7[u.contract_addrs[ci]];
                                 for (uint32_t r = 0; r < kPurchaseRounds7 && !global_stop; ++r) {
                                     std::string hash_raw = make_hash7(s, ui * (uint32_t)u.contract_addrs.size() + ci, r % kCallRounds7);
                                     std::string input = encode_purchase7(hash_raw, now_ms + r);
@@ -6912,7 +6957,7 @@ contract Exchange {
                                         common::Encode::HexEncode(u.prikey_raw),
                                         common::Encode::HexDecode(u.contract_addrs[ci]),
                                         "call", input, 1, 5000000, 1, (int32_t)s);
-                                    if (tcp_enq7(tx, dest_ip, dest_tcp)) ++purchase_ok7;
+                                    if (tcp_enq7(tx, pdest7.first, pdest7.second)) ++purchase_ok7;
                                     else { ++purchase_fail7; --n; }
                                     if (++purchase_sent7 % 200 == 0) {
                                         auto now7 = std::chrono::steady_clock::now();
