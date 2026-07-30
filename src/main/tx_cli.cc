@@ -6702,6 +6702,7 @@ contract Exchange {
                         constexpr uint32_t kCreateTps7 = 30000;
                         uint64_t create_sent7 = 0;
                         auto create_t0_7 = std::chrono::steady_clock::now();
+                        auto create_tps_print7 = create_t0_7;
                         for (uint32_t ui = 0; ui < nu && !global_stop; ++ui) {
                             auto& u = users[ui];
                             std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
@@ -6719,19 +6720,30 @@ contract Exchange {
                                     if (tcp_enq7(tx, dest_ip, dest_tcp)) ++create_ok7;
                                     else { ++create_fail7; --n; }
                                     if (++create_sent7 % 200 == 0) {
-                                        double elapsed = std::chrono::duration<double>(
-                                            std::chrono::steady_clock::now() - create_t0_7).count();
+                                        auto now7 = std::chrono::steady_clock::now();
+                                        double elapsed = std::chrono::duration<double>(now7 - create_t0_7).count();
                                         double expected = (double)create_sent7 / kCreateTps7;
                                         if (elapsed < expected)
                                             usleep((uint32_t)((expected - elapsed) * 1e6));
+                                        double since_print = std::chrono::duration<double>(now7 - create_tps_print7).count();
+                                        if (since_print >= 1.0) {
+                                            double actual_tps = elapsed > 0 ? create_sent7 / elapsed : 0;
+                                            std::lock_guard<std::mutex> lk(call_log_mtx7);
+                                            std::cout << "  [CreateNewItem shard" << s << "] sent=" << create_sent7
+                                                      << " tps=" << (uint32_t)actual_tps << std::endl;
+                                            create_tps_print7 = now7;
+                                        }
                                     }
                                 }
                             }
                         }
                         {
                             std::lock_guard<std::mutex> lk(call_log_mtx7);
+                            double total_elapsed = std::chrono::duration<double>(
+                                std::chrono::steady_clock::now() - create_t0_7).count();
                             std::cout << "  Shard " << s << ": CreateNewItem sent ok="
-                                      << create_ok7.load() << " fail=" << create_fail7.load() << std::endl;
+                                      << create_ok7.load() << " fail=" << create_fail7.load()
+                                      << " avg_tps=" << (uint32_t)(create_sent7 / std::max(total_elapsed, 0.001)) << std::endl;
                         }
                     });
                 }
@@ -6885,6 +6897,7 @@ contract Exchange {
                         constexpr uint32_t kPurchaseTps7 = 30000;
                         uint64_t purchase_sent7 = 0;
                         auto purchase_t0_7 = std::chrono::steady_clock::now();
+                        auto purchase_tps_print7 = purchase_t0_7;
                         for (uint32_t ui = 0; ui < nu && !global_stop; ++ui) {
                             auto& u = users[ui];
                             std::shared_ptr<security::Security> sec = std::make_shared<security::Ecdsa>();
@@ -6902,19 +6915,30 @@ contract Exchange {
                                     if (tcp_enq7(tx, dest_ip, dest_tcp)) ++purchase_ok7;
                                     else { ++purchase_fail7; --n; }
                                     if (++purchase_sent7 % 200 == 0) {
-                                        double elapsed = std::chrono::duration<double>(
-                                            std::chrono::steady_clock::now() - purchase_t0_7).count();
+                                        auto now7 = std::chrono::steady_clock::now();
+                                        double elapsed = std::chrono::duration<double>(now7 - purchase_t0_7).count();
                                         double expected = (double)purchase_sent7 / kPurchaseTps7;
                                         if (elapsed < expected)
                                             usleep((uint32_t)((expected - elapsed) * 1e6));
+                                        double since_print = std::chrono::duration<double>(now7 - purchase_tps_print7).count();
+                                        if (since_print >= 1.0) {
+                                            double actual_tps = elapsed > 0 ? purchase_sent7 / elapsed : 0;
+                                            std::lock_guard<std::mutex> lk(call_log_mtx7);
+                                            std::cout << "  [PurchaseItem shard" << s << "] sent=" << purchase_sent7
+                                                      << " tps=" << (uint32_t)actual_tps << std::endl;
+                                            purchase_tps_print7 = now7;
+                                        }
                                     }
                                 }
                             }
                         }
                         {
                             std::lock_guard<std::mutex> lk(call_log_mtx7);
+                            double total_elapsed = std::chrono::duration<double>(
+                                std::chrono::steady_clock::now() - purchase_t0_7).count();
                             std::cout << "  Shard " << s << ": PurchaseItem sent ok="
-                                      << purchase_ok7.load() << " fail=" << purchase_fail7.load() << std::endl;
+                                      << purchase_ok7.load() << " fail=" << purchase_fail7.load()
+                                      << " avg_tps=" << (uint32_t)(purchase_sent7 / std::max(total_elapsed, 0.001)) << std::endl;
                         }
                     });
                 }
