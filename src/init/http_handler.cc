@@ -1220,7 +1220,7 @@ static void BatchQueryAccounts(const UWSRequest& req, UWSResponse& http_res) {
         if (not_found_json.size() > 5) {
             nf_list += ",... +" + std::to_string(not_found_json.size() - 5) + " more";
         }
-        SETH_DEBUG("batch_query not_found addrs: [%s]", nf_list.c_str());
+        SETH_ERROR("batch_query not_found addrs: [%s]", nf_list.c_str());
     }
 }
 
