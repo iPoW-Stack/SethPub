@@ -4138,65 +4138,51 @@ pragma solidity >=0.8.17 <0.9.0;
 contract Exchange {
     bytes32 test_ripdmd_;
     bytes32 enc_init_param_;
-    uint256 global_id;
+
+    // Pack owner+exists into one slot (address=20b, bool=1b → same 32b slot)
+    struct ItemInfo {
+        address payable owner;
+        bool exists;
+        uint256 price;
+        uint256 start_time_ms;
+        uint256 end_time_ms;
+    }
+
     struct BuyerInfo {
         address payable buyer;
         uint256 price;
         uint256 time;
     }
-    struct ItemInfo {
-        uint256 id;
-        bytes32 hash;
-        address payable owner;
-        bytes info;
-        uint256 price;
-        uint256 start_time_ms;
-        uint256 end_time_ms;
-        address payable buyer;
-        uint256 selled_price;
-        uint256 selled;
-        BuyerInfo[] buyers;
-        bool exists;
-    }
+
     mapping(bytes32 => ItemInfo) public item_map;
-    mapping(uint256 => bytes32) public id_with_hash_map;
-    mapping(bytes => bool) public purchase_map;
-    mapping(address => bytes32[]) public owner_with_hash_map;
-    bytes32[] all_hashes;
+    // purchase dedup: keccak256(hash, buyer) → bool (no dynamic bytes allocation)
+    mapping(bytes32 => bool) public purchase_map;
+    // buyers stored separately to keep ItemInfo struct small
+    mapping(bytes32 => BuyerInfo[]) public item_buyers;
+
     function CreateNewItem(bytes32 hash, bytes memory info, uint256 price, uint256 start, uint256 end) public payable {
         require(!item_map[hash].exists);
         ItemInfo storage item = item_map[hash];
-        item.id = global_id++;
-        item.hash = hash;
         item.owner = payable(msg.sender);
-        item.info = info;
         item.price = price;
         item.start_time_ms = start;
         item.end_time_ms = end;
-        item.selled = 0;
-        item.selled_price = 0;
-        item.buyer = payable(0x0000000000000000000000000000000000000000);
-        item.buyers.push(BuyerInfo(payable(0x0000000000000000000000000000000000000000), 0, 0));
         item.exists = true;
-        all_hashes.push(hash);
-        id_with_hash_map[item.id] = hash;
-        owner_with_hash_map[msg.sender].push(hash);
     }
+
     function PurchaseItem(bytes32 hash, uint256 time) public payable {
-        require(item_map[hash].exists);
-        require(item_map[hash].owner != msg.sender);
-        bytes[] memory all_bytes = new bytes[](2);
-        all_bytes[0] = abi.encodePacked(hash);
-        all_bytes[1] = abi.encodePacked(msg.sender);
-        bytes memory key = abi.encodePacked(all_bytes[0], all_bytes[1]);
-        require(!purchase_map[key]);
-        require(item_map[hash].price <= msg.value);
         ItemInfo storage item = item_map[hash];
-        item.buyers.push(BuyerInfo(payable(msg.sender), msg.value, time));
+        require(item.exists);
+        require(item.owner != msg.sender);
+        bytes32 key = keccak256(abi.encodePacked(hash, msg.sender));
+        require(!purchase_map[key]);
+        require(item.price <= msg.value);
+        item_buyers[hash].push(BuyerInfo(payable(msg.sender), msg.value, time));
         purchase_map[key] = true;
     }
-    function TotalItems() public view returns (uint256) {
-        return all_hashes.length;
+
+    function TotalBuyers(bytes32 hash) public view returns (uint256) {
+        return item_buyers[hash].length;
     }
 }
 )";
@@ -5870,46 +5856,51 @@ pragma solidity >=0.8.17 <0.9.0;
 contract Exchange {
     bytes32 test_ripdmd_;
     bytes32 enc_init_param_;
-    uint256 global_id;
-    struct BuyerInfo { address payable buyer; uint256 price; uint256 time; }
+
+    // Pack owner+exists in one slot (address 20b + bool 1b = 32b slot)
     struct ItemInfo {
-        uint256 id; bytes32 hash; address payable owner;
-        bytes info; uint256 price; uint256 start_time_ms; uint256 end_time_ms;
-        address payable buyer; uint256 selled_price; uint256 selled;
-        BuyerInfo[] buyers; bool exists;
+        address payable owner;
+        bool exists;
+        uint256 price;
+        uint256 start_time_ms;
+        uint256 end_time_ms;
     }
+
+    struct BuyerInfo { address payable buyer; uint256 price; uint256 time; }
+
     mapping(bytes32 => ItemInfo) public item_map;
-    mapping(uint256 => bytes32) public id_with_hash_map;
-    mapping(bytes => bool) public purchase_map;
-    mapping(address => bytes32[]) public owner_with_hash_map;
-    bytes32[] all_hashes;
+    // purchase dedup: keccak256(hash, buyer) — no dynamic bytes alloc
+    mapping(bytes32 => bool) public purchase_map;
+    // buyers stored separately to keep ItemInfo small
+    mapping(bytes32 => BuyerInfo[]) public item_buyers;
+
     function CreateNewItem(bytes32 hash, bytes memory info, uint256 price,
                            uint256 start, uint256 end) public payable {
         require(!item_map[hash].exists, "item exists");
         ItemInfo storage it = item_map[hash];
-        it.id = ++global_id; it.hash = hash; it.owner = payable(msg.sender);
-        it.info = info; it.price = price; it.start_time_ms = start;
-        it.end_time_ms = end; it.exists = true;
-        id_with_hash_map[it.id] = hash;
-        owner_with_hash_map[msg.sender].push(hash);
-        all_hashes.push(hash);
+        it.owner = payable(msg.sender);
+        it.price = price;
+        it.start_time_ms = start;
+        it.end_time_ms = end;
+        it.exists = true;
     }
+
     function PurchaseItem(bytes32 hash, uint256 time) public payable {
         ItemInfo storage it = item_map[hash];
         require(it.exists, "not exists");
         require(msg.value >= it.price, "insufficient");
-        bytes memory k = abi.encode(msg.sender, hash, time);
-        require(!purchase_map[k], "already bought");
-        purchase_map[k] = true;
-        it.buyers.push(BuyerInfo(payable(msg.sender), msg.value, time));
-        if (it.selled == 0) {
-            it.buyer = payable(msg.sender);
-            it.selled_price = msg.value;
-            it.selled = 1;
+        bytes32 key = keccak256(abi.encodePacked(hash, msg.sender));
+        require(!purchase_map[key], "already bought");
+        purchase_map[key] = true;
+        item_buyers[hash].push(BuyerInfo(payable(msg.sender), msg.value, time));
+        if (item_buyers[hash].length == 1) {
             it.owner.transfer(msg.value);
         }
     }
-    function TotalItems() public view returns (uint256) { return all_hashes.length; }
+
+    function TotalBuyers(bytes32 hash) public view returns (uint256) {
+        return item_buyers[hash].length;
+    }
 }
 )";
 
