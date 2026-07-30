@@ -652,6 +652,7 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
 
     if (TmpFirewallCheckMessage(msg_ptr) != transport::kFirewallCheckSuccess) {
         msg_ptr->set_status(transport::kRequestInvalid);
+        SETH_ERROR("invalid tx");
         return;
     }
 
@@ -696,6 +697,7 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
 //                 prev_tps_count_ = 0;
 //             }
 // #endif
+            SETH_ERROR("tx coming: %s", common::Encode::HexEncode(address_info->addr()).c_str());
         }
     }
 
