@@ -5518,9 +5518,9 @@ contract Exchange {
         struct ShardEndpoint { std::string ip; uint16_t http_port; };
         std::map<uint32_t, ShardEndpoint> shard_endpoints = {
     {3, {"192.168.26.171", 23001}},  // shard 3 查询端口
-    {4, {"192.168.26.173", 24001}},  // shard 4 查询端口
-    {5, {"192.168.26.172", 25001}},  // shard 5 查询端口
-    {6, {"192.168.26.170", 26001}},  // shard 6 查询端口
+    // {4, {"192.168.26.173", 24001}},  // shard 4 查询端口
+    // {5, {"192.168.26.172", 25001}},  // shard 5 查询端口
+    // {6, {"192.168.26.170", 26001}},  // shard 6 查询端口
 	};
         // Override from argv[9..12] if provided: format "ip:port"
         for (int i = 9; i < std::min(argc, 13); ++i) {
