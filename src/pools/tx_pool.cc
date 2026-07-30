@@ -213,6 +213,7 @@ int TxPool::AddTx(TxItemPtr& tx_ptr) {
     if (tx_ptr->tx_info->step() == pools::protobuf::kContractExcute || 
             tx_ptr->tx_info->step() == pools::protobuf::kContractRefund) {
         //assert(tx_ptr->address_info->addr().size() == common::kPreypamentAddressLength);
+        SETH_ERROR("success add contract execute: %s", common::Encode::HexEncode(tx_ptr->address_info->addr()).c_str());
     }
     
     return kPoolsSuccess;
