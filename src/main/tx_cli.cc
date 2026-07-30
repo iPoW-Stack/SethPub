@@ -6664,6 +6664,7 @@ contract Exchange {
                         // Fetch prepay nonces for each (user, contract) pair
                         SethSDK csdk(ep.ip, ep.http_port);
                         std::unordered_map<std::string, int64_t> prepay_nonces;
+                        std::unordered_map<std::string, uint32_t> contract_pool7;  // contract_hex → pool_index
                         {
                             std::vector<std::string> keys;
                             for (auto& u : users)
@@ -6684,6 +6685,12 @@ contract Exchange {
                                                 std::from_chars(ns.data(), ns.data() + ns.size(), n);
                                             } catch (...) {}
                                         }
+                                        // Extract contract pool_index from the on-chain record
+                                        std::string contract_hex = k.substr(0, 40);
+                                        if (!contract_pool7.count(contract_hex) && acc.contains("pool_index")) {
+                                            try { contract_pool7[contract_hex] = acc["pool_index"].get<uint32_t>(); }
+                                            catch (...) {}
+                                        }
                                     }
                                     prepay_nonces[k] = n;
                                 }
@@ -6696,7 +6703,7 @@ contract Exchange {
                                       << prepay_nonces.size() << " prepay nonces for CreateNewItem" << std::endl;
                         }
 
-                        // Fetch leaders and build contract→dest cache
+                        // Fetch leaders and build contract→dest cache using on-chain pool_index
                         std::unordered_map<uint32_t, SethSDK::LeaderInfo> leader_map7;
                         uint32_t leader_cnt7 = 0;
                         csdk.fetchLeaders(leader_map7, leader_cnt7);
@@ -6704,7 +6711,12 @@ contract Exchange {
                         for (auto& u : users) {
                             for (auto& c : u.contract_addrs) {
                                 if (contract_dest7.count(c)) continue;
-                                uint32_t pidx = common::GetAddressPoolIndex(common::Encode::HexDecode(c));
+                                uint32_t pidx;
+                                auto pit = contract_pool7.find(c);
+                                if (pit != contract_pool7.end())
+                                    pidx = pit->second;
+                                else
+                                    pidx = common::GetAddressPoolIndex(common::Encode::HexDecode(c));
                                 auto lit = leader_map7.find(pidx);
                                 if (lit != leader_map7.end())
                                     contract_dest7[c] = {lit->second.ip, lit->second.port};
@@ -6715,7 +6727,7 @@ contract Exchange {
                         {
                             std::lock_guard<std::mutex> lk(call_log_mtx7);
                             std::cout << "  Shard " << s << ": leader routing " << leader_cnt7
-                                      << " pools for CreateNewItem" << std::endl;
+                                      << " pools (on-chain pool_index) for CreateNewItem" << std::endl;
                         }
 
                         uint64_t now_ms = (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -6881,6 +6893,7 @@ contract Exchange {
                         // Fetch current prepay nonces (contract + user.addr_hex)
                         SethSDK psdk(ep.ip, ep.http_port);
                         std::unordered_map<std::string, int64_t> prepay_nonces;
+                        std::unordered_map<std::string, uint32_t> pcontract_pool7;  // contract_hex → pool_index
                         {
                             std::vector<std::string> keys;
                             for (auto& u : users)
@@ -6901,6 +6914,11 @@ contract Exchange {
                                                 std::from_chars(ns.data(), ns.data() + ns.size(), n);
                                             } catch (...) {}
                                         }
+                                        std::string contract_hex = k.substr(0, 40);
+                                        if (!pcontract_pool7.count(contract_hex) && acc.contains("pool_index")) {
+                                            try { pcontract_pool7[contract_hex] = acc["pool_index"].get<uint32_t>(); }
+                                            catch (...) {}
+                                        }
                                     }
                                     prepay_nonces[k] = n;
                                 }
@@ -6913,7 +6931,7 @@ contract Exchange {
                                       << prepay_nonces.size() << " prepay nonces for PurchaseItem" << std::endl;
                         }
 
-                        // Fetch leaders and build contract→dest cache
+                        // Fetch leaders and build contract→dest cache using on-chain pool_index
                         std::unordered_map<uint32_t, SethSDK::LeaderInfo> pleader_map7;
                         uint32_t pleader_cnt7 = 0;
                         psdk.fetchLeaders(pleader_map7, pleader_cnt7);
@@ -6921,7 +6939,12 @@ contract Exchange {
                         for (auto& u : users) {
                             for (auto& c : u.contract_addrs) {
                                 if (pcontract_dest7.count(c)) continue;
-                                uint32_t pidx = common::GetAddressPoolIndex(common::Encode::HexDecode(c));
+                                uint32_t pidx;
+                                auto pit = pcontract_pool7.find(c);
+                                if (pit != pcontract_pool7.end())
+                                    pidx = pit->second;
+                                else
+                                    pidx = common::GetAddressPoolIndex(common::Encode::HexDecode(c));
                                 auto lit = pleader_map7.find(pidx);
                                 if (lit != pleader_map7.end())
                                     pcontract_dest7[c] = {lit->second.ip, lit->second.port};
@@ -6932,7 +6955,7 @@ contract Exchange {
                         {
                             std::lock_guard<std::mutex> lk(call_log_mtx7);
                             std::cout << "  Shard " << s << ": leader routing " << pleader_cnt7
-                                      << " pools for PurchaseItem" << std::endl;
+                                      << " pools (on-chain pool_index) for PurchaseItem" << std::endl;
                         }
 
                         uint64_t now_ms = (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
