@@ -772,7 +772,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
                     (acc_ptr->latest_height() == new_addr_info->latest_height() &&
                      acc_ptr->tx_index() < new_addr_info->tx_index())) {
                 account_lru_map_.insert(new_addr_info);
-                SETH_ERROR("success update address: %s,balance: %lu, nonce: %lu, new balance: %lu, new nonce: %lu, "
+                SETH_DEBUG("success update address: %s,balance: %lu, nonce: %lu, new balance: %lu, new nonce: %lu, "
                     "latest height: %lu, tx index: %u, new latest height: %lu, new tx index: %u",
                     common::Encode::HexEncode(new_addr_info->addr()).c_str(),
                     acc_ptr != nullptr ? acc_ptr->balance() : 0,

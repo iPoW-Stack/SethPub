@@ -497,7 +497,7 @@ Status Hotstuff::Propose(
         hotstuff_msg->pro_msg().view_item().qc().view(), 
         hotstuff_msg->pro_msg().tc().view());
 
-    SETH_DEBUG("new propose message hash: %lu, tx size: %u, %u_%u_%lu", 
+    SETH_ERROR("new propose message hash: %lu, tx size: %u, %u_%u_%lu", 
         tmp_msg_ptr->header.hash64(),
         hotstuff_msg->pro_msg().tx_propose().txs_size(),
         common::GlobalInfo::Instance()->network_id(), 
