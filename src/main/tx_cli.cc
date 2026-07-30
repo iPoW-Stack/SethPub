@@ -5497,8 +5497,8 @@ contract Exchange {
         uint16_t node_port = (argc >= 5) ? std::stoi(argv[4]) : 13001;
         uint32_t accounts_per_shard = (argc >= 6) ? std::stoi(argv[5]) : 10000;
         uint32_t num_threads = (argc >= 7) ? std::stoi(argv[6]) : 8;
-        uint32_t kCallRounds7  = (argc >= 8) ? std::stoul(argv[7]) : 30;
-        uint32_t kPurchaseRounds7 = (argc >= 9) ? std::stoul(argv[8]) : 30;
+        uint32_t kCallRounds7  = (argc >= 8) ? std::stoul(argv[7]) : 20;
+        uint32_t kPurchaseRounds7 = (argc >= 9) ? std::stoul(argv[8]) : 20;
 
         // Per-shard verification endpoints (ip:http_port)
         struct ShardEndpoint { std::string ip; uint16_t http_port; };
