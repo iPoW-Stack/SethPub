@@ -6653,8 +6653,13 @@ contract Exchange {
                         uint32_t nu = (uint32_t)users.size();
                         if (nu == 0) return;
 
-                        // Fetch prepay nonces for each (user, contract) pair
+                        // Fetch leaders first
                         SethSDK csdk(ep.ip, ep.http_port);
+                        std::unordered_map<uint32_t, SethSDK::LeaderInfo> leader_map7;
+                        uint32_t leader_cnt7 = 0;
+                        csdk.fetchLeaders(leader_map7, leader_cnt7);
+
+                        // First pass: fetch pool_index per contract via shard endpoint
                         std::unordered_map<std::string, int64_t> prepay_nonces;
                         std::unordered_map<std::string, uint32_t> contract_pool7;  // contract_hex → pool_index
                         {
@@ -6663,30 +6668,61 @@ contract Exchange {
                                 for (auto& c : u.contract_addrs)
                                     keys.push_back(c + u.addr_hex);
                             const uint32_t kBN = 300;
+                            // First pass via shard endpoint to collect pool_index
                             for (uint32_t off = 0; off < keys.size() && !global_stop; off += kBN) {
                                 uint32_t end = std::min(off + kBN, (uint32_t)keys.size());
                                 std::vector<std::string> batch(keys.begin() + off, keys.begin() + end);
                                 auto r = csdk.batchQueryAccounts(batch);
                                 for (auto& k : batch) {
-                                    int64_t n = 0;
                                     if (r.contains("accounts") && r["accounts"].contains(k)) {
                                         auto& acc = r["accounts"][k];
-                                        if (acc.contains("nonce")) {
-                                            try {
-                                                auto ns = acc["nonce"].get<std::string>();
-                                                std::from_chars(ns.data(), ns.data() + ns.size(), n);
-                                            } catch (...) {}
-                                        }
-                                        // Extract contract pool_index from the on-chain record
                                         std::string contract_hex = k.substr(0, 40);
                                         if (!contract_pool7.count(contract_hex) && acc.contains("pool_index")) {
                                             try { contract_pool7[contract_hex] = acc["pool_index"].get<uint32_t>(); }
                                             catch (...) {}
                                         }
                                     }
-                                    prepay_nonces[k] = n;
                                 }
                                 usleep(10000);
+                            }
+                            // Second pass: query nonces via each contract's leader
+                            std::map<std::pair<std::string,uint16_t>, std::vector<std::string>> ep_keys;
+                            for (auto& k : keys) {
+                                std::string c = k.substr(0, 40);
+                                uint32_t pidx;
+                                auto pit = contract_pool7.find(c);
+                                if (pit != contract_pool7.end()) pidx = pit->second;
+                                else pidx = common::GetAddressPoolIndex(common::Encode::HexDecode(c));
+                                std::string lip = fallback_ip;
+                                uint16_t lhttp = (uint16_t)ep.http_port;
+                                auto lit = leader_map7.find(pidx);
+                                if (lit != leader_map7.end()) {
+                                    lip = lit->second.ip;
+                                    lhttp = (uint16_t)(lit->second.port + 10000);
+                                }
+                                ep_keys[{lip, lhttp}].push_back(k);
+                            }
+                            for (auto& [endpoint, qkeys] : ep_keys) {
+                                SethSDK qsdk(endpoint.first, endpoint.second);
+                                for (uint32_t off = 0; off < qkeys.size() && !global_stop; off += kBN) {
+                                    uint32_t end = std::min(off + kBN, (uint32_t)qkeys.size());
+                                    std::vector<std::string> batch(qkeys.begin() + off, qkeys.begin() + end);
+                                    auto r = qsdk.batchQueryAccounts(batch);
+                                    for (auto& k : batch) {
+                                        int64_t n = 0;
+                                        if (r.contains("accounts") && r["accounts"].contains(k)) {
+                                            auto& acc = r["accounts"][k];
+                                            if (acc.contains("nonce")) {
+                                                try {
+                                                    auto ns = acc["nonce"].get<std::string>();
+                                                    std::from_chars(ns.data(), ns.data() + ns.size(), n);
+                                                } catch (...) {}
+                                            }
+                                        }
+                                        prepay_nonces[k] = n;
+                                    }
+                                    usleep(10000);
+                                }
                             }
                         }
                         {
@@ -6695,10 +6731,7 @@ contract Exchange {
                                       << prepay_nonces.size() << " prepay nonces for CreateNewItem" << std::endl;
                         }
 
-                        // Fetch leaders and build contract→dest cache using on-chain pool_index
-                        std::unordered_map<uint32_t, SethSDK::LeaderInfo> leader_map7;
-                        uint32_t leader_cnt7 = 0;
-                        csdk.fetchLeaders(leader_map7, leader_cnt7);
+                        // Build contract→dest cache using on-chain pool_index
                         std::unordered_map<std::string, std::pair<std::string, uint16_t>> contract_dest7;
                         for (auto& u : users) {
                             for (auto& c : u.contract_addrs) {
@@ -6809,29 +6842,48 @@ contract Exchange {
                                 break;
                             }
 
-                            // Query current nonces for all pending keys
+                            // Query current nonces via each contract's leader node
                             std::unordered_map<std::string, int64_t> cur_nonces;
                             {
-                                std::vector<std::string> pkeys;
-                                for (uint32_t p : pending) pkeys.push_back(ver_list[p].key);
-                                for (uint32_t off = 0; off < pkeys.size() && !global_stop; off += kBN) {
-                                    uint32_t end = std::min(off + kBN, (uint32_t)pkeys.size());
-                                    std::vector<std::string> batch(pkeys.begin() + off, pkeys.begin() + end);
-                                    auto r = csdk.batchQueryAccounts(batch);
-                                    for (auto& k : batch) {
-                                        int64_t n = 0;
-                                        if (r.contains("accounts") && r["accounts"].contains(k)) {
-                                            auto& acc = r["accounts"][k];
-                                            if (acc.contains("nonce")) {
-                                                try {
-                                                    auto ns = acc["nonce"].get<std::string>();
-                                                    std::from_chars(ns.data(), ns.data() + ns.size(), n);
-                                                } catch (...) {}
-                                            }
-                                        }
-                                        cur_nonces[k] = n;
+                                // Group pending keys by leader HTTP endpoint
+                                std::map<std::pair<std::string,uint16_t>, std::vector<std::string>> ep_keys;
+                                for (uint32_t p : pending) {
+                                    const std::string& key = ver_list[p].key;
+                                    std::string c = key.substr(0, 40);
+                                    uint32_t pidx;
+                                    auto pit = contract_pool7.find(c);
+                                    if (pit != contract_pool7.end()) pidx = pit->second;
+                                    else pidx = common::GetAddressPoolIndex(common::Encode::HexDecode(c));
+                                    std::string lip = fallback_ip;
+                                    uint16_t lhttp = (uint16_t)ep.http_port;
+                                    auto lit = leader_map7.find(pidx);
+                                    if (lit != leader_map7.end()) {
+                                        lip = lit->second.ip;
+                                        lhttp = (uint16_t)(lit->second.port + 10000);
                                     }
-                                    usleep(10000);
+                                    ep_keys[{lip, lhttp}].push_back(key);
+                                }
+                                for (auto& [endpoint, qkeys] : ep_keys) {
+                                    SethSDK qsdk(endpoint.first, endpoint.second);
+                                    for (uint32_t off = 0; off < qkeys.size() && !global_stop; off += kBN) {
+                                        uint32_t end = std::min(off + kBN, (uint32_t)qkeys.size());
+                                        std::vector<std::string> batch(qkeys.begin() + off, qkeys.begin() + end);
+                                        auto r = qsdk.batchQueryAccounts(batch);
+                                        for (auto& k : batch) {
+                                            int64_t n = 0;
+                                            if (r.contains("accounts") && r["accounts"].contains(k)) {
+                                                auto& acc = r["accounts"][k];
+                                                if (acc.contains("nonce")) {
+                                                    try {
+                                                        auto ns = acc["nonce"].get<std::string>();
+                                                        std::from_chars(ns.data(), ns.data() + ns.size(), n);
+                                                    } catch (...) {}
+                                                }
+                                            }
+                                            cur_nonces[k] = n;
+                                        }
+                                        usleep(10000);
+                                    }
                                 }
                             }
 
@@ -6906,8 +6958,13 @@ contract Exchange {
                         uint32_t nu = (uint32_t)users.size();
                         if (nu == 0) return;
 
-                        // Fetch current prepay nonces (contract + user.addr_hex)
+                        // Fetch leaders first
                         SethSDK psdk(ep.ip, ep.http_port);
+                        std::unordered_map<uint32_t, SethSDK::LeaderInfo> pleader_map7;
+                        uint32_t pleader_cnt7 = 0;
+                        psdk.fetchLeaders(pleader_map7, pleader_cnt7);
+
+                        // Fetch current prepay nonces (contract + user.addr_hex) via leader nodes
                         std::unordered_map<std::string, int64_t> prepay_nonces;
                         std::unordered_map<std::string, uint32_t> pcontract_pool7;  // contract_hex → pool_index
                         {
@@ -6916,29 +6973,61 @@ contract Exchange {
                                 for (auto& c : u.contract_addrs)
                                     keys.push_back(c + u.addr_hex);
                             const uint32_t kBN = 300;
+                            // First pass via shard endpoint to collect pool_index
                             for (uint32_t off = 0; off < keys.size() && !global_stop; off += kBN) {
                                 uint32_t end = std::min(off + kBN, (uint32_t)keys.size());
                                 std::vector<std::string> batch(keys.begin() + off, keys.begin() + end);
                                 auto r = psdk.batchQueryAccounts(batch);
                                 for (auto& k : batch) {
-                                    int64_t n = 0;
                                     if (r.contains("accounts") && r["accounts"].contains(k)) {
                                         auto& acc = r["accounts"][k];
-                                        if (acc.contains("nonce")) {
-                                            try {
-                                                auto ns = acc["nonce"].get<std::string>();
-                                                std::from_chars(ns.data(), ns.data() + ns.size(), n);
-                                            } catch (...) {}
-                                        }
                                         std::string contract_hex = k.substr(0, 40);
                                         if (!pcontract_pool7.count(contract_hex) && acc.contains("pool_index")) {
                                             try { pcontract_pool7[contract_hex] = acc["pool_index"].get<uint32_t>(); }
                                             catch (...) {}
                                         }
                                     }
-                                    prepay_nonces[k] = n;
                                 }
                                 usleep(10000);
+                            }
+                            // Second pass: query nonces via each contract's leader
+                            std::map<std::pair<std::string,uint16_t>, std::vector<std::string>> pep_init_keys;
+                            for (auto& k : keys) {
+                                std::string c = k.substr(0, 40);
+                                uint32_t pidx;
+                                auto pit = pcontract_pool7.find(c);
+                                if (pit != pcontract_pool7.end()) pidx = pit->second;
+                                else pidx = common::GetAddressPoolIndex(common::Encode::HexDecode(c));
+                                std::string lip = ep.ip;
+                                uint16_t lhttp = (uint16_t)ep.http_port;
+                                auto lit = pleader_map7.find(pidx);
+                                if (lit != pleader_map7.end()) {
+                                    lip = lit->second.ip;
+                                    lhttp = (uint16_t)(lit->second.port + 10000);
+                                }
+                                pep_init_keys[{lip, lhttp}].push_back(k);
+                            }
+                            for (auto& [endpoint, qkeys] : pep_init_keys) {
+                                SethSDK qsdk(endpoint.first, endpoint.second);
+                                for (uint32_t off = 0; off < qkeys.size() && !global_stop; off += kBN) {
+                                    uint32_t end = std::min(off + kBN, (uint32_t)qkeys.size());
+                                    std::vector<std::string> batch(qkeys.begin() + off, qkeys.begin() + end);
+                                    auto r = qsdk.batchQueryAccounts(batch);
+                                    for (auto& k : batch) {
+                                        int64_t n = 0;
+                                        if (r.contains("accounts") && r["accounts"].contains(k)) {
+                                            auto& acc = r["accounts"][k];
+                                            if (acc.contains("nonce")) {
+                                                try {
+                                                    auto ns = acc["nonce"].get<std::string>();
+                                                    std::from_chars(ns.data(), ns.data() + ns.size(), n);
+                                                } catch (...) {}
+                                            }
+                                        }
+                                        prepay_nonces[k] = n;
+                                    }
+                                    usleep(10000);
+                                }
                             }
                         }
                         {
@@ -6947,10 +7036,7 @@ contract Exchange {
                                       << prepay_nonces.size() << " prepay nonces for PurchaseItem" << std::endl;
                         }
 
-                        // Fetch leaders and build contract→dest cache using on-chain pool_index
-                        std::unordered_map<uint32_t, SethSDK::LeaderInfo> pleader_map7;
-                        uint32_t pleader_cnt7 = 0;
-                        psdk.fetchLeaders(pleader_map7, pleader_cnt7);
+                        // Build contract→dest cache using on-chain pool_index
                         std::unordered_map<std::string, std::pair<std::string, uint16_t>> pcontract_dest7;
                         for (auto& u : users) {
                             for (auto& c : u.contract_addrs) {
@@ -7063,29 +7149,48 @@ contract Exchange {
                                 break;
                             }
 
-                            // Query current nonces
+                            // Query current nonces via each contract's leader node
                             std::unordered_map<std::string, int64_t> pcur_nonces;
                             {
-                                std::vector<std::string> pkeys;
-                                for (uint32_t p : ppending) pkeys.push_back(pver_list[p].key);
-                                for (uint32_t off = 0; off < pkeys.size() && !global_stop; off += kPBN) {
-                                    uint32_t end = std::min(off + kPBN, (uint32_t)pkeys.size());
-                                    std::vector<std::string> batch(pkeys.begin() + off, pkeys.begin() + end);
-                                    auto r = psdk.batchQueryAccounts(batch);
-                                    for (auto& k : batch) {
-                                        int64_t n = 0;
-                                        if (r.contains("accounts") && r["accounts"].contains(k)) {
-                                            auto& acc = r["accounts"][k];
-                                            if (acc.contains("nonce")) {
-                                                try {
-                                                    auto ns = acc["nonce"].get<std::string>();
-                                                    std::from_chars(ns.data(), ns.data() + ns.size(), n);
-                                                } catch (...) {}
-                                            }
-                                        }
-                                        pcur_nonces[k] = n;
+                                // Group pending keys by leader HTTP endpoint
+                                std::map<std::pair<std::string,uint16_t>, std::vector<std::string>> pep_keys;
+                                for (uint32_t p : ppending) {
+                                    const std::string& key = pver_list[p].key;
+                                    std::string c = key.substr(0, 40);
+                                    uint32_t pidx;
+                                    auto pit = pcontract_pool7.find(c);
+                                    if (pit != pcontract_pool7.end()) pidx = pit->second;
+                                    else pidx = common::GetAddressPoolIndex(common::Encode::HexDecode(c));
+                                    std::string lip = ep.ip;
+                                    uint16_t lhttp = (uint16_t)ep.http_port;
+                                    auto lit = pleader_map7.find(pidx);
+                                    if (lit != pleader_map7.end()) {
+                                        lip = lit->second.ip;
+                                        lhttp = (uint16_t)(lit->second.port + 10000);
                                     }
-                                    usleep(10000);
+                                    pep_keys[{lip, lhttp}].push_back(key);
+                                }
+                                for (auto& [endpoint, qkeys] : pep_keys) {
+                                    SethSDK qsdk(endpoint.first, endpoint.second);
+                                    for (uint32_t off = 0; off < qkeys.size() && !global_stop; off += kPBN) {
+                                        uint32_t end = std::min(off + kPBN, (uint32_t)qkeys.size());
+                                        std::vector<std::string> batch(qkeys.begin() + off, qkeys.begin() + end);
+                                        auto r = qsdk.batchQueryAccounts(batch);
+                                        for (auto& k : batch) {
+                                            int64_t n = 0;
+                                            if (r.contains("accounts") && r["accounts"].contains(k)) {
+                                                auto& acc = r["accounts"][k];
+                                                if (acc.contains("nonce")) {
+                                                    try {
+                                                        auto ns = acc["nonce"].get<std::string>();
+                                                        std::from_chars(ns.data(), ns.data() + ns.size(), n);
+                                                    } catch (...) {}
+                                                }
+                                            }
+                                            pcur_nonces[k] = n;
+                                        }
+                                        usleep(10000);
+                                    }
                                 }
                             }
 
