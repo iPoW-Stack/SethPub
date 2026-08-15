@@ -64,9 +64,6 @@ int Ecdsa::Sign(const std::string &hash, std::string *sign) {
         }
     }
     
-    CRYPTO_DEBUG("signed hash: %s, sign: %s",
-        common::Encode::HexEncode(hash).c_str(),
-        common::Encode::HexEncode(*sign).c_str());
     return kSecuritySuccess;
 #endif
 }

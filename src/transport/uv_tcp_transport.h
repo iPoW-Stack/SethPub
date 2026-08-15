@@ -27,6 +27,8 @@ struct ex_uv_tcp_t {
     char ip[64];
     uint16_t port;
     uint64_t timeout;
+    uint64_t last_recv_ts;  // epoch seconds of last successful on_read; 0 = never received
+    uint64_t connect_ts;    // epoch seconds when connection became usable
 };
 
 class TcpTransport {
@@ -61,6 +63,7 @@ public:
     MultiThreadHandler* msg_handler();
 
     void RealFreeInvalidConnections();
+    void CheckConnectionsHealth();
     void AddLocalMessage(transport::MessagePtr msg_ptr);
     uint8_t GetThreadIndexWithPool(uint32_t pool_index);
     

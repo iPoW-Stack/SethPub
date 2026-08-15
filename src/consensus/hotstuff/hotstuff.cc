@@ -497,7 +497,7 @@ Status Hotstuff::Propose(
         hotstuff_msg->pro_msg().view_item().qc().view(), 
         hotstuff_msg->pro_msg().tc().view());
 
-    SETH_DEBUG("new propose message hash: %lu, tx size: %u, %u_%u_%lu", 
+    SETH_ERROR("new propose message hash: %lu, tx size: %u, %u_%u_%lu", 
         tmp_msg_ptr->header.hash64(),
         hotstuff_msg->pro_msg().tx_propose().txs_size(),
         common::GlobalInfo::Instance()->network_id(), 
@@ -1501,7 +1501,7 @@ Status Hotstuff::HandleVoteMsgImpl(const transport::MessagePtr& msg_ptr) {
     // acceptor()->AddTxs(msg_ptr, vote_msg.txs());
     if (vote_msg.txs_size() > 0) {
         hotstuff_mgr_.ConsensusAddTxsMessage(msg_ptr);
-        SETH_DEBUG("tps vote from follower tx size: %u", vote_msg.txs_size());
+        SETH_ERROR("tps vote from follower tx size: %u", vote_msg.txs_size());
     }
 
     if (prefix_db_->BlockExists(vote_msg.view_block_hash())) {

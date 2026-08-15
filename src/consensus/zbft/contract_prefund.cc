@@ -68,7 +68,8 @@ int ContractPrefund::HandleTx(
             } else {
                 from_balance -= gas_used * block_tx.gas_price();
                 block_tx.set_status(consensus::kConsensusAccountBalanceError);
-                SETH_ERROR("leader balance error: %llu, %llu", from_balance, dec_amount);
+                SETH_ERROR("%s leader balance error: %llu, %llu", 
+                    common::Encode::HexEncode(from).c_str(), from_balance, dec_amount);
             }
         } else {
             from_balance = 0;

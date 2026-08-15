@@ -647,12 +647,12 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
     if (header.has_sync_heights()) {
         SETH_DEBUG("header.has_sync_heights()");
         HandleSyncPoolsMaxHeight(msg_ptr);
-        msg_ptr->set_status(transport::kRequestInvalid);
         return;
     }
 
     if (TmpFirewallCheckMessage(msg_ptr) != transport::kFirewallCheckSuccess) {
         msg_ptr->set_status(transport::kRequestInvalid);
+        SETH_ERROR("invalid tx");
         return;
     }
 
@@ -697,6 +697,7 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
 //                 prev_tps_count_ = 0;
 //             }
 // #endif
+            SETH_ERROR("tx coming: %s", common::Encode::HexEncode(address_info->addr()).c_str());
         }
     }
 

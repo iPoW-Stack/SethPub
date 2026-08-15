@@ -281,21 +281,6 @@ static inline std::string GetTxMessageHash(const pools::protobuf::TxMessage& tx_
         tx_hash = common::Hash::keccak256(message);
     }
 
-    SETH_DEBUG("get tx message hash: %s, nonce: %lu, pk: %s, to: %s, amount: %lu, gas limit: %lu, price: %lu, step: %lu, contract code: %s, input: %s, prefund: %lu, key: %s, value: %s, msg: %s", 
-        common::Encode::HexEncode(tx_hash).c_str(),
-        nonce,
-        common::Encode::HexEncode(tx_info.pubkey()).c_str(),
-        common::Encode::HexEncode(tx_info.to()).c_str(),
-        amount,
-        gas_limit,
-        gas_price,
-        (uint64_t)tx_info.step(),
-        tx_info.has_contract_code() ? common::Encode::HexEncode(tx_info.contract_code()).c_str() : "",
-        tx_info.has_contract_input() ? common::Encode::HexEncode(tx_info.contract_input()).c_str() : "",
-        tx_info.has_contract_prefund() ? tx_info.contract_prefund() : 0,
-        tx_info.has_key() ? common::Encode::HexEncode(tx_info.key()).c_str() : "",
-        tx_info.has_value() ? common::Encode::HexEncode(tx_info.value()).c_str() : "",
-        common::Encode::HexEncode(message).c_str());
     return tx_hash;
 }
 

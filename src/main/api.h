@@ -496,7 +496,7 @@ public:
         // Normal (40-char): 500 × 41 = ~20KB → use 300
         // Prepayment (80-char): 50 × 81 = ~4KB → safe
         size_t avg_addr_len = addresses.empty() ? 40 : addresses[0].size();
-        const size_t kBatchSize = (avg_addr_len > 50) ? 100 : 300;
+        const size_t kBatchSize = (avg_addr_len > 50) ? 10000 : 30000;
         json merged;
         merged["status"] = 0;
         merged["msg"] = "ok";
@@ -550,6 +550,10 @@ public:
                 if (batch_res.contains("not_found")) {
                     for (auto& addr : batch_res["not_found"]) {
                         merged["not_found"].push_back(addr);
+                    }
+
+                    if (!batch_res["not_found"].empty()) {
+                        break;
                     }
                 }
             } catch (std::exception& e) {
@@ -668,6 +672,38 @@ public:
             }
             return {{"status", 1}, {"msg", "create contract failed"}};
         } catch (const std::exception& e) { return {{"status", 1}, {"msg", e.what()}}; }
+    }
+
+    // Deploy with a pre-computed contract address (caller ensures address lands on correct shard)
+    json deployToAddress(const std::string& private_key, const std::string& bytecode,
+                         const std::string& to_address, uint64_t prefund) {
+        try {
+            if (client.transfer(private_key, to_address, 0, -1, 6, bytecode, "", "", "", prefund, true)) {
+                return {{"status", 0}, {"msg", "ok"}, {"id", to_address}};
+            }
+            return {{"status", 1}, {"msg", "create contract failed"}};
+        } catch (const std::exception& e) { return {{"status", 1}, {"msg", e.what()}}; }
+    }
+
+    // Same as deployToAddressWithNonce but with a caller-supplied current db_nonce (avoids fetchNonce
+    // seeing stale data when the deployer already has on-chain history).
+    // Pass the last confirmed nonce from the chain; transfer() will use nonce+1 internally.
+    json deployToAddressWithNonce(const std::string& private_key, const std::string& bytecode,
+                                  const std::string& to_address, uint64_t prefund, int64_t current_nonce) {
+        try {
+            if (client.transfer(private_key, to_address, 0, current_nonce, 6, bytecode, "", "", "", prefund, true)) {
+                return {{"status", 0}, {"msg", "ok"}, {"id", to_address}};
+            }
+            return {{"status", 1}, {"msg", "create contract failed"}};
+        } catch (const std::exception& e) { return {{"status", 1}, {"msg", e.what()}}; }
+    }
+
+    // Set prefund for a user on a contract via HTTP.
+    // current_nonce is the last confirmed nonce; internally uses nonce+1.
+    bool setPrefund(const std::string& user_prikey_hex, const std::string& contract_addr_hex,
+                    int64_t current_nonce) {
+        return client.transfer(user_prikey_hex, contract_addr_hex, 0,
+                               current_nonce, 0, "", "", "prefund", "", 0, true);
     }
 
     json queryFunctionSolidity(const std::string& private_key, const std::string& address, const std::string& func_name,

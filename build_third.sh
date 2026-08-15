@@ -707,6 +707,14 @@ fi
 require_installed_file "$SRC_PATH/third_party/include/httplib.h"
 
 # Build uWebSockets and uSockets
+# If the existing libuSockets.a was compiled with LTO, nm will warn
+# "plugin needed to handle lto object".  Force a rebuild without LTO.
+if [ -f "$SRC_PATH/third_party/lib/libuSockets.a" ]; then
+    if "${NM:-nm}" "$SRC_PATH/third_party/lib/libuSockets.a" 2>&1 | grep -q "plugin needed to handle lto object"; then
+        echo "Detected LTO objects in libuSockets.a — forcing rebuild without LTO..."
+        rm -f "$SRC_PATH/third_party/lib/libuSockets.a" "$USOCKETS_BUILD_MARKER"
+    fi
+fi
 if [ ! -f "$SRC_PATH/third_party/include/libusockets.h" ] || \
         [ ! -f "$SRC_PATH/third_party/include/uWebSockets/App.h" ] || \
         [ ! -f "$SRC_PATH/third_party/lib/libuSockets.a" ] || \
