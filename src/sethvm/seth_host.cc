@@ -10,7 +10,9 @@
 #include "contract/contract_manager.h"
 #include "protos/prefix_db.h"
 #include "sethvm/execution.h"
+#include "sethvm/host_journal_stack.h"
 #include "sethvm/sethvm_utils.h"
+#include "common/hash.h"
 
 namespace seth {
 
@@ -572,20 +574,133 @@ void SethhainHost::emit_log(const evmc::address& addr,
                 size_t data_size,
                 const evmc::bytes32 topics[],
                 size_t topics_count) noexcept {
-#ifndef NDEBUG
-    std::string topics_str;
-    for (uint32_t i = 0; i < topics_count; ++i) {
-        topics_str += common::Encode::HexEncode(std::string((char*)topics[i].bytes, sizeof(topics[i].bytes))) + ", ";
+    // Lazily compute CrossTransferOut topic = keccak256("CrossTransferOut(address,address,address,uint256,uint64)")
+    static const evmc::bytes32 kCrossTransferOutTopic = []() {
+        const std::string sig = "CrossTransferOut(address,address,address,uint256,uint64)";
+        std::string h = common::Hash::keccak256(sig);
+        evmc::bytes32 t{};
+        memcpy(t.bytes, h.data(), 32);
+        return t;
+    }();
+
+    // Lazily compute CrossStorageOut topic = keccak256("CrossStorageOut(address,bytes32,bytes,uint64)")
+    static const evmc::bytes32 kCrossStorageOutTopic = []() {
+        const std::string sig = "CrossStorageOut(address,bytes32,bytes,uint64)";
+        std::string h = common::Hash::keccak256(sig);
+        evmc::bytes32 t{};
+        memcpy(t.bytes, h.data(), 32);
+        return t;
+    }();
+
+    if (topics_count >= 3 && topics[0] == kCrossStorageOutTopic) {
+        // topics[1] = base (indexed address, low 20B), topics[2] = key (indexed bytes32)
+        // data ABI layout: offset(32B) | nonce(32B) | value_len(32B) | value_bytes(...)
+        if (data_size >= 96) {
+            CrossShardPendingAction action;
+            action.type = CrossShardActionType::kSetStorage;
+            action.emitter = std::string(reinterpret_cast<const char*>(addr.bytes), 20);
+            action.base_root_address = std::string(
+                reinterpret_cast<const char*>(topics[1].bytes + 12), 20);
+            action.storage_key = std::string(
+                reinterpret_cast<const char*>(topics[2].bytes), 32);
+            // nonce: data[32..64], uint64 in low 8 bytes
+            action.nonce = 0;
+            for (int i = 0; i < 8; ++i) {
+                action.nonce = (action.nonce << 8) | data[32 + 24 + i];
+            }
+            // value: length at data[64..96], bytes starting at data[96]
+            uint64_t val_len = 0;
+            for (int i = 0; i < 8; ++i) {
+                val_len = (val_len << 8) | data[64 + 24 + i];
+            }
+            if (data_size >= 96 + val_len) {
+                action.storage_val = std::string(
+                    reinterpret_cast<const char*>(data + 96), static_cast<size_t>(val_len));
+            }
+            action.gas_cost      = kCrossSetStorageGasCost;
+            cross_gas_charged_  += kCrossSetStorageGasCost;
+            pending_cross_actions_.push_back(std::move(action));
+
+            SETH_DEBUG("CrossStorageOut intercepted from %s, cross_gas_charged=%ld",
+                common::Encode::HexEncode(std::string(reinterpret_cast<const char*>(addr.bytes), 20)).c_str(),
+                cross_gas_charged_);
+        }
+        contract_to_call_dirty_ = true;
+        return;
     }
 
-    SETH_DEBUG("emit_log caller: %s, data: %s, topics: %s",
-        common::Encode::HexEncode(std::string((char*)addr.bytes, sizeof(addr.bytes))).c_str(),
-        common::Encode::HexEncode(std::string((char*)data, data_size)).c_str(),
-        topics_str.c_str());
+    if (topics_count >= 1 && topics[0] == kCrossTransferOutTopic) {
+        // topics[1] = base (indexed address, padded 32B)
+        // topics[2] = from (indexed address, padded 32B)
+        // data layout: to(32B) | amount(32B) | nonce(32B)  => 96 bytes minimum
+        if (data_size >= 96 && topics_count >= 3) {
+            CrossShardPendingAction action;
+            action.type     = CrossShardActionType::kTransfer;
+            action.emitter  = std::string(reinterpret_cast<const char*>(addr.bytes), 20);
+            // topics[1] = base (indexed address, low 20 bytes of 32-byte word)
+            action.base_root_address = std::string(
+                reinterpret_cast<const char*>(topics[1].bytes + 12), 20);
+            // 'to' address: data[12..32] (20 bytes in 32-byte ABI word)
+            action.to       = std::string(reinterpret_cast<const char*>(data + 12), 20);
+            // amount: data[32..64] as uint64 (take low 8 bytes)
+            action.amount   = 0;
+            for (int i = 0; i < 8; ++i) {
+                action.amount = (action.amount << 8) | data[32 + 24 + i];
+            }
+            // nonce: data[64..96] as uint64 (take low 8 bytes)
+            action.nonce = 0;
+            for (int i = 0; i < 8; ++i) {
+                action.nonce = (action.nonce << 8) | data[64 + 24 + i];
+            }
+            action.gas_cost      = kCrossTransferGasCost;
+            cross_gas_charged_  += kCrossTransferGasCost;
+            pending_cross_actions_.push_back(std::move(action));
+
+            SETH_DEBUG("CrossTransferOut intercepted from %s, cross_gas_charged=%ld",
+                common::Encode::HexEncode(action.emitter).c_str(), cross_gas_charged_);
+        }
+        contract_to_call_dirty_ = true;
+        return;  // do not record in recorded_logs_; consensus layer handles it
+    }
+
+#ifndef NDEBUG
+    {
+        std::string topics_str;
+        for (uint32_t i = 0; i < topics_count; ++i) {
+            topics_str += common::Encode::HexEncode(
+                std::string((char*)topics[i].bytes, sizeof(topics[i].bytes))) + ", ";
+        }
+        SETH_DEBUG("emit_log caller: %s, data: %s, topics: %s",
+            common::Encode::HexEncode(std::string((char*)addr.bytes, sizeof(addr.bytes))).c_str(),
+            common::Encode::HexEncode(std::string((char*)data, data_size)).c_str(),
+            topics_str.c_str());
+    }
 #endif
 
     contract_to_call_dirty_ = true;
     recorded_logs_.push_back({ addr, std::string((char*)data, data_size), {topics, topics + topics_count} });
+}
+
+void SethhainHost::PushFrame() {
+    frame_snapshots_.push_back({ pending_cross_actions_.size(), cross_gas_charged_ });
+}
+
+void SethhainHost::PopFrameCommit() {
+    if (!frame_snapshots_.empty()) {
+        frame_snapshots_.pop_back();
+    }
+}
+
+void SethhainHost::PopFrameRevert() {
+    if (frame_snapshots_.empty()) return;
+    auto snap = frame_snapshots_.back();
+    frame_snapshots_.pop_back();
+
+    // Restore cross_gas_charged_ and drop actions added since the snapshot
+    cross_gas_charged_ = snap.gas_charged;
+    if (pending_cross_actions_.size() > snap.actions_size) {
+        pending_cross_actions_.resize(snap.actions_size);
+    }
 }
 
 void SethhainHost::AddTmpAccountBalance(const std::string& address, uint64_t balance) {

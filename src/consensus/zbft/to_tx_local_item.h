@@ -38,8 +38,16 @@ private:
         view_block::protobuf::ViewBlockItem& view_block,
         sethvm::SethhainHost& seth_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
-        const pools::protobuf::ToTxMessageItem& to_tx, 
+        const pools::protobuf::ToTxMessageItem& to_tx,
         block::protobuf::ConsensusToTxs& block_to_txs);
+
+    // CrossShardBase path: lazy-deploy derived contract + call systemExecuteCross*
+    void HandleCrossShardBase(
+        uint32_t tx_index,
+        view_block::protobuf::ViewBlockItem& view_block,
+        sethvm::SethhainHost& seth_host,
+        hotstuff::BalanceAndNonceMap& acc_balance_map,
+        const pools::protobuf::ToTxMessageItem& to_tx);
 
     std::shared_ptr<db::Db> db_ = nullptr;
     std::shared_ptr<protos::PrefixDb> prefix_db_ = nullptr;

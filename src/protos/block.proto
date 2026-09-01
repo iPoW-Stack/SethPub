@@ -72,6 +72,11 @@ message ConsensusToTxs {
     repeated ConsensusToTxsItem tos = 1;
 }
 
+message CrossShardCloneInfo {
+    optional bytes base_root_address = 1;  // base contract address (20 bytes)
+    optional bytes runtime_bytecode  = 2;  // compiled runtime code of user's contract
+}
+
 message Block {
     optional uint32 version = 1;
     optional uint64 height = 2;
@@ -96,6 +101,7 @@ message Block {
     optional pools.protobuf.PoolStatisticTxInfo pool_st_info = 24;
     repeated bytes unique_hashs = 25;
     optional uint64 chain_id = 26;
+    repeated CrossShardCloneInfo clone_deploy_array = 27;  // CrossShardBase derived contracts to deploy on destination shards
 }
 
 message GetTxBlockRequest {

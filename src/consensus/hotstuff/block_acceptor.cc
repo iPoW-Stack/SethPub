@@ -20,6 +20,7 @@
 #include "consensus/zbft/contract_prefund.h"
 #include "consensus/zbft/contract_refund.h"
 #include "consensus/zbft/contract_create.h"
+#include "sethvm/sethvm_utils.h"
 #include "consensus/zbft/create_library.h"
 #include "consensus/zbft/elect_tx_item.h"
 #include "consensus/zbft/from_tx_item.h"
@@ -576,6 +577,7 @@ Status BlockAcceptor::Accept(
             common::Encode::HexEncode(cross_to_item->des()).c_str(),
             cross_to_item->amount(), cross_to_item->prefund());
     }
+
 
     if (view_block.block_info().cross_shard_to_array_size() > 0) {
         SETH_DEBUG("success add cross to shard: %u_%u_%lu, %s",

@@ -1,7 +1,9 @@
 #include "consensus/zbft/contract_call.h"
 
 #include "common/defer.h"
+#include "network/network_utils.h"
 #include "sethvm/execution.h"
+#include "sethvm/host_journal_stack.h"
 
 namespace seth {
 
@@ -134,6 +136,10 @@ int ContractCall::HandleTx(
             } else {
                 gas_used += gas_limit - evmc_res.gas_left;
             }
+
+            // ── 叠加跨链路由 gas（事后合计，避免与 EVM 计数器冲突）────────
+            gas_used += static_cast<uint64_t>(seth_host.cross_gas_charged_);
+            // ─────────────────────────────────────────────────────────────
         }
 
         if (from_balance > gas_used * block_tx.gas_price()) {
@@ -401,6 +407,62 @@ int ContractCall::HandleTx(
             contract_info->set_nonce(0);
             acc_balance_map[id] = contract_info;
         }
+
+        // ── pending_cross_actions_ → cross_to_map_ ──────────────────────
+        for (auto& action : seth_host.pending_cross_actions_) {
+            if (action.base_root_address.empty()) continue;
+
+            if (action.type == sethvm::CrossShardActionType::kTransfer) {
+                if (action.to.empty()) continue;
+                std::string key = action.emitter + std::to_string(action.nonce);
+                if (cross_to_map_.find(key) == cross_to_map_.end()) {
+                    auto item = std::make_shared<pools::protobuf::ToTxMessageItem>();
+                    item->set_from(action.emitter);
+                    item->set_des(action.to);
+                    item->set_amount(action.amount);
+                    item->set_sharding_id(view_block.qc().network_id());
+                    item->set_des_sharding_id(network::kRootCongressNetworkId);
+                    item->set_base_root_address(action.base_root_address);
+                    item->set_cross_nonce(action.nonce);
+
+                    // Propagate bytecode so destination shard can lazy-deploy derived contract
+                    evmc::address emitter_evmc{};
+                    memcpy(emitter_evmc.bytes, action.emitter.data(), 20);
+                    auto c2_it = seth_host.create2_accounts_.find(emitter_evmc);
+                    if (c2_it != seth_host.create2_accounts_.end()) {
+                        item->set_runtime_bytecode(std::string(
+                            c2_it->second.code.begin(), c2_it->second.code.end()));
+                    } else if (seth_host.view_block_chain_) {
+                        auto ei = seth_host.view_block_chain_->ChainGetAccountInfo(action.emitter);
+                        if (ei) item->set_runtime_bytecode(ei->bytes_code());
+                    }
+                    cross_to_map_[key] = item;
+                    SETH_INFO("CrossShardBase cross-transfer queued: base=%s, to=%s, amount=%lu, nonce=%lu",
+                        common::Encode::HexEncode(action.base_root_address).c_str(),
+                        common::Encode::HexEncode(action.to).c_str(),
+                        action.amount, action.nonce);
+                }
+            } else if (action.type == sethvm::CrossShardActionType::kSetStorage) {
+                if (action.storage_key.empty()) continue;
+                std::string key = action.emitter + "s" + std::to_string(action.nonce);
+                if (cross_to_map_.find(key) == cross_to_map_.end()) {
+                    auto item = std::make_shared<pools::protobuf::ToTxMessageItem>();
+                    item->set_from(action.emitter);
+                    item->set_sharding_id(view_block.qc().network_id());
+                    item->set_des_sharding_id(network::kRootCongressNetworkId);
+                    item->set_base_root_address(action.base_root_address);
+                    item->set_cross_nonce(action.nonce);
+
+                    item->set_cross_storage_key(action.storage_key);
+                    item->set_cross_storage_value(action.storage_val);
+                    cross_to_map_[key] = item;
+                    SETH_INFO("CrossShardBase cross-storage queued: base=%s, key_len=%zu, nonce=%lu",
+                        common::Encode::HexEncode(action.base_root_address).c_str(),
+                        action.storage_key.size(), action.nonce);
+                }
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────
 
         seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
         seth_host.MergeToPrev();

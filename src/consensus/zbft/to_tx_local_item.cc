@@ -1,6 +1,11 @@
 #include "consensus/zbft/to_tx_local_item.h"
 
+#include "common/encode.h"
+#include "common/hash.h"
 #include "sethvm/execution.h"
+#include "sethvm/host_journal_stack.h"
+#include "sethvm/reversible_feistel_address.h"
+#include "sethvm/sethvm_utils.h"
 
 namespace seth {
 
@@ -70,9 +75,15 @@ void ToTxLocalItem::CreateLocalToTx(
         view_block::protobuf::ViewBlockItem& view_block,
         sethvm::SethhainHost& seth_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
-        const pools::protobuf::ToTxMessageItem& to_tx_item, 
+        const pools::protobuf::ToTxMessageItem& to_tx_item,
         block::protobuf::ConsensusToTxs& block_to_txs) {
-    if (to_tx_item.des().size() != common::kUnicastAddressLength && 
+    // CrossShardBase path: lazy-deploy derived contract + call systemExecuteCross*
+    if (to_tx_item.has_base_root_address()) {
+        HandleCrossShardBase(tx_index, view_block, seth_host, acc_balance_map, to_tx_item);
+        return;
+    }
+
+    if (to_tx_item.des().size() != common::kUnicastAddressLength &&
             to_tx_item.des().size() != common::kPreypamentAddressLength) {
         SETH_ERROR("invalid to tx item: %s", ProtobufToJson(to_tx_item).c_str());
         //assert(false);
@@ -140,6 +151,185 @@ void ToTxLocalItem::CreateLocalToTx(
     }
     
     new_addr_func(addr, to_tx_item.amount());
+}
+
+void ToTxLocalItem::HandleCrossShardBase(
+        uint32_t tx_index,
+        view_block::protobuf::ViewBlockItem& view_block,
+        sethvm::SethhainHost& seth_host,
+        hotstuff::BalanceAndNonceMap& acc_balance_map,
+        const pools::protobuf::ToTxMessageItem& to_tx) {
+    const std::string& base_raw  = to_tx.base_root_address();  // 20-byte raw
+    const std::string& bytecode  = to_tx.runtime_bytecode();
+    uint32_t shard_id   = view_block.qc().network_id();
+    uint32_t pool_index = view_block.qc().pool_index();
+
+    if (base_raw.size() != 20 || bytecode.empty()) {
+        SETH_ERROR("CrossShardBase: missing base_root_address or runtime_bytecode, skipping");
+        return;
+    }
+
+    // ── 1. 计算分身合约地址 ──────────────────────────────────────────────────
+    evmc::address base_evmc = sethvm::StrToEvmcAddr(base_raw);
+    evmc::address derived_evmc = sethvm::DeriveShardAddress(base_evmc, shard_id, pool_index);
+    std::string derived_str(reinterpret_cast<const char*>(derived_evmc.bytes), 20);
+    std::string sys_exec_str(reinterpret_cast<const char*>(sethvm::kCrossShardSystemExecutor.bytes), 20);
+
+    // ── 2. 懒部署：若分身合约不存在，写入 bytecode + 必要存储槽 ─────────────
+    bool needs_deploy = false;
+    auto it = acc_balance_map.find(derived_str);
+    if (it == acc_balance_map.end() || it->second->bytes_code().empty()) {
+        // 检查链上是否已有
+        if (seth_host.view_block_chain_) {
+            auto chain_info = seth_host.view_block_chain_->ChainGetAccountInfo(derived_str);
+            if (!chain_info || chain_info->bytes_code().empty()) {
+                needs_deploy = true;
+            }
+        } else {
+            needs_deploy = true;
+        }
+    }
+
+    if (needs_deploy) {
+        // Solidity CrossShardBase storage layout:
+        //   slot 0: IS_ROOT (bool,1B) + BASE_ROOT_ADDRESS (address,20B) packed
+        //     bytes[0..10]=0, bytes[11..30]=base_root_address, bytes[31]=IS_ROOT(0)
+        //   slot 1: SYSTEM_EXECUTOR (address,20B)
+        //     bytes[0..11]=0, bytes[12..31]=system_executor
+        //   kIsCrossShardBaseSlot: 1
+
+        evmc::bytes32 slot0_key{};  // bytes32(0)
+        evmc::bytes32 slot0_val{};  // IS_ROOT=0, BASE_ROOT_ADDRESS=base_raw
+        memcpy(&slot0_val.bytes[11], base_raw.data(), 20);
+
+        evmc::bytes32 slot1_key{};  // bytes32(1)
+        slot1_key.bytes[31] = 1;
+        evmc::bytes32 slot1_val{};  // SYSTEM_EXECUTOR
+        memcpy(&slot1_val.bytes[12], sethvm::kCrossShardSystemExecutor.bytes, 20);
+
+        evmc::bytes32 marker_val{};
+        marker_val.bytes[31] = 1;
+
+        seth_host.set_storage(derived_evmc, slot0_key, slot0_val);
+        seth_host.set_storage(derived_evmc, slot1_key, slot1_val);
+        seth_host.set_storage(derived_evmc, sethvm::kIsCrossShardBaseSlot, marker_val);
+        seth_host.accounts_[derived_evmc].code =
+            evmc::bytes(bytecode.begin(), bytecode.end());
+
+        auto derived_info = std::make_shared<address::protobuf::AddressInfo>();
+        derived_info->set_addr(derived_str);
+        derived_info->set_sharding_id(shard_id);
+        derived_info->set_pool_index(pool_index);
+        derived_info->set_type(address::protobuf::kContract);
+        derived_info->set_bytes_code(bytecode);
+        derived_info->set_latest_height(view_block.block_info().height());
+        derived_info->set_tx_index(tx_index);
+        acc_balance_map[derived_str] = derived_info;
+
+        SETH_INFO("CrossShardBase lazy-deploy: base=%s derived=%s shard=%u pool=%u",
+            common::Encode::HexEncode(base_raw).c_str(),
+            common::Encode::HexEncode(derived_str).c_str(),
+            shard_id, pool_index);
+    }
+
+    // ── 3. ABI 编码 calldata ─────────────────────────────────────────────────
+    // 选择器（懒计算，static local）
+    static const std::string kSelTransfer = []() {
+        std::string h = common::Hash::keccak256(
+            "systemExecuteCrossTransfer(address,uint256,uint64)");
+        return h.substr(0, 4);
+    }();
+    static const std::string kSelStorage = []() {
+        std::string h = common::Hash::keccak256(
+            "systemExecuteCrossStorage(bytes32,bytes,uint64)");
+        return h.substr(0, 4);
+    }();
+
+    std::string calldata;
+
+    auto write_uint256 = [](std::string& out, uint64_t v) {
+        out.append(24, '\0');
+        for (int i = 7; i >= 0; --i)
+            out += static_cast<char>((v >> (8 * i)) & 0xFF);
+    };
+    auto write_addr = [](std::string& out, const std::string& addr) {
+        out.append(12, '\0');
+        out += addr;  // 20 bytes
+    };
+
+    if (!to_tx.has_cross_storage_key()) {
+        // systemExecuteCrossTransfer(address to, uint256 amount, uint64 nonce)
+        // selector(4) + to(32) + amount(32) + nonce(32) = 100 bytes
+        calldata.reserve(100);
+        calldata += kSelTransfer;
+        write_addr(calldata, to_tx.des().size() == 20 ? to_tx.des()
+                                                       : to_tx.des().substr(0, 20));
+        write_uint256(calldata, to_tx.amount());
+        write_uint256(calldata, to_tx.cross_nonce());
+    } else {
+        // systemExecuteCrossStorage(bytes32 key, bytes value, uint64 version)
+        // selector(4) + key(32) + offset(32) + version(32) + val_len(32) + val(padded)
+        const std::string& key = to_tx.cross_storage_key();
+        const std::string& val = to_tx.cross_storage_value();
+        uint64_t version = to_tx.cross_nonce();
+        size_t val_padded = ((val.size() + 31) / 32) * 32;
+
+        calldata.reserve(4 + 32 * 4 + val_padded);
+        calldata += kSelStorage;
+
+        // key (bytes32)
+        calldata.append(32 - std::min(key.size(), size_t(32)), '\0');
+        calldata += key.substr(0, std::min(key.size(), size_t(32)));
+
+        // offset to value = 96
+        calldata.append(31, '\0');
+        calldata += static_cast<char>(96);
+
+        // version (uint64)
+        write_uint256(calldata, version);
+
+        // value length
+        write_uint256(calldata, static_cast<uint64_t>(val.size()));
+
+        // value data (padded to 32-byte boundary)
+        calldata += val;
+        if (val.size() < val_padded)
+            calldata.append(val_padded - val.size(), '\0');
+    }
+
+    // ── 4. 执行 EVM 调用 ─────────────────────────────────────────────────────
+    block::protobuf::BlockTx sys_tx;
+    sys_tx.set_to(derived_str);
+    sys_tx.set_from(sys_exec_str);
+    InitHost(seth_host, sys_tx, 200000, 0, view_block);
+
+    evmc::Result exec_res{ evmc_result{} };
+    int exec_status = sethvm::Execution::Instance()->execute(
+        bytecode,
+        calldata,
+        sys_exec_str,    // msg.sender = SYSTEM_EXECUTOR
+        derived_str,     // msg.recipient = derived contract
+        sys_exec_str,    // tx.origin
+        0,               // value
+        200000,
+        0,
+        sethvm::kJustCall,
+        seth_host,
+        &exec_res);
+
+    if (exec_status != sethvm::kSethvmSuccess ||
+            exec_res.status_code != EVMC_SUCCESS) {
+        SETH_ERROR("CrossShardBase system call failed: exec=%d evmc=%d, base=%s derived=%s",
+            exec_status, (int)exec_res.status_code,
+            common::Encode::HexEncode(base_raw).c_str(),
+            common::Encode::HexEncode(derived_str).c_str());
+        return;
+    }
+
+    SETH_INFO("CrossShardBase system call OK: base=%s derived=%s nonce=%lu",
+        common::Encode::HexEncode(base_raw).c_str(),
+        common::Encode::HexEncode(derived_str).c_str(),
+        to_tx.cross_nonce());
 }
 
 int ToTxLocalItem::TxToBlockTx(

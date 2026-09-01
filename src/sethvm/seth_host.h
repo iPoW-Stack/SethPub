@@ -14,6 +14,7 @@
 #include "common/utils.h"
 #include "db/db.h"
 #include "protos/block.pb.h"
+#include "sethvm/host_journal_stack.h"
 
 namespace seth {
 
@@ -117,6 +118,11 @@ public:
         const evmc::bytes32 topics[],
         size_t topics_count) noexcept override;
     virtual evmc_access_status access_account(const evmc::address& addr) noexcept;
+
+    // Cross-shard journal frame management (call-depth rollback support)
+    void PushFrame();
+    void PopFrameCommit();
+    void PopFrameRevert();
     virtual evmc_access_status access_storage(
         const evmc::address& addr,
         const evmc::bytes32& key) noexcept;
@@ -182,6 +188,11 @@ public:
             pre_seth_host_->cross_to_map_[iter->first] = iter->second;
         }
 
+        for (auto& action : pending_cross_actions_) {
+            pre_seth_host_->pending_cross_actions_.push_back(action);
+        }
+        pre_seth_host_->cross_gas_charged_ += cross_gas_charged_;
+
         pre_seth_host_->tx_context_ = tx_context_;
     }
 
@@ -238,6 +249,12 @@ public:
     std::shared_ptr<hotstuff::ViewBlockChain> view_block_chain_ = nullptr;
     db::DbWriteBatch db_batch_;
     SethhainHost* pre_seth_host_ = nullptr;
+
+    // Cross-shard pending actions collected during EVM execution.
+    // cross_gas_charged_ is added to gas_used after EVM completes.
+    std::vector<CrossShardPendingAction> pending_cross_actions_;
+    std::vector<JournalFrameSnapshot>    frame_snapshots_;
+    int64_t  cross_gas_charged_ = 0;
 };
 
 }  // namespace sethvm

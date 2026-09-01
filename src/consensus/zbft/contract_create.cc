@@ -3,7 +3,9 @@
 #include "common/defer.h"
 #include "consensus/hotstuff/view_block_chain.h"
 #include "contract/contract_manager.h"
+#include "network/network_utils.h"
 #include "sethvm/execution.h"
+#include "sethvm/host_journal_stack.h"
 
 namespace seth {
 
@@ -111,6 +113,10 @@ int ContractUserCreateCall::HandleTx(
                 tmp_from_balance);
         }
 
+        // ── 叠加跨链路由 gas（构造函数中调用 _crossTransfer 产生）────────────
+        gas_used += static_cast<uint64_t>(seth_host.cross_gas_charged_);
+        // ─────────────────────────────────────────────────────────────────────
+
         if (tmp_from_balance > static_cast<int64_t>(gas_used * block_tx.gas_price())) {
             gas_used += consensus::CalcKvStorageGas(
                 tx_info->key().size(), tx_info->value().size(), true);
@@ -166,6 +172,21 @@ int ContractUserCreateCall::HandleTx(
                 block_tx.set_status(consensus::kConsensusAccountBalanceError);
                 break;
             }
+
+            // ── CrossShardBase 16x gas 自动验证 ─────────────────────────
+            {
+                evmc::address ca{};
+                memcpy(ca.bytes, block_tx.to().data(),
+                    std::min(block_tx.to().size(), sizeof(ca.bytes)));
+                auto marker = seth_host.get_storage(ca, sethvm::kIsCrossShardBaseSlot);
+                if (sethvm::EvmcBytes32ToUint64(marker) == 1u) {
+                    gas_used *= sethvm::kCrossShardBaseGasMultiplier;
+                    SETH_INFO("CrossShardBase 16x gas applied: %lu, limit: %lu, contract: %s",
+                        gas_used, block_tx.gas_limit(),
+                        common::Encode::HexEncode(block_tx.to()).c_str());
+                }
+            }
+            // ─────────────────────────────────────────────────────────────
 
             if (gas_used > block_tx.gas_limit()) {
                 block_tx.set_status(consensus::kConsensusUserSetGasLimitError);
@@ -282,6 +303,62 @@ int ContractUserCreateCall::HandleTx(
         common::Encode::HexEncode(block_tx.from()).c_str(),
         common::Encode::HexEncode(block_tx.to()).c_str());
     if (block_tx.status() == kConsensusSuccess) {
+        // ── pending_cross_actions_ → cross_to_map_（构造函数中的跨链调用）────
+        for (auto& action : seth_host.pending_cross_actions_) {
+            if (action.base_root_address.empty()) continue;
+
+            if (action.type == sethvm::CrossShardActionType::kTransfer) {
+                if (action.to.empty()) continue;
+                std::string key = action.emitter + std::to_string(action.nonce);
+                if (cross_to_map_.find(key) == cross_to_map_.end()) {
+                    auto item = std::make_shared<pools::protobuf::ToTxMessageItem>();
+                    item->set_from(action.emitter);
+                    item->set_des(action.to);
+                    item->set_amount(action.amount);
+                    item->set_sharding_id(view_block.qc().network_id());
+                    item->set_des_sharding_id(network::kRootCongressNetworkId);
+                    item->set_base_root_address(action.base_root_address);
+                    item->set_cross_nonce(action.nonce);
+
+                    // Propagate bytecode for dest lazy-deploy (constructor case)
+                    evmc::address emitter_evmc{};
+                    memcpy(emitter_evmc.bytes, action.emitter.data(), 20);
+                    auto c2_it = seth_host.create2_accounts_.find(emitter_evmc);
+                    if (c2_it != seth_host.create2_accounts_.end()) {
+                        item->set_runtime_bytecode(std::string(
+                            c2_it->second.code.begin(), c2_it->second.code.end()));
+                    } else if (seth_host.view_block_chain_) {
+                        auto ei = seth_host.view_block_chain_->ChainGetAccountInfo(action.emitter);
+                        if (ei) item->set_runtime_bytecode(ei->bytes_code());
+                    }
+                    cross_to_map_[key] = item;
+                    SETH_INFO("CrossShardBase constructor cross-transfer queued: base=%s, to=%s, amount=%lu",
+                        common::Encode::HexEncode(action.base_root_address).c_str(),
+                        common::Encode::HexEncode(action.to).c_str(),
+                        action.amount);
+                }
+            } else if (action.type == sethvm::CrossShardActionType::kSetStorage) {
+                if (action.storage_key.empty()) continue;
+                std::string key = action.emitter + "s" + std::to_string(action.nonce);
+                if (cross_to_map_.find(key) == cross_to_map_.end()) {
+                    auto item = std::make_shared<pools::protobuf::ToTxMessageItem>();
+                    item->set_from(action.emitter);
+                    item->set_sharding_id(view_block.qc().network_id());
+                    item->set_des_sharding_id(network::kRootCongressNetworkId);
+                    item->set_base_root_address(action.base_root_address);
+                    item->set_cross_nonce(action.nonce);
+
+                    item->set_cross_storage_key(action.storage_key);
+                    item->set_cross_storage_value(action.storage_val);
+                    cross_to_map_[key] = item;
+                    SETH_INFO("CrossShardBase constructor cross-storage queued: base=%s, key_len=%zu, nonce=%lu",
+                        common::Encode::HexEncode(action.base_root_address).c_str(),
+                        action.storage_key.size(), action.nonce);
+                }
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
         seth_host.MergeToPrev();
         auto iter = pre_seth_host.cross_to_map_.find(block_tx.to());

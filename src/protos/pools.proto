@@ -22,6 +22,7 @@ enum StepType {
     kRootCross = 16;  // Root transaction to prevent missing cross-shard blocks
     kPoolStatisticTag = 17;  // Final marker block for this round of transaction pool statistics
     kContractRefund = 18;
+    kCrossShardDeployClone = 19;  // System TX: deploy CrossShardBase derived contract on destination shard
 }
 
 message ToTxHeights {
@@ -44,6 +45,11 @@ message ToTxMessageItem {
     optional bytes from = 9;
     optional uint64 prefund = 10;
     optional uint32 des_sharding_id = 11;
+    optional bytes  base_root_address  = 12;  // non-empty = CrossShardBase transfer path
+    optional uint64 cross_nonce        = 13;  // monotonic nonce for replay protection
+    optional bytes  cross_storage_key  = 15;  // CrossStorageOut key (32 bytes)
+    optional bytes  cross_storage_value = 16; // CrossStorageOut value (variable length)
+    optional bytes  runtime_bytecode   = 17;  // emitter contract runtime bytecode for dest lazy-deploy
 }
 
 message ShardToTxItem {
