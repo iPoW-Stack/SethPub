@@ -556,6 +556,73 @@ class ToTxMessageItem : public ::google::protobuf::Message /* @@protoc_insertion
   ::google::protobuf::uint32 des_sharding_id() const;
   void set_des_sharding_id(::google::protobuf::uint32 value);
 
+  // optional bytes base_root_address = 12;
+  bool has_base_root_address() const;
+  void clear_base_root_address();
+  static const int kBaseRootAddressFieldNumber = 12;
+  const ::std::string& base_root_address() const;
+  void set_base_root_address(const ::std::string& value);
+  #if LANG_CXX11
+  void set_base_root_address(::std::string&& value);
+  #endif
+  void set_base_root_address(const char* value);
+  void set_base_root_address(const void* value, size_t size);
+  ::std::string* mutable_base_root_address();
+  ::std::string* release_base_root_address();
+  void set_allocated_base_root_address(::std::string* base_root_address);
+
+  // optional uint64 cross_nonce = 13;
+  bool has_cross_nonce() const;
+  void clear_cross_nonce();
+  static const int kCrossNonceFieldNumber = 13;
+  ::google::protobuf::uint64 cross_nonce() const;
+  void set_cross_nonce(::google::protobuf::uint64 value);
+
+  // optional bytes cross_storage_key = 15;
+  bool has_cross_storage_key() const;
+  void clear_cross_storage_key();
+  static const int kCrossStorageKeyFieldNumber = 15;
+  const ::std::string& cross_storage_key() const;
+  void set_cross_storage_key(const ::std::string& value);
+  #if LANG_CXX11
+  void set_cross_storage_key(::std::string&& value);
+  #endif
+  void set_cross_storage_key(const char* value);
+  void set_cross_storage_key(const void* value, size_t size);
+  ::std::string* mutable_cross_storage_key();
+  ::std::string* release_cross_storage_key();
+  void set_allocated_cross_storage_key(::std::string* cross_storage_key);
+
+  // optional bytes cross_storage_value = 16;
+  bool has_cross_storage_value() const;
+  void clear_cross_storage_value();
+  static const int kCrossStorageValueFieldNumber = 16;
+  const ::std::string& cross_storage_value() const;
+  void set_cross_storage_value(const ::std::string& value);
+  #if LANG_CXX11
+  void set_cross_storage_value(::std::string&& value);
+  #endif
+  void set_cross_storage_value(const char* value);
+  void set_cross_storage_value(const void* value, size_t size);
+  ::std::string* mutable_cross_storage_value();
+  ::std::string* release_cross_storage_value();
+  void set_allocated_cross_storage_value(::std::string* cross_storage_value);
+
+  // optional bytes runtime_bytecode = 17;
+  bool has_runtime_bytecode() const;
+  void clear_runtime_bytecode();
+  static const int kRuntimeBytecodeFieldNumber = 17;
+  const ::std::string& runtime_bytecode() const;
+  void set_runtime_bytecode(const ::std::string& value);
+  #if LANG_CXX11
+  void set_runtime_bytecode(::std::string&& value);
+  #endif
+  void set_runtime_bytecode(const char* value);
+  void set_runtime_bytecode(const void* value, size_t size);
+  ::std::string* mutable_runtime_bytecode();
+  ::std::string* release_runtime_bytecode();
+  void set_allocated_runtime_bytecode(::std::string* runtime_bytecode);
+
   // @@protoc_insertion_point(class_scope:seth.pools.protobuf.ToTxMessageItem)
  private:
   void set_has_amount();
@@ -576,6 +643,16 @@ class ToTxMessageItem : public ::google::protobuf::Message /* @@protoc_insertion
   void clear_has_prefund();
   void set_has_des_sharding_id();
   void clear_has_des_sharding_id();
+  void set_has_base_root_address();
+  void clear_has_base_root_address();
+  void set_has_cross_nonce();
+  void clear_has_cross_nonce();
+  void set_has_cross_storage_key();
+  void clear_has_cross_storage_key();
+  void set_has_cross_storage_value();
+  void clear_has_cross_storage_value();
+  void set_has_runtime_bytecode();
+  void clear_has_runtime_bytecode();
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
@@ -584,11 +661,16 @@ class ToTxMessageItem : public ::google::protobuf::Message /* @@protoc_insertion
   ::google::protobuf::internal::ArenaStringPtr elect_join_g2_value_;
   ::google::protobuf::internal::ArenaStringPtr library_bytes_;
   ::google::protobuf::internal::ArenaStringPtr from_;
+  ::google::protobuf::internal::ArenaStringPtr base_root_address_;
+  ::google::protobuf::internal::ArenaStringPtr cross_storage_key_;
+  ::google::protobuf::internal::ArenaStringPtr cross_storage_value_;
+  ::google::protobuf::internal::ArenaStringPtr runtime_bytecode_;
   ::google::protobuf::uint64 amount_;
   ::google::protobuf::int32 pool_index_;
   ::google::protobuf::uint32 sharding_id_;
   ::google::protobuf::uint64 prefund_;
   ::google::protobuf::uint32 des_sharding_id_;
+  ::google::protobuf::uint64 cross_nonce_;
   friend struct ::protobuf_protos_2fpools_2eproto::TableStruct;
 };
 // -------------------------------------------------------------------
@@ -4046,6 +4128,260 @@ inline void ToTxMessageItem::set_des_sharding_id(::google::protobuf::uint32 valu
   set_has_des_sharding_id();
   des_sharding_id_ = value;
   // @@protoc_insertion_point(field_set:seth.pools.protobuf.ToTxMessageItem.des_sharding_id)
+}
+
+// optional bytes base_root_address = 12;
+inline bool ToTxMessageItem::has_base_root_address() const {
+  return (_has_bits_[0] & 0x00000200u) != 0;
+}
+inline void ToTxMessageItem::set_has_base_root_address() {
+  _has_bits_[0] |= 0x00000200u;
+}
+inline void ToTxMessageItem::clear_has_base_root_address() {
+  _has_bits_[0] &= ~0x00000200u;
+}
+inline void ToTxMessageItem::clear_base_root_address() {
+  base_root_address_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  clear_has_base_root_address();
+}
+inline const ::std::string& ToTxMessageItem::base_root_address() const {
+  return base_root_address_.GetNoArena();
+}
+inline void ToTxMessageItem::set_base_root_address(const ::std::string& value) {
+  set_has_base_root_address();
+  base_root_address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+}
+#if LANG_CXX11
+inline void ToTxMessageItem::set_base_root_address(::std::string&& value) {
+  set_has_base_root_address();
+  base_root_address_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+}
+#endif
+inline void ToTxMessageItem::set_base_root_address(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  set_has_base_root_address();
+  base_root_address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+}
+inline void ToTxMessageItem::set_base_root_address(const void* value, size_t size) {
+  set_has_base_root_address();
+  base_root_address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+}
+inline ::std::string* ToTxMessageItem::mutable_base_root_address() {
+  set_has_base_root_address();
+  return base_root_address_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* ToTxMessageItem::release_base_root_address() {
+  if (!has_base_root_address()) {
+    return NULL;
+  }
+  clear_has_base_root_address();
+  return base_root_address_.ReleaseNonDefaultNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void ToTxMessageItem::set_allocated_base_root_address(::std::string* base_root_address) {
+  if (base_root_address != NULL) {
+    set_has_base_root_address();
+  } else {
+    clear_has_base_root_address();
+  }
+  base_root_address_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), base_root_address);
+}
+
+// optional uint64 cross_nonce = 13;
+inline bool ToTxMessageItem::has_cross_nonce() const {
+  return (_has_bits_[0] & 0x00000400u) != 0;
+}
+inline void ToTxMessageItem::set_has_cross_nonce() {
+  _has_bits_[0] |= 0x00000400u;
+}
+inline void ToTxMessageItem::clear_has_cross_nonce() {
+  _has_bits_[0] &= ~0x00000400u;
+}
+inline void ToTxMessageItem::clear_cross_nonce() {
+  cross_nonce_ = GOOGLE_ULONGLONG(0);
+  clear_has_cross_nonce();
+}
+inline ::google::protobuf::uint64 ToTxMessageItem::cross_nonce() const {
+  return cross_nonce_;
+}
+inline void ToTxMessageItem::set_cross_nonce(::google::protobuf::uint64 value) {
+  set_has_cross_nonce();
+  cross_nonce_ = value;
+}
+
+// optional bytes cross_storage_key = 15;
+inline bool ToTxMessageItem::has_cross_storage_key() const {
+  return (_has_bits_[0] & 0x00000800u) != 0;
+}
+inline void ToTxMessageItem::set_has_cross_storage_key() {
+  _has_bits_[0] |= 0x00000800u;
+}
+inline void ToTxMessageItem::clear_has_cross_storage_key() {
+  _has_bits_[0] &= ~0x00000800u;
+}
+inline void ToTxMessageItem::clear_cross_storage_key() {
+  cross_storage_key_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  clear_has_cross_storage_key();
+}
+inline const ::std::string& ToTxMessageItem::cross_storage_key() const {
+  return cross_storage_key_.GetNoArena();
+}
+inline void ToTxMessageItem::set_cross_storage_key(const ::std::string& value) {
+  set_has_cross_storage_key();
+  cross_storage_key_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+}
+#if LANG_CXX11
+inline void ToTxMessageItem::set_cross_storage_key(::std::string&& value) {
+  set_has_cross_storage_key();
+  cross_storage_key_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+}
+#endif
+inline void ToTxMessageItem::set_cross_storage_key(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  set_has_cross_storage_key();
+  cross_storage_key_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+}
+inline void ToTxMessageItem::set_cross_storage_key(const void* value, size_t size) {
+  set_has_cross_storage_key();
+  cross_storage_key_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+}
+inline ::std::string* ToTxMessageItem::mutable_cross_storage_key() {
+  set_has_cross_storage_key();
+  return cross_storage_key_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* ToTxMessageItem::release_cross_storage_key() {
+  if (!has_cross_storage_key()) {
+    return NULL;
+  }
+  clear_has_cross_storage_key();
+  return cross_storage_key_.ReleaseNonDefaultNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void ToTxMessageItem::set_allocated_cross_storage_key(::std::string* cross_storage_key) {
+  if (cross_storage_key != NULL) {
+    set_has_cross_storage_key();
+  } else {
+    clear_has_cross_storage_key();
+  }
+  cross_storage_key_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), cross_storage_key);
+}
+
+// optional bytes cross_storage_value = 16;
+inline bool ToTxMessageItem::has_cross_storage_value() const {
+  return (_has_bits_[0] & 0x00001000u) != 0;
+}
+inline void ToTxMessageItem::set_has_cross_storage_value() {
+  _has_bits_[0] |= 0x00001000u;
+}
+inline void ToTxMessageItem::clear_has_cross_storage_value() {
+  _has_bits_[0] &= ~0x00001000u;
+}
+inline void ToTxMessageItem::clear_cross_storage_value() {
+  cross_storage_value_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  clear_has_cross_storage_value();
+}
+inline const ::std::string& ToTxMessageItem::cross_storage_value() const {
+  return cross_storage_value_.GetNoArena();
+}
+inline void ToTxMessageItem::set_cross_storage_value(const ::std::string& value) {
+  set_has_cross_storage_value();
+  cross_storage_value_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+}
+#if LANG_CXX11
+inline void ToTxMessageItem::set_cross_storage_value(::std::string&& value) {
+  set_has_cross_storage_value();
+  cross_storage_value_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+}
+#endif
+inline void ToTxMessageItem::set_cross_storage_value(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  set_has_cross_storage_value();
+  cross_storage_value_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+}
+inline void ToTxMessageItem::set_cross_storage_value(const void* value, size_t size) {
+  set_has_cross_storage_value();
+  cross_storage_value_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+}
+inline ::std::string* ToTxMessageItem::mutable_cross_storage_value() {
+  set_has_cross_storage_value();
+  return cross_storage_value_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* ToTxMessageItem::release_cross_storage_value() {
+  if (!has_cross_storage_value()) {
+    return NULL;
+  }
+  clear_has_cross_storage_value();
+  return cross_storage_value_.ReleaseNonDefaultNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void ToTxMessageItem::set_allocated_cross_storage_value(::std::string* cross_storage_value) {
+  if (cross_storage_value != NULL) {
+    set_has_cross_storage_value();
+  } else {
+    clear_has_cross_storage_value();
+  }
+  cross_storage_value_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), cross_storage_value);
+}
+
+// optional bytes runtime_bytecode = 17;
+inline bool ToTxMessageItem::has_runtime_bytecode() const {
+  return (_has_bits_[0] & 0x00002000u) != 0;
+}
+inline void ToTxMessageItem::set_has_runtime_bytecode() {
+  _has_bits_[0] |= 0x00002000u;
+}
+inline void ToTxMessageItem::clear_has_runtime_bytecode() {
+  _has_bits_[0] &= ~0x00002000u;
+}
+inline void ToTxMessageItem::clear_runtime_bytecode() {
+  runtime_bytecode_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  clear_has_runtime_bytecode();
+}
+inline const ::std::string& ToTxMessageItem::runtime_bytecode() const {
+  return runtime_bytecode_.GetNoArena();
+}
+inline void ToTxMessageItem::set_runtime_bytecode(const ::std::string& value) {
+  set_has_runtime_bytecode();
+  runtime_bytecode_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+}
+#if LANG_CXX11
+inline void ToTxMessageItem::set_runtime_bytecode(::std::string&& value) {
+  set_has_runtime_bytecode();
+  runtime_bytecode_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+}
+#endif
+inline void ToTxMessageItem::set_runtime_bytecode(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  set_has_runtime_bytecode();
+  runtime_bytecode_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+}
+inline void ToTxMessageItem::set_runtime_bytecode(const void* value, size_t size) {
+  set_has_runtime_bytecode();
+  runtime_bytecode_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+}
+inline ::std::string* ToTxMessageItem::mutable_runtime_bytecode() {
+  set_has_runtime_bytecode();
+  return runtime_bytecode_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* ToTxMessageItem::release_runtime_bytecode() {
+  if (!has_runtime_bytecode()) {
+    return NULL;
+  }
+  clear_has_runtime_bytecode();
+  return runtime_bytecode_.ReleaseNonDefaultNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void ToTxMessageItem::set_allocated_runtime_bytecode(::std::string* runtime_bytecode) {
+  if (runtime_bytecode != NULL) {
+    set_has_runtime_bytecode();
+  } else {
+    clear_has_runtime_bytecode();
+  }
+  runtime_bytecode_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), runtime_bytecode);
 }
 
 // -------------------------------------------------------------------

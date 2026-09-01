@@ -220,7 +220,7 @@ void ToTxLocalItem::HandleCrossShardBase(
         derived_info->set_addr(derived_str);
         derived_info->set_sharding_id(shard_id);
         derived_info->set_pool_index(pool_index);
-        derived_info->set_type(address::protobuf::kContract);
+        derived_info->set_type(address::protobuf::kNormal);
         derived_info->set_bytes_code(bytecode);
         derived_info->set_latest_height(view_block.block_info().height());
         derived_info->set_tx_index(tx_index);
