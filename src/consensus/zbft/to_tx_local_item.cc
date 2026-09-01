@@ -77,7 +77,6 @@ void ToTxLocalItem::CreateLocalToTx(
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         const pools::protobuf::ToTxMessageItem& to_tx_item,
         block::protobuf::ConsensusToTxs& block_to_txs) {
-    // CrossShardBase path: lazy-deploy derived contract + call systemExecuteCross*
     if (to_tx_item.has_base_root_address()) {
         HandleCrossShardBase(tx_index, view_block, seth_host, acc_balance_map, to_tx_item);
         return;
@@ -117,10 +116,11 @@ void ToTxLocalItem::CreateLocalToTx(
                 to_balance);
         }
 
-        if (amount <= 0 && 
-                to_tx_item.library_bytes().empty()) {
-            SETH_DEBUG("failed just contract set prefund add addr: %s, to item: %s", 
-                common::Encode::HexEncode(addr).c_str(), 
+        if (amount <= 0 &&
+                to_tx_item.library_bytes().empty() &&
+                to_tx_item.runtime_bytecode().empty()) {
+            SETH_DEBUG("failed just contract set prefund add addr: %s, to item: %s",
+                common::Encode::HexEncode(addr).c_str(),
                 ProtobufToJson(to_tx_item).c_str());
             return;
         }
@@ -149,8 +149,21 @@ void ToTxLocalItem::CreateLocalToTx(
         addr = addr.substr(0, common::kUnicastAddressLength);
         new_addr_func(to_tx_item.des(), to_tx_item.prefund());
     }
-    
+
     new_addr_func(addr, to_tx_item.amount());
+
+    // CrossShardBase contract creation: store bytecode in local KV registry.
+    // All shards receive this item (fan-out from root) and populate their own registry,
+    // so HandleCrossShardBase can look up bytecode for lazy derived-contract deployment.
+    if (!to_tx_item.runtime_bytecode().empty()) {
+        const std::string sys_str(reinterpret_cast<const char*>(
+            sethvm::kCrossShardSystemExecutor.bytes), 20);
+        seth_host.SaveKeyValue(
+            sys_str, "xsb:" + addr, to_tx_item.runtime_bytecode());
+        SETH_INFO("CrossShardBase registry stored: base=%s shard=%u pool=%u",
+            common::Encode::HexEncode(addr).c_str(),
+            view_block.qc().network_id(), view_block.qc().pool_index());
+    }
 }
 
 void ToTxLocalItem::HandleCrossShardBase(
@@ -159,13 +172,26 @@ void ToTxLocalItem::HandleCrossShardBase(
         sethvm::SethhainHost& seth_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         const pools::protobuf::ToTxMessageItem& to_tx) {
-    const std::string& base_raw  = to_tx.base_root_address();  // 20-byte raw
-    const std::string& bytecode  = to_tx.runtime_bytecode();
+    const std::string& base_raw = to_tx.base_root_address();  // 20-byte raw
     uint32_t shard_id   = view_block.qc().network_id();
     uint32_t pool_index = view_block.qc().pool_index();
 
-    if (base_raw.size() != 20 || bytecode.empty()) {
-        SETH_ERROR("CrossShardBase: missing base_root_address or runtime_bytecode, skipping");
+    if (base_raw.size() != 20) {
+        SETH_ERROR("CrossShardBase: invalid base_root_address length %zu", base_raw.size());
+        return;
+    }
+
+    // Look up runtime bytecode from local KV registry (populated at deploy-broadcast time)
+    std::string bytecode;
+    {
+        const std::string sys_str(reinterpret_cast<const char*>(
+            sethvm::kCrossShardSystemExecutor.bytes), 20);
+        seth_host.GetKeyValue(sys_str, "xsb:" + base_raw, &bytecode);
+    }
+    if (bytecode.empty()) {
+        SETH_ERROR("CrossShardBase: bytecode not in registry for base=%s "
+                   "(contract not yet broadcast to this shard)",
+            common::Encode::HexEncode(base_raw).c_str());
         return;
     }
 

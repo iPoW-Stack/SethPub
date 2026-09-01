@@ -316,21 +316,9 @@ int ContractUserCreateCall::HandleTx(
                     item->set_des(action.to);
                     item->set_amount(action.amount);
                     item->set_sharding_id(view_block.qc().network_id());
-                    item->set_des_sharding_id(network::kRootCongressNetworkId);
+                    item->set_des_sharding_id(network::kUniversalNetworkId);
                     item->set_base_root_address(action.base_root_address);
                     item->set_cross_nonce(action.nonce);
-
-                    // Propagate bytecode for dest lazy-deploy (constructor case)
-                    evmc::address emitter_evmc{};
-                    memcpy(emitter_evmc.bytes, action.emitter.data(), 20);
-                    auto c2_it = seth_host.create2_accounts_.find(emitter_evmc);
-                    if (c2_it != seth_host.create2_accounts_.end()) {
-                        item->set_runtime_bytecode(std::string(
-                            c2_it->second.code.begin(), c2_it->second.code.end()));
-                    } else if (seth_host.view_block_chain_) {
-                        auto ei = seth_host.view_block_chain_->ChainGetAccountInfo(action.emitter);
-                        if (ei) item->set_runtime_bytecode(ei->bytes_code());
-                    }
                     cross_to_map_[key] = item;
                     SETH_INFO("CrossShardBase constructor cross-transfer queued: base=%s, to=%s, amount=%lu",
                         common::Encode::HexEncode(action.base_root_address).c_str(),
@@ -344,10 +332,9 @@ int ContractUserCreateCall::HandleTx(
                     auto item = std::make_shared<pools::protobuf::ToTxMessageItem>();
                     item->set_from(action.emitter);
                     item->set_sharding_id(view_block.qc().network_id());
-                    item->set_des_sharding_id(network::kRootCongressNetworkId);
+                    item->set_des_sharding_id(network::kUniversalNetworkId);
                     item->set_base_root_address(action.base_root_address);
                     item->set_cross_nonce(action.nonce);
-
                     item->set_cross_storage_key(action.storage_key);
                     item->set_cross_storage_value(action.storage_val);
                     cross_to_map_[key] = item;
@@ -359,6 +346,25 @@ int ContractUserCreateCall::HandleTx(
         }
         // ─────────────────────────────────────────────────────────────────────
 
+        // Detect CrossShardBase before MergeToPrev (storage/code still in seth_host)
+        std::string xsb_runtime_code;
+        {
+            evmc::address new_addr_evmc = sethvm::StrToEvmcAddr(block_tx.to());
+            evmc::bytes32 sentinel = seth_host.get_storage(
+                new_addr_evmc, sethvm::kIsCrossShardBaseSlot);
+            if (sentinel.bytes[31] == 1) {
+                auto c2_it = seth_host.create2_accounts_.find(new_addr_evmc);
+                if (c2_it != seth_host.create2_accounts_.end() &&
+                        !c2_it->second.code.empty()) {
+                    xsb_runtime_code = std::string(
+                        c2_it->second.code.begin(), c2_it->second.code.end());
+                } else {
+                    SETH_WARN("CrossShardBase deployed but runtime bytecode not in create2_accounts_: %s",
+                        common::Encode::HexEncode(block_tx.to()).c_str());
+                }
+            }
+        }
+
         seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
         seth_host.MergeToPrev();
         auto iter = pre_seth_host.cross_to_map_.find(block_tx.to());
@@ -368,12 +374,12 @@ int ContractUserCreateCall::HandleTx(
             to_item_ptr->set_des(block_tx.to() + block_tx.from());
             to_item_ptr->set_amount(0);  // create contract direct set balance, not cross by root
             to_item_ptr->set_sharding_id(view_block.qc().network_id());
-            to_item_ptr->set_des_sharding_id(network::kRootCongressNetworkId);
-            pre_seth_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
-            // if (block_tx.contract_prefund() > 0) {
-            //     to_item_ptr->set_prefund(block_tx.contract_prefund());
-            // }
+            to_item_ptr->set_des_sharding_id(network::kUniversalNetworkId);
+            if (!xsb_runtime_code.empty()) {
+                to_item_ptr->set_runtime_bytecode(xsb_runtime_code);
+            }
 
+            pre_seth_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
             SETH_DEBUG("success add to tx item addr prefund id: %s, prefund: %lu",
                 common::Encode::HexEncode(to_item_ptr->des()).c_str(),
                 block_tx.contract_prefund());

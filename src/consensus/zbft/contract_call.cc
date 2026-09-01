@@ -421,21 +421,9 @@ int ContractCall::HandleTx(
                     item->set_des(action.to);
                     item->set_amount(action.amount);
                     item->set_sharding_id(view_block.qc().network_id());
-                    item->set_des_sharding_id(network::kRootCongressNetworkId);
+                    item->set_des_sharding_id(network::kUniversalNetworkId);
                     item->set_base_root_address(action.base_root_address);
                     item->set_cross_nonce(action.nonce);
-
-                    // Propagate bytecode so destination shard can lazy-deploy derived contract
-                    evmc::address emitter_evmc{};
-                    memcpy(emitter_evmc.bytes, action.emitter.data(), 20);
-                    auto c2_it = seth_host.create2_accounts_.find(emitter_evmc);
-                    if (c2_it != seth_host.create2_accounts_.end()) {
-                        item->set_runtime_bytecode(std::string(
-                            c2_it->second.code.begin(), c2_it->second.code.end()));
-                    } else if (seth_host.view_block_chain_) {
-                        auto ei = seth_host.view_block_chain_->ChainGetAccountInfo(action.emitter);
-                        if (ei) item->set_runtime_bytecode(ei->bytes_code());
-                    }
                     cross_to_map_[key] = item;
                     SETH_INFO("CrossShardBase cross-transfer queued: base=%s, to=%s, amount=%lu, nonce=%lu",
                         common::Encode::HexEncode(action.base_root_address).c_str(),
@@ -449,7 +437,7 @@ int ContractCall::HandleTx(
                     auto item = std::make_shared<pools::protobuf::ToTxMessageItem>();
                     item->set_from(action.emitter);
                     item->set_sharding_id(view_block.qc().network_id());
-                    item->set_des_sharding_id(network::kRootCongressNetworkId);
+                    item->set_des_sharding_id(network::kUniversalNetworkId);
                     item->set_base_root_address(action.base_root_address);
                     item->set_cross_nonce(action.nonce);
 

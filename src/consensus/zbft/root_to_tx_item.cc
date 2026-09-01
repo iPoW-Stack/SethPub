@@ -96,7 +96,6 @@ int RootToTxItem::HandleTx(
     acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
     acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
 
-    uint32_t status_code = block_tx.status();
     if (block_tx.status() == kConsensusSuccess) {
         auto iter = seth_host.cross_to_map_.find(to_item.des());
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
@@ -107,19 +106,9 @@ int RootToTxItem::HandleTx(
         } else {
             to_item_ptr = iter->second;
             to_item_ptr->set_amount(block_tx.amount() + to_item_ptr->amount());
-            if (block_tx.has_contract_code() && !block_tx.contract_code().empty()) {
-                to_item_ptr->set_library_bytes(block_tx.contract_code());
-            }
-
-            if (block_tx.contract_prefund() > 0) {
-                to_item_ptr->set_prefund(block_tx.contract_prefund() + to_item_ptr->prefund());
-            }
         }
-
-        SETH_DEBUG("success add addr cross to: %s, sharding_id: %u, to info: %s", 
-            common::Encode::HexEncode(to_item.des()).c_str(), 
-            sharding_id,
-            ProtobufToJson(*to_item_ptr).c_str());
+        SETH_DEBUG("success add addr cross to: %s, sharding_id: %u",
+            common::Encode::HexEncode(to_item.des()).c_str(), sharding_id);
     }
 
     block::protobuf::TxHashStatus tx_hash_status;
