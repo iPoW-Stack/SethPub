@@ -1,0 +1,114 @@
+=== SESSION CONTEXT LOG ===
+Date: 2026-09-01
+
+== 服务器信息 ==
+Host: 139.159.119.119  root/root9657@&
+Jump: 47.110.139.158   root/Xf4aGbTaf&:22  /root/deploy
+Seth 源码: /root/seth
+Seth 旧数据: /data/seth  (clipy/ 含 seth_sdk.py / deploy_exchange.py 等)
+Seth 离线包: /root/deploy/seth-offline.tar.gz (2.7G)
+Deploy 脚本: /root/deploy/deploy_seth_single.sh
+
+== 本次主要工作 ==
+
+### 1. C2CSellOrder 合约测试 (deploy_c2c.py)
+本地文件: d:\work\deploy\deploy_c2c.py
+服务器副本: /data/seth/clipy/deploy_c2c.py (旧路径)
+           /root/seth/clipy/deploy_c2c.py (新路径)
+
+测试命令（基于 /root/seth）:
+  docker run --rm --network host \
+    -v /root/seth:/data/seth \
+    -v /data/tmp:/data/tmp \
+    -w /data/seth/clipy \
+    seth-builder:latest \
+    python3 deploy_c2c.py
+
+结果输出: /data/tmp/c2c_deploy_result.json
+
+测试覆盖 T0~T9:
+  T0  激活账户 (prefund seller/buyer/seller2)
+  T1  TestContract(42)                         OK
+  T2  callAbe (ripemd160, Seth 不支持)          SKIP/OK
+  T3  NewSellOrder seller                       OK  pledge=5M
+  T4  LockForPurchase                           OK  amount=2M
+  T5  BuyerConfirmPurchase                      OK  (+sleep5 +retry on 10007)
+  T6  Confirm (seller→buyer)                    OK
+  T7  seller2 NewSellOrder+Lock+Unlock          OK
+  T8  ManagerRelease + SellerRelease seller2    OK
+  T9  seller3 NewSellOrder + Report             OK  (+sleep15 after prefund)
+
+### 2. 关键 Bug 修复记录
+
+#### Bug A: kConsensusUserSetGasLimitError (5021) — NewSellOrder
+原因: solc 0.8.34 不指定 evm_version 时默认 Cancun，生成 MCOPY opcode (EIP-5656)。
+      Seth EVM 是 pre-Cancun，遇到 MCOPY 视为 INVALID → 耗尽 5M gas → 5021。
+      compile_and_link() 显式用 evm_version='shanghai' 所以没问题，
+      直接调 compile_source 未指定故中招。
+修复: 在 deploy_c2c.py compile_source 调用中加 evm_version="shanghai"
+      compiled = _solcx.compile_source(..., via_ir=True, evm_version="shanghai")
+
+#### Bug B: kTxInvalidAddress (10005) — T9 seller3 NewSellOrder
+原因: seller3 完成 prefund 激活后立即调用 NewSellOrder，
+      账户状态还未传播到 shard3 全部 4 个节点。
+修复: prefund 后 time.sleep(15)
+
+#### Bug C: kTxUserNonceInvalid (10007) — T5 BuyerConfirmPurchase
+原因: LockForPurchase 在 Seth 共识层会对 contract+buyer 的 nonce_addr
+      产生副作用递增，若 T5 在 T4 状态完全传播前查询 nonce 会拿到旧值。
+修复: T4→T5 间加 time.sleep(5) + 最多 3 次重试
+
+#### Bug D: CREATE2 地址算错分片
+原因: find_salt 原实现只对 bytecode 做 keccak，未包含 ABI-encoded 构造参数，
+      导致预测 shard3 但实际部署到 shard6。
+修复: init_code = bytecode + abi_encode(["address[]","uint256","uint256"], args)
+      引入 eth_abi.encode，find_salt 改用完整 init_code 计算 CREATE2 地址。
+
+#### Bug E: libPBC 链接失败
+错误: /usr/bin/ld: cannot find -lPBC
+原因: contract/CMakeLists.txt target_link_libraries 中有 PBC，
+      libPBC.a 在 third_party/cpppbc/ 而非 CMake 搜索路径 third_party/lib/。
+修复: cp /root/seth/third_party/cpppbc/libPBC.a /root/seth/third_party/lib/libPBC.a
+
+### 3. 单机 5 分片部署命令
+SSH 进服务器后执行:
+  cd /root/deploy
+  bash deploy_seth_single.sh \
+    -f seth-offline.tar.gz \
+    -H 127.0.0.1 \
+    -P 139.159.119.119 \
+    -s 2 -N 5 -n 4
+
+参数: shard 2~6，每分片 4 节点，共 20 容器 (seth-2-1 … seth-6-4)
+验证:
+  docker ps --filter name=seth- --format '{{.Names}}' | sort
+  curl -sk -X POST \
+    --data-urlencode "address=715f574da6c2da667f30dc61e44a060896b37dfe" \
+    https://139.159.119.119:23001/query_account
+
+== Seth 关键参数 ==
+Genesis Funder:
+  privkey: c8ee398141fe31308fce258fa4c0fc21288a74a221982db252cb10a94bf7063b
+  pubkey:  033f4cfcda1f4ceedd8a1002eb27902deb78e56762e522ebc9c00700972ddd0136
+  address: 715f574da6c2da667f30dc61e44a060896b37dfe
+  shard:   3
+
+shard3 API: https://139.159.119.119:23001
+各分片 HTTP 端口: shard2=22001~22004, shard3=23001~23004, ..., shard6=26001~26004
+
+Seth SDK 注意事项:
+- gas_limit 硬编码 5000000 (line 735/743 seth_sdk.py)，链上 max=5M
+- kContractExcute nonce_addr = contract_addr + sender_addr (40字节)
+- kContractGasPrefund nonce_addr = sender_addr
+- 新账户必须先发出向 TX 才能作为发送方（activation）
+- FROM 收据 status=0 不等于余额已到账（balance-gate lag）
+
+== 上次测试成功的合约地址 ==
+4c0ab21cff02f4cbc33648e975e9321e1a0d42bc (shard3, 2026-08-25 run)
+Manager: 715f574da6c2da667f30dc61e44a060896b37dfe
+
+== 文件清单 ==
+d:\work\deploy\deploy_c2c.py          — C2C 合约部署+测试脚本 (T0~T9)
+d:\work\deploy\deploy_exchange.py     — Exchange 合约批量账户测试脚本
+d:\work\deploy\deploy_seth_single.sh  — 单机多分片部署脚本
+d:\work\deploy\lib\common.sh          — genesis funder key 已对齐 c8ee39...

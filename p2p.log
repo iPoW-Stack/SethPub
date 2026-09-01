@@ -1,0 +1,171 @@
+# 上下文快照 — 2026-09-01
+
+## 项目目录
+d:\work\sing-box-for-android\p2p\src\consensus\zbft\
+
+## 当前分支
+xl0616
+
+---
+
+## 功能背景：跨分片合约（CrossShardBase）架构
+
+### 核心概念
+- **CrossShardBase.sol**：Solidity 抽象基类。`SYSTEM_EXECUTOR_ADDRESS = 0x53595354454d5f4558454355544f525f56310000`（ASCII "SYSTEM_EXECUTOR_V1" + 0x0000）
+- **`kCrossShardSystemExecutor`**：固定 20 字节地址 `{0x53,0x59,0x53,...,0x31,0x00,0x00}`，作为系统调用的 `msg.sender`
+- **`kIsCrossShardBaseSlot`**：`bytes32` 标识槽，若 `slot[31]==1` 则该合约是 CrossShardBase 派生合约
+- **分身合约（Derived Contract）**：由 `DeriveShardAddress(base_addr, shard_id, pool_index)` 确定性派生地址，在各分片+pool 上懒部署
+
+### 合约创建时字节码广播流程（已实现）
+
+```
+shard A 执行合约创建 TX
+  └→ contract_create.cc::HandleTx
+       ├─ EVM 执行，检测 kIsCrossShardBaseSlot sentinel
+       ├─ 从 create2_accounts_ 取 runtime_bytecode（MergeToPrev 前）
+       └─ 将 runtime_bytecode 写入正常创建项 ToTxMessageItem
+            （des = contract_addr(20) + from_addr(20)，des_sharding_id = kRootCongressNetworkId）
+
+root 分片 root_to_tx_item.cc::HandleTx
+  ├─ 若 to_item.runtime_bytecode() 非空 → fan-out 到所有分片
+  │     key = des + shard_id，copy.set_des_sharding_id(s)
+  └─ 若无 runtime_bytecode → 普通单分片路由
+
+各目标分片 to_tx_local_item.cc::CreateLocalToTx
+  ├─ new_addr_func 创建合约账号（early-return 条件含 runtime_bytecode 检查）
+  └─ 若 runtime_bytecode 非空 → SaveKeyValue(kCrossShardSystemExecutor, "xsb:"+addr, bytecode)
+       存入本地全局 KV，供后续跨分片调用查询
+```
+
+### 跨分片调用时字节码获取流程（已实现）
+
+```
+shard B 收到跨分片调用 kConsensusLocalTos
+  └→ to_tx_local_item.cc::CreateLocalToTx
+       └─ has_base_root_address() → HandleCrossShardBase
+            ├─ GetKeyValue(kCrossShardSystemExecutor, "xsb:"+base_addr, &bytecode)
+            ├─ bytecode 为空 → SETH_ERROR 返回（合约尚未广播到本分片）
+            └─ 懒部署分身合约：写 bytecode + 存储槽，执行 EVM 调用
+```
+
+---
+
+## 已修改文件列表
+
+### 1. src/protos/pools.proto
+新增字段：
+- `bytes base_root_address = 12`
+- `uint64 cross_nonce = 13`
+- `bytes cross_storage_key = 15`
+- `bytes cross_storage_value = 16`
+- `bytes runtime_bytecode = 17`
+- step type: `kCrossShardDeployClone = 19`
+
+### 2. src/protos/pools.pb.h（手动维护，非自动生成）
+- 添加 5 个新字段的 public accessor 声明
+- 添加 private has_bits helpers（bits 9–13: 0x200,0x400,0x800,0x1000,0x2000）
+- 添加 private storage 成员：4 个 ArenaStringPtr + 1 个 uint64
+
+### 3. src/protos/pools.pb.cc（手动维护，非自动生成）
+- SharedCtor / 拷贝构造 / SharedDtor / Clear
+- MergePartialFromCodedStream：cutoff 改为 16383u，添加 case 12/13/15/16/17
+- SerializeWithCachedSizes / InternalSerializeWithCachedSizesToArray（field 16/17 用 2字节 tag）
+- ByteSizeLong（field 16/17 tag_size = 2）
+- MergeFrom / InternalSwap
+
+### 4. src/consensus/zbft/contract_create.cc
+关键逻辑（block_tx.status() == kConsensusSuccess 分支内）：
+```cpp
+// MergeToPrev 前检测 CrossShardBase
+std::string xsb_runtime_code;
+{
+    evmc::address new_addr_evmc = sethvm::StrToEvmcAddr(block_tx.to());
+    evmc::bytes32 sentinel = seth_host.get_storage(new_addr_evmc, sethvm::kIsCrossShardBaseSlot);
+    if (sentinel.bytes[31] == 1) {
+        auto c2_it = seth_host.create2_accounts_.find(new_addr_evmc);
+        if (c2_it != seth_host.create2_accounts_.end() && !c2_it->second.code.empty()) {
+            xsb_runtime_code = std::string(c2_it->second.code.begin(), c2_it->second.code.end());
+        }
+    }
+}
+// MergeToPrev 后，在正常创建项 to_item_ptr 上附加 runtime_bytecode
+if (!xsb_runtime_code.empty()) {
+    to_item_ptr->set_runtime_bytecode(xsb_runtime_code);
+}
+```
+不再生成单独的 `__xsb_deploy__` 广播项。
+
+### 5. src/consensus/zbft/root_to_tx_item.cc
+删除旧的 `des_sharding_id==0` fan-out 块。
+在正常成功路径中：
+```cpp
+if (!to_item.runtime_bytecode().empty()) {
+    // CrossShardBase creation: fan out to all shards
+    for (uint32_t s = kConsensusShardBeginNetworkId; s <= max_sharding_id_; ++s) {
+        std::string fan_key = to_item.des() + std::to_string(s);
+        auto copy = std::make_shared<...>(to_item);
+        copy->set_des_sharding_id(s);
+        seth_host.cross_to_map_[fan_key] = copy;
+    }
+} else {
+    // 普通单分片路由（原逻辑）
+    ...
+}
+```
+
+用户说明：root 分片不应存储合约 bytecode，只负责路由/fan-out。
+
+### 6. src/consensus/zbft/to_tx_local_item.cc
+```cpp
+// has_base_root_address → 跨分片调用（transfer/storage），直接走 HandleCrossShardBase
+if (to_tx_item.has_base_root_address()) {
+    HandleCrossShardBase(...);
+    return;
+}
+// ...new_addr_func 处理账号...
+// early-return 条件加 runtime_bytecode 检查
+if (amount <= 0 && library_bytes().empty() && runtime_bytecode().empty()) {
+    return;
+}
+// ...
+// CrossShardBase 创建：存 bytecode 到本地全局 KV
+if (!to_tx_item.runtime_bytecode().empty()) {
+    const std::string sys_str(kCrossShardSystemExecutor.bytes, 20);
+    seth_host.SaveKeyValue(sys_str, "xsb:" + addr, to_tx_item.runtime_bytecode());
+}
+```
+
+HandleCrossShardBase：
+```cpp
+// 从 KV 读取 bytecode（不从跨分片 TX 消息中获取）
+std::string bytecode;
+seth_host.GetKeyValue(sys_str, "xsb:" + base_raw, &bytecode);
+if (bytecode.empty()) {
+    SETH_ERROR("bytecode not in registry for base=%s", ...);
+    return;
+}
+// 懒部署分身合约...
+```
+
+### 7. src/consensus/zbft/contract_call.cc
+- 删除 transfer 类 action 中附加 runtime_bytecode 的代码（bytecode 只在部署时传一次）
+
+---
+
+## 待确认事项
+
+用户最新说明（2026-09-01）：
+- "root 分片不存储合约 bytecode"
+  → root_to_tx_item.cc 只做路由/fan-out，不调用 SaveKeyValue 存 bytecode ✓（当前实现正确）
+
+---
+
+## 关键常量位置
+- `kCrossShardSystemExecutor`：src/sethvm/host_journal_stack.h
+- `kIsCrossShardBaseSlot`：src/sethvm/host_journal_stack.h
+- `DeriveShardAddress`：src/sethvm/host_journal_stack.h
+- `kCrossShardBaseGasMultiplier`：src/sethvm/host_journal_stack.h
+
+## 全局 KV 接口
+- `seth_host.SaveKeyValue(id, key, val)` — 写
+- `seth_host.GetKeyValue(id, key, &val)` — 读，返回 kSethvmSuccess 或错误码
