@@ -265,7 +265,7 @@ void BlockManager::ConsensusShardHandleRootCreateAddress(
 
 void BlockManager::HandleNormalToTx(const std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block_ptr) {
     auto& view_block = *view_block_ptr;
-    if (!view_block.block_info().normal_to().has_to_tx()) {
+    if (view_block.block_info().normal_to().to_tx_arr_size() == 0) {
         SETH_DEBUG("0 handle normale to message coming: %u_%u_%lu_%lu, des: %u, %s", 
             view_block.qc().network_id(), 
             view_block.qc().pool_index(), 
@@ -306,9 +306,9 @@ void BlockManager::HandleNormalToTx(const std::shared_ptr<view_block::protobuf::
     //     }
 
         if (!network::IsSameToLocalShard(network::kRootCongressNetworkId)) {
-            HandleNormalToTx(view_block, to_txs.to_tx());
+            HandleNormalToTx(view_block, to_txs.to_tx_arr(0));
         } else {
-            RootHandleNormalToTx(view_block, to_txs.to_tx());
+            RootHandleNormalToTx(view_block, to_txs.to_tx_arr(0));
         }
     // }
 }
@@ -992,7 +992,7 @@ pools::TxItemPtr BlockManager::HandleToTxsMessage(
         pools::protobuf::ShardToTxItem prev_heights;
         // for (uint32_t sharding_id = network::kRootCongressNetworkId;
         //         sharding_id <= max_consensus_sharding_id_; ++sharding_id) {
-        auto& to_tx = *all_to_txs.add_to_tx();
+        auto& to_tx = *all_to_txs.add_to_tx_arr();
         if (to_txs_pool_->CreateToTxWithHeights(
                 // sharding_id,
                 // 0,
