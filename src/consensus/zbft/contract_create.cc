@@ -6,6 +6,7 @@
 #include "network/network_utils.h"
 #include "sethvm/execution.h"
 #include "sethvm/host_journal_stack.h"
+#include "sethvm/reversible_feistel_address.h"
 
 namespace seth {
 
