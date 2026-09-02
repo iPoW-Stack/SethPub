@@ -384,6 +384,22 @@ private:
         return tm;
     }
 
+    inline common::BftMemberPtr ResolveLeaderMember(
+            uint32_t member_idx,
+            const common::MembersPtr& leaders) const {
+        if (leaders == nullptr || leaders->empty()) {
+            return nullptr;
+        }
+
+        for (const auto& leader : *leaders) {
+            if (leader->index == member_idx) {
+                return leader;
+            }
+        }
+
+        return (*leaders)[member_idx % leaders->size()];
+    }
+
     common::BftMemberPtr GetLeader(
             uint32_t new_leader_idx, 
             const view_block::protobuf::QcItem& leader_latest_qc, 
@@ -397,6 +413,15 @@ private:
             SETH_WARN("pool: %u, get leader failed, members is null or empty, sharding_id: %u", 
                 pool_idx_, common::GlobalInfo::Instance()->network_id());
             return nullptr;
+        }
+
+        auto elect_item = elect_info_->GetElectItemWithShardingId(
+            common::GlobalInfo::Instance()->network_id());
+        auto leaders = members;
+        if (elect_item != nullptr &&
+                elect_item->valid_leaders() != nullptr &&
+                !elect_item->valid_leaders()->empty()) {
+            leaders = elect_item->valid_leaders();
         }
 
         auto high_view_block = view_block_chain_->HighViewBlock();
@@ -431,8 +456,8 @@ private:
                 last_stable_leader_member_index_.load(),
                 new_leader_idx,
                 leader_latest_qc.leader_idx());
-            StorePoolTxLeader((*members)[last_stable_leader_member_index_ % members->size()]);
-            return (*members)[last_stable_leader_member_index_ % members->size()];
+            StorePoolTxLeader(ResolveLeaderMember(last_stable_leader_member_index_, leaders));
+            return ResolveLeaderMember(last_stable_leader_member_index_, leaders);
         }
 
         if (last_stable_leader_member_index_ == new_leader_idx) {
@@ -465,8 +490,8 @@ private:
                     last_stable_leader_member_index_.load(),
                     new_leader_idx,
                     leader_latest_qc.leader_idx());
-                StorePoolTxLeader((*members)[new_leader_idx % members->size()]);
-                return (*members)[new_leader_idx % members->size()];
+                StorePoolTxLeader(ResolveLeaderMember(new_leader_idx, leaders));
+                return ResolveLeaderMember(new_leader_idx, leaders);
             } while (0);
         }
 
@@ -504,15 +529,14 @@ private:
                 pool_idx_, high_view_block->qc().view(), elapsed, timeout, consecutive_failures_,
                 now, high_view_block->block_info().timestamp(),
                 last_stable_leader_member_index_.load(),
-                last_stable_leader_member_index_ % members->size(),
+                last_stable_leader_member_index_ % leaders->size(),
                 latest_elect_height_,
                 *out_view);
-            return (*members)[last_stable_leader_member_index_ % members->size()];
+            return ResolveLeaderMember(last_stable_leader_member_index_, leaders);
         }
 
         auto k = (elapsed / common::kLeaderRoatationBaseTimeoutSec) + 7;
 
-        auto elect_item = elect_info_->GetElectItemWithShardingId(common::GlobalInfo::Instance()->network_id());
         if (elect_item == nullptr) {
             // //assert(false);
             SETH_WARN("pool: %u, get leader failed, elect item is null, sharding_id: %u", 
@@ -524,7 +548,8 @@ private:
             last_stable_leader_member_index_ + 
             static_cast<int>(k) + 
             pool_idx_) % elect_item->valid_leaders()->size();
-        auto leader_idx = elect_item->valid_leaders()->at(index)->index;
+        auto leader_member = elect_item->valid_leaders()->at(index);
+        auto leader_idx = leader_member->index;
         // ++consecutive_failures_;
        
         // switch mode: force skip a view number (V + k + 1)
@@ -556,8 +581,8 @@ private:
             prev_qc_timestamp_sec,
             high_view_block->block_info().timestamp(),
             *out_view);
-        StorePoolTxLeader((*members)[leader_idx % members->size()]);
-        return (*members)[leader_idx % members->size()];
+        StorePoolTxLeader(leader_member);
+        return leader_member;
     }
 
     inline uint64_t get_consensus_timestamp(uint64_t window_size) {

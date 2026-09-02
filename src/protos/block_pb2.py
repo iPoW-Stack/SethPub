@@ -24,7 +24,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='seth.block.protobuf',
   syntax='proto2',
   serialized_options=None,
-  serialized_pb=_b('\n\x12protos/block.proto\x12\x13seth.block.protobuf\x1a\x14protos/address.proto\x1a\x10protos/bls.proto\x1a\x12protos/elect.proto\x1a\x12protos/pools.proto\x1a\x16protos/timeblock.proto\")\n\x0bStorageItem\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\r\n\x05value\x18\x02 \x01(\x0c\"8\n\x0cTransferItem\x12\x0c\n\x04\x66rom\x18\x01 \x01(\x0c\x12\n\n\x02to\x18\x02 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x04\"%\n\x05TxLog\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12\x0e\n\x06topics\x18\x02 \x03(\x0c\"Z\n\x0cTxHashStatus\x12\x0e\n\x06status\x18\x01 \x01(\x05\x12\x0e\n\x06output\x18\x02 \x01(\x0c\x12*\n\x06\x65vents\x18\x03 \x03(\x0b\x32\x1a.seth.block.protobuf.TxLog\"\xc7\x03\n\x07\x42lockTx\x12\r\n\x05nonce\x18\x01 \x01(\x04\x12\x0c\n\x04\x66rom\x18\x02 \x01(\x0c\x12\n\n\x02to\x18\x03 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\x04 \x01(\x04\x12\x11\n\tgas_limit\x18\x05 \x01(\x04\x12\x10\n\x08gas_used\x18\x06 \x01(\x04\x12\x11\n\tgas_price\x18\x07 \x01(\x04\x12\x0f\n\x07\x62\x61lance\x18\x08 \x01(\x04\x12+\n\x04step\x18\t \x01(\x0e\x32\x1d.seth.pools.protobuf.StepType\x12\x0e\n\x06status\x18\n \x01(\r\x12\x18\n\x10\x63ontract_prefund\x18\r \x01(\x04\x12\x15\n\rcontract_code\x18\x0e \x01(\x0c\x12\x16\n\x0e\x63ontract_input\x18\x0f \x01(\x0c\x12*\n\x06\x65vents\x18\x10 \x03(\x0b\x32\x1a.seth.block.protobuf.TxLog\x12\x36\n\x08tx_debug\x18\x11 \x03(\x0b\x32$.seth.pools.protobuf.TxDelayTestInfo\x12\x13\n\x0bunique_hash\x18\x12 \x01(\x0c\x12\x0b\n\x03key\x18\x13 \x01(\x0c\x12\r\n\x05value\x18\x14 \x01(\x0c\x12\x0f\n\x07tx_hash\x18\x15 \x01(\x0c\x12\x0e\n\x06output\x18\x16 \x01(\x0c\"H\n\x0cKeyValueInfo\x12\x0c\n\x04\x61\x64\x64r\x18\x01 \x01(\x0c\x12\x0b\n\x03key\x18\x02 \x01(\x0c\x12\r\n\x05value\x18\x03 \x01(\x0c\x12\x0e\n\x06height\x18\x04 \x01(\x04\"W\n\x12\x43onsensusToTxsItem\x12\n\n\x02to\x18\x01 \x01(\x0c\x12\x0f\n\x07\x62\x61lance\x18\x02 \x01(\x04\x12\x15\n\rcontract_from\x18\x03 \x01(\x0c\x12\r\n\x05nonce\x18\x04 \x01(\x04\"F\n\x0e\x43onsensusToTxs\x12\x34\n\x03tos\x18\x01 \x03(\x0b\x32\'.seth.block.protobuf.ConsensusToTxsItem\"\xd9\x07\n\x05\x42lock\x12\x0f\n\x07version\x18\x01 \x01(\r\x12\x0e\n\x06height\x18\x02 \x01(\x04\x12\x1a\n\x12\x63onsistency_random\x18\x03 \x01(\x04\x12\x18\n\x10timeblock_height\x18\x04 \x01(\x04\x12-\n\x07tx_list\x18\x05 \x03(\x0b\x32\x1c.seth.block.protobuf.BlockTx\x12\x11\n\ttimestamp\x18\x06 \x01(\x04\x12#\n\x1b\x63hange_leader_invalid_hashs\x18\x07 \x03(\x0c\x12:\n\x0fkey_value_array\x18\x08 \x03(\x0b\x32!.seth.block.protobuf.KeyValueInfo\x12\x37\n\x0c\x63ontract_txs\x18\t \x03(\x0b\x32!.seth.block.protobuf.TransferItem\x12\x39\n\raddress_array\x18\n \x03(\x0b\x32\".seth.address.protobuf.AddressInfo\x12<\n\x0f\x65lect_statistic\x18\x0b \x01(\x0b\x32#.seth.pools.protobuf.ElectStatistic\x12\x34\n\x0b\x65lect_block\x18\x0c \x01(\x0b\x32\x1f.seth.elect.protobuf.ElectBlock\x12\x39\n\x10prev_elect_block\x18\r \x01(\x0b\x32\x1f.seth.elect.protobuf.ElectBlock\x12\x35\n\x08local_to\x18\x0e \x01(\x0b\x32#.seth.block.protobuf.ConsensusToTxs\x12\x37\n\x0btimer_block\x18\x10 \x01(\x0b\x32\".seth.timeblock.protobuf.TimeBlock\x12\x36\n\tnormal_to\x18\x12 \x01(\x0b\x32#.seth.pools.protobuf.AllToTxMessage\x12\x42\n\x14\x63ross_shard_to_array\x18\x13 \x03(\x0b\x32$.seth.pools.protobuf.ToTxMessageItem\x12\x1d\n\x15pool_statistic_height\x18\x15 \x01(\x04\x12\x0f\n\x07\x61ll_gas\x18\x16 \x01(\x04\x12/\n\x05joins\x18\x17 \x03(\x0b\x32 .seth.bls.protobuf.JoinElectInfo\x12>\n\x0cpool_st_info\x18\x18 \x01(\x0b\x32(.seth.pools.protobuf.PoolStatisticTxInfo\x12\x14\n\x0cunique_hashs\x18\x19 \x03(\x0c\x12\x10\n\x08\x63hain_id\x18\x1a \x01(\x04\"n\n\x11GetTxBlockRequest\x12\x0e\n\x06tx_gid\x18\x01 \x01(\x0c\x12\x12\n\nblock_hash\x18\x02 \x01(\x0c\x12\x0c\n\x04\x66rom\x18\x03 \x01(\x08\x12\x0e\n\x06height\x18\x04 \x01(\x04\x12\x17\n\x0f\x61\x63\x63ount_address\x18\x05 \x01(\x0c\"#\n\x12GetTxBlockResponse\x12\r\n\x05\x62lock\x18\x01 \x01(\x0c\"J\n\x14\x41\x63\x63ountHeightRequest\x12\x14\n\x0c\x61\x63\x63ount_addr\x18\x01 \x01(\x0c\x12\r\n\x05index\x18\x02 \x01(\x03\x12\r\n\x05\x63ount\x18\x03 \x01(\x05\"L\n\x15\x41\x63\x63ountHeightResponse\x12\x0f\n\x07heights\x18\x01 \x03(\x04\x12\x14\n\x0c\x61\x63\x63ount_addr\x18\x02 \x01(\x0c\x12\x0c\n\x04type\x18\x03 \x01(\x0c\"G\n\x12\x41\x63\x63ountAttrRequest\x12\x0f\n\x07\x61\x63\x63ount\x18\x01 \x01(\x0c\x12\x10\n\x08\x61ttr_key\x18\x02 \x01(\x0c\x12\x0e\n\x06height\x18\x03 \x01(\x04\"W\n\x13\x41\x63\x63ountAttrResponse\x12\x0f\n\x07\x61\x63\x63ount\x18\x01 \x01(\x0c\x12\x10\n\x08\x61ttr_key\x18\x02 \x01(\x0c\x12\x0e\n\x06height\x18\x03 \x01(\x04\x12\r\n\x05\x62lock\x18\x04 \x01(\x0c\"h\n\x15UpdateVpnCountRequest\x12\x14\n\x0c\x61\x63\x63ount_hash\x18\x01 \x01(\x04\x12\n\n\x02ip\x18\x02 \x01(\x0c\x12\x0e\n\x06old_ip\x18\x03 \x01(\x0c\x12\x0b\n\x03uid\x18\x04 \x01(\x0c\x12\x10\n\x08just_set\x18\x05 \x01(\x08\")\n\x0cVpnCountItem\x12\n\n\x02ip\x18\x01 \x01(\x0c\x12\r\n\x05\x63ount\x18\x02 \x01(\r\"N\n\x16UpdateVpnCountResponse\x12\x34\n\tvpn_nodes\x18\x01 \x03(\x0b\x32!.seth.block.protobuf.VpnCountItem\"e\n\x19GetAccountInitInfoRequest\x12\n\n\x02id\x18\x01 \x01(\x0c\x12\r\n\x05\x63ount\x18\x02 \x01(\r\x12\x0e\n\x06height\x18\x03 \x01(\x04\x12\x0e\n\x06net_id\x18\x04 \x01(\x04\x12\r\n\x05index\x18\x05 \x01(\x04\"|\n\x1aGetAccountInitInfoResponse\x12\x0f\n\x07\x62\x61lance\x18\x01 \x01(\x04\x12.\n\nblock_list\x18\x02 \x03(\x0b\x32\x1a.seth.block.protobuf.Block\x12\n\n\x02id\x18\x03 \x01(\x0c\x12\x11\n\tmax_index\x18\x04 \x01(\x04\"0\n\x16UpdateVpnActiveRequest\x12\n\n\x02id\x18\x01 \x01(\x0c\x12\n\n\x02ip\x18\x02 \x01(\x0c\">\n\x0f\x41\x64RewardRequest\x12\n\n\x02id\x18\x01 \x01(\x0c\x12\x12\n\nreward_key\x18\x02 \x01(\x0c\x12\x0b\n\x03gid\x18\x03 \x01(\x0c\"V\n\x12\x45lectStatisticInfo\x12\x14\n\x0c\x65lect_height\x18\x01 \x01(\x04\x12\x15\n\rsucc_tx_count\x18\x02 \x03(\r\x12\x13\n\x0blof_leaders\x18\x03 \x03(\r\"\x81\x01\n\rStatisticInfo\x12\x18\n\x10timeblock_height\x18\x01 \x01(\x04\x12\x14\n\x0c\x61ll_tx_count\x18\x02 \x01(\r\x12@\n\x0f\x65lect_statistic\x18\x03 \x03(\x0b\x32\'.seth.block.protobuf.ElectStatisticInfo\"+\n\x18RefreshPoolHeightRequest\x12\x0f\n\x07heights\x18\x01 \x03(\x04\",\n\x19RefreshPoolHeightResponse\x12\x0f\n\x07heights\x18\x01 \x03(\x04\"$\n\x16GetAccountShardRequest\x12\n\n\x02id\x18\x01 \x01(\x0c\"6\n\x16GetAccountShardReponse\x12\n\n\x02id\x18\x01 \x01(\x0c\x12\x10\n\x08shard_id\x18\x02 \x01(\r\"D\n\x17\x43rossShardingTosMessage\x12)\n\x05\x62lock\x18\x01 \x01(\x0b\x32\x1a.seth.block.protobuf.Block\"J\n\x1d\x43rossShardingStatisticMessage\x12)\n\x05\x62lock\x18\x01 \x01(\x0b\x32\x1a.seth.block.protobuf.Block\">\n\x11\x45lectBlockMessage\x12)\n\x05\x62lock\x18\x01 \x01(\x0b\x32\x1a.seth.block.protobuf.Block\"S\n\x10ShardToTxMessage\x12\x12\n\nleader_idx\x18\x02 \x01(\r\x12\x14\n\x0c\x65lect_height\x18\x03 \x01(\x04\x12\x15\n\rleader_to_idx\x18\x04 \x01(\x05\"\x8e\x01\n\x12StatisticTxMessage\x12\x37\n\tstatistic\x18\x01 \x01(\x0b\x32$.seth.pools.protobuf.StatisticTxItem\x12\x12\n\nleader_idx\x18\x02 \x01(\r\x12\x14\n\x0c\x65lect_height\x18\x03 \x01(\x04\x12\x15\n\rleader_to_idx\x18\x04 \x01(\x05\"\xac\t\n\x0c\x42lockMessage\x12\x39\n\tblock_req\x18\x01 \x01(\x0b\x32&.seth.block.protobuf.GetTxBlockRequest\x12:\n\tblock_res\x18\x02 \x01(\x0b\x32\'.seth.block.protobuf.GetTxBlockResponse\x12=\n\nheight_req\x18\x03 \x01(\x0b\x32).seth.block.protobuf.AccountHeightRequest\x12>\n\nheight_res\x18\x04 \x01(\x0b\x32*.seth.block.protobuf.AccountHeightResponse\x12=\n\x0c\x61\x63\x63_attr_req\x18\x05 \x01(\x0b\x32\'.seth.block.protobuf.AccountAttrRequest\x12>\n\x0c\x61\x63\x63_attr_res\x18\x06 \x01(\x0b\x32(.seth.block.protobuf.AccountAttrResponse\x12>\n\nup_vpn_req\x18\x07 \x01(\x0b\x32*.seth.block.protobuf.UpdateVpnCountRequest\x12?\n\nup_vpn_res\x18\x08 \x01(\x0b\x32+.seth.block.protobuf.UpdateVpnCountResponse\x12H\n\x10\x61\x63\x63ount_init_req\x18\t \x01(\x0b\x32..seth.block.protobuf.GetAccountInitInfoRequest\x12I\n\x10\x61\x63\x63ount_init_res\x18\n \x01(\x0b\x32/.seth.block.protobuf.GetAccountInitInfoResponse\x12\x43\n\x0evpn_active_req\x18\x0b \x01(\x0b\x32+.seth.block.protobuf.UpdateVpnActiveRequest\x12;\n\rad_reward_req\x18\x0c \x01(\x0b\x32$.seth.block.protobuf.AdRewardRequest\x12\x46\n\x0fref_heights_req\x18\r \x01(\x0b\x32-.seth.block.protobuf.RefreshPoolHeightRequest\x12G\n\x0fref_heights_res\x18\x0e \x01(\x0b\x32..seth.block.protobuf.RefreshPoolHeightResponse\x12\x42\n\racc_shard_req\x18\x0f \x01(\x0b\x32+.seth.block.protobuf.GetAccountShardRequest\x12\x42\n\racc_shard_res\x18\x10 \x01(\x0b\x32+.seth.block.protobuf.GetAccountShardReponse\x12\x37\n\x08shard_to\x18\x11 \x01(\x0b\x32%.seth.block.protobuf.ShardToTxMessage\x12=\n\x0cstatistic_tx\x18\x12 \x01(\x0b\x32\'.seth.block.protobuf.StatisticTxMessage')
+  serialized_pb=_b('\n\x12protos/block.proto\x12\x13seth.block.protobuf\x1a\x14protos/address.proto\x1a\x10protos/bls.proto\x1a\x12protos/elect.proto\x1a\x12protos/pools.proto\x1a\x16protos/timeblock.proto\")\n\x0bStorageItem\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\r\n\x05value\x18\x02 \x01(\x0c\"8\n\x0cTransferItem\x12\x0c\n\x04\x66rom\x18\x01 \x01(\x0c\x12\n\n\x02to\x18\x02 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x04\"%\n\x05TxLog\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12\x0e\n\x06topics\x18\x02 \x03(\x0c\"Z\n\x0cTxHashStatus\x12\x0e\n\x06status\x18\x01 \x01(\x05\x12\x0e\n\x06output\x18\x02 \x01(\x0c\x12*\n\x06\x65vents\x18\x03 \x03(\x0b\x32\x1a.seth.block.protobuf.TxLog\"\xc7\x03\n\x07\x42lockTx\x12\r\n\x05nonce\x18\x01 \x01(\x04\x12\x0c\n\x04\x66rom\x18\x02 \x01(\x0c\x12\n\n\x02to\x18\x03 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\x04 \x01(\x04\x12\x11\n\tgas_limit\x18\x05 \x01(\x04\x12\x10\n\x08gas_used\x18\x06 \x01(\x04\x12\x11\n\tgas_price\x18\x07 \x01(\x04\x12\x0f\n\x07\x62\x61lance\x18\x08 \x01(\x04\x12+\n\x04step\x18\t \x01(\x0e\x32\x1d.seth.pools.protobuf.StepType\x12\x0e\n\x06status\x18\n \x01(\r\x12\x18\n\x10\x63ontract_prefund\x18\r \x01(\x04\x12\x15\n\rcontract_code\x18\x0e \x01(\x0c\x12\x16\n\x0e\x63ontract_input\x18\x0f \x01(\x0c\x12*\n\x06\x65vents\x18\x10 \x03(\x0b\x32\x1a.seth.block.protobuf.TxLog\x12\x36\n\x08tx_debug\x18\x11 \x03(\x0b\x32$.seth.pools.protobuf.TxDelayTestInfo\x12\x13\n\x0bunique_hash\x18\x12 \x01(\x0c\x12\x0b\n\x03key\x18\x13 \x01(\x0c\x12\r\n\x05value\x18\x14 \x01(\x0c\x12\x0f\n\x07tx_hash\x18\x15 \x01(\x0c\x12\x0e\n\x06output\x18\x16 \x01(\x0c\"H\n\x0cKeyValueInfo\x12\x0c\n\x04\x61\x64\x64r\x18\x01 \x01(\x0c\x12\x0b\n\x03key\x18\x02 \x01(\x0c\x12\r\n\x05value\x18\x03 \x01(\x0c\x12\x0e\n\x06height\x18\x04 \x01(\x04\"W\n\x12\x43onsensusToTxsItem\x12\n\n\x02to\x18\x01 \x01(\x0c\x12\x0f\n\x07\x62\x61lance\x18\x02 \x01(\x04\x12\x15\n\rcontract_from\x18\x03 \x01(\x0c\x12\r\n\x05nonce\x18\x04 \x01(\x04\"F\n\x0e\x43onsensusToTxs\x12\x34\n\x03tos\x18\x01 \x03(\x0b\x32\'.seth.block.protobuf.ConsensusToTxsItem\"J\n\x13\x43rossShardCloneInfo\x12\x19\n\x11\x62\x61se_root_address\x18\x01 \x01(\x0c\x12\x18\n\x10runtime_bytecode\x18\x02 \x01(\x0c\"\x9f\x08\n\x05\x42lock\x12\x0f\n\x07version\x18\x01 \x01(\r\x12\x0e\n\x06height\x18\x02 \x01(\x04\x12\x1a\n\x12\x63onsistency_random\x18\x03 \x01(\x04\x12\x18\n\x10timeblock_height\x18\x04 \x01(\x04\x12-\n\x07tx_list\x18\x05 \x03(\x0b\x32\x1c.seth.block.protobuf.BlockTx\x12\x11\n\ttimestamp\x18\x06 \x01(\x04\x12#\n\x1b\x63hange_leader_invalid_hashs\x18\x07 \x03(\x0c\x12:\n\x0fkey_value_array\x18\x08 \x03(\x0b\x32!.seth.block.protobuf.KeyValueInfo\x12\x37\n\x0c\x63ontract_txs\x18\t \x03(\x0b\x32!.seth.block.protobuf.TransferItem\x12\x39\n\raddress_array\x18\n \x03(\x0b\x32\".seth.address.protobuf.AddressInfo\x12<\n\x0f\x65lect_statistic\x18\x0b \x01(\x0b\x32#.seth.pools.protobuf.ElectStatistic\x12\x34\n\x0b\x65lect_block\x18\x0c \x01(\x0b\x32\x1f.seth.elect.protobuf.ElectBlock\x12\x39\n\x10prev_elect_block\x18\r \x01(\x0b\x32\x1f.seth.elect.protobuf.ElectBlock\x12\x35\n\x08local_to\x18\x0e \x01(\x0b\x32#.seth.block.protobuf.ConsensusToTxs\x12\x37\n\x0btimer_block\x18\x10 \x01(\x0b\x32\".seth.timeblock.protobuf.TimeBlock\x12\x36\n\tnormal_to\x18\x12 \x01(\x0b\x32#.seth.pools.protobuf.AllToTxMessage\x12\x42\n\x14\x63ross_shard_to_array\x18\x13 \x03(\x0b\x32$.seth.pools.protobuf.ToTxMessageItem\x12\x1d\n\x15pool_statistic_height\x18\x15 \x01(\x04\x12\x0f\n\x07\x61ll_gas\x18\x16 \x01(\x04\x12/\n\x05joins\x18\x17 \x03(\x0b\x32 .seth.bls.protobuf.JoinElectInfo\x12>\n\x0cpool_st_info\x18\x18 \x01(\x0b\x32(.seth.pools.protobuf.PoolStatisticTxInfo\x12\x14\n\x0cunique_hashs\x18\x19 \x03(\x0c\x12\x10\n\x08\x63hain_id\x18\x1a \x01(\x04\x12\x44\n\x12\x63lone_deploy_array\x18\x1b \x03(\x0b\x32(.seth.block.protobuf.CrossShardCloneInfo\"n\n\x11GetTxBlockRequest\x12\x0e\n\x06tx_gid\x18\x01 \x01(\x0c\x12\x12\n\nblock_hash\x18\x02 \x01(\x0c\x12\x0c\n\x04\x66rom\x18\x03 \x01(\x08\x12\x0e\n\x06height\x18\x04 \x01(\x04\x12\x17\n\x0f\x61\x63\x63ount_address\x18\x05 \x01(\x0c\"#\n\x12GetTxBlockResponse\x12\r\n\x05\x62lock\x18\x01 \x01(\x0c\"J\n\x14\x41\x63\x63ountHeightRequest\x12\x14\n\x0c\x61\x63\x63ount_addr\x18\x01 \x01(\x0c\x12\r\n\x05index\x18\x02 \x01(\x03\x12\r\n\x05\x63ount\x18\x03 \x01(\x05\"L\n\x15\x41\x63\x63ountHeightResponse\x12\x0f\n\x07heights\x18\x01 \x03(\x04\x12\x14\n\x0c\x61\x63\x63ount_addr\x18\x02 \x01(\x0c\x12\x0c\n\x04type\x18\x03 \x01(\x0c\"G\n\x12\x41\x63\x63ountAttrRequest\x12\x0f\n\x07\x61\x63\x63ount\x18\x01 \x01(\x0c\x12\x10\n\x08\x61ttr_key\x18\x02 \x01(\x0c\x12\x0e\n\x06height\x18\x03 \x01(\x04\"W\n\x13\x41\x63\x63ountAttrResponse\x12\x0f\n\x07\x61\x63\x63ount\x18\x01 \x01(\x0c\x12\x10\n\x08\x61ttr_key\x18\x02 \x01(\x0c\x12\x0e\n\x06height\x18\x03 \x01(\x04\x12\r\n\x05\x62lock\x18\x04 \x01(\x0c\"h\n\x15UpdateVpnCountRequest\x12\x14\n\x0c\x61\x63\x63ount_hash\x18\x01 \x01(\x04\x12\n\n\x02ip\x18\x02 \x01(\x0c\x12\x0e\n\x06old_ip\x18\x03 \x01(\x0c\x12\x0b\n\x03uid\x18\x04 \x01(\x0c\x12\x10\n\x08just_set\x18\x05 \x01(\x08\")\n\x0cVpnCountItem\x12\n\n\x02ip\x18\x01 \x01(\x0c\x12\r\n\x05\x63ount\x18\x02 \x01(\r\"N\n\x16UpdateVpnCountResponse\x12\x34\n\tvpn_nodes\x18\x01 \x03(\x0b\x32!.seth.block.protobuf.VpnCountItem\"e\n\x19GetAccountInitInfoRequest\x12\n\n\x02id\x18\x01 \x01(\x0c\x12\r\n\x05\x63ount\x18\x02 \x01(\r\x12\x0e\n\x06height\x18\x03 \x01(\x04\x12\x0e\n\x06net_id\x18\x04 \x01(\x04\x12\r\n\x05index\x18\x05 \x01(\x04\"|\n\x1aGetAccountInitInfoResponse\x12\x0f\n\x07\x62\x61lance\x18\x01 \x01(\x04\x12.\n\nblock_list\x18\x02 \x03(\x0b\x32\x1a.seth.block.protobuf.Block\x12\n\n\x02id\x18\x03 \x01(\x0c\x12\x11\n\tmax_index\x18\x04 \x01(\x04\"0\n\x16UpdateVpnActiveRequest\x12\n\n\x02id\x18\x01 \x01(\x0c\x12\n\n\x02ip\x18\x02 \x01(\x0c\">\n\x0f\x41\x64RewardRequest\x12\n\n\x02id\x18\x01 \x01(\x0c\x12\x12\n\nreward_key\x18\x02 \x01(\x0c\x12\x0b\n\x03gid\x18\x03 \x01(\x0c\"V\n\x12\x45lectStatisticInfo\x12\x14\n\x0c\x65lect_height\x18\x01 \x01(\x04\x12\x15\n\rsucc_tx_count\x18\x02 \x03(\r\x12\x13\n\x0blof_leaders\x18\x03 \x03(\r\"\x81\x01\n\rStatisticInfo\x12\x18\n\x10timeblock_height\x18\x01 \x01(\x04\x12\x14\n\x0c\x61ll_tx_count\x18\x02 \x01(\r\x12@\n\x0f\x65lect_statistic\x18\x03 \x03(\x0b\x32\'.seth.block.protobuf.ElectStatisticInfo\"+\n\x18RefreshPoolHeightRequest\x12\x0f\n\x07heights\x18\x01 \x03(\x04\",\n\x19RefreshPoolHeightResponse\x12\x0f\n\x07heights\x18\x01 \x03(\x04\"$\n\x16GetAccountShardRequest\x12\n\n\x02id\x18\x01 \x01(\x0c\"6\n\x16GetAccountShardReponse\x12\n\n\x02id\x18\x01 \x01(\x0c\x12\x10\n\x08shard_id\x18\x02 \x01(\r\"D\n\x17\x43rossShardingTosMessage\x12)\n\x05\x62lock\x18\x01 \x01(\x0b\x32\x1a.seth.block.protobuf.Block\"J\n\x1d\x43rossShardingStatisticMessage\x12)\n\x05\x62lock\x18\x01 \x01(\x0b\x32\x1a.seth.block.protobuf.Block\">\n\x11\x45lectBlockMessage\x12)\n\x05\x62lock\x18\x01 \x01(\x0b\x32\x1a.seth.block.protobuf.Block\"S\n\x10ShardToTxMessage\x12\x12\n\nleader_idx\x18\x02 \x01(\r\x12\x14\n\x0c\x65lect_height\x18\x03 \x01(\x04\x12\x15\n\rleader_to_idx\x18\x04 \x01(\x05\"\x8e\x01\n\x12StatisticTxMessage\x12\x37\n\tstatistic\x18\x01 \x01(\x0b\x32$.seth.pools.protobuf.StatisticTxItem\x12\x12\n\nleader_idx\x18\x02 \x01(\r\x12\x14\n\x0c\x65lect_height\x18\x03 \x01(\x04\x12\x15\n\rleader_to_idx\x18\x04 \x01(\x05\"\xac\t\n\x0c\x42lockMessage\x12\x39\n\tblock_req\x18\x01 \x01(\x0b\x32&.seth.block.protobuf.GetTxBlockRequest\x12:\n\tblock_res\x18\x02 \x01(\x0b\x32\'.seth.block.protobuf.GetTxBlockResponse\x12=\n\nheight_req\x18\x03 \x01(\x0b\x32).seth.block.protobuf.AccountHeightRequest\x12>\n\nheight_res\x18\x04 \x01(\x0b\x32*.seth.block.protobuf.AccountHeightResponse\x12=\n\x0c\x61\x63\x63_attr_req\x18\x05 \x01(\x0b\x32\'.seth.block.protobuf.AccountAttrRequest\x12>\n\x0c\x61\x63\x63_attr_res\x18\x06 \x01(\x0b\x32(.seth.block.protobuf.AccountAttrResponse\x12>\n\nup_vpn_req\x18\x07 \x01(\x0b\x32*.seth.block.protobuf.UpdateVpnCountRequest\x12?\n\nup_vpn_res\x18\x08 \x01(\x0b\x32+.seth.block.protobuf.UpdateVpnCountResponse\x12H\n\x10\x61\x63\x63ount_init_req\x18\t \x01(\x0b\x32..seth.block.protobuf.GetAccountInitInfoRequest\x12I\n\x10\x61\x63\x63ount_init_res\x18\n \x01(\x0b\x32/.seth.block.protobuf.GetAccountInitInfoResponse\x12\x43\n\x0evpn_active_req\x18\x0b \x01(\x0b\x32+.seth.block.protobuf.UpdateVpnActiveRequest\x12;\n\rad_reward_req\x18\x0c \x01(\x0b\x32$.seth.block.protobuf.AdRewardRequest\x12\x46\n\x0fref_heights_req\x18\r \x01(\x0b\x32-.seth.block.protobuf.RefreshPoolHeightRequest\x12G\n\x0fref_heights_res\x18\x0e \x01(\x0b\x32..seth.block.protobuf.RefreshPoolHeightResponse\x12\x42\n\racc_shard_req\x18\x0f \x01(\x0b\x32+.seth.block.protobuf.GetAccountShardRequest\x12\x42\n\racc_shard_res\x18\x10 \x01(\x0b\x32+.seth.block.protobuf.GetAccountShardReponse\x12\x37\n\x08shard_to\x18\x11 \x01(\x0b\x32%.seth.block.protobuf.ShardToTxMessage\x12=\n\x0cstatistic_tx\x18\x12 \x01(\x0b\x32\'.seth.block.protobuf.StatisticTxMessage')
   ,
   dependencies=[protos_dot_address__pb2.DESCRIPTOR,protos_dot_bls__pb2.DESCRIPTOR,protos_dot_elect__pb2.DESCRIPTOR,protos_dot_pools__pb2.DESCRIPTOR,protos_dot_timeblock__pb2.DESCRIPTOR,])
 
@@ -496,6 +496,44 @@ _CONSENSUSTOTXS = _descriptor.Descriptor(
 )
 
 
+_CROSSSHARDCLONEINFO = _descriptor.Descriptor(
+  name='CrossShardCloneInfo',
+  full_name='seth.block.protobuf.CrossShardCloneInfo',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='base_root_address', full_name='seth.block.protobuf.CrossShardCloneInfo.base_root_address', index=0,
+      number=1, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='runtime_bytecode', full_name='seth.block.protobuf.CrossShardCloneInfo.runtime_bytecode', index=1,
+      number=2, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1072,
+  serialized_end=1146,
+)
+
+
 _BLOCK = _descriptor.Descriptor(
   name='Block',
   full_name='seth.block.protobuf.Block',
@@ -664,6 +702,13 @@ _BLOCK = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='clone_deploy_array', full_name='seth.block.protobuf.Block.clone_deploy_array', index=23,
+      number=27, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -676,8 +721,8 @@ _BLOCK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1073,
-  serialized_end=2058,
+  serialized_start=1149,
+  serialized_end=2204,
 )
 
 
@@ -735,8 +780,8 @@ _GETTXBLOCKREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2060,
-  serialized_end=2170,
+  serialized_start=2206,
+  serialized_end=2316,
 )
 
 
@@ -766,8 +811,8 @@ _GETTXBLOCKRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2172,
-  serialized_end=2207,
+  serialized_start=2318,
+  serialized_end=2353,
 )
 
 
@@ -811,8 +856,8 @@ _ACCOUNTHEIGHTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2209,
-  serialized_end=2283,
+  serialized_start=2355,
+  serialized_end=2429,
 )
 
 
@@ -856,8 +901,8 @@ _ACCOUNTHEIGHTRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2285,
-  serialized_end=2361,
+  serialized_start=2431,
+  serialized_end=2507,
 )
 
 
@@ -901,8 +946,8 @@ _ACCOUNTATTRREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2363,
-  serialized_end=2434,
+  serialized_start=2509,
+  serialized_end=2580,
 )
 
 
@@ -953,8 +998,8 @@ _ACCOUNTATTRRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2436,
-  serialized_end=2523,
+  serialized_start=2582,
+  serialized_end=2669,
 )
 
 
@@ -1012,8 +1057,8 @@ _UPDATEVPNCOUNTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2525,
-  serialized_end=2629,
+  serialized_start=2671,
+  serialized_end=2775,
 )
 
 
@@ -1050,8 +1095,8 @@ _VPNCOUNTITEM = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2631,
-  serialized_end=2672,
+  serialized_start=2777,
+  serialized_end=2818,
 )
 
 
@@ -1081,8 +1126,8 @@ _UPDATEVPNCOUNTRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2674,
-  serialized_end=2752,
+  serialized_start=2820,
+  serialized_end=2898,
 )
 
 
@@ -1140,8 +1185,8 @@ _GETACCOUNTINITINFOREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2754,
-  serialized_end=2855,
+  serialized_start=2900,
+  serialized_end=3001,
 )
 
 
@@ -1192,8 +1237,8 @@ _GETACCOUNTINITINFORESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2857,
-  serialized_end=2981,
+  serialized_start=3003,
+  serialized_end=3127,
 )
 
 
@@ -1230,8 +1275,8 @@ _UPDATEVPNACTIVEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2983,
-  serialized_end=3031,
+  serialized_start=3129,
+  serialized_end=3177,
 )
 
 
@@ -1275,8 +1320,8 @@ _ADREWARDREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3033,
-  serialized_end=3095,
+  serialized_start=3179,
+  serialized_end=3241,
 )
 
 
@@ -1320,8 +1365,8 @@ _ELECTSTATISTICINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3097,
-  serialized_end=3183,
+  serialized_start=3243,
+  serialized_end=3329,
 )
 
 
@@ -1365,8 +1410,8 @@ _STATISTICINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3186,
-  serialized_end=3315,
+  serialized_start=3332,
+  serialized_end=3461,
 )
 
 
@@ -1396,8 +1441,8 @@ _REFRESHPOOLHEIGHTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3317,
-  serialized_end=3360,
+  serialized_start=3463,
+  serialized_end=3506,
 )
 
 
@@ -1427,8 +1472,8 @@ _REFRESHPOOLHEIGHTRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3362,
-  serialized_end=3406,
+  serialized_start=3508,
+  serialized_end=3552,
 )
 
 
@@ -1458,8 +1503,8 @@ _GETACCOUNTSHARDREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3408,
-  serialized_end=3444,
+  serialized_start=3554,
+  serialized_end=3590,
 )
 
 
@@ -1496,8 +1541,8 @@ _GETACCOUNTSHARDREPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3446,
-  serialized_end=3500,
+  serialized_start=3592,
+  serialized_end=3646,
 )
 
 
@@ -1527,8 +1572,8 @@ _CROSSSHARDINGTOSMESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3502,
-  serialized_end=3570,
+  serialized_start=3648,
+  serialized_end=3716,
 )
 
 
@@ -1558,8 +1603,8 @@ _CROSSSHARDINGSTATISTICMESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3572,
-  serialized_end=3646,
+  serialized_start=3718,
+  serialized_end=3792,
 )
 
 
@@ -1589,8 +1634,8 @@ _ELECTBLOCKMESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3648,
-  serialized_end=3710,
+  serialized_start=3794,
+  serialized_end=3856,
 )
 
 
@@ -1634,8 +1679,8 @@ _SHARDTOTXMESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3712,
-  serialized_end=3795,
+  serialized_start=3858,
+  serialized_end=3941,
 )
 
 
@@ -1686,8 +1731,8 @@ _STATISTICTXMESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3798,
-  serialized_end=3940,
+  serialized_start=3944,
+  serialized_end=4086,
 )
 
 
@@ -1836,8 +1881,8 @@ _BLOCKMESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3943,
-  serialized_end=5139,
+  serialized_start=4089,
+  serialized_end=5285,
 )
 
 _TXHASHSTATUS.fields_by_name['events'].message_type = _TXLOG
@@ -1858,6 +1903,7 @@ _BLOCK.fields_by_name['normal_to'].message_type = protos_dot_pools__pb2._ALLTOTX
 _BLOCK.fields_by_name['cross_shard_to_array'].message_type = protos_dot_pools__pb2._TOTXMESSAGEITEM
 _BLOCK.fields_by_name['joins'].message_type = protos_dot_bls__pb2._JOINELECTINFO
 _BLOCK.fields_by_name['pool_st_info'].message_type = protos_dot_pools__pb2._POOLSTATISTICTXINFO
+_BLOCK.fields_by_name['clone_deploy_array'].message_type = _CROSSSHARDCLONEINFO
 _UPDATEVPNCOUNTRESPONSE.fields_by_name['vpn_nodes'].message_type = _VPNCOUNTITEM
 _GETACCOUNTINITINFORESPONSE.fields_by_name['block_list'].message_type = _BLOCK
 _STATISTICINFO.fields_by_name['elect_statistic'].message_type = _ELECTSTATISTICINFO
@@ -1891,6 +1937,7 @@ DESCRIPTOR.message_types_by_name['BlockTx'] = _BLOCKTX
 DESCRIPTOR.message_types_by_name['KeyValueInfo'] = _KEYVALUEINFO
 DESCRIPTOR.message_types_by_name['ConsensusToTxsItem'] = _CONSENSUSTOTXSITEM
 DESCRIPTOR.message_types_by_name['ConsensusToTxs'] = _CONSENSUSTOTXS
+DESCRIPTOR.message_types_by_name['CrossShardCloneInfo'] = _CROSSSHARDCLONEINFO
 DESCRIPTOR.message_types_by_name['Block'] = _BLOCK
 DESCRIPTOR.message_types_by_name['GetTxBlockRequest'] = _GETTXBLOCKREQUEST
 DESCRIPTOR.message_types_by_name['GetTxBlockResponse'] = _GETTXBLOCKRESPONSE
@@ -1974,6 +2021,13 @@ ConsensusToTxs = _reflection.GeneratedProtocolMessageType('ConsensusToTxs', (_me
   # @@protoc_insertion_point(class_scope:seth.block.protobuf.ConsensusToTxs)
   ))
 _sym_db.RegisterMessage(ConsensusToTxs)
+
+CrossShardCloneInfo = _reflection.GeneratedProtocolMessageType('CrossShardCloneInfo', (_message.Message,), dict(
+  DESCRIPTOR = _CROSSSHARDCLONEINFO,
+  __module__ = 'protos.block_pb2'
+  # @@protoc_insertion_point(class_scope:seth.block.protobuf.CrossShardCloneInfo)
+  ))
+_sym_db.RegisterMessage(CrossShardCloneInfo)
 
 Block = _reflection.GeneratedProtocolMessageType('Block', (_message.Message,), dict(
   DESCRIPTOR = _BLOCK,

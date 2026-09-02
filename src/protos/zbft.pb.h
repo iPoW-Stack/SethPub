@@ -1130,7 +1130,7 @@ inline ::seth::pools::protobuf::StepType TxBft::tx_type() const {
   return static_cast< ::seth::pools::protobuf::StepType >(tx_type_);
 }
 inline void TxBft::set_tx_type(::seth::pools::protobuf::StepType value) {
-  //assert(::seth::pools::protobuf::StepType_IsValid(value));
+  assert(::seth::pools::protobuf::StepType_IsValid(value));
   set_has_tx_type();
   tx_type_ = value;
   // @@protoc_insertion_point(field_set:seth.zbft.protobuf.TxBft.tx_type)

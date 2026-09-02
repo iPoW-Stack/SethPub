@@ -2,7 +2,7 @@ each_nodes_count=${1:-}
 node_ips=${2:-}
 bootstrap=""
 end_shard=${3:-}
-PASSWORD=${4:-"Xf4aGbTaf&"}
+PASSWORD=${4:-"Xf4aGbTaYYY!"}
 TARGET=${5:-}
 FIRST_NODE_COUNT="$each_nodes_count"
 NODE_SSH_PORT="${SETH_REMOTE_NODE_SSH_PORT:-${SETH_REMOTE_SSH_PORT:-22}}"
@@ -155,7 +155,7 @@ init() {
     export SETH_REMOTE_PASSWORD="$PASSWORD"
 
     if [ "$TARGET" == "" ]; then
-        TARGET=Debug
+        TARGET=Release
     fi
 
     if [ "$TARGET" == "Release" ]; then
