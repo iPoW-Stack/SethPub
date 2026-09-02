@@ -623,7 +623,7 @@ void BlockAcceptor::UpdateDesShardingId(
         return;
     }
 
-    to_addr_info->set_des_sharding_id(network::kUniversalNetworkId);
+    to_addr_info->set_des_sharding_id(network::kWaitingToCheckNetworkId);
 }
 
 // Validate statistic transaction node consistency (90% threshold)

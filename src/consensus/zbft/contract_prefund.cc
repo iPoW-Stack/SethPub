@@ -119,6 +119,7 @@ int ContractPrefund::HandleTx(
             to_item_ptr = std::make_shared<pools::protobuf::ToTxMessageItem>();
             to_item_ptr->set_des(preypayment_id);
             to_item_ptr->set_prefund(block_tx.contract_prefund());
+            to_item_ptr->set_des_sharding_id(network::kUniversalNetworkId);
             pre_seth_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
         } else {
             to_item_ptr = iter->second;

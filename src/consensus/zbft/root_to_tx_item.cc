@@ -62,8 +62,8 @@ int RootToTxItem::HandleTx(
     if (to_account_info != nullptr) {
         sharding_id = to_account_info->sharding_id();
     } else {
-        if (to_item.has_sharding_id() && 
-                to_item.sharding_id() >= network::kConsensusShardBeginNetworkId && 
+        if (to_item.has_sharding_id() &&
+                to_item.sharding_id() >= network::kConsensusShardBeginNetworkId &&
                 to_item.sharding_id() < network::kConsensusShardEndNetworkId) {
             sharding_id = to_item.sharding_id();
         }
@@ -84,10 +84,6 @@ int RootToTxItem::HandleTx(
         addr_info->set_nonce(0);
         addr_info->set_latest_height(view_block.block_info().height());
         addr_info->set_tx_index(tx_index);
-        if (to_item.has_library_bytes()) {
-            addr_info->set_bytes_code(to_item.library_bytes());
-        }
-
         acc_balance_map[to_addr] = addr_info;
     }
 

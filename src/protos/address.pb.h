@@ -74,6 +74,7 @@ enum AddressType {
   kLocalToTxAddress = 6,
   kElectAddress = 7,
   kContractPrefund = 8,
+  kLibrary = 9,
   kPoolAddress = 10
 };
 bool AddressType_IsValid(int value);

@@ -43,6 +43,7 @@ static const uint32_t kConsensusShardNetworkCount = (
         kConsensusShardEndNetworkId - kConsensusShardBeginNetworkId + 1);
 static const uint32_t kServiceShardBeginNetworkId = kConsensusWaitingShardEndNetworkId;  // eq
 static const uint32_t kServiceShardEndNetworkId = 2048;  // less
+static const uint32_t kWaitingToCheckNetworkId = common::kInvalidUint32;  // all network join(for find network)
 
 enum ServiceNetworkType {
     kVpnNetworkId = kServiceShardBeginNetworkId,

@@ -426,8 +426,8 @@ int ToTxsPools::LeaderCreateToHeights(pools::protobuf::ShardToTxItem& to_heights
 }
 
 int ToTxsPools::CreateToTxWithHeights(
-        uint32_t sharding_id,
-        uint64_t elect_height,
+        // uint32_t sharding_id,
+        // uint64_t elect_height,
         pools::protobuf::ShardToTxItem* prev_to_heights,
         const pools::protobuf::ShardToTxItem& leader_to_heights,
         pools::protobuf::ToTxMessage& to_tx) {
@@ -465,14 +465,12 @@ int ToTxsPools::CreateToTxWithHeights(
         }
     }
 
-    SETH_DEBUG("sharding id valid: %d, %d, statistic to txs prev_to_heights: %s, leader_to_heights: %s", 
-        sharding_id, 
+    SETH_DEBUG("%d, statistic to txs prev_to_heights: %s, leader_to_heights: %s", 
         heights_valid,
         ProtobufToJson(*prev_to_heights).c_str(), 
         ProtobufToJson(leader_to_heights).c_str());
     if (!heights_valid) {
-        SETH_DEBUG("CreateToTxWithHeights: heights unchanged, skip empty to_tx, shard: %u",
-            sharding_id);
+        SETH_DEBUG("CreateToTxWithHeights: heights unchanged, skip empty to_tx");
         return kPoolsError;
     }
 
@@ -512,36 +510,19 @@ int ToTxsPools::CreateToTxWithHeights(
 
             for (auto to_iter = hiter->second.begin();
                     to_iter != hiter->second.end(); ++to_iter) {
-                auto des_sharding_id = to_iter->second.des_sharding_id();
-                if (des_sharding_id == network::kUniversalNetworkId) {
+                if (to_iter->second.des_sharding_id() == network::kWaitingToCheckNetworkId) {
                     auto addr_info = acc_mgr_->GetAccountInfo(to_iter->second.des().substr(0, common::kUnicastAddressLength));
                     if (addr_info) {
-                        des_sharding_id = addr_info->sharding_id();
+                        to_iter->second.set_des_sharding_id(addr_info->sharding_id());
                         SETH_DEBUG("get des sharding id: %u for des: %s, height: %lu, pool index: %u, addr: %s",
-                            des_sharding_id, 
+                            addr_info->sharding_id(), 
                             common::Encode::HexEncode(to_iter->second.des()).c_str(), 
                             height, 
                             pool_idx,
                             common::Encode::HexEncode(addr_info->addr()).c_str());
-                        to_iter->second.set_des_sharding_id(des_sharding_id);
-                    } else {
-                        des_sharding_id = network::kRootCongressNetworkId;
                     }
                 }
 
-                if (des_sharding_id != sharding_id) {
-                    SETH_DEBUG("statistic des shard: %u, %u_%u_%lu, find pool index: %u "
-                        "height: %lu sharding: %u, %u failed id: %s, amount: %lu",
-                        sharding_id,
-                        common::GlobalInfo::Instance()->network_id(),
-                        pool_idx,
-                        height,
-                        pool_idx, height, des_sharding_id,
-                        sharding_id, common::Encode::HexEncode(to_iter->first).c_str(),
-                        to_iter->second.amount());
-                    continue;
-                }
-                
                 auto amount_iter = acc_amount_map.find(to_iter->first);
                 if (amount_iter == acc_amount_map.end()) {
                     SETH_DEBUG("len: %u, addr: %s",
@@ -561,8 +542,20 @@ int ToTxsPools::CreateToTxWithHeights(
                         amount_iter->second.set_library_bytes(to_iter->second.library_bytes());
                     }
 
+                    if (to_iter->second.has_runtime_bytecode()) {
+                        amount_iter->second.set_runtime_bytecode(to_iter->second.runtime_bytecode());
+                    }
+
+                    if (to_iter->second.has_base_root_address()) {
+                        amount_iter->second.set_base_root_address(to_iter->second.base_root_address());
+                    }
+
                     if (to_iter->second.prefund() > 0) {
                         amount_iter->second.set_prefund(amount_iter->second.prefund() + to_iter->second.prefund());
+                    }
+
+                    if (amount_iter->second.des_sharding_id() != to_iter->second.des_sharding_id()) {
+                        amount_iter->second.set_des_sharding_id(to_iter->second.des_sharding_id());
                     }
                     
                     SETH_DEBUG("to block pool: %u, height: %lu, success add account "
@@ -580,12 +573,11 @@ int ToTxsPools::CreateToTxWithHeights(
     }
 
     if (acc_amount_map.empty()) {
-        SETH_DEBUG("acc amount map empty, no cross-shard to txs for shard: %u", sharding_id);
+        SETH_DEBUG("acc amount map empty, no cross-shard to txs");
         return kPoolsError;
     }
 
-    SETH_DEBUG("sharding id:%u, success statistic to txs prev_to_heights: %s, leader_to_heights: %s", 
-        sharding_id,
+    SETH_DEBUG("success statistic to txs prev_to_heights: %s, leader_to_heights: %s", 
         ProtobufToJson(*prev_to_heights).c_str(), 
         ProtobufToJson(leader_to_heights).c_str());
     for (auto iter = acc_amount_map.begin(); iter != acc_amount_map.end(); ++iter) {
@@ -594,11 +586,11 @@ int ToTxsPools::CreateToTxWithHeights(
         SETH_DEBUG("set to %s amount %lu, sharding id: %u, des sharding id: %d, pool index: %d, prefund: %lu",
             common::Encode::HexEncode(to_item->des()).c_str(),
             iter->second.amount(), to_item->des_sharding_id(), 
-            sharding_id, to_item->pool_index(), to_item->prefund());
+            to_item->des_sharding_id(), to_item->pool_index(), to_item->prefund());
     }
 
-    to_tx.set_elect_height(elect_height);
-    to_tx.set_des_shard(sharding_id);
+    // to_tx.set_elect_height(elect_height);
+    // to_tx.set_des_shard(sharding_id);
     return kPoolsSuccess;
 }
 

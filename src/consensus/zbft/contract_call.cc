@@ -420,15 +420,19 @@ int ContractCall::HandleTx(
                     item->set_from(action.emitter);
                     item->set_des(action.to);
                     item->set_amount(action.amount);
-                    item->set_sharding_id(view_block.qc().network_id());
+                    // sharding_id repurposed as dest shard routing hint for root
+                    item->set_sharding_id(action.dest_shard_id);
+                    // pool_index carries dest pool for HandleCrossShardBase
+                    item->set_pool_index(static_cast<int32_t>(action.dest_pool_index));
                     item->set_des_sharding_id(network::kUniversalNetworkId);
                     item->set_base_root_address(action.base_root_address);
                     item->set_cross_nonce(action.nonce);
                     cross_to_map_[key] = item;
-                    SETH_INFO("CrossShardBase cross-transfer queued: base=%s, to=%s, amount=%lu, nonce=%lu",
+                    SETH_INFO("CrossShardBase cross-transfer queued: base=%s, to=%s, amount=%lu, nonce=%lu, dest_shard=%u pool=%u",
                         common::Encode::HexEncode(action.base_root_address).c_str(),
                         common::Encode::HexEncode(action.to).c_str(),
-                        action.amount, action.nonce);
+                        action.amount, action.nonce,
+                        action.dest_shard_id, action.dest_pool_index);
                 }
             } else if (action.type == sethvm::CrossShardActionType::kSetStorage) {
                 if (action.storage_key.empty()) continue;
@@ -436,17 +440,20 @@ int ContractCall::HandleTx(
                 if (cross_to_map_.find(key) == cross_to_map_.end()) {
                     auto item = std::make_shared<pools::protobuf::ToTxMessageItem>();
                     item->set_from(action.emitter);
-                    item->set_sharding_id(view_block.qc().network_id());
+                    // sharding_id repurposed as dest shard routing hint for root
+                    item->set_sharding_id(action.dest_shard_id);
+                    // pool_index carries dest pool for HandleCrossShardBase
+                    item->set_pool_index(static_cast<int32_t>(action.dest_pool_index));
                     item->set_des_sharding_id(network::kUniversalNetworkId);
                     item->set_base_root_address(action.base_root_address);
                     item->set_cross_nonce(action.nonce);
-
                     item->set_cross_storage_key(action.storage_key);
                     item->set_cross_storage_value(action.storage_val);
                     cross_to_map_[key] = item;
-                    SETH_INFO("CrossShardBase cross-storage queued: base=%s, key_len=%zu, nonce=%lu",
+                    SETH_INFO("CrossShardBase cross-storage queued: base=%s, key_len=%zu, nonce=%lu, dest_shard=%u pool=%u",
                         common::Encode::HexEncode(action.base_root_address).c_str(),
-                        action.storage_key.size(), action.nonce);
+                        action.storage_key.size(), action.nonce,
+                        action.dest_shard_id, action.dest_pool_index);
                 }
             }
         }

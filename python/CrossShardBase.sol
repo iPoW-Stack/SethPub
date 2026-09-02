@@ -58,7 +58,9 @@ abstract contract CrossShardBase {
         address indexed from,
         address         to,
         uint256         amount,
-        uint64          nonce
+        uint64          nonce,
+        uint32          toShard,
+        uint32          toPool
     );
     event CrossTransferIn(
         address indexed base,
@@ -70,7 +72,9 @@ abstract contract CrossShardBase {
         address indexed base,
         bytes32 indexed key,
         bytes           value,
-        uint64          nonce
+        uint64          nonce,
+        uint32          toShard,
+        uint32          toPool
     );
     event CrossStorageIn(
         address indexed base,
@@ -125,7 +129,12 @@ abstract contract CrossShardBase {
     // ─────────────────────────────────────────────────────────────────────
     // 跨链转账（任意分片均可发起，不限 base）
     // ─────────────────────────────────────────────────────────────────────
-    function _crossTransfer(address to, uint256 amount) internal returns (uint64 nonce) {
+    function _crossTransfer(
+        address to,
+        uint256 amount,
+        uint32  toShard,
+        uint32  toPool
+    ) internal returns (uint64 nonce) {
         require(to != address(0),             "ZERO_TO");
         require(_balances[msg.sender] >= amount, "INSUFFICIENT_BALANCE");
 
@@ -134,7 +143,7 @@ abstract contract CrossShardBase {
 
         // nonce 由共识层在 emit_log 拦截时分配，此处占位 0
         nonce = 0;
-        emit CrossTransferOut(BASE_ROOT_ADDRESS, msg.sender, to, amount, nonce);
+        emit CrossTransferOut(BASE_ROOT_ADDRESS, msg.sender, to, amount, nonce, toShard, toPool);
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -156,9 +165,14 @@ abstract contract CrossShardBase {
     // ─────────────────────────────────────────────────────────────────────
     // 跨链存储写入（任意分片均可发起）
     // ─────────────────────────────────────────────────────────────────────
-    function _crossSetStorage(bytes32 key, bytes memory value) internal returns (uint64 nonce) {
+    function _crossSetStorage(
+        bytes32     key,
+        bytes memory value,
+        uint32      toShard,
+        uint32      toPool
+    ) internal returns (uint64 nonce) {
         nonce = 0;  // 共识层拦截时填入真实 nonce
-        emit CrossStorageOut(BASE_ROOT_ADDRESS, key, value, nonce);
+        emit CrossStorageOut(BASE_ROOT_ADDRESS, key, value, nonce, toShard, toPool);
     }
 
     // 系统入口：目标分片共识层调用，同步存储写入

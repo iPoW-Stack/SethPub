@@ -64,6 +64,8 @@ struct CrossShardPendingAction {
     uint64_t             amount          = 0;
     uint64_t             nonce           = 0;
     int64_t              gas_cost        = 0;
+    uint32_t             dest_shard_id   = 0;  // target shard (from toShard param)
+    uint32_t             dest_pool_index = 0;  // target pool  (from toPool param)
 
     // 仅 kSetStorage 使用
     std::string          storage_key;    // 32 字节 raw

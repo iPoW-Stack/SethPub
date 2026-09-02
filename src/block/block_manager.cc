@@ -20,6 +20,7 @@
 #include "security/ecdsa/secp256k1.h"
 #include "transport/processor.h"
 #include "sethvm/execution.h"
+#include "sethvm/host_journal_stack.h"
 
 namespace seth {
 
@@ -264,7 +265,7 @@ void BlockManager::ConsensusShardHandleRootCreateAddress(
 
 void BlockManager::HandleNormalToTx(const std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block_ptr) {
     auto& view_block = *view_block_ptr;
-    if (view_block.block_info().normal_to().to_tx_arr_size() <= 0) {
+    if (!view_block.block_info().normal_to().has_to_tx()) {
         SETH_DEBUG("0 handle normale to message coming: %u_%u_%lu_%lu, des: %u, %s", 
             view_block.qc().network_id(), 
             view_block.qc().pool_index(), 
@@ -296,20 +297,20 @@ void BlockManager::HandleNormalToTx(const std::shared_ptr<view_block::protobuf::
     }
 
     auto& to_txs = view_block.block_info().normal_to();
-    for (int32_t i = 0; i < to_txs.to_tx_arr_size(); ++i) {
-        if (to_txs.to_tx_arr(i).des_shard() != common::GlobalInfo::Instance()->network_id()) {
-            SETH_WARN("sharding invalid: %u, %u",
-                to_txs.to_heights().sharding_id(),
-                common::GlobalInfo::Instance()->network_id());
-            continue;
-        }
+    // for (int32_t i = 0; i < to_txs.to_tx_arr_size(); ++i) {
+    //     if (to_txs.to_tx_arr(i).des_shard() != common::GlobalInfo::Instance()->network_id()) {
+    //         SETH_WARN("sharding invalid: %u, %u",
+    //             to_txs.to_heights().sharding_id(),
+    //             common::GlobalInfo::Instance()->network_id());
+    //         continue;
+    //     }
 
         if (!network::IsSameToLocalShard(network::kRootCongressNetworkId)) {
-            HandleNormalToTx(view_block, to_txs.to_tx_arr(i));
+            HandleNormalToTx(view_block, to_txs.to_tx());
         } else {
-            RootHandleNormalToTx(view_block, to_txs.to_tx_arr(i));
+            RootHandleNormalToTx(view_block, to_txs.to_tx());
         }
-    }
+    // }
 }
 
 void BlockManager::RootHandleNormalToTx(
@@ -318,6 +319,10 @@ void BlockManager::RootHandleNormalToTx(
     auto& block = view_block.block_info();
     for (int32_t i = 0; i < to_txs.tos_size(); ++i) {
         auto tos_item = to_txs.tos(i);
+        if (tos_item.des_sharding_id() != common::GlobalInfo::Instance()->network_id()) {
+            continue;
+        }
+        
         SETH_DEBUG("to tx new address %s, amount: %lu, prefund: %lu, nonce: %lu",
             common::Encode::HexEncode(tos_item.des()).c_str(),
             tos_item.amount(),
@@ -357,19 +362,100 @@ void BlockManager::HandleNormalToTx(
         const view_block::protobuf::ViewBlockItem& view_block,
         const pools::protobuf::ToTxMessage& to_txs) {
     std::unordered_map<std::string, std::shared_ptr<localToTxInfo>> addr_amount_map;
-    SETH_DEBUG("0 handle local to to_txs.tos_size(): %u, addr: %s, nonce: %lu, step: %d, %s", 
+    SETH_DEBUG("0 handle local to to_txs.tos_size(): %u, addr: %s, nonce: %lu, step: %d, %s",
         to_txs.tos_size(),
         "",
         0,
         0,
         ProtobufToJson(to_txs).c_str());
+    uint32_t local_net_id = common::GlobalInfo::Instance()->network_id();
     for (int32_t i = 0; i < to_txs.tos_size(); ++i) {
         auto to_tx = to_txs.tos(i);
-        if (to_tx.des_sharding_id() != common::GlobalInfo::Instance()->network_id()) {
+        if (to_tx.des_sharding_id() == local_net_id) {
+            CreateLocalToTx(view_block, to_tx);
             continue;
         }
 
-        CreateLocalToTx(view_block, to_tx);
+        if (to_tx.des_sharding_id() != network::kUniversalNetworkId) {
+            continue;
+        }
+
+        // CrossShardBase contract deploy — save bytecode in temporary KV store keyed by
+        // address so HandleCrossShardBase can retrieve it via
+        // seth_host.GetKeyValue(kCrossShardSystemExecutor, "xsb:" + addr).
+        if (!to_tx.runtime_bytecode().empty()) {
+            const std::string& addr = to_tx.des();
+            if (addr.size() != common::kUnicastAddressLength) {
+                SETH_ERROR("HandleNormalToTx universal XSB bytecode: invalid addr len %zu", addr.size());
+                continue;
+            }
+            const std::string sys_str(reinterpret_cast<const char*>(
+                sethvm::kCrossShardSystemExecutor.bytes), 20);
+            const std::string kv_key = sys_str + "xsb:" + addr;
+            std::string existing_code;
+            if (!prefix_db_->GetTemporaryKv(kv_key, &existing_code) || existing_code.empty()) {
+                prefix_db_->SaveTemporaryKv(kv_key, to_tx.runtime_bytecode());
+                SETH_INFO("HandleNormalToTx: saved XSB bytecode for addr=%s shard=%u",
+                    common::Encode::HexEncode(addr).c_str(), local_net_id);
+            }
+            continue;
+        }
+
+        // Library deploy — create an AddressInfo marked kLibrary so consensus can look
+        // it up by address. kLibrary signals read-only: the bytecode may be called via
+        // DELEGATECALL but the library address itself must not receive transfers or
+        // have its storage modified.
+        if (!to_tx.library_bytes().empty()) {
+            const std::string& addr = to_tx.des();
+            if (addr.size() != common::kUnicastAddressLength) {
+                SETH_ERROR("HandleNormalToTx universal library: invalid addr len %zu", addr.size());
+                continue;
+            }
+            auto existing = prefix_db_->GetAddressInfo(addr);
+            if (!existing || existing->bytes_code().empty()) {
+                address::protobuf::AddressInfo lib_info;
+                if (existing) {
+                    lib_info = *existing;
+                } else {
+                    lib_info.set_addr(addr);
+                    lib_info.set_sharding_id(local_net_id);
+                    lib_info.set_pool_index(common::GetAddressPoolIndex(addr));
+                    lib_info.set_balance(0);
+                    lib_info.set_nonce(0);
+                }
+                lib_info.set_type(address::protobuf::kLibrary);
+                lib_info.set_bytes_code(to_tx.library_bytes());
+                db::DbWriteBatch db_batch;
+                prefix_db_->AddAddressInfo(addr, lib_info, db_batch);
+                db_->Put(db_batch);
+                SETH_INFO("HandleNormalToTx: saved library bytecode for addr=%s shard=%u",
+                    common::Encode::HexEncode(addr).c_str(), local_net_id);
+            }
+            continue;
+        }
+
+        // Prefund — check local contract exists, then enqueue prefund TX
+        if (to_tx.des().size() == common::kPreypamentAddressLength) {
+            const std::string contract_addr = to_tx.des().substr(0, common::kUnicastAddressLength);
+            auto contract_info = prefix_db_->GetAddressInfo(contract_addr);
+            if (contract_info) {
+                CreateLocalToTx(view_block, to_tx);
+            } else {
+                SETH_DEBUG("HandleNormalToTx: universal prefund skipped, contract not local: %s",
+                    common::Encode::HexEncode(contract_addr).c_str());
+            }
+            continue;
+        }
+
+        // CrossTransfer or CrossStorageSet — route to dest shard/pool
+        if (to_tx.has_base_root_address()) {
+            if (!to_tx.has_sharding_id() ||
+                    static_cast<uint32_t>(to_tx.sharding_id()) != local_net_id) {
+                continue;
+            }
+            CreateLocalToTx(view_block, to_tx);
+            continue;
+        }
     }
 }
 
@@ -495,11 +581,17 @@ void BlockManager::CreateLocalToTx(
 
     auto addr = to_tx_item.des().substr(0, common::kUnicastAddressLength);
     uint32_t pool_index = common::kInvalidPoolIndex;
-    auto addr_info = prefix_db_->GetAddressInfo(addr);
-    if (addr_info) {
-        pool_index = addr_info->pool_index();
+    if (to_tx_item.has_base_root_address() && to_tx_item.has_pool_index()) {
+        // CrossShardBase items carry dest pool explicitly; use it to route to the
+        // correct consensus pool where the derived contract is deployed.
+        pool_index = static_cast<uint32_t>(to_tx_item.pool_index());
     } else {
-        pool_index = common::GetAddressPoolIndex(addr);
+        auto addr_info = prefix_db_->GetAddressInfo(addr);
+        if (addr_info) {
+            pool_index = addr_info->pool_index();
+        } else {
+            pool_index = common::GetAddressPoolIndex(addr);
+        }
     }
 
     auto msg_ptr = std::make_shared<transport::TransportMessage>();
@@ -895,30 +987,29 @@ pools::TxItemPtr BlockManager::HandleToTxsMessage(
     static const int kMaxReduceAttempts = 8;
     
     pools::protobuf::ShardToTxItem cur_heights = heights;
-    
     for (int attempt = 0; attempt <= kMaxReduceAttempts; ++attempt) {
         pools::protobuf::AllToTxMessage all_to_txs;
         pools::protobuf::ShardToTxItem prev_heights;
-        for (uint32_t sharding_id = network::kRootCongressNetworkId;
-                sharding_id <= max_consensus_sharding_id_; ++sharding_id) {
-            auto& to_tx = *all_to_txs.add_to_tx_arr();
-            if (to_txs_pool_->CreateToTxWithHeights(
-                    sharding_id,
-                    0,
-                    &prev_heights,
-                    cur_heights,
-                    to_tx) != pools::kPoolsSuccess) {
-                all_to_txs.mutable_to_tx_arr()->RemoveLast();
-                SETH_DEBUG("1 failed get to tx for shard: %u, heights: %s",
-                    sharding_id, ProtobufToJson(cur_heights).c_str());
-            }
-        }
-
-        if (all_to_txs.to_tx_arr_size() == 0) {
+        // for (uint32_t sharding_id = network::kRootCongressNetworkId;
+        //         sharding_id <= max_consensus_sharding_id_; ++sharding_id) {
+        auto& to_tx = *all_to_txs.add_to_tx();
+        if (to_txs_pool_->CreateToTxWithHeights(
+                // sharding_id,
+                // 0,
+                &prev_heights,
+                cur_heights,
+                to_tx) != pools::kPoolsSuccess) {
             SETH_DEBUG("2 failed get to tx tx info, all shards failed, max_shard: %u, heights: %s",
                 max_consensus_sharding_id_.load(), ProtobufToJson(cur_heights).c_str());
             return nullptr;
         }
+        // }
+
+        // if (all_to_txs.to_tx_arr_size() == 0) {
+        //     SETH_DEBUG("2 failed get to tx tx info, all shards failed, max_shard: %u, heights: %s",
+        //         max_consensus_sharding_id_.load(), ProtobufToJson(cur_heights).c_str());
+        //     return nullptr;
+        // }
         
         *all_to_txs.mutable_to_heights() = cur_heights;
         auto serialized_value = SerializeDeterministic(all_to_txs);

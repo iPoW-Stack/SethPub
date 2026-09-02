@@ -36,8 +36,8 @@ public:
     void NewBlock(
         const std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block_ptr);
     int CreateToTxWithHeights(
-        uint32_t sharding_id,
-        uint64_t elect_height,
+        // uint32_t sharding_id,
+        // uint64_t elect_height,
         pools::protobuf::ShardToTxItem* prev_to_heights,
         const pools::protobuf::ShardToTxItem& leader_to_heights,
         pools::protobuf::ToTxMessage& to_tx);

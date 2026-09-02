@@ -574,18 +574,22 @@ void SethhainHost::emit_log(const evmc::address& addr,
                 size_t data_size,
                 const evmc::bytes32 topics[],
                 size_t topics_count) noexcept {
-    // Lazily compute CrossTransferOut topic = keccak256("CrossTransferOut(address,address,address,uint256,uint64)")
+    // Lazily compute CrossTransferOut topic
+    // sig: CrossTransferOut(address,address,address,uint256,uint64,uint32,uint32)
     static const evmc::bytes32 kCrossTransferOutTopic = []() {
-        const std::string sig = "CrossTransferOut(address,address,address,uint256,uint64)";
+        const std::string sig =
+            "CrossTransferOut(address,address,address,uint256,uint64,uint32,uint32)";
         std::string h = common::Hash::keccak256(sig);
         evmc::bytes32 t{};
         memcpy(t.bytes, h.data(), 32);
         return t;
     }();
 
-    // Lazily compute CrossStorageOut topic = keccak256("CrossStorageOut(address,bytes32,bytes,uint64)")
+    // Lazily compute CrossStorageOut topic
+    // sig: CrossStorageOut(address,bytes32,bytes,uint64,uint32,uint32)
     static const evmc::bytes32 kCrossStorageOutTopic = []() {
-        const std::string sig = "CrossStorageOut(address,bytes32,bytes,uint64)";
+        const std::string sig =
+            "CrossStorageOut(address,bytes32,bytes,uint64,uint32,uint32)";
         std::string h = common::Hash::keccak256(sig);
         evmc::bytes32 t{};
         memcpy(t.bytes, h.data(), 32);
@@ -594,8 +598,15 @@ void SethhainHost::emit_log(const evmc::address& addr,
 
     if (topics_count >= 3 && topics[0] == kCrossStorageOutTopic) {
         // topics[1] = base (indexed address, low 20B), topics[2] = key (indexed bytes32)
-        // data ABI layout: offset(32B) | nonce(32B) | value_len(32B) | value_bytes(...)
-        if (data_size >= 96) {
+        // ABI non-indexed: (bytes value, uint64 nonce, uint32 toShard, uint32 toPool)
+        // data layout (heads=128B):
+        //   [0:32]   offset to value bytes (= 0x80 = 128)
+        //   [32:64]  nonce   (uint64, low 8 bytes)
+        //   [64:96]  toShard (uint32, low 4 bytes)
+        //   [96:128] toPool  (uint32, low 4 bytes)
+        //   [128:160] value.length
+        //   [160:]   value bytes
+        if (data_size >= 160) {
             CrossShardPendingAction action;
             action.type = CrossShardActionType::kSetStorage;
             action.emitter = std::string(reinterpret_cast<const char*>(addr.bytes), 20);
@@ -608,22 +619,32 @@ void SethhainHost::emit_log(const evmc::address& addr,
             for (int i = 0; i < 8; ++i) {
                 action.nonce = (action.nonce << 8) | data[32 + 24 + i];
             }
-            // value: length at data[64..96], bytes starting at data[96]
+            // toShard: data[64..96], uint32 in low 4 bytes
+            action.dest_shard_id = 0;
+            for (int i = 0; i < 4; ++i) {
+                action.dest_shard_id = (action.dest_shard_id << 8) | data[64 + 28 + i];
+            }
+            // toPool: data[96..128], uint32 in low 4 bytes
+            action.dest_pool_index = 0;
+            for (int i = 0; i < 4; ++i) {
+                action.dest_pool_index = (action.dest_pool_index << 8) | data[96 + 28 + i];
+            }
+            // value: length at data[128..160], bytes starting at data[160]
             uint64_t val_len = 0;
             for (int i = 0; i < 8; ++i) {
-                val_len = (val_len << 8) | data[64 + 24 + i];
+                val_len = (val_len << 8) | data[128 + 24 + i];
             }
-            if (data_size >= 96 + val_len) {
+            if (data_size >= 160 + val_len) {
                 action.storage_val = std::string(
-                    reinterpret_cast<const char*>(data + 96), static_cast<size_t>(val_len));
+                    reinterpret_cast<const char*>(data + 160), static_cast<size_t>(val_len));
             }
             action.gas_cost      = kCrossSetStorageGasCost;
             cross_gas_charged_  += kCrossSetStorageGasCost;
             pending_cross_actions_.push_back(std::move(action));
 
-            SETH_DEBUG("CrossStorageOut intercepted from %s, cross_gas_charged=%ld",
+            SETH_DEBUG("CrossStorageOut intercepted from %s shard=%u pool=%u, cross_gas_charged=%ld",
                 common::Encode::HexEncode(std::string(reinterpret_cast<const char*>(addr.bytes), 20)).c_str(),
-                cross_gas_charged_);
+                action.dest_shard_id, action.dest_pool_index, cross_gas_charged_);
         }
         contract_to_call_dirty_ = true;
         return;
@@ -632,8 +653,14 @@ void SethhainHost::emit_log(const evmc::address& addr,
     if (topics_count >= 1 && topics[0] == kCrossTransferOutTopic) {
         // topics[1] = base (indexed address, padded 32B)
         // topics[2] = from (indexed address, padded 32B)
-        // data layout: to(32B) | amount(32B) | nonce(32B)  => 96 bytes minimum
-        if (data_size >= 96 && topics_count >= 3) {
+        // ABI non-indexed: (address to, uint256 amount, uint64 nonce, uint32 toShard, uint32 toPool)
+        // data layout (all fixed, 5 × 32B = 160B):
+        //   [0:32]   to      (address, low 20 bytes)
+        //   [32:64]  amount  (uint256, low 8 bytes used)
+        //   [64:96]  nonce   (uint64,  low 8 bytes)
+        //   [96:128] toShard (uint32,  low 4 bytes)
+        //   [128:160] toPool (uint32,  low 4 bytes)
+        if (data_size >= 160 && topics_count >= 3) {
             CrossShardPendingAction action;
             action.type     = CrossShardActionType::kTransfer;
             action.emitter  = std::string(reinterpret_cast<const char*>(addr.bytes), 20);
@@ -652,12 +679,23 @@ void SethhainHost::emit_log(const evmc::address& addr,
             for (int i = 0; i < 8; ++i) {
                 action.nonce = (action.nonce << 8) | data[64 + 24 + i];
             }
+            // toShard: data[96..128], uint32 in low 4 bytes
+            action.dest_shard_id = 0;
+            for (int i = 0; i < 4; ++i) {
+                action.dest_shard_id = (action.dest_shard_id << 8) | data[96 + 28 + i];
+            }
+            // toPool: data[128..160], uint32 in low 4 bytes
+            action.dest_pool_index = 0;
+            for (int i = 0; i < 4; ++i) {
+                action.dest_pool_index = (action.dest_pool_index << 8) | data[128 + 28 + i];
+            }
             action.gas_cost      = kCrossTransferGasCost;
             cross_gas_charged_  += kCrossTransferGasCost;
             pending_cross_actions_.push_back(std::move(action));
 
-            SETH_DEBUG("CrossTransferOut intercepted from %s, cross_gas_charged=%ld",
-                common::Encode::HexEncode(action.emitter).c_str(), cross_gas_charged_);
+            SETH_DEBUG("CrossTransferOut intercepted from %s shard=%u pool=%u, cross_gas_charged=%ld",
+                common::Encode::HexEncode(action.emitter).c_str(),
+                action.dest_shard_id, action.dest_pool_index, cross_gas_charged_);
         }
         contract_to_call_dirty_ = true;
         return;  // do not record in recorded_logs_; consensus layer handles it

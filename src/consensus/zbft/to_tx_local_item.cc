@@ -116,9 +116,7 @@ void ToTxLocalItem::CreateLocalToTx(
                 to_balance);
         }
 
-        if (amount <= 0 &&
-                to_tx_item.library_bytes().empty() &&
-                to_tx_item.runtime_bytecode().empty()) {
+        if (amount <= 0) {
             SETH_DEBUG("failed just contract set prefund add addr: %s, to item: %s",
                 common::Encode::HexEncode(addr).c_str(),
                 ProtobufToJson(to_tx_item).c_str());
@@ -130,10 +128,6 @@ void ToTxLocalItem::CreateLocalToTx(
         acc_balance_map[addr]->set_nonce(nonce);
         acc_balance_map[addr]->set_latest_height(view_block.block_info().height());
         acc_balance_map[addr]->set_tx_index(tx_index);
-        if (!to_tx_item.library_bytes().empty()) {
-            acc_balance_map[addr]->set_bytes_code(to_tx_item.library_bytes());
-        }
-
         SETH_DEBUG("success add addr: %s, value: %s, to item: %s", 
             common::Encode::HexEncode(addr).c_str(), 
             ProtobufToJson(*(acc_balance_map[addr])).c_str(),
@@ -151,19 +145,6 @@ void ToTxLocalItem::CreateLocalToTx(
     }
 
     new_addr_func(addr, to_tx_item.amount());
-
-    // CrossShardBase contract creation: store bytecode in local KV registry.
-    // All shards receive this item (fan-out from root) and populate their own registry,
-    // so HandleCrossShardBase can look up bytecode for lazy derived-contract deployment.
-    if (!to_tx_item.runtime_bytecode().empty()) {
-        const std::string sys_str(reinterpret_cast<const char*>(
-            sethvm::kCrossShardSystemExecutor.bytes), 20);
-        seth_host.SaveKeyValue(
-            sys_str, "xsb:" + addr, to_tx_item.runtime_bytecode());
-        SETH_INFO("CrossShardBase registry stored: base=%s shard=%u pool=%u",
-            common::Encode::HexEncode(addr).c_str(),
-            view_block.qc().network_id(), view_block.qc().pool_index());
-    }
 }
 
 void ToTxLocalItem::HandleCrossShardBase(
@@ -174,7 +155,11 @@ void ToTxLocalItem::HandleCrossShardBase(
         const pools::protobuf::ToTxMessageItem& to_tx) {
     const std::string& base_raw = to_tx.base_root_address();  // 20-byte raw
     uint32_t shard_id   = view_block.qc().network_id();
-    uint32_t pool_index = view_block.qc().pool_index();
+    // pool_index: prefer the caller-specified dest pool (stored in item.pool_index by
+    // contract_call.cc); fall back to the current block's pool for legacy items.
+    uint32_t pool_index = to_tx.has_pool_index()
+                              ? static_cast<uint32_t>(to_tx.pool_index())
+                              : view_block.qc().pool_index();
 
     if (base_raw.size() != 20) {
         SETH_ERROR("CrossShardBase: invalid base_root_address length %zu", base_raw.size());
