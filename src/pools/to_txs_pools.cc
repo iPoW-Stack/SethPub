@@ -535,7 +535,7 @@ int ToTxsPools::CreateToTxWithHeights(
                         height, common::Encode::HexEncode(to_iter->first).c_str(),
                         to_iter->second.amount(),
                         ProtobufToJson(to_iter->second).c_str(),
-                        des_sharding_id);
+                        to_iter->second.des_sharding_id());
                 } else {
                     amount_iter->second.set_amount(amount_iter->second.amount() + to_iter->second.amount());
                     if (to_iter->second.has_library_bytes()) {
