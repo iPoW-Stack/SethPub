@@ -235,6 +235,11 @@ void ToTxLocalItem::HandleCrossShardBase(
         derived_info->set_bytes_code(bytecode);
         derived_info->set_latest_height(view_block.block_info().height());
         derived_info->set_tx_index(tx_index);
+        // balance/nonce must be explicitly set (even to 0) so that has_balance()/has_nonce()
+        // return true and block_acceptor.cc includes this entry in address_array.
+        // Without this, the shadow contract bytecode is silently dropped and never committed.
+        derived_info->set_balance(0);
+        derived_info->set_nonce(0);
         acc_balance_map[derived_str] = derived_info;
 
         SETH_INFO("CrossShardBase lazy-deploy: base=%s derived=%s shard=%u pool=%u",
