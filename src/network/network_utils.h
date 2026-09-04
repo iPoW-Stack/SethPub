@@ -88,6 +88,21 @@ inline static uint16_t GetLocalConsensusNetworkId() {
     return common::GlobalInfo::Instance()->network_id() - network::kConsensusWaitingShardOffset;
 }
 
+inline static bool IsConsensusOrConsensusWaitingShard() {
+    if (common::GlobalInfo::Instance()->network_id() >= network::kConsensusShardBeginNetworkId && 
+            common::GlobalInfo::Instance()->network_id() < network::kConsensusShardEndNetworkId) {
+        return true;
+    }
+
+    auto tmp_shard = common::GlobalInfo::Instance()->network_id() - network::kConsensusWaitingShardOffset;
+    if (tmp_shard >= network::kConsensusShardBeginNetworkId && 
+            tmp_shard < network::kConsensusShardEndNetworkId) {
+        return true;
+    }
+
+    return false;
+}
+
 inline static bool IsWaitingForElect() {
     return common::GlobalInfo::Instance()->network_id() >= network::kConsensusWaitingShardBeginNetworkId;
 }

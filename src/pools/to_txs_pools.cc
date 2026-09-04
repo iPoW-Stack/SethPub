@@ -574,7 +574,7 @@ int ToTxsPools::CreateToTxWithHeights(
 
     if (acc_amount_map.empty()) {
         SETH_DEBUG("acc amount map empty, no cross-shard to txs");
-        return kPoolsError;
+        return kPoolsSuccess;
     }
 
     SETH_DEBUG("success statistic to txs prev_to_heights: %s, leader_to_heights: %s", 

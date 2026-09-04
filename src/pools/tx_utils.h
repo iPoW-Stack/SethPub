@@ -46,6 +46,7 @@ enum PoolsErrorCode {
     kPoolsSuccess = 0,
     kPoolsError = 1,
     kPoolsTxAdded = 2,
+    kPoolsNoCross = 3,
 };
 
 static inline std::string GetTxKey(const std::string& addr, uint64_t nonce) {

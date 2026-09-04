@@ -297,20 +297,26 @@ void BlockManager::HandleNormalToTx(const std::shared_ptr<view_block::protobuf::
     }
 
     auto& to_txs = view_block.block_info().normal_to();
-    // for (int32_t i = 0; i < to_txs.to_tx_arr_size(); ++i) {
-    //     if (to_txs.to_tx_arr(i).des_shard() != common::GlobalInfo::Instance()->network_id()) {
-    //         SETH_WARN("sharding invalid: %u, %u",
-    //             to_txs.to_heights().sharding_id(),
-    //             common::GlobalInfo::Instance()->network_id());
-    //         continue;
-    //     }
+    for (int32_t i = 0; i < to_txs.to_tx_arr_size(); ++i) {
+        if (to_txs.to_tx_arr(i).des_shard() == network::kUniversalNetworkId &&
+                !network::IsSameToLocalShard(network::kRootCongressNetworkId)) {
+            HandleNormalToTx(view_block, to_txs.to_tx_arr(i));
+            continue;
+        }
+
+        if (to_txs.to_tx_arr(i).des_shard() != common::GlobalInfo::Instance()->network_id()) {
+            SETH_WARN("sharding invalid: %u, %u",
+                to_txs.to_heights().sharding_id(),
+                common::GlobalInfo::Instance()->network_id());
+            continue;
+        }
 
         if (!network::IsSameToLocalShard(network::kRootCongressNetworkId)) {
-            HandleNormalToTx(view_block, to_txs.to_tx_arr(0));
+            HandleNormalToTx(view_block, to_txs.to_tx_arr(i));
         } else {
-            RootHandleNormalToTx(view_block, to_txs.to_tx_arr(0));
+            RootHandleNormalToTx(view_block, to_txs.to_tx_arr(i));
         }
-    // }
+    }
 }
 
 void BlockManager::RootHandleNormalToTx(
@@ -990,26 +996,29 @@ pools::TxItemPtr BlockManager::HandleToTxsMessage(
     for (int attempt = 0; attempt <= kMaxReduceAttempts; ++attempt) {
         pools::protobuf::AllToTxMessage all_to_txs;
         pools::protobuf::ShardToTxItem prev_heights;
-        // for (uint32_t sharding_id = network::kRootCongressNetworkId;
-        //         sharding_id <= max_consensus_sharding_id_; ++sharding_id) {
-        auto& to_tx = *all_to_txs.add_to_tx_arr();
-        if (to_txs_pool_->CreateToTxWithHeights(
-                // sharding_id,
-                // 0,
-                &prev_heights,
-                cur_heights,
-                to_tx) != pools::kPoolsSuccess) {
+        for (uint32_t sharding_id = network::kUniversalNetworkId;
+                sharding_id <= max_consensus_sharding_id_; ++sharding_id) {
+            auto& to_tx = *all_to_txs.add_to_tx_arr();
+            auto res = to_txs_pool_->CreateToTxWithHeights(
+                    // sharding_id,
+                    // 0,
+                    &prev_heights,
+                    cur_heights,
+                    to_tx);
+            if (res != pools::kPoolsSuccess) {
+                SETH_DEBUG("2 failed get to tx tx info, all shards failed, max_shard: %u, heights: %s",
+                    max_consensus_sharding_id_.load(), ProtobufToJson(cur_heights).c_str());
+                return nullptr;
+            }
+
+            to_tx.set_des_shard(sharding_id);
+        }
+
+        if (all_to_txs.to_tx_arr_size() == 0) {
             SETH_DEBUG("2 failed get to tx tx info, all shards failed, max_shard: %u, heights: %s",
                 max_consensus_sharding_id_.load(), ProtobufToJson(cur_heights).c_str());
             return nullptr;
         }
-        // }
-
-        // if (all_to_txs.to_tx_arr_size() == 0) {
-        //     SETH_DEBUG("2 failed get to tx tx info, all shards failed, max_shard: %u, heights: %s",
-        //         max_consensus_sharding_id_.load(), ProtobufToJson(cur_heights).c_str());
-        //     return nullptr;
-        // }
         
         *all_to_txs.mutable_to_heights() = cur_heights;
         auto serialized_value = SerializeDeterministic(all_to_txs);

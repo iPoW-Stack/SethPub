@@ -99,11 +99,13 @@ message CrossShardStatistic {
 message ToTxMessage {
     optional bytes heights_hash = 1;
     repeated ToTxMessageItem tos = 2;
-    repeated CrossShardStatisticItem crosses = 3;
+    optional uint64 elect_height = 4;
+    repeated CrossShardStatisticItem crosses = 5;
+    optional uint32 des_shard = 6;
 }
 
 message AllToTxMessage {
-    optional ToTxMessage to_tx = 1;
+    repeated ToTxMessage to_tx_arr = 1;
     optional ShardToTxItem to_heights = 2;
 }
 
