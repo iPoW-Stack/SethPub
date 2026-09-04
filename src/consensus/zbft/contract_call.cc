@@ -440,6 +440,10 @@ int ContractCall::HandleTx(
                 if (cross_to_map_.find(key) == cross_to_map_.end()) {
                     auto item = std::make_shared<pools::protobuf::ToTxMessageItem>();
                     item->set_from(action.emitter);
+                    // des must be exactly 20 bytes so CreateLocalToTx doesn't reject it.
+                    // For cross-storage there is no single "recipient", so we use
+                    // base_root_address (20 bytes) as the identity / dedup key.
+                    item->set_des(action.base_root_address);
                     // sharding_id repurposed as dest shard routing hint for root
                     item->set_sharding_id(action.dest_shard_id);
                     // pool_index carries dest pool for HandleCrossShardBase

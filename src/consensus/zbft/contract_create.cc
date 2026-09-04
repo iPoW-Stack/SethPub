@@ -357,6 +357,8 @@ int ContractUserCreateCall::HandleTx(
                 if (cross_to_map_.find(key) == cross_to_map_.end()) {
                     auto item = std::make_shared<pools::protobuf::ToTxMessageItem>();
                     item->set_from(action.emitter);
+                    // des must be exactly 20 bytes; use base_root_address as identity key
+                    item->set_des(action.base_root_address);
                     item->set_sharding_id(action.dest_shard_id);
                     item->set_pool_index(static_cast<int32_t>(action.dest_pool_index));
                     item->set_des_sharding_id(network::kUniversalNetworkId);
