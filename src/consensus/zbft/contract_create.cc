@@ -362,8 +362,13 @@ int ContractUserCreateCall::HandleTx(
                         !c2_it->second.code.empty()) {
                     xsb_runtime_code = std::string(
                         c2_it->second.code.begin(), c2_it->second.code.end());
+                } else if (!seth_host.create_bytes_code_.empty()) {
+                    // Top-level deployment: runtime bytecode returned by constructor execution
+                    xsb_runtime_code = seth_host.create_bytes_code_;
+                    SETH_INFO("CrossShardBase top-level deploy: runtime bytecode %zu bytes from create_bytes_code_",
+                        xsb_runtime_code.size());
                 } else {
-                    SETH_WARN("CrossShardBase deployed but runtime bytecode not in create2_accounts_: %s",
+                    SETH_WARN("CrossShardBase deployed but runtime bytecode not found: %s",
                         common::Encode::HexEncode(block_tx.to()).c_str());
                 }
             }

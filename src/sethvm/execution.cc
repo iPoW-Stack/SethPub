@@ -217,7 +217,20 @@ int Execution::execute(
         }
 
         host.create_bytes_code_ = SafeEvmcOutput(*out_res);
+        // For kJustCreate/kCreate2, the EVM computes a deployment address internally
+        // (from sender+nonce for CREATE, or CREATE2 formula).  The pre-agreed contract
+        // address is msg.recipient (= block_tx.to()).  Move the EVM-computed account
+        // entry to msg.recipient so that storage written by the constructor (including
+        // the CrossShardBase sentinel) is visible under the expected address.
         if (call_mode == kJustCreate || call_mode == kCreate2) {
+            auto evm_addr = out_res->create_address;
+            if (memcmp(evm_addr.bytes, msg.recipient.bytes, sizeof(evm_addr.bytes)) != 0) {
+                auto it = host.accounts_.find(evm_addr);
+                if (it != host.accounts_.end()) {
+                    host.accounts_[msg.recipient] = std::move(it->second);
+                    host.accounts_.erase(it);
+                }
+            }
             return kSethvmSuccess;
         }
 
