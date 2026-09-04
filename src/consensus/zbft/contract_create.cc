@@ -404,12 +404,15 @@ int ContractUserCreateCall::HandleTx(
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
         if (iter == pre_seth_host.cross_to_map_.end()) {
             to_item_ptr = std::make_shared<pools::protobuf::ToTxMessageItem>();
-            to_item_ptr->set_des(block_tx.to() + block_tx.from());
+            to_item_ptr->set_des(block_tx.to());  // 20 bytes: contract address only
             to_item_ptr->set_amount(0);  // create contract direct set balance, not cross by root
             to_item_ptr->set_sharding_id(view_block.qc().network_id());
             to_item_ptr->set_des_sharding_id(network::kUniversalNetworkId);
             if (!xsb_runtime_code.empty()) {
                 to_item_ptr->set_runtime_bytecode(xsb_runtime_code);
+                SETH_INFO("SaveContractCreateInfo: XSB broadcast bytecode %zu bytes for addr=%s",
+                    xsb_runtime_code.size(),
+                    common::Encode::HexEncode(block_tx.to()).c_str());
             }
 
             pre_seth_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
