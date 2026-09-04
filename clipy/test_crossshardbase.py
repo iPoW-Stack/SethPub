@@ -214,6 +214,27 @@ def pool_index(addr: str) -> int:
     b = bytes.fromhex(addr.lower().replace("0x", ""))
     return xxh32(b, 623453345) % 32
 
+
+# Feistel shadow address (matches C++ reversible_feistel_address.h exactly)
+# tag = "AKAVERSE_FEISTEL_V1"[:18], round key = keccak256(preimage)[22:32]
+_FEISTEL_TAG = b"AKAVERSE_FEISTEL_V1"[:18]
+
+def _feistel_rk(shard, pool, round_):
+    pre = _FEISTEL_TAG + shard.to_bytes(4, "big") + pool.to_bytes(4, "big") + round_.to_bytes(4, "big")
+    return keccak256(pre)[22:32]
+
+def _feistel_f(R, rk):
+    return keccak256(bytes(a ^ b for a, b in zip(R, rk)))[22:32]
+
+def derive_shard_address(base_hex, shard, pool):
+    b = bytes.fromhex(base_hex.lower().zfill(40))
+    L, R = bytearray(b[:10]), bytearray(b[10:])
+    for i in range(4):
+        rk = _feistel_rk(shard, pool, i)
+        nR = bytearray(a ^ b for a, b in zip(L, _feistel_f(bytes(R), rk)))
+        L, R = bytearray(R), nR
+    return (bytes(L) + bytes(R)).hex()
+
 # ── Solidity source ──────────────────────────────────────────────────────────
 # TestToken inherits CrossShardBase.
 # Key: Remove the require(address(this)==baseRootAddress) check so CREATE2
@@ -353,7 +374,7 @@ def main():
 
     # 2. Compute CREATE2 address — no self-reference now
     #    TestToken constructor(address systemExecutor) — no baseRootAddress
-    SALT = 314  # change to redeploy fresh
+    SALT = 317  # change to redeploy fresh
     ctor_types = ["address"]
     ctor_args_hex = eth_abi.encode(ctor_types, [bytes.fromhex(SYSTEM_EXECUTOR)]).hex()
     full_bytecode = bytecode + ctor_args_hex
@@ -438,7 +459,9 @@ def main():
     print(f"\n[6] Waiting 40s for cross-shard propagation to shard{TO_SHARD}...")
     time.sleep(40)
     c4  = client(TO_SHARD)
-    raw = call_view(c4, SENDER, deploy_addr,
+    shadow4 = derive_shard_address(deploy_addr, TO_SHARD, TO_POOL)
+    print(f"    shadow4={shadow4}")
+    raw = call_view(c4, SENDER, shadow4,
                     encode_call("balanceOf(address)", ["address"], [bytes.fromhex(TO_ADDR)]))
     print(f"    raw shard4: {raw[:120]}")
     decoded = query_decode(raw, ["uint256"])
@@ -469,7 +492,9 @@ def main():
     print(f"\n[8] Waiting 40s then reading storage on shard{TO_SHARD2}...")
     time.sleep(40)
     c5  = client(TO_SHARD2)
-    raw = call_view(c5, SENDER, deploy_addr,
+    shadow5 = derive_shard_address(deploy_addr, TO_SHARD2, TO_POOL2)
+    print(f"    shadow5={shadow5}")
+    raw = call_view(c5, SENDER, shadow5,
                     encode_call("readStorage(bytes32)", ["bytes32"], [KEY]))
     print(f"    raw shard5: {raw[:120]}")
     decoded = query_decode(raw, ["bytes32"])

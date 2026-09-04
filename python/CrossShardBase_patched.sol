@@ -24,7 +24,7 @@ abstract contract CrossShardBase {
     // 固定存储槽（C++ 侧通过相同常量值定位）
     // keccak256("seth.cross_shard_base.marker.v1")
     // ─────────────────────────────────────────────────────────────────────
-    uint256 private constant IS_CROSS_SHARD_BASE_SLOT =
+    bytes32 private constant IS_CROSS_SHARD_BASE_SLOT =
         0x0c1f51986c7b4d6e0c3e3a3f5a6b7d8e9f0a1b2c3d4e5f6789abcdef01234567;
 
     // ─────────────────────────────────────────────────────────────────────

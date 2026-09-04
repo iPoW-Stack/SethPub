@@ -610,7 +610,7 @@ inline ::seth::address::protobuf::AddressType AddressInfo::type() const {
   return static_cast< ::seth::address::protobuf::AddressType >(type_);
 }
 inline void AddressInfo::set_type(::seth::address::protobuf::AddressType value) {
-  //assert(::seth::address::protobuf::AddressType_IsValid(value));
+  assert(::seth::address::protobuf::AddressType_IsValid(value));
   set_has_type();
   type_ = value;
   // @@protoc_insertion_point(field_set:seth.address.protobuf.AddressInfo.type)

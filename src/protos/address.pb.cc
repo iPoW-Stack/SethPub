@@ -132,15 +132,15 @@ void AddDescriptorsImpl() {
       "\n\006credit\030\n \001(\005:\0010\022,\n\003g2s\030\013 \003(\0132\037.seth.bl"
       "s.protobuf.BlsPublicKey\022\035\n\telect_pos\030\014 \001"
       "(\r:\n4294967295\022\022\n\ndestructed\030\r \001(\010\022\025\n\rco"
-      "nsensus_gap\030\016 \001(\004\022\r\n\005nonce\030\017 \002(\004*\267\001\n\013Add"
+      "nsensus_gap\030\016 \001(\004\022\r\n\005nonce\030\017 \002(\004*\305\001\n\013Add"
       "ressType\022\013\n\007kNormal\020\000\022\016\n\nkRootElect\020\002\022\016\n"
       "\nkRootTimer\020\003\022\016\n\nkStatistic\020\004\022\031\n\025kImmuta"
       "blePoolAddress\020\005\022\025\n\021kLocalToTxAddress\020\006\022"
       "\021\n\rkElectAddress\020\007\022\024\n\020kContractPrefund\020\010"
-      "\022\020\n\014kPoolAddress\020\n"
+      "\022\014\n\010kLibrary\020\t\022\020\n\014kPoolAddress\020\n"
   };
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-      descriptor, 618);
+      descriptor, 632);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "protos/address.proto", &protobuf_RegisterTypes);
   ::protobuf_protos_2fbls_2eproto::AddDescriptors();
