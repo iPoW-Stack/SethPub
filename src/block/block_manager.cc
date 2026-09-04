@@ -1011,6 +1011,11 @@ pools::TxItemPtr BlockManager::HandleToTxsMessage(
                 return nullptr;
             }
 
+            if (to_tx.tos_size() == 0) {
+                all_to_txs.mutable_to_tx_arr()->RemoveLast();
+                continue;
+            }
+
             to_tx.set_des_shard(sharding_id);
         }
 
