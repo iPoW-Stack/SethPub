@@ -25,7 +25,7 @@ abstract contract CrossShardBase {
     // keccak256("seth.cross_shard_base.marker.v1")
     // ─────────────────────────────────────────────────────────────────────
     uint256 private constant IS_CROSS_SHARD_BASE_SLOT =
-        0xc1f51986c7b4d6e0c3e3a3f5a6b7d8e9f0a1b2c3d4e5f6789abcdef01234567;
+        0x0c1f51986c7b4d6e0c3e3a3f5a6b7d8e9f0a1b2c3d4e5f6789abcdef01234567;
 
     // ─────────────────────────────────────────────────────────────────────
     // 共识层固定 SYSTEM_EXECUTOR 地址（= ASCII "SYSTEM_EXECUTOR_V1" + 0x0000）

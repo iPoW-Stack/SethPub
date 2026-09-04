@@ -27,16 +27,16 @@ inline const evmc::address kCrossShardSystemExecutor = {{
 
 // ─────────────────────────────────────────────────────────────────────────────
 // IS_CROSS_SHARD_BASE_SLOT
-//   keccak256("seth.cross_shard_base.marker.v1")
-//   Must match the assembly sstore slot in CrossShardBase.sol:
-//     bytes32 private constant IS_CROSS_SHARD_BASE_SLOT =
-//         0xc1f51986c7b4d6e0c3e3a3f5a6b7d8e9f0a1b2c3d4e5f6789abcdef01234567;
+//   Must match the assembly sstore slot in CrossShardBase.sol.
+//   The Solidity literal 0xc1f51986...01234567 has 63 hex digits (odd), so the
+//   compiler left-pads it to 64 digits: 0x0c1f51986c7b4d6e0c3e3a3f5a6b7d8e9f0a1b2c3d4e5f6789abcdef01234567.
+//   This C++ constant must equal that padded value.
 // ─────────────────────────────────────────────────────────────────────────────
 inline const evmc::bytes32 kIsCrossShardBaseSlot = {{
-    0xc1, 0xf5, 0x19, 0x86, 0xc7, 0xb4, 0xd6, 0xe0,
-    0xc3, 0xe3, 0xa3, 0xf5, 0xa6, 0xb7, 0xd8, 0xe9,
-    0xf0, 0xa1, 0xb2, 0xc3, 0xd4, 0xe5, 0xf6, 0x78,
-    0x9a, 0xbc, 0xde, 0xf0, 0x12, 0x34, 0x56, 0x67
+    0x0c, 0x1f, 0x51, 0x98, 0x6c, 0x7b, 0x4d, 0x6e,
+    0x0c, 0x3e, 0x3a, 0x3f, 0x5a, 0x6b, 0x7d, 0x8e,
+    0x9f, 0x0a, 0x1b, 0x2c, 0x3d, 0x4e, 0x5f, 0x67,
+    0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67
 }};
 
 // CrossShardBase 合约部署 gas 倍数
