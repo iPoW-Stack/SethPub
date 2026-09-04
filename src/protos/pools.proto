@@ -50,6 +50,9 @@ message ToTxMessageItem {
     optional bytes  cross_storage_key  = 15;  // CrossStorageOut key (32 bytes)
     optional bytes  cross_storage_value = 16; // CrossStorageOut value (variable length)
     optional bytes  runtime_bytecode   = 17;  // emitter contract runtime bytecode for dest lazy-deploy
+    optional bytes  amount256          = 18;  // full uint256 amount (32B BE); set by CrossShardBase
+                                              // transfer path to avoid uint64 truncation. When present,
+                                              // takes precedence over the uint64 `amount` field.
 }
 
 message ShardToTxItem {
