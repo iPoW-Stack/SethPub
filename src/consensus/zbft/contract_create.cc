@@ -180,7 +180,13 @@ int ContractUserCreateCall::HandleTx(
                 memcpy(ca.bytes, block_tx.to().data(),
                     std::min(block_tx.to().size(), sizeof(ca.bytes)));
                 auto marker = seth_host.get_storage(ca, sethvm::kIsCrossShardBaseSlot);
-                if (sethvm::EvmcBytes32ToUint64(marker) == 1u) {
+                uint64_t marker_u64 = sethvm::EvmcBytes32ToUint64(marker);
+                SETH_INFO("CrossShardBase sentinel check: contract=%s marker_u64=%lu marker_b31=0x%02x accounts_size=%zu",
+                    common::Encode::HexEncode(block_tx.to()).c_str(),
+                    marker_u64,
+                    (unsigned)marker.bytes[31],
+                    seth_host.accounts_.size());
+                if (marker_u64 == 1u) {
                     gas_used *= sethvm::kCrossShardBaseGasMultiplier;
                     SETH_INFO("CrossShardBase 16x gas applied: %lu, limit: %lu, contract: %s",
                         gas_used, block_tx.gas_limit(),
