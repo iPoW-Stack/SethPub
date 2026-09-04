@@ -186,6 +186,24 @@ int ContractUserCreateCall::HandleTx(
                     marker_u64,
                     (unsigned)marker.bytes[31],
                     seth_host.accounts_.size());
+                // Dump all storage keys for recipient to diagnose slot mismatch
+                {
+                    auto dbg_it = seth_host.accounts_.find(ca);
+                    if (dbg_it != seth_host.accounts_.end()) {
+                        SETH_INFO("CrossShardBase: recipient storage entries=%zu",
+                            dbg_it->second.storage.size());
+                        size_t n = 0;
+                        for (auto& [k, sv] : dbg_it->second.storage) {
+                            SETH_INFO("  storage[%zu] slot=%s val_b31=0x%02x",
+                                n++,
+                                common::Encode::HexEncode(std::string((char*)k.bytes, 32)).c_str(),
+                                (unsigned)sv.value.bytes[31]);
+                            if (n >= 8) break;
+                        }
+                    } else {
+                        SETH_INFO("CrossShardBase: recipient NOT in accounts_!");
+                    }
+                }
                 if (marker_u64 == 1u) {
                     gas_used *= sethvm::kCrossShardBaseGasMultiplier;
                     SETH_INFO("CrossShardBase 16x gas applied: %lu, limit: %lu, contract: %s",
