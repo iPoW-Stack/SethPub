@@ -7765,11 +7765,21 @@ contract AMMPool {
                 fs.sec->SetPrivateKey(pk);
                 fs.addr_hex = common::Encode::HexEncode(fs.sec->GetAddress());
                 int64_t n = fqsdk.fetchNonce(fs.addr_hex);
-                fs.nonce_start = (n >= 0) ? n : 0;
-                fs.nonce_sent  = fs.nonce_start;
-                std::cout << "  funder " << fs.addr_hex.substr(0, 16)
-                          << "...  chain_nonce=" << fs.nonce_start << "\n";
+                if (n < 0) {
+                    std::cout << "  funder " << fs.addr_hex
+                              << "  NOT on shard " << funder_shard << ", skipped\n";
+                    continue;
+                }
+                fs.nonce_start = n;
+                fs.nonce_sent  = n;
+                std::cout << "  funder " << fs.addr_hex
+                          << "  chain_nonce=" << n << "\n";
                 fstates8.push_back(std::move(fs));
+            }
+            if (fstates8.empty()) {
+                std::cerr << "  FATAL: no valid funders on shard " << funder_shard << "\n";
+                transport::TcpTransport::Instance()->Stop();
+                return 1;
             }
         }
 
@@ -7927,6 +7937,7 @@ contract AMMPool {
                     std::cout << "    " << fs.addr_hex
                               << "  want=" << fs.nonce_sent << " got=" << actual << "\n";
                 }
+                transport::TcpTransport::Instance()->Stop();
                 return 1;
             }
         }
@@ -8018,6 +8029,7 @@ contract AMMPool {
             if (bal_ok_shards < (uint32_t)kShards8.size()) {
                 std::cerr << "  FATAL: Phase 2b failed on "
                           << (kShards8.size() - bal_ok_shards) << " shard(s). Aborting.\n";
+                transport::TcpTransport::Instance()->Stop();
                 return 1;
             }
             std::cout << "  Phase 2b: " << bal_ok_shards << "/" << kShards8.size()
