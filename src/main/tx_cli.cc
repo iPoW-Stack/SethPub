@@ -7765,21 +7765,23 @@ contract AMMPool {
                 fs.sec->SetPrivateKey(pk);
                 std::string addr_raw = fs.sec->GetAddress();
                 fs.addr_hex = common::Encode::HexEncode(addr_raw);
-                uint32_t fshard = addr_shard8(addr_raw);
-                if (fshard != funder_shard) {
+                int64_t bal = fqsdk.fetchBalance(fs.addr_hex);
+                if (bal <= 0) {
                     std::cout << "  funder " << fs.addr_hex
-                              << "  shard=" << fshard << " != " << funder_shard << ", skipped\n";
+                              << "  balance=" << bal << ", skipped\n";
                     continue;
                 }
                 int64_t n = fqsdk.fetchNonce(fs.addr_hex);
                 fs.nonce_start = (n >= 0) ? n : 0;
                 fs.nonce_sent  = fs.nonce_start;
                 std::cout << "  funder " << fs.addr_hex
-                          << "  chain_nonce=" << fs.nonce_start << "\n";
+                          << "  chain_nonce=" << fs.nonce_start
+                          << "  balance=" << bal << "\n";
                 fstates8.push_back(std::move(fs));
             }
             if (fstates8.empty()) {
-                std::cerr << "  FATAL: no valid funders on shard " << funder_shard << "\n";
+                std::cerr << "  FATAL: no valid funders found (check init_accounts"
+                          << funder_shard << ")\n";
                 transport::TcpTransport::Instance()->Stop();
                 return 1;
             }
