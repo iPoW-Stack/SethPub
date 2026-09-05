@@ -7889,14 +7889,14 @@ contract AMMPool {
             try { return v.get<int64_t>(); } catch (...) { return -1; }
         };
 
-        std::cout << "\n[Phase 2a] Verify funder nonces on-chain (max 600s)...\n";
+        std::cout << "\n[Phase 2a] Verify funder nonces on-chain (max 60s)...\n";
         {
             SethSDK vsdk8(eps8[funder_shard].ip, eps8[funder_shard].http);
             std::vector<std::string> faddrs8;
             for (auto& fs : fstates8) faddrs8.push_back(fs.addr_hex);
 
             bool nonce_ok8 = false;
-            for (int rd = 0; rd < 600 && !global_stop; ++rd) {
+            for (int rd = 0; rd < 60 && !global_stop; ++rd) {
                 auto r = vsdk8.batchQueryAccounts(faddrs8);
                 bool all_match = true;
                 uint32_t confirmed = 0;
@@ -7918,7 +7918,7 @@ contract AMMPool {
             }
             if (nonce_ok8) std::cout << "  Funder nonces confirmed OK\n";
             else {
-                std::cout << "  WARNING: nonce check timed out after 600s\n";
+                std::cout << "  WARNING: nonce check timed out after 60s\n";
                 auto r = vsdk8.batchQueryAccounts(faddrs8);
                 for (auto& fs : fstates8) {
                     int64_t actual = -1;
