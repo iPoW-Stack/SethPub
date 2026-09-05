@@ -230,8 +230,12 @@ void ToTxsPools::LoadLatestHeights() {
     }
 
     if (!prefix_db_->GetLatestToTxsHeights(net_id, &to_heights)) {
-        // //assert(false);
-        return;
+        // Fresh network: no stored heights yet. Initialize to zeros so
+        // LeaderCreateToHeights can proceed instead of failing with nullptr.
+        to_heights.set_sharding_id(net_id);
+        for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
+            to_heights.add_heights(0);
+        }
     }
 
     {
@@ -535,6 +539,8 @@ int ToTxsPools::CreateToTxWithHeights(
                             height, 
                             pool_idx,
                             common::Encode::HexEncode(addr_info->addr()).c_str());
+                    } else {
+                        to_iter->second.set_des_sharding_id(network::kRootCongressNetworkId);
                     }
                 }
 

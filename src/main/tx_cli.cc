@@ -7255,5 +7255,765 @@ contract Exchange {
         return 0;
     }
 
+    // ── Mode 8: CrossShardBase Token AMM — Step 1 (Accounts + Fund) ──────
+    // Usage: txcli 8 <funder_shard> <ip> <port>
+    //        [users=100] [tokens=5] [amm_pairs=3] [rounds=10] [tps=0]
+    //        [ip3:port3] [ip4:port4] [ip5:port5] [ip6:port6]
+    //
+    // Step 1 covers Phase 0-2:
+    //   Phase 0: Compile CrossShardToken + AMMPool
+    //   Phase 1: Generate user / token-deployer / AMM-deployer accounts
+    //   Phase 2: Fund all accounts from genesis funders (raw TCP, bulk)
+    //   Phase 2a: Wait for funder nonces to confirm on-chain
+    //   Phase 2b: Spot-check balances on each shard
+    if (argv[1][0] == '8') {
+        setvbuf(stdout, NULL, _IONBF, 0);
+        setvbuf(stderr, NULL, _IONBF, 0);
+
+        // ── Argument parsing ─────────────────────────────────────────────
+        uint32_t funder_shard = (argc >= 3) ? (uint32_t)std::stoul(argv[2]) : 3u;
+        std::string base_ip   = (argc >= 4) ? argv[3] : "192.168.25.129";
+        uint16_t    base_tcp  = (argc >= 5) ? (uint16_t)std::stoi(argv[4]) : 13001;
+        uint32_t kUsers       = (argc >= 6) ? (uint32_t)std::stoul(argv[5]) : 100u;
+        uint32_t kTokens      = (argc >= 7) ? (uint32_t)std::stoul(argv[6]) : 5u;
+        uint32_t kAmmPairs    = (argc >= 8) ? (uint32_t)std::stoul(argv[7]) : 3u;
+        uint32_t kRounds8     = (argc >= 9) ? (uint32_t)std::stoul(argv[8]) : 10u;
+        uint32_t kTps8        = (argc >= 10) ? (uint32_t)std::stoul(argv[9]) : 0u;
+        (void)kRounds8; (void)kTps8;
+
+        // amm_pairs must not exceed C(tokens, 2)
+        if (kTokens >= 2) {
+            uint32_t max_pairs = kTokens * (kTokens - 1) / 2;
+            if (kAmmPairs > max_pairs) kAmmPairs = max_pairs;
+        } else {
+            kAmmPairs = 0;
+        }
+        if (kTokens == 0) { std::cerr << "tokens must be >= 1\n"; return 1; }
+
+        // per-shard HTTP endpoints; override via argv[10..13] as "ip:port"
+        struct Ep8 { std::string ip; uint16_t http; };
+        std::map<uint32_t, Ep8> eps8;
+        for (uint32_t s = 3; s <= 6; ++s)
+            eps8[s] = {base_ip, (uint16_t)(20000u + s * 1000u + 1u)};
+        for (int i = 10; i < std::min(argc, 14); ++i) {
+            uint32_t sid = 3u + (uint32_t)(i - 10);
+            std::string arg(argv[i]);
+            auto col = arg.find(':');
+            if (col != std::string::npos)
+                eps8[sid] = {arg.substr(0, col), (uint16_t)std::stoi(arg.substr(col + 1))};
+        }
+
+        global_chain_node_ip        = eps8[funder_shard].ip;
+        global_chain_node_http_port = eps8[funder_shard].http;
+        shardnum = (int)funder_shard;
+
+        std::cout << "\n" << std::string(70, '=') << "\n";
+        std::cout << "  Mode 8: CrossShardBase Token AMM  —  Step 1 (Accounts + Fund)\n";
+        std::cout << "  Funder shard : " << funder_shard << "\n";
+        std::cout << "  Users        : " << kUsers << "\n";
+        std::cout << "  Tokens       : " << kTokens << "\n";
+        std::cout << "  AMM pairs    : " << kAmmPairs << "\n";
+        for (auto& [s, e] : eps8)
+            std::cout << "  Shard " << s << "      : " << e.ip << ":" << e.http << "\n";
+        std::cout << std::string(70, '=') << "\n";
+
+        LoadAllAccounts(funder_shard);
+        if (g_prikeys.empty()) {
+            std::cerr << "No funder accounts loaded (missing init_accounts" << funder_shard << ")\n";
+            return 1;
+        }
+        std::cout << "Loaded " << g_prikeys.size() << " funder accounts\n";
+
+        SignalRegister();
+        WriteDefaultLogConf();
+
+        // ── TCP transport ─────────────────────────────────────────────────
+        transport::MultiThreadHandler net_handler8;
+        std::shared_ptr<security::Security> sec8 = std::make_shared<security::Ecdsa>();
+        auto db_ptr8 = std::make_shared<db::Db>();
+        std::string db8_path = db_path + "_mode8";
+        { std::string cmd = "rm -rf '" + db8_path + "' 2>/dev/null"; (void)system(cmd.c_str()); }
+        if (!db_ptr8->Init(db8_path)) { std::cerr << "init db failed\n"; return 1; }
+        if (net_handler8.Init(db_ptr8, sec8) != 0) { std::cerr << "init net handler failed\n"; return 1; }
+        if (transport::TcpTransport::Instance()->Init("127.0.0.1:13900", 128, false, &net_handler8) != 0) {
+            std::cerr << "init tcp transport failed\n"; return 1;
+        }
+        if (transport::TcpTransport::Instance()->Start(false) != 0) {
+            std::cerr << "start tcp transport failed\n"; return 1;
+        }
+
+        SethSDK sdk8(global_chain_node_ip, global_chain_node_http_port);
+
+        // connectivity check
+        {
+            auto ts = std::make_shared<security::Ecdsa>();
+            ts->SetPrivateKey(g_prikeys[0]);
+            int64_t tn = sdk8.fetchNonce(common::Encode::HexEncode(ts->GetAddress()));
+            if (tn < 0) {
+                std::cerr << "  ERROR: Cannot reach " << global_chain_node_ip
+                          << ":" << global_chain_node_http_port
+                          << " (is shard " << funder_shard << " node running?)\n";
+                transport::TcpTransport::Instance()->Stop();
+                return 1;
+            }
+            std::cout << "  HTTP OK  node=" << global_chain_node_ip
+                      << ":" << global_chain_node_http_port
+                      << "  nonce=" << tn << "\n";
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // Phase 0: Compile CrossShardToken + AMMPool
+        // ─────────────────────────────────────────────────────────────────
+        std::cout << "\n[Phase 0] Compile contracts...\n";
+
+        // CrossShardBase (full inline) + CrossShardToken
+        const std::string CROSS_SHARD_TOKEN_SOL = R"SOL(
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+abstract contract CrossShardBase {
+    bytes32 private constant IS_CROSS_SHARD_BASE_SLOT =
+        0x0c1f51986c7b4d6e0c3e3a3f5a6b7d8e9f0a1b2c3d4e5f6789abcdef01234567;
+    address public constant SYSTEM_EXECUTOR_ADDRESS =
+        0x53595354454d5f4558454355544F525f56310000;
+    bytes private constant DOMAIN_TAG = "AKAVERSE_FEISTEL_V1";
+    uint256 private constant MASK_80 = (1 << 80) - 1;
+
+    bool    public IS_ROOT;
+    address public BASE_ROOT_ADDRESS;
+    address public SYSTEM_EXECUTOR;
+    mapping(address => uint256) internal _balances;
+    uint256 public totalSupply;
+
+    event CrossTransferOut(address indexed base, address indexed from, address to,
+        uint256 amount, uint64 nonce, uint32 toShard, uint32 toPool);
+    event CrossTransferIn(address indexed base, address to, uint256 amount, uint64 nonce);
+    event CrossStorageOut(address indexed base, bytes32 indexed key, bytes value,
+        uint64 nonce, uint32 toShard, uint32 toPool);
+    event CrossStorageIn(address indexed base, bytes32 key, bytes value, uint64 version);
+
+    modifier onlySystemExecutor() {
+        require(msg.sender == SYSTEM_EXECUTOR, "ONLY_SYSTEM_EXECUTOR"); _;
+    }
+    modifier onlyBase() { require(IS_ROOT, "ONLY_BASE_SHARD"); _; }
+
+    constructor(address systemExecutor, address baseRootAddress) {
+        require(systemExecutor  != address(0), "ZERO_SYSTEM_EXECUTOR");
+        require(baseRootAddress != address(0), "ZERO_BASE_ROOT");
+        require(address(this) == baseRootAddress, "BASE_ADDR_MISMATCH");
+        SYSTEM_EXECUTOR   = systemExecutor;
+        BASE_ROOT_ADDRESS = baseRootAddress;
+        IS_ROOT           = true;
+        _baseInit();
+        assembly { sstore(IS_CROSS_SHARD_BASE_SLOT, 1) }
+    }
+
+    function _baseInit() internal virtual {}
+
+    function _crossTransfer(address to, uint256 amount, uint32 toShard, uint32 toPool)
+            internal returns (uint64 nonce) {
+        require(to != address(0), "ZERO_TO");
+        require(_balances[msg.sender] >= amount, "INSUFFICIENT_BALANCE");
+        _balances[msg.sender] -= amount;
+        totalSupply -= amount;
+        nonce = 0;
+        emit CrossTransferOut(BASE_ROOT_ADDRESS, msg.sender, to, amount, nonce, toShard, toPool);
+    }
+
+    function systemExecuteCrossTransfer(address to, uint256 amount, uint64 nonce)
+            external onlySystemExecutor {
+        require(to != address(0), "ZERO_TO");
+        _balances[to] += amount;
+        totalSupply += amount;
+        emit CrossTransferIn(BASE_ROOT_ADDRESS, to, amount, nonce);
+    }
+
+    function _crossSetStorage(bytes32 key, bytes memory value, uint32 toShard, uint32 toPool)
+            internal returns (uint64 nonce) {
+        nonce = 0;
+        emit CrossStorageOut(BASE_ROOT_ADDRESS, key, value, nonce, toShard, toPool);
+    }
+
+    function systemExecuteCrossStorage(bytes32 key, bytes calldata value, uint64 version)
+            external onlySystemExecutor {
+        _crossStorageSet(key, value);
+        emit CrossStorageIn(BASE_ROOT_ADDRESS, key, value, version);
+    }
+
+    function _crossStorageSet(bytes32 key, bytes calldata value) internal virtual {}
+
+    function balanceOf(address account) external view returns (uint256) {
+        return _balances[account];
+    }
+
+    function approve(address /*spender*/, uint256 /*amount*/) external pure returns (bool) {
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        require(_balances[from] >= amount, "INSUFFICIENT");
+        _balances[from] -= amount;
+        _balances[to]   += amount;
+        return true;
+    }
+}
+
+contract CrossShardToken is CrossShardBase {
+    constructor(address sys, address base) CrossShardBase(sys, base) {}
+
+    function _baseInit() internal override {
+        _balances[tx.origin] = 1_000_000 ether;
+        totalSupply = 1_000_000 ether;
+    }
+
+    function crossTransfer(address to, uint256 amt, uint32 shard, uint32 pool) external {
+        _crossTransfer(to, amt, shard, pool);
+    }
+
+    function transfer(address to, uint256 amt) external returns (bool) {
+        require(_balances[msg.sender] >= amt, "INSUFFICIENT");
+        _balances[msg.sender] -= amt;
+        _balances[to] += amt;
+        return true;
+    }
+}
+)SOL";
+
+        // AMMPool — standard constant-product AMM, no CrossShardBase
+        const std::string AMM_POOL_SOL = R"SOL(
+pragma solidity ^0.8.0;
+interface IERC20 {
+    function transferFrom(address from, address to, uint256 amount) external returns (bool);
+    function transfer(address to, uint256 amount) external returns (bool);
+    function balanceOf(address account) external view returns (uint256);
+}
+contract AMMPool {
+    IERC20 public tokenA;
+    IERC20 public tokenB;
+    uint256 public reserveA;
+    uint256 public reserveB;
+    uint256 public totalLiquidity;
+    mapping(address => uint256) public liquidity;
+    event Swap(address indexed user, address tokenIn, uint256 amountIn, uint256 amountOut);
+    constructor(address _tokenA, address _tokenB) {
+        tokenA = IERC20(_tokenA);
+        tokenB = IERC20(_tokenB);
+    }
+    function addLiquidity(uint256 amountA, uint256 amountB) external returns (uint256 lp) {
+        tokenA.transferFrom(msg.sender, address(this), amountA);
+        tokenB.transferFrom(msg.sender, address(this), amountB);
+        lp = totalLiquidity == 0 ? amountA : (amountA * totalLiquidity) / reserveA;
+        reserveA += amountA; reserveB += amountB; totalLiquidity += lp;
+        liquidity[msg.sender] += lp;
+    }
+    function swapAForB(uint256 amountIn, uint256 minOut) external returns (uint256 amountOut) {
+        require(amountIn > 0 && reserveA > 0 && reserveB > 0, "invalid");
+        amountOut = (amountIn * reserveB) / (reserveA + amountIn);
+        require(amountOut >= minOut, "slippage");
+        tokenA.transferFrom(msg.sender, address(this), amountIn);
+        tokenB.transfer(msg.sender, amountOut);
+        reserveA += amountIn; reserveB -= amountOut;
+        emit Swap(msg.sender, address(tokenA), amountIn, amountOut);
+    }
+    function swapBForA(uint256 amountIn, uint256 minOut) external returns (uint256 amountOut) {
+        require(amountIn > 0 && reserveA > 0 && reserveB > 0, "invalid");
+        amountOut = (amountIn * reserveA) / (reserveB + amountIn);
+        require(amountOut >= minOut, "slippage");
+        tokenB.transferFrom(msg.sender, address(this), amountIn);
+        tokenA.transfer(msg.sender, amountOut);
+        reserveB += amountIn; reserveA -= amountOut;
+        emit Swap(msg.sender, address(tokenB), amountIn, amountOut);
+    }
+}
+)SOL";
+
+        auto compiled_token = sdk8.compileSolidity(CROSS_SHARD_TOKEN_SOL);
+        if (compiled_token["status"] != 0) {
+            std::cerr << "  CrossShardToken compile failed: " << compiled_token["msg"] << "\n";
+            transport::TcpTransport::Instance()->Stop();
+            return 1;
+        }
+        std::string token_bytecode8 = compiled_token["bytecode"];
+        std::cout << "  CrossShardToken: " << token_bytecode8.size() / 2 << " bytes\n";
+
+        auto compiled_amm = sdk8.compileSolidity(AMM_POOL_SOL);
+        if (compiled_amm["status"] != 0) {
+            std::cerr << "  AMMPool compile failed: " << compiled_amm["msg"] << "\n";
+            transport::TcpTransport::Instance()->Stop();
+            return 1;
+        }
+        std::string amm_bytecode8 = compiled_amm["bytecode"];
+        std::cout << "  AMMPool:         " << amm_bytecode8.size() / 2 << " bytes\n";
+        std::cout << "  [Phase 0] OK\n";
+
+        // ─────────────────────────────────────────────────────────────────
+        // Phase 1: Generate accounts
+        // ─────────────────────────────────────────────────────────────────
+        std::cout << "\n[Phase 1] Generate accounts...\n";
+
+        const std::vector<uint32_t> kShards8 = {3, 4, 5, 6};
+        const uint32_t kNumShards8 = 4;
+
+        // Address → shard routing (same as Mode 6/7):
+        //   pool = XXH32(addr, seed) % 32  →  shard = 6 - pool/8
+        auto addr_pool8 = [](const std::string& raw) -> uint32_t {
+            return common::GetAddressPoolIndex(raw);
+        };
+        auto addr_shard8 = [&](const std::string& raw) -> uint32_t {
+            return 6u - addr_pool8(raw) / 8u;
+        };
+
+        // ── User accounts — distributed evenly across shards 3-6 ─────────
+        struct UserAcct8 {
+            std::string prikey;
+            std::string addr_hex;
+            uint32_t    shard_id;
+            uint32_t    pool_idx;
+        };
+        std::vector<UserAcct8> users8;
+        users8.reserve(kUsers);
+
+        {
+            uint32_t per_shard = kUsers / kNumShards8;
+            if (per_shard == 0) per_shard = 1;
+
+            std::mutex mu;
+            std::vector<std::thread> uth;
+            for (uint32_t si = 0; si < kNumShards8 && !global_stop; ++si) {
+                uth.emplace_back([&, si, per_shard]() {
+                    uint32_t target = kShards8[si];
+                    uint32_t need   = (si < kNumShards8 - 1)
+                                        ? per_shard
+                                        : (kUsers - per_shard * (kNumShards8 - 1));
+                    std::vector<UserAcct8> local;
+                    local.reserve(need);
+                    while ((uint32_t)local.size() < need && !global_stop) {
+                        std::string pk(32, '\0');
+                        for (int j = 0; j < 32; ++j)
+                            pk[j] = (char)(common::Random::RandomUint32() % 256);
+                        auto s = std::make_shared<security::Ecdsa>();
+                        s->SetPrivateKey(pk);
+                        std::string addr = s->GetAddress();
+                        if (addr_shard8(addr) == target) {
+                            local.push_back({pk, common::Encode::HexEncode(addr),
+                                             target, addr_pool8(addr)});
+                        }
+                    }
+                    std::lock_guard<std::mutex> lk(mu);
+                    for (auto& u : local) users8.push_back(std::move(u));
+                });
+            }
+            for (auto& t : uth) t.join();
+        }
+
+        // Print shard distribution + full addresses
+        std::cout << "  Users: " << users8.size() << "  (";
+        for (uint32_t s : kShards8) {
+            uint32_t c = 0;
+            for (auto& u : users8) if (u.shard_id == s) ++c;
+            std::cout << "s" << s << "=" << c << " ";
+        }
+        std::cout << ")\n";
+        for (uint32_t i = 0; i < (uint32_t)users8.size(); ++i) {
+            std::cout << "    [user" << i << "] addr=" << users8[i].addr_hex
+                      << " s" << users8[i].shard_id << "\n";
+        }
+
+        // ── Token deployers — random signing keys + pre-chosen contract addrs ──
+        // Seth lets the sender choose the contract address freely via the `to`
+        // field of a kCreateContract TX, so we pick a random 20-byte address
+        // that routes to the desired shard/pool.
+        struct TokenDeployer8 {
+            std::string prikey;           // signing key (raw)
+            std::string addr_hex;         // signer address (hex, for funding)
+            uint32_t    signer_shard;
+            std::string contract_addr;    // pre-chosen contract address (raw 20B)
+            std::string contract_addr_hex;
+            uint32_t    contract_shard;
+            uint32_t    contract_pool;
+        };
+        std::vector<TokenDeployer8> tdeps8(kTokens);
+
+        for (uint32_t i = 0; i < kTokens; ++i) {
+            // signing key — any shard
+            std::string pk(32, '\0');
+            for (int j = 0; j < 32; ++j) pk[j] = (char)(common::Random::RandomUint32() % 256);
+            auto s = std::make_shared<security::Ecdsa>();
+            s->SetPrivateKey(pk);
+            std::string addr = s->GetAddress();
+            tdeps8[i].prikey       = pk;
+            tdeps8[i].addr_hex     = common::Encode::HexEncode(addr);
+            tdeps8[i].signer_shard = addr_shard8(addr);
+
+            // contract address — random target shard from {3,4,5,6}
+            uint32_t cshard = kShards8[common::Random::RandomUint32() % kNumShards8];
+            std::string caddr;
+            while (true) {
+                caddr.resize(20);
+                for (int j = 0; j < 20; ++j) caddr[j] = (char)(common::Random::RandomUint32() % 256);
+                if (addr_shard8(caddr) == cshard) break;
+            }
+            tdeps8[i].contract_addr     = caddr;
+            tdeps8[i].contract_addr_hex = common::Encode::HexEncode(caddr);
+            tdeps8[i].contract_shard    = cshard;
+            tdeps8[i].contract_pool     = addr_pool8(caddr);
+        }
+
+        std::cout << "  Token deployers: " << kTokens << "\n";
+        for (uint32_t i = 0; i < kTokens; ++i) {
+            std::cout << "    [token" << i << "] signer=" << tdeps8[i].addr_hex
+                      << " s" << tdeps8[i].signer_shard
+                      << "  contract=" << tdeps8[i].contract_addr_hex
+                      << " s" << tdeps8[i].contract_shard
+                      << " pool=" << tdeps8[i].contract_pool << "\n";
+        }
+
+        // ── AMM deployers — random signing keys + token pair assignment ───
+        struct AmmDeployer8 {
+            std::string prikey;
+            std::string addr_hex;
+            uint32_t    signer_shard;
+            uint32_t    token_a;   // index into tdeps8
+            uint32_t    token_b;
+        };
+        std::vector<AmmDeployer8> adeps8(kAmmPairs);
+
+        {
+            // Build sequential unique pairs (a, b) with a < b
+            std::vector<std::pair<uint32_t,uint32_t>> pairs;
+            for (uint32_t a = 0; a < kTokens; ++a)
+                for (uint32_t b = a + 1; b < kTokens; ++b)
+                    pairs.push_back({a, b});
+            // Fisher-Yates shuffle
+            for (uint32_t i = (uint32_t)pairs.size(); i > 1; --i) {
+                uint32_t j = common::Random::RandomUint32() % i;
+                std::swap(pairs[i-1], pairs[j]);
+            }
+
+            for (uint32_t k = 0; k < kAmmPairs; ++k) {
+                std::string pk(32, '\0');
+                for (int j = 0; j < 32; ++j) pk[j] = (char)(common::Random::RandomUint32() % 256);
+                auto s = std::make_shared<security::Ecdsa>();
+                s->SetPrivateKey(pk);
+                std::string addr = s->GetAddress();
+                adeps8[k].prikey       = pk;
+                adeps8[k].addr_hex     = common::Encode::HexEncode(addr);
+                adeps8[k].signer_shard = addr_shard8(addr);
+                adeps8[k].token_a      = pairs[k].first;
+                adeps8[k].token_b      = pairs[k].second;
+            }
+        }
+
+        std::cout << "  AMM deployers: " << kAmmPairs << "\n";
+        for (uint32_t k = 0; k < kAmmPairs; ++k) {
+            std::cout << "    [amm" << k << "] signer=" << adeps8[k].addr_hex
+                      << " s" << adeps8[k].signer_shard
+                      << "  pair=(token" << adeps8[k].token_a
+                      << ",token" << adeps8[k].token_b << ")\n";
+        }
+        std::cout << "  [Phase 1] OK\n";
+
+        // ─────────────────────────────────────────────────────────────────
+        // Phase 2: Fund all accounts (bulk raw-TCP, same pattern as Mode 6)
+        // ─────────────────────────────────────────────────────────────────
+        std::cout << "\n[Phase 2] Fund all accounts...\n";
+
+        // Flat list: (addr_hex, target_shard) — order: users, token dep, amm dep
+        std::vector<std::pair<std::string, uint32_t>> to_fund8;
+        to_fund8.reserve(users8.size() + kTokens + kAmmPairs);
+        for (auto& u : users8)     to_fund8.push_back({u.addr_hex,     u.shard_id});
+        for (auto& d : tdeps8)     to_fund8.push_back({d.addr_hex,     d.signer_shard});
+        for (auto& d : adeps8)     to_fund8.push_back({d.addr_hex,     d.signer_shard});
+        uint32_t total_fund8 = (uint32_t)to_fund8.size();
+
+        std::cout << "  Accounts to fund: " << total_fund8
+                  << "  (users=" << users8.size()
+                  << " tkn_dep=" << kTokens
+                  << " amm_dep=" << kAmmPairs << ")\n";
+
+        const uint64_t kFundAmt8 = 8000000000ULL;
+
+        // Deduplicate genesis funders
+        std::vector<std::string> uniq_funders8;
+        { std::set<std::string> seen;
+          for (auto& pk : g_prikeys)
+              if (seen.insert(pk).second) uniq_funders8.push_back(pk); }
+        std::cout << "  Unique funders: " << uniq_funders8.size() << "\n";
+
+        struct FState8 {
+            std::string prikey;
+            std::shared_ptr<security::Security> sec;
+            std::string addr_hex;
+            int64_t nonce_start{0};
+            int64_t nonce_sent{0};
+            std::atomic<uint32_t> sent{0};
+            FState8() = default;
+            FState8(FState8&& o) noexcept
+                : prikey(std::move(o.prikey)), sec(std::move(o.sec)),
+                  addr_hex(std::move(o.addr_hex)),
+                  nonce_start(o.nonce_start), nonce_sent(o.nonce_sent),
+                  sent(o.sent.load()) {}
+            FState8& operator=(FState8&&) = delete;
+        };
+        std::vector<FState8> fstates8;
+        {
+            SethSDK fqsdk(eps8[funder_shard].ip, eps8[funder_shard].http);
+            for (auto& pk : uniq_funders8) {
+                FState8 fs;
+                fs.prikey = pk;
+                fs.sec = std::make_shared<security::Ecdsa>();
+                fs.sec->SetPrivateKey(pk);
+                fs.addr_hex = common::Encode::HexEncode(fs.sec->GetAddress());
+                int64_t n = fqsdk.fetchNonce(fs.addr_hex);
+                fs.nonce_start = (n >= 0) ? n : 0;
+                fs.nonce_sent  = fs.nonce_start;
+                std::cout << "  funder " << fs.addr_hex.substr(0, 16)
+                          << "...  chain_nonce=" << fs.nonce_start << "\n";
+                fstates8.push_back(std::move(fs));
+            }
+        }
+
+        std::string fip8 = eps8[funder_shard].ip;
+        uint16_t    ftcp8 = eps8[funder_shard].http - 10000;
+        uint32_t    nf8   = (uint32_t)fstates8.size();
+        if (!nf8) nf8 = 1;
+
+        std::atomic<uint32_t> fund_ok8{0}, fund_fail8{0};
+
+        {
+            std::vector<std::thread> fth8;
+            for (uint32_t fi = 0; fi < nf8; ++fi) {
+                fth8.emplace_back([&, fi]() {
+                    int fd = ::socket(AF_INET, SOCK_STREAM, 0);
+                    if (fd < 0) {
+                        for (uint32_t i = fi; i < total_fund8; i += nf8) ++fund_fail8;
+                        return;
+                    }
+                    int one = 1;
+                    ::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
+                    sockaddr_in sa{};
+                    sa.sin_family = AF_INET;
+                    sa.sin_port   = htons(ftcp8);
+                    ::inet_pton(AF_INET, fip8.c_str(), &sa.sin_addr);
+                    if (::connect(fd, (sockaddr*)&sa, sizeof(sa)) != 0) {
+                        ::close(fd);
+                        for (uint32_t i = fi; i < total_fund8; i += nf8) ++fund_fail8;
+                        return;
+                    }
+
+                    auto& fs = fstates8[fi];
+                    int64_t nonce = fs.nonce_sent;
+                    for (uint32_t i = fi; i < total_fund8 && !global_stop; i += nf8) {
+                        auto& [addr_hex, tgt] = to_fund8[i];
+                        (void)tgt;
+                        auto tx = CreateTransactionWithAttr(
+                            fs.sec, (uint64_t)(++nonce), fs.prikey,
+                            common::Encode::HexDecode(addr_hex),
+                            "", "", kFundAmt8, 210000, 1, (int32_t)funder_shard);
+                        if (!tx) { ++fund_fail8; --nonce; continue; }
+
+                        tx->header.set_from_public_port(
+                            common::GlobalInfo::Instance()->config_public_port());
+                        if (!tx->header.has_hash64() || tx->header.hash64() == 0) {
+                            std::string hs = tx->header.SerializeAsString();
+                            tx->header.set_hash64(common::Hash::Hash64(hs));
+                        }
+                        std::string payload = tx->header.SerializeAsString();
+                        uint32_t    plen    = (uint32_t)payload.size();
+                        uint8_t     hdr[4]  = {
+                            (uint8_t)(plen & 0xFF),
+                            (uint8_t)((plen >> 8) & 0xFF),
+                            (uint8_t)((plen >> 16) & 0xFF),
+                            0
+                        };
+
+                        bool ok = (::send(fd, hdr, 4, MSG_NOSIGNAL) == 4);
+                        if (ok) {
+                            uint32_t off = 0;
+                            while (off < plen) {
+                                ssize_t n = ::send(fd, payload.data() + off, plen - off, MSG_NOSIGNAL);
+                                if (n <= 0) { ok = false; break; }
+                                off += (uint32_t)n;
+                            }
+                        }
+
+                        if (ok) {
+                            ++fund_ok8;
+                            ++fs.sent;
+                        } else {
+                            ++fund_fail8;
+                            --nonce;
+                            ::close(fd);
+                            fd = ::socket(AF_INET, SOCK_STREAM, 0);
+                            ::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
+                            if (::connect(fd, (sockaddr*)&sa, sizeof(sa)) != 0) {
+                                ::close(fd); fd = -1; break;
+                            }
+                        }
+                    }
+                    if (fd >= 0) ::close(fd);
+                    fs.nonce_sent = nonce;
+                });
+            }
+
+            // progress reporter
+            std::thread prog8([&]() {
+                uint32_t last = 0;
+                while (fund_ok8.load() + fund_fail8.load() < total_fund8 && !global_stop) {
+                    usleep(1000000);
+                    uint32_t ok   = fund_ok8.load();
+                    uint32_t fail = fund_fail8.load();
+                    uint32_t tps  = ok + fail - last;
+                    last = ok + fail;
+                    std::cout << "  Fund: " << ok << " ok  " << fail << " fail / "
+                              << total_fund8 << "  tps=" << tps << "\n";
+                }
+            });
+            for (auto& t : fth8) t.join();
+            prog8.join();
+        }
+        std::cout << "  [Phase 2] sends: " << fund_ok8.load() << " ok  "
+                  << fund_fail8.load() << " fail\n";
+
+        // ─────────────────────────────────────────────────────────────────
+        // Phase 2a: Wait for funder nonces to confirm on-chain
+        // ─────────────────────────────────────────────────────────────────
+        // Helper: parse int64 from JSON value that may be string or number
+        auto jsonToInt64 = [](const nlohmann::json& v) -> int64_t {
+            if (v.is_string()) {
+                int64_t n = -1;
+                std::string s = v.get<std::string>();
+                std::from_chars(s.data(), s.data() + s.size(), n);
+                return n;
+            }
+            try { return v.get<int64_t>(); } catch (...) { return -1; }
+        };
+
+        std::cout << "\n[Phase 2a] Verify funder nonces on-chain (max 600s)...\n";
+        {
+            SethSDK vsdk8(eps8[funder_shard].ip, eps8[funder_shard].http);
+            std::vector<std::string> faddrs8;
+            for (auto& fs : fstates8) faddrs8.push_back(fs.addr_hex);
+
+            bool nonce_ok8 = false;
+            for (int rd = 0; rd < 600 && !global_stop; ++rd) {
+                auto r = vsdk8.batchQueryAccounts(faddrs8);
+                bool all_match = true;
+                uint32_t confirmed = 0;
+                if (r.contains("accounts")) {
+                    for (auto& fs : fstates8) {
+                        if (!r["accounts"].contains(fs.addr_hex)) { all_match = false; continue; }
+                        int64_t actual = -1;
+                        try { actual = jsonToInt64(r["accounts"][fs.addr_hex]["nonce"]); } catch (...) {}
+                        if (actual >= (int64_t)fs.nonce_sent) ++confirmed;
+                        else all_match = false;
+                    }
+                } else { all_match = false; }
+
+                if (all_match) { nonce_ok8 = true; break; }
+                if (rd % 30 == 0)
+                    std::cout << "  [" << rd << "s] " << confirmed << "/" << fstates8.size()
+                              << " funders confirmed nonces...\n";
+                usleep(1000000);
+            }
+            if (nonce_ok8) std::cout << "  Funder nonces confirmed OK\n";
+            else {
+                std::cout << "  WARNING: nonce check timed out after 600s\n";
+                auto r = vsdk8.batchQueryAccounts(faddrs8);
+                for (auto& fs : fstates8) {
+                    int64_t actual = -1;
+                    if (r.contains("accounts") && r["accounts"].contains(fs.addr_hex))
+                        try { actual = jsonToInt64(r["accounts"][fs.addr_hex]["nonce"]); } catch (...) {}
+                    std::cout << "    " << fs.addr_hex.substr(0, 16)
+                              << "... want=" << fs.nonce_sent << " got=" << actual << "\n";
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // Phase 2b: Spot-check user balances on each shard in parallel (max 600s)
+        // ─────────────────────────────────────────────────────────────────
+        std::cout << "\n[Phase 2b] Spot-check balances (max 600s, parallel per shard)...\n";
+        {
+            std::vector<std::thread> bal_threads;
+            std::mutex bal_mu;
+            uint32_t bal_ok_shards = 0;
+            for (uint32_t s : kShards8) {
+                bal_threads.emplace_back([&, s]() {
+                    std::vector<std::string> sample;
+                    for (auto& u : users8) {
+                        if (u.shard_id == s) { sample.push_back(u.addr_hex); }
+                        if (sample.size() >= 3) break;
+                    }
+                    if (sample.empty()) {
+                        std::lock_guard<std::mutex> lk(bal_mu);
+                        std::cout << "  Shard " << s << ": no users\n";
+                        ++bal_ok_shards;
+                        return;
+                    }
+
+                    SethSDK ssdk(eps8[s].ip, eps8[s].http);
+                    bool shard_ok = false;
+                    for (int rd = 0; rd < 600 && !global_stop; ++rd) {
+                        auto r = ssdk.batchQueryAccounts(sample);
+                        uint32_t funded = 0;
+                        uint64_t last_bal = 0;
+                        if (r.contains("accounts")) {
+                            for (auto& a : sample) {
+                                if (!r["accounts"].contains(a)) continue;
+                                uint64_t bal = 0;
+                                try {
+                                    auto& bv = r["accounts"][a]["balance"];
+                                    if (bv.is_string()) {
+                                        std::string bs = bv.get<std::string>();
+                                        std::from_chars(bs.data(), bs.data() + bs.size(), bal);
+                                    } else {
+                                        bal = bv.get<uint64_t>();
+                                    }
+                                } catch (...) {}
+                                last_bal = bal;
+                                if (bal > 0) ++funded;
+                            }
+                        }
+                        if (funded == (uint32_t)sample.size()) {
+                            std::lock_guard<std::mutex> lk(bal_mu);
+                            std::cout << "  Shard " << s << ": " << funded << "/" << sample.size()
+                                      << " sample users funded OK (balance=" << last_bal << ")\n";
+                            shard_ok = true;
+                            ++bal_ok_shards;
+                            break;
+                        }
+                        if (rd % 30 == 0) {
+                            std::lock_guard<std::mutex> lk(bal_mu);
+                            std::cout << "  Shard " << s << ": " << funded << "/" << sample.size()
+                                      << " funded [" << rd << "s] balance=" << last_bal << "\n";
+                        }
+                        usleep(1000000);
+                    }
+                    if (!shard_ok) {
+                        std::lock_guard<std::mutex> lk(bal_mu);
+                        std::cout << "  Shard " << s << ": WARNING balance check timed out (600s)\n";
+                    }
+                });
+            }
+            for (auto& t : bal_threads) t.join();
+            std::cout << "  Phase 2b: " << bal_ok_shards << "/" << kShards8.size()
+                      << " shards confirmed\n";
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        std::cout << "\n" << std::string(70, '=') << "\n";
+        std::cout << "  Mode 8 Step 1 Complete\n";
+        std::cout << "  Users:          " << users8.size() << "\n";
+        std::cout << "  Token deployers: " << kTokens << "\n";
+        std::cout << "  AMM deployers:   " << kAmmPairs << "\n";
+        std::cout << "  Fund: " << fund_ok8.load() << " ok  " << fund_fail8.load() << " fail\n";
+        std::cout << "  Next: implement Phase 3 (deploy CrossShardBase tokens)\n";
+        std::cout << std::string(70, '=') << "\n";
+
+        transport::TcpTransport::Instance()->Stop();
+        return 0;
+    }
+
     return 0;
 }
