@@ -32,7 +32,8 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ── 配置 ─────────────────────────────────────────────────────────────────────
-HOST     = "192.168.25.129"
+import os
+HOST     = os.environ.get("SETH_HOST", "192.168.25.129")
 PRIVKEY  = "c8ee398141fe31308fce258fa4c0fc21288a74a221982db252cb10a94bf7063b"
 SOLC     = "/root/seth/python/solc"
 BASE_SOL = "/root/seth/python/CrossShardBase.sol"
@@ -374,7 +375,7 @@ def main():
 
     # 2. Compute CREATE2 address — no self-reference now
     #    TestToken constructor(address systemExecutor) — no baseRootAddress
-    SALT = 319  # change to redeploy fresh
+    SALT = 324  # change to redeploy fresh
     ctor_types = ["address"]
     ctor_args_hex = eth_abi.encode(ctor_types, [bytes.fromhex(SYSTEM_EXECUTOR)]).hex()
     full_bytecode = bytecode + ctor_args_hex

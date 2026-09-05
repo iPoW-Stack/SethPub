@@ -396,7 +396,10 @@ public:
         try {
             json raw = json::parse(result_json);
             if (raw.contains("contracts")) {
-                for (auto& el : raw["contracts"].items()) return {{"abi", el.value()["abi"]}, {"bin", el.value()["bin"]}};
+                for (auto& el : raw["contracts"].items()) {
+                    std::string bin = el.value()["bin"].get<std::string>();
+                    if (!bin.empty()) return {{"abi", el.value()["abi"]}, {"bin", bin}};
+                }
             }
             return nullptr;
         } catch (...) { throw std::runtime_error("Compile failed: " + result_json); }
