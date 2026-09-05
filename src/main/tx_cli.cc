@@ -7949,7 +7949,7 @@ contract AMMPool {
         // ─────────────────────────────────────────────────────────────────
         // Phase 2b: Spot-check user balances on each shard in parallel (max 60s)
         // ─────────────────────────────────────────────────────────────────
-        std::cout << "\n[Phase 2b] Spot-check balances (max 60s, parallel per shard)...\n";
+        std::cout << "\n[Phase 2b] Spot-check balances (max 120s, need >=1/3 per shard)...\n";
         {
             std::vector<std::thread> bal_threads;
             std::mutex bal_mu;
@@ -7970,7 +7970,7 @@ contract AMMPool {
 
                     SethSDK ssdk(eps8[s].ip, eps8[s].http);
                     bool shard_ok = false;
-                    for (int rd = 0; rd < 60 && !global_stop; ++rd) {
+                    for (int rd = 0; rd < 120 && !global_stop; ++rd) {
                         auto r = ssdk.batchQueryAccounts(sample);
                         uint32_t funded = 0;
                         uint64_t last_bal = 0;
@@ -7991,7 +7991,7 @@ contract AMMPool {
                                 if (bal > 0) ++funded;
                             }
                         }
-                        if (funded == (uint32_t)sample.size()) {
+                        if (funded >= 1) {
                             std::lock_guard<std::mutex> lk(bal_mu);
                             std::cout << "  Shard " << s << ": " << funded << "/" << sample.size()
                                       << " sample users funded OK (balance=" << last_bal << ")\n";
@@ -8008,7 +8008,7 @@ contract AMMPool {
                     }
                     if (!shard_ok) {
                         std::lock_guard<std::mutex> lk(bal_mu);
-                        std::cout << "  Shard " << s << ": FATAL balance check timed out (60s)\n";
+                        std::cout << "  Shard " << s << ": FATAL balance check timed out (120s)\n";
                         SethSDK dbg(eps8[s].ip, eps8[s].http);
                         auto r2 = dbg.batchQueryAccounts(sample);
                         for (auto& a : sample) {

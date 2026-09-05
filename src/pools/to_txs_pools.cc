@@ -34,7 +34,8 @@ ToTxsPools::ToTxsPools(
         uint32_t max_sharding_id,
         std::shared_ptr<pools::TxPoolManager>& pools_mgr,
         std::shared_ptr<block::AccountManager>& acc_mgr)
-        : db_(db), local_id_(local_id), pools_mgr_(pools_mgr), acc_mgr_(acc_mgr) {
+        : db_(db), local_id_(local_id), pools_mgr_(pools_mgr), acc_mgr_(acc_mgr),
+          max_sharding_id_(max_sharding_id) {
     prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
     if (pools_mgr_ != nullptr) {
         LoadLatestHeights();
@@ -540,7 +541,19 @@ int ToTxsPools::CreateToTxWithHeights(
                             pool_idx,
                             common::Encode::HexEncode(addr_info->addr()).c_str());
                     } else {
-                        to_iter->second.set_des_sharding_id(network::kRootCongressNetworkId);
+                        // New account: derive shard from address pool routing.
+                        // consensus shards = max_sharding_id_ - kConsensusShardBeginNetworkId + 1
+                        // pools_per_shard = kImmutablePoolSize / consensus_shards
+                        auto raw_addr = to_iter->second.des().substr(0, common::kUnicastAddressLength);
+                        uint32_t pool_idx = common::GetAddressPoolIndex(raw_addr);
+                        uint32_t consensus_shards = max_sharding_id_ - network::kConsensusShardBeginNetworkId + 1;
+                        if (consensus_shards == 0) consensus_shards = 1;
+                        uint32_t pools_per_shard = common::kImmutablePoolSize / consensus_shards;
+                        if (pools_per_shard == 0) pools_per_shard = 1;
+                        uint32_t derived_shard = max_sharding_id_ - pool_idx / pools_per_shard;
+                        to_iter->second.set_des_sharding_id(derived_shard);
+                        SETH_DEBUG("new account: addr=%s pool=%u derived_shard=%u",
+                            common::Encode::HexEncode(raw_addr).c_str(), pool_idx, derived_shard);
                     }
                 }
 

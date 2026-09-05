@@ -121,7 +121,8 @@ private:
     common::SpinMutex prev_to_heights_mutex_;
     uint64_t has_statistic_height_[common::kInvalidPoolIndex] = { 1 };
     std::shared_ptr<block::AccountManager> acc_mgr_ = nullptr;
-    
+    uint32_t max_sharding_id_ = 6;
+
     DISALLOW_COPY_AND_ASSIGN(ToTxsPools);
 };
 
