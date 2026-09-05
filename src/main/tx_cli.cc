@@ -7918,22 +7918,23 @@ contract AMMPool {
             }
             if (nonce_ok8) std::cout << "  Funder nonces confirmed OK\n";
             else {
-                std::cout << "  WARNING: nonce check timed out after 60s\n";
+                std::cout << "  FATAL: nonce check timed out after 60s\n";
                 auto r = vsdk8.batchQueryAccounts(faddrs8);
                 for (auto& fs : fstates8) {
                     int64_t actual = -1;
                     if (r.contains("accounts") && r["accounts"].contains(fs.addr_hex))
                         try { actual = jsonToInt64(r["accounts"][fs.addr_hex]["nonce"]); } catch (...) {}
-                    std::cout << "    " << fs.addr_hex.substr(0, 16)
-                              << "... want=" << fs.nonce_sent << " got=" << actual << "\n";
+                    std::cout << "    " << fs.addr_hex
+                              << "  want=" << fs.nonce_sent << " got=" << actual << "\n";
                 }
+                return 1;
             }
         }
 
         // ─────────────────────────────────────────────────────────────────
-        // Phase 2b: Spot-check user balances on each shard in parallel (max 600s)
+        // Phase 2b: Spot-check user balances on each shard in parallel (max 60s)
         // ─────────────────────────────────────────────────────────────────
-        std::cout << "\n[Phase 2b] Spot-check balances (max 600s, parallel per shard)...\n";
+        std::cout << "\n[Phase 2b] Spot-check balances (max 60s, parallel per shard)...\n";
         {
             std::vector<std::thread> bal_threads;
             std::mutex bal_mu;
@@ -7954,7 +7955,7 @@ contract AMMPool {
 
                     SethSDK ssdk(eps8[s].ip, eps8[s].http);
                     bool shard_ok = false;
-                    for (int rd = 0; rd < 600 && !global_stop; ++rd) {
+                    for (int rd = 0; rd < 60 && !global_stop; ++rd) {
                         auto r = ssdk.batchQueryAccounts(sample);
                         uint32_t funded = 0;
                         uint64_t last_bal = 0;
@@ -7992,11 +7993,33 @@ contract AMMPool {
                     }
                     if (!shard_ok) {
                         std::lock_guard<std::mutex> lk(bal_mu);
-                        std::cout << "  Shard " << s << ": WARNING balance check timed out (600s)\n";
+                        std::cout << "  Shard " << s << ": FATAL balance check timed out (60s)\n";
+                        SethSDK dbg(eps8[s].ip, eps8[s].http);
+                        auto r2 = dbg.batchQueryAccounts(sample);
+                        for (auto& a : sample) {
+                            uint64_t bal = 0;
+                            if (r2.contains("accounts") && r2["accounts"].contains(a)) {
+                                try {
+                                    auto& bv = r2["accounts"][a]["balance"];
+                                    if (bv.is_string()) {
+                                        std::string bs = bv.get<std::string>();
+                                        std::from_chars(bs.data(), bs.data() + bs.size(), bal);
+                                    } else {
+                                        bal = bv.get<uint64_t>();
+                                    }
+                                } catch (...) {}
+                            }
+                            std::cout << "    " << a << "  balance=" << bal << "\n";
+                        }
                     }
                 });
             }
             for (auto& t : bal_threads) t.join();
+            if (bal_ok_shards < (uint32_t)kShards8.size()) {
+                std::cerr << "  FATAL: Phase 2b failed on "
+                          << (kShards8.size() - bal_ok_shards) << " shard(s). Aborting.\n";
+                return 1;
+            }
             std::cout << "  Phase 2b: " << bal_ok_shards << "/" << kShards8.size()
                       << " shards confirmed\n";
         }
