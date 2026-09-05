@@ -214,7 +214,7 @@ public:
                 return 0;
             } catch (std::exception& e) {
                 // Non-JSON response (e.g. "get address failed") — treat as nonce=0
-                return 0; 
+                return 0;
             }
         }
 

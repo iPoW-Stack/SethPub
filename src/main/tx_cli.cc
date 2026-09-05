@@ -7763,17 +7763,19 @@ contract AMMPool {
                 fs.prikey = pk;
                 fs.sec = std::make_shared<security::Ecdsa>();
                 fs.sec->SetPrivateKey(pk);
-                fs.addr_hex = common::Encode::HexEncode(fs.sec->GetAddress());
-                int64_t n = fqsdk.fetchNonce(fs.addr_hex);
-                if (n < 0) {
+                std::string addr_raw = fs.sec->GetAddress();
+                fs.addr_hex = common::Encode::HexEncode(addr_raw);
+                uint32_t fshard = addr_shard8(addr_raw);
+                if (fshard != funder_shard) {
                     std::cout << "  funder " << fs.addr_hex
-                              << "  NOT on shard " << funder_shard << ", skipped\n";
+                              << "  shard=" << fshard << " != " << funder_shard << ", skipped\n";
                     continue;
                 }
-                fs.nonce_start = n;
-                fs.nonce_sent  = n;
+                int64_t n = fqsdk.fetchNonce(fs.addr_hex);
+                fs.nonce_start = (n >= 0) ? n : 0;
+                fs.nonce_sent  = fs.nonce_start;
                 std::cout << "  funder " << fs.addr_hex
-                          << "  chain_nonce=" << n << "\n";
+                          << "  chain_nonce=" << fs.nonce_start << "\n";
                 fstates8.push_back(std::move(fs));
             }
             if (fstates8.empty()) {
