@@ -7554,13 +7554,14 @@ contract AMMPool {
         const std::vector<uint32_t> kShards8 = {3, 4, 5, 6};
         const uint32_t kNumShards8 = 4;
 
-        // Address → shard routing (same as Mode 6/7):
-        //   pool = XXH32(addr, seed) % 32  →  shard = 6 - pool/8
+        // Address → shard routing: matches root_to_tx_item.cc RootToTxItem::HandleTx
+        //   sharding_id = Hash64(addr) % num_shards + kConsensusShardBeginNetworkId
         auto addr_pool8 = [](const std::string& raw) -> uint32_t {
             return common::GetAddressPoolIndex(raw);
         };
         auto addr_shard8 = [&](const std::string& raw) -> uint32_t {
-            return 6u - addr_pool8(raw) / 8u;
+            uint64_t h = common::Hash::Hash64(raw.substr(0, common::kUnicastAddressLength));
+            return (uint32_t)(h % kNumShards8) + network::kConsensusShardBeginNetworkId;
         };
 
         // ── User accounts — distributed evenly across shards 3-6 ─────────
