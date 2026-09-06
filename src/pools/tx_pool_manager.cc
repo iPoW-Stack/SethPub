@@ -641,6 +641,13 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
     //         tx_pool_[pool_idx].CheckPopedTxs();
     //     }
     // }
+    SETH_DEBUG("tx pool handle message, hash64: %lu, from: %s, to: %s, "
+        "setp: %d, nonce: %lu", 
+        msg_ptr->header.hash64(),
+        common::Encode::HexEncode(msg_ptr->header.tx_proto().pubkey()).c_str(),
+        common::Encode::HexEncode(msg_ptr->header.tx_proto().to()).c_str(),
+        (int32_t)msg_ptr->header.tx_proto().step(),
+        msg_ptr->header.tx_proto().nonce());
     auto& header = msg_ptr->header;
     TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
     ADD_DEBUG_PROCESS_TIMESTAMP();
