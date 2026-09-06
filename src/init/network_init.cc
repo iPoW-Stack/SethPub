@@ -146,7 +146,8 @@ int NetworkInit::Init(int argc, char** argv) {
     if (genesis_check != -1) {
         common::GlobalInfo::Instance()->set_global_stoped();
         std::cout << "genesis cmd over, exit." << std::endl;
-        return genesis_check;
+        // Skip C++ destructors — net_handler_ was never fully initialized in genesis mode.
+        _exit(genesis_check);
     }
 
     // Init agg bls
